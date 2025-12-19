@@ -12,3 +12,5 @@ export interface Sheet {
   created_at: string
   updated_at: string
 }
+
+export type AttributeType = 'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma';

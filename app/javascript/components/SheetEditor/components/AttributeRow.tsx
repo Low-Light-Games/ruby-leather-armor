@@ -1,4 +1,4 @@
-type AttributeType = 'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma';
+import { AttributeType } from '../../../types';
 
 interface AttributeRowProps {
   attribute: AttributeType;

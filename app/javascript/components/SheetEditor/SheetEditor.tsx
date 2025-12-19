@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { AttributeRow } from './components/AttributeRow'
 import { NameField } from './components/NameField'
 import { useSheetsContext } from '../../contexts/SheetsContext'
-import { Sheet } from '../../types'
+import { Sheet, AttributeType } from '../../types'
 
 export const SheetEditor = () => {
   const { sheets, setSheets } = useSheetsContext();
@@ -67,7 +67,7 @@ export const SheetEditor = () => {
   }, [strength, intelligence, dexterity, constitution, wisdom, charisma])
   
   const changeAttribute = (
-    attribute: 'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma',
+    attribute: AttributeType,
     operation: 'increase' | 'decrease'
   ) => {
     const delta = operation === 'increase' ? 1 : -1;
