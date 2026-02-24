@@ -10,9 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_24_143027) do
+ActiveRecord::Schema[7.1].define(version: 2026_02_24_180001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "adventures", force: :cascade do |t|
+    t.bigint "sheet_id", null: false
+    t.bigint "story_state_id", null: false
+    t.text "character_effects"
+    t.integer "character_gold", default: 0, null: false
+    t.text "character_items"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sheet_id"], name: "index_adventures_on_sheet_id"
+    t.index ["story_state_id"], name: "index_adventures_on_story_state_id"
+  end
 
   create_table "sheets", force: :cascade do |t|
     t.string "name"
@@ -30,6 +42,22 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_24_143027) do
     t.index ["user_id"], name: "index_sheets_on_user_id"
   end
 
+  create_table "stories", force: :cascade do |t|
+    t.string "title", null: false
+    t.text "premise", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.text "preview", default: "", null: false
+  end
+
+  create_table "story_states", force: :cascade do |t|
+    t.bigint "story_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.text "description", default: "", null: false
+    t.index ["story_id"], name: "index_story_states_on_story_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email"
     t.string "password_digest"
@@ -39,5 +67,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_24_143027) do
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
+  add_foreign_key "adventures", "sheets"
+  add_foreign_key "adventures", "story_states"
   add_foreign_key "sheets", "users"
+  add_foreign_key "story_states", "stories"
 end

@@ -11,6 +11,8 @@ import { Sheet } from '../types';
 interface SheetsContextType {
   sheets: Sheet[];
   setSheets: Dispatch<SetStateAction<Sheet[]>>;
+  sheetToEdit: Sheet | null;
+  setSheetToEdit: Dispatch<SetStateAction<Sheet | null>>;
 }
 
 const SheetsContext = createContext<SheetsContextType | undefined>(
@@ -19,10 +21,13 @@ const SheetsContext = createContext<SheetsContextType | undefined>(
 
 export const SheetsProvider = ({ children }: { children: ReactNode }) => {
   const [sheets, setSheets] = useState<Sheet[]>([]);
+  const [sheetToEdit, setSheetToEdit] = useState<Sheet | null>(null);
 
   const value = {
     sheets,
     setSheets,
+    sheetToEdit,
+    setSheetToEdit,
   };
 
   return (

@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react"
 import { useSheetsContext } from "../../contexts/SheetsContext"
 import { Sheet } from "../../types"
+import './SheetList.scss'
 
 export const SheetList = () => {
-  const { sheets, setSheets } = useSheetsContext()
+  const { sheets, setSheets, setSheetToEdit } = useSheetsContext()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -11,7 +12,7 @@ export const SheetList = () => {
     setLoading(true)
     setError(null)
     
-    fetch('sheets')
+    fetch('/sheets')
       .then(response => {
         if (!response.ok) {
           if (response.status === 401) {
@@ -40,14 +41,27 @@ export const SheetList = () => {
     return <div className="feedback-error">{error}</div>
   }
 
+  const handleEdit = (sheet: Sheet) => {
+    setSheetToEdit(sheet)
+  }
+
   return (
     <div>
       {sheets.length === 0 ? (
         <p>No character sheets yet. Create one to get started!</p>
       ) : (
-        <ul>
+        <ul className="sheet-list">
           {sheets.map((character: Sheet) => (
-            <li key={character.id}>{character.name}</li>
+            <li key={character.id} className="sheet-list-item">
+              <span className="sheet-name">{character.name}</span>
+              <button 
+                onClick={() => handleEdit(character)}
+                className="edit-button"
+                type="button"
+              >
+                Edit
+              </button>
+            </li>
           ))}
         </ul>
       )}

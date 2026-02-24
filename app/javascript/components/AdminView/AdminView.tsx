@@ -18,7 +18,7 @@ export const AdminView = () => {
   const fetchAllSheets = async () => {
     try {
       setLoading(true);
-      const response = await fetch('admin/all_sheets');
+      const response = await fetch('/admin/all_sheets');
       if (!response.ok) {
         throw new Error('Failed to fetch sheets');
       }

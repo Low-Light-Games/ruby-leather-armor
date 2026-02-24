@@ -1,0 +1,93 @@
+.adventure-creation {
+  max-width: 600px;
+
+  h1 {
+    margin-bottom: 24px;
+    color: #333;
+  }
+
+  .adventure-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    label {
+      font-weight: 600;
+      color: #333;
+      font-size: 14px;
+    }
+
+    select {
+      padding: 10px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      background-color: white;
+
+      &:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+      }
+    }
+  }
+
+  .character-preview,
+  .story-preview {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+
+    h2 {
+      margin: 0 0 12px 0;
+      color: #333;
+      font-size: 18px;
+    }
+
+    p {
+      margin: 0;
+      color: #555;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .no-description {
+      color: #999;
+      font-style: italic;
+    }
+  }
+
+  .submit-button {
+    padding: 12px 24px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    align-self: flex-start;
+
+    &:hover:not(:disabled) {
+      background-color: #218838;
+    }
+
+    &:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    &:focus-visible {
+      outline: 2px solid #28a745;
+      outline-offset: 2px;
+    }
+  }
+}

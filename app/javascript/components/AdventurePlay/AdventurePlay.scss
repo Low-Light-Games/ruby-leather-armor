@@ -1,0 +1,92 @@
+.adventure-play {
+  display: flex;
+  gap: 24px;
+  min-height: 500px;
+
+  .adventure-column {
+    flex: 1;
+    min-width: 0;
+    padding: 20px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+  }
+
+  .character-column {
+    h2 {
+      margin: 0 0 20px 0;
+      color: #333;
+    }
+
+    .attributes-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 24px;
+
+      .attribute-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: white;
+        border-radius: 4px;
+
+        .attr-label {
+          font-weight: 500;
+          color: #333;
+          text-transform: capitalize;
+        }
+
+        .attr-value {
+          font-family: monospace;
+          font-weight: bold;
+          color: #007bff;
+        }
+      }
+    }
+
+    .adventure-stats {
+      border-top: 1px solid #dee2e6;
+      padding-top: 16px;
+
+      .stat-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: white;
+        border-radius: 4px;
+
+        .stat-label {
+          font-weight: 500;
+          color: #333;
+        }
+
+        .stat-value {
+          font-family: monospace;
+          font-weight: bold;
+          color: #d4a017;
+        }
+      }
+    }
+  }
+
+  .middle-column {
+    background: #fafafa;
+    border-style: dashed;
+    border-color: #ddd;
+  }
+
+  .story-column {
+    h2 {
+      margin: 0 0 16px 0;
+      color: #333;
+    }
+
+    .story-stage {
+      margin: 0;
+      color: #555;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+  }
+}

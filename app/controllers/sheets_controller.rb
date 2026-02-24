@@ -1,6 +1,6 @@
 class SheetsController < ApplicationController
   before_action :set_sheet, only: [:show, :update, :destroy]
-  before_action :authorize, only: [:show, :update, :destroy]
+  before_action :authorize_sheet, only: [:show, :update, :destroy]
 
   def index
     @sheets = policy_scope(Sheet).order(created_at: :desc)
@@ -45,7 +45,11 @@ class SheetsController < ApplicationController
     @sheet = Sheet.find(params[:id])
   end
 
+  def authorize_sheet
+    authorize(@sheet)
+  end
+
   def sheet_params
-    params.require(:sheet).permit(:name, :strength, :intelligence, :dexterity, :constitution, :wisdom, :charisma)
+    params.require(:sheet).permit(:name, :description, :strength, :intelligence, :dexterity, :constitution, :wisdom, :charisma)
   end
 end

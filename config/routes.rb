@@ -19,4 +19,8 @@ Rails.application.routes.draw do
   get "sheets/create" => "stimulus#stimulus_version_sheet_creator"
 
   resources :sheets
+
+  # API endpoints for stories and adventures
+  resources :stories, only: [:index]
+  resources :adventures, only: [:new, :create, :show]
 end

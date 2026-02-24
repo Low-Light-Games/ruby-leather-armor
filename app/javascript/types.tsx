@@ -15,3 +15,30 @@ export interface Sheet {
 }
 
 export type AttributeType = 'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma';
+
+export interface Story {
+  id: number
+  title: string
+  preview: string
+  premise: string
+  created_at: string
+  updated_at: string
+}
+
+export interface StoryState {
+  id: number
+  story_id: number
+  description: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Adventure {
+  id: number
+  sheet: Sheet
+  story_state: StoryState
+  story: Story
+  character_gold: number
+  character_effects: string | null
+  character_items: string | null
+}
