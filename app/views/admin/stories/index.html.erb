@@ -1,0 +1,281 @@
+<nav class="server-navbar">
+  <div class="navbar-left">
+    <span class="user-info">Logged in as: <%= current_user.email %></span>
+    <% if current_user.admin? %>
+      <span class="admin-badge">Admin</span>
+    <% end %>
+  </div>
+  <div class="navbar-right">
+    <a href="/" class="nav-link">Sheets</a>
+    <a href="/adventures/new" class="adventure-cta">Adventure!</a>
+    <a href="/admin/stories" class="nav-link admin-link">Stories</a>
+    <%= button_to "Logout", "/logout", method: :delete, class: "logout-link" %>
+  </div>
+</nav>
+
+<div class="admin-stories-index">
+  <div class="admin-stories-header">
+    <h1>Stories</h1>
+    <a href="<%= new_admin_story_path %>" class="btn-new-story">+ New Story</a>
+  </div>
+
+  <% if @stories.empty? %>
+    <p class="empty-msg">No stories yet. Create the first one!</p>
+  <% else %>
+    <table class="stories-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Stages</th>
+          <th>Preview</th>
+          <th>Updated</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @stories.each do |story| %>
+          <tr>
+            <td class="story-title"><%= story.title %></td>
+            <td class="story-stages"><%= story.story_states.kept.size %></td>
+            <td class="story-preview"><%= truncate(story.preview, length: 80) %></td>
+            <td class="story-date"><%= story.updated_at.strftime('%b %d, %Y') %></td>
+            <td class="story-actions">
+              <a href="<%= admin_story_path(story) %>" class="btn-edit">Edit</a>
+              <%= button_to "Archive", admin_story_path(story), method: :delete, class: "btn-archive", data: { turbo_confirm: "Archive \"#{story.title}\"?" } %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>
+
+<style>
+  .server-navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    font-family: 'Arial', sans-serif;
+    max-width: 900px;
+    margin: 0 auto 0 auto;
+    border-radius: 0 0 8px 8px;
+  }
+
+  .navbar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .navbar-left .user-info {
+    font-size: 14px;
+    color: #555;
+  }
+
+  .navbar-left .admin-badge {
+    padding: 2px 8px;
+    background-color: #6f42c1;
+    color: white;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .navbar-right .nav-link {
+    padding: 8px 16px;
+    color: #007bff;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+  }
+
+  .navbar-right .nav-link:hover {
+    background-color: #e9ecef;
+  }
+
+  .navbar-right .admin-link {
+    color: #6f42c1;
+  }
+
+  .navbar-right .admin-link:hover {
+    background-color: #f0e6ff;
+  }
+
+  .navbar-right .adventure-cta {
+    padding: 8px 20px;
+    background-color: #28a745;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.15s;
+  }
+
+  .navbar-right .adventure-cta:hover {
+    background-color: #218838;
+  }
+
+  .navbar-right .logout-link {
+    padding: 8px 16px;
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  .navbar-right .logout-link:hover {
+    color: #a71d2a;
+    text-decoration: underline;
+  }
+
+  .admin-stories-index {
+    max-width: 900px;
+    margin: 20px auto;
+    padding: 0 20px;
+    font-family: 'Arial', sans-serif;
+  }
+
+  .admin-stories-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .admin-stories-header h1 {
+    margin: 0;
+    color: #333;
+  }
+
+  .btn-new-story {
+    padding: 8px 18px;
+    background-color: #28a745;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.15s;
+  }
+
+  .btn-new-story:hover {
+    background-color: #218838;
+  }
+
+  .empty-msg {
+    color: #777;
+    font-size: 14px;
+    font-style: italic;
+  }
+
+  .stories-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  .stories-table thead {
+    background-color: #f8f9fa;
+  }
+
+  .stories-table th {
+    text-align: left;
+    padding: 12px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    border-bottom: 2px solid #dee2e6;
+  }
+
+  .stories-table td {
+    padding: 12px 14px;
+    font-size: 14px;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    vertical-align: middle;
+  }
+
+  .stories-table tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+
+  .story-title {
+    font-weight: 600;
+  }
+
+  .story-stages {
+    text-align: center;
+    color: #555;
+  }
+
+  .story-preview {
+    color: #777;
+    font-size: 13px;
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .story-date {
+    color: #888;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .story-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .btn-edit {
+    padding: 5px 14px;
+    background-color: #007bff;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background-color 0.15s;
+  }
+
+  .btn-edit:hover {
+    background-color: #0056b3;
+  }
+
+  .btn-archive {
+    padding: 5px 14px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  .btn-archive:hover {
+    background-color: #a71d2a;
+  }
+</style>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_24_240001) do
+ActiveRecord::Schema[7.1].define(version: 2026_02_24_250002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -57,6 +57,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_24_240001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.text "preview", default: "", null: false
+    t.datetime "discarded_at"
+    t.index ["discarded_at"], name: "index_stories_on_discarded_at"
   end
 
   create_table "story_states", force: :cascade do |t|
@@ -64,6 +66,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_24_240001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.text "description", default: "", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "discarded_at"
+    t.index ["discarded_at"], name: "index_story_states_on_discarded_at"
     t.index ["story_id"], name: "index_story_states_on_story_id"
   end
 

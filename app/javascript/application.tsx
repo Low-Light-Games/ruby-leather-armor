@@ -9,6 +9,7 @@ import { createRoot } from "react-dom/client";
 import App from "./components/App";
 import AdventureCreation from "./components/AdventureCreation";
 import AdventurePlay from "./components/AdventurePlay";
+import AdminStoryEditor from "./components/AdminStoryEditor";
 import { AuthProvider } from "./contexts/AuthContext";
 
 // Import Stimulus controllers
@@ -55,6 +56,23 @@ document.addEventListener("DOMContentLoaded", () => {
       <React.StrictMode>
         <AuthProvider>
           <AdventurePlay adventureId={adventureId} />
+        </AuthProvider>
+      </React.StrictMode>
+    );
+  }
+
+  // SPA 4: Admin Story editor (new / edit)
+  const storyEditorRoot = document.getElementById("admin-story-editor-root");
+  if (storyEditorRoot) {
+    const mode = (storyEditorRoot.dataset.mode || 'create') as 'create' | 'edit';
+    const storyId = storyEditorRoot.dataset.storyId
+      ? Number(storyEditorRoot.dataset.storyId)
+      : undefined;
+    const root = createRoot(storyEditorRoot);
+    root.render(
+      <React.StrictMode>
+        <AuthProvider>
+          <AdminStoryEditor mode={mode} storyId={storyId} />
         </AuthProvider>
       </React.StrictMode>
     );

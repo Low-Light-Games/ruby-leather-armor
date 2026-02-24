@@ -30,9 +30,9 @@ class AdventuresController < ApplicationController
 
   # POST /adventures - API endpoint to create an adventure
   def create
-    story = Story.find(params[:story_id])
+    story = Story.kept.find(params[:story_id])
     sheet = current_user.sheets.find(params[:sheet_id])
-    initial_state = story.story_states.order(:id).first
+    initial_state = story.story_states.kept.order(:position).first
 
     unless initial_state
       return render json: { error: 'This story has no states yet' }, status: :unprocessable_entity

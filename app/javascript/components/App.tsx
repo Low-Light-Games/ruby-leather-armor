@@ -2,7 +2,6 @@ import SheetEditor from './SheetEditor'
 import SheetList from './SheetList'
 import SkillsColumn from './SkillsColumn'
 import Login from './Login'
-import AdminView from './AdminView'
 import Navbar from './Navbar'
 import './App.scss'
 import { SheetsProvider } from '../contexts/SheetsContext'
@@ -37,12 +36,6 @@ const AppContent = () => {
             <SheetList />
           </div>
         </div>
-        {user.admin && (
-          <div className="admin-section">
-            <h1>Admin Panel</h1>
-            <AdminView />
-          </div>
-        )}
       </SheetsProvider>
     </div>
   );

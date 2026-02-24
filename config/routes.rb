@@ -19,6 +19,16 @@ Rails.application.routes.draw do
   # Admin routes
   get "admin/all_sheets" => "admin#all_sheets"
 
+  namespace :admin do
+    resources :stories, only: [:index, :new, :show, :create, :update, :destroy] do
+      resources :story_states, only: [:create, :update, :destroy] do
+        member do
+          patch :reorder
+        end
+      end
+    end
+  end
+
   get "sheets/create" => "stimulus#stimulus_version_sheet_creator"
 
   resources :sheets

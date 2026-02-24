@@ -33,6 +33,17 @@ export interface StoryState {
   id: number
   story_id: number
   description: string
+  position: number
+  created_at: string
+  updated_at: string
+}
+
+export interface AdminStory {
+  id: number
+  title: string
+  preview: string
+  premise: string
+  story_states: StoryState[]
   created_at: string
   updated_at: string
 }
