@@ -6,7 +6,11 @@
     "build:watch": "node esbuild.config.js --watch",
     "typecheck": "tsc --noEmit",
     "typecheck:verbose": "tsc --noEmit --listFiles | head -20",
-    "test:auth": "node test/puppeteer/auth_flow_test.js"
+    "test": "node test/puppeteer/run_all.js",
+    "test:auth": "node test/puppeteer/auth/login_test.js && node test/puppeteer/auth/logout_test.js && node test/puppeteer/auth/roles_test.js",
+    "test:sheets": "node test/puppeteer/sheets/editor_test.js && node test/puppeteer/sheets/create_test.js && node test/puppeteer/sheets/edit_test.js && node test/puppeteer/sheets/clear_and_new_test.js",
+    "test:navbar": "node test/puppeteer/navbar/navbar_test.js",
+    "test:adventures": "node test/puppeteer/adventures/creation_test.js && node test/puppeteer/adventures/play_test.js"
   },
   "dependencies": {
     "@hotwired/stimulus": "^3.2.2",
