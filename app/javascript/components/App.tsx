@@ -1,5 +1,6 @@
 import SheetEditor from './SheetEditor'
 import SheetList from './SheetList'
+import SkillsColumn from './SkillsColumn'
 import Login from './Login'
 import AdminView from './AdminView'
 import Navbar from './Navbar'
@@ -23,11 +24,15 @@ const AppContent = () => {
       <Navbar />
       <SheetsProvider>
         <div className="app-content">
-          <div>
+          <div className="column-editor">
             <h1>Character Sheet</h1>
             <SheetEditor />
           </div>
-          <div>
+          <div className="column-skills">
+            <h1>Skills</h1>
+            <SkillsColumn />
+          </div>
+          <div className="column-list">
             <h1>My Characters</h1>
             <SheetList />
           </div>

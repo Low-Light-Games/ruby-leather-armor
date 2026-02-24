@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_24_180001) do
+ActiveRecord::Schema[7.1].define(version: 2026_02_24_240001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -22,8 +22,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_24_180001) do
     t.text "character_items"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.json "character_snapshot", default: {}, null: false
+    t.bigint "user_id", null: false
+    t.integer "character_hp", default: 0, null: false
+    t.integer "character_max_hp", default: 0, null: false
     t.index ["sheet_id"], name: "index_adventures_on_sheet_id"
     t.index ["story_state_id"], name: "index_adventures_on_story_state_id"
+    t.index ["user_id"], name: "index_adventures_on_user_id"
   end
 
   create_table "sheets", force: :cascade do |t|
@@ -39,6 +44,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_24_180001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.string "race"
+    t.string "racial_bonus_attribute"
+    t.string "character_class"
+    t.string "subclass"
     t.index ["user_id"], name: "index_sheets_on_user_id"
   end
 
@@ -69,6 +78,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_24_180001) do
 
   add_foreign_key "adventures", "sheets"
   add_foreign_key "adventures", "story_states"
+  add_foreign_key "adventures", "users"
   add_foreign_key "sheets", "users"
   add_foreign_key "story_states", "stories"
 end

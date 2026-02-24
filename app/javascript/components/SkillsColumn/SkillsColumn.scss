@@ -1,0 +1,125 @@
+.skills-column {
+  .skills-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #666;
+    border-bottom: 2px solid #dee2e6;
+    margin-bottom: 4px;
+
+    .skills-header-name {
+      flex: 1;
+    }
+
+    .skills-header-ability {
+      width: 42px;
+      text-align: center;
+    }
+
+    .skills-header-mod {
+      width: 38px;
+      text-align: center;
+    }
+  }
+
+  .skills-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .skill-row {
+    display: flex;
+    align-items: center;
+    padding: 5px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background-color 0.15s;
+
+    &:hover {
+      background-color: #f8f9fa;
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &.trained-only {
+      .skill-name {
+        color: #777;
+      }
+    }
+  }
+
+  .skill-name {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #333;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .trained-badge,
+  .racial-skill-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .trained-badge {
+    background-color: #e9ecef;
+    color: #666;
+  }
+
+  .racial-skill-badge {
+    background-color: #d4edda;
+    color: #155724;
+  }
+
+  .skill-ability {
+    width: 42px;
+    text-align: center;
+    font-size: 11px;
+    color: #888;
+    font-weight: 500;
+  }
+
+  .skill-modifier {
+    width: 38px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 14px;
+    font-family: 'Courier New', monospace;
+
+    &.positive {
+      color: #28a745;
+    }
+
+    &.negative {
+      color: #dc3545;
+    }
+  }
+
+  .skills-legend {
+    margin-top: 12px;
+    padding: 8px 12px;
+    font-size: 11px;
+    color: #888;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+}

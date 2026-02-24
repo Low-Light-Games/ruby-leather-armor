@@ -8,6 +8,7 @@ interface NameFieldProps {
 export const NameField = ({ name, onChange }: NameFieldProps) => {
   return (
     <input 
+      id="character-name"
       type="text" 
       value={name} 
       onChange={(e) => onChange(e.target.value)}

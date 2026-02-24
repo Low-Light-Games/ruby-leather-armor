@@ -3,23 +3,55 @@ description: OGL 1.0a architectural separation guidelines — rules for keeping 
 globs: "**/*.rb,**/*.tsx,**/*.ts,**/*.erb"
 ---
 
-# OGL 1.0a Architectural Separation
+# Pathfinder 1e OGL — What Is Safe & Separation Rules
 
-This project uses content licensed under the Open Game License v1.0a. Follow these rules strictly.
+This project uses game mechanics from the Pathfinder Roleplaying Game, which are Open Game Content under the OGL v1.0a.
 
-## What is Open Game Content (OGC)
-Reproduced rules text, mechanics, stat blocks, spells, feats, and other material sourced from SRD documents listed in Section 15 of `/legal`.
+## Core Principle
 
-## What is Product Identity (PI) — never designate as OGC
-- All source code (Ruby, TypeScript, SCSS, etc.)
-- AI/engine logic and proprietary game systems
-- UI/UX, artwork, branding, layouts
-- Original story content, narrative text, adventure premises, NPC descriptions
-- Database schemas and API designs
+Per the Pathfinder Core Rulebook OGL declaration: all **game mechanics** are Open Game Content (OGC). Product Identity (PI) is **not** Open Game Content.
 
-## Separation rules
-1. **OGC data belongs in isolated, clearly labelled locations** (e.g. seed files, a dedicated `rules/` data directory, or a separate database table). Never inline OGC rules text into component logic, controllers, or service objects.
-2. **Never mix OGC text into proprietary modules.** If a component needs to display OGC content, it should fetch/read it from the isolated data source at runtime.
-3. **The `/legal` route and its view are sacred.** Do not gate them behind authentication, do not dynamically alter the OGL text, and do not remove Section 15 entries.
-4. **When adding new OGC sources**, always add a corresponding entry to Section 15 in [index.html.erb](mdc:app/views/legal/index.html.erb).
-5. **Once content is designated OGC, it is irrevocable.** Be precise and conservative in what you mark as Open Game Content.
+## Open Game Content (safe to implement)
+
+The following mechanical elements are OGC and may be implemented in code and data structures:
+
+- Skill systems and calculations
+- Ability score modifiers
+- Race mechanics (bonuses, penalties, traits)
+- Class progression tables (mechanical parts)
+- Combat math (BAB, saves, AC formulas, etc.)
+- Feat mechanics (not flavor text)
+- Spell mechanics (not descriptive prose)
+- Conditions and status effects (mechanical effects)
+
+**Mechanics-only code does not require copying expressive text.** Avoid copying descriptive prose verbatim from the rulebook.
+
+## Product Identity (do NOT use)
+
+The following are explicitly Product Identity and cannot be reused without permission:
+
+- Trademarks (Pathfinder, Paizo logo, etc.)
+- Proper names tied to setting
+- Deities
+- Named characters
+- Golarion-specific lore
+- Storylines and plot text
+- Dialogue
+- Artwork
+- Trade dress
+
+## Directory Separation
+
+Maintain strict separation between:
+
+| Directory / Layer | Classification |
+|---|---|
+| `rules/` (mechanics data) | Potentially OGC |
+| App logic (controllers, services, contexts) | Product Identity |
+| Story content (seeds, narrative text) | Product Identity |
+| UI/UX, branding, layouts | Product Identity |
+
+1. **Mechanical data belongs in `rules/`** (e.g. [pathfinder_skills.ts](mdc:app/javascript/rules/pathfinder_skills.ts)). Never inline mechanical data tables into component logic, controllers, or service objects.
+2. **Components read from `rules/` at runtime.** They do not embed OGC text themselves.
+3. **The `/legal` route and its view are sacred.** Do not gate them behind authentication, do not dynamically alter the OGL text, and do not remove Section 15 entries. See [index.html.erb](mdc:app/views/legal/index.html.erb).
+4. **Keep all lore and story content original.** Never copy setting-specific narrative from the rulebook.

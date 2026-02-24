@@ -2,19 +2,29 @@
   font-family: 'Arial', sans-serif;
   margin: 0 auto;
   padding: 50px;
-  max-width: 1200px;
+  max-width: 1400px;
 
   .app-content {
-    align-items: normal;
+    align-items: flex-start;
     display: flex;
     flex-wrap: wrap;
     flex-direction: row;
     justify-content: space-between;
-    gap: 30px;
+    gap: 24px;
 
-    > div {
-      min-width: 375px;
-      flex: 1;
+    .column-editor {
+      flex: 1 1 0;
+      min-width: 320px;
+    }
+
+    .column-skills {
+      flex: 0 0 320px;
+      min-width: 280px;
+    }
+
+    .column-list {
+      flex: 0 0 12%;
+      min-width: 250px;
     }
   }
 
@@ -25,12 +35,88 @@
   }
 }
 
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+
+  label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #444;
+  }
+}
+
+input[type="text"],
+textarea {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+  color: #333;
+  background-color: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  &::placeholder {
+    color: #aaa;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+  }
+}
+
+input[type="text"] {
+  width: 260px;
+}
+
+textarea {
+  width: 100%;
+  max-width: 400px;
+  resize: vertical;
+}
+
 .feedback-success {
   color: green;
 }
 
 .feedback-error {
   color: red;
+}
+
+select {
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+  color: #333;
+  background-color: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  max-width: 280px;
+
+  &:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+  }
+}
+
+.race-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #555;
 }
 
 .attribute-row {
@@ -41,10 +127,51 @@
   margin-bottom: 10px;
   text-transform: capitalize;
   
-  span {
-    width: 190px;
+  > span {
+    width: 280px;
     display: flex;
     justify-content: space-between;
+    align-items: center;
+  }
+
+  .attribute-values {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    width: auto;
+    justify-content: flex-end;
+    font-variant-numeric: tabular-nums;
+
+    .base-value {
+      width: auto;
+      color: #555;
+    }
+
+    .racial-mod {
+      width: auto;
+      font-size: 12px;
+      font-weight: 600;
+
+      &.positive {
+        color: #28a745;
+      }
+
+      &.negative {
+        color: #dc3545;
+      }
+    }
+
+    .equals {
+      width: auto;
+      color: #999;
+      font-size: 12px;
+    }
+
+    .final-value {
+      width: auto;
+      font-weight: 700;
+      color: #333;
+    }
   }
 
   button {

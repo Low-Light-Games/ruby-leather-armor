@@ -50,6 +50,6 @@ class SheetsController < ApplicationController
   end
 
   def sheet_params
-    params.require(:sheet).permit(:name, :description, :strength, :intelligence, :dexterity, :constitution, :wisdom, :charisma)
+    params.require(:sheet).permit(:name, :description, :strength, :intelligence, :dexterity, :constitution, :wisdom, :charisma, :race, :racial_bonus_attribute, :character_class, :subclass)
   end
 end

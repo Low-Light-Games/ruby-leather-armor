@@ -1,4 +1,11 @@
+.adventure-page-layout {
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+}
+
 .adventure-creation {
+  flex: 1;
   max-width: 600px;
 
   h1 {
@@ -88,6 +95,104 @@
     &:focus-visible {
       outline: 2px solid #28a745;
       outline-offset: 2px;
+    }
+  }
+}
+
+.ongoing-adventures {
+  flex: 1;
+  max-width: 400px;
+
+  h1 {
+    margin-bottom: 24px;
+    color: #333;
+  }
+
+  .no-adventures {
+    color: #999;
+    font-style: italic;
+  }
+
+  .adventure-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .adventure-list-item {
+    position: relative;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+
+    &:hover {
+      border-color: #007bff;
+      box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+    }
+  }
+
+  .adventure-link {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px;
+    padding-right: 40px;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .adventure-character {
+    font-weight: 600;
+    font-size: 15px;
+    color: #333;
+  }
+
+  .adventure-story {
+    font-size: 13px;
+    color: #666;
+  }
+
+  .adventure-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 4px;
+  }
+
+  .adventure-gold {
+    font-size: 12px;
+    color: #999;
+  }
+
+  .adventure-date {
+    font-size: 11px;
+    color: #aaa;
+  }
+
+  .adventure-delete {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: #ccc;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+
+    &:hover {
+      color: #dc3545;
+      border-color: #dc3545;
     }
   }
 }

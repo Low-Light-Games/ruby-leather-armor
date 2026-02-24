@@ -3,24 +3,47 @@ import { AttributeType } from '../../../types';
 interface AttributeRowProps {
   attribute: AttributeType;
   value: number;
+  racialModifier: number;
   onChange: (attribute: AttributeType, operation: 'increase' | 'decrease') => void;
   canIncrease: boolean;
   canDecrease: boolean;
 }
 
+function formatMod(n: number): string {
+  if (n > 0) return `+${n}`;
+  if (n < 0) return `${n}`;
+  return '';
+}
+
 export const AttributeRow = ({
   attribute,
   value,
+  racialModifier,
   onChange,
   canIncrease,
   canDecrease
 }: AttributeRowProps) => {
+  const finalValue = value + racialModifier;
+
   return (
     <div>
       <p className="attribute-row">
         <span>
           <span>{attribute}:</span>
-          <span>{value}</span>
+          <span className="attribute-values">
+            {racialModifier !== 0 ? (
+              <>
+                <span className="base-value">{value}</span>
+                <span className={`racial-mod ${racialModifier > 0 ? 'positive' : 'negative'}`}>
+                  ({formatMod(racialModifier)})
+                </span>
+                <span className="equals">=</span>
+                <span className="final-value">{finalValue}</span>
+              </>
+            ) : (
+              <span>{value}</span>
+            )}
+          </span>
         </span>
         <button 
           onClick={() => onChange(attribute, 'increase')}

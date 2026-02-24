@@ -1,82 +1,365 @@
 .adventure-play {
   display: flex;
-  gap: 24px;
+  gap: 16px;
   min-height: 500px;
 
   .adventure-column {
-    flex: 1;
     min-width: 0;
-    padding: 20px;
+    padding: 16px;
     background: #f8f9fa;
     border: 1px solid #e9ecef;
     border-radius: 8px;
   }
 
+  /* ===== LEFT: Character column ===== */
   .character-column {
+    flex: 0 0 300px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    overflow-y: auto;
+    max-height: calc(100vh - 120px);
+
+    /* Prevent fixed sections from shrinking when column overflows */
+    > h2,
+    > .char-subtitle,
+    > .combat-stats,
+    > .saves-row,
+    > .adventure-gold,
+    > .section-toggle,
+    > .roll-buttons {
+      flex-shrink: 0;
+    }
+
     h2 {
-      margin: 0 0 20px 0;
+      margin: 0 0 4px 0;
       color: #333;
     }
 
-    .attributes-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-bottom: 24px;
+    .char-subtitle {
+      margin: 0 0 12px 0;
+      font-size: 13px;
+      color: #777;
+      font-style: italic;
+    }
 
-      .attribute-item {
+    /* Always-visible combat stats */
+    .combat-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+
+      .combat-stat {
         display: flex;
         justify-content: space-between;
-        padding: 8px 12px;
+        align-items: center;
+        padding: 6px 10px;
         background: white;
         border-radius: 4px;
+        border: 1px solid #e9ecef;
 
-        .attr-label {
-          font-weight: 500;
-          color: #333;
-          text-transform: capitalize;
+        .stat-label {
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          color: #666;
+          letter-spacing: 0.5px;
         }
 
-        .attr-value {
+        .stat-value {
           font-family: monospace;
-          font-weight: bold;
+          font-weight: 700;
+          font-size: 15px;
+          color: #333;
+        }
+      }
+    }
+
+    .saves-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+
+      .save-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 6px 4px;
+        background: white;
+        border-radius: 4px;
+        border: 1px solid #e9ecef;
+
+        .save-label {
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          color: #666;
+          letter-spacing: 0.5px;
+        }
+
+        .save-value {
+          font-family: monospace;
+          font-weight: 700;
+          font-size: 15px;
           color: #007bff;
         }
       }
     }
 
-    .adventure-stats {
-      border-top: 1px solid #dee2e6;
-      padding-top: 16px;
+    .adventure-gold {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 10px;
+      background: white;
+      border-radius: 4px;
+      border: 1px solid #e9ecef;
+      margin-bottom: 12px;
 
-      .stat-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 8px 12px;
+      .stat-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #666;
+      }
+
+      .gold {
+        font-family: monospace;
+        font-weight: 700;
+        font-size: 15px;
+        color: #d4a017;
+      }
+    }
+
+    /* Toggle between Attributes & Skills */
+    .section-toggle {
+      display: flex;
+      margin-bottom: 8px;
+      border-radius: 4px;
+      overflow: visible;
+      border: 1px solid #dee2e6;
+      min-height: 32px;
+
+      button {
+        flex: 1;
+        padding: 6px 0;
+        min-height: 32px;
+        font-size: 13px;
+        font-weight: 600;
+        border: none;
         background: white;
-        border-radius: 4px;
+        color: #555;
+        cursor: pointer;
+        transition: background-color 0.15s, color 0.15s;
 
-        .stat-label {
-          font-weight: 500;
-          color: #333;
+        &:not(:last-child) {
+          border-right: 1px solid #dee2e6;
         }
 
-        .stat-value {
+        &.active {
+          background-color: #007bff;
+          color: white;
+        }
+
+        &:hover:not(.active) {
+          background-color: #e9ecef;
+        }
+      }
+    }
+
+    /* Attributes list */
+    .attributes-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 12px;
+
+      .attribute-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 5px 10px;
+        background: white;
+        border-radius: 4px;
+        font-size: 13px;
+
+        .attr-label {
+          font-weight: 700;
+          color: #555;
+          width: 36px;
+        }
+
+        .attr-score {
+          flex: 1;
+          text-align: center;
+          color: #333;
+          font-variant-numeric: tabular-nums;
+
+          .racial {
+            font-size: 11px;
+            font-weight: 600;
+
+            &.pos {
+              color: #28a745;
+            }
+
+            &.neg {
+              color: #dc3545;
+            }
+          }
+
+          strong {
+            color: #222;
+          }
+        }
+
+        .attr-mod {
           font-family: monospace;
-          font-weight: bold;
-          color: #d4a017;
+          font-weight: 700;
+          color: #007bff;
+          width: 32px;
+          text-align: right;
+        }
+      }
+    }
+
+    /* Skills list */
+    .skills-list-adventure {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-bottom: 12px;
+      max-height: 360px;
+      overflow-y: auto;
+
+      .skill-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 3px 10px;
+        background: white;
+        border-radius: 3px;
+        font-size: 12px;
+
+        &.trained-only {
+          opacity: 0.6;
+        }
+
+        .skill-name {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          color: #333;
+
+          .badge-t {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
+            border-radius: 2px;
+            background-color: #6c757d;
+            color: white;
+            font-size: 9px;
+            font-weight: 700;
+          }
+        }
+
+        .skill-mod {
+          font-family: monospace;
+          font-weight: 700;
+          font-size: 12px;
+
+          &.positive {
+            color: #28a745;
+          }
+
+          &.negative {
+            color: #dc3545;
+          }
+        }
+      }
+    }
+
+    /* Roll buttons */
+    .roll-buttons {
+      border-top: 1px solid #dee2e6;
+      padding-top: 12px;
+
+      h3 {
+        margin: 0 0 8px 0;
+        font-size: 13px;
+        text-transform: uppercase;
+        color: #666;
+        letter-spacing: 0.5px;
+      }
+
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      .roll-btn {
+        padding: 8px 12px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        background: white;
+        font-size: 13px;
+        font-weight: 500;
+        color: #333;
+        cursor: pointer;
+        text-align: left;
+        transition: background-color 0.15s, border-color 0.15s;
+
+        &:hover {
+          background-color: #e9ecef;
+          border-color: #adb5bd;
+        }
+
+        &:active {
+          background-color: #dee2e6;
+        }
+
+        &.attack {
+          border-left: 3px solid #dc3545;
+        }
+
+        &.save-fort {
+          border-left: 3px solid #28a745;
+        }
+
+        &.save-ref {
+          border-left: 3px solid #ffc107;
+        }
+
+        &.save-will {
+          border-left: 3px solid #6f42c1;
+        }
+
+        &.initiative {
+          border-left: 3px solid #17a2b8;
+        }
+
+        &.skill-check {
+          border-left: 3px solid #007bff;
         }
       }
     }
   }
 
+  /* ===== MIDDLE: Chat column ===== */
   .middle-column {
+    flex: 1;
     background: #fafafa;
     border-style: dashed;
     border-color: #ddd;
   }
 
+  /* ===== RIGHT: Story column ===== */
   .story-column {
+    flex: 0 0 300px;
+
     h2 {
       margin: 0 0 16px 0;
       color: #333;

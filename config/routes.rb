@@ -25,5 +25,5 @@ Rails.application.routes.draw do
 
   # API endpoints for stories and adventures
   resources :stories, only: [:index]
-  resources :adventures, only: [:new, :create, :show]
+  resources :adventures, only: [:index, :new, :create, :show, :destroy]
 end

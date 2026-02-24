@@ -3,6 +3,8 @@ import { AttributeRow } from './components/AttributeRow'
 import { NameField } from './components/NameField'
 import { useSheetsContext } from '../../contexts/SheetsContext'
 import { Sheet, AttributeType } from '../../types'
+import { PATHFINDER_RACES, getRaceById } from '../../rules/pathfinder_races'
+import { PATHFINDER_CLASSES } from '../../rules/pathfinder_classes'
 
 const AVAILABLE_POINTS = 27;
 
@@ -11,7 +13,16 @@ const POINT_COSTS: Record<number, number> = {
   13: 3, 14: 5, 15: 7, 16: 10, 17: 13, 18: 17,
 };
 
-const ATTRIBUTES: AttributeType[] = ['strength', 'intelligence', 'dexterity', 'constitution', 'wisdom', 'charisma'];
+const ATTRIBUTES: AttributeType[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
+
+const ABILITY_ABBR: Record<string, string> = {
+  strength: 'STR',
+  dexterity: 'DEX',
+  constitution: 'CON',
+  intelligence: 'INT',
+  wisdom: 'WIS',
+  charisma: 'CHA',
+};
 
 const DEFAULT_ATTRIBUTES: Record<AttributeType, number> = {
   strength: 10,
@@ -23,22 +34,33 @@ const DEFAULT_ATTRIBUTES: Record<AttributeType, number> = {
 }
 
 export const SheetEditor = () => {
-  const { sheets, setSheets, sheetToEdit, setSheetToEdit } = useSheetsContext();
+  const {
+    sheets, setSheets, sheetToEdit, setSheetToEdit,
+    currentAttributes: attributes, setCurrentAttributes: setAttributes,
+    racialModifiers,
+    currentRace, setCurrentRace,
+    currentFlexibleBonus, setCurrentFlexibleBonus,
+    currentClass, setCurrentClass,
+  } = useSheetsContext();
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [feedback, setFeedback] = useState<[string, string] | null>(null)
-  const [attributes, setAttributes] = useState<Record<AttributeType, number>>(DEFAULT_ATTRIBUTES)
   const [currentSheetId, setCurrentSheetId] = useState<number | null>(null)
   const [isPristine, setIsPristine] = useState(true)
   const csrfTokenRef = useRef<string | null>(null)
   const feedbackTimeoutRef = useRef<number | null>(null)
 
+  // Point buy uses BASE scores only (racial modifiers don't affect cost)
   const spentPoints = useMemo(() => {
     return Object.values(attributes).reduce((total, value) => {
       return total + (POINT_COSTS[value] || 0)
     }, 0)
   }, [attributes])
+
+  // Current race definition (for checking flexible bonus)
+  const raceDefinition = useMemo(() => currentRace ? getRaceById(currentRace) : undefined, [currentRace])
+  const hasFlexibleBonus = raceDefinition ? raceDefinition.flexibleBonusCount > 0 : false
 
   // Load sheet data when sheetToEdit changes
   useEffect(() => {
@@ -58,13 +80,16 @@ export const SheetEditor = () => {
 
   // Track pristine state
   useEffect(() => {
-    const pristine = 
+    const pristine =
       name === '' &&
       description === '' &&
       JSON.stringify(attributes) === JSON.stringify(DEFAULT_ATTRIBUTES) &&
-      currentSheetId === null
+      currentSheetId === null &&
+      currentRace === null &&
+      currentFlexibleBonus === null &&
+      currentClass === null
     setIsPristine(pristine)
-  }, [name, description, attributes, currentSheetId])
+  }, [name, description, attributes, currentSheetId, currentRace, currentFlexibleBonus, currentClass])
 
   const loadSheetForEdit = (sheet: Sheet) => {
     setName(sheet.name)
@@ -77,9 +102,12 @@ export const SheetEditor = () => {
       wisdom: sheet.wisdom,
       charisma: sheet.charisma,
     })
+    setCurrentRace(sheet.race || null)
+    setCurrentFlexibleBonus((sheet.racial_bonus_attribute as AttributeType) || null)
+    setCurrentClass(sheet.character_class || null)
     setCurrentSheetId(sheet.id)
     setIsPristine(true)
-    setSheetToEdit(null) // Clear after loading to prevent reload loops
+    setSheetToEdit(null)
   }
 
   const resetToNew = () => {
@@ -93,6 +121,9 @@ export const SheetEditor = () => {
     setName('')
     setDescription('')
     setAttributes(DEFAULT_ATTRIBUTES)
+    setCurrentRace(null)
+    setCurrentFlexibleBonus(null)
+    setCurrentClass(null)
     setCurrentSheetId(null)
     setSheetToEdit(null)
     setIsPristine(true)
@@ -100,6 +131,18 @@ export const SheetEditor = () => {
 
   const clearPoints = () => {
     setAttributes(DEFAULT_ATTRIBUTES)
+  }
+
+  const handleRaceChange = (raceId: string) => {
+    const newRace = raceId || null
+    setCurrentRace(newRace)
+    // Reset flexible bonus when race changes
+    setCurrentFlexibleBonus(null)
+  }
+
+  const handleClassChange = (classId: string) => {
+    const newClass = classId || null
+    setCurrentClass(newClass)
   }
 
   const saveSheet = async () => {
@@ -114,12 +157,15 @@ export const SheetEditor = () => {
           'Content-Type': 'application/json',
           'X-CSRF-Token': csrfTokenRef.current || ''
         },
-        body: JSON.stringify({ 
-          sheet: { 
+        body: JSON.stringify({
+          sheet: {
             name,
             description: description.trim() || null,
-            ...attributes 
-          } 
+            race: currentRace,
+            racial_bonus_attribute: currentFlexibleBonus,
+            character_class: currentClass,
+            ...attributes
+          }
         })
       })
 
@@ -130,13 +176,13 @@ export const SheetEditor = () => {
 
       const savedSheet: Sheet = await response.json()
       setFeedback(['success', isUpdate ? 'Sheet updated successfully' : 'Sheet saved successfully'])
-      
+
       if (isUpdate) {
         setSheets(sheets.map(s => s.id === savedSheet.id ? savedSheet : s))
       } else {
         setSheets([...sheets, savedSheet])
       }
-      
+
       // Reset form to new character mode
       resetToNew()
     } catch (error) {
@@ -144,18 +190,16 @@ export const SheetEditor = () => {
       setFeedback(['error', message])
     }
   }
-  
+
   useEffect(() => {
     csrfTokenRef.current = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null
   }, [])
 
   useEffect(() => {
     if (feedback) {
-      // Clear previous timeout
       if (feedbackTimeoutRef.current) {
         clearTimeout(feedbackTimeoutRef.current)
       }
-      // Set new timeout to clear feedback after 5 seconds
       feedbackTimeoutRef.current = window.setTimeout(() => {
         setFeedback(null)
       }, 5000)
@@ -170,25 +214,24 @@ export const SheetEditor = () => {
 
   const canIncrease = useCallback((attribute: AttributeType): boolean => {
     const currentValue = attributes[attribute]
-    if (currentValue >= 18) return false // Max value reached
-    
+    if (currentValue >= 18) return false
+
     const newValue = currentValue + 1
     const currentCost = POINT_COSTS[currentValue] || 0
     const newCost = POINT_COSTS[newValue] || 0
     const costDifference = newCost - currentCost
-    
+
     return spentPoints + costDifference <= AVAILABLE_POINTS
   }, [attributes, spentPoints])
 
   const canDecrease = useCallback((attribute: AttributeType): boolean => {
-    return attributes[attribute] > 7 // Min value is 7
+    return attributes[attribute] > 7
   }, [attributes])
 
   const changeAttribute = useCallback((
     attribute: AttributeType,
     operation: 'increase' | 'decrease'
   ) => {
-    // Prevent invalid operations
     if (operation === 'increase' && !canIncrease(attribute)) {
       return
     }
@@ -207,30 +250,106 @@ export const SheetEditor = () => {
   return (
     <div>
       {feedback && <p className={`feedback-${feedback[0]}`} role="alert">{feedback[1]}</p>}
-      <h1>Points spent: {spentPoints} / {AVAILABLE_POINTS}</h1>
-      <p>Character Name: <NameField name={name} onChange={setName} /></p>
-      <p>
+      <h2>Points spent: {spentPoints} / {AVAILABLE_POINTS}</h2>
+
+      <div className="form-field">
+        <label htmlFor="character-name">Character Name:</label>
+        <NameField name={name} onChange={setName} />
+      </div>
+      <div className="form-field">
         <label htmlFor="character-description">Character Description (optional):</label>
-        <br />
         <textarea
           id="character-description"
           value={description}
           onChange={e => setDescription(e.target.value)}
-          rows={4}
-          cols={50}
+          rows={3}
           placeholder="Describe your character..."
         />
-      </p>
+      </div>
+
+      {/* Race selector */}
+      <div className="form-field">
+        <label htmlFor="race-select">Race:</label>
+        <select
+          id="race-select"
+          value={currentRace || ''}
+          onChange={e => handleRaceChange(e.target.value)}
+        >
+          <option value="">— Select Race —</option>
+          {PATHFINDER_RACES.map(r => (
+            <option key={r.id} value={r.id}>{r.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Flexible racial bonus selector */}
+      {hasFlexibleBonus && (
+        <div className="form-field">
+          <label htmlFor="flex-bonus-select">
+            Racial Bonus (+2 to one ability):
+          </label>
+          <select
+            id="flex-bonus-select"
+            value={currentFlexibleBonus || ''}
+            onChange={e => setCurrentFlexibleBonus((e.target.value as AttributeType) || null)}
+          >
+            <option value="">— Choose Ability —</option>
+            {ATTRIBUTES.map(attr => (
+              <option key={attr} value={attr}>
+                {attr.charAt(0).toUpperCase() + attr.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Race info summary */}
+      {raceDefinition && (
+        <div className="race-info">
+          <span>Size: {raceDefinition.size}</span>
+          <span>Speed: {raceDefinition.speed} ft.</span>
+          {Object.entries(raceDefinition.fixedModifiers).length > 0 && (
+            <span>
+              Modifiers:{' '}
+              {Object.entries(raceDefinition.fixedModifiers).map(([attr, val]) => {
+                const v = val as number;
+                return `${ABILITY_ABBR[attr] || attr} ${v > 0 ? '+' : ''}${v}`;
+              }).join(', ')}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Ability score rows */}
       {ATTRIBUTES.map((attribute) => (
-        <AttributeRow 
+        <AttributeRow
           key={attribute}
-          attribute={attribute} 
-          value={attributes[attribute]} 
+          attribute={attribute}
+          value={attributes[attribute]}
+          racialModifier={racialModifiers[attribute]}
           onChange={changeAttribute}
           canIncrease={canIncrease(attribute)}
           canDecrease={canDecrease(attribute)}
         />
       ))}
+
+      {/* Class selector */}
+      <div className="form-field">
+        <label htmlFor="class-select">Class:</label>
+        <select
+          id="class-select"
+          value={currentClass || ''}
+          onChange={e => handleClassChange(e.target.value)}
+        >
+          <option value="">— Select Class —</option>
+          {PATHFINDER_CLASSES.map(c => (
+            <option key={c.id} value={c.id}>
+              {c.name} (d{c.hitDie})
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="sheet-editor-actions">
         <button onClick={saveSheet} disabled={!name.trim()}>
           {currentSheetId ? 'Update Sheet' : 'Save Sheet'}

@@ -1,4 +1,5 @@
 class Adventure < ApplicationRecord
+  belongs_to :user
   belongs_to :sheet
   belongs_to :story_state
 
