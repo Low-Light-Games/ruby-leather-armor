@@ -1,2 +1,37 @@
 module ApplicationHelper
+  def log_row_class(log)
+    content = log.content.downcase
+    if content.include?("was malicious")
+      "log-malicious"
+    elsif content.include?("had to be sanitized")
+      "log-sanitized"
+    elsif content.include?("passed the sanitization")
+      "log-passed"
+    elsif content.include?("dm responded") || content.include?("dm reasoning")
+      "log-dm-response"
+    else
+      ""
+    end
+  end
+
+  def ai_log_status_class(status)
+    case status
+    when "success" then "status-success"
+    when "parse_fallback" then "status-fallback"
+    when "parse_error" then "status-error"
+    when "api_error" then "status-error"
+    else ""
+    end
+  end
+
+  def pagination_link(path_helper, page, current_page, label: nil, params: {})
+    text = label || page.to_s
+    if page == current_page
+      content_tag(:span, text, class: "page-link current")
+    elsif page < 1 || page > (params[:total_pages] || 999)
+      content_tag(:span, text, class: "page-link disabled")
+    else
+      link_to(text, send(path_helper, request.query_parameters.merge(page: page)), class: "page-link")
+    end
+  end
 end

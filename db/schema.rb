@@ -10,9 +10,21 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_24_250002) do
+ActiveRecord::Schema[7.1].define(version: 2026_02_24_280001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "adventure_messages", force: :cascade do |t|
+    t.bigint "adventure_id", null: false
+    t.string "role", null: false
+    t.text "content", null: false
+    t.string "message_type", default: "narrative", null: false
+    t.json "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_id", "created_at"], name: "index_adventure_messages_on_adventure_id_and_created_at"
+    t.index ["adventure_id"], name: "index_adventure_messages_on_adventure_id"
+  end
 
   create_table "adventures", force: :cascade do |t|
     t.bigint "sheet_id", null: false
@@ -29,6 +41,32 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_24_250002) do
     t.index ["sheet_id"], name: "index_adventures_on_sheet_id"
     t.index ["story_state_id"], name: "index_adventures_on_story_state_id"
     t.index ["user_id"], name: "index_adventures_on_user_id"
+  end
+
+  create_table "ai_logs", force: :cascade do |t|
+    t.bigint "adventure_id", null: false
+    t.string "call_type", null: false
+    t.text "prompt_summary", null: false
+    t.text "raw_response"
+    t.text "parsed_response"
+    t.string "status", null: false
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_id"], name: "index_ai_logs_on_adventure_id"
+    t.index ["created_at"], name: "index_ai_logs_on_created_at"
+    t.index ["status"], name: "index_ai_logs_on_status"
+  end
+
+  create_table "dm_logs", force: :cascade do |t|
+    t.bigint "adventure_id", null: false
+    t.bigint "user_id", null: false
+    t.text "content", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_id"], name: "index_dm_logs_on_adventure_id"
+    t.index ["created_at"], name: "index_dm_logs_on_created_at"
+    t.index ["user_id"], name: "index_dm_logs_on_user_id"
   end
 
   create_table "sheets", force: :cascade do |t|
@@ -81,9 +119,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_24_250002) do
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
+  add_foreign_key "adventure_messages", "adventures"
   add_foreign_key "adventures", "sheets"
   add_foreign_key "adventures", "story_states"
   add_foreign_key "adventures", "users"
+  add_foreign_key "ai_logs", "adventures"
+  add_foreign_key "dm_logs", "adventures"
+  add_foreign_key "dm_logs", "users"
   add_foreign_key "sheets", "users"
   add_foreign_key "story_states", "stories"
 end

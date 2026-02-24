@@ -27,6 +27,8 @@ Rails.application.routes.draw do
         end
       end
     end
+    resources :dm_logs, only: [:index, :show]
+    resources :ai_logs, only: [:index, :show]
   end
 
   get "sheets/create" => "stimulus#stimulus_version_sheet_creator"
@@ -35,5 +37,8 @@ Rails.application.routes.draw do
 
   # API endpoints for stories and adventures
   resources :stories, only: [:index]
-  resources :adventures, only: [:index, :new, :create, :show, :destroy]
+  resources :adventures, only: [:index, :new, :create, :show, :destroy] do
+    resources :messages, only: [:index, :create], controller: 'adventure_messages'
+    post 'messages/roll', to: 'adventure_messages#roll', as: :roll_message
+  end
 end

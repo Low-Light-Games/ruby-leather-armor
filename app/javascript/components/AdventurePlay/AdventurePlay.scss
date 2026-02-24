@@ -351,9 +351,11 @@
   /* ===== MIDDLE: Chat column ===== */
   .middle-column {
     flex: 1;
-    background: #fafafa;
-    border-style: dashed;
-    border-color: #ddd;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: calc(100vh - 120px);
+    background: #fff;
   }
 
   /* ===== RIGHT: Story column ===== */

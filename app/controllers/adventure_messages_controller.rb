@@ -1,0 +1,68 @@
+class AdventureMessagesController < ApplicationController
+  before_action :set_adventure
+  before_action -> { authorize(@adventure, :show?) }
+
+  # GET /adventures/:adventure_id/messages
+  # Returns conversation history for the adventure
+  def index
+    messages = @adventure.adventure_messages.chronological
+
+    render json: messages.map { |m| message_json(m) }
+  end
+
+  # POST /adventures/:adventure_id/messages
+  # Sends a player prompt through the DM pipeline
+  def create
+    player_input = params[:content]&.strip
+
+    if player_input.blank?
+      return render json: { error: "Message cannot be empty" }, status: :unprocessable_entity
+    end
+
+    if player_input.length > 2000
+      return render json: { error: "Message too long (max 2000 characters)" }, status: :unprocessable_entity
+    end
+
+    service = DungeonMasterService.new(@adventure, user: current_user)
+    result = service.process_player_prompt(player_input)
+
+    render json: {
+      messages: result[:messages].map { |m| message_json(m) }
+    }
+  end
+
+  # POST /adventures/:adventure_id/messages/roll
+  # Submits a roll result for the DM to process
+  def roll
+    roll_value = params[:roll_value].to_i
+    roll_description = params[:roll_description]&.strip || "unknown check"
+
+    unless (1..100).include?(roll_value)
+      return render json: { error: "Roll value must be between 1 and 100" }, status: :unprocessable_entity
+    end
+
+    service = DungeonMasterService.new(@adventure, user: current_user)
+    result = service.process_roll_result(roll_value, roll_description)
+
+    render json: {
+      messages: result[:messages].map { |m| message_json(m) }
+    }
+  end
+
+  private
+
+  def set_adventure
+    @adventure = Adventure.find(params[:adventure_id])
+  end
+
+  def message_json(message)
+    {
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      message_type: message.message_type,
+      metadata: message.metadata,
+      created_at: message.created_at
+    }
+  end
+end

@@ -1,0 +1,76 @@
+<div class="app-header">
+  <div class="user-info">
+    <span>Logged in as: <%= current_user.email %></span>
+    <% if current_user.admin? %><span class="admin-badge">Admin</span><% end %>
+  </div>
+  <div class="header-actions">
+    <a href="/" class="nav-link">Sheets</a>
+    <a href="/adventures/new" class="adventure-cta">Adventure!</a>
+    <% if current_user.admin? %>
+      <a href="/admin/stories" class="nav-link">Admin Stories</a>
+      <a href="/admin/dm_logs" class="nav-link admin-logs-link">DM Logs</a>
+      <a href="/admin/ai_logs" class="nav-link admin-logs-link">AI Logs</a>
+    <% end %>
+    <%= button_to "Logout", logout_path, method: :delete, class: "logout-link" %>
+  </div>
+</div>
+
+<div class="log-show">
+  <div class="log-show-header">
+    <a href="<%= admin_ai_logs_path %>" class="back-link">← Back to AI Logs</a>
+    <h1>AI Log #<%= @log.id %></h1>
+  </div>
+
+  <div class="log-meta">
+    <div class="meta-item">
+      <span class="meta-label">Time</span>
+      <span class="meta-value"><%= @log.created_at.strftime('%b %d, %Y %H:%M:%S') %></span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Adventure</span>
+      <span class="meta-value">
+        <a href="<%= admin_ai_logs_path(adventure_id: @log.adventure_id) %>">#<%= @log.adventure_id %></a>
+      </span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Call Type</span>
+      <span class="meta-value"><%= @log.call_type.humanize %></span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Status</span>
+      <span class="status-badge <%= @log.status %>"><%= @log.status.humanize %></span>
+    </div>
+  </div>
+
+  <% if @log.error_message.present? %>
+    <div class="log-section error-section">
+      <h2>Error</h2>
+      <pre class="log-pre error-pre"><%= @log.error_message %></pre>
+    </div>
+  <% end %>
+
+  <div class="log-section">
+    <h2>Prompt Summary</h2>
+    <pre class="log-pre"><%= @log.prompt_summary %></pre>
+  </div>
+
+  <div class="log-section">
+    <h2>Raw AI Response</h2>
+    <% if @log.raw_response.present? %>
+      <pre class="log-pre"><%= @log.raw_response %></pre>
+    <% else %>
+      <p class="empty-cell">No raw response captured (API error before response)</p>
+    <% end %>
+  </div>
+
+  <div class="log-section">
+    <h2>Parsed Response</h2>
+    <% if @log.parsed_response.present? %>
+      <pre class="log-pre"><%= begin; JSON.pretty_generate(JSON.parse(@log.parsed_response)); rescue; @log.parsed_response; end %></pre>
+    <% else %>
+      <p class="empty-cell">No parsed response</p>
+    <% end %>
+  </div>
+</div>
+
+<%= render partial: 'admin/shared/log_show_styles' %>

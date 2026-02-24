@@ -7,6 +7,8 @@ services:
       - bundle_cache:/bundle
     depends_on:
       - postgres
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgres://exercises:sekret@postgres:5432/exercises_development
       BIND: tcp://0.0.0.0:3000
@@ -15,6 +17,8 @@ services:
       - "traefik.http.routers.app.rule=Host(`exercises.localhost`)"
       - "traefik.http.routers.app.entrypoints=web"
       - "traefik.http.services.app.loadbalancer.server.port=3000"
+      - "traefik.http.services.app.loadbalancer.healthcheck.path=/up"
+      - "traefik.http.services.app.loadbalancer.healthcheck.interval=5s"
 
   proxy:
     image: traefik:v3.4

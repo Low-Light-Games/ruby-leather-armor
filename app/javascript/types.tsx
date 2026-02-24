@@ -82,3 +82,23 @@ export interface AdventureSummary {
   created_at: string
   updated_at: string
 }
+
+export interface RollRequest {
+  type: 'attack' | 'save_fort' | 'save_ref' | 'save_will' | 'skill_check' | 'initiative' | 'ability_check'
+  skill?: string
+  dc?: number
+  description: string
+}
+
+export interface AdventureMessage {
+  id: number
+  role: 'player' | 'dm' | 'system'
+  content: string
+  message_type: 'narrative' | 'sanitization_fail' | 'stage_advance' | 'roll_request' | 'roll_result'
+  metadata: {
+    roll_request?: RollRequest
+    roll_value?: number
+    roll_description?: string
+  }
+  created_at: string
+}

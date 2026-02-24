@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../Navbar'
 import Login from '../Login'
+import AdventureChat from '../AdventureChat'
 import { Adventure, AttributeType } from '../../types'
 import { PATHFINDER_SKILLS, abilityModifier } from '../../rules/pathfinder_skills'
 import { getRaceById, computeRacialModifiers } from '../../rules/pathfinder_races'
@@ -49,7 +50,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const [error, setError] = useState<string | null>(null)
   const [showSection, setShowSection] = useState<'attributes' | 'skills'>('attributes')
 
-  useEffect(() => {
+  const loadAdventure = useCallback(() => {
     if (!user) return
 
     fetch(`/adventures/${adventureId}.json`)
@@ -67,6 +68,15 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
         setLoading(false)
       })
   }, [user, adventureId])
+
+  useEffect(() => {
+    loadAdventure()
+  }, [loadAdventure])
+
+  // Called when the AI advances the story stage
+  const handleStageAdvance = useCallback(() => {
+    loadAdventure()
+  }, [loadAdventure])
 
   // Compute derived stats from the snapshot
   const derivedStats = useMemo(() => {
@@ -310,9 +320,12 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           </div>
         </div>
 
-        {/* MIDDLE COLUMN — Chat / empty */}
+        {/* MIDDLE COLUMN — Chat */}
         <div className="adventure-column middle-column">
-          {/* Empty for now — will house AI chatbot */}
+          <AdventureChat
+            adventureId={adventureId}
+            onStageAdvance={handleStageAdvance}
+          />
         </div>
 
         {/* RIGHT COLUMN — Story */}
