@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Legal — Open Game License</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta charset="utf-8">
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      body {
+        font-family: Georgia, "Times New Roman", serif;
+        line-height: 1.7;
+        color: #222;
+        background: #fafafa;
+        margin: 0;
+        padding: 0;
+      }
+      .legal-page {
+        max-width: 780px;
+        margin: 0 auto;
+        padding: 40px 24px 80px;
+      }
+      .legal-page h1 {
+        font-size: 1.8rem;
+        border-bottom: 2px solid #333;
+        padding-bottom: 12px;
+        margin-bottom: 32px;
+      }
+      .legal-page h2 {
+        font-size: 1.3rem;
+        margin-top: 40px;
+        margin-bottom: 12px;
+        color: #444;
+      }
+      .legal-page h3 {
+        font-size: 1.1rem;
+        margin-top: 28px;
+        margin-bottom: 8px;
+      }
+      .legal-page p, .legal-page li {
+        font-size: 0.95rem;
+        margin-bottom: 10px;
+      }
+      .legal-page ol { padding-left: 24px; }
+      .legal-page .license-text {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 24px 28px;
+        margin: 20px 0;
+        white-space: pre-wrap;
+        font-size: 0.9rem;
+        line-height: 1.6;
+      }
+      .legal-page .declaration {
+        background: #f0f4f8;
+        border-left: 4px solid #007bff;
+        padding: 16px 20px;
+        margin: 16px 0;
+        font-size: 0.93rem;
+      }
+      .legal-page .section15 {
+        background: #fff8e1;
+        border-left: 4px solid #f5a623;
+        padding: 16px 20px;
+        margin: 16px 0;
+        font-size: 0.93rem;
+      }
+      .legal-page a {
+        color: #007bff;
+      }
+      .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        font-size: 0.9rem;
+      }
+      footer.legal-footer {
+        text-align: center;
+        padding: 20px;
+        color: #999;
+        font-size: 0.8rem;
+        border-top: 1px solid #eee;
+        margin-top: 60px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="legal-page">
+      <a href="/" class="back-link">&larr; Back to app</a>
+      <%= yield %>
+    </div>
+    <footer class="legal-footer">
+      This page is permanently accessible and not login-restricted, as required by the OGL 1.0a.
+    </footer>
+  </body>
+</html>

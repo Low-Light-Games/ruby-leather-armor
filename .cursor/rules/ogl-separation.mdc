@@ -1,0 +1,25 @@
+---
+description: OGL 1.0a architectural separation guidelines — rules for keeping Open Game Content isolated from proprietary code
+globs: "**/*.rb,**/*.tsx,**/*.ts,**/*.erb"
+---
+
+# OGL 1.0a Architectural Separation
+
+This project uses content licensed under the Open Game License v1.0a. Follow these rules strictly.
+
+## What is Open Game Content (OGC)
+Reproduced rules text, mechanics, stat blocks, spells, feats, and other material sourced from SRD documents listed in Section 15 of `/legal`.
+
+## What is Product Identity (PI) — never designate as OGC
+- All source code (Ruby, TypeScript, SCSS, etc.)
+- AI/engine logic and proprietary game systems
+- UI/UX, artwork, branding, layouts
+- Original story content, narrative text, adventure premises, NPC descriptions
+- Database schemas and API designs
+
+## Separation rules
+1. **OGC data belongs in isolated, clearly labelled locations** (e.g. seed files, a dedicated `rules/` data directory, or a separate database table). Never inline OGC rules text into component logic, controllers, or service objects.
+2. **Never mix OGC text into proprietary modules.** If a component needs to display OGC content, it should fetch/read it from the isolated data source at runtime.
+3. **The `/legal` route and its view are sacred.** Do not gate them behind authentication, do not dynamically alter the OGL text, and do not remove Section 15 entries.
+4. **When adding new OGC sources**, always add a corresponding entry to Section 15 in [index.html.erb](mdc:app/views/legal/index.html.erb).
+5. **Once content is designated OGC, it is irrevocable.** Be precise and conservative in what you mark as Open Game Content.
