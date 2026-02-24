@@ -7,6 +7,12 @@ interface NameFieldProps {
 
 export const NameField = ({ name, onChange }: NameFieldProps) => {
   return (
-    <input type="text" value={name} onChange={(e) => onChange(e.target.value)} />
+    <input 
+      type="text" 
+      value={name} 
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="Enter character name"
+      aria-label="Character name"
+    />
   )
 }

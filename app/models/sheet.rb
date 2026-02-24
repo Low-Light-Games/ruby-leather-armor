@@ -1,4 +1,6 @@
 class Sheet < ApplicationRecord
+  belongs_to :user
+
   validates :name, presence: true
   validates :strength, presence: true
   validates :intelligence, presence: true

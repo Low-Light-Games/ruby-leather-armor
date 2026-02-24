@@ -17,6 +17,9 @@ gem "puma", ">= 5.0"
 # Bundle and transpile JavaScript [https://github.com/rails/jsbundling-rails]
 gem "jsbundling-rails"
 
+# Stimulus for progressive enhancement [https://github.com/hotwired/stimulus-rails]
+gem "stimulus-rails"
+
 # HTTP client library [https://github.com/jnunemaker/httparty]
 gem "httparty"
 
@@ -27,7 +30,7 @@ gem "httparty"
 # gem "kredis"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
-# gem "bcrypt", "~> 3.1.7"
+gem "bcrypt", "~> 3.1.7"
 
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false

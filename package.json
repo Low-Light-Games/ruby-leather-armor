@@ -5,18 +5,22 @@
     "build": "node esbuild.config.js",
     "build:watch": "node esbuild.config.js --watch",
     "typecheck": "tsc --noEmit",
-    "typecheck:verbose": "tsc --noEmit --listFiles | head -20"
+    "typecheck:verbose": "tsc --noEmit --listFiles | head -20",
+    "test:auth": "node test/puppeteer/auth_flow_test.js"
   },
   "dependencies": {
+    "@hotwired/stimulus": "^3.2.2",
     "@hotwired/turbo-rails": "^7.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@types/puppeteer": "^7.0.4",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "esbuild": "^0.19.0",
     "esbuild-sass-plugin": "^2.0.0",
+    "puppeteer": "^24.37.5",
     "sass": "^1.69.0",
     "typescript": "^5.3.0"
   }

@@ -7,6 +7,16 @@ Rails.application.routes.draw do
 
   # Defines the root path route ("/")
   root "home#index"
-  
+
+  # Authentication routes
+  post "login" => "sessions#create"
+  delete "logout" => "sessions#destroy"
+  get "current_user" => "sessions#show"
+
+  # Admin routes
+  get "admin/all_sheets" => "admin#all_sheets"
+
+  get "sheets/create" => "stimulus#stimulus_version_sheet_creator"
+
   resources :sheets
 end

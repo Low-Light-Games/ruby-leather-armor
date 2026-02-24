@@ -9,6 +9,7 @@ export interface Sheet {
   wisdom: number
   charisma: number
   constitution: number
+  user_id: number
   created_at: string
   updated_at: string
 }

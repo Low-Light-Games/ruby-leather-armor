@@ -1,0 +1,89 @@
+.admin-view {
+  padding: 50px;
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: 'Arial', sans-serif;
+
+  h1 {
+    margin-bottom: 20px;
+    color: #333;
+  }
+
+  .admin-info {
+    margin-bottom: 30px;
+    color: #666;
+    font-size: 14px;
+  }
+
+  .sheets-list {
+    display: grid;
+    gap: 20px;
+  }
+
+  .sheet-item {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+    .sheet-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #eee;
+
+      h3 {
+        margin: 0;
+        color: #333;
+      }
+
+      .sheet-user {
+        color: #666;
+        font-size: 14px;
+      }
+
+      .sheet-date {
+        color: #999;
+        font-size: 12px;
+      }
+    }
+
+    .sheet-attributes {
+      .attributes-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+
+        .attribute-item {
+          display: flex;
+          justify-content: space-between;
+          padding: 10px;
+          background: #f8f9fa;
+          border-radius: 4px;
+
+          .attr-label {
+            font-weight: 500;
+            color: #333;
+            text-transform: capitalize;
+          }
+
+          .attr-value {
+            font-family: monospace;
+            font-weight: bold;
+            color: #007bff;
+          }
+        }
+      }
+    }
+  }
+}
+
+.feedback-error {
+  color: red;
+  padding: 20px;
+  background-color: #ffe6e6;
+  border-radius: 4px;
+}

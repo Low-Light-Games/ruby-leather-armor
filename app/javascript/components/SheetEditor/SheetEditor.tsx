@@ -1,61 +1,79 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { AttributeRow } from './components/AttributeRow'
 import { NameField } from './components/NameField'
 import { useSheetsContext } from '../../contexts/SheetsContext'
 import { Sheet, AttributeType } from '../../types'
+
+const AVAILABLE_POINTS = 27;
+
+const POINT_COSTS: Record<number, number> = {
+  7: -4, 8: -2, 9: -1, 10: 0, 11: 1, 12: 2,
+  13: 3, 14: 5, 15: 7, 16: 10, 17: 13, 18: 17,
+};
+
+const ATTRIBUTES: AttributeType[] = ['strength', 'intelligence', 'dexterity', 'constitution', 'wisdom', 'charisma'];
 
 export const SheetEditor = () => {
   const { sheets, setSheets } = useSheetsContext();
 
   const [name, setName] = useState('')
   const [feedback, setFeedback] = useState<[string, string] | null>(null)
-  const [strength, setStrength] = useState(10)
-  const [intelligence, setIntelligence] = useState(10)
-  const [dexterity, setDexterity] = useState(10)
-  const [constitution, setConstitution] = useState(10)
-  const [wisdom, setWisdom] = useState(10)
-  const [charisma, setCharisma] = useState(10)
-  const [spentPoints, setSpentPoints] = useState(0)
+  const [attributes, setAttributes] = useState<Record<AttributeType, number>>({
+    strength: 10,
+    intelligence: 10,
+    dexterity: 10,
+    constitution: 10,
+    wisdom: 10,
+    charisma: 10,
+  })
   const csrfTokenRef = useRef<string | null>(null)
+  const feedbackTimeoutRef = useRef<number | null>(null)
 
-  const pointCosts: Record<number, number> = {
-    7: -4, 8: -2, 9: -1, 10: 0, 11: 1, 12: 2,
-    13: 3, 14: 5, 15: 7, 16: 10, 17: 13, 18: 17,
-  };
+  const spentPoints = useMemo(() => {
+    return Object.values(attributes).reduce((total, value) => {
+      return total + (POINT_COSTS[value] || 0)
+    }, 0)
+  }, [attributes])
 
-  const updatePoints = () => {
-    let totalSpent = 0
-    totalSpent += pointCosts[strength]
-    totalSpent += pointCosts[intelligence]
-    totalSpent += pointCosts[dexterity]
-    totalSpent += pointCosts[constitution]
-    totalSpent += pointCosts[wisdom]
-    totalSpent += pointCosts[charisma]
-    setSpentPoints(totalSpent)
-  }
+  const saveSheet = async () => {
+    try {
+      const response = await fetch('sheets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfTokenRef.current || ''
+        },
+        body: JSON.stringify({ 
+          sheet: { 
+            name, 
+            ...attributes 
+          } 
+        })
+      })
 
-  const saveSheet = () => {
-    fetch('sheets', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': csrfTokenRef.current || ''
-      },
-      body: JSON.stringify({ sheet: { name, strength, intelligence, dexterity, constitution, wisdom, charisma } })
-    })
-    .then(response => {
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.errors?.join(', ') || `HTTP error! status: ${response.status}`)
       }
-      return response.json()
-    })
-    .then((createdSheet: Sheet) => {
+
+      const createdSheet: Sheet = await response.json()
       setFeedback(['success', 'Sheet saved successfully'])
       setSheets([...sheets, createdSheet])
-    })
-    .catch(() => {
-      setFeedback(['error', 'Error saving sheet'])
-    })
+      
+      // Reset form
+      setName('')
+      setAttributes({
+        strength: 10,
+        intelligence: 10,
+        dexterity: 10,
+        constitution: 10,
+        wisdom: 10,
+        charisma: 10,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error saving sheet'
+      setFeedback(['error', message])
+    }
   }
   
   useEffect(() => {
@@ -63,53 +81,77 @@ export const SheetEditor = () => {
   }, [])
 
   useEffect(() => {
-    updatePoints()
-  }, [strength, intelligence, dexterity, constitution, wisdom, charisma])
-  
-  const changeAttribute = (
+    if (feedback) {
+      // Clear previous timeout
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current)
+      }
+      // Set new timeout to clear feedback after 5 seconds
+      feedbackTimeoutRef.current = window.setTimeout(() => {
+        setFeedback(null)
+      }, 5000)
+    }
+
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current)
+      }
+    }
+  }, [feedback])
+
+  const canIncrease = useCallback((attribute: AttributeType): boolean => {
+    const currentValue = attributes[attribute]
+    if (currentValue >= 18) return false // Max value reached
+    
+    const newValue = currentValue + 1
+    const currentCost = POINT_COSTS[currentValue] || 0
+    const newCost = POINT_COSTS[newValue] || 0
+    const costDifference = newCost - currentCost
+    
+    return spentPoints + costDifference <= AVAILABLE_POINTS
+  }, [attributes, spentPoints])
+
+  const canDecrease = useCallback((attribute: AttributeType): boolean => {
+    return attributes[attribute] > 7 // Min value is 7
+  }, [attributes])
+
+  const changeAttribute = useCallback((
     attribute: AttributeType,
     operation: 'increase' | 'decrease'
   ) => {
-    const delta = operation === 'increase' ? 1 : -1;
-
-    switch (attribute) {
-      case 'strength':
-        setStrength(prevStrength => prevStrength + delta)
-        break
-      case 'intelligence':
-        setIntelligence(prevIntelligence => prevIntelligence + delta)
-        break
-      case 'dexterity':
-        setDexterity(prevDexterity => prevDexterity + delta)
-        break
-      case 'constitution':
-        setConstitution(prevConstitution => prevConstitution + delta)
-        break
-      case 'wisdom':
-        setWisdom(prevWisdom => prevWisdom + delta)
-        break
-      case 'charisma':
-        setCharisma(prevCharisma => prevCharisma + delta)
-        break
-      default:
-        console.log('Invalid attribute')
-        break 
+    // Prevent invalid operations
+    if (operation === 'increase' && !canIncrease(attribute)) {
+      return
     }
-  }
+    if (operation === 'decrease' && !canDecrease(attribute)) {
+      return
+    }
+
+    const delta = operation === 'increase' ? 1 : -1
+
+    setAttributes(prev => ({
+      ...prev,
+      [attribute]: prev[attribute] + delta
+    }))
+  }, [canIncrease, canDecrease])
 
   return (
     <div>
-      {feedback && <p className={`feedback-${feedback[0]}`}>{feedback[1]}</p>}
-      <h1>Points spent: {spentPoints}</h1>
+      {feedback && <p className={`feedback-${feedback[0]}`} role="alert">{feedback[1]}</p>}
+      <h1>Points spent: {spentPoints} / {AVAILABLE_POINTS}</h1>
       <p>Character Name: <NameField name={name} onChange={setName} /></p>
-      <AttributeRow attribute="strength" value={strength} onChange={changeAttribute} />
-      <AttributeRow attribute="intelligence" value={intelligence} onChange={changeAttribute} />
-      <AttributeRow attribute="dexterity" value={dexterity} onChange={changeAttribute} />
-      <AttributeRow attribute="constitution" value={constitution} onChange={changeAttribute} />
-      <AttributeRow attribute="wisdom" value={wisdom} onChange={changeAttribute} />
-      <AttributeRow attribute="charisma" value={charisma} onChange={changeAttribute} />
+      {ATTRIBUTES.map((attribute) => (
+        <AttributeRow 
+          key={attribute}
+          attribute={attribute} 
+          value={attributes[attribute]} 
+          onChange={changeAttribute}
+          canIncrease={canIncrease(attribute)}
+          canDecrease={canDecrease(attribute)}
+        />
+      ))}
       <p>
-        <button onClick={saveSheet}>Save Sheet</button>
+        <button onClick={saveSheet} disabled={!name.trim()}>Save Sheet</button>
       </p>
     </div>
   )

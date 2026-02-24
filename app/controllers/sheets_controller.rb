@@ -1,12 +1,21 @@
 class SheetsController < ApplicationController
+  before_action :set_sheet, only: [:show, :update, :destroy]
+  before_action :authorize, only: [:show, :update, :destroy]
+
   def index
-    @sheets = Sheet.all
+    @sheets = policy_scope(Sheet).order(created_at: :desc)
     render json: @sheets
   end
 
+  def list
+    @sheets = policy_scope(Sheet).order(created_at: :desc)
+  end
+
   def create
-    @sheet = Sheet.create(sheet_params)
-    if @sheet.persisted?
+    @sheet = current_user.sheets.build(sheet_params)
+    authorize(@sheet)
+    
+    if @sheet.save
       render json: @sheet, status: :created
     else
       render json: { errors: @sheet.errors.full_messages }, status: :unprocessable_entity
@@ -14,12 +23,10 @@ class SheetsController < ApplicationController
   end
 
   def show
-    @sheet = Sheet.find(params[:id])
     render json: @sheet
   end
 
   def update
-    @sheet = Sheet.find(params[:id])
     if @sheet.update(sheet_params)
       render json: @sheet
     else
@@ -28,12 +35,15 @@ class SheetsController < ApplicationController
   end
 
   def destroy
-    @sheet = Sheet.find(params[:id])
     @sheet.destroy
     head :no_content
   end
 
   private
+
+  def set_sheet
+    @sheet = Sheet.find(params[:id])
+  end
 
   def sheet_params
     params.require(:sheet).permit(:name, :strength, :intelligence, :dexterity, :constitution, :wisdom, :charisma)
