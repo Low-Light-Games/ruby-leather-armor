@@ -265,16 +265,21 @@ export const AdventureChat = ({ adventureId, onStageAdvance }: AdventureChatProp
 
       {/* Input area */}
       <div className="chat-input-area">
-        <textarea
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={pendingRoll ? 'Submit your roll above, or describe another action...' : 'What does your character do?'}
-          disabled={sending}
-          rows={2}
-          maxLength={2000}
-          className="chat-input"
-        />
+        <div className="chat-input-wrapper">
+          <textarea
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={pendingRoll ? 'Submit your roll above, or describe another action...' : 'What does your character do?'}
+            disabled={sending}
+            rows={2}
+            maxLength={500}
+            className="chat-input"
+          />
+          <span className={`char-counter ${input.length > 450 ? 'near-limit' : ''} ${input.length >= 500 ? 'at-limit' : ''}`}>
+            {input.length}/500
+          </span>
+        </div>
         <button
           onClick={handleSend}
           disabled={sending || !input.trim()}

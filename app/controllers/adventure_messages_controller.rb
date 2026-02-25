@@ -19,8 +19,8 @@ class AdventureMessagesController < ApplicationController
       return render json: { error: "Message cannot be empty" }, status: :unprocessable_entity
     end
 
-    if player_input.length > 2000
-      return render json: { error: "Message too long (max 2000 characters)" }, status: :unprocessable_entity
+    if player_input.length > 500
+      return render json: { error: "Message too long (max 500 characters)" }, status: :unprocessable_entity
     end
 
     service = DungeonMasterService.new(@adventure, user: current_user)
