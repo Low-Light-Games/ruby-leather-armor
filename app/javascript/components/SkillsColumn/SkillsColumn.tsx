@@ -16,8 +16,13 @@ import {
   computeBAB,
   checkAllPrerequisites,
   canSelectFeat,
+  computeFeatSkillBonuses,
+  computeFeatStatBonuses,
+  parseFeatEntry,
+  buildFeatEntry,
+  featDisplayName,
 } from '../../rules/pathfinder_feats';
-import type { PrerequisiteContext, PrerequisiteCheck } from '../../rules/pathfinder_feats';
+import type { FeatDefinition, PrerequisiteContext, PrerequisiteCheck } from '../../rules/pathfinder_feats';
 import {
   ALL_SPELLS,
   getSpellById,
@@ -33,6 +38,31 @@ import {
 } from '../../rules/pathfinder_spells';
 import type { SpellEligibility, SpellSlotSummary } from '../../rules/pathfinder_spells';
 import './SkillsColumn.scss';
+
+// ─── Choice lists for parameterised feats ─────────────────
+
+const SKILL_CHOICES = PATHFINDER_SKILLS.map(s => s.name);
+
+const WEAPON_CHOICES = [
+  'Bastard Sword', 'Battle Axe', 'Club', 'Composite Longbow', 'Composite Shortbow',
+  'Dagger', 'Dart', 'Dwarven Waraxe', 'Elven Curve Blade', 'Falchion',
+  'Flail', 'Glaive', 'Gnome Hooked Hammer', 'Greataxe', 'Greatclub',
+  'Greatsword', 'Guisarme', 'Halberd', 'Handaxe', 'Hand Crossbow',
+  'Heavy Crossbow', 'Heavy Flail', 'Heavy Mace', 'Heavy Pick', 'Heavy Shield',
+  'Javelin', 'Kama', 'Kukri', 'Lance', 'Light Crossbow',
+  'Light Flail', 'Light Hammer', 'Light Mace', 'Light Pick', 'Light Shield',
+  'Longbow', 'Longsword', 'Longspear', 'Morningstar', 'Net',
+  'Nunchaku', 'Orc Double Axe', 'Quarterstaff', 'Ranseur', 'Rapier',
+  'Sai', 'Scimitar', 'Scythe', 'Short Sword', 'Shortbow',
+  'Shortspear', 'Shuriken', 'Siangham', 'Sickle', 'Sling',
+  'Spear', 'Spiked Chain', 'Starknife', 'Trident', 'Unarmed Strike',
+  'War Hammer', 'Whip',
+];
+
+const SPELL_SCHOOL_CHOICES = [
+  'Abjuration', 'Conjuration', 'Divination', 'Enchantment',
+  'Evocation', 'Illusion', 'Necromancy', 'Transmutation',
+];
 
 const ABILITY_ABBREVIATIONS: Record<string, string> = {
   strength: 'STR',
@@ -68,6 +98,13 @@ export const SkillsColumn = () => {
   const [featSearch, setFeatSearch] = useState('');
   const [spellSearch, setSpellSearch] = useState('');
 
+  // ─── Feat choice modal state ───────────────────────────────
+  const [featChoiceModal, setFeatChoiceModal] = useState<{
+    feat: FeatDefinition;
+    choiceType: 'skill' | 'weapon' | 'school';
+  } | null>(null);
+  const [featChoiceSearch, setFeatChoiceSearch] = useState('');
+
   const toggleSection = (section: string) => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
@@ -86,21 +123,44 @@ export const SkillsColumn = () => {
     return map;
   }, [race]);
 
-  // Combat derived stats
+  // Feat stat bonuses (AC, saves, initiative, HP, etc.)
+  const featStatBonuses = useMemo(
+    () => computeFeatStatBonuses(selectedFeats, currentLevel),
+    [selectedFeats, currentLevel],
+  );
+
+  // Combat derived stats (including feat bonuses)
   const combatStats = useMemo(() => {
     const dexMod = abilityModifier(finalAttributes.dexterity);
     const strMod = abilityModifier(finalAttributes.strength);
+    const conMod = abilityModifier(finalAttributes.constitution);
+    const wisMod = abilityModifier(finalAttributes.wisdom);
     const size = race?.size ?? 'Medium';
-    const bab = classDef ? baseBAB(classDef.bab) : 0;
+    const bab = classDef ? computeBAB(classDef.bab, currentLevel) : 0;
 
-    const ac = 10 + dexMod + acSizeModifier(size);
-    const tAC = touchAC(dexMod, size);
-    const ffAC = flatFootedAC(size);
+    const ac = 10 + dexMod + acSizeModifier(size) + featStatBonuses.ac;
+    const tAC = touchAC(dexMod, size) + featStatBonuses.ac;
+    const ffAC = flatFootedAC(size); // Dodge AC doesn't apply when flat-footed
     const cmb = combatManeuverBonus(bab, strMod, size);
     const cmd = combatManeuverDefense(bab, strMod, dexMod, size);
+    const initiative = dexMod + featStatBonuses.initiative;
 
-    return { ac, tAC, ffAC, cmb, cmd };
-  }, [finalAttributes, race, classDef]);
+    // Saves (base + ability mod + feat bonuses)
+    const fortGood = classDef ? classDef.goodSaves.includes('fort') : false;
+    const refGood = classDef ? classDef.goodSaves.includes('ref') : false;
+    const willGood = classDef ? classDef.goodSaves.includes('will') : false;
+    const baseFort = fortGood ? 2 : 0;
+    const baseRef = refGood ? 2 : 0;
+    const baseWill = willGood ? 2 : 0;
+    const fort = baseFort + conMod + featStatBonuses.fortSave;
+    const ref = baseRef + dexMod + featStatBonuses.refSave;
+    const will = baseWill + wisMod + featStatBonuses.willSave;
+
+    // HP bonus from feats (e.g. Toughness)
+    const hpBonus = featStatBonuses.hp;
+
+    return { ac, tAC, ffAC, cmb, cmd, bab, initiative, fort, ref, will, hpBonus };
+  }, [finalAttributes, race, classDef, currentLevel, featStatBonuses]);
 
   // ─── Prerequisite context ────────────────────────────────────
 
@@ -117,10 +177,32 @@ export const SkillsColumn = () => {
 
   // ─── Feats helpers ──────────────────────────────────────────
 
+  /** Called when user picks a feat from the dropdown. If it has a choiceType, opens the modal; otherwise adds directly. */
   const addFeat = useCallback((featId: string) => {
+    const feat = ALL_FEATS.find(f => f.id === featId);
+    if (!feat) return;
+
+    if (feat.choiceType) {
+      // Open the choice modal
+      setFeatChoiceModal({ feat, choiceType: feat.choiceType });
+      setFeatChoiceSearch('');
+      setFeatSearch('');
+      return;
+    }
+
+    // Non-parameterised feat — add directly
     setSelectedFeats(prev => prev.includes(featId) ? prev : [...prev, featId]);
     setFeatSearch('');
   }, [setSelectedFeats]);
+
+  /** Called from the choice modal to finalize a parameterised feat selection. */
+  const confirmFeatChoice = useCallback((choice: string) => {
+    if (!featChoiceModal) return;
+    const entry = buildFeatEntry(featChoiceModal.feat.id, choice);
+    setSelectedFeats(prev => prev.includes(entry) ? prev : [...prev, entry]);
+    setFeatChoiceModal(null);
+    setFeatChoiceSearch('');
+  }, [featChoiceModal, setSelectedFeats]);
 
   const removeFeat = useCallback((featId: string) => {
     setSelectedFeats(prev => prev.filter(id => id !== featId));
@@ -144,8 +226,13 @@ export const SkillsColumn = () => {
     });
   }, [filteredFeats, prereqContext]);
 
-  const selectedFeatDefs = useMemo(
-    () => selectedFeats.map(id => getFeatById(id)).filter(Boolean) as typeof ALL_FEATS,
+  /** Selected feats with parsed entries — includes the choice for compound IDs. */
+  const selectedFeatsParsed = useMemo(
+    () => selectedFeats.map(entry => {
+      const parsed = parseFeatEntry(entry);
+      const def = ALL_FEATS.find(f => f.id === parsed.featId);
+      return { ...parsed, def };
+    }).filter(e => e.def != null) as Array<{ featId: string; choice: string | null; raw: string; def: FeatDefinition }>,
     [selectedFeats],
   );
 
@@ -242,22 +329,30 @@ export const SkillsColumn = () => {
     }));
   }, [selectedSpellDefs, currentClass, currentLevel]);
 
+  // Feat-granted skill bonuses
+  const featSkillBonuses = useMemo(
+    () => computeFeatSkillBonuses(selectedFeats),
+    [selectedFeats],
+  );
+
   // Skills
   const calculatedSkills = useMemo(() => {
     return PATHFINDER_SKILLS.map(skill => {
       const abilityScore = finalAttributes[skill.keyAbility];
       const abilityMod = abilityModifier(abilityScore);
       const racialBonus = racialSkillBonuses[skill.name] || 0;
-      const total = abilityMod + racialBonus;
+      const featBonus = featSkillBonuses[skill.name] || 0;
+      const total = abilityMod + racialBonus + featBonus;
       return {
         ...skill,
         abilityAbbr: ABILITY_ABBREVIATIONS[skill.keyAbility],
         abilityMod,
         racialBonus,
+        featBonus,
         total,
       };
     });
-  }, [finalAttributes, racialSkillBonuses]);
+  }, [finalAttributes, racialSkillBonuses, featSkillBonuses]);
 
   return (
     <div className="skills-column">
@@ -283,6 +378,14 @@ export const SkillsColumn = () => {
                 <span className="combat-value">{combatStats.ffAC}</span>
               </div>
               <div className="combat-cell">
+                <span className="combat-label">BAB</span>
+                <span className="combat-value">{formatModifier(combatStats.bab)}</span>
+              </div>
+              <div className="combat-cell">
+                <span className="combat-label">Init</span>
+                <span className="combat-value">{formatModifier(combatStats.initiative)}</span>
+              </div>
+              <div className="combat-cell">
                 <span className="combat-label">CMB</span>
                 <span className="combat-value">{formatModifier(combatStats.cmb)}</span>
               </div>
@@ -290,6 +393,24 @@ export const SkillsColumn = () => {
                 <span className="combat-label">CMD</span>
                 <span className="combat-value">{combatStats.cmd}</span>
               </div>
+              <div className="combat-cell">
+                <span className="combat-label">Fort</span>
+                <span className="combat-value">{formatModifier(combatStats.fort)}</span>
+              </div>
+              <div className="combat-cell">
+                <span className="combat-label">Ref</span>
+                <span className="combat-value">{formatModifier(combatStats.ref)}</span>
+              </div>
+              <div className="combat-cell">
+                <span className="combat-label">Will</span>
+                <span className="combat-value">{formatModifier(combatStats.will)}</span>
+              </div>
+              {combatStats.hpBonus > 0 && (
+                <div className="combat-cell">
+                  <span className="combat-label">HP (Feat)</span>
+                  <span className="combat-value">+{combatStats.hpBonus}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -319,6 +440,7 @@ export const SkillsColumn = () => {
                       skill.trainedOnly ? '(Trained only)' : '',
                       `${skill.abilityAbbr} mod: ${formatModifier(skill.abilityMod)}`,
                       skill.racialBonus ? `Racial: +${skill.racialBonus}` : '',
+                      skill.featBonus ? `Feat: +${skill.featBonus}` : '',
                     ].filter(Boolean).join(' | ')
                   }
                 >
@@ -326,6 +448,7 @@ export const SkillsColumn = () => {
                     {skill.name}
                     {skill.trainedOnly && <span className="trained-badge">T</span>}
                     {skill.racialBonus > 0 && <span className="racial-skill-badge">R</span>}
+                    {skill.featBonus > 0 && <span className="feat-skill-badge">F</span>}
                   </span>
                   <span className="skill-ability">{skill.abilityAbbr}</span>
                   <span className={`skill-modifier ${skill.total >= 0 ? 'positive' : 'negative'}`}>
@@ -338,6 +461,9 @@ export const SkillsColumn = () => {
               <span className="trained-badge">T</span> = Trained only
               {Object.keys(racialSkillBonuses).length > 0 && (
                 <>&nbsp;&nbsp;<span className="racial-skill-badge">R</span> = Racial bonus</>
+              )}
+              {Object.keys(featSkillBonuses).length > 0 && (
+                <>&nbsp;&nbsp;<span className="feat-skill-badge">F</span> = Feat bonus</>
               )}
             </div>
           </div>
@@ -354,14 +480,17 @@ export const SkillsColumn = () => {
           <div className="accordion-body">
             <div className="picker-section">
               {/* Selected feats */}
-              {selectedFeatDefs.length > 0 ? (
+              {selectedFeatsParsed.length > 0 ? (
                 <div className="selected-items">
-                  {selectedFeatDefs.map(feat => (
-                    <div key={feat.id} className="selected-item">
+                  {selectedFeatsParsed.map(({ raw, choice, def: feat }) => (
+                    <div key={raw} className="selected-item">
                       <div className="selected-item-header">
-                        <span className="item-name">{feat.name}</span>
+                        <span className="item-name">
+                          {feat.name}
+                          {choice && <span className="feat-choice-label"> ({choice})</span>}
+                        </span>
                         <span className={`item-tag cat-${feat.category}`}>{feat.category}</span>
-                        <button className="remove-btn" onClick={() => removeFeat(feat.id)} title="Remove feat">&times;</button>
+                        <button className="remove-btn" onClick={() => removeFeat(raw)} title="Remove feat">&times;</button>
                       </div>
                       <div className="selected-item-summary">{feat.summary}</div>
                     </div>
@@ -571,9 +700,94 @@ export const SkillsColumn = () => {
           </div>
         )}
       </div>
+
+      {/* ─── Feat Choice Modal ─── */}
+      {featChoiceModal && (
+        <FeatChoiceModal
+          feat={featChoiceModal.feat}
+          choiceType={featChoiceModal.choiceType}
+          search={featChoiceSearch}
+          onSearchChange={setFeatChoiceSearch}
+          onConfirm={confirmFeatChoice}
+          onCancel={() => { setFeatChoiceModal(null); setFeatChoiceSearch(''); }}
+          alreadySelected={selectedFeats}
+        />
+      )}
     </div>
   );
 };
+
+// ─── Feat Choice Modal Component ────────────────────────────
+
+interface FeatChoiceModalProps {
+  feat: FeatDefinition;
+  choiceType: 'skill' | 'weapon' | 'school';
+  search: string;
+  onSearchChange: (val: string) => void;
+  onConfirm: (choice: string) => void;
+  onCancel: () => void;
+  alreadySelected: string[];
+}
+
+function FeatChoiceModal({ feat, choiceType, search, onSearchChange, onConfirm, onCancel, alreadySelected }: FeatChoiceModalProps) {
+  const allChoices = choiceType === 'skill' ? SKILL_CHOICES
+    : choiceType === 'weapon' ? WEAPON_CHOICES
+    : SPELL_SCHOOL_CHOICES;
+
+  // Choices already taken for this repeatable feat
+  const takenChoices = useMemo(() => {
+    const taken = new Set<string>();
+    for (const entry of alreadySelected) {
+      const parsed = parseFeatEntry(entry);
+      if (parsed.featId === feat.id && parsed.choice) {
+        taken.add(parsed.choice);
+      }
+    }
+    return taken;
+  }, [alreadySelected, feat.id]);
+
+  const filtered = useMemo(() => {
+    const term = search.toLowerCase().trim();
+    return allChoices
+      .filter(c => !takenChoices.has(c))
+      .filter(c => !term || c.toLowerCase().includes(term));
+  }, [allChoices, takenChoices, search]);
+
+  const title = choiceType === 'skill' ? 'Choose a Skill'
+    : choiceType === 'weapon' ? 'Choose a Weapon'
+    : 'Choose a Spell School';
+
+  return (
+    <div className="feat-choice-overlay" onClick={onCancel}>
+      <div className="feat-choice-modal" onClick={e => e.stopPropagation()}>
+        <div className="fcm-header">
+          <h3>{feat.name}</h3>
+          <button className="fcm-close" onClick={onCancel}>&times;</button>
+        </div>
+        <p className="fcm-subtitle">{title}</p>
+        <p className="fcm-description">{feat.summary}</p>
+        <input
+          type="text"
+          className="fcm-search"
+          placeholder={`Search ${choiceType}s…`}
+          value={search}
+          onChange={e => onSearchChange(e.target.value)}
+          autoFocus
+        />
+        <ul className="fcm-list">
+          {filtered.map(choice => (
+            <li key={choice} className="fcm-item" onClick={() => onConfirm(choice)}>
+              {choice}
+            </li>
+          ))}
+          {filtered.length === 0 && (
+            <li className="fcm-empty">No matching {choiceType}s found.</li>
+          )}
+        </ul>
+      </div>
+    </div>
+  );
+}
 
 /** Renders a compact list of prerequisite labels with met/unmet/unknown color coding. */
 function PrereqList({ checks }: { checks: PrerequisiteCheck[] }) {

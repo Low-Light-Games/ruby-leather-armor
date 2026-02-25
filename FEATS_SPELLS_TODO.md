@@ -104,6 +104,58 @@ can apply them programmatically.
 
 ---
 
+## Planned: Migrate Feats & Spells to SQL Database
+
+**Status:** Planned (not yet started)
+**Priority:** Do this when feat definitions move to the DB or the DM needs to grant/modify feats programmatically.
+
+### Rationale
+
+Parameterized feats (Skill Focus, Weapon Focus, Spell Focus, etc.) and repeatable
+feats benefit from relational storage. A proper SQL schema lets the server validate
+prerequisites, the DM engine grant/remove feats, and simplifies querying.
+
+### Schema Design
+
+```
+sheet_feats
+  id             bigint PK
+  sheet_id       bigint FK → sheets
+  feat_id        string      (references the TS/DB feat definition)
+  choice         string NULL (the weapon, skill, or school chosen — NULL for non-parameterised feats)
+  created_at     timestamp
+  updated_at     timestamp
+
+adventure_sheet_feats
+  id                  bigint PK
+  adventure_sheet_id  bigint FK → adventure_sheets
+  feat_id             string
+  choice              string NULL
+  created_at          timestamp
+  updated_at          timestamp
+```
+
+### Migration Steps
+
+1. Create `sheet_feats` and `adventure_sheet_feats` tables.
+2. Migrate existing `details['feats']` JSON arrays into `sheet_feats` rows.
+   - Plain feat IDs → `{ feat_id: 'power_attack', choice: NULL }`.
+   - Compound IDs (interim format `feat_id::choice`) → `{ feat_id: 'skill_focus', choice: 'Perception' }`.
+3. Migrate `adventure_sheets.details['feats']` similarly.
+4. Move feat *definitions* from static TypeScript files to a `feat_definitions` table.
+5. Add server-side prerequisite validation in the Rails model/controller.
+6. Remove `details['feats']` from the JSON column.
+7. Update frontend to fetch feat definitions from an API and selections from the new association.
+
+### Also Consider (same migration wave)
+
+- Move spell definitions to `spell_definitions` table.
+- Create `sheet_spells` / `adventure_sheet_spells` pivot tables with a
+  `storage_type` column (`'known'` | `'spellbook'`) to replace `details['knownSpells']`
+  and `details['spellbook']`.
+
+---
+
 ## Future Work
 
 - [ ] Define new structured effect types for the patterns above (size-change, condition-propagation, action-economy, etc.)

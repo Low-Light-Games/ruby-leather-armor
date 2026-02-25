@@ -10,7 +10,7 @@ import { getRaceById, computeRacialModifiers } from '../../rules/pathfinder_race
 import { getClassById } from '../../rules/pathfinder_classes'
 import { rollD20 } from '../../rules/dice'
 import { touchAC, flatFootedAC, combatManeuverBonus, combatManeuverDefense } from '../../rules/pathfinder_combat'
-import { getFeatById } from '../../rules/pathfinder_feats'
+import { getFeatById, computeFeatSkillBonuses, computeFeatStatBonuses, parseFeatEntry, featDisplayName } from '../../rules/pathfinder_feats'
 import { getSpellById, getCastingStyle, getSpellsForClass, ALL_SPELLS, hasSlotForSpell } from '../../rules/pathfinder_spells'
 import type { SpellDefinition } from '../../rules/pathfinder_spells'
 import './AdventurePlay.scss'
@@ -59,6 +59,8 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const [showFeats, setShowFeats] = useState(false)
   const [showSpells, setShowSpells] = useState(false)
   const [rollDisplay, setRollDisplay] = useState<RollResultDisplay | null>(null)
+  const [spellbookSearch, setSpellbookSearch] = useState('')
+  const [spellbookSaving, setSpellbookSaving] = useState(false)
 
   const loadAdventure = useCallback(() => {
     if (!user) return
@@ -114,14 +116,19 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
       mods[attr] = abilityModifier(finalScores[attr])
     }
 
-    // Saving throws (level 1)
+    // Feat bonuses (all types)
+    const featEntries = sheet.details?.feats || []
+    const featSkillBonuses = computeFeatSkillBonuses(featEntries)
+    const featStats = computeFeatStatBonuses(featEntries, sheet.level)
+
+    // Saving throws (base + ability + feat)
     const fortGood = classDef ? classDef.goodSaves.includes('fort') : false
     const refGood = classDef ? classDef.goodSaves.includes('ref') : false
     const willGood = classDef ? classDef.goodSaves.includes('will') : false
 
-    const fortitude = baseSave(fortGood) + mods.constitution
-    const reflex = baseSave(refGood) + mods.dexterity
-    const will = baseSave(willGood) + mods.wisdom
+    const fortitude = baseSave(fortGood) + mods.constitution + featStats.fortSave
+    const reflex = baseSave(refGood) + mods.dexterity + featStats.refSave
+    const will = baseSave(willGood) + mods.wisdom + featStats.willSave
 
     // BAB
     const bab = classDef ? baseBAB(classDef.bab) : 0
@@ -129,25 +136,31 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
     // Size modifier: Small creatures get +1 to attack and AC
     const sizeMod = race?.size === 'Small' ? 1 : 0
 
-    // Attack bonuses
-    const meleeAttack = bab + mods.strength + sizeMod
-    const rangedAttack = bab + mods.dexterity + sizeMod
+    // Attack bonuses (including feat bonuses)
+    const meleeAttack = bab + mods.strength + sizeMod + featStats.meleeAttack
+    const rangedAttack = bab + mods.dexterity + sizeMod + featStats.rangedAttack
 
-    // AC = 10 + DEX mod + size mod (no armor yet)
-    const ac = 10 + mods.dexterity + sizeMod
+    // AC = 10 + DEX mod + size mod + feat bonus (no armor yet)
+    const ac = 10 + mods.dexterity + sizeMod + featStats.ac
 
     // Touch AC, Flat-Footed AC, CMB, CMD
     const size = race?.size ?? 'Medium'
-    const tAC = touchAC(mods.dexterity, size)
-    const ffAC = flatFootedAC(size)
+    const tAC = touchAC(mods.dexterity, size) + featStats.ac
+    const ffAC = flatFootedAC(size) // Dodge bonus doesn't apply when flat-footed
     const cmb = combatManeuverBonus(bab, mods.strength, size)
     const cmd = combatManeuverDefense(bab, mods.strength, mods.dexterity, size)
+
+    // Initiative (including feat bonus)
+    const initiative = mods.dexterity + featStats.initiative
 
     // Speed
     const speed = race?.speed ?? 30
 
     // Hit Die
     const hitDie = classDef?.hitDie ?? 0
+
+    // HP bonus from feats (e.g. Toughness)
+    const hpBonus = featStats.hp
 
     // Skills
     const skills = PATHFINDER_SKILLS.map(skill => {
@@ -159,11 +172,16 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
         if (raceBonus) total += raceBonus.bonus
       }
 
+      // Feat skill bonuses
+      const featBonus = featSkillBonuses[skill.name] || 0
+      total += featBonus
+
       return {
         name: skill.name,
         keyAbility: skill.keyAbility,
         abilityAbbr: ABILITY_ABBR[skill.keyAbility],
         trainedOnly: skill.trainedOnly,
+        featBonus,
         total,
       }
     })
@@ -183,8 +201,10 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
       ffAC,
       cmb,
       cmd,
+      initiative,
       speed,
       hitDie,
+      hpBonus,
       skills,
       raceName: race?.name ?? null,
       className: classDef?.name ?? null,
@@ -225,7 +245,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
 
   const rollInitiative = useCallback(() => {
     if (!derivedStats) return
-    doRoll('Initiative', derivedStats.mods.dexterity, `DEX ${formatMod(derivedStats.mods.dexterity)}`)
+    doRoll('Initiative', derivedStats.initiative, `Init ${formatMod(derivedStats.initiative)}`)
   }, [derivedStats, doRoll])
 
   const rollAbility = useCallback((attr: AttributeType) => {
@@ -237,6 +257,56 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const rollSkill = useCallback((skillName: string, total: number) => {
     doRoll(`${skillName} Check`, total, `Skill ${formatMod(total)}`)
   }, [doRoll])
+
+  // ─── Spellbook management (hooks must be above early returns) ─
+
+  const spellbookSearchResults = useMemo(() => {
+    if (!adventure || !derivedStats) return []
+    const sheet = adventure.adventure_sheet
+    const castStyle = getCastingStyle(sheet.character_class)
+    if (castStyle !== 'spellbook' || !spellbookSearch.trim()) return []
+    const currentSpellIds: string[] = sheet.details?.spellbook || sheet.details?.spells || []
+    const term = spellbookSearch.toLowerCase().trim()
+    const classSpells = sheet.character_class
+      ? getSpellsForClass(sheet.character_class, 9)
+      : ALL_SPELLS
+    return classSpells
+      .filter(s => !currentSpellIds.includes(s.id))
+      .filter(s => s.name.toLowerCase().includes(term) || s.school.includes(term))
+      .map(spell => ({
+        spell,
+        hasSlot: hasSlotForSpell(
+          sheet.character_class, sheet.level,
+          derivedStats.finalScores.intelligence, spell, currentSpellIds,
+        ),
+      }))
+      .slice(0, 8)
+  }, [adventure, derivedStats, spellbookSearch])
+
+  const addSpellToSpellbook = useCallback(async (spell: SpellDefinition) => {
+    if (!adventure) return
+    const sheet = adventure.adventure_sheet
+    const currentSpellIds: string[] = sheet.details?.spellbook || sheet.details?.spells || []
+    setSpellbookSaving(true)
+    try {
+      const newSpellbook = [...currentSpellIds, spell.id]
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+      const res = await fetch(`/adventures/${adventure.id}/adventure_sheet`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ spellbook: newSpellbook }),
+      })
+      if (res.ok) {
+        const updatedSheet = await res.json()
+        setAdventure(prev => prev ? { ...prev, adventure_sheet: updatedSheet } : prev)
+      }
+    } catch (e) {
+      console.error('Failed to update spellbook:', e)
+    } finally {
+      setSpellbookSaving(false)
+      setSpellbookSearch('')
+    }
+  }, [adventure])
 
   // ---- Render ----
 
@@ -282,52 +352,6 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
     : castStyle === 'spontaneous' ? 'Known Spells'
     : 'Spells'
 
-  // ─── Spellbook management state (for wizard during adventure) ─
-  const [spellbookSearch, setSpellbookSearch] = useState('')
-  const [spellbookSaving, setSpellbookSaving] = useState(false)
-
-  const spellbookSearchResults = useMemo(() => {
-    if (castStyle !== 'spellbook' || !spellbookSearch.trim()) return []
-    const term = spellbookSearch.toLowerCase().trim()
-    const classSpells = sheet.character_class
-      ? getSpellsForClass(sheet.character_class, 9)
-      : ALL_SPELLS
-    return classSpells
-      .filter(s => !spellIds.includes(s.id))
-      .filter(s => s.name.toLowerCase().includes(term) || s.school.includes(term))
-      .map(spell => ({
-        spell,
-        hasSlot: hasSlotForSpell(
-          sheet.character_class, sheet.level,
-          stats.finalScores.intelligence, spell, spellIds,
-        ),
-      }))
-      .slice(0, 8)
-  }, [castStyle, spellbookSearch, spellIds, sheet, stats])
-
-  const addSpellToSpellbook = useCallback(async (spell: SpellDefinition) => {
-    if (!adventure) return
-    setSpellbookSaving(true)
-    try {
-      const newSpellbook = [...spellIds, spell.id]
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-      const res = await fetch(`/adventures/${adventure.id}/adventure_sheet`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
-        body: JSON.stringify({ spellbook: newSpellbook }),
-      })
-      if (res.ok) {
-        const updatedSheet = await res.json()
-        setAdventure(prev => prev ? { ...prev, adventure_sheet: updatedSheet } : prev)
-      }
-    } catch (e) {
-      console.error('Failed to update spellbook:', e)
-    } finally {
-      setSpellbookSaving(false)
-      setSpellbookSearch('')
-    }
-  }, [adventure, spellIds])
-
   return (
     <div className="app">
       <Navbar />
@@ -358,7 +382,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
             </div>
             <div className="combat-stat">
               <span className="stat-label">HP</span>
-              <span className="stat-value">{sheet.hp} / {sheet.max_hp}</span>
+              <span className="stat-value">{sheet.hp} / {sheet.max_hp + (stats.hpBonus || 0)}</span>
             </div>
             <div className="combat-stat">
               <span className="stat-label">BAB</span>
@@ -504,12 +528,13 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
                     {feats.length === 0 ? (
                       <p className="empty-hint">No feats selected.</p>
                     ) : (
-                      feats.map(featId => {
-                        const feat = getFeatById(featId)
+                      feats.map(entry => {
+                        const feat = getFeatById(entry)
                         if (!feat) return null
+                        const displayName = featDisplayName(entry)
                         return (
-                          <div key={feat.id} className="fs-item" title={feat.summary}>
-                            <span className="fs-name">{feat.name}</span>
+                          <div key={entry} className="fs-item" title={feat.summary}>
+                            <span className="fs-name">{displayName}</span>
                             <span className={`fs-tag cat-${feat.category}`}>{feat.category}</span>
                           </div>
                         )

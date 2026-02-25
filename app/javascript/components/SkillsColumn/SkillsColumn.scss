@@ -163,7 +163,8 @@
   }
 
   .trained-badge,
-  .racial-skill-badge {
+  .racial-skill-badge,
+  .feat-skill-badge {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -183,6 +184,17 @@
   .racial-skill-badge {
     background-color: #d4edda;
     color: #155724;
+  }
+
+  .feat-skill-badge {
+    background-color: #cce5ff;
+    color: #004085;
+  }
+
+  .feat-choice-label {
+    font-weight: 400;
+    color: #555;
+    font-size: 11px;
   }
 
   .skill-ability {
@@ -601,5 +613,139 @@
       background: #fff3cd;
       color: #856404;
     }
+  }
+}
+
+/* ===== Feat Choice Modal ===== */
+.feat-choice-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fcm-fadeIn 0.15s ease;
+}
+
+@keyframes fcm-fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fcm-popIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.feat-choice-modal {
+  background: white;
+  border-radius: 10px;
+  width: 340px;
+  max-height: 480px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  animation: fcm-popIn 0.2s ease;
+  overflow: hidden;
+
+  .fcm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid #dee2e6;
+
+    h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      color: #333;
+    }
+
+    .fcm-close {
+      background: none;
+      border: none;
+      color: #aaa;
+      font-size: 20px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 4px;
+
+      &:hover {
+        color: #dc3545;
+      }
+    }
+  }
+
+  .fcm-subtitle {
+    margin: 0;
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    padding-top: 8px;
+  }
+
+  .fcm-description {
+    margin: 0;
+    padding: 4px 16px 10px;
+    font-size: 12px;
+    color: #777;
+    font-style: italic;
+    line-height: 1.4;
+  }
+
+  .fcm-search {
+    margin: 0 12px 8px;
+    padding: 7px 10px;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    font-size: 13px;
+    box-sizing: border-box;
+
+    &:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+    }
+  }
+
+  .fcm-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    flex: 1;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  .fcm-item {
+    padding: 9px 16px;
+    font-size: 13px;
+    color: #333;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background-color 0.1s;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background-color: #e9f3ff;
+      color: #0056b3;
+    }
+  }
+
+  .fcm-empty {
+    padding: 16px;
+    font-size: 12px;
+    color: #999;
+    text-align: center;
+    font-style: italic;
   }
 }
