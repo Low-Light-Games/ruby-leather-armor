@@ -1,4 +1,86 @@
 .skills-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  /* ===== Accordion ===== */
+  .accordion-section {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  .accordion-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    background: #f8f9fa;
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.15s;
+
+    &:hover {
+      background-color: #e9ecef;
+    }
+
+    &.open {
+      border-bottom: 1px solid #dee2e6;
+    }
+
+    .accordion-icon {
+      font-size: 10px;
+      color: #888;
+      width: 12px;
+      text-align: center;
+    }
+  }
+
+  .accordion-body {
+    padding: 0;
+  }
+
+  /* ===== Combat Stats Grid ===== */
+  .combat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px;
+    padding: 10px;
+
+    .combat-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 6px 4px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      border: 1px solid #e9ecef;
+
+      .combat-label {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #666;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+      }
+
+      .combat-value {
+        font-family: monospace;
+        font-weight: 700;
+        font-size: 16px;
+        color: #333;
+      }
+    }
+  }
+
+  /* ===== Skills ===== */
   .skills-header {
     display: flex;
     align-items: center;
@@ -8,7 +90,6 @@
     text-transform: uppercase;
     color: #666;
     border-bottom: 2px solid #dee2e6;
-    margin-bottom: 4px;
 
     .skills-header-name {
       flex: 1;
@@ -29,6 +110,8 @@
     list-style: none;
     padding: 0;
     margin: 0;
+    max-height: 360px;
+    overflow-y: auto;
   }
 
   .skill-row {
@@ -114,12 +197,80 @@
   }
 
   .skills-legend {
-    margin-top: 12px;
+    margin-top: 0;
     padding: 8px 12px;
     font-size: 11px;
     color: #888;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  /* ===== Placeholder sections (Feats & Spells) ===== */
+  .placeholder-section {
+    padding: 12px;
+
+    .placeholder-text {
+      margin: 0 0 10px;
+      font-size: 13px;
+      color: #888;
+      font-style: italic;
+    }
+
+    .placeholder-hint {
+      margin: 10px 0 0;
+      font-size: 11px;
+      color: #aaa;
+    }
+  }
+
+  .feat-placeholder,
+  .spell-placeholder {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .feat-item,
+  .spell-item {
     display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    font-size: 13px;
+
+    &.disabled {
+      opacity: 0.4;
+    }
+
+    .feat-name,
+    .spell-name {
+      font-weight: 500;
+      color: #333;
+    }
+
+    .feat-type {
+      font-size: 11px;
+      color: #888;
+      background: #e9ecef;
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+
+    .spell-level {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      background: #007bff;
+      color: white;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-right: 8px;
+    }
   }
 }

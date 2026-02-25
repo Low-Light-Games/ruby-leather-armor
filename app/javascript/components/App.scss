@@ -9,22 +9,21 @@
     display: flex;
     flex-wrap: wrap;
     flex-direction: row;
-    justify-content: space-between;
     gap: 24px;
 
     .column-editor {
       flex: 1 1 0;
-      min-width: 320px;
+      min-width: 300px;
     }
 
     .column-skills {
-      flex: 0 0 320px;
+      flex: 1 1 0;
       min-width: 280px;
     }
 
     .column-list {
-      flex: 0 0 12%;
-      min-width: 250px;
+      flex: 1 1 0;
+      min-width: 200px;
     }
   }
 

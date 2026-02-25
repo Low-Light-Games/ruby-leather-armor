@@ -9,6 +9,7 @@ import { PATHFINDER_SKILLS, abilityModifier } from '../../rules/pathfinder_skill
 import { getRaceById, computeRacialModifiers } from '../../rules/pathfinder_races'
 import { getClassById } from '../../rules/pathfinder_classes'
 import { rollD20 } from '../../rules/dice'
+import { touchAC, flatFootedAC, combatManeuverBonus, combatManeuverDefense } from '../../rules/pathfinder_combat'
 import './AdventurePlay.scss'
 
 interface AdventurePlayProps {
@@ -50,7 +51,10 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const [adventure, setAdventure] = useState<Adventure | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showSection, setShowSection] = useState<'attributes' | 'skills'>('attributes')
+  const [showAttributes, setShowAttributes] = useState(true)
+  const [showSkills, setShowSkills] = useState(false)
+  const [showFeats, setShowFeats] = useState(false)
+  const [showSpells, setShowSpells] = useState(false)
   const [rollDisplay, setRollDisplay] = useState<RollResultDisplay | null>(null)
 
   const loadAdventure = useCallback(() => {
@@ -129,6 +133,13 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
     // AC = 10 + DEX mod + size mod (no armor yet)
     const ac = 10 + mods.dexterity + sizeMod
 
+    // Touch AC, Flat-Footed AC, CMB, CMD
+    const size = race?.size ?? 'Medium'
+    const tAC = touchAC(mods.dexterity, size)
+    const ffAC = flatFootedAC(size)
+    const cmb = combatManeuverBonus(bab, mods.strength, size)
+    const cmd = combatManeuverDefense(bab, mods.strength, mods.dexterity, size)
+
     // Speed
     const speed = race?.speed ?? 30
 
@@ -165,6 +176,10 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
       meleeAttack,
       rangedAttack,
       ac,
+      tAC,
+      ffAC,
+      cmb,
+      cmd,
       speed,
       hitDie,
       skills,
@@ -271,12 +286,28 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
               <span className="stat-value">{stats.ac}</span>
             </div>
             <div className="combat-stat">
+              <span className="stat-label">Touch AC</span>
+              <span className="stat-value">{stats.tAC}</span>
+            </div>
+            <div className="combat-stat">
+              <span className="stat-label">Flat-Foot</span>
+              <span className="stat-value">{stats.ffAC}</span>
+            </div>
+            <div className="combat-stat">
               <span className="stat-label">HP</span>
               <span className="stat-value">{adventure.character_hp} / {adventure.character_max_hp}</span>
             </div>
             <div className="combat-stat">
               <span className="stat-label">BAB</span>
               <span className="stat-value">{formatMod(stats.bab)}</span>
+            </div>
+            <div className="combat-stat">
+              <span className="stat-label">CMB</span>
+              <span className="stat-value">{formatMod(stats.cmb)}</span>
+            </div>
+            <div className="combat-stat">
+              <span className="stat-label">CMD</span>
+              <span className="stat-value">{stats.cmd}</span>
             </div>
             <div className="combat-stat">
               <span className="stat-label">Speed</span>
@@ -307,85 +338,160 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
             <span className="stat-value gold">{adventure.character_gold}</span>
           </div>
 
-          {/* Collapsible toggle */}
-          <div className="section-toggle">
-            <button
-              className={showSection === 'attributes' ? 'active' : ''}
-              onClick={() => setShowSection('attributes')}
-            >
-              Attributes
-            </button>
-            <button
-              className={showSection === 'skills' ? 'active' : ''}
-              onClick={() => setShowSection('skills')}
-            >
-              Skills
-            </button>
-          </div>
-
-          {/* Attributes section */}
-          {showSection === 'attributes' && (
-            <div className="attributes-list">
-              {ATTRIBUTE_LABELS.map(attr => {
-                const base = character_snapshot[attr]
-                const racial = stats.racialMods[attr]
-                const final = stats.finalScores[attr]
-                const mod = stats.mods[attr]
-                return (
-                  <div key={attr} className="attribute-item">
-                    <span className="attr-label">{ABILITY_ABBR[attr]}</span>
-                    <span className="attr-score">
-                      {base}
-                      {racial !== 0 && (
-                        <span className={`racial ${racial > 0 ? 'pos' : 'neg'}`}>
-                          {racial > 0 ? '+' : ''}{racial}
-                        </span>
-                      )}
-                      {' = '}
-                      <strong>{final}</strong>
-                    </span>
-                    <span className="attr-mod">{formatMod(mod)}</span>
-                    <button
-                      className="roll-dice-btn"
-                      onClick={() => rollAbility(attr)}
-                      title={`Roll ${ABILITY_ABBR[attr]} Check`}
-                      aria-label={`Roll ${ABILITY_ABBR[attr]} Check`}
-                    >
-                      🎲
-                    </button>
+          {/* Stacked collapsible sections */}
+          <div className="collapsible-sections">
+            {/* Attributes */}
+            <div className="collapsible-section">
+              <button
+                className={`collapsible-header ${showAttributes ? 'open' : ''}`}
+                onClick={() => setShowAttributes(prev => !prev)}
+              >
+                <span className="collapse-icon">{showAttributes ? '▼' : '▶'}</span>
+                Attributes
+              </button>
+              {showAttributes && (
+                <div className="collapsible-body">
+                  <div className="attributes-list">
+                    {ATTRIBUTE_LABELS.map(attr => {
+                      const base = character_snapshot[attr]
+                      const racial = stats.racialMods[attr]
+                      const final = stats.finalScores[attr]
+                      const mod = stats.mods[attr]
+                      return (
+                        <div key={attr} className="attribute-item">
+                          <span className="attr-label">{ABILITY_ABBR[attr]}</span>
+                          <span className="attr-score">
+                            {base}
+                            {racial !== 0 && (
+                              <span className={`racial ${racial > 0 ? 'pos' : 'neg'}`}>
+                                {racial > 0 ? '+' : ''}{racial}
+                              </span>
+                            )}
+                            {' = '}
+                            <strong>{final}</strong>
+                          </span>
+                          <span className="attr-mod">{formatMod(mod)}</span>
+                          <button
+                            className="roll-dice-btn"
+                            onClick={() => rollAbility(attr)}
+                            title={`Roll ${ABILITY_ABBR[attr]} Check`}
+                            aria-label={`Roll ${ABILITY_ABBR[attr]} Check`}
+                          >
+                            🎲
+                          </button>
+                        </div>
+                      )
+                    })}
                   </div>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Skills section */}
-          {showSection === 'skills' && (
-            <div className="skills-list-adventure">
-              {stats.skills.map(skill => (
-                <div
-                  key={skill.name}
-                  className={`skill-row ${skill.trainedOnly ? 'trained-only' : ''}`}
-                >
-                  <span className="skill-name">
-                    {skill.name}
-                    {skill.trainedOnly && <span className="badge-t">T</span>}
-                  </span>
-                  <span className={`skill-mod ${skill.total >= 0 ? 'positive' : 'negative'}`}>
-                    {formatMod(skill.total)}
-                  </span>
-                  <button
-                    className="roll-dice-btn"
-                    onClick={() => rollSkill(skill.name, skill.total)}
-                    title={`Roll ${skill.name} Check`}
-                    aria-label={`Roll ${skill.name} Check`}
-                  >
-                    🎲
-                  </button>
                 </div>
-              ))}
+              )}
             </div>
-          )}
+
+            {/* Skills */}
+            <div className="collapsible-section">
+              <button
+                className={`collapsible-header ${showSkills ? 'open' : ''}`}
+                onClick={() => setShowSkills(prev => !prev)}
+              >
+                <span className="collapse-icon">{showSkills ? '▼' : '▶'}</span>
+                Skills
+              </button>
+              {showSkills && (
+                <div className="collapsible-body">
+                  <div className="skills-list-adventure">
+                    {stats.skills.map(skill => (
+                      <div
+                        key={skill.name}
+                        className={`skill-row ${skill.trainedOnly ? 'trained-only' : ''}`}
+                      >
+                        <span className="skill-name">
+                          {skill.name}
+                          {skill.trainedOnly && <span className="badge-t">T</span>}
+                        </span>
+                        <span className={`skill-mod ${skill.total >= 0 ? 'positive' : 'negative'}`}>
+                          {formatMod(skill.total)}
+                        </span>
+                        <button
+                          className="roll-dice-btn"
+                          onClick={() => rollSkill(skill.name, skill.total)}
+                          title={`Roll ${skill.name} Check`}
+                          aria-label={`Roll ${skill.name} Check`}
+                        >
+                          🎲
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Feats */}
+            <div className="collapsible-section">
+              <button
+                className={`collapsible-header ${showFeats ? 'open' : ''}`}
+                onClick={() => setShowFeats(prev => !prev)}
+              >
+                <span className="collapse-icon">{showFeats ? '▼' : '▶'}</span>
+                Feats
+              </button>
+              {showFeats && (
+                <div className="collapsible-body">
+                  <div className="placeholder-panel">
+                    <p className="placeholder-text">No feats selected yet.</p>
+                    <div className="placeholder-items">
+                      <div className="placeholder-item">
+                        <span className="item-name">Power Attack</span>
+                        <span className="item-tag">Combat</span>
+                      </div>
+                      <div className="placeholder-item">
+                        <span className="item-name">Toughness</span>
+                        <span className="item-tag">General</span>
+                      </div>
+                      <div className="placeholder-item disabled">
+                        <span className="item-name">Weapon Focus</span>
+                        <span className="item-tag">Combat</span>
+                      </div>
+                    </div>
+                    <p className="placeholder-hint">Feat selection coming in a future update.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Spells */}
+            <div className="collapsible-section">
+              <button
+                className={`collapsible-header ${showSpells ? 'open' : ''}`}
+                onClick={() => setShowSpells(prev => !prev)}
+              >
+                <span className="collapse-icon">{showSpells ? '▼' : '▶'}</span>
+                Spells
+              </button>
+              {showSpells && (
+                <div className="collapsible-body">
+                  <div className="placeholder-panel">
+                    <p className="placeholder-text">No spells prepared.</p>
+                    <div className="placeholder-items">
+                      <div className="placeholder-item">
+                        <span className="spell-level-badge">0</span>
+                        <span className="item-name">Detect Magic</span>
+                      </div>
+                      <div className="placeholder-item">
+                        <span className="spell-level-badge">1</span>
+                        <span className="item-name">Magic Missile</span>
+                      </div>
+                      <div className="placeholder-item disabled">
+                        <span className="spell-level-badge">1</span>
+                        <span className="item-name">Shield</span>
+                      </div>
+                    </div>
+                    <p className="placeholder-hint">Spell management coming in a future update.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Roll buttons */}
           <div className="roll-buttons">

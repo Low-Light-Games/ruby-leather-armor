@@ -28,7 +28,7 @@ const AppContent = () => {
             <SheetEditor />
           </div>
           <div className="column-skills">
-            <h1>Skills</h1>
+            <h1>Character Stats</h1>
             <SkillsColumn />
           </div>
           <div className="column-list">
