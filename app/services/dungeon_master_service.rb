@@ -33,9 +33,14 @@ class DungeonMasterService
     begin
       # --- Call 1: Sanitization ---
       sanitized = sanitize_input(player_input)
+      threshold = @config.sanitization_threshold
 
-      unless sanitized[:safe]
-        @log.dm_log!("Message \"#{@log.truncate(player_input)}\" was malicious, and ignored. Reason: #{sanitized[:reason]}")
+      if sanitized[:danger_score] >= threshold
+        @log.dm_log!(
+          "Message \"#{@log.truncate(player_input)}\" was rejected " \
+          "(danger: #{sanitized[:danger_score]}/100, threshold: #{threshold}). " \
+          "Reason: #{sanitized[:reason]}"
+        )
         rejection = persist_message(
           role: "system",
           content: sanitized[:reason] || "Your input was rejected. Please try a valid in-character action.",
@@ -47,9 +52,15 @@ class DungeonMasterService
       clean_input = sanitized[:sanitized_input]
 
       if clean_input != player_input
-        @log.dm_log!("Message \"#{@log.truncate(player_input)}\" had to be sanitized. Clean version: \"#{@log.truncate(clean_input)}\"")
+        @log.dm_log!(
+          "Message \"#{@log.truncate(player_input)}\" had to be sanitized " \
+          "(danger: #{sanitized[:danger_score]}/100). Clean version: \"#{@log.truncate(clean_input)}\""
+        )
       else
-        @log.dm_log!("Message \"#{@log.truncate(player_input)}\" passed the sanitization check.")
+        @log.dm_log!(
+          "Message \"#{@log.truncate(player_input)}\" passed sanitization " \
+          "(danger: #{sanitized[:danger_score]}/100, threshold: #{threshold})."
+        )
       end
 
       # --- Call 2: DM Response ---
@@ -151,12 +162,12 @@ class DungeonMasterService
     parsed = @ai.parse_json(raw, fallback_as: :sanitization)
     @log.ai_log!("sanitization", prompt_summary, raw, parsed, parse_status: @ai.last_parse_status)
 
-    unless parsed.key?("safe")
-      raise AiError, "Sanitization response missing 'safe' field"
+    unless parsed.key?("danger_score")
+      raise AiError, "Sanitization response missing 'danger_score' field"
     end
 
     {
-      safe: parsed["safe"],
+      danger_score: parsed["danger_score"].to_i,
       sanitized_input: parsed["sanitized_input"] || player_input,
       reason: parsed["reason"]
     }

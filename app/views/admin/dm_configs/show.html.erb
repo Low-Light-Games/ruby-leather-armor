@@ -42,6 +42,30 @@
     </div>
 
     <div class="config-section">
+      <h2>Sanitization</h2>
+
+      <div class="config-field">
+        <label for="sanitization_threshold">Danger Threshold</label>
+        <div class="temp-row">
+          <%= range_field_tag :sanitization_threshold, @config.sanitization_threshold, in: 0..100, step: 5, class: "temp-slider threshold-slider", id: "threshold-slider" %>
+          <span class="temp-value" id="threshold-display"><%= @config.sanitization_threshold %></span>
+        </div>
+        <p class="field-hint">
+          Player inputs are scored for danger from <strong>0</strong> (completely safe) to <strong>100</strong> (overtly malicious).
+          Inputs scoring <strong>at or above</strong> this threshold are rejected.
+          <br>
+          <strong>Lower</strong> = stricter (blocks more). <strong>Higher</strong> = more liberal (allows more).
+          Default: <strong>30</strong>.
+        </p>
+        <div class="threshold-scale">
+          <span>0 – Strict</span>
+          <span>50 – Balanced</span>
+          <span>100 – Permissive</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-section">
       <h2>Creativity</h2>
 
       <div class="config-field">
@@ -81,6 +105,11 @@
   // Update temperature display
   document.getElementById('temp-slider').addEventListener('input', function() {
     document.getElementById('temp-display').textContent = this.value;
+  });
+
+  // Update threshold display
+  document.getElementById('threshold-slider').addEventListener('input', function() {
+    document.getElementById('threshold-display').textContent = this.value;
   });
 </script>
 
@@ -279,6 +308,22 @@
     color: #007bff;
     min-width: 32px;
     text-align: center;
+  }
+
+  /* Threshold scale */
+  .threshold-scale {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #aaa;
+    margin-top: 4px;
+    padding: 0 2px;
+  }
+
+  .threshold-slider {
+    &::-webkit-slider-thumb {
+      background: #dc3545 !important;
+    }
   }
 
   /* Actions */

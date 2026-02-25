@@ -29,6 +29,10 @@ module Admin
         new_settings["pacing_words_max"] = params[:pacing_words_max].to_i.clamp(50, 1000)
       end
 
+      if params[:sanitization_threshold].present?
+        new_settings["sanitization_threshold"] = params[:sanitization_threshold].to_i.clamp(0, 100)
+      end
+
       @config.update!(settings: new_settings)
       redirect_to admin_dm_config_path, notice: "DM settings updated."
     end

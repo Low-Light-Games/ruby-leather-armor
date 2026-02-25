@@ -4,16 +4,18 @@ class DmConfig < ApplicationRecord
   # without migrations.
   #
   # Current settings:
-  #   "verbose"          => bool  (default false) — disables pacing constraints, lets DM write longer responses
-  #   "temperature"      => float (default 0.8)   — creativity level for DM responses
-  #   "pacing_words_min" => int   (default 80)    — minimum word target per response
-  #   "pacing_words_max" => int   (default 150)   — maximum word target per response
+  #   "verbose"                 => bool  (default false) — disables pacing constraints, lets DM write longer responses
+  #   "temperature"             => float (default 0.8)   — creativity level for DM responses
+  #   "pacing_words_min"        => int   (default 80)    — minimum word target per response
+  #   "pacing_words_max"        => int   (default 150)   — maximum word target per response
+  #   "sanitization_threshold"  => int   (default 50)    — danger score (0-100) above which input is rejected
 
   DEFAULTS = {
     "verbose" => false,
     "temperature" => 0.8,
     "pacing_words_min" => 80,
-    "pacing_words_max" => 150
+    "pacing_words_max" => 150,
+    "sanitization_threshold" => 30
   }.freeze
 
   def self.instance
@@ -43,5 +45,9 @@ class DmConfig < ApplicationRecord
 
   def pacing_words_max
     (get("pacing_words_max") || 150).to_i
+  end
+
+  def sanitization_threshold
+    (get("sanitization_threshold") || 30).to_i
   end
 end

@@ -121,7 +121,7 @@ module DungeonMaster
       elsif fallback_as == :sanitization && cleaned.present?
         Rails.logger.info("[DungeonMaster::AiClient] Falling back: treating sanitization as pass-through")
         @last_parse_status = "parse_fallback"
-        { "safe" => true, "sanitized_input" => nil, "reason" => nil }
+        { "danger_score" => 0, "sanitized_input" => nil, "reason" => nil }
       else
         @last_parse_status = "parse_error"
         raise DungeonMasterService::AiError, "Failed to parse AI response"
