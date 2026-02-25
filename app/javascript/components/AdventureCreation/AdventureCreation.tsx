@@ -153,7 +153,7 @@ export const AdventureCreation = () => {
 
               {selectedSheet && (
                 <div className="character-preview">
-                  <h2>{selectedSheet.name}</h2>
+                  <h2>{selectedSheet.name} <small>(Lv {selectedSheet.level})</small></h2>
                   {selectedSheet.description ? (
                     <p>{selectedSheet.description}</p>
                   ) : (

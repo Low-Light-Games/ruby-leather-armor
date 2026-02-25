@@ -10,6 +10,8 @@ import { getRaceById, computeRacialModifiers } from '../../rules/pathfinder_race
 import { getClassById } from '../../rules/pathfinder_classes'
 import { rollD20 } from '../../rules/dice'
 import { touchAC, flatFootedAC, combatManeuverBonus, combatManeuverDefense } from '../../rules/pathfinder_combat'
+import { getFeatById } from '../../rules/pathfinder_feats'
+import { getSpellById } from '../../rules/pathfinder_spells'
 import './AdventurePlay.scss'
 
 interface AdventurePlayProps {
@@ -85,24 +87,24 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
     loadAdventure()
   }, [loadAdventure])
 
-  // Compute derived stats from the snapshot
+  // Compute derived stats from the adventure sheet
   const derivedStats = useMemo(() => {
     if (!adventure) return null
 
-    const snap = adventure.character_snapshot
-    const race = snap.race ? getRaceById(snap.race) : undefined
-    const classDef = snap.character_class ? getClassById(snap.character_class) : undefined
+    const sheet = adventure.adventure_sheet
+    const race = sheet.race ? getRaceById(sheet.race) : undefined
+    const classDef = sheet.character_class ? getClassById(sheet.character_class) : undefined
 
     // Compute racial modifiers
     const racialMods = computeRacialModifiers(
       race,
-      (snap.racial_bonus_attribute as AttributeType) || null,
+      (sheet.racial_bonus_attribute as AttributeType) || null,
     )
 
     // Final ability scores
     const finalScores: Record<AttributeType, number> = {} as any
     for (const attr of ATTRIBUTE_LABELS) {
-      finalScores[attr] = snap[attr] + (racialMods[attr] || 0)
+      finalScores[attr] = sheet[attr] + (racialMods[attr] || 0)
     }
 
     // Ability modifiers
@@ -263,8 +265,10 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
     )
   }
 
-  const { character_snapshot, story, story_state } = adventure
+  const { adventure_sheet: sheet, story, story_state } = adventure
   const stats = derivedStats
+  const feats = sheet.details?.feats || []
+  const spells = sheet.details?.spells || []
 
   return (
     <div className="app">
@@ -272,10 +276,11 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
       <div className="adventure-play">
         {/* LEFT COLUMN — Character */}
         <div className="adventure-column character-column">
-          <h2>{character_snapshot.name}</h2>
+          <h2>{sheet.name}</h2>
           {(stats.raceName || stats.className) && (
             <p className="char-subtitle">
               {[stats.raceName, stats.className].filter(Boolean).join(' ')}
+              {sheet.level > 1 && ` (Lv ${sheet.level})`}
             </p>
           )}
 
@@ -295,7 +300,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
             </div>
             <div className="combat-stat">
               <span className="stat-label">HP</span>
-              <span className="stat-value">{adventure.character_hp} / {adventure.character_max_hp}</span>
+              <span className="stat-value">{sheet.hp} / {sheet.max_hp}</span>
             </div>
             <div className="combat-stat">
               <span className="stat-label">BAB</span>
@@ -335,7 +340,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
 
           <div className="adventure-gold">
             <span className="stat-label">Gold</span>
-            <span className="stat-value gold">{adventure.character_gold}</span>
+            <span className="stat-value gold">{sheet.gold}</span>
           </div>
 
           {/* Stacked collapsible sections */}
@@ -353,7 +358,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
                 <div className="collapsible-body">
                   <div className="attributes-list">
                     {ATTRIBUTE_LABELS.map(attr => {
-                      const base = character_snapshot[attr]
+                      const base = sheet[attr]
                       const racial = stats.racialMods[attr]
                       const final = stats.finalScores[attr]
                       const mod = stats.mods[attr]
@@ -433,27 +438,25 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
                 onClick={() => setShowFeats(prev => !prev)}
               >
                 <span className="collapse-icon">{showFeats ? '▼' : '▶'}</span>
-                Feats
+                Feats ({feats.length})
               </button>
               {showFeats && (
                 <div className="collapsible-body">
-                  <div className="placeholder-panel">
-                    <p className="placeholder-text">No feats selected yet.</p>
-                    <div className="placeholder-items">
-                      <div className="placeholder-item">
-                        <span className="item-name">Power Attack</span>
-                        <span className="item-tag">Combat</span>
-                      </div>
-                      <div className="placeholder-item">
-                        <span className="item-name">Toughness</span>
-                        <span className="item-tag">General</span>
-                      </div>
-                      <div className="placeholder-item disabled">
-                        <span className="item-name">Weapon Focus</span>
-                        <span className="item-tag">Combat</span>
-                      </div>
-                    </div>
-                    <p className="placeholder-hint">Feat selection coming in a future update.</p>
+                  <div className="feats-spells-list">
+                    {feats.length === 0 ? (
+                      <p className="empty-hint">No feats selected.</p>
+                    ) : (
+                      feats.map(featId => {
+                        const feat = getFeatById(featId)
+                        if (!feat) return null
+                        return (
+                          <div key={feat.id} className="fs-item" title={feat.summary}>
+                            <span className="fs-name">{feat.name}</span>
+                            <span className={`fs-tag cat-${feat.category}`}>{feat.category}</span>
+                          </div>
+                        )
+                      })
+                    )}
                   </div>
                 </div>
               )}
@@ -466,27 +469,29 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
                 onClick={() => setShowSpells(prev => !prev)}
               >
                 <span className="collapse-icon">{showSpells ? '▼' : '▶'}</span>
-                Spells
+                Spells ({spells.length})
               </button>
               {showSpells && (
                 <div className="collapsible-body">
-                  <div className="placeholder-panel">
-                    <p className="placeholder-text">No spells prepared.</p>
-                    <div className="placeholder-items">
-                      <div className="placeholder-item">
-                        <span className="spell-level-badge">0</span>
-                        <span className="item-name">Detect Magic</span>
-                      </div>
-                      <div className="placeholder-item">
-                        <span className="spell-level-badge">1</span>
-                        <span className="item-name">Magic Missile</span>
-                      </div>
-                      <div className="placeholder-item disabled">
-                        <span className="spell-level-badge">1</span>
-                        <span className="item-name">Shield</span>
-                      </div>
-                    </div>
-                    <p className="placeholder-hint">Spell management coming in a future update.</p>
+                  <div className="feats-spells-list">
+                    {spells.length === 0 ? (
+                      <p className="empty-hint">No spells selected.</p>
+                    ) : (
+                      spells.map(spellId => {
+                        const spell = getSpellById(spellId)
+                        if (!spell) return null
+                        const lvl = sheet.character_class
+                          ? spell.classLevels[sheet.character_class.toLowerCase()]
+                          : Object.values(spell.classLevels)[0]
+                        return (
+                          <div key={spell.id} className="fs-item" title={spell.summary}>
+                            <span className="spell-lvl-badge">{lvl ?? '?'}</span>
+                            <span className="fs-name">{spell.name}</span>
+                            <span className="fs-tag school-tag">{spell.school}</span>
+                          </div>
+                        )
+                      })
+                    )}
                   </div>
                 </div>
               )}

@@ -42,6 +42,9 @@ export const SheetEditor = () => {
     currentRace, setCurrentRace,
     currentFlexibleBonus, setCurrentFlexibleBonus,
     currentClass, setCurrentClass,
+    currentLevel, setCurrentLevel,
+    selectedFeats, setSelectedFeats,
+    selectedSpells, setSelectedSpells,
   } = useSheetsContext();
 
   const [name, setName] = useState('')
@@ -87,9 +90,12 @@ export const SheetEditor = () => {
       currentSheetId === null &&
       currentRace === null &&
       currentFlexibleBonus === null &&
-      currentClass === null
+      currentClass === null &&
+      currentLevel === 1 &&
+      selectedFeats.length === 0 &&
+      selectedSpells.length === 0
     setIsPristine(pristine)
-  }, [name, description, attributes, currentSheetId, currentRace, currentFlexibleBonus, currentClass])
+  }, [name, description, attributes, currentSheetId, currentRace, currentFlexibleBonus, currentClass, currentLevel, selectedFeats, selectedSpells])
 
   const loadSheetForEdit = (sheet: Sheet) => {
     setName(sheet.name)
@@ -105,6 +111,9 @@ export const SheetEditor = () => {
     setCurrentRace(sheet.race || null)
     setCurrentFlexibleBonus((sheet.racial_bonus_attribute as AttributeType) || null)
     setCurrentClass(sheet.character_class || null)
+    setCurrentLevel(sheet.level || 1)
+    setSelectedFeats(sheet.details?.feats || [])
+    setSelectedSpells(sheet.details?.spells || [])
     setCurrentSheetId(sheet.id)
     setIsPristine(true)
     setSheetToEdit(null)
@@ -124,6 +133,9 @@ export const SheetEditor = () => {
     setCurrentRace(null)
     setCurrentFlexibleBonus(null)
     setCurrentClass(null)
+    setCurrentLevel(1)
+    setSelectedFeats([])
+    setSelectedSpells([])
     setCurrentSheetId(null)
     setSheetToEdit(null)
     setIsPristine(true)
@@ -164,6 +176,9 @@ export const SheetEditor = () => {
             race: currentRace,
             racial_bonus_attribute: currentFlexibleBonus,
             character_class: currentClass,
+            level: currentLevel,
+            feat_ids: selectedFeats,
+            spell_ids: selectedSpells,
             ...attributes
           }
         })
@@ -339,6 +354,22 @@ export const SheetEditor = () => {
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Level selector */}
+      <div className="form-field">
+        <label htmlFor="level-select">Level:</label>
+        <input
+          id="level-select"
+          type="number"
+          min={1}
+          max={20}
+          value={currentLevel}
+          onChange={e => {
+            const val = parseInt(e.target.value, 10)
+            if (!isNaN(val) && val >= 1 && val <= 20) setCurrentLevel(val)
+          }}
+        />
       </div>
 
       <div className="sheet-editor-actions">

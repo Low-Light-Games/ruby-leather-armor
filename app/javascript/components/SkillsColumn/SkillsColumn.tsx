@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useSheetsContext } from '../../contexts/SheetsContext';
 import { PATHFINDER_SKILLS, abilityModifier } from '../../rules/pathfinder_skills';
 import { getRaceById } from '../../rules/pathfinder_races';
@@ -10,6 +10,8 @@ import {
   combatManeuverDefense,
   acSizeModifier,
 } from '../../rules/pathfinder_combat';
+import { ALL_FEATS, getFeatById } from '../../rules/pathfinder_feats';
+import { ALL_SPELLS, getSpellById, getSpellsForClass } from '../../rules/pathfinder_spells';
 import './SkillsColumn.scss';
 
 const ABILITY_ABBREVIATIONS: Record<string, string> = {
@@ -30,7 +32,11 @@ function baseBAB(bab: string): number {
 }
 
 export const SkillsColumn = () => {
-  const { finalAttributes, currentRace, currentClass } = useSheetsContext();
+  const {
+    finalAttributes, currentRace, currentClass,
+    selectedFeats, setSelectedFeats,
+    selectedSpells, setSelectedSpells,
+  } = useSheetsContext();
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     combat: true,
@@ -38,6 +44,9 @@ export const SkillsColumn = () => {
     feats: false,
     spells: false,
   });
+
+  const [featSearch, setFeatSearch] = useState('');
+  const [spellSearch, setSpellSearch] = useState('');
 
   const toggleSection = (section: string) => {
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -72,6 +81,61 @@ export const SkillsColumn = () => {
 
     return { ac, tAC, ffAC, cmb, cmd };
   }, [finalAttributes, race, classDef]);
+
+  // ─── Feats helpers ──────────────────────────────────────────
+
+  const addFeat = useCallback((featId: string) => {
+    setSelectedFeats(prev => prev.includes(featId) ? prev : [...prev, featId]);
+    setFeatSearch('');
+  }, [setSelectedFeats]);
+
+  const removeFeat = useCallback((featId: string) => {
+    setSelectedFeats(prev => prev.filter(id => id !== featId));
+  }, [setSelectedFeats]);
+
+  const filteredFeats = useMemo(() => {
+    const term = featSearch.toLowerCase().trim();
+    if (!term) return [];
+    return ALL_FEATS
+      .filter(f => !selectedFeats.includes(f.id))
+      .filter(f => f.name.toLowerCase().includes(term) || f.category.includes(term))
+      .slice(0, 12);
+  }, [featSearch, selectedFeats]);
+
+  const selectedFeatDefs = useMemo(
+    () => selectedFeats.map(id => getFeatById(id)).filter(Boolean) as typeof ALL_FEATS,
+    [selectedFeats],
+  );
+
+  // ─── Spells helpers ─────────────────────────────────────────
+
+  const addSpell = useCallback((spellId: string) => {
+    setSelectedSpells(prev => prev.includes(spellId) ? prev : [...prev, spellId]);
+    setSpellSearch('');
+  }, [setSelectedSpells]);
+
+  const removeSpell = useCallback((spellId: string) => {
+    setSelectedSpells(prev => prev.filter(id => id !== spellId));
+  }, [setSelectedSpells]);
+
+  const availableSpells = useMemo(() => {
+    if (!currentClass) return ALL_SPELLS;
+    return getSpellsForClass(currentClass, 1);
+  }, [currentClass]);
+
+  const filteredSpells = useMemo(() => {
+    const term = spellSearch.toLowerCase().trim();
+    if (!term) return [];
+    return availableSpells
+      .filter(s => !selectedSpells.includes(s.id))
+      .filter(s => s.name.toLowerCase().includes(term) || s.school.includes(term))
+      .slice(0, 12);
+  }, [spellSearch, selectedSpells, availableSpells]);
+
+  const selectedSpellDefs = useMemo(
+    () => selectedSpells.map(id => getSpellById(id)).filter(Boolean) as typeof ALL_SPELLS,
+    [selectedSpells],
+  );
 
   // Skills
   const calculatedSkills = useMemo(() => {
@@ -179,27 +243,49 @@ export const SkillsColumn = () => {
       <div className="accordion-section">
         <button className={`accordion-header ${openSections.feats ? 'open' : ''}`} onClick={() => toggleSection('feats')}>
           <span className="accordion-icon">{openSections.feats ? '▼' : '▶'}</span>
-          Feats
+          Feats ({selectedFeats.length})
         </button>
         {openSections.feats && (
           <div className="accordion-body">
-            <div className="placeholder-section">
-              <p className="placeholder-text">No feats selected yet.</p>
-              <div className="feat-placeholder">
-                <div className="feat-item">
-                  <span className="feat-name">Power Attack</span>
-                  <span className="feat-type">Combat</span>
+            <div className="picker-section">
+              {/* Selected feats */}
+              {selectedFeatDefs.length > 0 ? (
+                <div className="selected-items">
+                  {selectedFeatDefs.map(feat => (
+                    <div key={feat.id} className="selected-item" title={feat.summary}>
+                      <span className="item-name">{feat.name}</span>
+                      <span className={`item-tag cat-${feat.category}`}>{feat.category}</span>
+                      <button className="remove-btn" onClick={() => removeFeat(feat.id)} title="Remove feat">×</button>
+                    </div>
+                  ))}
                 </div>
-                <div className="feat-item">
-                  <span className="feat-name">Toughness</span>
-                  <span className="feat-type">General</span>
-                </div>
-                <div className="feat-item disabled">
-                  <span className="feat-name">Weapon Focus</span>
-                  <span className="feat-type">Combat</span>
-                </div>
+              ) : (
+                <p className="empty-text">No feats selected.</p>
+              )}
+
+              {/* Search / add */}
+              <div className="picker-search">
+                <input
+                  type="text"
+                  placeholder="Search feats…"
+                  value={featSearch}
+                  onChange={e => setFeatSearch(e.target.value)}
+                  className="picker-input"
+                />
+                {filteredFeats.length > 0 && (
+                  <ul className="picker-dropdown">
+                    {filteredFeats.map(feat => (
+                      <li key={feat.id} className="picker-option" onClick={() => addFeat(feat.id)} title={feat.summary}>
+                        <span className="option-name">{feat.name}</span>
+                        <span className={`item-tag cat-${feat.category}`}>{feat.category}</span>
+                        {feat.prerequisites.length > 0 && (
+                          <span className="prereq-badge" title="Has prerequisites">⚠</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-              <p className="placeholder-hint">Feat selection will be available in a future update.</p>
             </div>
           </div>
         )}
@@ -209,27 +295,54 @@ export const SkillsColumn = () => {
       <div className="accordion-section">
         <button className={`accordion-header ${openSections.spells ? 'open' : ''}`} onClick={() => toggleSection('spells')}>
           <span className="accordion-icon">{openSections.spells ? '▼' : '▶'}</span>
-          Spells
+          Spells ({selectedSpells.length})
         </button>
         {openSections.spells && (
           <div className="accordion-body">
-            <div className="placeholder-section">
-              <p className="placeholder-text">No spells prepared.</p>
-              <div className="spell-placeholder">
-                <div className="spell-item">
-                  <span className="spell-level">0</span>
-                  <span className="spell-name">Detect Magic</span>
+            <div className="picker-section">
+              {/* Selected spells */}
+              {selectedSpellDefs.length > 0 ? (
+                <div className="selected-items">
+                  {selectedSpellDefs.map(spell => {
+                    const lvl = currentClass ? spell.classLevels[currentClass.toLowerCase()] : Object.values(spell.classLevels)[0];
+                    return (
+                      <div key={spell.id} className="selected-item spell-selected" title={spell.summary}>
+                        <span className="spell-level-badge">{lvl ?? '?'}</span>
+                        <span className="item-name">{spell.name}</span>
+                        <span className="item-tag school-tag">{spell.school}</span>
+                        <button className="remove-btn" onClick={() => removeSpell(spell.id)} title="Remove spell">×</button>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="spell-item">
-                  <span className="spell-level">1</span>
-                  <span className="spell-name">Magic Missile</span>
-                </div>
-                <div className="spell-item disabled">
-                  <span className="spell-level">1</span>
-                  <span className="spell-name">Shield</span>
-                </div>
+              ) : (
+                <p className="empty-text">No spells selected.</p>
+              )}
+
+              {/* Search / add */}
+              <div className="picker-search">
+                <input
+                  type="text"
+                  placeholder={currentClass ? `Search ${classDef?.name || ''} spells…` : 'Select a class first, or search all spells…'}
+                  value={spellSearch}
+                  onChange={e => setSpellSearch(e.target.value)}
+                  className="picker-input"
+                />
+                {filteredSpells.length > 0 && (
+                  <ul className="picker-dropdown">
+                    {filteredSpells.map(spell => {
+                      const lvl = currentClass ? spell.classLevels[currentClass.toLowerCase()] : Object.values(spell.classLevels)[0];
+                      return (
+                        <li key={spell.id} className="picker-option" onClick={() => addSpell(spell.id)} title={spell.summary}>
+                          <span className="spell-level-badge small">{lvl ?? '?'}</span>
+                          <span className="option-name">{spell.name}</span>
+                          <span className="item-tag school-tag">{spell.school}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
-              <p className="placeholder-hint">Spell management will be available in a future update.</p>
             </div>
           </div>
         )}

@@ -43,7 +43,7 @@ module DungeonMaster
     def self.dm_system_prompt(adventure, config)
       story         = adventure.story_state.story
       current_state = adventure.story_state
-      snapshot      = adventure.character_snapshot
+      sheet         = adventure.adventure_sheets.first # TODO: handle multiple sheets
       all_stages    = story.story_states.kept.order(position: :asc)
 
       stage_list = all_stages.map.with_index do |s, i|
@@ -72,13 +72,14 @@ module DungeonMaster
         #{current_state.description}
 
         === PLAYER CHARACTER ===
-        Name: #{snapshot['name']}
-        Race: #{snapshot['race'] || 'Unknown'}
-        Class: #{snapshot['character_class'] || 'Unknown'}
-        STR: #{snapshot['strength']}, DEX: #{snapshot['dexterity']}, CON: #{snapshot['constitution']}
-        INT: #{snapshot['intelligence']}, WIS: #{snapshot['wisdom']}, CHA: #{snapshot['charisma']}
-        HP: #{adventure.character_hp}/#{adventure.character_max_hp}
-        Gold: #{adventure.character_gold}
+        Name: #{sheet&.name || 'Unknown'}
+        Race: #{sheet&.race || 'Unknown'}
+        Class: #{sheet&.character_class || 'Unknown'}
+        Level: #{sheet&.level || 1}
+        STR: #{sheet&.strength}, DEX: #{sheet&.dexterity}, CON: #{sheet&.constitution}
+        INT: #{sheet&.intelligence}, WIS: #{sheet&.wisdom}, CHA: #{sheet&.charisma}
+        HP: #{sheet&.hp}/#{sheet&.max_hp}
+        Gold: #{sheet&.gold}
 
         === INSTRUCTIONS ===
         - Narrate the result of the player's action in the context of the current story stage.

@@ -1,8 +1,13 @@
+export interface SheetDetails {
+  feats?: string[]   // feat IDs
+  spells?: string[]  // spell IDs
+}
+
 export interface Sheet {
   id: number
   name: string
   description: string | null
-  details: Record<string, any> | null
+  details: SheetDetails | null
   strength: number
   intelligence: number
   dexterity: number
@@ -13,6 +18,7 @@ export interface Sheet {
   racial_bonus_attribute: string | null
   character_class: string | null
   subclass: string | null
+  level: number
   user_id: number
   created_at: string
   updated_at: string
@@ -48,9 +54,12 @@ export interface AdminStory {
   updated_at: string
 }
 
-export interface CharacterSnapshot {
+export interface AdventureSheet {
+  id: number
+  sheet_id: number | null
   name: string
   description: string | null
+  details: SheetDetails | null
   strength: number
   intelligence: number
   dexterity: number
@@ -60,18 +69,20 @@ export interface CharacterSnapshot {
   race: string | null
   racial_bonus_attribute: string | null
   character_class: string | null
+  subclass: string | null
+  level: number
+  gold: number
+  hp: number
+  max_hp: number
+  items: string | null
+  effects: string | null
 }
 
 export interface Adventure {
   id: number
-  character_snapshot: CharacterSnapshot
+  adventure_sheet: AdventureSheet
   story_state: StoryState
   story: Story
-  character_gold: number
-  character_hp: number
-  character_max_hp: number
-  character_effects: string | null
-  character_items: string | null
 }
 
 export interface AdventureSummary {

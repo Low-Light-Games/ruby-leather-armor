@@ -38,6 +38,12 @@ interface SheetsContextType {
   setCurrentFlexibleBonus: Dispatch<SetStateAction<AttributeType | null>>;
   currentClass: string | null;
   setCurrentClass: Dispatch<SetStateAction<string | null>>;
+  currentLevel: number;
+  setCurrentLevel: Dispatch<SetStateAction<number>>;
+  selectedFeats: string[];
+  setSelectedFeats: Dispatch<SetStateAction<string[]>>;
+  selectedSpells: string[];
+  setSelectedSpells: Dispatch<SetStateAction<string[]>>;
 }
 
 const SheetsContext = createContext<SheetsContextType | undefined>(
@@ -51,6 +57,9 @@ export const SheetsProvider = ({ children }: { children: ReactNode }) => {
   const [currentRace, setCurrentRace] = useState<string | null>(null);
   const [currentFlexibleBonus, setCurrentFlexibleBonus] = useState<AttributeType | null>(null);
   const [currentClass, setCurrentClass] = useState<string | null>(null);
+  const [currentLevel, setCurrentLevel] = useState<number>(1);
+  const [selectedFeats, setSelectedFeats] = useState<string[]>([]);
+  const [selectedSpells, setSelectedSpells] = useState<string[]>([]);
 
   const race = useMemo(() => currentRace ? getRaceById(currentRace) : undefined, [currentRace]);
 
@@ -82,6 +91,12 @@ export const SheetsProvider = ({ children }: { children: ReactNode }) => {
     setCurrentFlexibleBonus,
     currentClass,
     setCurrentClass,
+    currentLevel,
+    setCurrentLevel,
+    selectedFeats,
+    setSelectedFeats,
+    selectedSpells,
+    setSelectedSpells,
   };
 
   return (

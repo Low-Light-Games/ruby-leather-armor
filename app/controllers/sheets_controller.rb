@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class SheetsController < ApplicationController
   before_action :set_sheet, only: [:show, :update, :destroy]
   before_action :authorize_sheet, only: [:show, :update, :destroy]
@@ -16,8 +18,9 @@ class SheetsController < ApplicationController
 
   def create
     @sheet = current_user.sheets.build(sheet_params)
+    merge_details!(@sheet)
     authorize(@sheet)
-    
+
     if @sheet.save
       render json: @sheet, status: :created
     else
@@ -30,6 +33,7 @@ class SheetsController < ApplicationController
   end
 
   def update
+    merge_details!(@sheet)
     if @sheet.update(sheet_params)
       render json: @sheet
     else
@@ -53,6 +57,21 @@ class SheetsController < ApplicationController
   end
 
   def sheet_params
-    params.require(:sheet).permit(:name, :description, :strength, :intelligence, :dexterity, :constitution, :wisdom, :charisma, :race, :racial_bonus_attribute, :character_class, :subclass)
+    params.require(:sheet).permit(
+      :name, :description, :strength, :intelligence, :dexterity,
+      :constitution, :wisdom, :charisma, :race, :racial_bonus_attribute,
+      :character_class, :subclass, :level
+    )
+  end
+
+  # Merge feat_ids and spell_ids into the details JSON column
+  def merge_details!(sheet)
+    sheet_data = params[:sheet] || {}
+    details = (sheet.details || {}).dup
+
+    details['feats']  = Array(sheet_data[:feat_ids]).map(&:to_s)  if sheet_data.key?(:feat_ids)
+    details['spells'] = Array(sheet_data[:spell_ids]).map(&:to_s) if sheet_data.key?(:spell_ids)
+
+    sheet.details = details
   end
 end

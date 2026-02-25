@@ -76,7 +76,10 @@ export const SheetList = () => {
         <ul className="sheet-list">
           {sheets.map((character: Sheet) => (
             <li key={character.id} className="sheet-list-item">
-              <span className="sheet-name">{character.name}</span>
+              <span className="sheet-name">
+                {character.name}
+                {character.level > 1 && <span className="sheet-level"> Lv {character.level}</span>}
+              </span>
               <div className="sheet-actions">
                 <button 
                   onClick={() => handleEdit(character)}

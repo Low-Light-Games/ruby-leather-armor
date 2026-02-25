@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_24_290001) do
+ActiveRecord::Schema[7.1].define(version: 2026_02_25_300004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -26,19 +26,39 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_24_290001) do
     t.index ["adventure_id"], name: "index_adventure_messages_on_adventure_id"
   end
 
-  create_table "adventures", force: :cascade do |t|
-    t.bigint "sheet_id", null: false
-    t.bigint "story_state_id", null: false
-    t.text "character_effects"
-    t.integer "character_gold", default: 0, null: false
-    t.text "character_items"
+  create_table "adventure_sheets", force: :cascade do |t|
+    t.bigint "adventure_id", null: false
+    t.bigint "sheet_id"
+    t.string "name", null: false
+    t.text "description"
+    t.integer "strength", null: false
+    t.integer "intelligence", null: false
+    t.integer "dexterity", null: false
+    t.integer "constitution", null: false
+    t.integer "wisdom", null: false
+    t.integer "charisma", null: false
+    t.string "race"
+    t.string "racial_bonus_attribute"
+    t.string "character_class"
+    t.string "subclass"
+    t.integer "level", default: 1, null: false
+    t.json "details"
+    t.integer "gold", default: 0, null: false
+    t.integer "hp", default: 0, null: false
+    t.integer "max_hp", default: 0, null: false
+    t.text "items"
+    t.text "effects"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.json "character_snapshot", default: {}, null: false
+    t.index ["adventure_id"], name: "index_adventure_sheets_on_adventure_id"
+    t.index ["sheet_id"], name: "index_adventure_sheets_on_sheet_id"
+  end
+
+  create_table "adventures", force: :cascade do |t|
+    t.bigint "story_state_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
-    t.integer "character_hp", default: 0, null: false
-    t.integer "character_max_hp", default: 0, null: false
-    t.index ["sheet_id"], name: "index_adventures_on_sheet_id"
     t.index ["story_state_id"], name: "index_adventures_on_story_state_id"
     t.index ["user_id"], name: "index_adventures_on_user_id"
   end
@@ -92,6 +112,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_24_290001) do
     t.string "racial_bonus_attribute"
     t.string "character_class"
     t.string "subclass"
+    t.integer "level", default: 1, null: false
     t.index ["user_id"], name: "index_sheets_on_user_id"
   end
 
@@ -126,7 +147,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_24_290001) do
   end
 
   add_foreign_key "adventure_messages", "adventures"
-  add_foreign_key "adventures", "sheets"
+  add_foreign_key "adventure_sheets", "adventures"
+  add_foreign_key "adventure_sheets", "sheets"
   add_foreign_key "adventures", "story_states"
   add_foreign_key "adventures", "users"
   add_foreign_key "ai_logs", "adventures"
