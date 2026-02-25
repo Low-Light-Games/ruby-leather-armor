@@ -3,10 +3,12 @@ import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../Navbar'
 import Login from '../Login'
 import AdventureChat from '../AdventureChat'
+import RollResultModal, { RollResultDisplay } from '../RollResultModal'
 import { Adventure, AttributeType } from '../../types'
 import { PATHFINDER_SKILLS, abilityModifier } from '../../rules/pathfinder_skills'
 import { getRaceById, computeRacialModifiers } from '../../rules/pathfinder_races'
 import { getClassById } from '../../rules/pathfinder_classes'
+import { rollD20 } from '../../rules/dice'
 import './AdventurePlay.scss'
 
 interface AdventurePlayProps {
@@ -49,6 +51,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showSection, setShowSection] = useState<'attributes' | 'skills'>('attributes')
+  const [rollDisplay, setRollDisplay] = useState<RollResultDisplay | null>(null)
 
   const loadAdventure = useCallback(() => {
     if (!user) return
@@ -116,8 +119,14 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
     // BAB
     const bab = classDef ? baseBAB(classDef.bab) : 0
 
-    // AC = 10 + DEX mod + size mod (no armor yet)
+    // Size modifier: Small creatures get +1 to attack and AC
     const sizeMod = race?.size === 'Small' ? 1 : 0
+
+    // Attack bonuses
+    const meleeAttack = bab + mods.strength + sizeMod
+    const rangedAttack = bab + mods.dexterity + sizeMod
+
+    // AC = 10 + DEX mod + size mod (no armor yet)
     const ac = 10 + mods.dexterity + sizeMod
 
     // Speed
@@ -153,6 +162,8 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
       reflex,
       will,
       bab,
+      meleeAttack,
+      rangedAttack,
       ac,
       speed,
       hitDie,
@@ -161,6 +172,55 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
       className: classDef?.name ?? null,
     }
   }, [adventure])
+
+  // ---- Roll handlers ----
+
+  const doRoll = useCallback((label: string, modifier: number, modifierLabel?: string) => {
+    const result = rollD20(modifier)
+    setRollDisplay({ label, result, modifierLabel })
+  }, [])
+
+  const rollMeleeAttack = useCallback(() => {
+    if (!derivedStats) return
+    doRoll('Melee Attack', derivedStats.meleeAttack, `BAB ${formatMod(derivedStats.bab)} + STR ${formatMod(derivedStats.mods.strength)}`)
+  }, [derivedStats, doRoll])
+
+  const rollRangedAttack = useCallback(() => {
+    if (!derivedStats) return
+    doRoll('Ranged Attack', derivedStats.rangedAttack, `BAB ${formatMod(derivedStats.bab)} + DEX ${formatMod(derivedStats.mods.dexterity)}`)
+  }, [derivedStats, doRoll])
+
+  const rollFort = useCallback(() => {
+    if (!derivedStats) return
+    doRoll('Fortitude Save', derivedStats.fortitude, `Fort ${formatMod(derivedStats.fortitude)}`)
+  }, [derivedStats, doRoll])
+
+  const rollRef = useCallback(() => {
+    if (!derivedStats) return
+    doRoll('Reflex Save', derivedStats.reflex, `Ref ${formatMod(derivedStats.reflex)}`)
+  }, [derivedStats, doRoll])
+
+  const rollWill = useCallback(() => {
+    if (!derivedStats) return
+    doRoll('Will Save', derivedStats.will, `Will ${formatMod(derivedStats.will)}`)
+  }, [derivedStats, doRoll])
+
+  const rollInitiative = useCallback(() => {
+    if (!derivedStats) return
+    doRoll('Initiative', derivedStats.mods.dexterity, `DEX ${formatMod(derivedStats.mods.dexterity)}`)
+  }, [derivedStats, doRoll])
+
+  const rollAbility = useCallback((attr: AttributeType) => {
+    if (!derivedStats) return
+    const mod = derivedStats.mods[attr]
+    doRoll(`${ABILITY_ABBR[attr]} Check`, mod, `${ABILITY_ABBR[attr]} ${formatMod(mod)}`)
+  }, [derivedStats, doRoll])
+
+  const rollSkill = useCallback((skillName: string, total: number) => {
+    doRoll(`${skillName} Check`, total, `Skill ${formatMod(total)}`)
+  }, [doRoll])
+
+  // ---- Render ----
 
   if (authLoading) {
     return <div className="app">Loading...</div>
@@ -225,18 +285,21 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           </div>
 
           <div className="saves-row">
-            <div className="save-item">
+            <button className="save-item rollable" onClick={rollFort} title="Roll Fortitude Save">
               <span className="save-label">Fort</span>
               <span className="save-value">{formatMod(stats.fortitude)}</span>
-            </div>
-            <div className="save-item">
+              <span className="roll-dice-hint">🎲</span>
+            </button>
+            <button className="save-item rollable" onClick={rollRef} title="Roll Reflex Save">
               <span className="save-label">Ref</span>
               <span className="save-value">{formatMod(stats.reflex)}</span>
-            </div>
-            <div className="save-item">
+              <span className="roll-dice-hint">🎲</span>
+            </button>
+            <button className="save-item rollable" onClick={rollWill} title="Roll Will Save">
               <span className="save-label">Will</span>
               <span className="save-value">{formatMod(stats.will)}</span>
-            </div>
+              <span className="roll-dice-hint">🎲</span>
+            </button>
           </div>
 
           <div className="adventure-gold">
@@ -282,6 +345,14 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
                       <strong>{final}</strong>
                     </span>
                     <span className="attr-mod">{formatMod(mod)}</span>
+                    <button
+                      className="roll-dice-btn"
+                      onClick={() => rollAbility(attr)}
+                      title={`Roll ${ABILITY_ABBR[attr]} Check`}
+                      aria-label={`Roll ${ABILITY_ABBR[attr]} Check`}
+                    >
+                      🎲
+                    </button>
                   </div>
                 )
               })}
@@ -303,6 +374,14 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
                   <span className={`skill-mod ${skill.total >= 0 ? 'positive' : 'negative'}`}>
                     {formatMod(skill.total)}
                   </span>
+                  <button
+                    className="roll-dice-btn"
+                    onClick={() => rollSkill(skill.name, skill.total)}
+                    title={`Roll ${skill.name} Check`}
+                    aria-label={`Roll ${skill.name} Check`}
+                  >
+                    🎲
+                  </button>
                 </div>
               ))}
             </div>
@@ -311,12 +390,9 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           {/* Roll buttons */}
           <div className="roll-buttons">
             <h3>Actions</h3>
-            <button className="roll-btn attack" onClick={() => {}}>🎯 Roll Attack</button>
-            <button className="roll-btn save-fort" onClick={() => {}}>🛡️ Roll Fort Save</button>
-            <button className="roll-btn save-ref" onClick={() => {}}>⚡ Roll Ref Save</button>
-            <button className="roll-btn save-will" onClick={() => {}}>🧠 Roll Will Save</button>
-            <button className="roll-btn initiative" onClick={() => {}}>⏱️ Roll Initiative</button>
-            <button className="roll-btn skill-check" onClick={() => {}}>🎲 Roll Skill Check</button>
+            <button className="roll-btn attack" onClick={rollMeleeAttack}>⚔️ Melee Attack</button>
+            <button className="roll-btn ranged" onClick={rollRangedAttack}>🏹 Ranged Attack</button>
+            <button className="roll-btn initiative" onClick={rollInitiative}>⏱️ Roll Initiative</button>
           </div>
         </div>
 
@@ -334,6 +410,9 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           <p className="story-stage">{story_state.description}</p>
         </div>
       </div>
+
+      {/* Roll Result Modal */}
+      <RollResultModal roll={rollDisplay} onClose={() => setRollDisplay(null)} />
     </div>
   )
 }

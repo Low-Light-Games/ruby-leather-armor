@@ -90,6 +90,7 @@
         background: white;
         border-radius: 4px;
         border: 1px solid #e9ecef;
+        position: relative;
 
         .save-label {
           font-size: 10px;
@@ -104,6 +105,31 @@
           font-weight: 700;
           font-size: 15px;
           color: #007bff;
+        }
+
+        .roll-dice-hint {
+          font-size: 10px;
+          opacity: 0;
+          transition: opacity 0.15s;
+          margin-top: 2px;
+        }
+
+        &.rollable {
+          cursor: pointer;
+          transition: background-color 0.15s, border-color 0.15s;
+
+          &:hover {
+            background-color: #e9ecef;
+            border-color: #adb5bd;
+
+            .roll-dice-hint {
+              opacity: 1;
+            }
+          }
+
+          &:active {
+            background-color: #dee2e6;
+          }
         }
       }
     }
@@ -169,6 +195,28 @@
       }
     }
 
+    /* Inline dice button shared style */
+    .roll-dice-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 2px;
+      line-height: 1;
+      opacity: 0.35;
+      transition: opacity 0.15s, transform 0.15s;
+      flex-shrink: 0;
+
+      &:hover {
+        opacity: 1;
+        transform: scale(1.25);
+      }
+
+      &:active {
+        transform: scale(1.1);
+      }
+    }
+
     /* Attributes list */
     .attributes-list {
       display: flex;
@@ -184,6 +232,10 @@
         background: white;
         border-radius: 4px;
         font-size: 13px;
+
+        &:hover .roll-dice-btn {
+          opacity: 0.7;
+        }
 
         .attr-label {
           font-weight: 700;
@@ -247,11 +299,21 @@
           opacity: 0.6;
         }
 
+        &:hover {
+          background: #f0f4ff;
+
+          .roll-dice-btn {
+            opacity: 0.7;
+          }
+        }
+
         .skill-name {
           display: flex;
           align-items: center;
           gap: 4px;
           color: #333;
+          flex: 1;
+          min-width: 0;
 
           .badge-t {
             display: inline-flex;
@@ -264,6 +326,7 @@
             color: white;
             font-size: 9px;
             font-weight: 700;
+            flex-shrink: 0;
           }
         }
 
@@ -271,6 +334,9 @@
           font-family: monospace;
           font-weight: 700;
           font-size: 12px;
+          width: 28px;
+          text-align: right;
+          flex-shrink: 0;
 
           &.positive {
             color: #28a745;
@@ -325,24 +391,12 @@
           border-left: 3px solid #dc3545;
         }
 
-        &.save-fort {
-          border-left: 3px solid #28a745;
-        }
-
-        &.save-ref {
-          border-left: 3px solid #ffc107;
-        }
-
-        &.save-will {
-          border-left: 3px solid #6f42c1;
+        &.ranged {
+          border-left: 3px solid #fd7e14;
         }
 
         &.initiative {
           border-left: 3px solid #17a2b8;
-        }
-
-        &.skill-check {
-          border-left: 3px solid #007bff;
         }
       }
     }
