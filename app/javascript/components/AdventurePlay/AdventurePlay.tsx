@@ -4,15 +4,11 @@ import Navbar from '../Navbar'
 import Login from '../Login'
 import AdventureChat from '../AdventureChat'
 import RollResultModal, { RollResultDisplay } from '../RollResultModal'
-import { Adventure, AttributeType } from '../../types'
-import { PATHFINDER_SKILLS, abilityModifier } from '../../rules/pathfinder_skills'
-import { getRaceById, computeRacialModifiers } from '../../rules/pathfinder_races'
-import { getClassById } from '../../rules/pathfinder_classes'
+import { Adventure, AttributeType, DerivedStats } from '../../types'
 import { rollD20 } from '../../rules/dice'
-import { touchAC, flatFootedAC, combatManeuverBonus, combatManeuverDefense } from '../../rules/pathfinder_combat'
-import { getFeatById, computeFeatSkillBonuses, computeFeatStatBonuses, parseFeatEntry, featDisplayName } from '../../rules/pathfinder_feats'
-import { getSpellById, getCastingStyle, getSpellsForClass, ALL_SPELLS, hasSlotForSpell } from '../../rules/pathfinder_spells'
-import type { SpellDefinition } from '../../rules/pathfinder_spells'
+import { getFeatById, featDisplayName } from '../../rules/pathfinder_feats'
+import { getSpellById, getCastingStyle, getSpellsForClass, getAllSpells, hasSlotForSpell } from '../../rules/pathfinder_spells'
+import type { SpellDefinition } from '../../rules/pathfinder_spells_types'
 import './AdventurePlay.scss'
 
 interface AdventurePlayProps {
@@ -32,20 +28,6 @@ const ABILITY_ABBR: Record<string, string> = {
 
 function formatMod(mod: number): string {
   return mod >= 0 ? `+${mod}` : `${mod}`
-}
-
-/**
- * Level-1 base save: Good = +2, Poor = +0
- */
-function baseSave(good: boolean): number {
-  return good ? 2 : 0
-}
-
-/**
- * Level-1 BAB: Full = +1, 3/4 = +0, 1/2 = +0
- */
-function baseBAB(bab: string): number {
-  return bab === 'full' ? 1 : 0
 }
 
 export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
@@ -90,126 +72,9 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
     loadAdventure()
   }, [loadAdventure])
 
-  // Compute derived stats from the adventure sheet
-  const derivedStats = useMemo(() => {
-    if (!adventure) return null
-
-    const sheet = adventure.adventure_sheet
-    const race = sheet.race ? getRaceById(sheet.race) : undefined
-    const classDef = sheet.character_class ? getClassById(sheet.character_class) : undefined
-
-    // Compute racial modifiers
-    const racialMods = computeRacialModifiers(
-      race,
-      (sheet.racial_bonus_attribute as AttributeType) || null,
-    )
-
-    // Final ability scores
-    const finalScores: Record<AttributeType, number> = {} as any
-    for (const attr of ATTRIBUTE_LABELS) {
-      finalScores[attr] = sheet[attr] + (racialMods[attr] || 0)
-    }
-
-    // Ability modifiers
-    const mods: Record<AttributeType, number> = {} as any
-    for (const attr of ATTRIBUTE_LABELS) {
-      mods[attr] = abilityModifier(finalScores[attr])
-    }
-
-    // Feat bonuses (all types)
-    const featEntries = sheet.details?.feats || []
-    const featSkillBonuses = computeFeatSkillBonuses(featEntries)
-    const featStats = computeFeatStatBonuses(featEntries, sheet.level)
-
-    // Saving throws (base + ability + feat)
-    const fortGood = classDef ? classDef.goodSaves.includes('fort') : false
-    const refGood = classDef ? classDef.goodSaves.includes('ref') : false
-    const willGood = classDef ? classDef.goodSaves.includes('will') : false
-
-    const fortitude = baseSave(fortGood) + mods.constitution + featStats.fortSave
-    const reflex = baseSave(refGood) + mods.dexterity + featStats.refSave
-    const will = baseSave(willGood) + mods.wisdom + featStats.willSave
-
-    // BAB
-    const bab = classDef ? baseBAB(classDef.bab) : 0
-
-    // Size modifier: Small creatures get +1 to attack and AC
-    const sizeMod = race?.size === 'Small' ? 1 : 0
-
-    // Attack bonuses (including feat bonuses)
-    const meleeAttack = bab + mods.strength + sizeMod + featStats.meleeAttack
-    const rangedAttack = bab + mods.dexterity + sizeMod + featStats.rangedAttack
-
-    // AC = 10 + DEX mod + size mod + feat bonus (no armor yet)
-    const ac = 10 + mods.dexterity + sizeMod + featStats.ac
-
-    // Touch AC, Flat-Footed AC, CMB, CMD
-    const size = race?.size ?? 'Medium'
-    const tAC = touchAC(mods.dexterity, size) + featStats.ac
-    const ffAC = flatFootedAC(size) // Dodge bonus doesn't apply when flat-footed
-    const cmb = combatManeuverBonus(bab, mods.strength, size)
-    const cmd = combatManeuverDefense(bab, mods.strength, mods.dexterity, size)
-
-    // Initiative (including feat bonus)
-    const initiative = mods.dexterity + featStats.initiative
-
-    // Speed
-    const speed = race?.speed ?? 30
-
-    // Hit Die
-    const hitDie = classDef?.hitDie ?? 0
-
-    // HP bonus from feats (e.g. Toughness)
-    const hpBonus = featStats.hp
-
-    // Skills
-    const skills = PATHFINDER_SKILLS.map(skill => {
-      let total = abilityModifier(finalScores[skill.keyAbility])
-
-      // Racial skill bonuses
-      if (race) {
-        const raceBonus = race.skillBonuses.find(b => b.skill === skill.name)
-        if (raceBonus) total += raceBonus.bonus
-      }
-
-      // Feat skill bonuses
-      const featBonus = featSkillBonuses[skill.name] || 0
-      total += featBonus
-
-      return {
-        name: skill.name,
-        keyAbility: skill.keyAbility,
-        abilityAbbr: ABILITY_ABBR[skill.keyAbility],
-        trainedOnly: skill.trainedOnly,
-        featBonus,
-        total,
-      }
-    })
-
-    return {
-      finalScores,
-      mods,
-      racialMods,
-      fortitude,
-      reflex,
-      will,
-      bab,
-      meleeAttack,
-      rangedAttack,
-      ac,
-      tAC,
-      ffAC,
-      cmb,
-      cmd,
-      initiative,
-      speed,
-      hitDie,
-      hpBonus,
-      skills,
-      raceName: race?.name ?? null,
-      className: classDef?.name ?? null,
-    }
-  }, [adventure])
+  // Read server-computed derived stats from the adventure sheet.
+  // The backend CharacterStats::Calculator is the single source of truth.
+  const ds: DerivedStats | null = adventure?.adventure_sheet?.derived_stats ?? null
 
   // ---- Roll handlers ----
 
@@ -219,40 +84,40 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   }, [])
 
   const rollMeleeAttack = useCallback(() => {
-    if (!derivedStats) return
-    doRoll('Melee Attack', derivedStats.meleeAttack, `BAB ${formatMod(derivedStats.bab)} + STR ${formatMod(derivedStats.mods.strength)}`)
-  }, [derivedStats, doRoll])
+    if (!ds) return
+    doRoll('Melee Attack', ds.melee_attack, `BAB ${formatMod(ds.bab)} + STR ${formatMod(ds.mods.strength)}`)
+  }, [ds, doRoll])
 
   const rollRangedAttack = useCallback(() => {
-    if (!derivedStats) return
-    doRoll('Ranged Attack', derivedStats.rangedAttack, `BAB ${formatMod(derivedStats.bab)} + DEX ${formatMod(derivedStats.mods.dexterity)}`)
-  }, [derivedStats, doRoll])
+    if (!ds) return
+    doRoll('Ranged Attack', ds.ranged_attack, `BAB ${formatMod(ds.bab)} + DEX ${formatMod(ds.mods.dexterity)}`)
+  }, [ds, doRoll])
 
   const rollFort = useCallback(() => {
-    if (!derivedStats) return
-    doRoll('Fortitude Save', derivedStats.fortitude, `Fort ${formatMod(derivedStats.fortitude)}`)
-  }, [derivedStats, doRoll])
+    if (!ds) return
+    doRoll('Fortitude Save', ds.fort, `Fort ${formatMod(ds.fort)}`)
+  }, [ds, doRoll])
 
   const rollRef = useCallback(() => {
-    if (!derivedStats) return
-    doRoll('Reflex Save', derivedStats.reflex, `Ref ${formatMod(derivedStats.reflex)}`)
-  }, [derivedStats, doRoll])
+    if (!ds) return
+    doRoll('Reflex Save', ds.ref, `Ref ${formatMod(ds.ref)}`)
+  }, [ds, doRoll])
 
   const rollWill = useCallback(() => {
-    if (!derivedStats) return
-    doRoll('Will Save', derivedStats.will, `Will ${formatMod(derivedStats.will)}`)
-  }, [derivedStats, doRoll])
+    if (!ds) return
+    doRoll('Will Save', ds.will, `Will ${formatMod(ds.will)}`)
+  }, [ds, doRoll])
 
   const rollInitiative = useCallback(() => {
-    if (!derivedStats) return
-    doRoll('Initiative', derivedStats.initiative, `Init ${formatMod(derivedStats.initiative)}`)
-  }, [derivedStats, doRoll])
+    if (!ds) return
+    doRoll('Initiative', ds.initiative, `Init ${formatMod(ds.initiative)}`)
+  }, [ds, doRoll])
 
   const rollAbility = useCallback((attr: AttributeType) => {
-    if (!derivedStats) return
-    const mod = derivedStats.mods[attr]
+    if (!ds) return
+    const mod = ds.mods[attr]
     doRoll(`${ABILITY_ABBR[attr]} Check`, mod, `${ABILITY_ABBR[attr]} ${formatMod(mod)}`)
-  }, [derivedStats, doRoll])
+  }, [ds, doRoll])
 
   const rollSkill = useCallback((skillName: string, total: number) => {
     doRoll(`${skillName} Check`, total, `Skill ${formatMod(total)}`)
@@ -261,7 +126,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   // ─── Spellbook management (hooks must be above early returns) ─
 
   const spellbookSearchResults = useMemo(() => {
-    if (!adventure || !derivedStats) return []
+    if (!adventure || !ds) return []
     const sheet = adventure.adventure_sheet
     const castStyle = getCastingStyle(sheet.character_class)
     if (castStyle !== 'spellbook' || !spellbookSearch.trim()) return []
@@ -269,7 +134,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
     const term = spellbookSearch.toLowerCase().trim()
     const classSpells = sheet.character_class
       ? getSpellsForClass(sheet.character_class, 9)
-      : ALL_SPELLS
+      : getAllSpells()
     return classSpells
       .filter(s => !currentSpellIds.includes(s.id))
       .filter(s => s.name.toLowerCase().includes(term) || s.school.includes(term))
@@ -277,11 +142,11 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
         spell,
         hasSlot: hasSlotForSpell(
           sheet.character_class, sheet.level,
-          derivedStats.finalScores.intelligence, spell, currentSpellIds,
+          ds.final_scores.intelligence, spell, currentSpellIds,
         ),
       }))
       .slice(0, 8)
-  }, [adventure, derivedStats, spellbookSearch])
+  }, [adventure, ds, spellbookSearch])
 
   const addSpellToSpellbook = useCallback(async (spell: SpellDefinition) => {
     if (!adventure) return
@@ -327,7 +192,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
     )
   }
 
-  if (error || !adventure || !derivedStats) {
+  if (error || !adventure || !ds) {
     return (
       <div className="app">
         <Navbar />
@@ -337,7 +202,6 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   }
 
   const { adventure_sheet: sheet, story, story_state } = adventure
-  const stats = derivedStats
   const feats = sheet.details?.feats || []
   const castStyle = getCastingStyle(sheet.character_class)
 
@@ -359,9 +223,9 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
         {/* LEFT COLUMN — Character */}
         <div className="adventure-column character-column">
           <h2>{sheet.name}</h2>
-          {(stats.raceName || stats.className) && (
+          {(sheet.race || sheet.character_class) && (
             <p className="char-subtitle">
-              {[stats.raceName, stats.className].filter(Boolean).join(' ')}
+              {[sheet.race, sheet.character_class].filter(Boolean).join(' ')}
               {sheet.level > 1 && ` (Lv ${sheet.level})`}
             </p>
           )}
@@ -370,52 +234,52 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           <div className="combat-stats">
             <div className="combat-stat">
               <span className="stat-label">AC</span>
-              <span className="stat-value">{stats.ac}</span>
+              <span className="stat-value">{ds.ac}</span>
             </div>
             <div className="combat-stat">
               <span className="stat-label">Touch AC</span>
-              <span className="stat-value">{stats.tAC}</span>
+              <span className="stat-value">{ds.touch_ac}</span>
             </div>
             <div className="combat-stat">
               <span className="stat-label">Flat-Foot</span>
-              <span className="stat-value">{stats.ffAC}</span>
+              <span className="stat-value">{ds.flat_footed_ac}</span>
             </div>
             <div className="combat-stat">
               <span className="stat-label">HP</span>
-              <span className="stat-value">{sheet.hp} / {sheet.max_hp + (stats.hpBonus || 0)}</span>
+              <span className="stat-value">{sheet.hp} / {ds.max_hp}</span>
             </div>
             <div className="combat-stat">
               <span className="stat-label">BAB</span>
-              <span className="stat-value">{formatMod(stats.bab)}</span>
+              <span className="stat-value">{formatMod(ds.bab)}</span>
             </div>
             <div className="combat-stat">
               <span className="stat-label">CMB</span>
-              <span className="stat-value">{formatMod(stats.cmb)}</span>
+              <span className="stat-value">{formatMod(ds.cmb)}</span>
             </div>
             <div className="combat-stat">
               <span className="stat-label">CMD</span>
-              <span className="stat-value">{stats.cmd}</span>
+              <span className="stat-value">{ds.cmd}</span>
             </div>
             <div className="combat-stat">
               <span className="stat-label">Speed</span>
-              <span className="stat-value">{stats.speed} ft</span>
+              <span className="stat-value">{ds.speed} ft</span>
             </div>
           </div>
 
           <div className="saves-row">
             <button className="save-item rollable" onClick={rollFort} title="Roll Fortitude Save">
               <span className="save-label">Fort</span>
-              <span className="save-value">{formatMod(stats.fortitude)}</span>
+              <span className="save-value">{formatMod(ds.fort)}</span>
               <span className="roll-dice-hint">🎲</span>
             </button>
             <button className="save-item rollable" onClick={rollRef} title="Roll Reflex Save">
               <span className="save-label">Ref</span>
-              <span className="save-value">{formatMod(stats.reflex)}</span>
+              <span className="save-value">{formatMod(ds.ref)}</span>
               <span className="roll-dice-hint">🎲</span>
             </button>
             <button className="save-item rollable" onClick={rollWill} title="Roll Will Save">
               <span className="save-label">Will</span>
-              <span className="save-value">{formatMod(stats.will)}</span>
+              <span className="save-value">{formatMod(ds.will)}</span>
               <span className="roll-dice-hint">🎲</span>
             </button>
           </div>
@@ -441,9 +305,9 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
                   <div className="attributes-list">
                     {ATTRIBUTE_LABELS.map(attr => {
                       const base = sheet[attr]
-                      const racial = stats.racialMods[attr]
-                      const final = stats.finalScores[attr]
-                      const mod = stats.mods[attr]
+                      const final = ds.final_scores[attr] ?? base
+                      const racial = final - base
+                      const mod = ds.mods[attr] ?? 0
                       return (
                         <div key={attr} className="attribute-item">
                           <span className="attr-label">{ABILITY_ABBR[attr]}</span>
@@ -486,14 +350,14 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
               {showSkills && (
                 <div className="collapsible-body">
                   <div className="skills-list-adventure">
-                    {stats.skills.map(skill => (
+                    {ds.skills.map(skill => (
                       <div
                         key={skill.name}
-                        className={`skill-row ${skill.trainedOnly ? 'trained-only' : ''}`}
+                        className={`skill-row ${skill.trained_only ? 'trained-only' : ''}`}
                       >
                         <span className="skill-name">
                           {skill.name}
-                          {skill.trainedOnly && <span className="badge-t">T</span>}
+                          {skill.trained_only && <span className="badge-t">T</span>}
                         </span>
                         <span className={`skill-mod ${skill.total >= 0 ? 'positive' : 'negative'}`}>
                           {formatMod(skill.total)}

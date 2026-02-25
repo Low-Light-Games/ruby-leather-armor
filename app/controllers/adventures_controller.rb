@@ -49,7 +49,7 @@ class AdventuresController < ApplicationController
 
     if @adventure.save
       # Create adventure sheet — a full copy of the character for this adventure
-      @adventure.adventure_sheets.create!(
+      adv_sheet = @adventure.adventure_sheets.create!(
         sheet: sheet,
         name: sheet.name,
         description: sheet.description,
@@ -72,6 +72,17 @@ class AdventuresController < ApplicationController
         effects: nil
       )
 
+      # Copy feat selections from the original sheet
+      sheet.sheet_feats.each do |sf|
+        adv_sheet.adventure_sheet_feats.create!(feat_id: sf.feat_id, choice: sf.choice)
+      end
+
+      # Copy spell selections from the original sheet
+      sheet.sheet_spells.each do |ss|
+        adv_sheet.adventure_sheet_spells.create!(spell_id: ss.spell_id, storage_type: ss.storage_type)
+      end
+
+      adv_sheet.recompute_derived_stats!
       @adventure.reload
       render json: adventure_json(@adventure), status: :created
     else
@@ -105,13 +116,37 @@ class AdventuresController < ApplicationController
   end
 
   def adventure_json(adventure)
-    adv_sheet = adventure.adventure_sheets.first
+    adv_sheet = adventure.adventure_sheets
+                         .includes(:adventure_sheet_feats, :adventure_sheet_spells)
+                         .first
     {
       id: adventure.id,
-      adventure_sheet: adv_sheet&.as_json,
+      adventure_sheet: adventure_sheet_json(adv_sheet),
       story_state: adventure.story_state,
       story: adventure.story_state.story
     }
+  end
+
+  def adventure_sheet_json(adv_sheet)
+    return nil unless adv_sheet
+
+    base = adv_sheet.as_json
+
+    feats = adv_sheet.adventure_sheet_feats.map { |sf|
+      sf.choice ? "#{sf.feat_id}::#{sf.choice}" : sf.feat_id
+    }
+
+    known_spells = adv_sheet.adventure_sheet_spells.where(storage_type: "known").pluck(:spell_id)
+    spellbook_spells = adv_sheet.adventure_sheet_spells.where(storage_type: "spellbook").pluck(:spell_id)
+
+    # Merge into details for backward compatibility with frontend
+    details = (base["details"] || {}).dup
+    details["feats"] = feats
+    details["knownSpells"] = known_spells
+    details["spellbook"] = spellbook_spells
+    base["details"] = details
+
+    base
   end
 
   # Compute starting HP: max hit die + CON modifier at level 1,

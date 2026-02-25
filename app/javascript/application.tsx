@@ -11,6 +11,7 @@ import AdventureCreation from "./components/AdventureCreation";
 import AdventurePlay from "./components/AdventurePlay";
 import AdminStoryEditor from "./components/AdminStoryEditor";
 import { AuthProvider } from "./contexts/AuthContext";
+import { GameDataProvider } from "./contexts/GameDataContext";
 
 // Import Stimulus controllers
 import SheetsListController from "./controllers/sheets_list_controller";
@@ -29,7 +30,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const root = createRoot(reactRoot);
     root.render(
       <React.StrictMode>
-        <App />
+        <GameDataProvider>
+          <App />
+        </GameDataProvider>
       </React.StrictMode>
     );
   }
@@ -54,9 +57,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const root = createRoot(adventurePlayRoot);
     root.render(
       <React.StrictMode>
-        <AuthProvider>
-          <AdventurePlay adventureId={adventureId} />
-        </AuthProvider>
+        <GameDataProvider>
+          <AuthProvider>
+            <AdventurePlay adventureId={adventureId} />
+          </AuthProvider>
+        </GameDataProvider>
       </React.StrictMode>
     );
   }

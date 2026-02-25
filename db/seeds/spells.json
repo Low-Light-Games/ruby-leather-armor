@@ -1,0 +1,3083 @@
+[
+  {
+    "id": "resistance",
+    "name": "Resistance",
+    "school": "abjuration",
+    "classLevels": {
+      "bard": 0,
+      "cleric": 0,
+      "druid": 0,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S",
+      "M",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 minute",
+    "savingThrow": "Will negates (harmless)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "save_bonus",
+        "save": "all",
+        "bonus": 1,
+        "bonusType": "resistance"
+      }
+    ],
+    "summary": "Subject gains +1 resistance bonus on saves for 1 minute."
+  },
+  {
+    "id": "alarm",
+    "name": "Alarm",
+    "school": "abjuration",
+    "classLevels": {
+      "bard": 1,
+      "ranger": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "F",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "2 hours/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Wards an area (20-ft radius). Triggers mental or audible alarm when Tiny or larger creature enters."
+      }
+    ],
+    "summary": "Ward an area to alert you when creatures enter."
+  },
+  {
+    "id": "endure_elements",
+    "name": "Endure Elements",
+    "school": "abjuration",
+    "classLevels": {
+      "cleric": 1,
+      "druid": 1,
+      "paladin": 1,
+      "ranger": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "24 hours",
+    "savingThrow": "Will negates (harmless)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "immunity",
+        "target": "nonlethal damage from hot or cold environments (-50°F to 140°F)"
+      }
+    ],
+    "summary": "Subject protected from severe weather (hot and cold) for 24 hours."
+  },
+  {
+    "id": "hold_portal",
+    "name": "Hold Portal",
+    "school": "abjuration",
+    "classLevels": {
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V"
+    ],
+    "castingTime": "1 standard action",
+    "range": "medium",
+    "duration": "1 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Holds door/portal shut as if securely locked (adds +5 to DC to force open)."
+      }
+    ],
+    "summary": "Magically hold a door shut (+5 to break DC)."
+  },
+  {
+    "id": "protection_from_chaos",
+    "name": "Protection from Chaos",
+    "school": "abjuration",
+    "descriptors": [
+      "lawful"
+    ],
+    "classLevels": {
+      "cleric": 1,
+      "paladin": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 min/level",
+    "savingThrow": "Will negates (harmless)",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "deflection_ac",
+        "bonus": "2",
+        "bonusType": "deflection"
+      },
+      {
+        "type": "save_bonus",
+        "save": "all",
+        "bonus": 2,
+        "bonusType": "resistance",
+        "condition": "vs chaotic creatures"
+      },
+      {
+        "type": "immunity",
+        "target": "mental control (new save with +2 morale bonus) from chaotic creatures"
+      }
+    ],
+    "summary": "+2 deflection AC, +2 saves vs chaotic; blocks mental control from chaotic sources."
+  },
+  {
+    "id": "protection_from_evil",
+    "name": "Protection from Evil",
+    "school": "abjuration",
+    "descriptors": [
+      "good"
+    ],
+    "classLevels": {
+      "cleric": 1,
+      "paladin": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 min/level",
+    "savingThrow": "Will negates (harmless)",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "deflection_ac",
+        "bonus": "2",
+        "bonusType": "deflection"
+      },
+      {
+        "type": "save_bonus",
+        "save": "all",
+        "bonus": 2,
+        "bonusType": "resistance",
+        "condition": "vs evil creatures"
+      },
+      {
+        "type": "immunity",
+        "target": "mental control (new save with +2 morale bonus) from evil creatures"
+      }
+    ],
+    "summary": "+2 deflection AC, +2 saves vs evil; blocks mental control from evil sources."
+  },
+  {
+    "id": "protection_from_good",
+    "name": "Protection from Good",
+    "school": "abjuration",
+    "descriptors": [
+      "evil"
+    ],
+    "classLevels": {
+      "cleric": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 min/level",
+    "savingThrow": "Will negates (harmless)",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "deflection_ac",
+        "bonus": "2",
+        "bonusType": "deflection"
+      },
+      {
+        "type": "save_bonus",
+        "save": "all",
+        "bonus": 2,
+        "bonusType": "resistance",
+        "condition": "vs good creatures"
+      },
+      {
+        "type": "immunity",
+        "target": "mental control (new save with +2 morale bonus) from good creatures"
+      }
+    ],
+    "summary": "+2 deflection AC, +2 saves vs good; blocks mental control from good sources."
+  },
+  {
+    "id": "protection_from_law",
+    "name": "Protection from Law",
+    "school": "abjuration",
+    "descriptors": [
+      "chaotic"
+    ],
+    "classLevels": {
+      "cleric": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 min/level",
+    "savingThrow": "Will negates (harmless)",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "deflection_ac",
+        "bonus": "2",
+        "bonusType": "deflection"
+      },
+      {
+        "type": "save_bonus",
+        "save": "all",
+        "bonus": 2,
+        "bonusType": "resistance",
+        "condition": "vs lawful creatures"
+      },
+      {
+        "type": "immunity",
+        "target": "mental control (new save with +2 morale bonus) from lawful creatures"
+      }
+    ],
+    "summary": "+2 deflection AC, +2 saves vs lawful; blocks mental control from lawful sources."
+  },
+  {
+    "id": "remove_fear",
+    "name": "Remove Fear",
+    "school": "abjuration",
+    "classLevels": {
+      "bard": 1,
+      "cleric": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "10 minutes (or special)",
+    "savingThrow": "Will negates (harmless)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "save_bonus",
+        "save": "all",
+        "bonus": 4,
+        "bonusType": "morale",
+        "condition": "vs fear effects"
+      },
+      {
+        "type": "special",
+        "description": "If target is already under a fear effect, gets a new save with +4 morale bonus to suppress the fear."
+      }
+    ],
+    "summary": "+4 morale bonus vs fear. Suppresses existing fear effects (new save)."
+  },
+  {
+    "id": "sanctuary",
+    "name": "Sanctuary",
+    "school": "abjuration",
+    "classLevels": {
+      "cleric": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 round/level",
+    "savingThrow": "Will negates",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "special",
+        "description": "Any opponent attempting to directly attack the warded creature must make a Will save. On failure, the opponent cannot attack the creature for the duration. On success, the opponent can act normally. The spell ends if the warded creature attacks."
+      }
+    ],
+    "summary": "Opponents must save to attack warded creature. Ends if warded creature attacks."
+  },
+  {
+    "id": "shield",
+    "name": "Shield",
+    "school": "abjuration",
+    "classLevels": {
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "personal",
+    "duration": "1 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "ac_bonus",
+        "bonus": 4,
+        "bonusType": "shield"
+      },
+      {
+        "type": "immunity",
+        "target": "magic missiles"
+      }
+    ],
+    "summary": "+4 shield bonus to AC. Immune to magic missile."
+  },
+  {
+    "id": "shield_of_faith",
+    "name": "Shield of Faith",
+    "school": "abjuration",
+    "classLevels": {
+      "cleric": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 min/level",
+    "savingThrow": "Will negates (harmless)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "deflection_ac",
+        "bonus": "+2 (increases by 1 per 6 CL, max +5)",
+        "bonusType": "deflection"
+      }
+    ],
+    "summary": "+2 deflection bonus to AC (increases with caster level, max +5)."
+  },
+  {
+    "id": "acid_splash",
+    "name": "Acid Splash",
+    "school": "conjuration",
+    "subschool": "creation",
+    "descriptors": [
+      "acid"
+    ],
+    "classLevels": {
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "instantaneous",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "damage",
+        "dice": "1d3",
+        "damageType": "acid"
+      }
+    ],
+    "summary": "Ranged touch attack deals 1d3 acid damage."
+  },
+  {
+    "id": "create_water",
+    "name": "Create Water",
+    "school": "conjuration",
+    "subschool": "creation",
+    "descriptors": [
+      "water"
+    ],
+    "classLevels": {
+      "cleric": 0,
+      "druid": 0,
+      "paladin": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "instantaneous",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Create up to 2 gallons of water per caster level."
+      }
+    ],
+    "summary": "Create 2 gallons of pure water per caster level."
+  },
+  {
+    "id": "bless_water",
+    "name": "Bless Water",
+    "school": "conjuration",
+    "subschool": "creation",
+    "descriptors": [
+      "good"
+    ],
+    "classLevels": {
+      "cleric": 1,
+      "paladin": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "materialComponent": "silver powder (25 gp)",
+    "castingTime": "1 minute",
+    "range": "touch",
+    "duration": "instantaneous",
+    "savingThrow": "Will negates (object)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Turn a flask of water into holy water. Holy water deals 2d4 damage to undead or evil outsiders on a direct hit."
+      }
+    ],
+    "summary": "Create holy water (2d4 damage to undead/evil outsiders)."
+  },
+  {
+    "id": "cure_light_wounds",
+    "name": "Cure Light Wounds",
+    "school": "conjuration",
+    "subschool": "healing",
+    "classLevels": {
+      "bard": 1,
+      "cleric": 1,
+      "druid": 1,
+      "paladin": 1,
+      "ranger": 2
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "instantaneous",
+    "savingThrow": "Will half (harmless)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "healing",
+        "dice": "1d8",
+        "bonusPerLevel": 1,
+        "maxBonus": 5
+      }
+    ],
+    "summary": "Heals 1d8 + 1/caster level (max +5) HP."
+  },
+  {
+    "id": "curse_water",
+    "name": "Curse Water",
+    "school": "conjuration",
+    "subschool": "creation",
+    "descriptors": [
+      "evil"
+    ],
+    "classLevels": {
+      "cleric": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "materialComponent": "silver powder (25 gp)",
+    "castingTime": "1 minute",
+    "range": "touch",
+    "duration": "instantaneous",
+    "savingThrow": "Will negates (object)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Turn a flask of water into unholy water. Unholy water deals 2d4 damage to good outsiders on a direct hit."
+      }
+    ],
+    "summary": "Create unholy water (2d4 damage to good outsiders)."
+  },
+  {
+    "id": "grease",
+    "name": "Grease",
+    "school": "conjuration",
+    "subschool": "creation",
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 min/level",
+    "savingThrow": "Reflex (see text)",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "area",
+        "shape": "square",
+        "size": "10 ft",
+        "effect": "Covers ground or object in slippery grease. Creatures in area must save or fall prone. Moving through requires Acrobatics DC 10."
+      }
+    ],
+    "summary": "Cover area or object in grease. Creatures must save or fall."
+  },
+  {
+    "id": "mage_armor",
+    "name": "Mage Armor",
+    "school": "conjuration",
+    "subschool": "creation",
+    "descriptors": [
+      "force"
+    ],
+    "classLevels": {
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "F"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 hour/level",
+    "savingThrow": "Will negates (harmless)",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "ac_bonus",
+        "bonus": 4,
+        "bonusType": "armor"
+      }
+    ],
+    "summary": "+4 armor bonus to AC (force effect, no max DEX, no ACP, no ASF)."
+  },
+  {
+    "id": "mount",
+    "name": "Mount",
+    "school": "conjuration",
+    "subschool": "summoning",
+    "classLevels": {
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 round",
+    "range": "close",
+    "duration": "2 hours/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "summon",
+        "creature": "light horse or pony",
+        "count": "1"
+      }
+    ],
+    "summary": "Summon a light horse or pony to serve as a mount."
+  },
+  {
+    "id": "obscuring_mist",
+    "name": "Obscuring Mist",
+    "school": "conjuration",
+    "subschool": "creation",
+    "classLevels": {
+      "cleric": 1,
+      "druid": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "area",
+        "shape": "spread",
+        "size": "20-ft radius, 20 ft high",
+        "effect": "Fog grants concealment (20% miss chance) to creatures within. Creatures 5+ ft away have concealment; beyond that total concealment."
+      }
+    ],
+    "summary": "Create a cloud of mist that grants concealment."
+  },
+  {
+    "id": "summon_monster_i",
+    "name": "Summon Monster I",
+    "school": "conjuration",
+    "subschool": "summoning",
+    "classLevels": {
+      "bard": 1,
+      "cleric": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "F",
+      "DF"
+    ],
+    "castingTime": "1 round",
+    "range": "close",
+    "duration": "1 round/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "summon",
+        "creature": "one creature from the 1st-level summon list",
+        "count": "1"
+      }
+    ],
+    "summary": "Summon one extraplanar creature from the 1st-level list."
+  },
+  {
+    "id": "summon_natures_ally_i",
+    "name": "Summon Nature's Ally I",
+    "school": "conjuration",
+    "subschool": "summoning",
+    "classLevels": {
+      "druid": 1,
+      "ranger": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 round",
+    "range": "close",
+    "duration": "1 round/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "summon",
+        "creature": "one animal from the 1st-level nature ally list",
+        "count": "1"
+      }
+    ],
+    "summary": "Summon one natural creature from the 1st-level list."
+  },
+  {
+    "id": "unseen_servant",
+    "name": "Unseen Servant",
+    "school": "conjuration",
+    "subschool": "creation",
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 hour/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Create an invisible, mindless force that performs simple tasks (STR 2, can clean, carry, open doors). Cannot attack or be attacked."
+      }
+    ],
+    "summary": "Create an invisible servant to perform simple tasks."
+  },
+  {
+    "id": "detect_magic",
+    "name": "Detect Magic",
+    "school": "divination",
+    "classLevels": {
+      "bard": 0,
+      "cleric": 0,
+      "druid": 0,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "concentration, up to 1 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "detection",
+        "detects": "magical auras",
+        "range": "60-ft cone"
+      }
+    ],
+    "summary": "Detect magical auras in a 60-ft cone. Concentration reveals strength and school."
+  },
+  {
+    "id": "detect_poison",
+    "name": "Detect Poison",
+    "school": "divination",
+    "classLevels": {
+      "cleric": 0,
+      "druid": 0,
+      "paladin": 1,
+      "ranger": 1,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "instantaneous",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "detection",
+        "detects": "poison in one creature or object"
+      }
+    ],
+    "summary": "Detect whether a creature, object, or area has been poisoned or is poisonous."
+  },
+  {
+    "id": "guidance",
+    "name": "Guidance",
+    "school": "divination",
+    "classLevels": {
+      "cleric": 0,
+      "druid": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 minute or until discharged",
+    "savingThrow": "Will negates (harmless)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "special",
+        "description": "Subject gains +1 competence bonus on a single attack roll, saving throw, or skill check, then the spell ends."
+      }
+    ],
+    "summary": "+1 competence bonus on one attack, save, or skill check."
+  },
+  {
+    "id": "know_direction",
+    "name": "Know Direction",
+    "school": "divination",
+    "classLevels": {
+      "bard": 0,
+      "druid": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "personal",
+    "duration": "instantaneous",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "You instantly know the direction of north from your current position."
+      }
+    ],
+    "summary": "Instantly know which direction is north."
+  },
+  {
+    "id": "read_magic",
+    "name": "Read Magic",
+    "school": "divination",
+    "classLevels": {
+      "bard": 0,
+      "cleric": 0,
+      "druid": 0,
+      "paladin": 1,
+      "ranger": 1,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S",
+      "F"
+    ],
+    "castingTime": "1 standard action",
+    "range": "personal",
+    "duration": "10 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Read scrolls, spellbooks, and magical inscriptions that would otherwise be unintelligible."
+      }
+    ],
+    "summary": "Read magical writings (scrolls, spellbooks, inscriptions)."
+  },
+  {
+    "id": "comprehend_languages",
+    "name": "Comprehend Languages",
+    "school": "divination",
+    "classLevels": {
+      "bard": 1,
+      "cleric": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "personal",
+    "duration": "10 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Understand any spoken or written language (one page per minute for written). Does not grant ability to speak or write."
+      }
+    ],
+    "summary": "Understand all spoken and written languages."
+  },
+  {
+    "id": "deathwatch",
+    "name": "Deathwatch",
+    "school": "divination",
+    "classLevels": {
+      "cleric": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "10 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "detection",
+        "detects": "living creatures: whether alive, wounded (at or below half HP), at -1 HP or below, dead, or undead",
+        "range": "30-ft cone"
+      }
+    ],
+    "summary": "Determine HP status of creatures in range (alive, wounded, dying, dead, undead)."
+  },
+  {
+    "id": "detect_animals_or_plants",
+    "name": "Detect Animals or Plants",
+    "school": "divination",
+    "classLevels": {
+      "druid": 1,
+      "ranger": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "long",
+    "duration": "concentration, up to 10 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "detection",
+        "detects": "animals or plants of a specific kind",
+        "range": "long range cone"
+      }
+    ],
+    "summary": "Detect a specific kind of animal or plant in range."
+  },
+  {
+    "id": "detect_chaos",
+    "name": "Detect Chaos",
+    "school": "divination",
+    "classLevels": {
+      "cleric": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "concentration, up to 10 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "detection",
+        "detects": "chaotic auras (creatures, spells, objects)",
+        "range": "60-ft cone"
+      }
+    ],
+    "summary": "Detect chaotic creatures, spells, and objects in a 60-ft cone."
+  },
+  {
+    "id": "detect_evil",
+    "name": "Detect Evil",
+    "school": "divination",
+    "classLevels": {
+      "cleric": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "concentration, up to 10 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "detection",
+        "detects": "evil auras (creatures, spells, objects)",
+        "range": "60-ft cone"
+      }
+    ],
+    "summary": "Detect evil creatures, spells, and objects in a 60-ft cone."
+  },
+  {
+    "id": "detect_good",
+    "name": "Detect Good",
+    "school": "divination",
+    "classLevels": {
+      "cleric": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "concentration, up to 10 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "detection",
+        "detects": "good auras (creatures, spells, objects)",
+        "range": "60-ft cone"
+      }
+    ],
+    "summary": "Detect good creatures, spells, and objects in a 60-ft cone."
+  },
+  {
+    "id": "detect_law",
+    "name": "Detect Law",
+    "school": "divination",
+    "classLevels": {
+      "cleric": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "concentration, up to 10 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "detection",
+        "detects": "lawful auras (creatures, spells, objects)",
+        "range": "60-ft cone"
+      }
+    ],
+    "summary": "Detect lawful creatures, spells, and objects in a 60-ft cone."
+  },
+  {
+    "id": "detect_secret_doors",
+    "name": "Detect Secret Doors",
+    "school": "divination",
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "concentration, up to 1 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "detection",
+        "detects": "secret doors, compartments, and hidden caches",
+        "range": "60-ft cone"
+      }
+    ],
+    "summary": "Detect secret doors and hidden compartments in a 60-ft cone."
+  },
+  {
+    "id": "detect_snares_and_pits",
+    "name": "Detect Snares and Pits",
+    "school": "divination",
+    "classLevels": {
+      "druid": 1,
+      "ranger": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "concentration, up to 10 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "detection",
+        "detects": "simple pits, deadfalls, snares, and mechanical traps (natural and primitive)",
+        "range": "60-ft cone"
+      }
+    ],
+    "summary": "Detect natural/primitive traps in a 60-ft cone."
+  },
+  {
+    "id": "detect_undead",
+    "name": "Detect Undead",
+    "school": "divination",
+    "classLevels": {
+      "cleric": 1,
+      "paladin": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "concentration, up to 1 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "detection",
+        "detects": "undead creatures and their aura strength",
+        "range": "60-ft cone"
+      }
+    ],
+    "summary": "Detect undead in a 60-ft cone. Reveals location and aura strength."
+  },
+  {
+    "id": "identify",
+    "name": "Identify",
+    "school": "divination",
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "materialComponent": "wine stirred with an owl feather (100 gp)",
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "3 rounds/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "+10 enhancement bonus on Spellcraft checks to identify properties of magic items. Can attempt one Spellcraft check per round."
+      }
+    ],
+    "summary": "+10 Spellcraft to identify magic item properties (1 check/round)."
+  },
+  {
+    "id": "speak_with_animals",
+    "name": "Speak with Animals",
+    "school": "divination",
+    "classLevels": {
+      "bard": 3,
+      "druid": 1,
+      "ranger": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "personal",
+    "duration": "1 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Communicate with animals. Ask questions and receive answers. Animals are not inherently friendly; Diplomacy or similar may be needed."
+      }
+    ],
+    "summary": "Communicate verbally with animals for the duration."
+  },
+  {
+    "id": "true_strike",
+    "name": "True Strike",
+    "school": "divination",
+    "classLevels": {
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "F"
+    ],
+    "castingTime": "1 standard action",
+    "range": "personal",
+    "duration": "see text",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "attack_bonus",
+        "bonus": 20,
+        "bonusType": "insight",
+        "condition": "on your next single attack roll (must be before end of next turn)"
+      }
+    ],
+    "summary": "+20 insight bonus on your next attack roll."
+  },
+  {
+    "id": "daze",
+    "name": "Daze",
+    "school": "enchantment",
+    "subschool": "compulsion",
+    "descriptors": [
+      "mind-affecting"
+    ],
+    "classLevels": {
+      "bard": 0,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 round",
+    "savingThrow": "Will negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "condition",
+        "condition": "dazed",
+        "hitDiceLimit": 4,
+        "duration": "1 round"
+      }
+    ],
+    "summary": "Humanoid of 4 HD or fewer is dazed for 1 round (Will negates)."
+  },
+  {
+    "id": "lullaby",
+    "name": "Lullaby",
+    "school": "enchantment",
+    "subschool": "compulsion",
+    "descriptors": [
+      "mind-affecting"
+    ],
+    "classLevels": {
+      "bard": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "medium",
+    "duration": "concentration + 1 round/level",
+    "savingThrow": "Will negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "debuff",
+        "target": "Perception",
+        "penalty": -5
+      },
+      {
+        "type": "save_bonus",
+        "save": "all",
+        "bonus": -2,
+        "condition": "vs sleep effects"
+      }
+    ],
+    "summary": "Target has -5 Perception and -2 saves vs sleep effects."
+  },
+  {
+    "id": "bane",
+    "name": "Bane",
+    "school": "enchantment",
+    "subschool": "compulsion",
+    "descriptors": [
+      "fear",
+      "mind-affecting"
+    ],
+    "classLevels": {
+      "cleric": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 min/level",
+    "savingThrow": "Will negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "debuff",
+        "target": "attack",
+        "penalty": -1
+      },
+      {
+        "type": "debuff",
+        "target": "saves vs fear",
+        "penalty": -1
+      }
+    ],
+    "summary": "Enemies in 50-ft radius take -1 on attacks and -1 on saves vs fear."
+  },
+  {
+    "id": "bless",
+    "name": "Bless",
+    "school": "enchantment",
+    "subschool": "compulsion",
+    "descriptors": [
+      "mind-affecting"
+    ],
+    "classLevels": {
+      "cleric": 1,
+      "paladin": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 min/level",
+    "savingThrow": "none",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "attack_bonus",
+        "bonus": 1,
+        "bonusType": "morale"
+      },
+      {
+        "type": "save_bonus",
+        "save": "all",
+        "bonus": 1,
+        "bonusType": "morale",
+        "condition": "vs fear effects"
+      }
+    ],
+    "summary": "Allies gain +1 morale on attacks and +1 morale on saves vs fear."
+  },
+  {
+    "id": "charm_animal",
+    "name": "Charm Animal",
+    "school": "enchantment",
+    "subschool": "charm",
+    "descriptors": [
+      "mind-affecting"
+    ],
+    "classLevels": {
+      "druid": 1,
+      "ranger": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 hour/level",
+    "savingThrow": "Will negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "condition",
+        "condition": "charmed (treats you as friendly; +5 to CHA-based checks to interact)"
+      }
+    ],
+    "summary": "One animal treats you as a trusted friend (Will negates)."
+  },
+  {
+    "id": "charm_person",
+    "name": "Charm Person",
+    "school": "enchantment",
+    "subschool": "charm",
+    "descriptors": [
+      "mind-affecting"
+    ],
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 hour/level",
+    "savingThrow": "Will negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "condition",
+        "condition": "charmed (treats you as friendly; +5 to CHA-based checks to interact)"
+      }
+    ],
+    "summary": "One humanoid treats you as a trusted friend (Will negates)."
+  },
+  {
+    "id": "command",
+    "name": "Command",
+    "school": "enchantment",
+    "subschool": "compulsion",
+    "descriptors": [
+      "language-dependent",
+      "mind-affecting"
+    ],
+    "classLevels": {
+      "cleric": 1
+    },
+    "components": [
+      "V"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 round",
+    "savingThrow": "Will negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "special",
+        "description": "Give one-word command (approach, drop, fall, flee, halt). Target obeys on its next turn. 6+ HD creatures are immune."
+      }
+    ],
+    "summary": "One-word command (approach/drop/fall/flee/halt). Will negates."
+  },
+  {
+    "id": "doom",
+    "name": "Doom",
+    "school": "enchantment",
+    "subschool": "compulsion",
+    "descriptors": [
+      "fear",
+      "mind-affecting"
+    ],
+    "classLevels": {
+      "cleric": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "medium",
+    "duration": "1 min/level",
+    "savingThrow": "Will negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "condition",
+        "condition": "shaken"
+      }
+    ],
+    "summary": "One creature becomes shaken (Will negates)."
+  },
+  {
+    "id": "hideous_laughter",
+    "name": "Hideous Laughter",
+    "school": "enchantment",
+    "subschool": "compulsion",
+    "descriptors": [
+      "mind-affecting"
+    ],
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 2,
+      "wizard": 2
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 round/level",
+    "savingThrow": "Will negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "condition",
+        "condition": "prone and unable to act (laughing). Each round may attempt new save to end."
+      }
+    ],
+    "summary": "Subject falls prone laughing and cannot take actions (Will negates, new save each round)."
+  },
+  {
+    "id": "hypnotism",
+    "name": "Hypnotism",
+    "school": "enchantment",
+    "subschool": "compulsion",
+    "descriptors": [
+      "mind-affecting"
+    ],
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 round",
+    "range": "close",
+    "duration": "2d4 rounds",
+    "savingThrow": "Will negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "condition",
+        "condition": "fascinated",
+        "totalHDLimit": 4
+      }
+    ],
+    "summary": "Fascinate 2d4 HD of creatures (Will negates)."
+  },
+  {
+    "id": "sleep",
+    "name": "Sleep",
+    "school": "enchantment",
+    "subschool": "compulsion",
+    "descriptors": [
+      "mind-affecting"
+    ],
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 round",
+    "range": "medium",
+    "duration": "1 min/level",
+    "savingThrow": "Will negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "condition",
+        "condition": "sleep (unconscious, can be awakened by damage or standard action)",
+        "totalHDLimit": 4
+      }
+    ],
+    "summary": "Put 4 HD of creatures to sleep (Will negates). Lowest HD affected first."
+  },
+  {
+    "id": "dancing_lights",
+    "name": "Dancing Lights",
+    "school": "evocation",
+    "descriptors": [
+      "light"
+    ],
+    "classLevels": {
+      "bard": 0,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "medium",
+    "duration": "1 minute",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Create up to 4 torch-like lights or 1 vaguely humanoid glowing shape. Lights move as you direct (move action). Each sheds light as a torch."
+      }
+    ],
+    "summary": "Create up to 4 hovering lights (torch brightness) that you direct."
+  },
+  {
+    "id": "flare",
+    "name": "Flare",
+    "school": "evocation",
+    "descriptors": [
+      "light"
+    ],
+    "classLevels": {
+      "bard": 0,
+      "druid": 0,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "instantaneous",
+    "savingThrow": "Fortitude negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "condition",
+        "condition": "dazzled",
+        "duration": "1 minute"
+      }
+    ],
+    "summary": "Flash of light dazzles one creature for 1 minute (Fort negates)."
+  },
+  {
+    "id": "light",
+    "name": "Light",
+    "school": "evocation",
+    "descriptors": [
+      "light"
+    ],
+    "classLevels": {
+      "bard": 0,
+      "cleric": 0,
+      "druid": 0,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "M",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "10 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Touched object glows like a torch (20-ft radius normal light, 20-ft dim light beyond that)."
+      }
+    ],
+    "summary": "Object sheds torchlight (20-ft radius) for 10 min/level."
+  },
+  {
+    "id": "ray_of_frost",
+    "name": "Ray of Frost",
+    "school": "evocation",
+    "descriptors": [
+      "cold"
+    ],
+    "classLevels": {
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "instantaneous",
+    "savingThrow": "none",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "damage",
+        "dice": "1d3",
+        "damageType": "cold"
+      }
+    ],
+    "summary": "Ranged touch attack deals 1d3 cold damage."
+  },
+  {
+    "id": "spark",
+    "name": "Spark",
+    "school": "evocation",
+    "descriptors": [
+      "fire"
+    ],
+    "classLevels": {
+      "bard": 0,
+      "cleric": 0,
+      "druid": 0,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "instantaneous",
+    "savingThrow": "Fortitude negates (object)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Ignite unattended Fine flammable object (candle, tinder, etc.)."
+      }
+    ],
+    "summary": "Ignite one unattended Fine flammable object."
+  },
+  {
+    "id": "burning_hands",
+    "name": "Burning Hands",
+    "school": "evocation",
+    "descriptors": [
+      "fire"
+    ],
+    "classLevels": {
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "instantaneous",
+    "savingThrow": "Reflex half",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "damage",
+        "dice": "1d4",
+        "damageType": "fire",
+        "perCasterLevel": true,
+        "maxDice": 5
+      },
+      {
+        "type": "area",
+        "shape": "cone",
+        "size": "15 ft",
+        "effect": "All creatures in area take fire damage."
+      }
+    ],
+    "summary": "15-ft cone deals 1d4/level fire damage (max 5d4). Reflex half."
+  },
+  {
+    "id": "divine_favor",
+    "name": "Divine Favor",
+    "school": "evocation",
+    "classLevels": {
+      "cleric": 1,
+      "paladin": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "personal",
+    "duration": "1 minute",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "attack_bonus",
+        "bonus": "+1 per 3 CL (max +3)",
+        "bonusType": "luck"
+      },
+      {
+        "type": "damage_bonus",
+        "bonus": "+1 per 3 CL (max +3)",
+        "damageType": "luck"
+      }
+    ],
+    "summary": "+1 luck bonus to attack and damage per 3 CL (max +3)."
+  },
+  {
+    "id": "floating_disk",
+    "name": "Floating Disk",
+    "school": "evocation",
+    "descriptors": [
+      "force"
+    ],
+    "classLevels": {
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 hour/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Create a 3-ft diameter disk of force that floats 3 ft off the ground and follows you. Carries up to 100 lbs/level."
+      }
+    ],
+    "summary": "Create a floating disk that carries up to 100 lbs/level."
+  },
+  {
+    "id": "magic_missile",
+    "name": "Magic Missile",
+    "school": "evocation",
+    "descriptors": [
+      "force"
+    ],
+    "classLevels": {
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "medium",
+    "duration": "instantaneous",
+    "savingThrow": "none",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "damage",
+        "dice": "1d4+1",
+        "damageType": "force",
+        "missileCount": {
+          "base": 1,
+          "perLevels": 2,
+          "max": 5
+        }
+      }
+    ],
+    "summary": "1 missile (1d4+1 force) at CL 1, +1 missile per 2 CL (max 5 missiles). Auto-hit."
+  },
+  {
+    "id": "magic_stone",
+    "name": "Magic Stone",
+    "school": "evocation",
+    "classLevels": {
+      "cleric": 1,
+      "druid": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "30 minutes or until discharged",
+    "savingThrow": "Will negates (harmless, object)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "damage_bonus",
+        "bonus": "+1 (or 2d6+2 vs undead)",
+        "damageType": "bludgeoning"
+      }
+    ],
+    "summary": "Up to 3 pebbles gain +1 to attack/damage (2d6+2 vs undead)."
+  },
+  {
+    "id": "magic_weapon",
+    "name": "Magic Weapon",
+    "school": "evocation",
+    "classLevels": {
+      "cleric": 1,
+      "paladin": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 min/level",
+    "savingThrow": "Will negates (harmless, object)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "attack_bonus",
+        "bonus": 1,
+        "bonusType": "enhancement"
+      },
+      {
+        "type": "damage_bonus",
+        "bonus": "+1",
+        "damageType": "enhancement"
+      }
+    ],
+    "summary": "Weapon gains +1 enhancement bonus to attack and damage."
+  },
+  {
+    "id": "produce_flame",
+    "name": "Produce Flame",
+    "school": "evocation",
+    "descriptors": [
+      "fire"
+    ],
+    "classLevels": {
+      "druid": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "personal (or close for ranged touch)",
+    "duration": "1 min/level",
+    "savingThrow": "none",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "damage",
+        "dice": "1d6",
+        "damageType": "fire",
+        "perCasterLevel": true,
+        "maxDice": 5
+      },
+      {
+        "type": "utility",
+        "description": "Flames appear in your hand, providing light as a torch. Touch attack or throw as ranged touch (close range)."
+      }
+    ],
+    "summary": "Flames in hand deal 1d6 + 1/level (max +5) fire. Use as touch or ranged touch."
+  },
+  {
+    "id": "shocking_grasp",
+    "name": "Shocking Grasp",
+    "school": "evocation",
+    "descriptors": [
+      "electricity"
+    ],
+    "classLevels": {
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "instantaneous",
+    "savingThrow": "none",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "damage",
+        "dice": "1d6",
+        "damageType": "electricity",
+        "perCasterLevel": true,
+        "maxDice": 5
+      },
+      {
+        "type": "special",
+        "description": "+3 attack bonus vs opponents wearing metal armor or made of metal."
+      }
+    ],
+    "summary": "Touch deals 1d6/level electricity (max 5d6). +3 attack vs metal armor/creatures."
+  },
+  {
+    "id": "sound_burst",
+    "name": "Sound Burst",
+    "school": "evocation",
+    "descriptors": [
+      "sonic"
+    ],
+    "classLevels": {
+      "bard": 2,
+      "cleric": 2
+    },
+    "components": [
+      "V",
+      "S",
+      "F",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "instantaneous",
+    "savingThrow": "Fortitude partial",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "damage",
+        "dice": "1d8",
+        "damageType": "sonic"
+      },
+      {
+        "type": "condition",
+        "condition": "stunned for 1 round (Fort negates stun)"
+      }
+    ],
+    "summary": "10-ft spread: 1d8 sonic damage. Fort or stunned 1 round."
+  },
+  {
+    "id": "ghost_sound",
+    "name": "Ghost Sound",
+    "school": "illusion",
+    "subschool": "figment",
+    "classLevels": {
+      "bard": 0,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 round/level",
+    "savingThrow": "Will disbelief",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Create illusory sounds (up to 4 normal humans per CL). Volume ranges from whisper to loud shouting."
+      }
+    ],
+    "summary": "Create illusory sounds. Volume scales with caster level."
+  },
+  {
+    "id": "color_spray",
+    "name": "Color Spray",
+    "school": "illusion",
+    "subschool": "pattern",
+    "descriptors": [
+      "mind-affecting"
+    ],
+    "classLevels": {
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "instantaneous (see text)",
+    "savingThrow": "Will negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "special",
+        "description": "15-ft cone. Creatures affected based on HD: 2 HD or less = unconscious/blinded/stunned 2d4 rounds then blinded/stunned 1d4 rounds then stunned 1 round; 3-4 HD = blinded/stunned 1d4 rounds then stunned 1 round; 5+ HD = stunned 1 round."
+      }
+    ],
+    "summary": "15-ft cone: creatures stunned/blinded/unconscious based on HD."
+  },
+  {
+    "id": "disguise_self",
+    "name": "Disguise Self",
+    "school": "illusion",
+    "subschool": "glamer",
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "personal",
+    "duration": "10 min/level",
+    "savingThrow": "none (interact: Will disbelief)",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "skill_bonus",
+        "skill": "Disguise",
+        "bonus": 10
+      },
+      {
+        "type": "utility",
+        "description": "Change appearance including clothing, armor, weapons, equipment. Can appear up to 1 ft shorter/taller and thin/fat/average."
+      }
+    ],
+    "summary": "+10 Disguise. Change appearance (height ±1 ft, build, equipment)."
+  },
+  {
+    "id": "magic_aura",
+    "name": "Magic Aura",
+    "school": "illusion",
+    "subschool": "glamer",
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "F"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 day/level",
+    "savingThrow": "none (see text)",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Alter an object to radiate a false magic aura (or no aura) to detection spells. One object up to 5 lbs/level."
+      }
+    ],
+    "summary": "Make an object radiate a false magical aura (or suppress its aura)."
+  },
+  {
+    "id": "silent_image",
+    "name": "Silent Image",
+    "school": "illusion",
+    "subschool": "figment",
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "F"
+    ],
+    "castingTime": "1 standard action",
+    "range": "long",
+    "duration": "concentration",
+    "savingThrow": "Will disbelief (if interacted with)",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Create a visual illusion of an object, creature, or force up to 4 10-ft cubes + 1 per CL. No sound, smell, texture, or temperature. Concentration to move/animate."
+      }
+    ],
+    "summary": "Create a purely visual illusion (no sound). Concentration to maintain."
+  },
+  {
+    "id": "vanish",
+    "name": "Vanish",
+    "school": "illusion",
+    "subschool": "glamer",
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 round/level (max 5 rounds)",
+    "savingThrow": "Will negates (harmless)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "condition",
+        "condition": "invisible (as invisibility spell, ends on attack)"
+      }
+    ],
+    "summary": "Subject turns invisible for 1 round/level (max 5). Ends on attack."
+  },
+  {
+    "id": "ventriloquism",
+    "name": "Ventriloquism",
+    "school": "illusion",
+    "subschool": "figment",
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "F"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 min/level",
+    "savingThrow": "Will disbelief",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Make your voice (or any sound you can make) seem to come from any point within range. You can speak in any language you know."
+      }
+    ],
+    "summary": "Project your voice to any location within range."
+  },
+  {
+    "id": "bleed",
+    "name": "Bleed",
+    "school": "necromancy",
+    "classLevels": {
+      "cleric": 0,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "instantaneous",
+    "savingThrow": "Will negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "special",
+        "description": "Cause a dying creature (at negative HP) to resume losing 1 HP per round. Only works on living creatures currently at negative HP and stable."
+      }
+    ],
+    "summary": "Cause a stable dying creature to resume losing HP."
+  },
+  {
+    "id": "disrupt_undead",
+    "name": "Disrupt Undead",
+    "school": "necromancy",
+    "classLevels": {
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "instantaneous",
+    "savingThrow": "none",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "damage",
+        "dice": "1d6",
+        "damageType": "positive energy"
+      }
+    ],
+    "summary": "Ranged touch deals 1d6 damage to one undead."
+  },
+  {
+    "id": "stabilize",
+    "name": "Stabilize",
+    "school": "necromancy",
+    "classLevels": {
+      "cleric": 0,
+      "druid": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "instantaneous",
+    "savingThrow": "Will negates (harmless)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "healing",
+        "dice": "0",
+        "bonusPerLevel": 0,
+        "maxBonus": 0
+      },
+      {
+        "type": "special",
+        "description": "Target dying creature (at negative HP) becomes stable."
+      }
+    ],
+    "summary": "Stabilize a dying creature (does not restore HP)."
+  },
+  {
+    "id": "touch_of_fatigue",
+    "name": "Touch of Fatigue",
+    "school": "necromancy",
+    "classLevels": {
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 round/level",
+    "savingThrow": "Fortitude negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "condition",
+        "condition": "fatigued"
+      }
+    ],
+    "summary": "Touch fatigues target (Fort negates). No effect on already fatigued creatures."
+  },
+  {
+    "id": "cause_fear",
+    "name": "Cause Fear",
+    "school": "necromancy",
+    "descriptors": [
+      "fear",
+      "mind-affecting"
+    ],
+    "classLevels": {
+      "bard": 1,
+      "cleric": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1d4 rounds or 1 round (see text)",
+    "savingThrow": "Will partial",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "condition",
+        "condition": "frightened (1d4 rounds, or shaken 1 round on save)",
+        "hitDiceLimit": 5
+      }
+    ],
+    "summary": "One creature of 5 HD or less becomes frightened (Will: shaken 1 round)."
+  },
+  {
+    "id": "chill_touch",
+    "name": "Chill Touch",
+    "school": "necromancy",
+    "classLevels": {
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "instantaneous",
+    "savingThrow": "Fortitude partial or Will negates (see text)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "damage",
+        "dice": "1d6",
+        "damageType": "negative energy"
+      },
+      {
+        "type": "ability_modifier",
+        "ability": "strength",
+        "bonus": -1
+      },
+      {
+        "type": "special",
+        "description": "One touch per level. Each touch deals 1d6 negative energy and 1 STR damage (Fort negates STR damage). Against undead: no damage but target flees for 1d4+CL rounds (Will negates)."
+      }
+    ],
+    "summary": "Touch deals 1d6 + 1 STR damage per touch (1 touch/level)."
+  },
+  {
+    "id": "inflict_light_wounds",
+    "name": "Inflict Light Wounds",
+    "school": "necromancy",
+    "classLevels": {
+      "cleric": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "instantaneous",
+    "savingThrow": "Will half",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "damage",
+        "dice": "1d8",
+        "damageType": "negative energy",
+        "perCasterLevel": true,
+        "maxDice": 1
+      },
+      {
+        "type": "special",
+        "description": "Deals 1d8 + 1/level (max +5) negative energy damage. Heals undead for same amount."
+      }
+    ],
+    "summary": "Touch deals 1d8 + 1/level (max +5) negative energy. Heals undead."
+  },
+  {
+    "id": "ray_of_enfeeblement",
+    "name": "Ray of Enfeeblement",
+    "school": "necromancy",
+    "classLevels": {
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 round/level",
+    "savingThrow": "Fortitude half",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "ability_modifier",
+        "ability": "strength",
+        "bonus": -6
+      },
+      {
+        "type": "special",
+        "description": "Ranged touch attack imposes 1d6+1 per 2 CL (max 1d6+5) STR penalty. Fort halves. Cannot reduce below 1."
+      }
+    ],
+    "summary": "Ray imposes 1d6+1 per 2 CL (max +5) STR penalty. Fort halves."
+  },
+  {
+    "id": "ray_of_sickening",
+    "name": "Ray of Sickening",
+    "school": "necromancy",
+    "classLevels": {
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 round/level",
+    "savingThrow": "Fortitude partial (1 round)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "condition",
+        "condition": "sickened"
+      }
+    ],
+    "summary": "Ray sickens target for 1 round/level. Fort: sickened 1 round only."
+  },
+  {
+    "id": "mage_hand",
+    "name": "Mage Hand",
+    "school": "transmutation",
+    "classLevels": {
+      "bard": 0,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "concentration",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Telekinetically move one non-magical object up to 5 lbs. Move 15 ft per round. Cannot attack, activate magic items, or carry creatures."
+      }
+    ],
+    "summary": "Move one object up to 5 lbs at a distance (15 ft/round)."
+  },
+  {
+    "id": "mending",
+    "name": "Mending",
+    "school": "transmutation",
+    "classLevels": {
+      "bard": 0,
+      "cleric": 0,
+      "druid": 0,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "10 minutes",
+    "range": "close",
+    "duration": "instantaneous",
+    "savingThrow": "Will negates (harmless, object)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Repair one break or tear in an object (up to 1 lb). Does not restore magical properties."
+      }
+    ],
+    "summary": "Repair one break or tear in an object up to 1 lb."
+  },
+  {
+    "id": "message",
+    "name": "Message",
+    "school": "transmutation",
+    "descriptors": [
+      "language-dependent"
+    ],
+    "classLevels": {
+      "bard": 0,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S",
+      "F"
+    ],
+    "castingTime": "1 standard action",
+    "range": "medium",
+    "duration": "10 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Whisper a message that only designated creatures (1 per CL) can hear. They can whisper back."
+      }
+    ],
+    "summary": "Whisper conversations at distance with designated creatures."
+  },
+  {
+    "id": "open_close",
+    "name": "Open/Close",
+    "school": "transmutation",
+    "classLevels": {
+      "bard": 0,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S",
+      "F"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "instantaneous",
+    "savingThrow": "Will negates (object)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Open or close a door, chest, box, window, bag, pouch, bottle, barrel, or similar container (up to 30 lbs or with a simple latch). Cannot open locked items."
+      }
+    ],
+    "summary": "Remotely open or close one small unlocked object."
+  },
+  {
+    "id": "purify_food_and_drink",
+    "name": "Purify Food and Drink",
+    "school": "transmutation",
+    "classLevels": {
+      "cleric": 0,
+      "druid": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "instantaneous",
+    "savingThrow": "Will negates (object)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Purify 1 cu. ft./level of food and water, rendering it free of poison, disease, and rot."
+      }
+    ],
+    "summary": "Make contaminated food and water pure and suitable for consumption."
+  },
+  {
+    "id": "virtue",
+    "name": "Virtue",
+    "school": "transmutation",
+    "classLevels": {
+      "cleric": 0,
+      "druid": 0,
+      "paladin": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 minute",
+    "savingThrow": "none (harmless)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "temp_hp",
+        "amount": "1"
+      }
+    ],
+    "summary": "Subject gains 1 temporary hit point for 1 minute."
+  },
+  {
+    "id": "animate_rope",
+    "name": "Animate Rope",
+    "school": "transmutation",
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "medium",
+    "duration": "1 round/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Animate a rope (up to 50 ft + 5 ft/level) to coil, knot, loop, or entangle. Entangle: CMB = 10 + CL."
+      }
+    ],
+    "summary": "Animate a rope to coil, knot, or entangle (CMB = 10 + CL)."
+  },
+  {
+    "id": "enlarge_person",
+    "name": "Enlarge Person",
+    "school": "transmutation",
+    "classLevels": {
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 round",
+    "range": "close",
+    "duration": "1 min/level",
+    "savingThrow": "Fortitude negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "ability_modifier",
+        "ability": "strength",
+        "bonus": 2,
+        "bonusType": "size"
+      },
+      {
+        "type": "ability_modifier",
+        "ability": "dexterity",
+        "bonus": -2,
+        "bonusType": "size"
+      },
+      {
+        "type": "special",
+        "description": "Humanoid target grows one size category. +2 size STR, -2 size DEX, -1 attack/AC (size), +1 CMB/CMD."
+      }
+    ],
+    "summary": "Grow one size. +2 STR, -2 DEX, -1 attack/AC, +1 CMB/CMD."
+  },
+  {
+    "id": "entangle",
+    "name": "Entangle",
+    "school": "transmutation",
+    "classLevels": {
+      "druid": 1,
+      "ranger": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "long",
+    "duration": "1 min/level",
+    "savingThrow": "Reflex partial",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "area",
+        "shape": "spread",
+        "size": "40-ft radius",
+        "effect": "Plants entangle creatures in area. Entangled creatures are -2 attack, -4 DEX. Reflex to avoid being stuck (immobile). DC 20 STR or Escape Artist to break free each round."
+      }
+    ],
+    "summary": "40-ft radius: plants entangle. -2 attack, -4 DEX. Reflex or stuck."
+  },
+  {
+    "id": "erase",
+    "name": "Erase",
+    "school": "transmutation",
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "instantaneous",
+    "savingThrow": "none (see text)",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Erase nonmagical writing from a surface (2 pages). Magical writing: CL check DC 15."
+      }
+    ],
+    "summary": "Erase mundane or magical writing from a surface."
+  },
+  {
+    "id": "expeditious_retreat",
+    "name": "Expeditious Retreat",
+    "school": "transmutation",
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "personal",
+    "duration": "1 min/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "special",
+        "description": "Base land speed increases by 30 ft (enhancement bonus). Does not affect other movement types."
+      }
+    ],
+    "summary": "+30 ft enhancement bonus to base land speed."
+  },
+  {
+    "id": "feather_fall",
+    "name": "Feather Fall",
+    "school": "transmutation",
+    "classLevels": {
+      "bard": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V"
+    ],
+    "castingTime": "1 immediate action",
+    "range": "close",
+    "duration": "until landing or 1 round/level",
+    "savingThrow": "Will negates (harmless)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "special",
+        "description": "Up to 1 creature/level falls slowly (60 ft per round). Take no falling damage on landing."
+      }
+    ],
+    "summary": "Up to 1 creature/level falls slowly, taking no falling damage."
+  },
+  {
+    "id": "goodberry",
+    "name": "Goodberry",
+    "school": "transmutation",
+    "classLevels": {
+      "druid": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 day/level",
+    "savingThrow": "none",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "healing",
+        "dice": "1",
+        "bonusPerLevel": 0,
+        "maxBonus": 0
+      },
+      {
+        "type": "utility",
+        "description": "Transmute 2d4 fresh berries so each cures 1 HP (max 8 HP total). Also provides nourishment as a full meal."
+      }
+    ],
+    "summary": "2d4 berries each heal 1 HP and nourish as a full meal."
+  },
+  {
+    "id": "jump",
+    "name": "Jump",
+    "school": "transmutation",
+    "classLevels": {
+      "druid": 1,
+      "ranger": 1,
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 min/level",
+    "savingThrow": "Will negates (harmless)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "skill_bonus",
+        "skill": "Acrobatics",
+        "bonus": 10,
+        "bonusType": "enhancement"
+      },
+      {
+        "type": "special",
+        "description": "+10 enhancement to Acrobatics for jumping (+20 at CL 5, +30 at CL 9)."
+      }
+    ],
+    "summary": "+10/+20/+30 enhancement bonus to Acrobatics for jumping."
+  },
+  {
+    "id": "longstrider",
+    "name": "Longstrider",
+    "school": "transmutation",
+    "classLevels": {
+      "druid": 1,
+      "ranger": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 standard action",
+    "range": "personal",
+    "duration": "1 hour/level",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "special",
+        "description": "Base speed increases by 10 ft (enhancement bonus)."
+      }
+    ],
+    "summary": "+10 ft enhancement bonus to base speed."
+  },
+  {
+    "id": "magic_fang",
+    "name": "Magic Fang",
+    "school": "transmutation",
+    "classLevels": {
+      "druid": 1,
+      "ranger": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 min/level",
+    "savingThrow": "Will negates (harmless)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "attack_bonus",
+        "bonus": 1,
+        "bonusType": "enhancement",
+        "condition": "one natural weapon"
+      },
+      {
+        "type": "damage_bonus",
+        "bonus": "+1",
+        "damageType": "enhancement",
+        "condition": "one natural weapon"
+      }
+    ],
+    "summary": "One natural weapon gains +1 enhancement to attack and damage."
+  },
+  {
+    "id": "reduce_person",
+    "name": "Reduce Person",
+    "school": "transmutation",
+    "classLevels": {
+      "sorcerer": 1,
+      "wizard": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "M"
+    ],
+    "castingTime": "1 round",
+    "range": "close",
+    "duration": "1 min/level",
+    "savingThrow": "Fortitude negates",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "ability_modifier",
+        "ability": "strength",
+        "bonus": -2,
+        "bonusType": "size"
+      },
+      {
+        "type": "ability_modifier",
+        "ability": "dexterity",
+        "bonus": 2,
+        "bonusType": "size"
+      },
+      {
+        "type": "special",
+        "description": "Humanoid target shrinks one size category. -2 size STR, +2 size DEX, +1 attack/AC (size), -1 CMB/CMD."
+      }
+    ],
+    "summary": "Shrink one size. -2 STR, +2 DEX, +1 attack/AC, -1 CMB/CMD."
+  },
+  {
+    "id": "shillelagh",
+    "name": "Shillelagh",
+    "school": "transmutation",
+    "classLevels": {
+      "druid": 1
+    },
+    "components": [
+      "V",
+      "S",
+      "DF"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "1 min/level",
+    "savingThrow": "Will negates (harmless, object)",
+    "spellResistance": true,
+    "effects": [
+      {
+        "type": "special",
+        "description": "A non-magical club or quarterstaff you hold is enhanced: +1 enhancement to attack/damage and damage dice increase by two steps (club to 1d10, quarterstaff to 2d6)."
+      }
+    ],
+    "summary": "Club/quarterstaff gains +1 and damage dice increase two steps."
+  },
+  {
+    "id": "arcane_mark",
+    "name": "Arcane Mark",
+    "school": "universal",
+    "classLevels": {
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "touch",
+    "duration": "permanent",
+    "savingThrow": "none",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Inscribes a personal rune or mark (up to 6 characters) on an object or creature (visible or invisible). Detectable by detect magic. An arcane mark on a living creature fades after 1 month."
+      }
+    ],
+    "summary": "Inscribe a personal rune on an object or creature."
+  },
+  {
+    "id": "prestidigitation",
+    "name": "Prestidigitation",
+    "school": "universal",
+    "classLevels": {
+      "bard": 0,
+      "sorcerer": 0,
+      "wizard": 0
+    },
+    "components": [
+      "V",
+      "S"
+    ],
+    "castingTime": "1 standard action",
+    "range": "close",
+    "duration": "1 hour",
+    "savingThrow": "none (see text)",
+    "spellResistance": false,
+    "effects": [
+      {
+        "type": "utility",
+        "description": "Minor magical tricks: lift 1 lb, color/clean/soil items in 1 cu ft, chill/warm/flavor 1 lb of material, create small trinkets or illusions (too crude to fool anyone). Once per round. Can maintain up to 3 effects."
+      }
+    ],
+    "summary": "Perform minor magical tricks (clean, color, warm, create trinkets, etc.)."
+  }
+]

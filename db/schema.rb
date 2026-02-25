@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_25_300004) do
+ActiveRecord::Schema[7.1].define(version: 2026_02_25_300009) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -24,6 +24,26 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_25_300004) do
     t.datetime "updated_at", null: false
     t.index ["adventure_id", "created_at"], name: "index_adventure_messages_on_adventure_id_and_created_at"
     t.index ["adventure_id"], name: "index_adventure_messages_on_adventure_id"
+  end
+
+  create_table "adventure_sheet_feats", force: :cascade do |t|
+    t.bigint "adventure_sheet_id", null: false
+    t.string "feat_id", null: false
+    t.string "choice"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_sheet_id", "feat_id", "choice"], name: "idx_adv_sheet_feats_unique", unique: true
+    t.index ["adventure_sheet_id"], name: "index_adventure_sheet_feats_on_adventure_sheet_id"
+  end
+
+  create_table "adventure_sheet_spells", force: :cascade do |t|
+    t.bigint "adventure_sheet_id", null: false
+    t.string "spell_id", null: false
+    t.string "storage_type", default: "known", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_sheet_id", "spell_id", "storage_type"], name: "idx_adv_sheet_spells_unique", unique: true
+    t.index ["adventure_sheet_id"], name: "index_adventure_sheet_spells_on_adventure_sheet_id"
   end
 
   create_table "adventure_sheets", force: :cascade do |t|
@@ -50,6 +70,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_25_300004) do
     t.text "effects"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "derived_stats", default: {}, null: false
     t.index ["adventure_id"], name: "index_adventure_sheets_on_adventure_id"
     t.index ["sheet_id"], name: "index_adventure_sheets_on_sheet_id"
   end
@@ -95,6 +116,40 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_25_300004) do
     t.index ["user_id"], name: "index_dm_logs_on_user_id"
   end
 
+  create_table "feat_definitions", id: :string, force: :cascade do |t|
+    t.string "name", null: false
+    t.string "category", null: false
+    t.text "summary"
+    t.boolean "repeatable", default: false, null: false
+    t.string "choice_type"
+    t.jsonb "prerequisites", default: [], null: false
+    t.jsonb "effects", default: [], null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_feat_definitions_on_category"
+    t.index ["name"], name: "index_feat_definitions_on_name"
+  end
+
+  create_table "sheet_feats", force: :cascade do |t|
+    t.bigint "sheet_id", null: false
+    t.string "feat_id", null: false
+    t.string "choice"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sheet_id", "feat_id", "choice"], name: "idx_sheet_feats_unique", unique: true
+    t.index ["sheet_id"], name: "index_sheet_feats_on_sheet_id"
+  end
+
+  create_table "sheet_spells", force: :cascade do |t|
+    t.bigint "sheet_id", null: false
+    t.string "spell_id", null: false
+    t.string "storage_type", default: "known", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["sheet_id", "spell_id", "storage_type"], name: "idx_sheet_spells_unique", unique: true
+    t.index ["sheet_id"], name: "index_sheet_spells_on_sheet_id"
+  end
+
   create_table "sheets", force: :cascade do |t|
     t.string "name"
     t.text "description"
@@ -113,7 +168,30 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_25_300004) do
     t.string "character_class"
     t.string "subclass"
     t.integer "level", default: 1, null: false
+    t.jsonb "derived_stats", default: {}, null: false
     t.index ["user_id"], name: "index_sheets_on_user_id"
+  end
+
+  create_table "spell_definitions", id: :string, force: :cascade do |t|
+    t.string "name", null: false
+    t.string "school", null: false
+    t.string "subschool"
+    t.jsonb "descriptors", default: [], null: false
+    t.jsonb "class_levels", default: {}, null: false
+    t.jsonb "components", default: [], null: false
+    t.string "material_component"
+    t.string "casting_time"
+    t.string "range"
+    t.string "duration"
+    t.string "saving_throw"
+    t.boolean "spell_resistance", default: false, null: false
+    t.jsonb "effects", default: [], null: false
+    t.text "summary"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["class_levels"], name: "index_spell_definitions_on_class_levels", using: :gin
+    t.index ["name"], name: "index_spell_definitions_on_name"
+    t.index ["school"], name: "index_spell_definitions_on_school"
   end
 
   create_table "stories", force: :cascade do |t|
@@ -147,6 +225,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_25_300004) do
   end
 
   add_foreign_key "adventure_messages", "adventures"
+  add_foreign_key "adventure_sheet_feats", "adventure_sheets"
+  add_foreign_key "adventure_sheet_feats", "feat_definitions", column: "feat_id"
+  add_foreign_key "adventure_sheet_spells", "adventure_sheets"
+  add_foreign_key "adventure_sheet_spells", "spell_definitions", column: "spell_id"
   add_foreign_key "adventure_sheets", "adventures"
   add_foreign_key "adventure_sheets", "sheets"
   add_foreign_key "adventures", "story_states"
@@ -154,6 +236,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_25_300004) do
   add_foreign_key "ai_logs", "adventures"
   add_foreign_key "dm_logs", "adventures"
   add_foreign_key "dm_logs", "users"
+  add_foreign_key "sheet_feats", "feat_definitions", column: "feat_id"
+  add_foreign_key "sheet_feats", "sheets"
+  add_foreign_key "sheet_spells", "sheets"
+  add_foreign_key "sheet_spells", "spell_definitions", column: "spell_id"
   add_foreign_key "sheets", "users"
   add_foreign_key "story_states", "stories"
 end

@@ -80,6 +80,7 @@ module DungeonMaster
         INT: #{sheet&.intelligence}, WIS: #{sheet&.wisdom}, CHA: #{sheet&.charisma}
         HP: #{sheet&.hp}/#{sheet&.max_hp}
         Gold: #{sheet&.gold}
+        #{derived_stats_block(sheet)}
 
         === INSTRUCTIONS ===
         - Narrate the result of the player's action in the context of the current story stage.
@@ -113,6 +114,27 @@ module DungeonMaster
           "description": "Roll a Perception check to notice the hidden passage"
         }
       PROMPT
+    end
+
+    # Builds a compact stats block from derived_stats for the DM prompt.
+    def self.derived_stats_block(sheet)
+      return "" unless sheet
+      ds = sheet.derived_stats
+      return "" if ds.blank?
+
+      <<~STATS.strip
+        --- Derived Stats ---
+        BAB: +#{ds['bab']}  |  AC: #{ds['ac']} (Touch #{ds['touch_ac']}, Flat-Footed #{ds['flat_footed_ac']})
+        Fort: #{format_mod(ds['fort'])}  Ref: #{format_mod(ds['ref'])}  Will: #{format_mod(ds['will'])}
+        CMB: #{format_mod(ds['cmb'])}  CMD: #{ds['cmd']}  Initiative: #{format_mod(ds['initiative'])}
+        Melee Attack: #{format_mod(ds['melee_attack'])}  Ranged Attack: #{format_mod(ds['ranged_attack'])}
+        Speed: #{ds['speed']} ft  Size: #{ds['size']}
+      STATS
+    end
+
+    def self.format_mod(val)
+      return "+0" unless val
+      val >= 0 ? "+#{val}" : val.to_s
     end
 
     # @param config [DmConfig]

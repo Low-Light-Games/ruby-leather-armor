@@ -11,9 +11,10 @@ import {
   acSizeModifier,
 } from '../../rules/pathfinder_combat';
 import {
-  ALL_FEATS,
+  getAllFeats,
   getFeatById,
   computeBAB,
+  computeBaseSave,
   checkAllPrerequisites,
   canSelectFeat,
   computeFeatSkillBonuses,
@@ -24,7 +25,7 @@ import {
 } from '../../rules/pathfinder_feats';
 import type { FeatDefinition, PrerequisiteContext, PrerequisiteCheck } from '../../rules/pathfinder_feats';
 import {
-  ALL_SPELLS,
+  getAllSpells,
   getSpellById,
   getSpellsForClass,
   isSpellcaster,
@@ -36,6 +37,7 @@ import {
   computeSpellSlots,
   hasSlotForSpell,
 } from '../../rules/pathfinder_spells';
+import type { SpellDefinition } from '../../rules/pathfinder_spells_types';
 import type { SpellEligibility, SpellSlotSummary } from '../../rules/pathfinder_spells';
 import './SkillsColumn.scss';
 
@@ -75,10 +77,6 @@ const ABILITY_ABBREVIATIONS: Record<string, string> = {
 
 function formatModifier(mod: number): string {
   return mod >= 0 ? `+${mod}` : `${mod}`;
-}
-
-function baseBAB(bab: string): number {
-  return bab === 'full' ? 1 : 0;
 }
 
 export const SkillsColumn = () => {
@@ -145,16 +143,13 @@ export const SkillsColumn = () => {
     const cmd = combatManeuverDefense(bab, strMod, dexMod, size);
     const initiative = dexMod + featStatBonuses.initiative;
 
-    // Saves (base + ability mod + feat bonuses)
+    // Saves (base scaled by level + ability mod + feat bonuses)
     const fortGood = classDef ? classDef.goodSaves.includes('fort') : false;
     const refGood = classDef ? classDef.goodSaves.includes('ref') : false;
     const willGood = classDef ? classDef.goodSaves.includes('will') : false;
-    const baseFort = fortGood ? 2 : 0;
-    const baseRef = refGood ? 2 : 0;
-    const baseWill = willGood ? 2 : 0;
-    const fort = baseFort + conMod + featStatBonuses.fortSave;
-    const ref = baseRef + dexMod + featStatBonuses.refSave;
-    const will = baseWill + wisMod + featStatBonuses.willSave;
+    const fort = computeBaseSave(fortGood, currentLevel) + conMod + featStatBonuses.fortSave;
+    const ref = computeBaseSave(refGood, currentLevel) + dexMod + featStatBonuses.refSave;
+    const will = computeBaseSave(willGood, currentLevel) + wisMod + featStatBonuses.willSave;
 
     // HP bonus from feats (e.g. Toughness)
     const hpBonus = featStatBonuses.hp;
@@ -179,7 +174,7 @@ export const SkillsColumn = () => {
 
   /** Called when user picks a feat from the dropdown. If it has a choiceType, opens the modal; otherwise adds directly. */
   const addFeat = useCallback((featId: string) => {
-    const feat = ALL_FEATS.find(f => f.id === featId);
+    const feat = getAllFeats().find(f => f.id === featId);
     if (!feat) return;
 
     if (feat.choiceType) {
@@ -211,7 +206,7 @@ export const SkillsColumn = () => {
   const filteredFeats = useMemo(() => {
     const term = featSearch.toLowerCase().trim();
     if (!term) return [];
-    return ALL_FEATS
+    return getAllFeats()
       .filter(f => !selectedFeats.includes(f.id))
       .filter(f => f.name.toLowerCase().includes(term) || f.category.includes(term))
       .slice(0, 12);
@@ -230,7 +225,7 @@ export const SkillsColumn = () => {
   const selectedFeatsParsed = useMemo(
     () => selectedFeats.map(entry => {
       const parsed = parseFeatEntry(entry);
-      const def = ALL_FEATS.find(f => f.id === parsed.featId);
+      const def = getAllFeats().find(f => f.id === parsed.featId);
       return { ...parsed, def };
     }).filter(e => e.def != null) as Array<{ featId: string; choice: string | null; raw: string; def: FeatDefinition }>,
     [selectedFeats],
@@ -291,7 +286,7 @@ export const SkillsColumn = () => {
    * - Caster → all class spells; eligibility + slot check handles locking.
    */
   const availableSpells = useMemo(() => {
-    if (!currentClass) return ALL_SPELLS;
+    if (!currentClass) return getAllSpells();
     if (!classCasts) return [];
     return getSpellsForClass(currentClass, 9);
   }, [currentClass, classCasts]);
@@ -317,7 +312,7 @@ export const SkillsColumn = () => {
   }, [spellSearch, selectedSpells, availableSpells, currentClass, currentLevel, finalAttributes.intelligence]);
 
   const selectedSpellDefs = useMemo(
-    () => selectedSpells.map(id => getSpellById(id)).filter(Boolean) as typeof ALL_SPELLS,
+    () => selectedSpells.map(id => getSpellById(id)).filter(Boolean) as SpellDefinition[],
     [selectedSpells],
   );
 

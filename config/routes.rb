@@ -34,6 +34,10 @@ Rails.application.routes.draw do
 
   get "sheets/create" => "stimulus#stimulus_version_sheet_creator"
 
+  # Read-only game-rule definition endpoints
+  resources :feat_definitions,  only: [:index, :show]
+  resources :spell_definitions, only: [:index, :show]
+
   # Sheets: HTML (SPA) + JSON API
   resources :sheets
 

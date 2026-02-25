@@ -10,11 +10,57 @@ export interface SheetDetails {
   spells?: string[]
 }
 
+/** Server-computed derived stats (see CharacterStats::Calculator). */
+export interface DerivedStats {
+  final_scores: Record<string, number>
+  mods: Record<string, number>
+  bab: number
+  fort: number
+  ref: number
+  will: number
+  ac: number
+  touch_ac: number
+  flat_footed_ac: number
+  cmb: number
+  cmd: number
+  initiative: number
+  max_hp: number
+  hp_bonus: number
+  melee_attack: number
+  ranged_attack: number
+  speed: number
+  size: string
+  skills: DerivedSkill[]
+  feat_stat_bonuses: {
+    ac: number
+    fort_save: number
+    ref_save: number
+    will_save: number
+    initiative: number
+    melee_attack: number
+    ranged_attack: number
+    hp: number
+    cmb_by_maneuver: Record<string, number>
+    cmd_by_maneuver: Record<string, number>
+  }
+}
+
+export interface DerivedSkill {
+  name: string
+  key_ability: string
+  trained_only: boolean
+  ability_mod: number
+  racial_bonus: number
+  feat_bonus: number
+  total: number
+}
+
 export interface Sheet {
   id: number
   name: string
   description: string | null
   details: SheetDetails | null
+  derived_stats: DerivedStats
   strength: number
   intelligence: number
   dexterity: number
@@ -67,6 +113,7 @@ export interface AdventureSheet {
   name: string
   description: string | null
   details: SheetDetails | null
+  derived_stats: DerivedStats
   strength: number
   intelligence: number
   dexterity: number

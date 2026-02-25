@@ -156,6 +156,86 @@ adventure_sheet_feats
 
 ---
 
+## Roadmap: Backend Stat Engine & Data Migration
+
+The frontend currently owns ~100% of the game-mechanics computation (derived stats,
+feat effects, spell eligibility, prerequisite checks). This is duplicated across
+`SkillsColumn.tsx` (~810 lines) and `AdventurePlay.tsx` (~660 lines), and the
+backend DM prompt has no access to computed stats like AC, saves, or skill totals.
+
+The plan below is ordered by dependency and incremental deliverability.
+
+### Phase 1 — Feat & Spell Definitions to Database (Seeders)
+
+**Goal:** Move the ~155 feat and ~104 spell definitions from static TypeScript files
+into PostgreSQL tables, seeded from Rails seed files.
+
+| Step | Description |
+|------|-------------|
+| 1.1 | Create `feat_definitions` table: `id (string PK)`, `name`, `category`, `summary`, `repeatable (bool)`, `choice_type (nullable)`, `prerequisites (jsonb)`, `effects (jsonb)` |
+| 1.2 | Create `spell_definitions` table: `id (string PK)`, `name`, `school`, `summary`, `description`, `casting_time`, `range`, `duration`, `saving_throw`, `spell_resistance`, `components (jsonb)`, `class_levels (jsonb)`, `effects (jsonb)` |
+| 1.3 | Write seed files (`db/seeds/feats.rb`, `db/seeds/spells.rb`) that convert the existing TS data into DB rows. A one-time script can parse the TS files or we hand-transcribe the JSONB payloads. |
+| 1.4 | Add `Feat` and `Spell` Rails models with lookup scopes (`by_category`, `for_class`, etc.) |
+| 1.5 | Add read-only REST endpoints: `GET /api/feats` and `GET /api/spells` (with filters: `?class=wizard&max_level=1`) |
+| 1.6 | Update frontend to fetch definitions from the API instead of importing static TS arrays. Keep the TS type interfaces for the response shape. |
+| 1.7 | Delete the static TS definition files (`pathfinder_feats_combat.ts`, `pathfinder_feats_general.ts`, `pathfinder_spells_*.ts`) |
+
+### Phase 2 — Feat & Spell Selections to Pivot Tables
+
+**Goal:** Replace the JSONB `details.feats` / `details.knownSpells` / `details.spellbook`
+arrays with proper relational pivot tables.
+
+| Step | Description |
+|------|-------------|
+| 2.1 | Create `sheet_feats` (`sheet_id FK`, `feat_id FK → feat_definitions`, `choice nullable`) |
+| 2.2 | Create `adventure_sheet_feats` (same shape, FK to `adventure_sheets`) |
+| 2.3 | Create `sheet_spells` (`sheet_id FK`, `spell_id FK`, `storage_type: 'known' \| 'spellbook'`) |
+| 2.4 | Create `adventure_sheet_spells` (same shape, FK to `adventure_sheets`) |
+| 2.5 | Data migration: iterate existing `sheets` and `adventure_sheets`, parse `details.feats` (handling compound `feat_id::choice` format) into `sheet_feats` / `adventure_sheet_feats` rows. Parse `details.knownSpells` and `details.spellbook` into `sheet_spells` / `adventure_sheet_spells`. |
+| 2.6 | Update `SheetsController` and `AdventureSheetsController` to CRUD through the pivot models instead of mutating JSONB |
+| 2.7 | Update frontend to send/receive feat/spell selections as nested resource arrays instead of flat ID lists |
+| 2.8 | Remove `feats`, `knownSpells`, `spellbook`, `spells` keys from `details` JSONB |
+
+### Phase 3 — Server-Side Derived Stats Engine
+
+**Goal:** The backend becomes the single source of truth for computed character stats.
+Frontend becomes a thin display/interaction layer.
+
+| Step | Description |
+|------|-------------|
+| 3.1 | Create `CharacterStats::Calculator` service (Ruby). Port the Pathfinder math: racial modifiers → final ability scores → ability modifiers → BAB → saves → AC variants → CMB/CMD → initiative → skill totals → feat bonuses → HP. |
+| 3.2 | Add a `derived_stats (jsonb)` column to both `sheets` and `adventure_sheets`. Compute and cache on every save (`after_save` callback). |
+| 3.3 | Expose `derived_stats` in the existing JSON responses (no new endpoint needed — it's just another column). |
+| 3.4 | Update DM prompt (`DungeonMaster::Prompts`) to read computed stats directly (AC, saves, skill bonuses, etc.) so the AI can make informed decisions. |
+| 3.5 | Simplify `SkillsColumn.tsx`: remove the `combatStats` and `calculatedSkills` useMemo blocks; read from `sheet.derived_stats` received from the API. |
+| 3.6 | Simplify `AdventurePlay.tsx`: remove the `derivedStats` useMemo block; read from `adventure.adventure_sheet.derived_stats`. |
+| 3.7 | Delete the frontend helper functions that are now redundant (`computeFeatSkillBonuses`, `computeFeatStatBonuses`, `computeBAB`, `baseSave`, etc.) |
+
+### Phase 4 — Server-Side Prerequisite & Spell Eligibility Validation
+
+**Goal:** The backend enforces game rules, not just the frontend.
+
+| Step | Description |
+|------|-------------|
+| 4.1 | Add prerequisite checking to `SheetFeat` model (`validate :meets_prerequisites`). Uses the `feat_definitions.prerequisites` JSONB against the sheet's current stats and existing feats. |
+| 4.2 | Add spell eligibility checking to `SheetSpell` model (class spell list, slot limits, ability score minimums). |
+| 4.3 | Return validation errors as structured JSON so the frontend can display them inline. |
+| 4.4 | Remove the frontend `checkAllPrerequisites`, `canSelectFeat`, `canSelectSpell` functions (keep only the UI to display server-sent eligibility flags). |
+| 4.5 | Add a `GET /api/feats/eligible?sheet_id=X` endpoint that returns all feats annotated with `{ eligible: bool, unmet: [...] }` for the feat picker. Similarly for spells. |
+
+### Phase 5 — DM Programmatic Actions
+
+**Goal:** The DM AI can grant/remove feats, modify spells, adjust gold/HP, and level up
+characters through structured actions, not just narrative.
+
+| Step | Description |
+|------|-------------|
+| 5.1 | Extend DM response JSON schema to include `actions: [{ type: 'grant_feat', feat_id, choice? }, { type: 'add_spell', spell_id }, { type: 'modify_hp', delta }, ...]` |
+| 5.2 | Process actions in `DungeonMasterService` after parsing the AI response — create/destroy pivot records, adjust `adventure_sheet` columns, recompute `derived_stats` |
+| 5.3 | Return the updated `adventure_sheet` (with fresh `derived_stats`) in the message response so the frontend reflects changes instantly |
+
+---
+
 ## Future Work
 
 - [ ] Define new structured effect types for the patterns above (size-change, condition-propagation, action-economy, etc.)
@@ -163,3 +243,6 @@ adventure_sheet_feats
 - [ ] Add level 2+ spells (currently only levels 0–1 are included)
 - [ ] Add spells from non-Core sources (APG, Ultimate Magic, etc.)
 - [ ] Add feats from non-Core sources (APG, Ultimate Combat, etc.)
+- [ ] Multi-level BAB/saves (currently only level-1 base values are used; scaling formulas needed)
+- [ ] Equipment/armor system (AC from armor, weapon damage, encumbrance)
+- [ ] Conditions/buffs engine (temporary modifiers from spells, abilities, items)

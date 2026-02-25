@@ -43,3 +43,7 @@ aboleth_story.story_states.create!(
 )
 
 puts "Created/updated story: #{aboleth_story.title} with #{aboleth_story.story_states.count} stages"
+
+# Seed feat and spell definitions
+load Rails.root.join("db", "seeds", "feats.rb")
+load Rails.root.join("db", "seeds", "spells.rb")

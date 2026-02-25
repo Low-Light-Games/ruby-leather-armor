@@ -1,24 +1,32 @@
 /**
  * Pathfinder 1e Core Rulebook — Feat aggregator.
- * Re-exports all feat data and provides lookup helpers.
+ *
+ * Provides lookup helpers and computation functions for feats.
+ * The feat definitions are loaded from the API at runtime via
+ * GameDataContext, which calls `setFeatDefinitions()`.
  */
 
 import { AttributeType } from '../types';
 import { FeatDefinition, FeatCategory, FeatEffect, Prerequisite } from './pathfinder_feats_types';
-import { COMBAT_FEATS } from './pathfinder_feats_combat';
-import { GENERAL_FEATS, METAMAGIC_FEATS, ITEM_CREATION_FEATS } from './pathfinder_feats_general';
 import type { BABProgression } from './pathfinder_classes';
 
 export type { FeatDefinition, FeatCategory } from './pathfinder_feats_types';
 export type { Prerequisite, FeatEffect, BonusTarget } from './pathfinder_feats_types';
 
-/** All Core Rulebook feats in one flat array. */
-export const ALL_FEATS: FeatDefinition[] = [
-  ...COMBAT_FEATS,
-  ...GENERAL_FEATS,
-  ...METAMAGIC_FEATS,
-  ...ITEM_CREATION_FEATS,
-];
+// ─── Module-level cache (populated by GameDataContext) ──────
+
+/** All feat definitions — populated at runtime via setFeatDefinitions(). */
+let ALL_FEATS: FeatDefinition[] = [];
+
+/** Called by GameDataContext after fetching from the API. */
+export function setFeatDefinitions(feats: FeatDefinition[]): void {
+  ALL_FEATS = feats;
+}
+
+/** Returns the current feat definitions array. */
+export function getAllFeats(): FeatDefinition[] {
+  return ALL_FEATS;
+}
 
 // ─── Compound Feat ID Helpers ───────────────────────────────
 
@@ -86,7 +94,7 @@ export function hasFeatPrerequisites(
     .every(p => ownsBaseFeat(ownedFeatIds, (p as { type: 'feat'; feat: string }).feat));
 }
 
-// ─── Prerequisite Checking System ────────────────────────────
+// ─── Combat Progression Formulas ─────────────────────────────
 
 /** Compute BAB at a given level for a given BAB progression. */
 export function computeBAB(bab: BABProgression, level: number): number {
@@ -96,6 +104,20 @@ export function computeBAB(bab: BABProgression, level: number): number {
     case '1/2':   return Math.floor(level / 2);
   }
 }
+
+/**
+ * Compute base save bonus at a given level.
+ *
+ * Pathfinder 1e progression:
+ *   Good save:  floor(level / 2) + 2
+ *   Poor save:  floor((level - 1) / 3)
+ */
+export function computeBaseSave(good: boolean, level: number): number {
+  if (good) return Math.floor(level / 2) + 2;
+  return Math.floor((level - 1) / 3);
+}
+
+// ─── Prerequisite Checking System ────────────────────────────
 
 /** Character state needed to evaluate feat prerequisites. */
 export interface PrerequisiteContext {

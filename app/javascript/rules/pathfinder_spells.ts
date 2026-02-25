@@ -1,18 +1,12 @@
 /**
  * Pathfinder 1e Core Rulebook — Spell aggregator.
- * Re-exports all spell data and provides lookup / eligibility helpers.
+ *
+ * Provides lookup / eligibility helpers for spells.
+ * The spell definitions are loaded from the API at runtime via
+ * GameDataContext, which calls `setSpellDefinitions()`.
  */
 
 import { SpellDefinition, SpellSchool } from './pathfinder_spells_types';
-import { ABJURATION_SPELLS } from './pathfinder_spells_abjuration';
-import { CONJURATION_SPELLS } from './pathfinder_spells_conjuration';
-import { DIVINATION_SPELLS } from './pathfinder_spells_divination';
-import { ENCHANTMENT_SPELLS } from './pathfinder_spells_enchantment';
-import { EVOCATION_SPELLS } from './pathfinder_spells_evocation';
-import { ILLUSION_SPELLS } from './pathfinder_spells_illusion';
-import { NECROMANCY_SPELLS } from './pathfinder_spells_necromancy';
-import { TRANSMUTATION_SPELLS } from './pathfinder_spells_transmutation';
-import { UNIVERSAL_SPELLS } from './pathfinder_spells_universal';
 import { getClassById, CastingStyle } from './pathfinder_classes';
 import { abilityModifier } from './pathfinder_skills';
 
@@ -20,20 +14,20 @@ export type { CastingStyle } from './pathfinder_classes';
 export type { SpellDefinition, SpellSchool } from './pathfinder_spells_types';
 export type { SpellComponent, SpellEffect } from './pathfinder_spells_types';
 
-// ─── Combined array ──────────────────────────────────────────
+// ─── Module-level cache (populated by GameDataContext) ──────
 
-/** All Core Rulebook level 0–1 spells in one flat array. */
-export const ALL_SPELLS: SpellDefinition[] = [
-  ...ABJURATION_SPELLS,
-  ...CONJURATION_SPELLS,
-  ...DIVINATION_SPELLS,
-  ...ENCHANTMENT_SPELLS,
-  ...EVOCATION_SPELLS,
-  ...ILLUSION_SPELLS,
-  ...NECROMANCY_SPELLS,
-  ...TRANSMUTATION_SPELLS,
-  ...UNIVERSAL_SPELLS,
-];
+/** All spell definitions — populated at runtime via setSpellDefinitions(). */
+let ALL_SPELLS: SpellDefinition[] = [];
+
+/** Called by GameDataContext after fetching from the API. */
+export function setSpellDefinitions(spells: SpellDefinition[]): void {
+  ALL_SPELLS = spells;
+}
+
+/** Returns the current spell definitions array. */
+export function getAllSpells(): SpellDefinition[] {
+  return ALL_SPELLS;
+}
 
 // ─── Lookup helpers ──────────────────────────────────────────
 
