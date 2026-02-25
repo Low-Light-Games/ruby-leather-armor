@@ -80,12 +80,14 @@ textarea {
   resize: vertical;
 }
 
-.feedback-success {
-  color: green;
-}
-
 .feedback-error {
-  color: red;
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
 }
 
 select {

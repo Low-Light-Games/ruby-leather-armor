@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { AttributeRow } from './components/AttributeRow'
 import { NameField } from './components/NameField'
+import FlashMessage from '../FlashMessage'
 import { useSheetsContext } from '../../contexts/SheetsContext'
 import { Sheet, AttributeType } from '../../types'
 import { PATHFINDER_RACES, getRaceById } from '../../rules/pathfinder_races'
@@ -45,11 +46,10 @@ export const SheetEditor = () => {
 
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [feedback, setFeedback] = useState<[string, string] | null>(null)
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [currentSheetId, setCurrentSheetId] = useState<number | null>(null)
   const [isPristine, setIsPristine] = useState(true)
   const csrfTokenRef = useRef<string | null>(null)
-  const feedbackTimeoutRef = useRef<number | null>(null)
 
   // Point buy uses BASE scores only (racial modifiers don't affect cost)
   const spentPoints = useMemo(() => {
@@ -175,7 +175,7 @@ export const SheetEditor = () => {
       }
 
       const savedSheet: Sheet = await response.json()
-      setFeedback(['success', isUpdate ? 'Sheet updated successfully' : 'Sheet saved successfully'])
+      setFeedback({ type: 'success', message: isUpdate ? 'Sheet updated successfully' : 'Sheet saved successfully' })
 
       if (isUpdate) {
         setSheets(sheets.map(s => s.id === savedSheet.id ? savedSheet : s))
@@ -187,7 +187,7 @@ export const SheetEditor = () => {
       resetToNew()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error saving sheet'
-      setFeedback(['error', message])
+      setFeedback({ type: 'error', message })
     }
   }
 
@@ -195,22 +195,7 @@ export const SheetEditor = () => {
     csrfTokenRef.current = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null
   }, [])
 
-  useEffect(() => {
-    if (feedback) {
-      if (feedbackTimeoutRef.current) {
-        clearTimeout(feedbackTimeoutRef.current)
-      }
-      feedbackTimeoutRef.current = window.setTimeout(() => {
-        setFeedback(null)
-      }, 5000)
-    }
-
-    return () => {
-      if (feedbackTimeoutRef.current) {
-        clearTimeout(feedbackTimeoutRef.current)
-      }
-    }
-  }, [feedback])
+  const dismissFeedback = useCallback(() => setFeedback(null), [])
 
   const canIncrease = useCallback((attribute: AttributeType): boolean => {
     const currentValue = attributes[attribute]
@@ -249,7 +234,13 @@ export const SheetEditor = () => {
 
   return (
     <div>
-      {feedback && <p className={`feedback-${feedback[0]}`} role="alert">{feedback[1]}</p>}
+      {feedback && (
+        <FlashMessage
+          type={feedback.type}
+          message={feedback.message}
+          onDismiss={dismissFeedback}
+        />
+      )}
       <h2>Points spent: {spentPoints} / {AVAILABLE_POINTS}</h2>
 
       <div className="form-field">

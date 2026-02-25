@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../Navbar'
 import Login from '../Login'
+import FlashMessage from '../FlashMessage'
 import { StoryState } from '../../types'
 import './AdminStoryEditor.scss'
 
@@ -45,8 +46,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
 
   const [loading, setLoading] = useState(mode === 'edit')
   const [saving, setSaving] = useState(false)
-  const [feedback, setFeedback] = useState<[string, string] | null>(null)
-  const feedbackTimeout = useRef<number | null>(null)
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   // Story fields
   const [title, setTitle] = useState('')
@@ -59,17 +59,6 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   const [newStateDescription, setNewStateDescription] = useState('')
   const [editingStateId, setEditingStateId] = useState<number | null>(null)
   const [editingStateDescription, setEditingStateDescription] = useState('')
-
-  // Feedback auto-dismiss
-  useEffect(() => {
-    if (feedback) {
-      if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current)
-      feedbackTimeout.current = window.setTimeout(() => setFeedback(null), 5000)
-    }
-    return () => {
-      if (feedbackTimeout.current) clearTimeout(feedbackTimeout.current)
-    }
-  }, [feedback])
 
   // Load story for edit mode
   useEffect(() => {
@@ -93,7 +82,10 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
     loadStory()
   }, [mode, storyId, user])
 
-  const showFeedback = (type: string, msg: string) => setFeedback([type, msg])
+  const showFeedback = useCallback((type: 'success' | 'error', msg: string) => {
+    setFeedback({ type, message: msg })
+  }, [])
+  const dismissFeedback = useCallback(() => setFeedback(null), [])
 
   // ---- Story Save ----
 
@@ -237,7 +229,11 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
         </div>
 
         {feedback && (
-          <p className={`feedback-${feedback[0]}`} role="alert">{feedback[1]}</p>
+          <FlashMessage
+            type={feedback.type}
+            message={feedback.message}
+            onDismiss={dismissFeedback}
+          />
         )}
 
         {/* Story fields */}
