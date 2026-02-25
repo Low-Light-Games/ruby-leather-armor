@@ -6,6 +6,7 @@ import { useSheetsContext } from '../../contexts/SheetsContext'
 import { Sheet, AttributeType } from '../../types'
 import { PATHFINDER_RACES, getRaceById } from '../../rules/pathfinder_races'
 import { PATHFINDER_CLASSES } from '../../rules/pathfinder_classes'
+import { getCastingStyle } from '../../rules/pathfinder_spells'
 
 const AVAILABLE_POINTS = 27;
 
@@ -113,7 +114,15 @@ export const SheetEditor = () => {
     setCurrentClass(sheet.character_class || null)
     setCurrentLevel(sheet.level || 1)
     setSelectedFeats(sheet.details?.feats || [])
-    setSelectedSpells(sheet.details?.spells || [])
+    // Load spells from the correct field based on casting style
+    const style = getCastingStyle(sheet.character_class)
+    if (style === 'spontaneous') {
+      setSelectedSpells(sheet.details?.knownSpells || sheet.details?.spells || [])
+    } else if (style === 'spellbook') {
+      setSelectedSpells(sheet.details?.spellbook || sheet.details?.spells || [])
+    } else {
+      setSelectedSpells([])
+    }
     setCurrentSheetId(sheet.id)
     setIsPristine(true)
     setSheetToEdit(null)
@@ -178,7 +187,12 @@ export const SheetEditor = () => {
             character_class: currentClass,
             level: currentLevel,
             feat_ids: selectedFeats,
-            spell_ids: selectedSpells,
+            // Send spells under the correct key based on casting style
+            ...(getCastingStyle(currentClass) === 'spontaneous'
+              ? { known_spell_ids: selectedSpells }
+              : getCastingStyle(currentClass) === 'spellbook'
+              ? { spellbook_spell_ids: selectedSpells }
+              : {}),
             ...attributes
           }
         })

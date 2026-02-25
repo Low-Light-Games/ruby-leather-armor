@@ -1,6 +1,13 @@
 export interface SheetDetails {
-  feats?: string[]   // feat IDs
-  spells?: string[]  // spell IDs
+  feats?: string[]          // feat IDs
+
+  // ─── Spell storage (differentiated by casting style) ───
+  /** Spontaneous casters (sorcerer, bard): their limited known spells */
+  knownSpells?: string[]
+  /** Wizard: spells copied into the spellbook */
+  spellbook?: string[]
+  /** @deprecated Legacy field — migrated to knownSpells or spellbook on load */
+  spells?: string[]
 }
 
 export interface Sheet {

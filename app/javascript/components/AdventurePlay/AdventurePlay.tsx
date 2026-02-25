@@ -11,7 +11,8 @@ import { getClassById } from '../../rules/pathfinder_classes'
 import { rollD20 } from '../../rules/dice'
 import { touchAC, flatFootedAC, combatManeuverBonus, combatManeuverDefense } from '../../rules/pathfinder_combat'
 import { getFeatById } from '../../rules/pathfinder_feats'
-import { getSpellById } from '../../rules/pathfinder_spells'
+import { getSpellById, getCastingStyle, getSpellsForClass, ALL_SPELLS, hasSlotForSpell } from '../../rules/pathfinder_spells'
+import type { SpellDefinition } from '../../rules/pathfinder_spells'
 import './AdventurePlay.scss'
 
 interface AdventurePlayProps {
@@ -268,7 +269,64 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const { adventure_sheet: sheet, story, story_state } = adventure
   const stats = derivedStats
   const feats = sheet.details?.feats || []
-  const spells = sheet.details?.spells || []
+  const castStyle = getCastingStyle(sheet.character_class)
+
+  // Read spells from the correct detail field based on casting style
+  const spellIds: string[] = (() => {
+    if (castStyle === 'spontaneous') return sheet.details?.knownSpells || sheet.details?.spells || []
+    if (castStyle === 'spellbook') return sheet.details?.spellbook || sheet.details?.spells || []
+    return sheet.details?.spells || []
+  })()
+
+  const spellSectionLabel = castStyle === 'spellbook' ? 'Spellbook'
+    : castStyle === 'spontaneous' ? 'Known Spells'
+    : 'Spells'
+
+  // ─── Spellbook management state (for wizard during adventure) ─
+  const [spellbookSearch, setSpellbookSearch] = useState('')
+  const [spellbookSaving, setSpellbookSaving] = useState(false)
+
+  const spellbookSearchResults = useMemo(() => {
+    if (castStyle !== 'spellbook' || !spellbookSearch.trim()) return []
+    const term = spellbookSearch.toLowerCase().trim()
+    const classSpells = sheet.character_class
+      ? getSpellsForClass(sheet.character_class, 9)
+      : ALL_SPELLS
+    return classSpells
+      .filter(s => !spellIds.includes(s.id))
+      .filter(s => s.name.toLowerCase().includes(term) || s.school.includes(term))
+      .map(spell => ({
+        spell,
+        hasSlot: hasSlotForSpell(
+          sheet.character_class, sheet.level,
+          stats.finalScores.intelligence, spell, spellIds,
+        ),
+      }))
+      .slice(0, 8)
+  }, [castStyle, spellbookSearch, spellIds, sheet, stats])
+
+  const addSpellToSpellbook = useCallback(async (spell: SpellDefinition) => {
+    if (!adventure) return
+    setSpellbookSaving(true)
+    try {
+      const newSpellbook = [...spellIds, spell.id]
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+      const res = await fetch(`/adventures/${adventure.id}/adventure_sheet`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        body: JSON.stringify({ spellbook: newSpellbook }),
+      })
+      if (res.ok) {
+        const updatedSheet = await res.json()
+        setAdventure(prev => prev ? { ...prev, adventure_sheet: updatedSheet } : prev)
+      }
+    } catch (e) {
+      console.error('Failed to update spellbook:', e)
+    } finally {
+      setSpellbookSaving(false)
+      setSpellbookSearch('')
+    }
+  }, [adventure, spellIds])
 
   return (
     <div className="app">
@@ -469,15 +527,26 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
                 onClick={() => setShowSpells(prev => !prev)}
               >
                 <span className="collapse-icon">{showSpells ? '▼' : '▶'}</span>
-                Spells ({spells.length})
+                {spellSectionLabel} ({spellIds.length})
               </button>
               {showSpells && (
                 <div className="collapsible-body">
+                  {/* Prepared full-list notice */}
+                  {castStyle === 'prepared_list' && (
+                    <p className="empty-hint" style={{ fontStyle: 'italic' }}>
+                      Your class knows all spells. Daily preparation coming soon.
+                    </p>
+                  )}
+
                   <div className="feats-spells-list">
-                    {spells.length === 0 ? (
-                      <p className="empty-hint">No spells selected.</p>
+                    {spellIds.length === 0 ? (
+                      <p className="empty-hint">
+                        {castStyle === 'spellbook' ? 'Spellbook is empty.' :
+                         castStyle === 'spontaneous' ? 'No known spells.' :
+                         'No spells selected.'}
+                      </p>
                     ) : (
-                      spells.map(spellId => {
+                      spellIds.map(spellId => {
                         const spell = getSpellById(spellId)
                         if (!spell) return null
                         const lvl = sheet.character_class
@@ -493,6 +562,42 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
                       })
                     )}
                   </div>
+
+                  {/* Spellbook editing (wizard only during adventure) */}
+                  {castStyle === 'spellbook' && (
+                    <div className="spellbook-add-section">
+                      <p className="spellbook-add-label">Add spell to spellbook:</p>
+                      <input
+                        type="text"
+                        className="spellbook-search-input"
+                        placeholder="Search spells to add…"
+                        value={spellbookSearch}
+                        onChange={e => setSpellbookSearch(e.target.value)}
+                        disabled={spellbookSaving}
+                      />
+                      {spellbookSearchResults.length > 0 && (
+                        <ul className="spellbook-dropdown">
+                          {spellbookSearchResults.map(({ spell, hasSlot }) => {
+                            const lvl = sheet.character_class
+                              ? spell.classLevels[sheet.character_class.toLowerCase()]
+                              : '?'
+                            return (
+                              <li
+                                key={spell.id}
+                                className={`spellbook-option ${!hasSlot ? 'slot-full' : ''}`}
+                                onClick={() => hasSlot && addSpellToSpellbook(spell)}
+                              >
+                                <span className="spell-lvl-badge small">{lvl ?? '?'}</span>
+                                <span className="option-name">{spell.name}</span>
+                                <span className="fs-tag school-tag">{spell.school}</span>
+                                {!hasSlot && <span className="slot-full-hint">slots full</span>}
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

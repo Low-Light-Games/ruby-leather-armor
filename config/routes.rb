@@ -42,5 +42,6 @@ Rails.application.routes.draw do
   resources :adventures, only: [:index, :new, :create, :show, :destroy] do
     resources :messages, only: [:index, :create], controller: 'adventure_messages'
     post 'messages/roll', to: 'adventure_messages#roll', as: :roll_message
+    resource :adventure_sheet, only: [:update]
   end
 end

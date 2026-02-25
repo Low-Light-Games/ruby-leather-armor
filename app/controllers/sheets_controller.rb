@@ -64,13 +64,35 @@ class SheetsController < ApplicationController
     )
   end
 
-  # Merge feat_ids and spell_ids into the details JSON column
+  # Merge feat_ids and spell data into the details JSON column.
+  #
+  # Spells are stored under different keys based on casting style:
+  #   known_spell_ids    → details['knownSpells']  (spontaneous casters)
+  #   spellbook_spell_ids → details['spellbook']   (wizard)
+  #   spell_ids          → details['spells']       (legacy, backward-compat)
   def merge_details!(sheet)
     sheet_data = params[:sheet] || {}
     details = (sheet.details || {}).dup
 
-    details['feats']  = Array(sheet_data[:feat_ids]).map(&:to_s)  if sheet_data.key?(:feat_ids)
-    details['spells'] = Array(sheet_data[:spell_ids]).map(&:to_s) if sheet_data.key?(:spell_ids)
+    # Feats
+    details['feats'] = Array(sheet_data[:feat_ids]).map(&:to_s) if sheet_data.key?(:feat_ids)
+
+    # Spontaneous casters (sorcerer, bard)
+    if sheet_data.key?(:known_spell_ids)
+      details['knownSpells'] = Array(sheet_data[:known_spell_ids]).map(&:to_s)
+      details.delete('spells') # clean up legacy key
+    end
+
+    # Spellbook casters (wizard)
+    if sheet_data.key?(:spellbook_spell_ids)
+      details['spellbook'] = Array(sheet_data[:spellbook_spell_ids]).map(&:to_s)
+      details.delete('spells') # clean up legacy key
+    end
+
+    # Legacy support — only if no new-style keys were sent
+    if sheet_data.key?(:spell_ids) && !sheet_data.key?(:known_spell_ids) && !sheet_data.key?(:spellbook_spell_ids)
+      details['spells'] = Array(sheet_data[:spell_ids]).map(&:to_s)
+    end
 
     sheet.details = details
   end

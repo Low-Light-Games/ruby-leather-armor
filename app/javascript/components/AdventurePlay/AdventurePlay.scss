@@ -453,6 +453,109 @@
           font-size: 10px;
           font-weight: 700;
           flex-shrink: 0;
+
+          &.small {
+            width: 16px;
+            height: 16px;
+            font-size: 9px;
+          }
+        }
+      }
+    }
+
+    /* Spellbook add section (wizard in adventure) */
+    .spellbook-add-section {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed #dee2e6;
+      position: relative;
+
+      .spellbook-add-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #555;
+        margin: 0 0 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .spellbook-search-input {
+        width: 100%;
+        padding: 5px 8px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        font-size: 12px;
+        box-sizing: border-box;
+
+        &:focus {
+          outline: none;
+          border-color: #007bff;
+          box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+        }
+
+        &:disabled {
+          opacity: 0.6;
+        }
+      }
+
+      .spellbook-dropdown {
+        position: absolute;
+        left: 0;
+        right: 0;
+        max-height: 200px;
+        overflow-y: auto;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 0 0 4px 4px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        z-index: 10;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+      }
+
+      .spellbook-option {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 8px;
+        font-size: 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        &:hover {
+          background: #e9ecef;
+        }
+
+        &.slot-full {
+          opacity: 0.5;
+          cursor: not-allowed;
+
+          &:hover {
+            background: transparent;
+          }
+        }
+
+        .option-name {
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-weight: 500;
+        }
+
+        .slot-full-hint {
+          font-size: 10px;
+          color: #856404;
+          background: #fff3cd;
+          padding: 1px 5px;
+          border-radius: 3px;
+          flex-shrink: 0;
         }
       }
     }
