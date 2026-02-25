@@ -13,11 +13,8 @@ export const Navbar = () => {
         {user.admin && <span className="admin-badge">Admin</span>}
       </div>
       <div className="header-actions">
-        <a href="/" className="nav-link">Sheets</a>
+        <a href="/sheets" className="nav-link">Sheets</a>
         <a href="/adventures/new" className="adventure-cta">Adventure!</a>
-        {user.admin && <a href="/admin/stories" className="nav-link admin-link">Stories</a>}
-        {user.admin && <a href="/admin/dm_logs" className="nav-link admin-link">DM Logs</a>}
-        {user.admin && <a href="/admin/ai_logs" className="nav-link admin-link">AI Logs</a>}
         <button onClick={logout} className="logout-button">Logout</button>
       </div>
     </div>

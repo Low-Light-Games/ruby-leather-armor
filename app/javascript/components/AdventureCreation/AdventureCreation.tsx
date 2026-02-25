@@ -22,8 +22,8 @@ export const AdventureCreation = () => {
 
     Promise.all([
       fetch('/stories').then(r => r.json()),
-      fetch('/sheets').then(r => r.json()),
-      fetch('/adventures').then(r => r.json()),
+      fetch('/sheets.json').then(r => r.json()),
+      fetch('/adventures.json').then(r => r.json()),
     ])
       .then(([storiesData, sheetsData, adventuresData]) => {
         setStories(storiesData)

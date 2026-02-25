@@ -1,19 +1,4 @@
-<div class="app-header">
-  <div class="user-info">
-    <span>Logged in as: <%= current_user.email %></span>
-    <% if current_user.admin? %><span class="admin-badge">Admin</span><% end %>
-  </div>
-  <div class="header-actions">
-    <a href="/" class="nav-link">Sheets</a>
-    <a href="/adventures/new" class="adventure-cta">Adventure!</a>
-    <% if current_user.admin? %>
-      <a href="/admin/stories" class="nav-link">Admin Stories</a>
-      <a href="/admin/dm_logs" class="nav-link admin-logs-link">DM Logs</a>
-      <a href="/admin/ai_logs" class="nav-link admin-logs-link">AI Logs</a>
-    <% end %>
-    <%= button_to "Logout", logout_path, method: :delete, class: "logout-link" %>
-  </div>
-</div>
+<%= render 'admin/shared/navbar', active_nav: :dm_logs %>
 
 <div class="admin-dm-logs-index">
   <div class="admin-logs-header">
@@ -90,6 +75,8 @@
     <% end %>
   <% end %>
 </div>
+
+<%= render 'admin/shared/navbar_styles' %>
 
 <style>
   .admin-dm-logs-index {
@@ -262,77 +249,5 @@
       opacity: 0.4;
       cursor: default;
     }
-  }
-
-  /* Navbar — same as stories index */
-  .app-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 20px;
-    background-color: #343a40;
-    color: white;
-    font-family: 'Arial', sans-serif;
-    margin-bottom: 20px;
-  }
-
-  .user-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 14px;
-  }
-
-  .admin-badge {
-    background-color: #ffc107;
-    color: #343a40;
-    padding: 3px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: bold;
-  }
-
-  .header-actions {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-  }
-
-  .nav-link {
-    color: white;
-    text-decoration: none;
-    font-weight: 500;
-    font-size: 14px;
-    transition: color 0.15s;
-    &:hover { color: #cccccc; }
-  }
-
-  .adventure-cta {
-    background-color: #007bff;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 4px;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 14px;
-    transition: background-color 0.15s;
-    &:hover { background-color: #0056b3; }
-  }
-
-  .admin-logs-link {
-    color: #ff9800;
-    &:hover { color: #e65100; }
-  }
-
-  .logout-link {
-    padding: 8px 16px;
-    background: none;
-    border: none;
-    color: #dc3545;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    transition: color 0.15s;
-    &:hover { color: #a71d2a; text-decoration: underline; }
   }
 </style>

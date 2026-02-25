@@ -12,7 +12,7 @@ export const SheetList = () => {
     setLoading(true)
     setError(null)
     
-    fetch('/sheets')
+    fetch('/sheets.json')
       .then(response => {
         if (!response.ok) {
           if (response.status === 401) {

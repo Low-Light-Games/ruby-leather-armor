@@ -1,0 +1,13 @@
+<nav class="admin-navbar">
+  <div class="navbar-left">
+    <span class="user-info">Logged in as: <%= current_user.email %></span>
+    <span class="admin-badge">Admin</span>
+  </div>
+  <div class="navbar-right">
+    <a href="<%= admin_stories_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :stories %>">Stories</a>
+    <a href="<%= admin_dm_logs_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :dm_logs %>">DM Logs</a>
+    <a href="<%= admin_ai_logs_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :ai_logs %>">AI Logs</a>
+    <a href="<%= admin_dm_config_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :dm_config %>">DM Config</a>
+    <%= button_to "Logout", logout_path, method: :delete, class: "logout-link" %>
+  </div>
+</nav>

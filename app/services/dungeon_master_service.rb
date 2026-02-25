@@ -8,6 +8,7 @@ class DungeonMasterService
     @adventure = adventure
     @user = user
     @client = OpenAI::Client.new
+    @config = DmConfig.instance
   end
 
   # Main entry point: process a player prompt through the 2-call pipeline.
@@ -189,7 +190,8 @@ class DungeonMasterService
       reason: parsed["reason"]
     }
   rescue AiError => e
-    ai_log_error!("sanitization", prompt_summary, e, raw_response: response)
+    raw = response || @last_failed_raw_response
+    ai_log_error!("sanitization", prompt_summary, e, raw_response: raw)
     raise
   end
 
@@ -244,17 +246,20 @@ class DungeonMasterService
         For skill checks, specify which skill. Always include a DC (difficulty class).
       - Do NOT resolve rolls yourself — request them and wait for the result.
 
+      #{pacing_instructions}
+
+      === RESPONSE FORMAT ===
       Respond ONLY with valid JSON (no markdown, no code fences):
       {
-        "narrative": "Your DM narration text here",
-        "reasoning": "Brief explanation of your DM intent — e.g. 'moving story along', 'addressing a failed roll', 'introducing a new NPC', 'building tension before the next stage'",
+        "narrative": "Your DM narration#{@config.verbose? ? '' : " (1-2 short paragraphs, #{@config.pacing_words_min}-#{@config.pacing_words_max} words max)"}",
+        "reasoning": "Brief explanation of your DM intent (1-2 sentences)",
         "advance_stage": false,
         "roll_request": null
       }
 
       The "reasoning" field is for admin/debug purposes — explain your decision-making
       as a DM: why you narrated this way, whether you're progressing the plot, reacting
-      to a high/low roll, introducing a challenge, etc.
+      to a high/low roll, introducing a challenge, etc. Keep it brief.
 
       When requesting a roll, use this format for roll_request:
       {
@@ -264,6 +269,31 @@ class DungeonMasterService
         "description": "Roll a Perception check to notice the hidden passage"
       }
     PROMPT
+  end
+
+  def pacing_instructions
+    if @config.verbose?
+      <<~PACING
+        === PACING ===
+        - You may write longer, more detailed responses when the scene calls for it.
+        - Use rich descriptions, dialogue, and atmosphere.
+        - Still end at a natural point where the player can act.
+      PACING
+    else
+      <<~PACING
+        === PACING ===
+        - Keep each response SHORT: 1-2 paragraphs, roughly #{@config.pacing_words_min}-#{@config.pacing_words_max} words of narrative.
+        - Be iterative: narrate one beat, then pause for the player to react.
+        - Do NOT dump long exposition. If a scene has many elements to describe, reveal
+          them one at a time across multiple exchanges.
+        - End each response at a natural decision point — give the player a reason to act.
+        - Examples of good pacing:
+          * Describe arriving at a location → let the player explore
+          * An NPC starts speaking → let the player respond
+          * A threat is revealed → let the player react
+          * A roll result plays out → describe the immediate consequence, pause
+      PACING
+    end
   end
 
   def generate_dm_response(sanitized_input, call_type: "dm_response")
@@ -277,7 +307,7 @@ class DungeonMasterService
     response = call_openai(
       system_prompt: dm_system_prompt,
       messages: history,
-      max_tokens: 1000
+      max_tokens: 4096
     )
 
     parsed = parse_json_response(response, fallback_as: :dm_response)
@@ -290,8 +320,10 @@ class DungeonMasterService
       roll_request: parsed["roll_request"]
     }
   rescue AiError => e
-    # Log the error with whatever raw response we got (if any)
-    ai_log_error!(call_type, prompt_summary, e, raw_response: response)
+    # Log the error with whatever raw response we got (if any).
+    # If call_openai stored a degenerate response before raising, capture that too.
+    raw = response || @last_failed_raw_response
+    ai_log_error!(call_type, prompt_summary, e, raw_response: raw)
     raise
   end
 
@@ -328,6 +360,8 @@ class DungeonMasterService
 
   # ---- OpenAI Helpers ----
 
+  MAX_RETRIES = 1
+
   def call_openai(system_prompt:, user_message: nil, messages: nil, max_tokens: 500)
     chat_messages = [{ role: "system", content: system_prompt }]
 
@@ -337,33 +371,48 @@ class DungeonMasterService
       chat_messages << { role: "user", content: user_message }
     end
 
-    response = @client.chat(
-      parameters: {
-        model: MODEL,
-        messages: chat_messages,
-        max_tokens: max_tokens,
-        temperature: 0.8,
-        response_format: { type: "json_object" }
-      }
-    )
+    params = {
+      model: MODEL,
+      messages: chat_messages,
+      max_tokens: max_tokens,
+      temperature: @config.temperature,
+      response_format: { type: "json_object" }
+    }
 
-    if response.dig("error")
-      raise AiError, response.dig("error", "message") || "OpenAI API error"
+    attempt = 0
+    loop do
+      response = @client.chat(parameters: params)
+
+      if response.dig("error")
+        raise AiError, response.dig("error", "message") || "OpenAI API error"
+      end
+
+      content = response.dig("choices", 0, "message", "content")
+      finish_reason = response.dig("choices", 0, "finish_reason")
+
+      # Detect degenerate whitespace-only responses (known failure mode with json_object)
+      if content.nil? || content.strip.empty?
+        attempt += 1
+        raw_preview = content&.first(200)&.inspect || "nil"
+        Rails.logger.warn("[DungeonMasterService] Empty/whitespace response (attempt #{attempt}). finish_reason=#{finish_reason}, raw preview=#{raw_preview}")
+
+        if attempt <= MAX_RETRIES
+          Rails.logger.info("[DungeonMasterService] Retrying with lower temperature...")
+          params[:temperature] = 0.4 # Lower temperature to reduce degenerate outputs
+          next
+        end
+
+        # Store the raw whitespace content for debugging before raising
+        @last_failed_raw_response = content
+        raise AiError, "Empty response from AI after #{attempt} attempts (finish_reason: #{finish_reason || 'unknown'})"
+      end
+
+      if finish_reason == "length"
+        Rails.logger.warn("[DungeonMasterService] Response truncated (finish_reason: length). Content length: #{content.length}. Proceeding with partial content.")
+      end
+
+      return content
     end
-
-    content = response.dig("choices", 0, "message", "content")
-    finish_reason = response.dig("choices", 0, "finish_reason")
-
-    if content.blank?
-      Rails.logger.error("[DungeonMasterService] Empty content from AI. finish_reason=#{finish_reason}, full response keys=#{response.keys}, choices=#{response['choices']&.to_json&.first(500)}")
-      raise AiError, "Empty response from AI (finish_reason: #{finish_reason || 'unknown'})"
-    end
-
-    if finish_reason == "length"
-      Rails.logger.warn("[DungeonMasterService] Response truncated (finish_reason: length). Content length: #{content.length}. Proceeding with partial content.")
-    end
-
-    content
   rescue Faraday::TooManyRequestsError
     raise AiError, "Rate limited by OpenAI — please wait a moment and try again"
   rescue Faraday::Error => e

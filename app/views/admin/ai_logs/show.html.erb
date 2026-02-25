@@ -1,19 +1,4 @@
-<div class="app-header">
-  <div class="user-info">
-    <span>Logged in as: <%= current_user.email %></span>
-    <% if current_user.admin? %><span class="admin-badge">Admin</span><% end %>
-  </div>
-  <div class="header-actions">
-    <a href="/" class="nav-link">Sheets</a>
-    <a href="/adventures/new" class="adventure-cta">Adventure!</a>
-    <% if current_user.admin? %>
-      <a href="/admin/stories" class="nav-link">Admin Stories</a>
-      <a href="/admin/dm_logs" class="nav-link admin-logs-link">DM Logs</a>
-      <a href="/admin/ai_logs" class="nav-link admin-logs-link">AI Logs</a>
-    <% end %>
-    <%= button_to "Logout", logout_path, method: :delete, class: "logout-link" %>
-  </div>
-</div>
+<%= render 'admin/shared/navbar', active_nav: :ai_logs %>
 
 <div class="log-show">
   <div class="log-show-header">
@@ -73,4 +58,5 @@
   </div>
 </div>
 
+<%= render 'admin/shared/navbar_styles' %>
 <%= render partial: 'admin/shared/log_show_styles' %>

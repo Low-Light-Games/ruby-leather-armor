@@ -1,19 +1,4 @@
-<nav class="server-navbar">
-  <div class="navbar-left">
-    <span class="user-info">Logged in as: <%= current_user.email %></span>
-    <% if current_user.admin? %>
-      <span class="admin-badge">Admin</span>
-    <% end %>
-  </div>
-  <div class="navbar-right">
-    <a href="/" class="nav-link">Sheets</a>
-    <a href="/adventures/new" class="adventure-cta">Adventure!</a>
-    <a href="/admin/stories" class="nav-link admin-link">Stories</a>
-    <a href="/admin/dm_logs" class="nav-link admin-link">DM Logs</a>
-    <a href="/admin/ai_logs" class="nav-link admin-link">AI Logs</a>
-    <%= button_to "Logout", "/logout", method: :delete, class: "logout-link" %>
-  </div>
-</nav>
+<%= render 'admin/shared/navbar', active_nav: :stories %>
 
 <div class="admin-stories-index">
   <div class="admin-stories-header">
@@ -52,100 +37,9 @@
   <% end %>
 </div>
 
+<%= render 'admin/shared/navbar_styles' %>
+
 <style>
-  .server-navbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 20px;
-    background-color: #f8f9fa;
-    border-bottom: 1px solid #e9ecef;
-    font-family: 'Arial', sans-serif;
-    max-width: 900px;
-    margin: 0 auto 0 auto;
-    border-radius: 0 0 8px 8px;
-  }
-
-  .navbar-left {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .navbar-left .user-info {
-    font-size: 14px;
-    color: #555;
-  }
-
-  .navbar-left .admin-badge {
-    padding: 2px 8px;
-    background-color: #6f42c1;
-    color: white;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  .navbar-right {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .navbar-right .nav-link {
-    padding: 8px 16px;
-    color: #007bff;
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-  }
-
-  .navbar-right .nav-link:hover {
-    background-color: #e9ecef;
-  }
-
-  .navbar-right .admin-link {
-    color: #6f42c1;
-  }
-
-  .navbar-right .admin-link:hover {
-    background-color: #f0e6ff;
-  }
-
-  .navbar-right .adventure-cta {
-    padding: 8px 20px;
-    background-color: #28a745;
-    color: white;
-    text-decoration: none;
-    border-radius: 4px;
-    font-size: 14px;
-    font-weight: 600;
-    transition: background-color 0.15s;
-  }
-
-  .navbar-right .adventure-cta:hover {
-    background-color: #218838;
-  }
-
-  .navbar-right .logout-link {
-    padding: 8px 16px;
-    background: none;
-    border: none;
-    color: #dc3545;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    text-decoration: none;
-    transition: color 0.15s;
-  }
-
-  .navbar-right .logout-link:hover {
-    color: #a71d2a;
-    text-decoration: underline;
-  }
-
   .admin-stories-index {
     max-width: 900px;
     margin: 20px auto;

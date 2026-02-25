@@ -8,7 +8,7 @@ Rails.application.routes.draw do
   # Public legal / OGL page (no authentication required)
   get "legal" => "legal#index"
 
-  # Defines the root path route ("/")
+  # Root redirects based on role: admin → DM Logs, user → Sheets
   root "home#index"
 
   # Authentication routes
@@ -29,10 +29,12 @@ Rails.application.routes.draw do
     end
     resources :dm_logs, only: [:index, :show]
     resources :ai_logs, only: [:index, :show]
+    resource :dm_config, only: [:show, :update]
   end
 
   get "sheets/create" => "stimulus#stimulus_version_sheet_creator"
 
+  # Sheets: HTML (SPA) + JSON API
   resources :sheets
 
   # API endpoints for stories and adventures

@@ -2,13 +2,16 @@ class SheetsController < ApplicationController
   before_action :set_sheet, only: [:show, :update, :destroy]
   before_action :authorize_sheet, only: [:show, :update, :destroy]
 
-  def index
-    @sheets = policy_scope(Sheet).order(created_at: :desc)
-    render json: @sheets
-  end
+  skip_before_action :require_login, only: [:index]
 
-  def list
-    @sheets = policy_scope(Sheet).order(created_at: :desc)
+  def index
+    respond_to do |format|
+      format.html # renders sheets/index.html.erb (the React SPA)
+      format.json do
+        @sheets = policy_scope(Sheet).order(created_at: :desc)
+        render json: @sheets
+      end
+    end
   end
 
   def create

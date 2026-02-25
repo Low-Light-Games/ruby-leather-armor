@@ -1,0 +1,305 @@
+<%= render 'admin/shared/navbar', active_nav: :dm_config %>
+
+<div class="dm-config-page">
+  <h1>DM Configuration</h1>
+  <p class="page-desc">Fine-tune how the AI Dungeon Master behaves. Changes take effect on the next player message.</p>
+
+  <% if flash[:notice] %>
+    <div class="flash-notice"><%= flash[:notice] %></div>
+  <% end %>
+
+  <%= form_tag admin_dm_config_path, method: :patch, class: "config-form" do %>
+
+    <div class="config-section">
+      <h2>Pacing</h2>
+
+      <div class="config-field toggle-field">
+        <label class="toggle-label" for="verbose">
+          <%= check_box_tag :verbose, "1", @config.verbose?, id: "verbose", class: "toggle-checkbox" %>
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">Verbose DM</span>
+        </label>
+        <p class="field-hint">
+          When <strong>off</strong>, the DM keeps responses to short iterative beats (1-2 paragraphs, <%= @config.pacing_words_min %>-<%= @config.pacing_words_max %> words).
+          When <strong>on</strong>, the DM may write longer, richer responses. This uses more tokens.
+        </p>
+      </div>
+
+      <div class="config-field range-fields" id="pacing-range" style="<%= 'opacity: 0.4; pointer-events: none;' if @config.verbose? %>">
+        <div class="range-pair">
+          <div class="range-input">
+            <label for="pacing_words_min">Min words</label>
+            <%= number_field_tag :pacing_words_min, @config.pacing_words_min, min: 30, max: 500, class: "config-input" %>
+          </div>
+          <div class="range-input">
+            <label for="pacing_words_max">Max words</label>
+            <%= number_field_tag :pacing_words_max, @config.pacing_words_max, min: 50, max: 1000, class: "config-input" %>
+          </div>
+        </div>
+        <p class="field-hint">Word target range given to the DM for each response (only when Verbose DM is off).</p>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <h2>Creativity</h2>
+
+      <div class="config-field">
+        <label for="temperature">Temperature</label>
+        <div class="temp-row">
+          <%= range_tag :temperature, @config.temperature, in: 0.0..2.0, step: 0.1, class: "temp-slider", id: "temp-slider" %>
+          <span class="temp-value" id="temp-display"><%= @config.temperature %></span>
+        </div>
+        <p class="field-hint">
+          Controls randomness. <strong>0.0</strong> = deterministic, <strong>0.8</strong> = balanced (default),
+          <strong>1.5+</strong> = very creative/unpredictable.
+          Lower values reduce the chance of degenerate whitespace responses.
+        </p>
+      </div>
+    </div>
+
+    <div class="config-actions">
+      <%= submit_tag "Save Settings", class: "btn-save" %>
+    </div>
+
+  <% end %>
+
+  <div class="config-section config-debug">
+    <h2>Current Raw Settings</h2>
+    <pre class="settings-json"><%= JSON.pretty_generate(@config.settings) %></pre>
+  </div>
+</div>
+
+<script>
+  // Toggle pacing range visibility based on verbose checkbox
+  document.getElementById('verbose').addEventListener('change', function() {
+    var pacingRange = document.getElementById('pacing-range');
+    pacingRange.style.opacity = this.checked ? '0.4' : '1';
+    pacingRange.style.pointerEvents = this.checked ? 'none' : 'auto';
+  });
+
+  // Update temperature display
+  document.getElementById('temp-slider').addEventListener('input', function() {
+    document.getElementById('temp-display').textContent = this.value;
+  });
+</script>
+
+<%= render 'admin/shared/navbar_styles' %>
+
+<style>
+  .dm-config-page {
+    padding: 20px 30px;
+    font-family: 'Arial', sans-serif;
+    max-width: 700px;
+    margin: 0 auto;
+
+    h1 {
+      font-size: 24px;
+      color: #333;
+      margin: 0 0 6px;
+    }
+  }
+
+  .page-desc {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  .flash-notice {
+    padding: 10px 16px;
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 4px;
+    color: #155724;
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+
+  .config-section {
+    margin-bottom: 28px;
+    padding: 20px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 16px;
+      color: #495057;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+  }
+
+  .config-field {
+    margin-bottom: 16px;
+
+    > label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 6px;
+    }
+  }
+
+  .field-hint {
+    font-size: 12px;
+    color: #888;
+    margin: 6px 0 0;
+    line-height: 1.5;
+  }
+
+  /* Toggle switch */
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .toggle-checkbox {
+    display: none;
+  }
+
+  .toggle-switch {
+    width: 44px;
+    height: 24px;
+    background: #ccc;
+    border-radius: 12px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .toggle-switch::after {
+    content: '';
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: left 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+
+  .toggle-checkbox:checked + .toggle-switch {
+    background: #28a745;
+  }
+
+  .toggle-checkbox:checked + .toggle-switch::after {
+    left: 22px;
+  }
+
+  .toggle-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #333;
+  }
+
+  /* Range pair */
+  .range-fields {
+    transition: opacity 0.2s;
+  }
+
+  .range-pair {
+    display: flex;
+    gap: 16px;
+  }
+
+  .range-input {
+    flex: 1;
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 4px;
+    }
+  }
+
+  .config-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+  }
+
+  /* Temperature slider */
+  .temp-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .temp-slider {
+    flex: 1;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #dee2e6;
+    border-radius: 3px;
+    outline: none;
+
+    &::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: #007bff;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+  }
+
+  .temp-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: #007bff;
+    min-width: 32px;
+    text-align: center;
+  }
+
+  /* Actions */
+  .config-actions {
+    margin-top: 20px;
+  }
+
+  .btn-save {
+    padding: 10px 24px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:hover { background: #0056b3; }
+  }
+
+  /* Debug */
+  .config-debug {
+    background: #fff;
+    border-color: #dee2e6;
+
+    h2 { color: #888; font-size: 13px; }
+  }
+
+  .settings-json {
+    padding: 12px;
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: monospace;
+    margin: 0;
+  }
+</style>

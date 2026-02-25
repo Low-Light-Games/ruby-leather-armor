@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_24_280001) do
+ActiveRecord::Schema[7.1].define(version: 2026_02_24_290001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -56,6 +56,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_24_280001) do
     t.index ["adventure_id"], name: "index_ai_logs_on_adventure_id"
     t.index ["created_at"], name: "index_ai_logs_on_created_at"
     t.index ["status"], name: "index_ai_logs_on_status"
+  end
+
+  create_table "dm_configs", force: :cascade do |t|
+    t.json "settings", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "dm_logs", force: :cascade do |t|
