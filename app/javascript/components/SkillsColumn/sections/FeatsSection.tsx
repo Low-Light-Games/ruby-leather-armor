@@ -1,23 +1,11 @@
 import React from 'react';
-import type { FeatDefinition, PrerequisiteCheck } from '../../../rules/pathfinder_feats';
+import type { SelectedFeatParsed, FilteredFeatWithChecks } from '../hooks/useFeats';
 import { PrereqList } from '../PrereqList';
 import { Picker } from '../../ui/Picker';
 
-interface SelectedFeat {
-  raw: string;
-  choice: string | null;
-  def: FeatDefinition;
-}
-
-interface FilteredFeat {
-  feat: FeatDefinition;
-  checks: PrerequisiteCheck[];
-  selectable: boolean;
-}
-
 interface FeatsSectionProps {
-  selectedFeats: SelectedFeat[];
-  filteredFeats: FilteredFeat[];
+  selectedFeats: SelectedFeatParsed[];
+  filteredFeats: FilteredFeatWithChecks[];
   search: string;
   onSearchChange: (value: string) => void;
   onAddFeat: (featId: string) => void;
@@ -56,7 +44,7 @@ export const FeatsSection: React.FC<FeatsSectionProps> = ({
       )}
 
       {/* Search / add */}
-      <Picker<FilteredFeat>
+      <Picker<FilteredFeatWithChecks>
         search={search}
         onSearchChange={onSearchChange}
         placeholder="Search feats…"

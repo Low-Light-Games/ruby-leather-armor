@@ -1,28 +1,7 @@
 import React from 'react';
-import type { EncumbranceTier, CarryCapacity } from '../../../rules/pathfinder_items_types';
+import type { CombatStats } from '../hooks/useCombatStats';
+import type { EncumbranceTier } from '../../../rules/pathfinder_items_types';
 import { formatMod } from '../../../utils/formatting';
-
-interface CombatStats {
-  ac: number;
-  tAC: number;
-  ffAC: number;
-  cmb: number;
-  cmd: number;
-  bab: number;
-  initiative: number;
-  fort: number;
-  ref: number;
-  will: number;
-  hpBonus: number;
-  speed: number;
-  armorBonus: number;
-  shieldBonus: number;
-  totalACP: number;
-  arcaneSpellFailure: number;
-  encumbranceTier: EncumbranceTier;
-  totalWeight: number;
-  carryCapacity: CarryCapacity;
-}
 
 interface CombatStatsSectionProps {
   combatStats: CombatStats;

@@ -1,33 +1,22 @@
 import React from 'react';
-import type { SpellDefinition, SpellEligibility, SpellSlotSummary } from '../../../rules/pathfinder_spells';
+import type { SpellSlotSummary } from '../../../rules/pathfinder_spells';
+import type { SelectedSpellEligibility, FilteredSpellWithChecks, CastingStyleLabel } from '../hooks/useSpells';
 import { SpellSlotBar } from '../shared/SpellSlotBar';
 import { CastingNotice } from '../shared/CastingNotice';
 import { Picker } from '../../ui/Picker';
-
-interface SelectedSpellEligibility {
-  spell: SpellDefinition;
-  eligibility: SpellEligibility;
-}
-
-interface FilteredSpell {
-  spell: SpellDefinition;
-  eligibility: SpellEligibility;
-  selectable: boolean;
-  slotReason?: string;
-}
 
 interface SpellsSectionProps {
   currentClass: string | null;
   classDef: { name?: string; spellcasting?: { ability: string } } | undefined;
   classCasts: boolean;
   castingUnlocked: boolean;
-  castingStyle: 'spontaneous' | 'spellbook' | 'prepared_list' | null;
+  castingStyle: CastingStyleLabel;
   classStartLevel: number | null;
   currentLevel: number;
   currentMaxSpellLevel: number;
   spellSlots: SpellSlotSummary[];
   selectedSpells: SelectedSpellEligibility[];
-  filteredSpells: FilteredSpell[];
+  filteredSpells: FilteredSpellWithChecks[];
   search: string;
   onSearchChange: (value: string) => void;
   onAddSpell: (spellId: string) => void;
@@ -152,7 +141,7 @@ export const SpellsSection: React.FC<SpellsSectionProps> = ({
       )}
 
       {/* Search / add */}
-      <Picker<FilteredSpell>
+      <Picker<FilteredSpellWithChecks>
         search={search}
         onSearchChange={onSearchChange}
         placeholder={placeholder}

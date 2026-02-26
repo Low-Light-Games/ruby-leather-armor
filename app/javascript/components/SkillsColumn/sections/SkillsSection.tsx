@@ -1,16 +1,6 @@
 import React from 'react';
+import type { CalculatedSkill } from '../hooks/useSkills';
 import { formatMod } from '../../../utils/formatting';
-
-interface CalculatedSkill {
-  name: string;
-  keyAbility: string;
-  trainedOnly: boolean;
-  abilityAbbr: string;
-  abilityMod: number;
-  racialBonus: number;
-  featBonus: number;
-  total: number;
-}
 
 interface SkillsSectionProps {
   skills: CalculatedSkill[];
