@@ -1,17 +1,10 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React from 'react';
 import type { OwnedItem, ItemDefinition, EquipmentSlot, Currency } from '../../../rules/pathfinder_items_types';
-import {
-  getItemById,
-  getItemDefinitions,
-  getStartingGold,
-  computeItemsCost,
-  EQUIPMENT_SLOTS,
-  totalGpValue,
-  currencyFromGold,
-} from '../../../rules/pathfinder_items';
+import { EQUIPMENT_SLOTS } from '../../../rules/pathfinder_items';
 import { Picker } from '../../ui/Picker';
+import { useEquipment } from '../hooks/useEquipment';
 
-// ── Helpers ──────────────────────────────────────────────────────
+// ── View helpers ─────────────────────────────────────────────────
 
 const ITEM_TYPE_LABELS: Record<string, string> = {
   armor: 'Armor',
@@ -52,105 +45,15 @@ interface EquipmentSectionProps {
 
 // ── Component ────────────────────────────────────────────────────
 
-export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
-  selectedItems,
-  setSelectedItems,
-  currentCurrency,
-  setCurrentCurrency,
-  currentClass,
-}) => {
-  const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('');
-
-  // Starting gold for the current class (suggestion)
-  const startingGold = useMemo(() => getStartingGold(currentClass), [currentClass]);
-
-  // Total cost of all selected items (in gp)
-  const totalCost = useMemo(() => computeItemsCost(selectedItems), [selectedItems]);
-
-  // Current wealth in gold-piece equivalent
-  const currentGpValue = totalGpValue(currentCurrency);
-  const remainingGp = currentGpValue - totalCost;
-
-  // ── Currency editing ──
-
-  const setCurrencyDenom = useCallback((denom: keyof Currency, value: number) => {
-    setCurrentCurrency(prev => ({ ...prev, [denom]: Math.max(0, value) }));
-  }, [setCurrentCurrency]);
-
-  // ── Item add / remove / equip / quantity ──
-
-  const addItem = useCallback((itemId: string) => {
-    setSelectedItems(prev => {
-      const existing = prev.find(i => i.itemId === itemId && !i.equipped);
-      if (existing) {
-        // Increase quantity of the existing unequipped stack
-        return prev.map(i =>
-          i === existing ? { ...i, quantity: i.quantity + 1 } : i,
-        );
-      }
-      return [...prev, { itemId, quantity: 1, equipped: false, slotOverride: null }];
-    });
-    setSearch('');
-  }, [setSelectedItems]);
-
-  const removeItem = useCallback((itemId: string) => {
-    setSelectedItems(prev => prev.filter(i => i.itemId !== itemId));
-  }, [setSelectedItems]);
-
-  const toggleEquip = useCallback((itemId: string) => {
-    setSelectedItems(prev =>
-      prev.map(i => (i.itemId === itemId ? { ...i, equipped: !i.equipped } : i)),
-    );
-  }, [setSelectedItems]);
-
-  const changeQuantity = useCallback((itemId: string, delta: number) => {
-    setSelectedItems(prev =>
-      prev
-        .map(i => {
-          if (i.itemId !== itemId) return i;
-          const newQty = i.quantity + delta;
-          return newQty > 0 ? { ...i, quantity: newQty } : i;
-        })
-        .filter(i => i.quantity > 0),
-    );
-  }, [setSelectedItems]);
-
-  // ── Dropdown results ──
-
-  const filteredItems = useMemo(() => {
-    const term = search.toLowerCase().trim();
-    if (!term) return [];
-
-    let pool = getItemDefinitions();
-
-    if (typeFilter) {
-      pool = pool.filter(i => i.itemType === typeFilter);
-    }
-
-    return pool
-      .filter(i =>
-        i.name.toLowerCase().includes(term) ||
-        i.itemType.includes(term) ||
-        (i.weaponCategory?.includes(term) ?? false),
-      )
-      .slice(0, 12);
-  }, [search, typeFilter]);
-
-  // ── Selected items with resolved defs ──
-
-  const selectedWithDefs = useMemo(
-    () =>
-      selectedItems
-        .map(oi => ({ oi, def: getItemById(oi.itemId) }))
-        .filter((x): x is { oi: OwnedItem; def: ItemDefinition } => x.def != null),
-    [selectedItems],
-  );
-
-  // ── Use starting gold ──
-  const applyStartingGold = useCallback(() => {
-    setCurrentCurrency(currencyFromGold(startingGold));
-  }, [startingGold, setCurrentCurrency]);
+export const EquipmentSection: React.FC<EquipmentSectionProps> = (props) => {
+  const {
+    search, setSearch,
+    typeFilter, setTypeFilter,
+    startingGold, totalCost, currentGpValue, remainingGp,
+    setCurrencyDenom, applyStartingGold,
+    addItem, removeItem, toggleEquip, changeQuantity,
+    filteredItems, selectedWithDefs,
+  } = useEquipment(props);
 
   return (
     <div className="picker-section equipment-section">
@@ -162,7 +65,7 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
               type="number"
               className="currency-input"
               min={0}
-              value={currentCurrency[denom]}
+              value={props.currentCurrency[denom]}
               onChange={e => setCurrencyDenom(denom, parseInt(e.target.value, 10) || 0)}
             />
             <span className="currency-label">{DENOM_LABELS[denom]}</span>
@@ -198,7 +101,6 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
               className={`selected-item equip-item ${oi.equipped ? 'item-equipped' : ''}`}
             >
               <div className="selected-item-header">
-                {/* Equip toggle (only for equippable items) */}
                 {def.slot !== 'none' && (
                   <button
                     type="button"
@@ -216,7 +118,6 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
                   {ITEM_TYPE_LABELS[def.itemType] || def.itemType}
                 </span>
 
-                {/* Quantity */}
                 <span className="item-qty-controls">
                   <button
                     type="button"
