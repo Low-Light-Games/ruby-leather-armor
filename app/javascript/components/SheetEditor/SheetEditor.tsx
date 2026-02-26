@@ -82,22 +82,6 @@ export const SheetEditor = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sheetToEdit])
 
-  // Track pristine state
-  useEffect(() => {
-    const pristine =
-      name === '' &&
-      description === '' &&
-      JSON.stringify(attributes) === JSON.stringify(DEFAULT_ATTRIBUTES) &&
-      currentSheetId === null &&
-      currentRace === null &&
-      currentFlexibleBonus === null &&
-      currentClass === null &&
-      currentLevel === 1 &&
-      selectedFeats.length === 0 &&
-      selectedSpells.length === 0
-    setIsPristine(pristine)
-  }, [name, description, attributes, currentSheetId, currentRace, currentFlexibleBonus, currentClass, currentLevel, selectedFeats, selectedSpells])
-
   const loadSheetForEdit = (sheet: Sheet) => {
     setName(sheet.name)
     setDescription(sheet.description || '')
@@ -124,7 +108,7 @@ export const SheetEditor = () => {
       setSelectedSpells([])
     }
     setCurrentSheetId(sheet.id)
-    setIsPristine(true)
+    setPristine()
     setSheetToEdit(null)
   }
 
@@ -136,6 +120,7 @@ export const SheetEditor = () => {
         return
       }
     }
+    setDirty()
     setName('')
     setDescription('')
     setAttributes(DEFAULT_ATTRIBUTES)
@@ -147,15 +132,17 @@ export const SheetEditor = () => {
     setSelectedSpells([])
     setCurrentSheetId(null)
     setSheetToEdit(null)
-    setIsPristine(true)
+    setPristine()
   }
 
   const clearPoints = () => {
+    setDirty()
     setAttributes(DEFAULT_ATTRIBUTES)
   }
 
   const handleRaceChange = (raceId: string) => {
     const newRace = raceId || null
+    setDirty()
     setCurrentRace(newRace)
     // Reset flexible bonus when race changes
     setCurrentFlexibleBonus(null)
@@ -163,6 +150,7 @@ export const SheetEditor = () => {
 
   const handleClassChange = (classId: string) => {
     const newClass = classId || null
+    setDirty()
     setCurrentClass(newClass)
   }
 
@@ -255,11 +243,21 @@ export const SheetEditor = () => {
 
     const delta = operation === 'increase' ? 1 : -1
 
+    setDirty()
+
     setAttributes(prev => ({
       ...prev,
       [attribute]: prev[attribute] + delta
     }))
   }, [canIncrease, canDecrease])
+
+  const setDirty = useCallback(() => {
+    setIsPristine(false)
+  }, [])
+
+  const setPristine = useCallback(() => {
+    setIsPristine(true)
+  }, [])
 
   return (
     <div>
