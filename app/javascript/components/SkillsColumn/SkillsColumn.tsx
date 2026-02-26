@@ -51,7 +51,7 @@ import {
 import type { SpellDefinition } from '../../rules/pathfinder_spells_types';
 import type { SpellSlotSummary } from '../../rules/pathfinder_spells';
 import { ABILITY_ABBR } from '../../utils/formatting';
-import { Accordion } from './shared/Accordion';
+import { Accordion } from '../ui/Accordion';
 import { CombatStatsSection } from './sections/CombatStatsSection';
 import { SkillsSection } from './sections/SkillsSection';
 import { FeatsSection } from './sections/FeatsSection';

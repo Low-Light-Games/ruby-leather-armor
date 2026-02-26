@@ -168,14 +168,14 @@
       margin-bottom: 10px;
     }
 
-    .collapsible-section {
+    .accordion-section {
       border: 1px solid #dee2e6;
       border-radius: 5px;
       overflow: hidden;
       background: white;
     }
 
-    .collapsible-header {
+    .accordion-header {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -199,12 +199,12 @@
         background-color: #007bff;
         color: white;
 
-        .collapse-icon {
+        .accordion-icon {
           color: white;
         }
       }
 
-      .collapse-icon {
+      .accordion-icon {
         font-size: 9px;
         color: #888;
         width: 10px;
@@ -212,7 +212,7 @@
       }
     }
 
-    .collapsible-body {
+    .accordion-body {
       /* No extra padding — inner content has its own */
     }
 

@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import type { FeatDefinition, PrerequisiteCheck } from '../../../rules/pathfinder_feats';
 import { PrereqList } from '../PrereqList';
+import { Picker } from '../../ui/Picker';
 
 interface SelectedFeat {
   raw: string;
@@ -55,38 +56,30 @@ export const FeatsSection: React.FC<FeatsSectionProps> = ({
       )}
 
       {/* Search / add */}
-      <div className="picker-search">
-        <input
-          type="text"
-          placeholder="Search feats…"
-          value={search}
-          onChange={e => onSearchChange(e.target.value)}
-          className="picker-input"
-        />
-        {filteredFeats.length > 0 && (
-          <ul className="picker-dropdown">
-            {filteredFeats.map(({ feat, checks, selectable }) => (
-              <li
-                key={feat.id}
-                className={`picker-option ${!selectable ? 'locked' : ''}`}
-                onClick={() => selectable && onAddFeat(feat.id)}
-              >
-                <div className="option-header">
-                  {!selectable && <span className="lock-icon">🔒</span>}
-                  <span className="option-name">{feat.name}</span>
-                  <span className={`item-tag cat-${feat.category}`}>{feat.category}</span>
-                </div>
-                <div className="option-summary">{feat.summary}</div>
-                {checks.length > 0 && (
-                  <div className="option-prereqs">
-                    <PrereqList checks={checks} />
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+      <Picker<FilteredFeat>
+        search={search}
+        onSearchChange={onSearchChange}
+        placeholder="Search feats…"
+        items={filteredFeats}
+        itemKey={f => f.feat.id}
+        isDisabled={f => !f.selectable}
+        onSelect={f => onAddFeat(f.feat.id)}
+        renderOption={({ feat, checks, selectable }) => (
+          <>
+            <div className="option-header">
+              {!selectable && <span className="lock-icon">🔒</span>}
+              <span className="option-name">{feat.name}</span>
+              <span className={`item-tag cat-${feat.category}`}>{feat.category}</span>
+            </div>
+            <div className="option-summary">{feat.summary}</div>
+            {checks.length > 0 && (
+              <div className="option-prereqs">
+                <PrereqList checks={checks} />
+              </div>
+            )}
+          </>
         )}
-      </div>
+      />
     </div>
   );
 };

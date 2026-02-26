@@ -2,6 +2,7 @@ import React from 'react';
 import type { SpellDefinition, SpellEligibility, SpellSlotSummary } from '../../../rules/pathfinder_spells';
 import { SpellSlotBar } from '../shared/SpellSlotBar';
 import { CastingNotice } from '../shared/CastingNotice';
+import { Picker } from '../../ui/Picker';
 
 interface SelectedSpellEligibility {
   spell: SpellDefinition;
@@ -151,47 +152,39 @@ export const SpellsSection: React.FC<SpellsSectionProps> = ({
       )}
 
       {/* Search / add */}
-      <div className="picker-search">
-        <input
-          type="text"
-          placeholder={placeholder}
-          value={search}
-          onChange={e => onSearchChange(e.target.value)}
-          className="picker-input"
-        />
-        {filteredSpells.length > 0 && (
-          <ul className="picker-dropdown">
-            {filteredSpells.map(({ spell, eligibility, selectable, slotReason }) => {
-              const lvl = eligibility.spellLevel ?? '?';
-              const reason = !selectable
-                ? (slotReason || eligibility.reason || '')
-                : '';
-              return (
-                <li
-                  key={spell.id}
-                  className={`picker-option ${!selectable ? 'locked' : ''}`}
-                  onClick={() => selectable && onAddSpell(spell.id)}
-                >
-                  <div className="option-header">
-                    {!selectable && <span className="lock-icon">🔒</span>}
-                    <span className={`spell-level-badge small ${!selectable ? 'badge-locked' : ''}`}>{lvl}</span>
-                    <span className="option-name">{spell.name}</span>
-                    <span className="item-tag school-tag">{spell.school}</span>
-                  </div>
-                  <div className="option-summary">{spell.summary}</div>
-                  {reason && (
-                    <div className="option-prereqs">
-                      <span className="prereq-labels">
-                        <span className="prereq-chip prereq-unmet">✗ {reason}</span>
-                      </span>
-                    </div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+      <Picker<FilteredSpell>
+        search={search}
+        onSearchChange={onSearchChange}
+        placeholder={placeholder}
+        items={filteredSpells}
+        itemKey={f => f.spell.id}
+        isDisabled={f => !f.selectable}
+        onSelect={f => onAddSpell(f.spell.id)}
+        renderOption={({ spell, eligibility, selectable, slotReason }) => {
+          const lvl = eligibility.spellLevel ?? '?';
+          const reason = !selectable
+            ? (slotReason || eligibility.reason || '')
+            : '';
+          return (
+            <>
+              <div className="option-header">
+                {!selectable && <span className="lock-icon">🔒</span>}
+                <span className={`spell-level-badge small ${!selectable ? 'badge-locked' : ''}`}>{lvl}</span>
+                <span className="option-name">{spell.name}</span>
+                <span className="item-tag school-tag">{spell.school}</span>
+              </div>
+              <div className="option-summary">{spell.summary}</div>
+              {reason && (
+                <div className="option-prereqs">
+                  <span className="prereq-labels">
+                    <span className="prereq-chip prereq-unmet">✗ {reason}</span>
+                  </span>
+                </div>
+              )}
+            </>
+          );
+        }}
+      />
     </div>
   );
 };

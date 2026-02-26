@@ -4,6 +4,7 @@ import Navbar from '../Navbar'
 import Login from '../Login'
 import AdventureChat from '../AdventureChat'
 import RollResultModal, { RollResultDisplay } from '../RollResultModal'
+import { Accordion } from '../ui/Accordion'
 import { Adventure, AttributeType, DerivedStats } from '../../types'
 import { formatMod, ABILITY_ABBR, ATTRIBUTE_ORDER } from '../../utils/formatting'
 import { csrfToken } from '../../utils/api'
@@ -26,10 +27,14 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const [adventure, setAdventure] = useState<Adventure | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showAttributes, setShowAttributes] = useState(true)
-  const [showSkills, setShowSkills] = useState(false)
-  const [showFeats, setShowFeats] = useState(false)
-  const [showSpells, setShowSpells] = useState(false)
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    attributes: true,
+    skills: false,
+    feats: false,
+    spells: false,
+  })
+  const toggleSection = (section: string) =>
+    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }))
   const [rollDisplay, setRollDisplay] = useState<RollResultDisplay | null>(null)
   const [spellbookSearch, setSpellbookSearch] = useState('')
   const [spellbookSaving, setSpellbookSaving] = useState(false)
@@ -280,205 +285,173 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
 
           {/* Stacked collapsible sections */}
           <div className="collapsible-sections">
-            {/* Attributes */}
-            <div className="collapsible-section">
-              <button
-                className={`collapsible-header ${showAttributes ? 'open' : ''}`}
-                onClick={() => setShowAttributes(prev => !prev)}
-              >
-                <span className="collapse-icon">{showAttributes ? '▼' : '▶'}</span>
-                Attributes
-              </button>
-              {showAttributes && (
-                <div className="collapsible-body">
-                  <div className="attributes-list">
-                    {ATTRIBUTE_ORDER.map(attr => {
-                      const base = sheet[attr]
-                      const final = ds.final_scores[attr] ?? base
-                      const racial = final - base
-                      const mod = ds.mods[attr] ?? 0
-                      return (
-                        <div key={attr} className="attribute-item">
-                          <span className="attr-label">{ABILITY_ABBR[attr]}</span>
-                          <span className="attr-score">
-                            {base}
-                            {racial !== 0 && (
-                              <span className={`racial ${racial > 0 ? 'pos' : 'neg'}`}>
-                                {racial > 0 ? '+' : ''}{racial}
-                              </span>
-                            )}
-                            {' = '}
-                            <strong>{final}</strong>
+            <Accordion
+              title="Attributes"
+              isOpen={openSections.attributes}
+              onToggle={() => toggleSection('attributes')}
+            >
+              <div className="attributes-list">
+                {ATTRIBUTE_ORDER.map(attr => {
+                  const base = sheet[attr]
+                  const final = ds.final_scores[attr] ?? base
+                  const racial = final - base
+                  const mod = ds.mods[attr] ?? 0
+                  return (
+                    <div key={attr} className="attribute-item">
+                      <span className="attr-label">{ABILITY_ABBR[attr]}</span>
+                      <span className="attr-score">
+                        {base}
+                        {racial !== 0 && (
+                          <span className={`racial ${racial > 0 ? 'pos' : 'neg'}`}>
+                            {racial > 0 ? '+' : ''}{racial}
                           </span>
-                          <span className="attr-mod">{formatMod(mod)}</span>
-                          <button
-                            className="roll-dice-btn"
-                            onClick={() => rollAbility(attr)}
-                            title={`Roll ${ABILITY_ABBR[attr]} Check`}
-                            aria-label={`Roll ${ABILITY_ABBR[attr]} Check`}
-                          >
-                            🎲
-                          </button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Skills */}
-            <div className="collapsible-section">
-              <button
-                className={`collapsible-header ${showSkills ? 'open' : ''}`}
-                onClick={() => setShowSkills(prev => !prev)}
-              >
-                <span className="collapse-icon">{showSkills ? '▼' : '▶'}</span>
-                Skills
-              </button>
-              {showSkills && (
-                <div className="collapsible-body">
-                  <div className="skills-list-adventure">
-                    {ds.skills.map(skill => (
-                      <div
-                        key={skill.name}
-                        className={`skill-row ${skill.trained_only ? 'trained-only' : ''}`}
+                        )}
+                        {' = '}
+                        <strong>{final}</strong>
+                      </span>
+                      <span className="attr-mod">{formatMod(mod)}</span>
+                      <button
+                        className="roll-dice-btn"
+                        onClick={() => rollAbility(attr)}
+                        title={`Roll ${ABILITY_ABBR[attr]} Check`}
+                        aria-label={`Roll ${ABILITY_ABBR[attr]} Check`}
                       >
-                        <span className="skill-name">
-                          {skill.name}
-                          {skill.trained_only && <span className="badge-t">T</span>}
-                        </span>
-                        <span className={`skill-mod ${skill.total >= 0 ? 'positive' : 'negative'}`}>
-                          {formatMod(skill.total)}
-                        </span>
-                        <button
-                          className="roll-dice-btn"
-                          onClick={() => rollSkill(skill.name, skill.total)}
-                          title={`Roll ${skill.name} Check`}
-                          aria-label={`Roll ${skill.name} Check`}
-                        >
-                          🎲
-                        </button>
+                        🎲
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </Accordion>
+
+            <Accordion
+              title="Skills"
+              isOpen={openSections.skills}
+              onToggle={() => toggleSection('skills')}
+            >
+              <div className="skills-list-adventure">
+                {ds.skills.map(skill => (
+                  <div
+                    key={skill.name}
+                    className={`skill-row ${skill.trained_only ? 'trained-only' : ''}`}
+                  >
+                    <span className="skill-name">
+                      {skill.name}
+                      {skill.trained_only && <span className="badge-t">T</span>}
+                    </span>
+                    <span className={`skill-mod ${skill.total >= 0 ? 'positive' : 'negative'}`}>
+                      {formatMod(skill.total)}
+                    </span>
+                    <button
+                      className="roll-dice-btn"
+                      onClick={() => rollSkill(skill.name, skill.total)}
+                      title={`Roll ${skill.name} Check`}
+                      aria-label={`Roll ${skill.name} Check`}
+                    >
+                      🎲
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </Accordion>
+
+            <Accordion
+              title={`Feats (${feats.length})`}
+              isOpen={openSections.feats}
+              onToggle={() => toggleSection('feats')}
+            >
+              <div className="feats-spells-list">
+                {feats.length === 0 ? (
+                  <p className="empty-hint">No feats selected.</p>
+                ) : (
+                  feats.map(entry => {
+                    const feat = getFeatById(entry)
+                    if (!feat) return null
+                    const displayName = featDisplayName(entry)
+                    return (
+                      <div key={entry} className="fs-item" title={feat.summary}>
+                        <span className="fs-name">{displayName}</span>
+                        <span className={`fs-tag cat-${feat.category}`}>{feat.category}</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    )
+                  })
+                )}
+              </div>
+            </Accordion>
+
+            <Accordion
+              title={`${spellSectionLabel} (${spellIds.length})`}
+              isOpen={openSections.spells}
+              onToggle={() => toggleSection('spells')}
+            >
+              {/* Prepared full-list notice */}
+              {castStyle === 'prepared_list' && (
+                <p className="empty-hint" style={{ fontStyle: 'italic' }}>
+                  Your class knows all spells. Daily preparation coming soon.
+                </p>
               )}
-            </div>
 
-            {/* Feats */}
-            <div className="collapsible-section">
-              <button
-                className={`collapsible-header ${showFeats ? 'open' : ''}`}
-                onClick={() => setShowFeats(prev => !prev)}
-              >
-                <span className="collapse-icon">{showFeats ? '▼' : '▶'}</span>
-                Feats ({feats.length})
-              </button>
-              {showFeats && (
-                <div className="collapsible-body">
-                  <div className="feats-spells-list">
-                    {feats.length === 0 ? (
-                      <p className="empty-hint">No feats selected.</p>
-                    ) : (
-                      feats.map(entry => {
-                        const feat = getFeatById(entry)
-                        if (!feat) return null
-                        const displayName = featDisplayName(entry)
-                        return (
-                          <div key={entry} className="fs-item" title={feat.summary}>
-                            <span className="fs-name">{displayName}</span>
-                            <span className={`fs-tag cat-${feat.category}`}>{feat.category}</span>
-                          </div>
-                        )
-                      })
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
+              <div className="feats-spells-list">
+                {spellIds.length === 0 ? (
+                  <p className="empty-hint">
+                    {castStyle === 'spellbook' ? 'Spellbook is empty.' :
+                     castStyle === 'spontaneous' ? 'No known spells.' :
+                     'No spells selected.'}
+                  </p>
+                ) : (
+                  spellIds.map(spellId => {
+                    const spell = getSpellById(spellId)
+                    if (!spell) return null
+                    const lvl = sheet.character_class
+                      ? spell.classLevels[sheet.character_class.toLowerCase()]
+                      : Object.values(spell.classLevels)[0]
+                    return (
+                      <div key={spell.id} className="fs-item" title={spell.summary}>
+                        <span className="spell-lvl-badge">{lvl ?? '?'}</span>
+                        <span className="fs-name">{spell.name}</span>
+                        <span className="fs-tag school-tag">{spell.school}</span>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
 
-            {/* Spells */}
-            <div className="collapsible-section">
-              <button
-                className={`collapsible-header ${showSpells ? 'open' : ''}`}
-                onClick={() => setShowSpells(prev => !prev)}
-              >
-                <span className="collapse-icon">{showSpells ? '▼' : '▶'}</span>
-                {spellSectionLabel} ({spellIds.length})
-              </button>
-              {showSpells && (
-                <div className="collapsible-body">
-                  {/* Prepared full-list notice */}
-                  {castStyle === 'prepared_list' && (
-                    <p className="empty-hint" style={{ fontStyle: 'italic' }}>
-                      Your class knows all spells. Daily preparation coming soon.
-                    </p>
-                  )}
-
-                  <div className="feats-spells-list">
-                    {spellIds.length === 0 ? (
-                      <p className="empty-hint">
-                        {castStyle === 'spellbook' ? 'Spellbook is empty.' :
-                         castStyle === 'spontaneous' ? 'No known spells.' :
-                         'No spells selected.'}
-                      </p>
-                    ) : (
-                      spellIds.map(spellId => {
-                        const spell = getSpellById(spellId)
-                        if (!spell) return null
+              {/* Spellbook editing (wizard only during adventure) */}
+              {castStyle === 'spellbook' && (
+                <div className="spellbook-add-section">
+                  <p className="spellbook-add-label">Add spell to spellbook:</p>
+                  <input
+                    type="text"
+                    className="spellbook-search-input"
+                    placeholder="Search spells to add…"
+                    value={spellbookSearch}
+                    onChange={e => setSpellbookSearch(e.target.value)}
+                    disabled={spellbookSaving}
+                  />
+                  {spellbookSearchResults.length > 0 && (
+                    <ul className="spellbook-dropdown">
+                      {spellbookSearchResults.map(({ spell, hasSlot }) => {
                         const lvl = sheet.character_class
                           ? spell.classLevels[sheet.character_class.toLowerCase()]
-                          : Object.values(spell.classLevels)[0]
+                          : '?'
                         return (
-                          <div key={spell.id} className="fs-item" title={spell.summary}>
-                            <span className="spell-lvl-badge">{lvl ?? '?'}</span>
-                            <span className="fs-name">{spell.name}</span>
+                          <li
+                            key={spell.id}
+                            className={`spellbook-option ${!hasSlot ? 'slot-full' : ''}`}
+                            onClick={() => hasSlot && addSpellToSpellbook(spell)}
+                          >
+                            <span className="spell-lvl-badge small">{lvl ?? '?'}</span>
+                            <span className="option-name">{spell.name}</span>
                             <span className="fs-tag school-tag">{spell.school}</span>
-                          </div>
+                            {!hasSlot && <span className="slot-full-hint">slots full</span>}
+                          </li>
                         )
-                      })
-                    )}
-                  </div>
-
-                  {/* Spellbook editing (wizard only during adventure) */}
-                  {castStyle === 'spellbook' && (
-                    <div className="spellbook-add-section">
-                      <p className="spellbook-add-label">Add spell to spellbook:</p>
-                      <input
-                        type="text"
-                        className="spellbook-search-input"
-                        placeholder="Search spells to add…"
-                        value={spellbookSearch}
-                        onChange={e => setSpellbookSearch(e.target.value)}
-                        disabled={spellbookSaving}
-                      />
-                      {spellbookSearchResults.length > 0 && (
-                        <ul className="spellbook-dropdown">
-                          {spellbookSearchResults.map(({ spell, hasSlot }) => {
-                            const lvl = sheet.character_class
-                              ? spell.classLevels[sheet.character_class.toLowerCase()]
-                              : '?'
-                            return (
-                              <li
-                                key={spell.id}
-                                className={`spellbook-option ${!hasSlot ? 'slot-full' : ''}`}
-                                onClick={() => hasSlot && addSpellToSpellbook(spell)}
-                              >
-                                <span className="spell-lvl-badge small">{lvl ?? '?'}</span>
-                                <span className="option-name">{spell.name}</span>
-                                <span className="fs-tag school-tag">{spell.school}</span>
-                                {!hasSlot && <span className="slot-full-hint">slots full</span>}
-                              </li>
-                            )
-                          })}
-                        </ul>
-                      )}
-                    </div>
+                      })}
+                    </ul>
                   )}
                 </div>
               )}
-            </div>
+            </Accordion>
           </div>
 
           {/* Roll buttons */}

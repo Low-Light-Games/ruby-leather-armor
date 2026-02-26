@@ -9,6 +9,7 @@ import {
   totalGpValue,
   currencyFromGold,
 } from '../../../rules/pathfinder_items';
+import { Picker } from '../../ui/Picker';
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -262,58 +263,51 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
 
       {/* ── Search + type filter ── */}
       <div className="equip-search-row">
-        <select
-          className="type-filter"
-          value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value)}
-        >
-          <option value="">All types</option>
-          <option value="armor">Armor</option>
-          <option value="shield">Shield</option>
-          <option value="weapon">Weapon</option>
-          <option value="gear">Gear</option>
-          <option value="ammunition">Ammo</option>
-        </select>
-
-        <div className="picker-search">
-          <input
-            type="text"
-            placeholder="Search items…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="picker-input"
-          />
-          {filteredItems.length > 0 && (
-            <ul className="picker-dropdown">
-              {filteredItems.map(item => {
-                const tooExpensive = item.costGp > remainingGp;
-                return (
-                  <li
-                    key={item.id}
-                    className={`picker-option ${tooExpensive ? 'locked' : ''}`}
-                    onClick={() => !tooExpensive && addItem(item.id)}
-                  >
-                    <div className="option-header">
-                      {tooExpensive && <span className="lock-icon">💰</span>}
-                      <span className="option-name">{item.name}</span>
-                      <span className={`item-tag cat-${item.itemType}`}>
-                        {ITEM_TYPE_LABELS[item.itemType] || item.itemType}
-                      </span>
-                      <span className="option-price">{formatGp(item.costGp)} gp</span>
-                    </div>
-                    <div className="option-summary">
-                      {item.summary}
-                      {item.weight > 0 && ` · ${item.weight} lb`}
-                      {item.armorBonus > 0 && ` · AC +${item.armorBonus}`}
-                      {item.shieldBonus > 0 && ` · Shield +${item.shieldBonus}`}
-                      {item.damageDice && ` · ${item.damageDice} ${item.damageType || ''}`}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+        <Picker<ItemDefinition>
+          search={search}
+          onSearchChange={setSearch}
+          placeholder="Search items…"
+          items={filteredItems}
+          itemKey={item => item.id}
+          isDisabled={item => item.costGp > remainingGp}
+          onSelect={item => addItem(item.id)}
+          before={
+            <select
+              className="type-filter"
+              value={typeFilter}
+              onChange={e => setTypeFilter(e.target.value)}
+            >
+              <option value="">All types</option>
+              <option value="armor">Armor</option>
+              <option value="shield">Shield</option>
+              <option value="weapon">Weapon</option>
+              <option value="gear">Gear</option>
+              <option value="ammunition">Ammo</option>
+            </select>
+          }
+          renderOption={item => {
+            const tooExpensive = item.costGp > remainingGp;
+            return (
+              <>
+                <div className="option-header">
+                  {tooExpensive && <span className="lock-icon">💰</span>}
+                  <span className="option-name">{item.name}</span>
+                  <span className={`item-tag cat-${item.itemType}`}>
+                    {ITEM_TYPE_LABELS[item.itemType] || item.itemType}
+                  </span>
+                  <span className="option-price">{formatGp(item.costGp)} gp</span>
+                </div>
+                <div className="option-summary">
+                  {item.summary}
+                  {item.weight > 0 && ` · ${item.weight} lb`}
+                  {item.armorBonus > 0 && ` · AC +${item.armorBonus}`}
+                  {item.shieldBonus > 0 && ` · Shield +${item.shieldBonus}`}
+                  {item.damageDice && ` · ${item.damageDice} ${item.damageType || ''}`}
+                </div>
+              </>
+            );
+          }}
+        />
       </div>
     </div>
   );
