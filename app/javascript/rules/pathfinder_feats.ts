@@ -7,6 +7,7 @@
  */
 
 import { AttributeType } from '../types';
+import { ABILITY_ABBR } from '../utils/formatting';
 import { FeatDefinition, FeatCategory, FeatEffect, Prerequisite } from './pathfinder_feats_types';
 import type { BABProgression } from './pathfinder_classes';
 
@@ -152,10 +153,6 @@ export interface PrerequisiteCheck {
   status: PrereqStatus;
 }
 
-const ABILITY_ABBR: Record<string, string> = {
-  strength: 'STR', dexterity: 'DEX', constitution: 'CON',
-  intelligence: 'INT', wisdom: 'WIS', charisma: 'CHA',
-};
 
 /** Convert a prerequisite to a human-readable label. */
 export function prerequisiteLabel(prereq: Prerequisite): string {

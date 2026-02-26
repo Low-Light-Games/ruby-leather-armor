@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../Navbar'
 import Login from '../Login'
 import FlashMessage from '../FlashMessage'
 import { StoryState } from '../../types'
+import { apiFetch } from '../../utils/api'
 import './AdminStoryEditor.scss'
 
 interface AdminStoryEditorProps {
@@ -17,28 +18,6 @@ interface StoryData {
   preview: string
   premise: string
   story_states: StoryState[]
-}
-
-function csrfToken(): string {
-  return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-}
-
-async function apiFetch(url: string, options: RequestInit = {}) {
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRF-Token': csrfToken(),
-      Accept: 'application/json',
-      ...(options.headers || {}),
-    },
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.errors?.join(', ') || body.error || `HTTP ${res.status}`)
-  }
-  if (res.status === 204) return null
-  return res.json()
 }
 
 export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {

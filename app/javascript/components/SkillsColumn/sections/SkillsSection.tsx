@@ -1,4 +1,5 @@
 import React from 'react';
+import { formatMod } from '../../../utils/formatting';
 
 interface CalculatedSkill {
   name: string;
@@ -15,10 +16,6 @@ interface SkillsSectionProps {
   skills: CalculatedSkill[];
   racialBonuses: Record<string, number>;
   featBonuses: Record<string, number>;
-}
-
-function formatModifier(mod: number): string {
-  return mod >= 0 ? `+${mod}` : `${mod}`;
 }
 
 export const SkillsSection: React.FC<SkillsSectionProps> = ({ skills, racialBonuses, featBonuses }) => {
@@ -38,7 +35,7 @@ export const SkillsSection: React.FC<SkillsSectionProps> = ({ skills, racialBonu
               [
                 skill.name,
                 skill.trainedOnly ? '(Trained only)' : '',
-                `${skill.abilityAbbr} mod: ${formatModifier(skill.abilityMod)}`,
+                `${skill.abilityAbbr} mod: ${formatMod(skill.abilityMod)}`,
                 skill.racialBonus ? `Racial: +${skill.racialBonus}` : '',
                 skill.featBonus ? `Feat: +${skill.featBonus}` : '',
               ].filter(Boolean).join(' | ')
@@ -52,7 +49,7 @@ export const SkillsSection: React.FC<SkillsSectionProps> = ({ skills, racialBonu
             </span>
             <span className="skill-ability">{skill.abilityAbbr}</span>
             <span className={`skill-modifier ${skill.total >= 0 ? 'positive' : 'negative'}`}>
-              {formatModifier(skill.total)}
+              {formatMod(skill.total)}
             </span>
           </li>
         ))}

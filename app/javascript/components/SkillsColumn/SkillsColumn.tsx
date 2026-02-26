@@ -50,6 +50,7 @@ import {
 } from '../../rules/pathfinder_spells';
 import type { SpellDefinition } from '../../rules/pathfinder_spells_types';
 import type { SpellSlotSummary } from '../../rules/pathfinder_spells';
+import { ABILITY_ABBR } from '../../utils/formatting';
 import { Accordion } from './shared/Accordion';
 import { CombatStatsSection } from './sections/CombatStatsSection';
 import { SkillsSection } from './sections/SkillsSection';
@@ -58,15 +59,6 @@ import { SpellsSection } from './sections/SpellsSection';
 import { EquipmentSection } from './sections/EquipmentSection';
 import FeatChoiceModal from './FeatChoiceModal';
 import './SkillsColumn.scss';
-
-const ABILITY_ABBREVIATIONS: Record<string, string> = {
-  strength: 'STR',
-  dexterity: 'DEX',
-  constitution: 'CON',
-  intelligence: 'INT',
-  wisdom: 'WIS',
-  charisma: 'CHA',
-};
 
 export const SkillsColumn = () => {
   const {
@@ -420,7 +412,7 @@ export const SkillsColumn = () => {
       const total = abilityMod + racialBonus + featBonus + equipBonus + acpPenalty;
       return {
         ...skill,
-        abilityAbbr: ABILITY_ABBREVIATIONS[skill.keyAbility],
+        abilityAbbr: ABILITY_ABBR[skill.keyAbility],
         abilityMod,
         racialBonus,
         featBonus,

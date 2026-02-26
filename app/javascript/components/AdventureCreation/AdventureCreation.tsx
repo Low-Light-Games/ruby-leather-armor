@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../Navbar'
 import Login from '../Login'
 import { Story, Sheet, AdventureSummary } from '../../types'
+import { csrfToken } from '../../utils/api'
 import { formatCurrency } from '../../rules/pathfinder_items'
 import type { Currency } from '../../rules/pathfinder_items_types'
 import './AdventureCreation.scss'
@@ -51,13 +52,11 @@ export const AdventureCreation = () => {
     setError(null)
 
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-
       const response = await fetch('/adventures', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken,
+          'X-CSRF-Token': csrfToken(),
         },
         body: JSON.stringify({
           story_id: selectedStoryId,
@@ -82,10 +81,9 @@ export const AdventureCreation = () => {
     if (!window.confirm('Are you sure you want to delete this adventure? This cannot be undone.')) return
 
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
       const response = await fetch(`/adventures/${adventureId}`, {
         method: 'DELETE',
-        headers: { 'X-CSRF-Token': csrfToken },
+        headers: { 'X-CSRF-Token': csrfToken() },
       })
 
       if (!response.ok) throw new Error('Failed to delete adventure')

@@ -6,6 +6,7 @@ import {
   useContext,
 } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
+import { csrfToken } from '../utils/api';
 
 interface User {
   id: number;
@@ -46,13 +47,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = async (email: string, password: string) => {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    
     const response = await fetch('/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRF-Token': csrfToken,
+        'X-CSRF-Token': csrfToken(),
       },
       body: JSON.stringify({ email, password }),
       credentials: 'same-origin',
@@ -75,12 +74,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-      
       await fetch('/logout', {
         method: 'DELETE',
         headers: {
-          'X-CSRF-Token': csrfToken,
+          'X-CSRF-Token': csrfToken(),
         },
       });
     } catch (error) {

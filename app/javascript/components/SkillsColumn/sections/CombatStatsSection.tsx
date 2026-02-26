@@ -1,5 +1,6 @@
 import React from 'react';
 import type { EncumbranceTier, CarryCapacity } from '../../../rules/pathfinder_items_types';
+import { formatMod } from '../../../utils/formatting';
 
 interface CombatStats {
   ac: number;
@@ -25,10 +26,6 @@ interface CombatStats {
 
 interface CombatStatsSectionProps {
   combatStats: CombatStats;
-}
-
-function formatModifier(mod: number): string {
-  return mod >= 0 ? `+${mod}` : `${mod}`;
 }
 
 const ENCUMBRANCE_LABELS: Record<EncumbranceTier, string> = {
@@ -69,11 +66,11 @@ export const CombatStatsSection: React.FC<CombatStatsSectionProps> = ({ combatSt
         </div>
         <div className="combat-cell">
           <span className="combat-label">BAB</span>
-          <span className="combat-value">{formatModifier(combatStats.bab)}</span>
+          <span className="combat-value">{formatMod(combatStats.bab)}</span>
         </div>
         <div className="combat-cell">
           <span className="combat-label">Init</span>
-          <span className="combat-value">{formatModifier(combatStats.initiative)}</span>
+          <span className="combat-value">{formatMod(combatStats.initiative)}</span>
         </div>
         <div className="combat-cell">
           <span className="combat-label">Speed</span>
@@ -81,7 +78,7 @@ export const CombatStatsSection: React.FC<CombatStatsSectionProps> = ({ combatSt
         </div>
         <div className="combat-cell">
           <span className="combat-label">CMB</span>
-          <span className="combat-value">{formatModifier(combatStats.cmb)}</span>
+          <span className="combat-value">{formatMod(combatStats.cmb)}</span>
         </div>
         <div className="combat-cell">
           <span className="combat-label">CMD</span>
@@ -89,15 +86,15 @@ export const CombatStatsSection: React.FC<CombatStatsSectionProps> = ({ combatSt
         </div>
         <div className="combat-cell">
           <span className="combat-label">Fort</span>
-          <span className="combat-value">{formatModifier(combatStats.fort)}</span>
+          <span className="combat-value">{formatMod(combatStats.fort)}</span>
         </div>
         <div className="combat-cell">
           <span className="combat-label">Ref</span>
-          <span className="combat-value">{formatModifier(combatStats.ref)}</span>
+          <span className="combat-value">{formatMod(combatStats.ref)}</span>
         </div>
         <div className="combat-cell">
           <span className="combat-label">Will</span>
-          <span className="combat-value">{formatModifier(combatStats.will)}</span>
+          <span className="combat-value">{formatMod(combatStats.will)}</span>
         </div>
         {combatStats.hpBonus > 0 && (
           <div className="combat-cell">

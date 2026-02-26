@@ -1,14 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { AdventureMessage, RollRequest } from '../../types'
+import { csrfToken } from '../../utils/api'
 import './AdventureChat.scss'
 
 interface AdventureChatProps {
   adventureId: number
   onStageAdvance?: () => void // callback to refresh adventure data when stage changes
-}
-
-function csrfToken(): string {
-  return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
 }
 
 export const AdventureChat = ({ adventureId, onStageAdvance }: AdventureChatProps) => {

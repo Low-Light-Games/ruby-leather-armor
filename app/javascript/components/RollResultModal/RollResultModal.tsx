@@ -1,5 +1,6 @@
 import { useEffect, useCallback } from 'react'
 import { DiceRollResult } from '../../rules/dice'
+import { formatMod } from '../../utils/formatting'
 import './RollResultModal.scss'
 
 export interface RollResultDisplay {
@@ -32,8 +33,6 @@ export const RollResultModal = ({ roll, onClose }: RollResultModalProps) => {
 
   const { label, result, modifierLabel } = roll
   const { natural, modifier, total, isCritical, isFumble } = result
-
-  const formatMod = (m: number) => (m >= 0 ? `+${m}` : `${m}`)
 
   let resultClass = ''
   let resultNote = ''

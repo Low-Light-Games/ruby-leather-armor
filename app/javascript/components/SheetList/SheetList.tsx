@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useSheetsContext } from "../../contexts/SheetsContext"
 import { Sheet } from "../../types"
+import { csrfToken } from "../../utils/api"
 import './SheetList.scss'
 
 export const SheetList = () => {
@@ -49,12 +50,10 @@ export const SheetList = () => {
     const confirmed = window.confirm(`Are you sure you want to delete "${sheet.name}"? This cannot be undone.`)
     if (!confirmed) return
 
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
-
     try {
       const response = await fetch(`/sheets/${sheet.id}`, {
         method: 'DELETE',
-        headers: { 'X-CSRF-Token': csrfToken },
+        headers: { 'X-CSRF-Token': csrfToken() },
       })
 
       if (!response.ok) {

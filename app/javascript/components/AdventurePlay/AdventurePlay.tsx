@@ -5,6 +5,8 @@ import Login from '../Login'
 import AdventureChat from '../AdventureChat'
 import RollResultModal, { RollResultDisplay } from '../RollResultModal'
 import { Adventure, AttributeType, DerivedStats } from '../../types'
+import { formatMod, ABILITY_ABBR, ATTRIBUTE_ORDER } from '../../utils/formatting'
+import { csrfToken } from '../../utils/api'
 import { rollD20 } from '../../rules/dice'
 import { formatCurrency } from '../../rules/pathfinder_items'
 import type { Currency } from '../../rules/pathfinder_items_types'
@@ -17,20 +19,6 @@ interface AdventurePlayProps {
   adventureId: number
 }
 
-const ATTRIBUTE_LABELS: AttributeType[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma']
-
-const ABILITY_ABBR: Record<string, string> = {
-  strength: 'STR',
-  dexterity: 'DEX',
-  constitution: 'CON',
-  intelligence: 'INT',
-  wisdom: 'WIS',
-  charisma: 'CHA',
-}
-
-function formatMod(mod: number): string {
-  return mod >= 0 ? `+${mod}` : `${mod}`
-}
 
 export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const { user, loading: authLoading } = useAuth()
@@ -157,10 +145,9 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
     setSpellbookSaving(true)
     try {
       const newSpellbook = [...currentSpellIds, spell.id]
-      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
       const res = await fetch(`/adventures/${adventure.id}/adventure_sheet`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
         body: JSON.stringify({ spellbook: newSpellbook }),
       })
       if (res.ok) {
@@ -305,7 +292,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
               {showAttributes && (
                 <div className="collapsible-body">
                   <div className="attributes-list">
-                    {ATTRIBUTE_LABELS.map(attr => {
+                    {ATTRIBUTE_ORDER.map(attr => {
                       const base = sheet[attr]
                       const final = ds.final_scores[attr] ?? base
                       const racial = final - base

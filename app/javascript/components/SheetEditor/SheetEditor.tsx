@@ -1,9 +1,11 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { AttributeRow } from './components/AttributeRow'
 import { NameField } from './components/NameField'
 import FlashMessage from '../FlashMessage'
 import { useSheetsContext } from '../../contexts/SheetsContext'
 import { Sheet, AttributeType } from '../../types'
+import { ABILITY_ABBR, ATTRIBUTE_ORDER } from '../../utils/formatting'
+import { csrfToken } from '../../utils/api'
 import { PATHFINDER_RACES, getRaceById } from '../../rules/pathfinder_races'
 import { PATHFINDER_CLASSES } from '../../rules/pathfinder_classes'
 import { getCastingStyle } from '../../rules/pathfinder_spells'
@@ -14,17 +16,6 @@ const AVAILABLE_POINTS = 27;
 const POINT_COSTS: Record<number, number> = {
   7: -4, 8: -2, 9: -1, 10: 0, 11: 1, 12: 2,
   13: 3, 14: 5, 15: 7, 16: 10, 17: 13, 18: 17,
-};
-
-const ATTRIBUTES: AttributeType[] = ['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'];
-
-const ABILITY_ABBR: Record<string, string> = {
-  strength: 'STR',
-  dexterity: 'DEX',
-  constitution: 'CON',
-  intelligence: 'INT',
-  wisdom: 'WIS',
-  charisma: 'CHA',
 };
 
 const DEFAULT_ATTRIBUTES: Record<AttributeType, number> = {
@@ -56,7 +47,6 @@ export const SheetEditor = () => {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const [currentSheetId, setCurrentSheetId] = useState<number | null>(null)
   const [isPristine, setIsPristine] = useState(true)
-  const csrfTokenRef = useRef<string | null>(null)
 
   // Point buy uses BASE scores only (racial modifiers don't affect cost)
   const spentPoints = useMemo(() => {
@@ -171,7 +161,7 @@ export const SheetEditor = () => {
         method,
         headers: {
           'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfTokenRef.current || ''
+          'X-CSRF-Token': csrfToken()
         },
         body: JSON.stringify({
           sheet: {
@@ -222,10 +212,6 @@ export const SheetEditor = () => {
       setFeedback({ type: 'error', message })
     }
   }
-
-  useEffect(() => {
-    csrfTokenRef.current = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || null
-  }, [])
 
   const dismissFeedback = useCallback(() => setFeedback(null), [])
 
@@ -327,7 +313,7 @@ export const SheetEditor = () => {
             onChange={e => setCurrentFlexibleBonus((e.target.value as AttributeType) || null)}
           >
             <option value="">— Choose Ability —</option>
-            {ATTRIBUTES.map(attr => (
+            {ATTRIBUTE_ORDER.map(attr => (
               <option key={attr} value={attr}>
                 {attr.charAt(0).toUpperCase() + attr.slice(1)}
               </option>
@@ -354,7 +340,7 @@ export const SheetEditor = () => {
       )}
 
       {/* Ability score rows */}
-      {ATTRIBUTES.map((attribute) => (
+      {ATTRIBUTE_ORDER.map((attribute) => (
         <AttributeRow
           key={attribute}
           attribute={attribute}

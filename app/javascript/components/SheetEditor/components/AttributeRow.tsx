@@ -1,4 +1,5 @@
 import { AttributeType } from '../../../types';
+import { formatMod } from '../../../utils/formatting';
 
 interface AttributeRowProps {
   attribute: AttributeType;
@@ -7,12 +8,6 @@ interface AttributeRowProps {
   onChange: (attribute: AttributeType, operation: 'increase' | 'decrease') => void;
   canIncrease: boolean;
   canDecrease: boolean;
-}
-
-function formatMod(n: number): string {
-  if (n > 0) return `+${n}`;
-  if (n < 0) return `${n}`;
-  return '';
 }
 
 export const AttributeRow = ({
