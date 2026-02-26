@@ -7,6 +7,7 @@ import { Sheet, AttributeType } from '../../types'
 import { PATHFINDER_RACES, getRaceById } from '../../rules/pathfinder_races'
 import { PATHFINDER_CLASSES } from '../../rules/pathfinder_classes'
 import { getCastingStyle } from '../../rules/pathfinder_spells'
+import { EMPTY_CURRENCY } from '../../rules/pathfinder_items'
 
 const AVAILABLE_POINTS = 27;
 
@@ -46,6 +47,8 @@ export const SheetEditor = () => {
     currentLevel, setCurrentLevel,
     selectedFeats, setSelectedFeats,
     selectedSpells, setSelectedSpells,
+    selectedItems, setSelectedItems,
+    currentCurrency, setCurrentCurrency,
   } = useSheetsContext();
 
   const [name, setName] = useState('')
@@ -107,6 +110,8 @@ export const SheetEditor = () => {
     } else {
       setSelectedSpells([])
     }
+    setSelectedItems(sheet.details?.items || [])
+    setCurrentCurrency(sheet.currency || { ...EMPTY_CURRENCY })
     setCurrentSheetId(sheet.id)
     setPristine()
     setSheetToEdit(null)
@@ -130,6 +135,8 @@ export const SheetEditor = () => {
     setCurrentLevel(1)
     setSelectedFeats([])
     setSelectedSpells([])
+    setSelectedItems([])
+    setCurrentCurrency({ ...EMPTY_CURRENCY })
     setCurrentSheetId(null)
     setSheetToEdit(null)
     setPristine()
@@ -181,6 +188,14 @@ export const SheetEditor = () => {
               : getCastingStyle(currentClass) === 'spellbook'
               ? { spellbook_spell_ids: selectedSpells }
               : {}),
+            // Items and gold
+            items: selectedItems.map(i => ({
+              item_id: i.itemId,
+              quantity: i.quantity,
+              equipped: i.equipped,
+              slot_override: i.slotOverride,
+            })),
+            currency: currentCurrency,
             ...attributes
           }
         })

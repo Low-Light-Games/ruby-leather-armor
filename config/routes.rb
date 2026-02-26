@@ -37,6 +37,7 @@ Rails.application.routes.draw do
   # Read-only game-rule definition endpoints
   resources :feat_definitions,  only: [:index, :show]
   resources :spell_definitions, only: [:index, :show]
+  resources :item_definitions,  only: [:index, :show]
 
   # Sheets: HTML (SPA) + JSON API
   resources :sheets

@@ -6,6 +6,8 @@ import AdventureChat from '../AdventureChat'
 import RollResultModal, { RollResultDisplay } from '../RollResultModal'
 import { Adventure, AttributeType, DerivedStats } from '../../types'
 import { rollD20 } from '../../rules/dice'
+import { formatCurrency } from '../../rules/pathfinder_items'
+import type { Currency } from '../../rules/pathfinder_items_types'
 import { getFeatById, featDisplayName } from '../../rules/pathfinder_feats'
 import { getSpellById, getCastingStyle, getSpellsForClass, getAllSpells, hasSlotForSpell } from '../../rules/pathfinder_spells'
 import type { SpellDefinition } from '../../rules/pathfinder_spells_types'
@@ -285,8 +287,8 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           </div>
 
           <div className="adventure-gold">
-            <span className="stat-label">Gold</span>
-            <span className="stat-value gold">{sheet.gold}</span>
+            <span className="stat-label">Currency</span>
+            <span className="stat-value gold">{formatCurrency(sheet.currency as Currency)}</span>
           </div>
 
           {/* Stacked collapsible sections */}

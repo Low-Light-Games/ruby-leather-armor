@@ -1,3 +1,5 @@
+import type { OwnedItem, Currency } from './rules/pathfinder_items_types';
+
 export interface SheetDetails {
   feats?: string[]          // feat IDs
 
@@ -8,6 +10,9 @@ export interface SheetDetails {
   spellbook?: string[]
   /** @deprecated Legacy field — migrated to knownSpells or spellbook on load */
   spells?: string[]
+
+  // ─── Items / Equipment ───
+  items?: OwnedItem[]
 }
 
 /** Server-computed derived stats (see CharacterStats::Calculator). */
@@ -43,6 +48,19 @@ export interface DerivedStats {
     cmb_by_maneuver: Record<string, number>
     cmd_by_maneuver: Record<string, number>
   }
+  // Equipment-derived stats
+  armor_bonus: number
+  shield_bonus: number
+  armor_check_penalty: number
+  arcane_spell_failure: number
+  max_dex_bonus: number | null
+  total_weight: number
+  carry_capacity: {
+    light: number
+    medium: number
+    heavy: number
+  }
+  encumbrance: string
 }
 
 export interface DerivedSkill {
@@ -52,6 +70,8 @@ export interface DerivedSkill {
   ability_mod: number
   racial_bonus: number
   feat_bonus: number
+  equip_bonus?: number
+  acp_penalty?: number
   total: number
 }
 
@@ -72,6 +92,7 @@ export interface Sheet {
   character_class: string | null
   subclass: string | null
   level: number
+  currency: Currency
   user_id: number
   created_at: string
   updated_at: string
@@ -125,10 +146,10 @@ export interface AdventureSheet {
   character_class: string | null
   subclass: string | null
   level: number
-  gold: number
+  currency: Currency
   hp: number
   max_hp: number
-  items: string | null
+  items: string | null       // legacy text field
   effects: string | null
 }
 
@@ -143,7 +164,7 @@ export interface AdventureSummary {
   id: number
   character_name: string
   story_title: string
-  character_gold: number
+  character_currency: Currency
   created_at: string
   updated_at: string
 }

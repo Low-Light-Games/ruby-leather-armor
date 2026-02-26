@@ -6,7 +6,7 @@ class AdventureSheetsController < ApplicationController
 
   # PATCH /adventures/:adventure_id/adventure_sheet
   #
-  # Updates the adventure sheet's spell/feat selections via pivot tables.
+  # Updates the adventure sheet's spell/feat/item selections via pivot tables.
   # Only the owning player can update their adventure sheet.
   def update
     authorize @adventure, :show? # reuse the adventure show policy
@@ -44,6 +44,24 @@ class AdventureSheetsController < ApplicationController
       end
     end
 
+    # Items update
+    if params.key?(:items)
+      item_entries = Array(params[:items])
+      @adventure_sheet.adventure_sheet_items.destroy_all
+      item_entries.each do |entry|
+        entry = entry.to_h.with_indifferent_access if entry.respond_to?(:to_h)
+        item_id = entry[:item_id].to_s
+        next unless ItemDefinition.exists?(item_id)
+
+        @adventure_sheet.adventure_sheet_items.create!(
+          item_definition_id: item_id,
+          quantity: (entry[:quantity] || 1).to_i,
+          equipped: ActiveModel::Type::Boolean.new.cast(entry[:equipped]),
+          slot_override: entry[:slot_override]
+        )
+      end
+    end
+
     @adventure_sheet.recompute_derived_stats!
 
     # Build response with pivot data included in details
@@ -70,10 +88,20 @@ class AdventureSheetsController < ApplicationController
     known_spells = adv_sheet.adventure_sheet_spells.where(storage_type: "known").pluck(:spell_id)
     spellbook_spells = adv_sheet.adventure_sheet_spells.where(storage_type: "spellbook").pluck(:spell_id)
 
+    items = adv_sheet.adventure_sheet_items.includes(:item_definition).map { |si|
+      {
+        itemId: si.item_definition_id,
+        quantity: si.quantity,
+        equipped: si.equipped,
+        slotOverride: si.slot_override,
+      }
+    }
+
     details = (base["details"] || {}).dup
     details["feats"] = feats
     details["knownSpells"] = known_spells
     details["spellbook"] = spellbook_spells
+    details["items"] = items
     base["details"] = details
 
     base

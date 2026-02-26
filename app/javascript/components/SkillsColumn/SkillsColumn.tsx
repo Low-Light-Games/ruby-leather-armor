@@ -6,10 +6,21 @@ import { getClassById } from '../../rules/pathfinder_classes';
 import {
   touchAC,
   flatFootedAC,
+  fullAC,
   combatManeuverBonus,
   combatManeuverDefense,
-  acSizeModifier,
 } from '../../rules/pathfinder_combat';
+import {
+  computeEquipmentBonuses,
+  computeEquipmentStatBonuses,
+  computeEquipmentSkillBonuses,
+  computeTotalWeight,
+  getCarryCapacity,
+  computeEncumbranceTier,
+  getEncumbranceLimits,
+  effectiveDexMod as computeEffectiveDexMod,
+  computeEffectiveSpeed,
+} from '../../rules/pathfinder_items';
 import {
   getAllFeats,
   getFeatById,
@@ -44,6 +55,7 @@ import { CombatStatsSection } from './sections/CombatStatsSection';
 import { SkillsSection } from './sections/SkillsSection';
 import { FeatsSection } from './sections/FeatsSection';
 import { SpellsSection } from './sections/SpellsSection';
+import { EquipmentSection } from './sections/EquipmentSection';
 import FeatChoiceModal from './FeatChoiceModal';
 import './SkillsColumn.scss';
 
@@ -61,11 +73,14 @@ export const SkillsColumn = () => {
     finalAttributes, currentRace, currentClass, currentLevel,
     selectedFeats, setSelectedFeats,
     selectedSpells, setSelectedSpells,
+    selectedItems, setSelectedItems,
+    currentCurrency, setCurrentCurrency,
   } = useSheetsContext();
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     combat: true,
     skills: true,
+    equipment: false,
     feats: false,
     spells: false,
   });
@@ -104,35 +119,105 @@ export const SkillsColumn = () => {
     [selectedFeats, currentLevel],
   );
 
-  // Combat derived stats (including feat bonuses)
+  // Equipment bonuses from equipped items
+  const equipBonuses = useMemo(
+    () => computeEquipmentBonuses(selectedItems),
+    [selectedItems],
+  );
+
+  const equipStatBonuses = useMemo(
+    () => computeEquipmentStatBonuses(selectedItems, currentLevel),
+    [selectedItems, currentLevel],
+  );
+
+  const equipSkillBonuses = useMemo(
+    () => computeEquipmentSkillBonuses(selectedItems),
+    [selectedItems],
+  );
+
+  // Carry weight & encumbrance
+  const totalWeight = useMemo(
+    () => computeTotalWeight(selectedItems, currentCurrency),
+    [selectedItems, currentCurrency],
+  );
+
+  const carryCapacity = useMemo(() => {
+    const size = race?.size ?? 'Medium';
+    return getCarryCapacity(finalAttributes.strength, size);
+  }, [finalAttributes.strength, race]);
+
+  const encumbranceTier = useMemo(
+    () => computeEncumbranceTier(totalWeight, carryCapacity),
+    [totalWeight, carryCapacity],
+  );
+
+  const encumbranceLimits = useMemo(
+    () => getEncumbranceLimits(encumbranceTier),
+    [encumbranceTier],
+  );
+
+  // Combat derived stats (including feat + equipment bonuses)
   const combatStats = useMemo(() => {
-    const dexMod = abilityModifier(finalAttributes.dexterity);
+    const rawDexMod = abilityModifier(finalAttributes.dexterity);
     const strMod = abilityModifier(finalAttributes.strength);
     const conMod = abilityModifier(finalAttributes.constitution);
     const wisMod = abilityModifier(finalAttributes.wisdom);
     const size = race?.size ?? 'Medium';
     const bab = classDef ? computeBAB(classDef.bab, currentLevel) : 0;
 
-    const ac = 10 + dexMod + acSizeModifier(size) + featStatBonuses.ac;
-    const tAC = touchAC(dexMod, size) + featStatBonuses.ac;
-    const ffAC = flatFootedAC(size); // Dodge AC doesn't apply when flat-footed
-    const cmb = combatManeuverBonus(bab, strMod, size);
-    const cmd = combatManeuverDefense(bab, strMod, dexMod, size);
-    const initiative = dexMod + featStatBonuses.initiative;
+    // Effective DEX mod (capped by armor + encumbrance)
+    const effDexMod = computeEffectiveDexMod(
+      rawDexMod,
+      equipBonuses.maxDexBonus,
+      encumbranceLimits.maxDex,
+    );
 
-    // Saves (base scaled by level + ability mod + feat bonuses)
+    // AC with armor, shield, feats, and item effect bonuses
+    const acBonuses = featStatBonuses.ac + equipStatBonuses.ac;
+    const ac = fullAC(effDexMod, size, equipBonuses.armorBonus, equipBonuses.shieldBonus, acBonuses);
+    const tAC = touchAC(effDexMod, size, acBonuses); // no armor/shield
+    const ffAC = flatFootedAC(size, equipBonuses.armorBonus, equipBonuses.shieldBonus); // no DEX/dodge
+
+    const cmb = combatManeuverBonus(bab, strMod, size);
+    const cmd = combatManeuverDefense(bab, strMod, effDexMod, size);
+    const initiative = effDexMod + featStatBonuses.initiative + equipStatBonuses.initiative;
+
+    // Saves
     const fortGood = classDef ? classDef.goodSaves.includes('fort') : false;
     const refGood = classDef ? classDef.goodSaves.includes('ref') : false;
     const willGood = classDef ? classDef.goodSaves.includes('will') : false;
-    const fort = computeBaseSave(fortGood, currentLevel) + conMod + featStatBonuses.fortSave;
-    const ref = computeBaseSave(refGood, currentLevel) + dexMod + featStatBonuses.refSave;
-    const will = computeBaseSave(willGood, currentLevel) + wisMod + featStatBonuses.willSave;
+    const fort = computeBaseSave(fortGood, currentLevel) + conMod +
+                 featStatBonuses.fortSave + equipStatBonuses.fortSave;
+    const ref = computeBaseSave(refGood, currentLevel) + effDexMod +
+                featStatBonuses.refSave + equipStatBonuses.refSave;
+    const will = computeBaseSave(willGood, currentLevel) + wisMod +
+                 featStatBonuses.willSave + equipStatBonuses.willSave;
 
-    // HP bonus from feats (e.g. Toughness)
-    const hpBonus = featStatBonuses.hp;
+    // HP bonus from feats + items
+    const hpBonus = featStatBonuses.hp + equipStatBonuses.hp;
 
-    return { ac, tAC, ffAC, cmb, cmd, bab, initiative, fort, ref, will, hpBonus };
-  }, [finalAttributes, race, classDef, currentLevel, featStatBonuses]);
+    // ACP from armor + encumbrance
+    const totalACP = equipBonuses.armorCheckPenalty + encumbranceLimits.acp;
+
+    // Speed
+    const baseSpeed = race?.speed ?? 30;
+    const speed = computeEffectiveSpeed(baseSpeed, equipBonuses, encumbranceTier);
+
+    // Arcane spell failure
+    const arcaneSpellFailure = equipBonuses.arcaneSpellFailure;
+
+    return {
+      ac, tAC, ffAC, cmb, cmd, bab, initiative, fort, ref, will, hpBonus,
+      totalACP, speed, arcaneSpellFailure, encumbranceTier,
+      armorBonus: equipBonuses.armorBonus,
+      shieldBonus: equipBonuses.shieldBonus,
+      totalWeight, carryCapacity,
+    };
+  }, [
+    finalAttributes, race, classDef, currentLevel,
+    featStatBonuses, equipBonuses, equipStatBonuses,
+    encumbranceLimits, encumbranceTier, totalWeight, carryCapacity,
+  ]);
 
   // ─── Prerequisite context ────────────────────────────────────
 
@@ -317,24 +402,34 @@ export const SkillsColumn = () => {
     [selectedFeats],
   );
 
-  // Skills
+  // Total ACP for skill calculations
+  const totalACP = useMemo(
+    () => equipBonuses.armorCheckPenalty + encumbranceLimits.acp,
+    [equipBonuses.armorCheckPenalty, encumbranceLimits.acp],
+  );
+
+  // Skills (with ACP and equipment bonuses)
   const calculatedSkills = useMemo(() => {
     return PATHFINDER_SKILLS.map(skill => {
       const abilityScore = finalAttributes[skill.keyAbility];
       const abilityMod = abilityModifier(abilityScore);
       const racialBonus = racialSkillBonuses[skill.name] || 0;
       const featBonus = featSkillBonuses[skill.name] || 0;
-      const total = abilityMod + racialBonus + featBonus;
+      const equipBonus = equipSkillBonuses[skill.name] || 0;
+      const acpPenalty = skill.armorCheckPenalty ? totalACP : 0;
+      const total = abilityMod + racialBonus + featBonus + equipBonus + acpPenalty;
       return {
         ...skill,
         abilityAbbr: ABILITY_ABBREVIATIONS[skill.keyAbility],
         abilityMod,
         racialBonus,
         featBonus,
+        equipBonus,
+        acpPenalty,
         total,
       };
     });
-  }, [finalAttributes, racialSkillBonuses, featSkillBonuses]);
+  }, [finalAttributes, racialSkillBonuses, featSkillBonuses, equipSkillBonuses, totalACP]);
 
   return (
     <div className="skills-column">
@@ -355,6 +450,20 @@ export const SkillsColumn = () => {
           skills={calculatedSkills}
           racialBonuses={racialSkillBonuses}
           featBonuses={featSkillBonuses}
+        />
+      </Accordion>
+
+      <Accordion
+        title={`Equipment (${selectedItems.length})`}
+        isOpen={openSections.equipment}
+        onToggle={() => toggleSection('equipment')}
+      >
+        <EquipmentSection
+          selectedItems={selectedItems}
+          setSelectedItems={setSelectedItems}
+          currentCurrency={currentCurrency}
+          setCurrentCurrency={setCurrentCurrency}
+          currentClass={currentClass}
         />
       </Accordion>
 

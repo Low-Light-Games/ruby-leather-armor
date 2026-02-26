@@ -79,7 +79,7 @@ module DungeonMaster
         STR: #{sheet&.strength}, DEX: #{sheet&.dexterity}, CON: #{sheet&.constitution}
         INT: #{sheet&.intelligence}, WIS: #{sheet&.wisdom}, CHA: #{sheet&.charisma}
         HP: #{sheet&.hp}/#{sheet&.max_hp}
-        Gold: #{sheet&.gold}
+        Currency: #{format_currency(sheet&.currency)}
         #{derived_stats_block(sheet)}
 
         === INSTRUCTIONS ===
@@ -135,6 +135,16 @@ module DungeonMaster
     def self.format_mod(val)
       return "+0" unless val
       val >= 0 ? "+#{val}" : val.to_s
+    end
+
+    def self.format_currency(currency)
+      return "none" unless currency.is_a?(Hash)
+      parts = []
+      parts << "#{currency['platinum']} pp" if currency["platinum"].to_i > 0
+      parts << "#{currency['gold']} gp"     if currency["gold"].to_i > 0
+      parts << "#{currency['silver']} sp"   if currency["silver"].to_i > 0
+      parts << "#{currency['copper']} cp"   if currency["copper"].to_i > 0
+      parts.empty? ? "none" : parts.join(", ")
     end
 
     # @param config [DmConfig]

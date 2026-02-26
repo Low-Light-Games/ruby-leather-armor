@@ -65,7 +65,7 @@ class AdventuresController < ApplicationController
         subclass: sheet.subclass,
         level: sheet.level,
         details: (sheet.details || {}).deep_dup,
-        gold: 0,
+        currency: (sheet.currency || {}).deep_dup,
         hp: max_hp,
         max_hp: max_hp,
         items: nil,
@@ -80,6 +80,16 @@ class AdventuresController < ApplicationController
       # Copy spell selections from the original sheet
       sheet.sheet_spells.each do |ss|
         adv_sheet.adventure_sheet_spells.create!(spell_id: ss.spell_id, storage_type: ss.storage_type)
+      end
+
+      # Copy item selections from the original sheet
+      sheet.sheet_items.each do |si|
+        adv_sheet.adventure_sheet_items.create!(
+          item_definition_id: si.item_definition_id,
+          quantity: si.quantity,
+          equipped: si.equipped,
+          slot_override: si.slot_override
+        )
       end
 
       adv_sheet.recompute_derived_stats!
@@ -109,7 +119,7 @@ class AdventuresController < ApplicationController
       id: adventure.id,
       character_name: adv_sheet&.name || "Unknown",
       story_title: adventure.story_state.story.title,
-      character_gold: adv_sheet&.gold || 0,
+      character_currency: adv_sheet&.currency || { "gold" => 0, "silver" => 0, "copper" => 0, "platinum" => 0 },
       created_at: adventure.created_at,
       updated_at: adventure.updated_at
     }
@@ -117,7 +127,7 @@ class AdventuresController < ApplicationController
 
   def adventure_json(adventure)
     adv_sheet = adventure.adventure_sheets
-                         .includes(:adventure_sheet_feats, :adventure_sheet_spells)
+                         .includes(:adventure_sheet_feats, :adventure_sheet_spells, :adventure_sheet_items)
                          .first
     {
       id: adventure.id,
@@ -139,11 +149,21 @@ class AdventuresController < ApplicationController
     known_spells = adv_sheet.adventure_sheet_spells.where(storage_type: "known").pluck(:spell_id)
     spellbook_spells = adv_sheet.adventure_sheet_spells.where(storage_type: "spellbook").pluck(:spell_id)
 
+    items = adv_sheet.adventure_sheet_items.includes(:item_definition).map { |si|
+      {
+        itemId: si.item_definition_id,
+        quantity: si.quantity,
+        equipped: si.equipped,
+        slotOverride: si.slot_override,
+      }
+    }
+
     # Merge into details for backward compatibility with frontend
     details = (base["details"] || {}).dup
     details["feats"] = feats
     details["knownSpells"] = known_spells
     details["spellbook"] = spellbook_spells
+    details["items"] = items
     base["details"] = details
 
     base

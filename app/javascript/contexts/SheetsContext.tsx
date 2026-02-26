@@ -7,6 +7,8 @@ import {
 } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { Sheet, AttributeType } from '../types';
+import type { OwnedItem, Currency } from '../rules/pathfinder_items_types';
+import { EMPTY_CURRENCY } from '../rules/pathfinder_items';
 import { getRaceById, computeRacialModifiers } from '../rules/pathfinder_races';
 
 export type AttributeValues = Record<AttributeType, number>;
@@ -44,6 +46,12 @@ interface SheetsContextType {
   setSelectedFeats: Dispatch<SetStateAction<string[]>>;
   selectedSpells: string[];
   setSelectedSpells: Dispatch<SetStateAction<string[]>>;
+  /** Owned items (with equipped state) */
+  selectedItems: OwnedItem[];
+  setSelectedItems: Dispatch<SetStateAction<OwnedItem[]>>;
+  /** Current currency (all denominations) */
+  currentCurrency: Currency;
+  setCurrentCurrency: Dispatch<SetStateAction<Currency>>;
 }
 
 const SheetsContext = createContext<SheetsContextType | undefined>(
@@ -60,6 +68,8 @@ export const SheetsProvider = ({ children }: { children: ReactNode }) => {
   const [currentLevel, setCurrentLevel] = useState<number>(1);
   const [selectedFeats, setSelectedFeats] = useState<string[]>([]);
   const [selectedSpells, setSelectedSpells] = useState<string[]>([]);
+  const [selectedItems, setSelectedItems] = useState<OwnedItem[]>([]);
+  const [currentCurrency, setCurrentCurrency] = useState<Currency>({ ...EMPTY_CURRENCY });
 
   const race = useMemo(() => currentRace ? getRaceById(currentRace) : undefined, [currentRace]);
 
@@ -97,6 +107,10 @@ export const SheetsProvider = ({ children }: { children: ReactNode }) => {
     setSelectedFeats,
     selectedSpells,
     setSelectedSpells,
+    selectedItems,
+    setSelectedItems,
+    currentCurrency,
+    setCurrentCurrency,
   };
 
   return (

@@ -4,10 +4,11 @@
  * AC size modifier: Small +1, Medium 0
  * CMB/CMD special size modifier: Small -1, Medium 0
  *
- * Touch AC = 10 + DEX mod + AC size mod  (excludes armor, shield, natural armor)
- * Flat-Footed AC = 10 + AC size mod      (excludes DEX, dodge; would include armor/shield/natural if tracked)
+ * AC = 10 + DEX mod (capped) + size + armor + shield + natural + deflection + feat/item bonuses
+ * Touch AC = 10 + DEX mod (capped) + size + deflection + feat/item bonuses (excludes armor, shield, natural)
+ * Flat-Footed AC = 10 + size + armor + shield + natural + deflection (excludes DEX, dodge)
  * CMB = BAB + STR mod + CMB size mod
- * CMD = 10 + BAB + STR mod + DEX mod + CMD size mod  (CMD size mod = CMB size mod)
+ * CMD = 10 + BAB + STR mod + DEX mod (capped) + CMD size mod
  */
 
 export type CreatureSize = 'Small' | 'Medium';
@@ -22,13 +23,40 @@ export function cmbSizeModifier(size: CreatureSize): number {
   return size === 'Small' ? -1 : 0;
 }
 
-export function touchAC(dexMod: number, size: CreatureSize): number {
-  return 10 + dexMod + acSizeModifier(size);
+/**
+ * Touch AC (excludes armor, shield, natural armor).
+ * Uses effective DEX mod (already capped by armor/encumbrance).
+ */
+export function touchAC(
+  effectiveDexMod: number,
+  size: CreatureSize,
+  acBonuses = 0,
+): number {
+  return 10 + effectiveDexMod + acSizeModifier(size) + acBonuses;
 }
 
-export function flatFootedAC(size: CreatureSize): number {
-  // Would add armor + shield + natural armor when tracked
-  return 10 + acSizeModifier(size);
+/**
+ * Flat-Footed AC (excludes DEX and dodge; includes armor + shield).
+ */
+export function flatFootedAC(
+  size: CreatureSize,
+  armorBonus = 0,
+  shieldBonus = 0,
+): number {
+  return 10 + acSizeModifier(size) + armorBonus + shieldBonus;
+}
+
+/**
+ * Full AC = 10 + effectiveDex + size + armor + shield + feat/item AC bonuses
+ */
+export function fullAC(
+  effectiveDexMod: number,
+  size: CreatureSize,
+  armorBonus: number,
+  shieldBonus: number,
+  acBonuses: number,
+): number {
+  return 10 + effectiveDexMod + acSizeModifier(size) + armorBonus + shieldBonus + acBonuses;
 }
 
 export function combatManeuverBonus(
@@ -42,8 +70,8 @@ export function combatManeuverBonus(
 export function combatManeuverDefense(
   bab: number,
   strMod: number,
-  dexMod: number,
+  effectiveDexMod: number,
   size: CreatureSize,
 ): number {
-  return 10 + bab + strMod + dexMod + cmbSizeModifier(size);
+  return 10 + bab + strMod + effectiveDexMod + cmbSizeModifier(size);
 }

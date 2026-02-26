@@ -3,6 +3,8 @@ import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../Navbar'
 import Login from '../Login'
 import { Story, Sheet, AdventureSummary } from '../../types'
+import { formatCurrency } from '../../rules/pathfinder_items'
+import type { Currency } from '../../rules/pathfinder_items_types'
 import './AdventureCreation.scss'
 
 export const AdventureCreation = () => {
@@ -194,7 +196,7 @@ export const AdventureCreation = () => {
                     <span className="adventure-character">{adv.character_name}</span>
                     <span className="adventure-story">{adv.story_title}</span>
                     <span className="adventure-meta">
-                      <span className="adventure-gold">{adv.character_gold} gold</span>
+                      <span className="adventure-gold">{formatCurrency(adv.character_currency as Currency)}</span>
                       <span className="adventure-date">Last played: {formatDate(adv.updated_at)}</span>
                     </span>
                   </a>

@@ -12,10 +12,11 @@
 
     /* Earlier sections get higher z-index so their dropdowns
        render above later sections (fixes feat dropdown behind spells toggle). */
-    &:nth-child(1) { z-index: 4; }
-    &:nth-child(2) { z-index: 3; }
-    &:nth-child(3) { z-index: 2; }
-    &:nth-child(4) { z-index: 1; }
+    &:nth-child(1) { z-index: 5; }
+    &:nth-child(2) { z-index: 4; }
+    &:nth-child(3) { z-index: 3; }
+    &:nth-child(4) { z-index: 2; }
+    &:nth-child(5) { z-index: 1; }
   }
 
   .accordion-header {
@@ -59,7 +60,12 @@
     padding: 0;
   }
 
-  /* ===== Combat Stats Grid ===== */
+  /* ===== Combat Stats Section ===== */
+  .combat-stats-section {
+    display: flex;
+    flex-direction: column;
+  }
+
   .combat-grid {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -89,7 +95,142 @@
         font-weight: 700;
         font-size: 16px;
         color: #333;
+
+        &.penalty {
+          color: #dc3545;
+        }
       }
+    }
+  }
+
+  /* ── Equipment stats divider ── */
+  .equip-divider {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #888;
+    letter-spacing: 0.5px;
+
+    &::before,
+    &::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #dee2e6;
+    }
+  }
+
+  /* ── Encumbrance bar ── */
+  .encumbrance-bar {
+    padding: 8px 10px 10px;
+    border-top: 1px solid #f0f0f0;
+
+    .enc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+
+      .enc-label {
+        font-size: 12px;
+        color: #555;
+
+        strong {
+          color: #333;
+        }
+      }
+
+      .enc-tier {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 2px 8px;
+        border-radius: 3px;
+        letter-spacing: 0.3px;
+
+        &.enc-light {
+          background: #d4edda;
+          color: #155724;
+        }
+
+        &.enc-medium {
+          background: #fff3cd;
+          color: #856404;
+        }
+
+        &.enc-heavy {
+          background: #f8d7da;
+          color: #721c24;
+        }
+
+        &.enc-overloaded {
+          background: #dc3545;
+          color: #fff;
+        }
+      }
+    }
+
+    .enc-track {
+      position: relative;
+      height: 6px;
+      background: #e9ecef;
+      border-radius: 3px;
+      overflow: visible;
+      margin-bottom: 4px;
+
+      .enc-fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.3s ease;
+
+        &.enc-light {
+          background: #28a745;
+        }
+
+        &.enc-medium {
+          background: #ffc107;
+        }
+
+        &.enc-heavy {
+          background: #dc3545;
+        }
+
+        &.enc-overloaded {
+          background: #dc3545;
+        }
+      }
+
+      .enc-marker {
+        position: absolute;
+        top: -2px;
+        width: 1px;
+        height: 10px;
+        background: #adb5bd;
+
+        &.light-marker {
+          border-left: 1px dashed #adb5bd;
+          background: transparent;
+        }
+
+        &.medium-marker {
+          border-left: 1px dashed #adb5bd;
+          background: transparent;
+        }
+      }
+    }
+
+    .enc-thresholds {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: #999;
     }
   }
 
@@ -227,6 +368,246 @@
     font-size: 11px;
     color: #888;
     border-top: 1px solid #f0f0f0;
+  }
+
+  /* ===== Equipment Section ===== */
+  .equipment-section {
+    .currency-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+
+      .currency-input-group {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        font-size: 12px;
+        color: #555;
+      }
+
+      .currency-input {
+        width: 52px;
+        padding: 4px 4px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        font-size: 12px;
+        text-align: right;
+        font-family: 'Courier New', monospace;
+
+        &:focus {
+          outline: none;
+          border-color: #007bff;
+          box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+        }
+      }
+
+      .currency-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: #666;
+      }
+
+      .starting-gold-btn {
+        font-size: 11px;
+        padding: 3px 8px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        background: #f8f9fa;
+        color: #555;
+        cursor: pointer;
+        white-space: nowrap;
+
+        &:hover {
+          background: #e9ecef;
+          border-color: #ced4da;
+        }
+      }
+    }
+
+    .cost-summary {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #555;
+      padding: 6px 8px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      border: 1px solid #e9ecef;
+      margin-bottom: 8px;
+
+      strong {
+        color: #333;
+      }
+
+      .overspent {
+        color: #dc3545;
+
+        strong {
+          color: #dc3545;
+        }
+      }
+    }
+
+    .equip-item {
+      &.item-equipped {
+        border-color: #007bff;
+        background: #f0f7ff;
+      }
+
+      .equip-toggle {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 2px solid #ced4da;
+        background: #fff;
+        color: #aaa;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        flex-shrink: 0;
+        padding: 0;
+        line-height: 1;
+
+        &.equipped {
+          border-color: #007bff;
+          background: #007bff;
+          color: #fff;
+        }
+
+        &:hover {
+          border-color: #007bff;
+        }
+      }
+
+      .equip-slot-badge {
+        display: inline-block;
+        margin-left: 6px;
+        font-size: 10px;
+        padding: 1px 5px;
+        background: #cce5ff;
+        color: #004085;
+        border-radius: 3px;
+        font-weight: 500;
+      }
+    }
+
+    .item-qty-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
+
+      .qty-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+        border: 1px solid #dee2e6;
+        border-radius: 3px;
+        background: #fff;
+        font-size: 12px;
+        font-weight: 600;
+        color: #555;
+        cursor: pointer;
+        padding: 0;
+
+        &:hover:not(:disabled) {
+          background: #e9ecef;
+          border-color: #ced4da;
+        }
+
+        &:disabled {
+          opacity: 0.4;
+          cursor: default;
+        }
+      }
+
+      .qty-value {
+        font-size: 12px;
+        font-weight: 600;
+        width: 18px;
+        text-align: center;
+        font-family: 'Courier New', monospace;
+      }
+    }
+
+    .equip-search-row {
+      display: flex;
+      gap: 6px;
+      align-items: flex-start;
+
+      .type-filter {
+        flex-shrink: 0;
+        padding: 6px 6px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        font-size: 12px;
+        background: #fff;
+        color: #555;
+
+        &:focus {
+          outline: none;
+          border-color: #007bff;
+        }
+      }
+
+      .picker-search {
+        flex: 1;
+      }
+    }
+
+    .option-price {
+      font-size: 11px;
+      font-weight: 600;
+      color: #856404;
+      background: #fff3cd;
+      padding: 1px 5px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+  }
+
+  .item-tag {
+    &.cat-armor {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+
+    &.cat-shield {
+      background: #e8eaf6;
+      color: #283593;
+    }
+
+    &.cat-weapon {
+      background: #fce4ec;
+      color: #c62828;
+    }
+
+    &.cat-gear {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    &.cat-ammunition {
+      background: #fff3e0;
+      color: #e65100;
+    }
+
+    &.cat-potion {
+      background: #f3e5f5;
+      color: #6a1b9a;
+    }
+
+    &.cat-wondrous {
+      background: #ede7f6;
+      color: #4527a0;
+    }
   }
 
   /* ===== Feat & Spell Picker sections ===== */
