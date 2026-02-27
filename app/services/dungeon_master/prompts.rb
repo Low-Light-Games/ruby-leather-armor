@@ -123,7 +123,15 @@ module DungeonMaster
         === PLAYER CHARACTER ===
         #{character_block(sheet, category: category)}
 
-        #{rules_and_guidance}#{context_section}=== INSTRUCTIONS ===
+        #{rules_and_guidance}#{context_section}=== ACTION VALIDATION ===
+        IMPORTANT: The player may ONLY use spells, feats, abilities, and items that
+        are explicitly listed on their character sheet above. If the player attempts
+        to cast a spell they don't know, use a feat they don't have, or use an item
+        they aren't carrying, you MUST tell them their character doesn't have that
+        capability. Do NOT improvise or assume the character has unlisted abilities.
+        This applies to class features, racial traits, and any other mechanical option.
+
+        === INSTRUCTIONS ===
         - Narrate the result of the player's action in the context of the story.
         - If a situation calls for a dice roll (combat, skill check, save), request one.
         - Roll requests: type can be "attack", "save_fort", "save_ref", "save_will",
@@ -134,11 +142,17 @@ module DungeonMaster
           Only set adventure_complete to true when the story has truly reached a
           satisfying, final conclusion — the main conflict is resolved and there is
           nothing meaningful left for the player to do.
-        - Update "immediate_context" to reflect the current micro-state of the scene
-          (combat log, social progress, location details). If the scene type changed,
-          replace the context entirely.
+        - Update "immediate_context" to reflect the current micro-state of the scene.
+          For combat: initiative order, HP, conditions, action economy, positions.
+          For social: NPC dispositions, conversation progress, persuasion attempts.
+          For traversal: current location, destination, distance covered, distance
+          remaining, terrain, elapsed time, pace, supplies consumed — use concrete numbers.
+          If the scene type changed, replace the context entirely.
         - Update "story_summary" to be a concise "story so far" summary incorporating
           the latest events. This should be a running narrative of key story beats.
+          CRITICAL: The story_summary is visible to the player. Write ONLY about events
+          that have ALREADY occurred. Do NOT include future plot points, unrevealed
+          secrets, or information the player hasn't discovered yet.
 
         #{pacing_instructions(config)}
 
@@ -171,6 +185,7 @@ module DungeonMaster
 
     # Scene tracker: rewrites the immediate (micro) context based on the player's action.
     def self.scene_tracker_prompt(adventure, category: nil)
+      sheet = load_sheet(adventure)
       rules_and_guidance = build_rules_and_guidance(category)
 
       <<~PROMPT
@@ -178,7 +193,17 @@ module DungeonMaster
         Your job is to rewrite the "immediate context" — a micro-state description
         of what is happening right now in the scene.
 
-        #{rules_and_guidance}=== CURRENT IMMEDIATE CONTEXT ===
+        === PLAYER CHARACTER ===
+        #{character_block(sheet, category: category)}
+
+        #{rules_and_guidance}=== ACTION VALIDATION ===
+        IMPORTANT: The player may ONLY use spells, feats, abilities, and items that
+        are explicitly listed on their character sheet above. If the player attempts
+        something they don't have, flag it in the context (e.g. "Player attempted
+        Telekinesis but does not know that spell"). Do NOT track effects of abilities
+        the character doesn't actually possess.
+
+        === CURRENT IMMEDIATE CONTEXT ===
         #{adventure.immediate_context.presence || "(none — this is the start of the scene)"}
 
         === STORY SUMMARY ===
@@ -189,7 +214,9 @@ module DungeonMaster
         is happening NOW. Be specific and concise:
         - For combat: track initiative order, HP changes, action economy, positions
         - For social: track NPC dispositions, conversation progress, persuasion attempts
-        - For traversal: track current location, terrain, direction of travel, obstacles
+        - For traversal: track current location, destination, distance covered, distance
+          remaining, terrain type, elapsed travel time, movement pace, and supplies consumed.
+          Distances and time must be concrete numbers, not vague descriptions.
         - If the scene type has changed (e.g. combat ended, now social), replace the
           context entirely with the new scene state.
 
@@ -201,14 +228,17 @@ module DungeonMaster
     end
 
     # Story chronicler: maintains the "story so far" macro summary.
+    # Uses the spoiler-free hook (not the full premise) to avoid leaking plot.
     def self.story_chronicler_prompt(adventure, updated_immediate_context)
+      story = adventure.story
+      story_intro = story.hook.presence || story.title
+
       <<~PROMPT
         You are a story chronicler for a Pathfinder 1e tabletop RPG adventure.
         Your job is to maintain a concise "story so far" summary.
 
-        === STORY ===
-        Title: #{adventure.story.title}
-        Premise: #{adventure.story.premise}
+        === STORY HOOK ===
+        #{story_intro}
 
         === CURRENT STORY SUMMARY ===
         #{adventure.story_summary.presence || "(no summary yet — this adventure just started)"}
@@ -222,6 +252,11 @@ module DungeonMaster
         - Written as a narrative summary, not a log
         - Focused on major events, not every small action
         - Clear enough that someone reading it would understand the adventure so far
+
+        CRITICAL: Write ONLY about events that have ALREADY occurred during the
+        adventure. Do NOT reference future plot points, story elements the player
+        hasn't discovered yet, or information that only the DM knows. The summary
+        is visible to the player and must contain zero spoilers.
 
         Respond ONLY with valid JSON (no markdown, no code fences):
         {
@@ -254,6 +289,13 @@ module DungeonMaster
 
         === CURRENT SCENE ===
         #{immediate_context.presence || "(opening scene)"}
+
+        === ACTION VALIDATION ===
+        IMPORTANT: The player may ONLY use spells, feats, abilities, and items that
+        are explicitly listed on their character sheet above. If the player attempts
+        to cast a spell they don't know, use a feat they don't have, or use an item
+        they aren't carrying, you MUST tell them their character doesn't have that
+        capability. Do NOT improvise or assume the character has unlisted abilities.
 
         === INSTRUCTIONS ===
         - Narrate the result of the player's action in the context of the story.

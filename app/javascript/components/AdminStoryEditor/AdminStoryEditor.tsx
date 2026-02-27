@@ -16,6 +16,7 @@ interface StoryData {
   title: string
   preview: string
   premise: string
+  hook: string | null
   initial_context: string | null
   initial_summary: string | null
 }
@@ -31,6 +32,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   const [title, setTitle] = useState('')
   const [preview, setPreview] = useState('')
   const [premise, setPremise] = useState('')
+  const [hook, setHook] = useState('')
   const [initialContext, setInitialContext] = useState('')
   const [initialSummary, setInitialSummary] = useState('')
   const [currentStoryId, setCurrentStoryId] = useState<number | undefined>(storyId)
@@ -46,6 +48,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
         setTitle(data.title)
         setPreview(data.preview)
         setPremise(data.premise)
+        setHook(data.hook || '')
         setInitialContext(data.initial_context || '')
         setInitialSummary(data.initial_summary || '')
       } catch (err: any) {
@@ -68,7 +71,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   const saveStory = async () => {
     setSaving(true)
     try {
-      const payload = { story: { title, preview, premise, initial_context: initialContext, initial_summary: initialSummary } }
+      const payload = { story: { title, preview, premise, hook, initial_context: initialContext, initial_summary: initialSummary } }
 
       if (mode === 'create' && !currentStoryId) {
         const data: StoryData = await apiFetch('/admin/stories', {
@@ -88,6 +91,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
       setTitle(data.title)
       setPreview(data.preview)
       setPremise(data.premise)
+      setHook(data.hook || '')
       setInitialContext(data.initial_context || '')
       setInitialSummary(data.initial_summary || '')
       showFeedback('success', 'Story saved successfully')
@@ -172,6 +176,17 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
             onChange={e => setPremise(e.target.value)}
             rows={6}
             placeholder="The full premise and plot details..."
+          />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="story-hook">Hook (spoiler-free player-facing intro — used by AI chronicler)</label>
+          <textarea
+            id="story-hook"
+            value={hook}
+            onChange={e => setHook(e.target.value)}
+            rows={4}
+            placeholder="A spoiler-free description of the starting situation. E.g. 'You are a wandering sellsword who arrived at the fishing village of Saltmere...'"
           />
         </div>
 
