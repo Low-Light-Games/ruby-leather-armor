@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import Navbar from '../Navbar'
+import AdminNavbar from '../AdminNavbar/AdminNavbar'
 import Login from '../Login'
 import FlashMessage from '../FlashMessage'
 import { apiFetch } from '../../utils/api'
@@ -105,7 +105,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   if (!user.admin) {
     return (
       <div className="app">
-        <Navbar />
+        <AdminNavbar active="stories" />
         <p className="feedback-error">Admin access required.</p>
       </div>
     )
@@ -114,7 +114,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   if (loading) {
     return (
       <div className="app">
-        <Navbar />
+        <AdminNavbar active="stories" />
         <p style={{ padding: '20px' }}>Loading story...</p>
       </div>
     )
@@ -125,7 +125,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
 
   return (
     <div className="app">
-      <Navbar />
+      <AdminNavbar active="stories" />
 
       <div className="admin-story-editor">
         <div className="editor-top">
