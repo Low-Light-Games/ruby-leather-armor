@@ -12,6 +12,7 @@ module Admin
       @logs = @logs.where(adventure_id: params[:adventure_id]) if params[:adventure_id].present?
       @logs = @logs.where(status: params[:status]) if params[:status].present?
       @logs = @logs.where(call_type: params[:call_type]) if params[:call_type].present?
+      @logs = @logs.where(dm_service: params[:dm_service]) if params[:dm_service].present?
 
       @page = [params[:page].to_i, 1].max
       @total_count = @logs.count

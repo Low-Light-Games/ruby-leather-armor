@@ -45,6 +45,10 @@ module Admin
         new_settings["context_mode"] = params[:context_mode]
       end
 
+      if params[:dm_mode].present? && %w[standard light].include?(params[:dm_mode])
+        new_settings["dm_mode"] = params[:dm_mode]
+      end
+
       @config.update!(settings: new_settings)
       redirect_to admin_dm_config_path, notice: "DM settings updated."
     end

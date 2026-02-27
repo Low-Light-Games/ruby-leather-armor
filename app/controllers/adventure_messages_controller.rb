@@ -23,7 +23,7 @@ class AdventureMessagesController < ApplicationController
       return render json: { error: "Message too long (max 500 characters)" }, status: :unprocessable_entity
     end
 
-    service = DungeonMasterService.new(@adventure, user: current_user)
+    service = dm_service
     result = service.process_player_prompt(player_input)
 
     render json: {
@@ -41,7 +41,7 @@ class AdventureMessagesController < ApplicationController
       return render json: { error: "Roll value must be between 1 and 100" }, status: :unprocessable_entity
     end
 
-    service = DungeonMasterService.new(@adventure, user: current_user)
+    service = dm_service
     result = service.process_roll_result(roll_value, roll_description)
 
     render json: {
@@ -53,6 +53,14 @@ class AdventureMessagesController < ApplicationController
 
   def set_adventure
     @adventure = Adventure.find(params[:adventure_id])
+  end
+
+  def dm_service
+    if @adventure.light_mode?
+      DungeonMasterLightService.new(@adventure, user: current_user)
+    else
+      DungeonMasterService.new(@adventure, user: current_user)
+    end
   end
 
   def message_json(message)

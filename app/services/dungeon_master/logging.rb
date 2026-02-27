@@ -4,9 +4,10 @@ module DungeonMaster
   # Encapsulates all DM-related logging: debug DmLogs and raw AiLogs.
   # Every write is rescue'd so a logging failure never breaks gameplay.
   class Logging
-    def initialize(adventure:, user:)
+    def initialize(adventure:, user:, dm_service: "standard")
       @adventure = adventure
       @user = user
+      @dm_service = dm_service
     end
 
     # Write a human-readable debug entry (visible in Admin → DM Logs).
@@ -39,7 +40,8 @@ module DungeonMaster
         raw_response: raw_response,
         parsed_response: parsed_response&.to_json,
         status: parse_status,
-        error_message: nil
+        error_message: nil,
+        dm_service: @dm_service
       )
     rescue => e
       Rails.logger.error("[DungeonMaster::Logging] Failed to write AiLog: #{e.message}")
@@ -61,7 +63,8 @@ module DungeonMaster
         raw_response: raw_response,
         parsed_response: nil,
         status: "api_error",
-        error_message: error.message
+        error_message: error.message,
+        dm_service: @dm_service
       )
     rescue => e
       Rails.logger.error("[DungeonMaster::Logging] Failed to write AiLog (error): #{e.message}")

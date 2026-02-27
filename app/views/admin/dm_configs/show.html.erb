@@ -83,6 +83,28 @@
     </div>
 
     <div class="config-section">
+      <h2>DM Mode (Default for New Adventures)</h2>
+
+      <div class="config-field">
+        <label>DM Architecture</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <%= radio_button_tag :dm_mode, "standard", @config.dm_mode == "standard" %>
+            <span><strong>Standard</strong> — AI handles everything: narrative, combat, traversal, NPC attitudes. Full system prompts with rules.</span>
+          </label>
+          <label class="radio-label">
+            <%= radio_button_tag :dm_mode, "light", @config.dm_mode == "light" %>
+            <span><strong>Light</strong> — AI focuses on narrative only. Combat, traversal, locations, and NPC attitudes are tracked in-app with ActiveRecord models. Minimal prompts.</span>
+          </label>
+        </div>
+        <p class="field-hint">
+          Sets the default DM mode for newly created adventures. Each adventure can override this at creation time.
+          <strong>Standard</strong> is the original behavior. <strong>Light</strong> is the new app-managed architecture.
+        </p>
+      </div>
+    </div>
+
+    <div class="config-section">
       <h2>AI Pipeline</h2>
 
       <div class="config-field">

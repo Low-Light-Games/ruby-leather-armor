@@ -23,6 +23,7 @@ Rails.application.routes.draw do
     resources :stories, only: [:index, :new, :show, :create, :update, :destroy]
     resources :dm_logs, only: [:index, :show]
     resources :ai_logs, only: [:index, :show]
+    resources :encounters, only: [:index, :show]
     resource :dm_config, only: [:show, :update]
   end
 

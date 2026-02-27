@@ -16,6 +16,7 @@ export const AdventureCreation = () => {
   const [adventures, setAdventures] = useState<AdventureSummary[]>([])
   const [selectedStoryId, setSelectedStoryId] = useState<number | ''>('')
   const [selectedSheetId, setSelectedSheetId] = useState<number | ''>('')
+  const [dmMode, setDmMode] = useState<'standard' | 'light'>('standard')
   const [loadingData, setLoadingData] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -61,6 +62,7 @@ export const AdventureCreation = () => {
         body: JSON.stringify({
           story_id: selectedStoryId,
           sheet_id: selectedSheetId,
+          dm_mode: dmMode,
         }),
       })
 
@@ -149,6 +151,34 @@ export const AdventureCreation = () => {
                     <option key={story.id} value={story.id}>{story.title}</option>
                   ))}
                 </select>
+              </div>
+
+              <div className="form-group">
+                <label>DM Mode</label>
+                <div className="dm-mode-selector">
+                  <label className={`dm-mode-option ${dmMode === 'standard' ? 'selected' : ''}`}>
+                    <input
+                      type="radio"
+                      name="dm_mode"
+                      value="standard"
+                      checked={dmMode === 'standard'}
+                      onChange={() => setDmMode('standard')}
+                    />
+                    <span className="dm-mode-label">Standard</span>
+                    <span className="dm-mode-desc">AI handles everything (classic)</span>
+                  </label>
+                  <label className={`dm-mode-option ${dmMode === 'light' ? 'selected' : ''}`}>
+                    <input
+                      type="radio"
+                      name="dm_mode"
+                      value="light"
+                      checked={dmMode === 'light'}
+                      onChange={() => setDmMode('light')}
+                    />
+                    <span className="dm-mode-label">Light</span>
+                    <span className="dm-mode-desc">App-managed combat, locations, and NPCs</span>
+                  </label>
+                </div>
               </div>
 
               {selectedSheet && (

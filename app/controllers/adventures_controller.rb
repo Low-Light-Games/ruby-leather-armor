@@ -37,9 +37,14 @@ class AdventuresController < ApplicationController
 
     max_hp = compute_starting_hp(sheet)
 
+    dm_mode = params[:dm_mode].presence
+    dm_mode = nil unless Adventure::DM_MODES.include?(dm_mode)
+    dm_mode ||= DmConfig.instance.dm_mode
+
     @adventure = Adventure.new(
       user: current_user,
       story: story,
+      dm_mode: dm_mode,
       immediate_context: story.initial_context,
       story_summary: story.initial_summary
     )
@@ -132,7 +137,8 @@ class AdventuresController < ApplicationController
       story: adventure.story,
       immediate_context: adventure.immediate_context,
       story_summary: adventure.story_summary,
-      current_category: adventure.current_category
+      current_category: adventure.current_category,
+      dm_mode: adventure.dm_mode
     }
   end
 

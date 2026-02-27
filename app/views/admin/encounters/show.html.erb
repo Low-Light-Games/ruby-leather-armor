@@ -1,0 +1,418 @@
+<%= render 'admin/shared/navbar', active_nav: :encounters %>
+
+<div class="encounter-show">
+  <div class="encounter-show-header">
+    <a href="<%= admin_encounters_path %>" class="back-link">← Back to Combat Encounters</a>
+    <h1>Encounter #<%= @encounter.id %></h1>
+  </div>
+
+  <div class="encounter-meta">
+    <div class="meta-item">
+      <span class="meta-label">Adventure</span>
+      <span class="meta-value">
+        <a href="<%= admin_encounters_path(adventure_id: @encounter.adventure_id) %>">#<%= @encounter.adventure_id %></a>
+      </span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Status</span>
+      <span class="encounter-badge <%= @encounter.status %>"><%= @encounter.status.capitalize %></span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Round</span>
+      <span class="meta-value"><%= @encounter.round_number %></span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Grid</span>
+      <span class="meta-value"><%= @encounter.grid_width %>x<%= @encounter.grid_height %> (1 sq = 5ft)</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Started</span>
+      <span class="meta-value"><%= @encounter.created_at.strftime('%b %d, %Y %H:%M:%S') %></span>
+    </div>
+    <% if @encounter.completed? %>
+      <div class="meta-item">
+        <span class="meta-label">Ended</span>
+        <span class="meta-value"><%= @encounter.updated_at.strftime('%b %d, %Y %H:%M:%S') %></span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Duration</span>
+        <span class="meta-value"><%= distance_of_time_in_words(@encounter.created_at, @encounter.updated_at) %></span>
+      </div>
+    <% end %>
+  </div>
+
+  <% if @encounter.terrain_data.present? && @encounter.terrain_data.any? %>
+    <div class="encounter-section">
+      <h2>Terrain</h2>
+      <div class="terrain-tags">
+        <% @encounter.terrain_data.each do |coord, type| %>
+          <span class="terrain-tag"><%= coord %>: <%= type %></span>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="encounter-section">
+    <h2>Participants</h2>
+    <table class="participants-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Team</th>
+          <th>Initiative</th>
+          <th>Position</th>
+          <th>HP</th>
+          <th>Status</th>
+          <th>Conditions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @participants.each do |p| %>
+          <tr class="<%= p.alive? ? 'alive' : 'defeated' %>">
+            <td class="participant-name"><%= p.name %></td>
+            <td>
+              <span class="team-tag <%= p.team %>"><%= p.team.capitalize %></span>
+            </td>
+            <td class="mono"><%= p.initiative %></td>
+            <td class="mono">(<%= p.position_x %>, <%= p.position_y %>)</td>
+            <td class="mono">
+              <% max_hp = (p.adventure_sheet || p.creature_sheet)&.max_hp || '?' %>
+              <%= p.current_hp %> / <%= max_hp %>
+            </td>
+            <td>
+              <% if p.alive? %>
+                <span class="status-alive">Alive</span>
+              <% else %>
+                <span class="status-defeated">Defeated</span>
+              <% end %>
+            </td>
+            <td>
+              <% conditions = p.conditions.presence || [] %>
+              <% if conditions.any? %>
+                <% conditions.each do |c| %>
+                  <span class="condition-tag"><%= c %></span>
+                <% end %>
+              <% else %>
+                <span class="empty-cell">—</span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <% if @encounter.narrative_summary.present? %>
+    <div class="encounter-section">
+      <h2>Narrative Summary</h2>
+      <pre class="log-pre"><%= @encounter.narrative_summary %></pre>
+    </div>
+  <% end %>
+
+  <% if @combat_messages.any? %>
+    <div class="encounter-section">
+      <h2>Combat Chat Log (<%= @combat_messages.size %> messages)</h2>
+      <div class="combat-log">
+        <% @combat_messages.each do |msg| %>
+          <div class="combat-msg combat-msg-<%= msg.role %>">
+            <span class="msg-time"><%= msg.created_at.strftime('%H:%M:%S') %></span>
+            <span class="msg-role <%= msg.role %>"><%= msg.role.upcase %></span>
+            <span class="msg-content"><%= msg.content %></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if @dm_logs.any? %>
+    <div class="encounter-section">
+      <h2>DM Logs During Encounter (<%= @dm_logs.size %> entries)</h2>
+      <div class="combat-log">
+        <% @dm_logs.each do |log| %>
+          <div class="combat-msg dm-log-entry">
+            <span class="msg-time"><%= log.created_at.strftime('%H:%M:%S') %></span>
+            <span class="msg-role system">LOG</span>
+            <span class="msg-content"><%= log.content %></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<%= render 'admin/shared/navbar_styles' %>
+
+<style>
+  .encounter-show {
+    padding: 20px 30px;
+    font-family: 'Arial', sans-serif;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .encounter-show-header {
+    margin-bottom: 20px;
+
+    h1 {
+      margin: 8px 0 0;
+      font-size: 24px;
+      color: #333;
+    }
+  }
+
+  .back-link {
+    color: #1565c0;
+    text-decoration: none;
+    font-size: 14px;
+    &:hover { text-decoration: underline; }
+  }
+
+  .encounter-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    padding: 16px;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    margin-bottom: 24px;
+  }
+
+  .meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .meta-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #888;
+    font-weight: 600;
+  }
+
+  .meta-value {
+    font-size: 14px;
+    color: #333;
+
+    a {
+      color: #1565c0;
+      text-decoration: none;
+      &:hover { text-decoration: underline; }
+    }
+  }
+
+  .encounter-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+
+    &.active {
+      background-color: #fff9c4;
+      color: #f57f17;
+    }
+    &.completed {
+      background-color: #c8e6c9;
+      color: #2e7d32;
+    }
+    &.pending {
+      background-color: #e0e0e0;
+      color: #616161;
+    }
+  }
+
+  .encounter-section {
+    margin-bottom: 28px;
+
+    h2 {
+      font-size: 16px;
+      color: #555;
+      margin: 0 0 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #e9ecef;
+    }
+  }
+
+  .terrain-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .terrain-tag {
+    padding: 2px 8px;
+    background: #fff3e0;
+    border: 1px solid #ffe0b2;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: monospace;
+    color: #e65100;
+  }
+
+  .participants-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th {
+      text-align: left;
+      padding: 8px 10px;
+      background-color: #343a40;
+      color: white;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #e9ecef;
+      vertical-align: middle;
+    }
+
+    tr.alive { background-color: #f1f8e9; }
+    tr.defeated { background-color: #fce4ec; }
+    tr:hover { background-color: #eeeeee; }
+  }
+
+  .participant-name {
+    font-weight: 600;
+    color: #333;
+  }
+
+  .mono {
+    font-family: monospace;
+    font-size: 12px;
+  }
+
+  .team-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+
+    &.player {
+      background-color: #e3f2fd;
+      color: #1565c0;
+    }
+    &.enemy {
+      background-color: #ffcdd2;
+      color: #c62828;
+    }
+    &.neutral {
+      background-color: #e0e0e0;
+      color: #616161;
+    }
+  }
+
+  .status-alive {
+    color: #2e7d32;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .status-defeated {
+    color: #c62828;
+    font-weight: 600;
+    font-size: 12px;
+  }
+
+  .condition-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    background: #fff3e0;
+    border: 1px solid #ffe0b2;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #e65100;
+    margin-right: 3px;
+  }
+
+  .empty-cell {
+    color: #bbb;
+  }
+
+  .log-pre {
+    padding: 14px;
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.6;
+    max-height: 400px;
+    overflow-y: auto;
+    margin: 0;
+  }
+
+  .combat-log {
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    max-height: 600px;
+    overflow-y: auto;
+    background: #fafafa;
+  }
+
+  .combat-msg {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 13px;
+    line-height: 1.5;
+
+    &:last-child { border-bottom: none; }
+    &:hover { background-color: #f5f5f5; }
+  }
+
+  .msg-time {
+    flex-shrink: 0;
+    font-family: monospace;
+    font-size: 11px;
+    color: #999;
+    padding-top: 2px;
+  }
+
+  .msg-role {
+    flex-shrink: 0;
+    display: inline-block;
+    min-width: 50px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 0.5px;
+
+    &.dm {
+      background: #e8eaf6;
+      color: #283593;
+    }
+    &.player {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+    &.system {
+      background: #f3e5f5;
+      color: #6a1b9a;
+    }
+  }
+
+  .msg-content {
+    flex: 1;
+    word-break: break-word;
+    color: #333;
+  }
+
+  .dm-log-entry {
+    background-color: #f9f5ff;
+  }
+</style>
