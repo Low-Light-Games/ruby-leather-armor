@@ -99,7 +99,13 @@ class SheetsController < ApplicationController
 
     item_data = nil
     if sheet_data.key?(:items)
-      item_data = Array(sheet_data.delete(:items))
+      item_data = Array(sheet_data.delete(:items)).map do |entry|
+        if entry.is_a?(ActionController::Parameters)
+          entry.permit(:item_id, :quantity, :equipped, :slot_override).to_h
+        else
+          entry
+        end
+      end
     end
 
     [feat_data, spell_data, item_data]
