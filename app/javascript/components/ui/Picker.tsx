@@ -1,4 +1,5 @@
 import React from 'react';
+import { usePickerState } from './hooks/usePickerState'
 
 /**
  * Generic search-and-select dropdown used by Feats, Spells, Equipment,
@@ -47,6 +48,8 @@ export function Picker<T>({
   before,
   inputDisabled,
 }: PickerProps<T>) {
+  const { isOpen, open, handleEscapeKey } = usePickerState()
+
   return (
     <>
       {before}
@@ -55,11 +58,15 @@ export function Picker<T>({
           type="text"
           placeholder={placeholder}
           value={search}
-          onChange={e => onSearchChange(e.target.value)}
+          onChange={e => {
+            open()
+            onSearchChange(e.target.value)
+          }}
+          onKeyDown={handleEscapeKey}
           className="picker-input"
           disabled={inputDisabled}
         />
-        {items.length > 0 && (
+        {isOpen && items.length > 0 && (
           <ul className="picker-dropdown">
             {items.map(item => {
               const disabled = isDisabled?.(item) ?? false;
