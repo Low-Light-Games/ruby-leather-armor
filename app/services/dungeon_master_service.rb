@@ -337,6 +337,7 @@ class DungeonMasterService
   rescue AiError => e
     fallback_raw = raw || @ai.last_failed_raw_response
     @log.ai_log_error!("sequential_context", prompt_summary, e, raw_response: fallback_raw)
+    @log.dm_log!("Sequential Step A (update immediate context) failed: #{e.message} — keeping current context")
     {}
   end
 
@@ -356,6 +357,7 @@ class DungeonMasterService
   rescue AiError => e
     fallback_raw = raw || @ai.last_failed_raw_response
     @log.ai_log_error!("sequential_summary", prompt_summary, e, raw_response: fallback_raw)
+    @log.dm_log!("Sequential Step B (update story summary) failed: #{e.message} — keeping current summary")
     {}
   end
 
@@ -394,8 +396,12 @@ class DungeonMasterService
     updates = {}
     updates[:immediate_context] = dm_response[:immediate_context] if dm_response[:immediate_context].present?
     updates[:story_summary] = dm_response[:story_summary] if dm_response[:story_summary].present?
+    updates[:current_category] = category if category.present?
 
-    @adventure.update!(updates) if updates.any?
+    if updates.any?
+      @adventure.update!(updates)
+      log_context_updates(updates)
+    end
   end
 
   # ----------------------------------------------------------------
@@ -426,5 +432,16 @@ class DungeonMasterService
     log_parts << "Adventure complete: YES" if dm_response[:adventure_complete]
     log_parts << "Roll requested: #{dm_response[:roll_request]['description']}" if dm_response[:roll_request].present?
     @log.dm_log!(log_parts.join(" | "))
+  end
+
+  def log_context_updates(updates)
+    parts = []
+    if updates[:immediate_context]
+      parts << "Immediate context updated: \"#{@log.truncate(updates[:immediate_context], length: 120)}\""
+    end
+    if updates[:story_summary]
+      parts << "Story summary updated: \"#{@log.truncate(updates[:story_summary], length: 120)}\""
+    end
+    @log.dm_log!(parts.join(" | ")) if parts.any?
   end
 end

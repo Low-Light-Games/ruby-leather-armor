@@ -130,7 +130,8 @@ class AdventuresController < ApplicationController
       adventure_sheet: adventure_sheet_json(adv_sheet),
       story: adventure.story,
       immediate_context: adventure.immediate_context,
-      story_summary: adventure.story_summary
+      story_summary: adventure.story_summary,
+      current_category: adventure.current_category
     }
   end
 

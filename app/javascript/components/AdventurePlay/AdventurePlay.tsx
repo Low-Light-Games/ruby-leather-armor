@@ -88,6 +88,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           story={story}
           immediateContext={adventure.immediate_context}
           storySummary={adventure.story_summary}
+          currentCategory={adventure.current_category}
         />
       </div>
 

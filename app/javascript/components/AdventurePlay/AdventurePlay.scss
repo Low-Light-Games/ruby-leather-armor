@@ -649,6 +649,17 @@
       border: 1px solid #e9ecef;
       border-radius: 6px;
 
+      .context-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+
+        h3 {
+          margin: 0;
+        }
+      }
+
       h3 {
         margin: 0 0 8px 0;
         font-size: 13px;
@@ -656,6 +667,31 @@
         color: #666;
         letter-spacing: 0.5px;
         font-weight: 600;
+      }
+
+      .category-badge {
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        padding: 2px 8px;
+        border-radius: 3px;
+        flex-shrink: 0;
+
+        &.cat-combat {
+          background: #fce4ec;
+          color: #c62828;
+        }
+
+        &.cat-social {
+          background: #e8f5e9;
+          color: #2e7d32;
+        }
+
+        &.cat-traversal {
+          background: #e3f2fd;
+          color: #1565c0;
+        }
       }
 
       .context-body {

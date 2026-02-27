@@ -151,6 +151,7 @@ export interface Adventure {
   story: Story
   immediate_context: string | null
   story_summary: string | null
+  current_category: string | null
 }
 
 export interface AdventureSummary {
