@@ -217,6 +217,10 @@
     "maxDexBonus": null,
     "armorCheckPenalty": -1,
     "arcaneSpellFailure": 5,
+    "weaponType": "melee",
+    "damageDice": "1d3",
+    "damageType": "bludgeoning",
+    "properties": { "light": true, "bashPenalty": -1 },
     "summary": "A small metal shield strapped to the forearm."
   },
   {
@@ -232,6 +236,10 @@
     "maxDexBonus": null,
     "armorCheckPenalty": -1,
     "arcaneSpellFailure": 5,
+    "weaponType": "melee",
+    "damageDice": "1d3",
+    "damageType": "bludgeoning",
+    "properties": { "light": true },
     "summary": "A light shield made of wood."
   },
   {
@@ -247,6 +255,10 @@
     "maxDexBonus": null,
     "armorCheckPenalty": -1,
     "arcaneSpellFailure": 5,
+    "weaponType": "melee",
+    "damageDice": "1d3",
+    "damageType": "bludgeoning",
+    "properties": { "light": true },
     "summary": "A light shield made of steel."
   },
   {
@@ -262,6 +274,10 @@
     "maxDexBonus": null,
     "armorCheckPenalty": -2,
     "arcaneSpellFailure": 15,
+    "weaponType": "melee",
+    "damageDice": "1d4",
+    "damageType": "bludgeoning",
+    "properties": {},
     "summary": "A heavy shield made of wood."
   },
   {
@@ -277,6 +293,10 @@
     "maxDexBonus": null,
     "armorCheckPenalty": -2,
     "arcaneSpellFailure": 15,
+    "weaponType": "melee",
+    "damageDice": "1d4",
+    "damageType": "bludgeoning",
+    "properties": {},
     "summary": "A heavy shield made of steel."
   },
   {
@@ -309,6 +329,7 @@
     "criticalRange": "19-20/x2",
     "damageType": "piercing or slashing",
     "rangeIncrement": 10,
+    "properties": { "light": true, "finesse": true },
     "summary": "A small blade for close combat or throwing."
   },
   {
@@ -339,6 +360,7 @@
     "damageDice": "1d6",
     "criticalRange": "x2",
     "damageType": "bludgeoning",
+    "properties": { "twoHanded": true },
     "summary": "A wooden staff wielded with both hands."
   },
   {
@@ -385,6 +407,7 @@
     "damageDice": "2d6",
     "criticalRange": "19-20/x2",
     "damageType": "slashing",
+    "properties": { "twoHanded": true },
     "summary": "A large two-handed blade."
   },
   {
@@ -430,6 +453,7 @@
     "damageDice": "1d6",
     "criticalRange": "18-20/x2",
     "damageType": "piercing",
+    "properties": { "finesse": true },
     "summary": "A light thrusting sword favored by duelists."
   },
   {
@@ -446,6 +470,7 @@
     "criticalRange": "x3",
     "damageType": "piercing",
     "rangeIncrement": 60,
+    "properties": { "twoHanded": true },
     "summary": "A compact ranged weapon."
   },
   {
@@ -462,6 +487,7 @@
     "criticalRange": "x3",
     "damageType": "piercing",
     "rangeIncrement": 100,
+    "properties": { "twoHanded": true },
     "summary": "A tall bow for long-range combat."
   },
   {
@@ -478,6 +504,7 @@
     "criticalRange": "19-20/x2",
     "damageType": "piercing",
     "rangeIncrement": 80,
+    "properties": { "twoHanded": true },
     "summary": "A simple ranged weapon that fires bolts."
   },
   {
@@ -494,6 +521,7 @@
     "criticalRange": "19-20/x2",
     "damageType": "piercing",
     "rangeIncrement": 120,
+    "properties": { "twoHanded": true },
     "summary": "A powerful crossbow requiring more time to load."
   },
 

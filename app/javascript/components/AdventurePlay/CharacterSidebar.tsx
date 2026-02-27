@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Accordion } from '../ui/Accordion';
 import type { AdventureSheet, AttributeType, DerivedStats } from '../../types';
-import type { Currency } from '../../rules/pathfinder_items_types';
+import type { Currency, ItemDefinition } from '../../rules/pathfinder_items_types';
 import type { SpellDefinition } from '../../rules/pathfinder_spells_types';
 import type { SpellbookSearchResult } from './hooks/useSpellbook';
 import { formatMod, ABILITY_ABBR, ATTRIBUTE_ORDER } from '../../utils/formatting';
-import { formatCurrency } from '../../rules/pathfinder_items';
+import { formatCurrency, getItemById } from '../../rules/pathfinder_items';
 import { getFeatById, featDisplayName } from '../../rules/pathfinder_feats';
 import { getSpellById, getCastingStyle } from '../../rules/pathfinder_spells';
+import { getWeaponAttackMod } from '../../rules/damage';
+import { spellHasDamage } from '../../rules/damage';
 
 interface CharacterSidebarProps {
   sheet: AdventureSheet;
   ds: DerivedStats;
-  // Roll handlers
   rollFort: () => void;
   rollRef: () => void;
   rollWill: () => void;
@@ -21,7 +22,8 @@ interface CharacterSidebarProps {
   rollInitiative: () => void;
   rollAbility: (attr: AttributeType) => void;
   rollSkill: (skillName: string, total: number) => void;
-  // Spellbook
+  rollWeaponDamage: (itemId: string) => void;
+  rollSpellDamage: (spellId: string) => void;
   spellbookSearch: string;
   setSpellbookSearch: (v: string) => void;
   spellbookSaving: boolean;
@@ -40,6 +42,8 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
   rollInitiative,
   rollAbility,
   rollSkill,
+  rollWeaponDamage,
+  rollSpellDamage,
   spellbookSearch,
   setSpellbookSearch,
   spellbookSaving,
@@ -48,6 +52,7 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
 }) => {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     attributes: true,
+    weapons: false,
     skills: false,
     feats: false,
     spells: false,
@@ -56,7 +61,25 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
 
   const feats = sheet.details?.feats || [];
+  const featDefs = useMemo(() =>
+    feats.map(id => getFeatById(id)).filter((f): f is NonNullable<typeof f> => !!f),
+    [feats]
+  );
   const castStyle = getCastingStyle(sheet.character_class);
+
+  const equippedWeapons: { item: ItemDefinition; id: string }[] = useMemo(() => {
+    const items = sheet.details?.items ?? [];
+    const result: { item: ItemDefinition; id: string }[] = [];
+    for (const owned of items) {
+      if (!owned.equipped) continue;
+      const def = getItemById(owned.itemId);
+      if (!def || !def.damageDice) continue;
+      if (def.itemType === 'weapon' || def.itemType === 'shield') {
+        result.push({ item: def, id: owned.itemId });
+      }
+    }
+    return result;
+  }, [sheet.details?.items]);
 
   const spellIds: string[] = (() => {
     if (castStyle === 'spontaneous') return sheet.details?.knownSpells || sheet.details?.spells || [];
@@ -210,6 +233,44 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
         </Accordion>
 
         <Accordion
+          title={`Weapons (${equippedWeapons.length})`}
+          isOpen={openSections.weapons}
+          onToggle={() => toggleSection('weapons')}
+        >
+          <div className="weapons-list">
+            {equippedWeapons.length === 0 ? (
+              <p className="empty-hint">No weapons equipped.</p>
+            ) : (
+              equippedWeapons.map(({ item, id }) => {
+                const atkMod = getWeaponAttackMod(item, ds, featDefs);
+                const isBash = item.itemType === 'shield';
+                return (
+                  <div key={id} className="weapon-row" title={item.summary ?? undefined}>
+                    <div className="weapon-info">
+                      <span className="weapon-name">
+                        {item.name}{isBash ? ' (bash)' : ''}
+                      </span>
+                      <span className="weapon-stats">
+                        {item.damageDice} {item.damageType}
+                        {' | '}Atk {formatMod(atkMod.total)}
+                      </span>
+                    </div>
+                    <button
+                      className="roll-dice-btn"
+                      onClick={() => rollWeaponDamage(id)}
+                      title={`Roll ${item.name} Damage`}
+                      aria-label={`Roll ${item.name} Damage`}
+                    >
+                      🎲
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </Accordion>
+
+        <Accordion
           title={`Feats (${feats.length})`}
           isOpen={openSections.feats}
           onToggle={() => toggleSection('feats')}
@@ -259,11 +320,22 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
                 const lvl = sheet.character_class
                   ? spell.classLevels[sheet.character_class.toLowerCase()]
                   : Object.values(spell.classLevels)[0];
+                const hasDmg = spellHasDamage(spell);
                 return (
                   <div key={spell.id} className="fs-item" title={spell.summary}>
                     <span className="spell-lvl-badge">{lvl ?? '?'}</span>
                     <span className="fs-name">{spell.name}</span>
                     <span className="fs-tag school-tag">{spell.school}</span>
+                    {hasDmg && (
+                      <button
+                        className="roll-dice-btn spell-dmg"
+                        onClick={() => rollSpellDamage(spell.id)}
+                        title={`Roll ${spell.name} Damage`}
+                        aria-label={`Roll ${spell.name} Damage`}
+                      >
+                        🎲
+                      </button>
+                    )}
                   </div>
                 );
               })

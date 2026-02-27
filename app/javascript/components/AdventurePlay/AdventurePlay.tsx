@@ -18,7 +18,8 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const { user, loading: authLoading } = useAuth();
 
   const { adventure, ds, loading, error, reload, setAdventure } = useAdventure(adventureId, user);
-  const rolls = useRolls(ds);
+  const advSheet = adventure?.adventure_sheet ?? null;
+  const rolls = useRolls(ds, advSheet);
   const spellbook = useSpellbook(adventure, ds, setAdventure);
 
   // ── Early returns (loading / auth / error) ─────────────────────
@@ -67,6 +68,8 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           rollInitiative={rolls.rollInitiative}
           rollAbility={rolls.rollAbility}
           rollSkill={rolls.rollSkill}
+          rollWeaponDamage={rolls.rollWeaponDamage}
+          rollSpellDamage={rolls.rollSpellDamage}
           spellbookSearch={spellbook.spellbookSearch}
           setSpellbookSearch={spellbook.setSpellbookSearch}
           spellbookSaving={spellbook.spellbookSaving}
@@ -93,7 +96,11 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
       </div>
 
       {/* Roll Result Modal */}
-      <RollResultModal roll={rolls.rollDisplay} onClose={rolls.clearRoll} />
+      <RollResultModal
+        roll={rolls.rollDisplay}
+        damageRoll={rolls.damageDisplay}
+        onClose={() => { rolls.clearRoll(); rolls.clearDamage(); }}
+      />
     </div>
   );
 };

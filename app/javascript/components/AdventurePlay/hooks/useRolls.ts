@@ -1,12 +1,17 @@
 import { useState, useCallback } from 'react';
-import type { AttributeType, DerivedStats } from '../../../types';
+import type { AttributeType, AdventureSheet, DerivedStats } from '../../../types';
 import type { RollResultDisplay } from '../../RollResultModal';
+import type { DamageRollResult } from '../../../rules/dice';
 import { formatMod, ABILITY_ABBR } from '../../../utils/formatting';
 import { rollD20 } from '../../../rules/dice';
+import { rollWeaponDamage as calcWeaponDamage, rollSpellDamage as calcSpellDamage } from '../../../rules/damage';
+import { getSpellById } from '../../../rules/pathfinder_spells';
 
 interface UseRollsResult {
   rollDisplay: RollResultDisplay | null;
+  damageDisplay: DamageRollResult | null;
   clearRoll: () => void;
+  clearDamage: () => void;
   rollMeleeAttack: () => void;
   rollRangedAttack: () => void;
   rollFort: () => void;
@@ -15,10 +20,13 @@ interface UseRollsResult {
   rollInitiative: () => void;
   rollAbility: (attr: AttributeType) => void;
   rollSkill: (skillName: string, total: number) => void;
+  rollWeaponDamage: (itemId: string) => void;
+  rollSpellDamage: (spellId: string) => void;
 }
 
-export function useRolls(ds: DerivedStats | null): UseRollsResult {
+export function useRolls(ds: DerivedStats | null, sheet?: AdventureSheet | null): UseRollsResult {
   const [rollDisplay, setRollDisplay] = useState<RollResultDisplay | null>(null);
+  const [damageDisplay, setDamageDisplay] = useState<DamageRollResult | null>(null);
 
   const doRoll = useCallback((label: string, modifier: number, modifierLabel?: string) => {
     const result = rollD20(modifier);
@@ -65,9 +73,25 @@ export function useRolls(ds: DerivedStats | null): UseRollsResult {
     doRoll(`${skillName} Check`, total, `Skill ${formatMod(total)}`);
   }, [doRoll]);
 
+  const rollWeaponDamage = useCallback((itemId: string) => {
+    if (!ds || !sheet) return;
+    const result = calcWeaponDamage(itemId, sheet, ds);
+    if (result) setDamageDisplay(result);
+  }, [ds, sheet]);
+
+  const rollSpellDamage = useCallback((spellId: string) => {
+    if (!sheet) return;
+    const spell = getSpellById(spellId);
+    if (!spell) return;
+    const result = calcSpellDamage(spell, sheet.level);
+    if (result) setDamageDisplay(result);
+  }, [sheet]);
+
   return {
     rollDisplay,
+    damageDisplay,
     clearRoll: () => setRollDisplay(null),
+    clearDamage: () => setDamageDisplay(null),
     rollMeleeAttack,
     rollRangedAttack,
     rollFort,
@@ -76,5 +100,7 @@ export function useRolls(ds: DerivedStats | null): UseRollsResult {
     rollInitiative,
     rollAbility,
     rollSkill,
+    rollWeaponDamage,
+    rollSpellDamage,
   };
 }
