@@ -133,11 +133,15 @@ module DungeonMaster
 
         === INSTRUCTIONS ===
         - Narrate the result of the player's action in the context of the story.
-        - If a situation calls for a dice roll (combat, skill check, save), request one.
+        - When the PLAYER must roll (attack, save, skill check), request a roll and wait.
         - Roll requests: type can be "attack", "save_fort", "save_ref", "save_will",
           "skill_check", "initiative", or "ability_check".
           For skill checks, specify which skill. Always include a DC (difficulty class).
-        - Do NOT resolve rolls yourself — request them and wait for the result.
+        - Initiative is rolled ONCE at the start of combat. Do NOT request it again on
+          subsequent rounds of the same fight.
+        - When an NPC or monster must roll (attack against the player, saving throw, etc.),
+          resolve it yourself: pick a random number 1-20, add the NPC's modifier, and
+          narrate the result. Only request rolls from the player for the PLAYER's actions.
         - Consider whether the current moment is a natural endpoint for the adventure.
           Only set adventure_complete to true when the story has truly reached a
           satisfying, final conclusion — the main conflict is resolved and there is
@@ -299,11 +303,15 @@ module DungeonMaster
 
         === INSTRUCTIONS ===
         - Narrate the result of the player's action in the context of the story.
-        - If a situation calls for a dice roll, request one.
+        - When the PLAYER must roll (attack, save, skill check), request a roll and wait.
         - Roll requests: type can be "attack", "save_fort", "save_ref", "save_will",
           "skill_check", "initiative", or "ability_check".
           For skill checks, specify which skill. Always include a DC.
-        - Do NOT resolve rolls yourself — request them and wait for the result.
+        - Initiative is rolled ONCE at the start of combat. Do NOT request it again on
+          subsequent rounds of the same fight.
+        - When an NPC or monster must roll (attack against the player, saving throw, etc.),
+          resolve it yourself: pick a random number 1-20, add the NPC's modifier, and
+          narrate the result. Only request rolls from the player for the PLAYER's actions.
         - Consider whether this is a natural endpoint for the adventure.
           Only set adventure_complete to true when the story has truly reached a
           satisfying, final conclusion.
