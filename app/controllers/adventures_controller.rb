@@ -12,7 +12,7 @@ class AdventuresController < ApplicationController
   # GET /adventures - returns the current user's ongoing adventures as JSON
   def index
     adventures = policy_scope(Adventure)
-                   .includes(adventure_sheets: [], story_state: :story)
+                   .includes(adventure_sheets: [], story: [])
                    .order(updated_at: :desc)
 
     render json: adventures.map { |a| adventure_summary(a) }
@@ -34,17 +34,12 @@ class AdventuresController < ApplicationController
   def create
     story = Story.kept.find(params[:story_id])
     sheet = current_user.sheets.find(params[:sheet_id])
-    initial_state = story.story_states.kept.order(:position).first
-
-    unless initial_state
-      return render json: { error: "This story has no states yet" }, status: :unprocessable_entity
-    end
 
     max_hp = compute_starting_hp(sheet)
 
     @adventure = Adventure.new(
       user: current_user,
-      story_state: initial_state
+      story: story
     )
 
     if @adventure.save
@@ -118,7 +113,7 @@ class AdventuresController < ApplicationController
     {
       id: adventure.id,
       character_name: adv_sheet&.name || "Unknown",
-      story_title: adventure.story_state.story.title,
+      story_title: adventure.story.title,
       character_currency: adv_sheet&.currency || { "gold" => 0, "silver" => 0, "copper" => 0, "platinum" => 0 },
       created_at: adventure.created_at,
       updated_at: adventure.updated_at
@@ -132,8 +127,7 @@ class AdventuresController < ApplicationController
     {
       id: adventure.id,
       adventure_sheet: adventure_sheet_json(adv_sheet),
-      story_state: adventure.story_state,
-      story: adventure.story_state.story
+      story: adventure.story
     }
   end
 

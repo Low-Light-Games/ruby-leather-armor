@@ -49,7 +49,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
     );
   }
 
-  const { adventure_sheet: sheet, story, story_state } = adventure;
+  const { adventure_sheet: sheet, story } = adventure;
 
   return (
     <div className="app">
@@ -78,12 +78,12 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
         <div className="adventure-column middle-column">
           <AdventureChat
             adventureId={adventureId}
-            onStageAdvance={reload}
+            onAdventureComplete={reload}
           />
         </div>
 
         {/* RIGHT COLUMN — Story */}
-        <StorySidebar story={story} storyState={story_state} />
+        <StorySidebar story={story} />
       </div>
 
       {/* Roll Result Modal */}

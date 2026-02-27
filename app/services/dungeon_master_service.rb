@@ -76,9 +76,13 @@ class DungeonMasterService
       )
       result_messages << dm_msg
 
-      if dm_response[:advance_stage]
-        advance_msg = advance_story_stage!
-        result_messages << advance_msg if advance_msg
+      if dm_response[:adventure_complete]
+        complete_msg = persist_message(
+          role: "system",
+          content: "The adventure has reached its conclusion.",
+          message_type: "adventure_complete"
+        )
+        result_messages << complete_msg
       end
 
       { messages: result_messages }
@@ -116,7 +120,7 @@ class DungeonMasterService
 
       reasoning = dm_response[:reasoning] || "No reasoning provided"
       log_parts = ["Roll result #{roll_value} for \"#{roll_description}\". DM reasoning: #{reasoning}"]
-      log_parts << "Advance stage: YES" if dm_response[:advance_stage]
+      log_parts << "Adventure complete: YES" if dm_response[:adventure_complete]
       @log.dm_log!(log_parts.join(" | "))
 
       dm_msg = persist_message(
@@ -127,9 +131,13 @@ class DungeonMasterService
       )
       result_messages << dm_msg
 
-      if dm_response[:advance_stage]
-        advance_msg = advance_story_stage!
-        result_messages << advance_msg if advance_msg
+      if dm_response[:adventure_complete]
+        complete_msg = persist_message(
+          role: "system",
+          content: "The adventure has reached its conclusion.",
+          message_type: "adventure_complete"
+        )
+        result_messages << complete_msg
       end
 
     rescue AiError => e
@@ -200,33 +208,13 @@ class DungeonMasterService
     {
       narrative: parsed["narrative"] || "The Dungeon Master pauses thoughtfully...",
       reasoning: parsed["reasoning"],
-      advance_stage: parsed["advance_stage"] == true,
+      adventure_complete: parsed["adventure_complete"] == true,
       roll_request: parsed["roll_request"]
     }
   rescue AiError => e
     fallback_raw = raw || @ai.last_failed_raw_response
     @log.ai_log_error!(call_type, prompt_summary, e, raw_response: fallback_raw)
     raise
-  end
-
-  # ----------------------------------------------------------------
-  # Stage Advancement
-  # ----------------------------------------------------------------
-
-  def advance_story_stage!
-    current    = @adventure.story_state
-    all_stages = current.story.story_states.kept.order(position: :asc)
-    next_stage = all_stages.detect { |s| s.position > current.position }
-
-    return nil unless next_stage
-
-    @adventure.update!(story_state: next_stage)
-
-    persist_message(
-      role: "system",
-      content: "📖 The story advances: #{next_stage.description}",
-      message_type: "stage_advance"
-    )
   end
 
   # ----------------------------------------------------------------
@@ -249,7 +237,7 @@ class DungeonMasterService
   def log_dm_reasoning(dm_response)
     reasoning = dm_response[:reasoning] || "No reasoning provided"
     log_parts = ["DM responded. Reasoning: #{reasoning}"]
-    log_parts << "Advance stage: YES" if dm_response[:advance_stage]
+    log_parts << "Adventure complete: YES" if dm_response[:adventure_complete]
     log_parts << "Roll requested: #{dm_response[:roll_request]['description']}" if dm_response[:roll_request].present?
     @log.dm_log!(log_parts.join(" | "))
   end

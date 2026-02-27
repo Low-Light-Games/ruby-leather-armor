@@ -13,7 +13,6 @@
       <thead>
         <tr>
           <th>Title</th>
-          <th>Stages</th>
           <th>Preview</th>
           <th>Updated</th>
           <th></th>
@@ -23,7 +22,6 @@
         <% @stories.each do |story| %>
           <tr>
             <td class="story-title"><%= story.title %></td>
-            <td class="story-stages"><%= story.story_states.kept.size %></td>
             <td class="story-preview"><%= truncate(story.preview, length: 80) %></td>
             <td class="story-date"><%= story.updated_at.strftime('%b %d, %Y') %></td>
             <td class="story-actions">
@@ -116,11 +114,6 @@
 
   .story-title {
     font-weight: 600;
-  }
-
-  .story-stages {
-    text-align: center;
-    color: #555;
   }
 
   .story-preview {

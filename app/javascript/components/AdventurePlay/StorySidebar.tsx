@@ -1,16 +1,15 @@
 import React from 'react';
-import type { Story, StoryState } from '../../types';
+import type { Story } from '../../types';
 
 interface StorySidebarProps {
   story: Story;
-  storyState: StoryState;
 }
 
-export const StorySidebar: React.FC<StorySidebarProps> = ({ story, storyState }) => {
+export const StorySidebar: React.FC<StorySidebarProps> = ({ story }) => {
   return (
     <div className="adventure-column story-column">
       <h2>{story.title}</h2>
-      <p className="story-stage">{storyState.description}</p>
+      <p className="story-premise">{story.preview}</p>
     </div>
   );
 };

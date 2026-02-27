@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_26_173338) do
+ActiveRecord::Schema[7.1].define(version: 2026_02_27_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -93,11 +93,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_26_173338) do
   end
 
   create_table "adventures", force: :cascade do |t|
-    t.bigint "story_state_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
-    t.index ["story_state_id"], name: "index_adventures_on_story_state_id"
+    t.bigint "story_id", null: false
+    t.index ["story_id"], name: "index_adventures_on_story_id"
     t.index ["user_id"], name: "index_adventures_on_user_id"
   end
 
@@ -270,17 +270,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_26_173338) do
     t.index ["discarded_at"], name: "index_stories_on_discarded_at"
   end
 
-  create_table "story_states", force: :cascade do |t|
-    t.bigint "story_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.text "description", default: "", null: false
-    t.integer "position", default: 0, null: false
-    t.datetime "discarded_at"
-    t.index ["discarded_at"], name: "index_story_states_on_discarded_at"
-    t.index ["story_id"], name: "index_story_states_on_story_id"
-  end
-
   create_table "users", force: :cascade do |t|
     t.string "email"
     t.string "password_digest"
@@ -299,7 +288,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_26_173338) do
   add_foreign_key "adventure_sheet_spells", "spell_definitions", column: "spell_id"
   add_foreign_key "adventure_sheets", "adventures"
   add_foreign_key "adventure_sheets", "sheets"
-  add_foreign_key "adventures", "story_states"
+  add_foreign_key "adventures", "stories"
   add_foreign_key "adventures", "users"
   add_foreign_key "ai_logs", "adventures"
   add_foreign_key "dm_logs", "adventures"
@@ -311,5 +300,4 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_26_173338) do
   add_foreign_key "sheet_spells", "sheets"
   add_foreign_key "sheet_spells", "spell_definitions", column: "spell_id"
   add_foreign_key "sheets", "users"
-  add_foreign_key "story_states", "stories"
 end

@@ -3,7 +3,6 @@ import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../Navbar'
 import Login from '../Login'
 import FlashMessage from '../FlashMessage'
-import { StoryState } from '../../types'
 import { apiFetch } from '../../utils/api'
 import './AdminStoryEditor.scss'
 
@@ -17,7 +16,6 @@ interface StoryData {
   title: string
   preview: string
   premise: string
-  story_states: StoryState[]
 }
 
 export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
@@ -31,13 +29,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   const [title, setTitle] = useState('')
   const [preview, setPreview] = useState('')
   const [premise, setPremise] = useState('')
-  const [storyStates, setStoryStates] = useState<StoryState[]>([])
   const [currentStoryId, setCurrentStoryId] = useState<number | undefined>(storyId)
-
-  // Story state editor
-  const [newStateDescription, setNewStateDescription] = useState('')
-  const [editingStateId, setEditingStateId] = useState<number | null>(null)
-  const [editingStateDescription, setEditingStateDescription] = useState('')
 
   // Load story for edit mode
   useEffect(() => {
@@ -50,7 +42,6 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
         setTitle(data.title)
         setPreview(data.preview)
         setPremise(data.premise)
-        setStoryStates(data.story_states)
       } catch (err: any) {
         showFeedback('error', err.message)
       } finally {
@@ -91,84 +82,11 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
       setTitle(data.title)
       setPreview(data.preview)
       setPremise(data.premise)
-      setStoryStates(data.story_states)
       showFeedback('success', 'Story saved successfully')
     } catch (err: any) {
       showFeedback('error', err.message)
     } finally {
       setSaving(false)
-    }
-  }
-
-  // ---- Story State CRUD ----
-
-  const addState = async () => {
-    if (!currentStoryId || !newStateDescription.trim()) return
-    try {
-      const payload = { story_state: { description: newStateDescription.trim() } }
-      const data: StoryState = await apiFetch(
-        `/admin/stories/${currentStoryId}/story_states`,
-        { method: 'POST', body: JSON.stringify(payload) },
-      )
-      setStoryStates(prev => [...prev, data])
-      setNewStateDescription('')
-      showFeedback('success', 'Stage added')
-    } catch (err: any) {
-      showFeedback('error', err.message)
-    }
-  }
-
-  const startEditState = (state: StoryState) => {
-    setEditingStateId(state.id)
-    setEditingStateDescription(state.description)
-  }
-
-  const cancelEditState = () => {
-    setEditingStateId(null)
-    setEditingStateDescription('')
-  }
-
-  const saveEditState = async () => {
-    if (!currentStoryId || !editingStateId) return
-    try {
-      const payload = { story_state: { description: editingStateDescription.trim() } }
-      const data: StoryState = await apiFetch(
-        `/admin/stories/${currentStoryId}/story_states/${editingStateId}`,
-        { method: 'PATCH', body: JSON.stringify(payload) },
-      )
-      setStoryStates(prev => prev.map(st => (st.id === data.id ? data : st)))
-      setEditingStateId(null)
-      showFeedback('success', 'Stage updated')
-    } catch (err: any) {
-      showFeedback('error', err.message)
-    }
-  }
-
-  const archiveState = async (stateId: number) => {
-    if (!currentStoryId) return
-    if (!window.confirm('Archive this stage?')) return
-    try {
-      await apiFetch(
-        `/admin/stories/${currentStoryId}/story_states/${stateId}`,
-        { method: 'DELETE' },
-      )
-      setStoryStates(prev => prev.filter(st => st.id !== stateId))
-      showFeedback('success', 'Stage archived')
-    } catch (err: any) {
-      showFeedback('error', err.message)
-    }
-  }
-
-  const moveState = async (stateId: number, newPosition: number) => {
-    if (!currentStoryId) return
-    try {
-      const data: StoryState[] = await apiFetch(
-        `/admin/stories/${currentStoryId}/story_states/${stateId}/reorder`,
-        { method: 'PATCH', body: JSON.stringify({ position: newPosition }) },
-      )
-      setStoryStates(data)
-    } catch (err: any) {
-      showFeedback('error', err.message)
     }
   }
 
@@ -258,76 +176,6 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
             {saving ? 'Saving...' : isNew ? 'Create Story' : 'Save Changes'}
           </button>
         </div>
-
-        {/* Story States (only when editing an existing story) */}
-        {!isNew && (
-          <div className="story-states-section">
-            <h2>Stages ({storyStates.length})</h2>
-
-            {storyStates.length === 0 ? (
-              <p className="empty-msg">No stages yet. Add the first one below.</p>
-            ) : (
-              <ul className="states-list">
-                {storyStates.map((state, idx) => (
-                  <li key={state.id} className="state-item">
-                    <div className="state-header">
-                      <span className="state-position">#{idx + 1}</span>
-                      <div className="state-reorder">
-                        <button
-                          disabled={idx === 0}
-                          onClick={() => moveState(state.id, state.position - 1)}
-                          title="Move up"
-                        >▲</button>
-                        <button
-                          disabled={idx === storyStates.length - 1}
-                          onClick={() => moveState(state.id, state.position + 1)}
-                          title="Move down"
-                        >▼</button>
-                      </div>
-                      <div className="state-actions">
-                        {editingStateId === state.id ? (
-                          <>
-                            <button className="btn-sm save" onClick={saveEditState}>✓</button>
-                            <button className="btn-sm cancel" onClick={cancelEditState}>✕</button>
-                          </>
-                        ) : (
-                          <>
-                            <button className="btn-sm edit" onClick={() => startEditState(state)} title="Edit">✏️</button>
-                            <button className="btn-sm archive" onClick={() => archiveState(state.id)} title="Archive">🗑️</button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    {editingStateId === state.id ? (
-                      <textarea
-                        className="state-edit-textarea"
-                        value={editingStateDescription}
-                        onChange={e => setEditingStateDescription(e.target.value)}
-                        rows={3}
-                      />
-                    ) : (
-                      <p className="state-description">{state.description}</p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <div className="add-state">
-              <textarea
-                value={newStateDescription}
-                onChange={e => setNewStateDescription(e.target.value)}
-                rows={2}
-                placeholder="Describe the new stage..."
-              />
-              <button
-                className="btn-add-state"
-                onClick={addState}
-                disabled={!newStateDescription.trim()}
-              >+ Add Stage</button>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

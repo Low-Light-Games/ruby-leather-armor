@@ -27,22 +27,7 @@ aboleth_story.premise = <<~PREMISE.strip
 PREMISE
 aboleth_story.save!
 
-# Create story states for the Aboleth story
-aboleth_story.story_states.destroy_all # Clear any existing states
-
-aboleth_story.story_states.create!(
-  description: 'The hero is on his way to the village.'
-)
-
-aboleth_story.story_states.create!(
-  description: 'The hero is meeting the village people and talking and asking around about the dissapearences.'
-)
-
-aboleth_story.story_states.create!(
-  description: 'The hero patrols at night hoping to get a glimpse of something suspicious.'
-)
-
-puts "Created/updated story: #{aboleth_story.title} with #{aboleth_story.story_states.count} stages"
+puts "Created/updated story: #{aboleth_story.title}"
 
 # Seed feat and spell definitions
 load Rails.root.join("db", "seeds", "feats.rb")

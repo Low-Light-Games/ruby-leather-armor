@@ -109,21 +109,11 @@ export interface Story {
   updated_at: string
 }
 
-export interface StoryState {
-  id: number
-  story_id: number
-  description: string
-  position: number
-  created_at: string
-  updated_at: string
-}
-
 export interface AdminStory {
   id: number
   title: string
   preview: string
   premise: string
-  story_states: StoryState[]
   created_at: string
   updated_at: string
 }
@@ -156,7 +146,6 @@ export interface AdventureSheet {
 export interface Adventure {
   id: number
   adventure_sheet: AdventureSheet
-  story_state: StoryState
   story: Story
 }
 
@@ -180,7 +169,7 @@ export interface AdventureMessage {
   id: number
   role: 'player' | 'dm' | 'system'
   content: string
-  message_type: 'narrative' | 'sanitization_fail' | 'stage_advance' | 'roll_request' | 'roll_result'
+  message_type: 'narrative' | 'sanitization_fail' | 'adventure_complete' | 'roll_request' | 'roll_result'
   metadata: {
     roll_request?: RollRequest
     roll_value?: number

@@ -6,7 +6,6 @@ module Admin
     # GET /admin/stories — server-rendered story list
     def index
       @stories = Story.kept.order(created_at: :desc)
-                       .includes(:story_states)
     end
 
     # GET /admin/stories/new — SPA mount for creating a new story
@@ -69,14 +68,7 @@ module Admin
     end
 
     def story_json(story)
-      story.as_json(
-        only: [:id, :title, :preview, :premise, :created_at, :updated_at],
-        include: {
-          story_states: {
-            only: [:id, :description, :position, :created_at, :updated_at]
-          }
-        }
-      )
+      story.as_json(only: [:id, :title, :preview, :premise, :created_at, :updated_at])
     end
 
     def require_admin

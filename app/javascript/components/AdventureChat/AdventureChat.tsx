@@ -5,10 +5,10 @@ import './AdventureChat.scss'
 
 interface AdventureChatProps {
   adventureId: number
-  onStageAdvance?: () => void // callback to refresh adventure data when stage changes
+  onAdventureComplete?: () => void
 }
 
-export const AdventureChat = ({ adventureId, onStageAdvance }: AdventureChatProps) => {
+export const AdventureChat = ({ adventureId, onAdventureComplete }: AdventureChatProps) => {
   const [messages, setMessages] = useState<AdventureMessage[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -98,10 +98,9 @@ export const AdventureChat = ({ adventureId, onStageAdvance }: AdventureChatProp
         setPendingRoll(dmMsg.metadata.roll_request)
       }
 
-      // Check for stage advance
-      const stageMsg = data.messages.find(m => m.message_type === 'stage_advance')
-      if (stageMsg && onStageAdvance) {
-        onStageAdvance()
+      const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
+      if (completeMsg && onAdventureComplete) {
+        onAdventureComplete()
       }
     } catch (err: any) {
       console.error('Error sending message:', err)
@@ -159,10 +158,9 @@ export const AdventureChat = ({ adventureId, onStageAdvance }: AdventureChatProp
         setPendingRoll(dmMsg.metadata.roll_request)
       }
 
-      // Check for stage advance
-      const stageMsg = data.messages.find(m => m.message_type === 'stage_advance')
-      if (stageMsg && onStageAdvance) {
-        onStageAdvance()
+      const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
+      if (completeMsg && onAdventureComplete) {
+        onAdventureComplete()
       }
     } catch (err: any) {
       console.error('Error submitting roll:', err)

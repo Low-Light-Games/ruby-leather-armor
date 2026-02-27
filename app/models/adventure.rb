@@ -2,7 +2,7 @@
 
 class Adventure < ApplicationRecord
   belongs_to :user
-  belongs_to :story_state
+  belongs_to :story
 
   has_many :adventure_sheets, dependent: :destroy
   has_many :adventure_messages, dependent: :destroy

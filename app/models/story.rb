@@ -1,5 +1,5 @@
 class Story < ApplicationRecord
-  has_many :story_states, -> { kept.order(position: :asc) }, dependent: :destroy
+  has_many :adventures, dependent: :destroy
 
   validates :title, presence: true
   validates :preview, presence: true

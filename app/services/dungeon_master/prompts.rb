@@ -41,17 +41,8 @@ module DungeonMaster
     # @param config    [DmConfig]
     # @return [String]
     def self.dm_system_prompt(adventure, config)
-      story         = adventure.story_state.story
-      current_state = adventure.story_state
-      sheet         = adventure.adventure_sheets.first # TODO: handle multiple sheets
-      all_stages    = story.story_states.kept.order(position: :asc)
-
-      stage_list = all_stages.map.with_index do |s, i|
-        marker = s.id == current_state.id ? " ← CURRENT" : ""
-        "  Stage #{i + 1}: #{s.description}#{marker}"
-      end.join("\n")
-
-      next_stage = all_stages.detect { |s| s.position > current_state.position }
+      story = adventure.story
+      sheet = adventure.adventure_sheets.first # TODO: handle multiple sheets
 
       <<~PROMPT
         You are the Dungeon Master for a Pathfinder 1e tabletop RPG adventure.
@@ -62,14 +53,6 @@ module DungeonMaster
         === STORY ===
         Title: #{story.title}
         Premise: #{story.premise}
-
-        === STORY STAGES (planned progression) ===
-        #{stage_list}
-
-        #{next_stage ? "Next stage to advance to: \"#{next_stage.description}\"" : "This is the FINAL stage. The adventure can conclude."}
-
-        === CURRENT STAGE ===
-        #{current_state.description}
 
         === PLAYER CHARACTER ===
         Name: #{sheet&.name || 'Unknown'}
@@ -83,13 +66,16 @@ module DungeonMaster
         #{derived_stats_block(sheet)}
 
         === INSTRUCTIONS ===
-        - Narrate the result of the player's action in the context of the current story stage.
-        - If the player's actions naturally complete the goals of the current stage, set advance_stage to true.
+        - Narrate the result of the player's action in the context of the story.
         - If a situation calls for a dice roll (combat, skill check, save), request one.
         - Roll requests: type can be "attack", "save_fort", "save_ref", "save_will",
           "skill_check", "initiative", or "ability_check".
           For skill checks, specify which skill. Always include a DC (difficulty class).
         - Do NOT resolve rolls yourself — request them and wait for the result.
+        - Consider whether the current moment is a natural endpoint for the adventure.
+          Only set adventure_complete to true when the story has truly reached a
+          satisfying, final conclusion — the main conflict is resolved and there is
+          nothing meaningful left for the player to do.
 
         #{pacing_instructions(config)}
 
@@ -98,7 +84,7 @@ module DungeonMaster
         {
           "narrative": "Your DM narration#{config.verbose? ? '' : " (1-2 short paragraphs, #{config.pacing_words_min}-#{config.pacing_words_max} words max)"}",
           "reasoning": "Brief explanation of your DM intent (1-2 sentences)",
-          "advance_stage": false,
+          "adventure_complete": false,
           "roll_request": null
         }
 
