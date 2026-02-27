@@ -14,9 +14,10 @@ function isSentinel(id: number) {
 interface AdventureChatProps {
   adventureId: number
   onAdventureComplete?: () => void
+  onDmResponse?: () => void
 }
 
-export const AdventureChat = ({ adventureId, onAdventureComplete }: AdventureChatProps) => {
+export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }: AdventureChatProps) => {
   const [messages, setMessages] = useState<AdventureMessage[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -106,6 +107,8 @@ export const AdventureChat = ({ adventureId, onAdventureComplete }: AdventureCha
       const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
       if (dmMsg?.metadata?.roll_request) setPendingRoll(dmMsg.metadata.roll_request)
 
+      if (onDmResponse) onDmResponse()
+
       const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
       if (completeMsg && onAdventureComplete) onAdventureComplete()
     } catch (err: any) {
@@ -159,6 +162,8 @@ export const AdventureChat = ({ adventureId, onAdventureComplete }: AdventureCha
 
       const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
       if (dmMsg?.metadata?.roll_request) setPendingRoll(dmMsg.metadata.roll_request)
+
+      if (onDmResponse) onDmResponse()
 
       const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
       if (completeMsg && onAdventureComplete) onAdventureComplete()

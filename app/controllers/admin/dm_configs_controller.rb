@@ -33,6 +33,14 @@ module Admin
         new_settings["sanitization_threshold"] = params[:sanitization_threshold].to_i.clamp(0, 100)
       end
 
+      if params[:classification_mode].present? && %w[merged parallel].include?(params[:classification_mode])
+        new_settings["classification_mode"] = params[:classification_mode]
+      end
+
+      if params[:response_mode].present? && %w[unified sequential].include?(params[:response_mode])
+        new_settings["response_mode"] = params[:response_mode]
+      end
+
       @config.update!(settings: new_settings)
       redirect_to admin_dm_config_path, notice: "DM settings updated."
     end

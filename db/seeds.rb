@@ -25,6 +25,9 @@ aboleth_story.preview = 'A village has been having some people kidnapped at nigh
 aboleth_story.premise = <<~PREMISE.strip
   The actual story has to do with an Aboleth that was evoked by a mad sorcerer who has since created a spell to kill himself, trap his essence in a statue and keeps the Aboleth at bay. But the aboleth has been using kuo-toa to kidnap people and see if he can eventually get to the village priest who may be able to suppress or destroy the statue and make the Aboleth free. The Aboleth does not know exactly what is supressing his powers, but he does know he is somewhat free inside the lake.
 PREMISE
+aboleth_story.initial_context = <<~CONTEXT.strip
+  The player arrives at the small fishing village of Millhaven on a cool, misty morning. The village sits along the southern shore of Lake Whisper, a wide, dark body of water shrouded in perpetual haze. Wooden houses line a muddy main road leading to a small dock. A few fishermen mend nets near the shore, casting uneasy glances at the lake. The village elder has posted a notice at the tavern requesting help: several villagers have gone missing during the night, always from the houses nearest the water.
+CONTEXT
 aboleth_story.save!
 
 puts "Created/updated story: #{aboleth_story.title}"

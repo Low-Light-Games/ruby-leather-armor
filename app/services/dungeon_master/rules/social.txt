@@ -1,0 +1,48 @@
+PATHFINDER 1E SOCIAL INTERACTION RULES (OGC)
+
+=== NPC ATTITUDE SCALE ===
+NPCs have one of five attitudes toward the PC:
+1. Hostile: will take risks to hurt the PC, may attack on sight
+2. Unfriendly: wishes the PC ill, won't help, may mislead
+3. Indifferent: doesn't care either way, will interact if profitable
+4. Friendly: wishes the PC well, will help if it's not risky or costly
+5. Helpful: will take risks to help the PC, provides meaningful aid
+
+=== DIPLOMACY (CHA-BASED) ===
+Used to influence NPC attitude. Takes 1 minute of conversation (or full-round in combat).
+DC to shift attitude by one step:
+- Hostile → Unfriendly: DC 25 + creature's CHA mod
+- Unfriendly → Indifferent: DC 20 + creature's CHA mod
+- Indifferent → Friendly: DC 15 + creature's CHA mod
+- Friendly → Helpful: DC 10 + creature's CHA mod
+
+Shifting two steps at once: +10 to DC.
+Failure by 5+: attitude worsens by one step.
+Cannot shift Hostile directly to better than Indifferent with a single check.
+
+=== INTIMIDATE (CHA-BASED) ===
+Demoralize: DC = 10 + target's HD + target's Wisdom mod.
+  Success: target is shaken for 1 round + 1 round per 5 you beat the DC.
+Influence attitude: can force compliance through threats, but attitude becomes Unfriendly after.
+
+=== BLUFF (CHA-BASED) ===
+Opposed by Sense Motive.
+Modifiers:
+- Believable lie: +0
+- Unlikely: -5
+- Far-fetched: -10
+- Impossible: -20
+- Target wants to believe: +5
+
+=== SENSE MOTIVE (WIS-BASED) ===
+Opposed by Bluff to detect lies.
+Hunch (DC 20): get a gut feeling about a social situation or NPC trustworthiness.
+Detect enchantment (DC 25): notice if someone's behavior is being magically influenced.
+
+=== GATHER INFORMATION (DIPLOMACY) ===
+DC 10: common knowledge available to most people in the area.
+DC 20: uncommon knowledge, requires asking around (1d4+1 hours).
+DC 25+: obscure or secret information.
+
+=== PERFORM & AID ANOTHER ===
+Aid Another in social checks: DC 10 check grants +2 bonus to the primary character's roll.

@@ -117,7 +117,7 @@ module DungeonMaster
       if fallback_as == :dm_response && cleaned.present?
         Rails.logger.info("[DungeonMaster::AiClient] Falling back: treating raw response as narrative text")
         @last_parse_status = "parse_fallback"
-        { "narrative" => cleaned, "adventure_complete" => false, "roll_request" => nil }
+        { "narrative" => cleaned, "adventure_complete" => false, "roll_request" => nil, "immediate_context" => nil, "story_summary" => nil }
       elsif fallback_as == :sanitization && cleaned.present?
         Rails.logger.info("[DungeonMaster::AiClient] Falling back: treating sanitization as pass-through")
         @last_parse_status = "parse_fallback"

@@ -105,6 +105,7 @@ export interface Story {
   title: string
   preview: string
   premise: string
+  initial_context: string | null
   created_at: string
   updated_at: string
 }
@@ -114,6 +115,7 @@ export interface AdminStory {
   title: string
   preview: string
   premise: string
+  initial_context: string | null
   created_at: string
   updated_at: string
 }
@@ -147,6 +149,8 @@ export interface Adventure {
   id: number
   adventure_sheet: AdventureSheet
   story: Story
+  immediate_context: string | null
+  story_summary: string | null
 }
 
 export interface AdventureSummary {

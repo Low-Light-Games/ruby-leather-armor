@@ -1,0 +1,5 @@
+The player is asking the DM a question about the game rules or the current situation.
+Answer truthfully based on what the character would reasonably know.
+If the question is about mechanical rules, give a brief, accurate answer.
+If the question is about the game world, answer based on what the character can perceive or has learned.
+Do not reveal hidden information the character has not yet discovered.

@@ -82,6 +82,44 @@
       </div>
     </div>
 
+    <div class="config-section">
+      <h2>AI Pipeline</h2>
+
+      <div class="config-field">
+        <label>Classification Mode</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <%= radio_button_tag :classification_mode, "merged", @config.classification_mode == "merged" %>
+            <span><strong>Merged</strong> — sanitization + classification in one call (cheaper)</span>
+          </label>
+          <label class="radio-label">
+            <%= radio_button_tag :classification_mode, "parallel", @config.classification_mode == "parallel" %>
+            <span><strong>Parallel</strong> — two separate calls run concurrently (more focused)</span>
+          </label>
+        </div>
+        <p class="field-hint">
+          Controls how player input is triaged. Merged uses fewer tokens; Parallel gives each task a dedicated prompt.
+        </p>
+      </div>
+
+      <div class="config-field">
+        <label>Response Mode</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <%= radio_button_tag :response_mode, "unified", @config.response_mode == "unified" %>
+            <span><strong>Unified</strong> — one call returns narrative + context updates (faster)</span>
+          </label>
+          <label class="radio-label">
+            <%= radio_button_tag :response_mode, "sequential", @config.response_mode == "sequential" %>
+            <span><strong>Sequential</strong> — three focused calls: micro context, macro summary, then narrative (higher quality on weaker models)</span>
+          </label>
+        </div>
+        <p class="field-hint">
+          Controls how the DM response is generated. Unified is faster; Sequential breaks down the work for cheaper models.
+        </p>
+      </div>
+    </div>
+
     <div class="config-actions">
       <%= submit_tag "Save Settings", class: "btn-save" %>
     </div>
@@ -343,6 +381,32 @@
     transition: background 0.15s;
 
     &:hover { background: #0056b3; }
+  }
+
+  /* Radio groups */
+  .radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .radio-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #555;
+    line-height: 1.5;
+
+    input[type="radio"] {
+      margin-top: 4px;
+      flex-shrink: 0;
+    }
+
+    strong {
+      color: #333;
+    }
   }
 
   /* Debug */

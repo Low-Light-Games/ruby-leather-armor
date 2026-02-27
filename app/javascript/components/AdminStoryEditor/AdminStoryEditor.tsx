@@ -16,6 +16,7 @@ interface StoryData {
   title: string
   preview: string
   premise: string
+  initial_context: string | null
 }
 
 export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
@@ -29,6 +30,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   const [title, setTitle] = useState('')
   const [preview, setPreview] = useState('')
   const [premise, setPremise] = useState('')
+  const [initialContext, setInitialContext] = useState('')
   const [currentStoryId, setCurrentStoryId] = useState<number | undefined>(storyId)
 
   // Load story for edit mode
@@ -42,6 +44,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
         setTitle(data.title)
         setPreview(data.preview)
         setPremise(data.premise)
+        setInitialContext(data.initial_context || '')
       } catch (err: any) {
         showFeedback('error', err.message)
       } finally {
@@ -62,7 +65,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   const saveStory = async () => {
     setSaving(true)
     try {
-      const payload = { story: { title, preview, premise } }
+      const payload = { story: { title, preview, premise, initial_context: initialContext } }
 
       if (mode === 'create' && !currentStoryId) {
         const data: StoryData = await apiFetch('/admin/stories', {
@@ -82,6 +85,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
       setTitle(data.title)
       setPreview(data.preview)
       setPremise(data.premise)
+      setInitialContext(data.initial_context || '')
       showFeedback('success', 'Story saved successfully')
     } catch (err: any) {
       showFeedback('error', err.message)
@@ -164,6 +168,17 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
             onChange={e => setPremise(e.target.value)}
             rows={6}
             placeholder="The full premise and plot details..."
+          />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="story-initial-context">Initial Context (opening scene for new adventures)</label>
+          <textarea
+            id="story-initial-context"
+            value={initialContext}
+            onChange={e => setInitialContext(e.target.value)}
+            rows={4}
+            placeholder="Where is the player? What's happening? This seeds the adventure's immediate context..."
           />
         </div>
 

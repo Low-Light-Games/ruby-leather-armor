@@ -626,17 +626,49 @@
   /* ===== RIGHT: Story column ===== */
   .story-column {
     flex: 0 0 300px;
+    overflow-y: auto;
+    max-height: calc(100vh - 120px);
 
     h2 {
-      margin: 0 0 16px 0;
+      margin: 0 0 8px 0;
       color: #333;
     }
 
     .story-premise {
-      margin: 0;
+      margin: 0 0 16px 0;
       color: #555;
       line-height: 1.7;
       white-space: pre-wrap;
+      font-size: 13px;
+    }
+
+    .context-section {
+      margin-bottom: 16px;
+      padding: 12px;
+      background: white;
+      border: 1px solid #e9ecef;
+      border-radius: 6px;
+
+      h3 {
+        margin: 0 0 8px 0;
+        font-size: 13px;
+        text-transform: uppercase;
+        color: #666;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+      }
+
+      .context-body {
+        font-size: 13px;
+        color: #333;
+        line-height: 1.6;
+        white-space: pre-wrap;
+      }
+
+      .context-placeholder {
+        color: #aaa;
+        font-style: italic;
+      }
     }
   }
 }

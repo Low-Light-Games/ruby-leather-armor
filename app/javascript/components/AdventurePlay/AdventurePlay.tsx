@@ -79,11 +79,16 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           <AdventureChat
             adventureId={adventureId}
             onAdventureComplete={reload}
+            onDmResponse={reload}
           />
         </div>
 
         {/* RIGHT COLUMN — Story */}
-        <StorySidebar story={story} />
+        <StorySidebar
+          story={story}
+          immediateContext={adventure.immediate_context}
+          storySummary={adventure.story_summary}
+        />
       </div>
 
       {/* Roll Result Modal */}

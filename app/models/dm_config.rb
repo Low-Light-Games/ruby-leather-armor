@@ -9,13 +9,17 @@ class DmConfig < ApplicationRecord
   #   "pacing_words_min"        => int   (default 80)    — minimum word target per response
   #   "pacing_words_max"        => int   (default 150)   — maximum word target per response
   #   "sanitization_threshold"  => int   (default 50)    — danger score (0-100) above which input is rejected
+  #   "classification_mode"     => str   (default "merged")     — "merged" or "parallel"
+  #   "response_mode"           => str   (default "unified")    — "unified" or "sequential"
 
   DEFAULTS = {
     "verbose" => false,
     "temperature" => 0.8,
     "pacing_words_min" => 80,
     "pacing_words_max" => 150,
-    "sanitization_threshold" => 30
+    "sanitization_threshold" => 30,
+    "classification_mode" => "merged",
+    "response_mode" => "unified"
   }.freeze
 
   def self.instance
@@ -49,5 +53,21 @@ class DmConfig < ApplicationRecord
 
   def sanitization_threshold
     (get("sanitization_threshold") || 30).to_i
+  end
+
+  def classification_mode
+    get("classification_mode") || "merged"
+  end
+
+  def classification_merged?
+    classification_mode == "merged"
+  end
+
+  def response_mode
+    get("response_mode") || "unified"
+  end
+
+  def response_sequential?
+    response_mode == "sequential"
   end
 end

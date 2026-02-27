@@ -39,7 +39,8 @@ class AdventuresController < ApplicationController
 
     @adventure = Adventure.new(
       user: current_user,
-      story: story
+      story: story,
+      immediate_context: story.initial_context
     )
 
     if @adventure.save
@@ -127,7 +128,9 @@ class AdventuresController < ApplicationController
     {
       id: adventure.id,
       adventure_sheet: adventure_sheet_json(adv_sheet),
-      story: adventure.story
+      story: adventure.story,
+      immediate_context: adventure.immediate_context,
+      story_summary: adventure.story_summary
     }
   end
 

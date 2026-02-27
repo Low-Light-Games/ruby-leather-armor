@@ -64,11 +64,11 @@ module Admin
     end
 
     def story_params
-      params.require(:story).permit(:title, :preview, :premise)
+      params.require(:story).permit(:title, :preview, :premise, :initial_context)
     end
 
     def story_json(story)
-      story.as_json(only: [:id, :title, :preview, :premise, :created_at, :updated_at])
+      story.as_json(only: [:id, :title, :preview, :premise, :initial_context, :created_at, :updated_at])
     end
 
     def require_admin
