@@ -33,7 +33,7 @@ class AdventuresController < ApplicationController
   # POST /adventures - API endpoint to create an adventure
   def create
     story = Story.kept.find(params[:story_id])
-    sheet = current_user.sheets.find(params[:sheet_id])
+    sheet = policy_scope(Sheet).find(params[:sheet_id])
 
     max_hp = compute_starting_hp(sheet)
 
