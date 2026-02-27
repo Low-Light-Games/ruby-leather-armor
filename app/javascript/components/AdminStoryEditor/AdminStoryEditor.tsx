@@ -17,6 +17,7 @@ interface StoryData {
   preview: string
   premise: string
   initial_context: string | null
+  initial_summary: string | null
 }
 
 export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
@@ -31,6 +32,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   const [preview, setPreview] = useState('')
   const [premise, setPremise] = useState('')
   const [initialContext, setInitialContext] = useState('')
+  const [initialSummary, setInitialSummary] = useState('')
   const [currentStoryId, setCurrentStoryId] = useState<number | undefined>(storyId)
 
   // Load story for edit mode
@@ -45,6 +47,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
         setPreview(data.preview)
         setPremise(data.premise)
         setInitialContext(data.initial_context || '')
+        setInitialSummary(data.initial_summary || '')
       } catch (err: any) {
         showFeedback('error', err.message)
       } finally {
@@ -65,7 +68,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   const saveStory = async () => {
     setSaving(true)
     try {
-      const payload = { story: { title, preview, premise, initial_context: initialContext } }
+      const payload = { story: { title, preview, premise, initial_context: initialContext, initial_summary: initialSummary } }
 
       if (mode === 'create' && !currentStoryId) {
         const data: StoryData = await apiFetch('/admin/stories', {
@@ -86,6 +89,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
       setPreview(data.preview)
       setPremise(data.premise)
       setInitialContext(data.initial_context || '')
+      setInitialSummary(data.initial_summary || '')
       showFeedback('success', 'Story saved successfully')
     } catch (err: any) {
       showFeedback('error', err.message)
@@ -179,6 +183,17 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
             onChange={e => setInitialContext(e.target.value)}
             rows={4}
             placeholder="Where is the player? What's happening? This seeds the adventure's immediate context..."
+          />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="story-initial-summary">Initial Summary (story-so-far seed for new adventures)</label>
+          <textarea
+            id="story-initial-summary"
+            value={initialSummary}
+            onChange={e => setInitialSummary(e.target.value)}
+            rows={4}
+            placeholder="A brief narrative summary of where the story begins. This seeds the adventure's macro context..."
           />
         </div>
 

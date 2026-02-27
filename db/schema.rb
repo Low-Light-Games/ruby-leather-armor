@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_27_100002) do
+ActiveRecord::Schema[7.1].define(version: 2026_02_27_100004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -114,6 +114,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_27_100002) do
     t.text "error_message"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.text "request_body"
     t.index ["adventure_id"], name: "index_ai_logs_on_adventure_id"
     t.index ["created_at"], name: "index_ai_logs_on_created_at"
     t.index ["status"], name: "index_ai_logs_on_status"
@@ -271,6 +272,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_27_100002) do
     t.text "preview", default: "", null: false
     t.datetime "discarded_at"
     t.text "initial_context"
+    t.text "initial_summary"
     t.index ["discarded_at"], name: "index_stories_on_discarded_at"
   end
 

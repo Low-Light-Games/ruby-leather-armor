@@ -40,7 +40,8 @@ class AdventuresController < ApplicationController
     @adventure = Adventure.new(
       user: current_user,
       story: story,
-      immediate_context: story.initial_context
+      immediate_context: story.initial_context,
+      story_summary: story.initial_summary
     )
 
     if @adventure.save

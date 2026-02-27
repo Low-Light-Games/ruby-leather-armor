@@ -106,6 +106,7 @@ export interface Story {
   preview: string
   premise: string
   initial_context: string | null
+  initial_summary: string | null
   created_at: string
   updated_at: string
 }
@@ -116,6 +117,7 @@ export interface AdminStory {
   preview: string
   premise: string
   initial_context: string | null
+  initial_summary: string | null
   created_at: string
   updated_at: string
 }
