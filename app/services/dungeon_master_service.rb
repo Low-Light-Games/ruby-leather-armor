@@ -173,15 +173,17 @@ class DungeonMasterService
 
   def triage_merged(player_input)
     prompt_summary = "Triage (merged): \"#{@log.truncate(player_input)}\""
+    system_prompt = DungeonMaster::Prompts::TRIAGE_SYSTEM_PROMPT
+    request_body = { system_prompt: system_prompt, user_message: player_input }
 
     raw = @ai.chat(
-      system_prompt: DungeonMaster::Prompts::TRIAGE_SYSTEM_PROMPT,
+      system_prompt: system_prompt,
       user_message: player_input,
       max_tokens: 400
     )
 
     parsed = @ai.parse_json(raw, fallback_as: :sanitization)
-    @log.ai_log!("triage_merged", prompt_summary, raw, parsed, parse_status: @ai.last_parse_status)
+    @log.ai_log!("triage_merged", prompt_summary, raw, parsed, parse_status: @ai.last_parse_status, request_body: request_body)
 
     unless parsed.key?("danger_score")
       raise AiError, "Triage response missing 'danger_score' field"
@@ -195,7 +197,7 @@ class DungeonMasterService
     }
   rescue AiError => e
     fallback_raw = raw || @ai.last_failed_raw_response
-    @log.ai_log_error!("triage_merged", prompt_summary, e, raw_response: fallback_raw)
+    @log.ai_log_error!("triage_merged", prompt_summary, e, raw_response: fallback_raw, request_body: request_body)
     raise
   end
 
@@ -211,15 +213,17 @@ class DungeonMasterService
 
   def sanitize_input(player_input)
     prompt_summary = "Sanitize: \"#{@log.truncate(player_input)}\""
+    system_prompt = DungeonMaster::Prompts::SANITIZATION_SYSTEM_PROMPT
+    request_body = { system_prompt: system_prompt, user_message: player_input }
 
     raw = @ai.chat(
-      system_prompt: DungeonMaster::Prompts::SANITIZATION_SYSTEM_PROMPT,
+      system_prompt: system_prompt,
       user_message: player_input,
       max_tokens: 300
     )
 
     parsed = @ai.parse_json(raw, fallback_as: :sanitization)
-    @log.ai_log!("sanitization", prompt_summary, raw, parsed, parse_status: @ai.last_parse_status)
+    @log.ai_log!("sanitization", prompt_summary, raw, parsed, parse_status: @ai.last_parse_status, request_body: request_body)
 
     unless parsed.key?("danger_score")
       raise AiError, "Sanitization response missing 'danger_score' field"
@@ -232,26 +236,28 @@ class DungeonMasterService
     }
   rescue AiError => e
     fallback_raw = raw || @ai.last_failed_raw_response
-    @log.ai_log_error!("sanitization", prompt_summary, e, raw_response: fallback_raw)
+    @log.ai_log_error!("sanitization", prompt_summary, e, raw_response: fallback_raw, request_body: request_body)
     raise
   end
 
   def classify_input(player_input)
     prompt_summary = "Classify: \"#{@log.truncate(player_input)}\""
+    system_prompt = DungeonMaster::Prompts::CLASSIFICATION_SYSTEM_PROMPT
+    request_body = { system_prompt: system_prompt, user_message: player_input }
 
     raw = @ai.chat(
-      system_prompt: DungeonMaster::Prompts::CLASSIFICATION_SYSTEM_PROMPT,
+      system_prompt: system_prompt,
       user_message: player_input,
       max_tokens: 100
     )
 
     parsed = @ai.parse_json(raw)
-    @log.ai_log!("classification", prompt_summary, raw, parsed, parse_status: @ai.last_parse_status)
+    @log.ai_log!("classification", prompt_summary, raw, parsed, parse_status: @ai.last_parse_status, request_body: request_body)
 
     { category: normalize_category(parsed["category"]) }
   rescue AiError => e
     fallback_raw = raw || @ai.last_failed_raw_response
-    @log.ai_log_error!("classification", prompt_summary, e, raw_response: fallback_raw)
+    @log.ai_log_error!("classification", prompt_summary, e, raw_response: fallback_raw, request_body: request_body)
     { category: "dm_query" }
   end
 
@@ -268,20 +274,23 @@ class DungeonMasterService
   end
 
   def dm_response_unified(sanitized_input, category: nil, call_type: "dm_response")
-    prompt_summary = "DM (unified): \"#{@log.truncate(sanitized_input)}\""
+    prompt_summary = "DM (unified) [#{category || 'none'}]: \"#{@log.truncate(sanitized_input)}\""
     raw = nil
 
-    history = DungeonMaster::History.build(@adventure)
-    history << { role: "user", content: sanitized_input }
+    system_prompt = DungeonMaster::Prompts.dm_system_prompt(@adventure, @config, category: category)
 
-    raw = @ai.chat(
-      system_prompt: DungeonMaster::Prompts.dm_system_prompt(@adventure, @config, category: category),
-      messages: history,
-      max_tokens: 4096
-    )
+    if @config.contexts_only?
+      request_body = { system_prompt: system_prompt, user_message: sanitized_input }
+      raw = @ai.chat(system_prompt: system_prompt, user_message: sanitized_input, max_tokens: 4096)
+    else
+      history = DungeonMaster::History.build(@adventure)
+      history << { role: "user", content: sanitized_input }
+      request_body = { system_prompt: system_prompt, messages: history }
+      raw = @ai.chat(system_prompt: system_prompt, messages: history, max_tokens: 4096)
+    end
 
     parsed = @ai.parse_json(raw, fallback_as: :dm_response)
-    @log.ai_log!(call_type, prompt_summary, raw, parsed, parse_status: @ai.last_parse_status)
+    @log.ai_log!(call_type, prompt_summary, raw, parsed, parse_status: @ai.last_parse_status, request_body: request_body)
 
     {
       narrative: parsed["narrative"] || "The Dungeon Master pauses thoughtfully...",
@@ -293,96 +302,103 @@ class DungeonMasterService
     }
   rescue AiError => e
     fallback_raw = raw || @ai.last_failed_raw_response
-    @log.ai_log_error!(call_type, prompt_summary, e, raw_response: fallback_raw)
+    @log.ai_log_error!(call_type, prompt_summary, e, raw_response: fallback_raw, request_body: request_body)
     raise
   end
 
   def dm_response_sequential(sanitized_input, category: nil)
-    # Step A: Update immediate context
-    step_a_result = sequential_step_a(sanitized_input, category: category)
-    updated_immediate = step_a_result["immediate_context"] || @adventure.immediate_context
+    scene_result = update_scene_context(sanitized_input, category: category)
+    updated_immediate = scene_result["immediate_context"] || @adventure.immediate_context
 
-    # Step B: Update story summary
-    step_b_result = sequential_step_b(sanitized_input, updated_immediate)
-    updated_summary = step_b_result["story_summary"] || @adventure.story_summary
+    chronicle_result = update_story_chronicle(sanitized_input, updated_immediate)
+    updated_summary = chronicle_result["story_summary"] || @adventure.story_summary
 
-    # Step C: Generate narrative
-    step_c_result = sequential_step_c(sanitized_input, category: category,
-                                      immediate_context: updated_immediate,
-                                      story_summary: updated_summary)
+    narrative_result = generate_narrative(sanitized_input, category: category,
+                                         immediate_context: updated_immediate,
+                                         story_summary: updated_summary)
 
     {
-      narrative: step_c_result["narrative"] || "The Dungeon Master pauses thoughtfully...",
-      reasoning: step_c_result["reasoning"],
-      adventure_complete: step_c_result["adventure_complete"] == true,
-      roll_request: step_c_result["roll_request"],
+      narrative: narrative_result["narrative"] || "The Dungeon Master pauses thoughtfully...",
+      reasoning: narrative_result["reasoning"],
+      adventure_complete: narrative_result["adventure_complete"] == true,
+      roll_request: narrative_result["roll_request"],
       immediate_context: updated_immediate,
       story_summary: updated_summary
     }
   end
 
-  def sequential_step_a(sanitized_input, category: nil)
-    prompt_summary = "Sequential A (context): \"#{@log.truncate(sanitized_input)}\""
+  def update_scene_context(sanitized_input, category: nil)
+    prompt_summary = "Scene tracker [#{category || 'none'}]: \"#{@log.truncate(sanitized_input)}\""
     raw = nil
 
+    system_prompt = DungeonMaster::Prompts.scene_tracker_prompt(@adventure, category: category)
+
+    request_body = { system_prompt: system_prompt, user_message: sanitized_input }
+
     raw = @ai.chat(
-      system_prompt: DungeonMaster::Prompts.update_immediate_context_prompt(@adventure, category: category),
+      system_prompt: system_prompt,
       user_message: sanitized_input,
       max_tokens: 1024
     )
 
     parsed = @ai.parse_json(raw)
-    @log.ai_log!("sequential_context", prompt_summary, raw, parsed, parse_status: @ai.last_parse_status)
+    @log.ai_log!("scene_tracker", prompt_summary, raw, parsed, parse_status: @ai.last_parse_status, request_body: request_body)
     parsed
   rescue AiError => e
     fallback_raw = raw || @ai.last_failed_raw_response
-    @log.ai_log_error!("sequential_context", prompt_summary, e, raw_response: fallback_raw)
-    @log.dm_log!("Sequential Step A (update immediate context) failed: #{e.message} — keeping current context")
+    @log.ai_log_error!("scene_tracker", prompt_summary, e, raw_response: fallback_raw, request_body: request_body)
+    @log.dm_log!("Scene tracker failed: #{e.message} — keeping current context")
     {}
   end
 
-  def sequential_step_b(sanitized_input, updated_immediate_context)
-    prompt_summary = "Sequential B (summary): \"#{@log.truncate(sanitized_input)}\""
+  def update_story_chronicle(sanitized_input, updated_immediate_context)
+    prompt_summary = "Story chronicler: \"#{@log.truncate(sanitized_input)}\""
     raw = nil
 
+    system_prompt = DungeonMaster::Prompts.story_chronicler_prompt(@adventure, updated_immediate_context)
+    request_body = { system_prompt: system_prompt, user_message: sanitized_input }
+
     raw = @ai.chat(
-      system_prompt: DungeonMaster::Prompts.update_story_summary_prompt(@adventure, updated_immediate_context),
+      system_prompt: system_prompt,
       user_message: sanitized_input,
       max_tokens: 1024
     )
 
     parsed = @ai.parse_json(raw)
-    @log.ai_log!("sequential_summary", prompt_summary, raw, parsed, parse_status: @ai.last_parse_status)
+    @log.ai_log!("story_chronicler", prompt_summary, raw, parsed, parse_status: @ai.last_parse_status, request_body: request_body)
     parsed
   rescue AiError => e
     fallback_raw = raw || @ai.last_failed_raw_response
-    @log.ai_log_error!("sequential_summary", prompt_summary, e, raw_response: fallback_raw)
-    @log.dm_log!("Sequential Step B (update story summary) failed: #{e.message} — keeping current summary")
+    @log.ai_log_error!("story_chronicler", prompt_summary, e, raw_response: fallback_raw, request_body: request_body)
+    @log.dm_log!("Story chronicler failed: #{e.message} — keeping current summary")
     {}
   end
 
-  def sequential_step_c(sanitized_input, category: nil, immediate_context: nil, story_summary: nil)
-    prompt_summary = "Sequential C (narrative): \"#{@log.truncate(sanitized_input)}\""
+  def generate_narrative(sanitized_input, category: nil, immediate_context: nil, story_summary: nil)
+    prompt_summary = "Narrator [#{category || 'none'}]: \"#{@log.truncate(sanitized_input)}\""
     raw = nil
 
-    history = DungeonMaster::History.build(@adventure)
-    history << { role: "user", content: sanitized_input }
-
-    raw = @ai.chat(
-      system_prompt: DungeonMaster::Prompts.generate_narrative_prompt(
-        @adventure, @config, category: category,
-        immediate_context: immediate_context, story_summary: story_summary
-      ),
-      messages: history,
-      max_tokens: 4096
+    system_prompt = DungeonMaster::Prompts.narrator_prompt(
+      @adventure, @config, category: category,
+      immediate_context: immediate_context, story_summary: story_summary
     )
+
+    if @config.contexts_only?
+      request_body = { system_prompt: system_prompt, user_message: sanitized_input }
+      raw = @ai.chat(system_prompt: system_prompt, user_message: sanitized_input, max_tokens: 4096)
+    else
+      history = DungeonMaster::History.build(@adventure)
+      history << { role: "user", content: sanitized_input }
+      request_body = { system_prompt: system_prompt, messages: history }
+      raw = @ai.chat(system_prompt: system_prompt, messages: history, max_tokens: 4096)
+    end
 
     parsed = @ai.parse_json(raw, fallback_as: :dm_response)
-    @log.ai_log!("sequential_narrative", prompt_summary, raw, parsed, parse_status: @ai.last_parse_status)
+    @log.ai_log!("narrator", prompt_summary, raw, parsed, parse_status: @ai.last_parse_status, request_body: request_body)
     parsed
   rescue AiError => e
     fallback_raw = raw || @ai.last_failed_raw_response
-    @log.ai_log_error!("sequential_narrative", prompt_summary, e, raw_response: fallback_raw)
+    @log.ai_log_error!("narrator", prompt_summary, e, raw_response: fallback_raw, request_body: request_body)
     raise
   end
 

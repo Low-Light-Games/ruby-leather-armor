@@ -118,6 +118,23 @@
           Controls how the DM response is generated. Unified is faster; Sequential breaks down the work for cheaper models.
         </p>
       </div>
+
+      <div class="config-field">
+        <label>Memory Strategy</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <%= radio_button_tag :context_mode, "history", @config.context_mode == "history" %>
+            <span><strong>History</strong> — sends recent message history alongside micro/macro contexts (richer, more tokens)</span>
+          </label>
+          <label class="radio-label">
+            <%= radio_button_tag :context_mode, "contexts_only", @config.context_mode == "contexts_only" %>
+            <span><strong>Contexts Only</strong> — relies solely on micro/macro contexts as the AI's memory (cheaper, fewer tokens)</span>
+          </label>
+        </div>
+        <p class="field-hint">
+          Controls what the AI uses as narrative memory. History mode sends the last N messages; Contexts Only relies on the scene tracker and story chronicle.
+        </p>
+      </div>
     </div>
 
     <div class="config-actions">

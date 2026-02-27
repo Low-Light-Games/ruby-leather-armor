@@ -11,6 +11,7 @@ class DmConfig < ApplicationRecord
   #   "sanitization_threshold"  => int   (default 50)    — danger score (0-100) above which input is rejected
   #   "classification_mode"     => str   (default "merged")     — "merged" or "parallel"
   #   "response_mode"           => str   (default "unified")    — "unified" or "sequential"
+  #   "context_mode"            => str   (default "history")    — "history" or "contexts_only"
 
   DEFAULTS = {
     "verbose" => false,
@@ -19,7 +20,8 @@ class DmConfig < ApplicationRecord
     "pacing_words_max" => 150,
     "sanitization_threshold" => 30,
     "classification_mode" => "merged",
-    "response_mode" => "unified"
+    "response_mode" => "unified",
+    "context_mode" => "history"
   }.freeze
 
   def self.instance
@@ -69,5 +71,13 @@ class DmConfig < ApplicationRecord
 
   def response_sequential?
     response_mode == "sequential"
+  end
+
+  def context_mode
+    get("context_mode") || "history"
+  end
+
+  def contexts_only?
+    context_mode == "contexts_only"
   end
 end

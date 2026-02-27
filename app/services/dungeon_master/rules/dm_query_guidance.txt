@@ -1,0 +1,1 @@
+Answer the player's question clearly and accurately using the provided rules. Do not advance the scene or trigger any mechanical effects. If the question is about a rule you are uncertain of, say so rather than inventing mechanics. Keep the answer concise and in-character where possible (the DM explaining a rule at the table).

@@ -40,6 +40,15 @@
   </div>
 
   <div class="log-section">
+    <h2>Request Body (what we sent to the AI)</h2>
+    <% if @log.request_body.present? %>
+      <pre class="log-pre"><%= begin; JSON.pretty_generate(JSON.parse(@log.request_body)); rescue; @log.request_body; end %></pre>
+    <% else %>
+      <p class="empty-cell">No request body captured (logged before this feature was added)</p>
+    <% end %>
+  </div>
+
+  <div class="log-section">
     <h2>Raw AI Response</h2>
     <% if @log.raw_response.present? %>
       <pre class="log-pre"><%= @log.raw_response %></pre>

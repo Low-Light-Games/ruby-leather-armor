@@ -41,6 +41,10 @@ module Admin
         new_settings["response_mode"] = params[:response_mode]
       end
 
+      if params[:context_mode].present? && %w[history contexts_only].include?(params[:context_mode])
+        new_settings["context_mode"] = params[:context_mode]
+      end
+
       @config.update!(settings: new_settings)
       redirect_to admin_dm_config_path, notice: "DM settings updated."
     end

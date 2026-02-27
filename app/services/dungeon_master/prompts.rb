@@ -105,11 +105,9 @@ module DungeonMaster
     # @return [String]
     def self.dm_system_prompt(adventure, config, category: nil)
       story = adventure.story
-      sheet = adventure.adventure_sheets.first
+      sheet = load_sheet(adventure)
 
-      rules_text = category ? Rules.for(category) : ""
-      rules_section = rules_text.present? ? "=== RELEVANT RULES (#{category.upcase}) ===\n#{rules_text}\n" : ""
-
+      rules_and_guidance = build_rules_and_guidance(category)
       context_section = build_context_section(adventure)
 
       <<~PROMPT
@@ -123,9 +121,9 @@ module DungeonMaster
         Premise: #{story.premise}
 
         === PLAYER CHARACTER ===
-        #{character_stats_block(sheet)}
+        #{character_block(sheet, category: category)}
 
-        #{rules_section}#{context_section}=== INSTRUCTIONS ===
+        #{rules_and_guidance}#{context_section}=== INSTRUCTIONS ===
         - Narrate the result of the player's action in the context of the story.
         - If a situation calls for a dice roll (combat, skill check, save), request one.
         - Roll requests: type can be "attack", "save_fort", "save_ref", "save_will",
@@ -171,17 +169,16 @@ module DungeonMaster
 
     # --- Sequential mode prompts (3 focused calls) ---
 
-    # Step A: Update the immediate (micro) context based on the player's action.
-    def self.update_immediate_context_prompt(adventure, category: nil)
-      rules_text = category ? Rules.for(category) : ""
-      rules_section = rules_text.present? ? "=== RELEVANT RULES (#{category.upcase}) ===\n#{rules_text}\n\n" : ""
+    # Scene tracker: rewrites the immediate (micro) context based on the player's action.
+    def self.scene_tracker_prompt(adventure, category: nil)
+      rules_and_guidance = build_rules_and_guidance(category)
 
       <<~PROMPT
         You are a context tracker for a Pathfinder 1e tabletop RPG adventure.
         Your job is to rewrite the "immediate context" — a micro-state description
         of what is happening right now in the scene.
 
-        #{rules_section}=== CURRENT IMMEDIATE CONTEXT ===
+        #{rules_and_guidance}=== CURRENT IMMEDIATE CONTEXT ===
         #{adventure.immediate_context.presence || "(none — this is the start of the scene)"}
 
         === STORY SUMMARY ===
@@ -203,8 +200,8 @@ module DungeonMaster
       PROMPT
     end
 
-    # Step B: Update the story summary (macro context) with the latest events.
-    def self.update_story_summary_prompt(adventure, updated_immediate_context)
+    # Story chronicler: maintains the "story so far" macro summary.
+    def self.story_chronicler_prompt(adventure, updated_immediate_context)
       <<~PROMPT
         You are a story chronicler for a Pathfinder 1e tabletop RPG adventure.
         Your job is to maintain a concise "story so far" summary.
@@ -233,13 +230,12 @@ module DungeonMaster
       PROMPT
     end
 
-    # Step C: Generate the DM narrative response using both updated contexts.
-    def self.generate_narrative_prompt(adventure, config, category: nil, immediate_context: nil, story_summary: nil)
+    # Narrator: generates the DM narrative response using both updated contexts.
+    def self.narrator_prompt(adventure, config, category: nil, immediate_context: nil, story_summary: nil)
       story = adventure.story
-      sheet = adventure.adventure_sheets.first
+      sheet = load_sheet(adventure)
 
-      rules_text = category ? Rules.for(category) : ""
-      rules_section = rules_text.present? ? "=== RELEVANT RULES (#{category.upcase}) ===\n#{rules_text}\n\n" : ""
+      rules_and_guidance = build_rules_and_guidance(category)
 
       <<~PROMPT
         You are the Dungeon Master for a Pathfinder 1e tabletop RPG adventure.
@@ -251,9 +247,9 @@ module DungeonMaster
         Premise: #{story.premise}
 
         === PLAYER CHARACTER ===
-        #{character_stats_block(sheet)}
+        #{character_block(sheet, category: category)}
 
-        #{rules_section}=== STORY SO FAR ===
+        #{rules_and_guidance}=== STORY SO FAR ===
         #{story_summary.presence || "(adventure just started)"}
 
         === CURRENT SCENE ===
@@ -291,22 +287,183 @@ module DungeonMaster
       PROMPT
     end
 
-    # Shared helper: character stats block used by multiple prompts
-    def self.character_stats_block(sheet)
+    # ── Character block dispatcher ──────────────────────────────
+
+    SOCIAL_SKILLS = %w[
+      Bluff Diplomacy Disguise Handle\ Animal Intimidate
+      Knowledge\ (Local) Knowledge\ (Nobility) Linguistics
+      Perception Perform Sense\ Motive Use\ Magic\ Device
+    ].freeze
+
+    TRAVERSAL_SKILLS = %w[
+      Acrobatics Climb Fly Knowledge\ (Geography) Knowledge\ (Nature)
+      Perception Ride Stealth Survival Swim
+    ].freeze
+
+    COMBAT_ITEM_TYPES = %w[weapon armor shield potion ammunition].freeze
+
+    def self.character_block(sheet, category: nil)
+      return "Unknown character" unless sheet
+
+      case category
+      when "combat"    then combat_character_block(sheet)
+      when "social"    then social_character_block(sheet)
+      when "traversal" then traversal_character_block(sheet)
+      else                  full_character_block(sheet)
+      end
+    end
+
+    def self.full_character_block(sheet)
+      ds = sheet.derived_stats || {}
+      parts = []
+      parts << identity_line(sheet)
+      parts << ability_scores_line(sheet)
+      parts << "HP: #{sheet.hp}/#{sheet.max_hp}  |  Currency: #{format_currency(sheet.currency)}"
+      parts << derived_combat_block(ds)
+      parts << skills_block(sheet)
+      parts << feats_block(sheet)
+      parts << spells_block(sheet)
+      parts << items_block(sheet)
+      parts.reject(&:blank?).join("\n")
+    end
+
+    def self.combat_character_block(sheet)
+      ds = sheet.derived_stats || {}
+      parts = []
+      parts << identity_line(sheet)
+      parts << ability_scores_line(sheet)
+      parts << "HP: #{sheet.hp}/#{sheet.max_hp}  |  Currency: #{format_currency(sheet.currency)}"
+      parts << derived_combat_block(ds)
+      parts << feats_block(sheet, categories: %w[combat general])
+      parts << spells_block(sheet)
+      parts << items_block(sheet, types: COMBAT_ITEM_TYPES, equipped_only: true)
+      parts.reject(&:blank?).join("\n")
+    end
+
+    def self.social_character_block(sheet)
+      parts = []
+      parts << identity_line(sheet)
+      parts << "CHA: #{sheet.charisma}, WIS: #{sheet.wisdom}, INT: #{sheet.intelligence}  |  Level: #{sheet.level}"
+      parts << skills_block(sheet, filter: SOCIAL_SKILLS)
+      parts << feats_block(sheet)
+      parts << items_block(sheet, types: %w[wondrous], equipped_only: true)
+      parts.reject(&:blank?).join("\n")
+    end
+
+    def self.traversal_character_block(sheet)
+      ds = sheet.derived_stats || {}
+      parts = []
+      parts << identity_line(sheet)
+      parts << "STR: #{sheet.strength}, DEX: #{sheet.dexterity}, CON: #{sheet.constitution}, WIS: #{sheet.wisdom}  |  Level: #{sheet.level}"
+      parts << "Speed: #{ds['speed'] || 30} ft  |  Encumbrance: #{ds['encumbrance'] || 'light'}  |  Carry: #{format_carry(ds)}"
+      parts << skills_block(sheet, filter: TRAVERSAL_SKILLS)
+      parts << feats_block(sheet)
+      parts << items_block(sheet)
+      parts.reject(&:blank?).join("\n")
+    end
+
+    # ── Character block helpers ──────────────────────────────────
+
+    def self.identity_line(sheet)
+      "#{sheet.name} — #{sheet.race} #{sheet.character_class} #{sheet.level}"
+    end
+
+    def self.ability_scores_line(sheet)
+      "STR: #{sheet.strength}, DEX: #{sheet.dexterity}, CON: #{sheet.constitution}, " \
+        "INT: #{sheet.intelligence}, WIS: #{sheet.wisdom}, CHA: #{sheet.charisma}"
+    end
+
+    def self.derived_combat_block(ds)
+      return "" if ds.blank?
+
       <<~STATS.strip
-        Name: #{sheet&.name || 'Unknown'}
-        Race: #{sheet&.race || 'Unknown'}
-        Class: #{sheet&.character_class || 'Unknown'}
-        Level: #{sheet&.level || 1}
-        STR: #{sheet&.strength}, DEX: #{sheet&.dexterity}, CON: #{sheet&.constitution}
-        INT: #{sheet&.intelligence}, WIS: #{sheet&.wisdom}, CHA: #{sheet&.charisma}
-        HP: #{sheet&.hp}/#{sheet&.max_hp}
-        Currency: #{format_currency(sheet&.currency)}
-        #{derived_stats_block(sheet)}
+        BAB: +#{ds['bab']}  |  AC: #{ds['ac']} (Touch #{ds['touch_ac']}, Flat-Footed #{ds['flat_footed_ac']})
+        Fort: #{format_mod(ds['fort'])}  Ref: #{format_mod(ds['ref'])}  Will: #{format_mod(ds['will'])}
+        CMB: #{format_mod(ds['cmb'])}  CMD: #{ds['cmd']}  Initiative: #{format_mod(ds['initiative'])}
+        Melee: #{format_mod(ds['melee_attack'])}  Ranged: #{format_mod(ds['ranged_attack'])}
+        Speed: #{ds['speed']} ft  Size: #{ds['size']}
       STATS
     end
 
-    # Shared helper: builds the context section for unified mode
+    def self.skills_block(sheet, filter: nil)
+      ds = sheet.derived_stats
+      return "" if ds.blank? || ds["skills"].blank?
+
+      skills = ds["skills"]
+      skills = skills.select { |s| filter.include?(s["name"]) } if filter
+      return "" if skills.empty?
+
+      "Skills: " + skills.map { |s| "#{s['name']} #{format_mod(s['total'])}" }.join(", ")
+    end
+
+    def self.feats_block(sheet, categories: nil)
+      feats = sheet.adventure_sheet_feats.includes(:feat_definition).to_a
+      if categories
+        feats = feats.select { |f| f.feat_definition && categories.include?(f.feat_definition.category) }
+      end
+      return "" if feats.empty?
+
+      lines = feats.map do |f|
+        fd = f.feat_definition
+        next nil unless fd
+        f.choice.present? ? "#{fd.name} (#{f.choice})" : fd.name
+      end.compact
+
+      "Feats: #{lines.join(', ')}"
+    end
+
+    def self.spells_block(sheet)
+      spells = sheet.adventure_sheet_spells.includes(:spell_definition).to_a
+      return "" if spells.empty?
+
+      lines = spells.map { |s| s.spell_definition&.name }.compact
+      "Spells: #{lines.join(', ')}"
+    end
+
+    def self.items_block(sheet, types: nil, equipped_only: false)
+      items = sheet.adventure_sheet_items.includes(:item_definition).to_a
+      items = items.select(&:equipped?) if equipped_only
+      items = items.select { |i| i.item_definition && types.include?(i.item_definition.item_type) } if types
+      return "" if items.empty?
+
+      lines = items.map do |i|
+        next nil unless i.item_definition
+        line = i.item_definition.name
+        line += " (x#{i.quantity})" if i.quantity && i.quantity > 1
+        line += " [equipped]" if i.equipped?
+        line
+      end.compact
+
+      "Items: #{lines.join(', ')}"
+    end
+
+    def self.format_carry(ds)
+      caps = ds["carry_capacity"]
+      return "unknown" unless caps.is_a?(Hash)
+      "#{ds['total_weight'] || '?'}/#{caps['heavy'] || '?'} lbs"
+    end
+
+    # ── Shared helpers ───────────────────────────────────────────
+
+    def self.load_sheet(adventure)
+      adventure.adventure_sheets
+        .includes(:feat_definitions, :spell_definitions, adventure_sheet_items: :item_definition)
+        .first
+    end
+
+    def self.build_rules_and_guidance(category)
+      return "" unless category
+
+      rules_text = Rules.for(category)
+      guidance_text = Rules.guidance_for(category)
+      return "" if rules_text.blank? && guidance_text.blank?
+
+      parts = []
+      parts << "=== RELEVANT RULES (#{category.upcase}) ===\n#{rules_text}" if rules_text.present?
+      parts << "=== DM GUIDANCE (#{category.upcase}) ===\n#{guidance_text}" if guidance_text.present?
+      parts.join("\n\n") + "\n\n"
+    end
+
     def self.build_context_section(adventure)
       parts = []
       if adventure.story_summary.present?
@@ -316,22 +473,6 @@ module DungeonMaster
         parts << "=== CURRENT SCENE ===\n#{adventure.immediate_context}\n"
       end
       parts.any? ? parts.join("\n") + "\n" : ""
-    end
-
-    # Builds a compact stats block from derived_stats for the DM prompt.
-    def self.derived_stats_block(sheet)
-      return "" unless sheet
-      ds = sheet.derived_stats
-      return "" if ds.blank?
-
-      <<~STATS.strip
-        --- Derived Stats ---
-        BAB: +#{ds['bab']}  |  AC: #{ds['ac']} (Touch #{ds['touch_ac']}, Flat-Footed #{ds['flat_footed_ac']})
-        Fort: #{format_mod(ds['fort'])}  Ref: #{format_mod(ds['ref'])}  Will: #{format_mod(ds['will'])}
-        CMB: #{format_mod(ds['cmb'])}  CMD: #{ds['cmd']}  Initiative: #{format_mod(ds['initiative'])}
-        Melee Attack: #{format_mod(ds['melee_attack'])}  Ranged Attack: #{format_mod(ds['ranged_attack'])}
-        Speed: #{ds['speed']} ft  Size: #{ds['size']}
-      STATS
     end
 
     def self.format_mod(val)

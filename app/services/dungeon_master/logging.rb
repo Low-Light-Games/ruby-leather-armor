@@ -29,11 +29,13 @@ module DungeonMaster
     # @param raw_response    [String]  the raw AI output
     # @param parsed_response [Hash]    the parsed result
     # @param parse_status    [String]  "success", "parse_fallback", etc.
-    def ai_log!(call_type, prompt_summary, raw_response, parsed_response, parse_status:)
+    # @param request_body    [Hash, nil]  the system prompt + messages sent to the AI
+    def ai_log!(call_type, prompt_summary, raw_response, parsed_response, parse_status:, request_body: nil)
       AiLog.create!(
         adventure: @adventure,
         call_type: call_type,
         prompt_summary: prompt_summary,
+        request_body: request_body&.to_json,
         raw_response: raw_response,
         parsed_response: parsed_response&.to_json,
         status: parse_status,
@@ -49,11 +51,13 @@ module DungeonMaster
     # @param prompt_summary [String]
     # @param error          [StandardError]
     # @param raw_response   [String, nil]
-    def ai_log_error!(call_type, prompt_summary, error, raw_response: nil)
+    # @param request_body   [Hash, nil]
+    def ai_log_error!(call_type, prompt_summary, error, raw_response: nil, request_body: nil)
       AiLog.create!(
         adventure: @adventure,
         call_type: call_type,
         prompt_summary: prompt_summary,
+        request_body: request_body&.to_json,
         raw_response: raw_response,
         parsed_response: nil,
         status: "api_error",
