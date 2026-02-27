@@ -6,6 +6,7 @@ module DungeonMaster
   # without touching orchestration or transport logic.
   module Prompts
     PROMPT_CATEGORIES = %w[combat traversal social roll_request dm_query].freeze
+    VALIDATION_NEEDS  = %w[spells feats items skills ability_scores combat_stats].freeze
 
     SANITIZATION_SYSTEM_PROMPT = <<~PROMPT.freeze
       You are a security filter for a tabletop RPG game. Your ONLY job is to evaluate
@@ -269,10 +270,47 @@ module DungeonMaster
       PROMPT
     end
 
+    # Action needs resolver: determines which character sheet sections the narrator
+    # needs to validate a player's action. Runs concurrently with the scene tracker.
+    def self.action_needs_prompt(adventure, category: nil)
+      <<~PROMPT
+        You are a rules assistant for a Pathfinder 1e tabletop RPG.
+        Given the player's action and the current scene, determine which parts of the
+        character sheet are needed to validate and narrate the action.
+
+        === CURRENT SCENE ===
+        #{adventure.immediate_context.presence || "(opening scene)"}
+
+        === ACTION CATEGORY ===
+        #{category || "unknown"}
+
+        === AVAILABLE SECTIONS ===
+        Return ONLY the sections needed from this list:
+        - spells: include if the action involves casting, preparing, or referencing spells
+        - feats: include if the action uses a feat, special ability, or class feature
+        - items: include if the action involves using, equipping, or referencing equipment
+        - skills: include if the action requires a skill check or references trained skills
+        - ability_scores: include if the action depends on raw ability scores or modifiers
+        - combat_stats: include if the action involves attack rolls, AC, saves, or combat maneuvers
+
+        Respond ONLY with valid JSON (no markdown, no code fences):
+        {
+          "needs": ["spells", "combat_stats"],
+          "reasoning": "Brief explanation of why these sections are needed"
+        }
+      PROMPT
+    end
+
     # Narrator: generates the DM narrative response using both updated contexts.
-    def self.narrator_prompt(adventure, config, category: nil, immediate_context: nil, story_summary: nil)
+    def self.narrator_prompt(adventure, config, category: nil, immediate_context: nil, story_summary: nil, validation_needs: nil)
       story = adventure.story
       sheet = load_sheet(adventure)
+
+      char_block = if validation_needs.present?
+                     focused_character_block(sheet, needs: validation_needs)
+                   else
+                     character_block(sheet, category: category)
+                   end
 
       rules_and_guidance = build_rules_and_guidance(category)
 
@@ -286,7 +324,7 @@ module DungeonMaster
         Premise: #{story.premise}
 
         === PLAYER CHARACTER ===
-        #{character_block(sheet, category: category)}
+        #{char_block}
 
         #{rules_and_guidance}=== STORY SO FAR ===
         #{story_summary.presence || "(adventure just started)"}
@@ -361,6 +399,22 @@ module DungeonMaster
       when "traversal" then traversal_character_block(sheet)
       else                  full_character_block(sheet)
       end
+    end
+
+    def self.focused_character_block(sheet, needs:)
+      return full_character_block(sheet) if needs.blank?
+
+      ds = sheet.derived_stats || {}
+      parts = []
+      parts << identity_line(sheet)
+      parts << "HP: #{sheet.hp}/#{sheet.max_hp}  |  Currency: #{format_currency(sheet.currency)}"
+      parts << ability_scores_line(sheet)   if needs.include?("ability_scores")
+      parts << derived_combat_block(ds)     if needs.include?("combat_stats")
+      parts << skills_block(sheet)          if needs.include?("skills")
+      parts << feats_block(sheet)           if needs.include?("feats")
+      parts << spells_block(sheet)          if needs.include?("spells")
+      parts << items_block(sheet)           if needs.include?("items")
+      parts.reject(&:blank?).join("\n")
     end
 
     def self.full_character_block(sheet)
@@ -467,7 +521,7 @@ module DungeonMaster
       return "" if spells.empty?
 
       lines = spells.map { |s| s.spell_definition&.name }.compact
-      "Spells: #{lines.join(', ')}"
+      "Spells:\n" + lines.map { |name| "  - #{name}" }.join("\n")
     end
 
     def self.items_block(sheet, types: nil, equipped_only: false)

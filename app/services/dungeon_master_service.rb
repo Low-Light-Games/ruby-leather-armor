@@ -307,7 +307,11 @@ class DungeonMasterService
   end
 
   def dm_response_sequential(sanitized_input, category: nil)
-    scene_result = update_scene_context(sanitized_input, category: category)
+    scene_thread = Thread.new { update_scene_context(sanitized_input, category: category) }
+    needs_thread = Thread.new { resolve_action_needs(sanitized_input, category: category) }
+
+    scene_result = scene_thread.value
+    action_needs = needs_thread.value
     updated_immediate = scene_result["immediate_context"] || @adventure.immediate_context
 
     chronicle_result = update_story_chronicle(sanitized_input, updated_immediate)
@@ -315,7 +319,8 @@ class DungeonMasterService
 
     narrative_result = generate_narrative(sanitized_input, category: category,
                                          immediate_context: updated_immediate,
-                                         story_summary: updated_summary)
+                                         story_summary: updated_summary,
+                                         validation_needs: action_needs)
 
     {
       narrative: narrative_result["narrative"] || "The Dungeon Master pauses thoughtfully...",
@@ -374,13 +379,39 @@ class DungeonMasterService
     {}
   end
 
-  def generate_narrative(sanitized_input, category: nil, immediate_context: nil, story_summary: nil)
+  def resolve_action_needs(sanitized_input, category: nil)
+    prompt_summary = "Action needs [#{category || 'none'}]: \"#{@log.truncate(sanitized_input)}\""
+    raw = nil
+
+    system_prompt = DungeonMaster::Prompts.action_needs_prompt(@adventure, category: category)
+    request_body = { system_prompt: system_prompt, user_message: sanitized_input }
+
+    raw = @ai.chat(
+      system_prompt: system_prompt,
+      user_message: sanitized_input,
+      max_tokens: 200
+    )
+
+    parsed = @ai.parse_json(raw)
+    @log.ai_log!("action_needs", prompt_summary, raw, parsed, parse_status: @ai.last_parse_status, request_body: request_body)
+
+    needs = Array(parsed["needs"]).map(&:to_s) & DungeonMaster::Prompts::VALIDATION_NEEDS
+    needs.presence
+  rescue AiError => e
+    fallback_raw = raw || @ai.last_failed_raw_response
+    @log.ai_log_error!("action_needs", prompt_summary, e, raw_response: fallback_raw, request_body: request_body)
+    @log.dm_log!("Action needs resolution failed: #{e.message} — narrator will use full character block")
+    nil
+  end
+
+  def generate_narrative(sanitized_input, category: nil, immediate_context: nil, story_summary: nil, validation_needs: nil)
     prompt_summary = "Narrator [#{category || 'none'}]: \"#{@log.truncate(sanitized_input)}\""
     raw = nil
 
     system_prompt = DungeonMaster::Prompts.narrator_prompt(
       @adventure, @config, category: category,
-      immediate_context: immediate_context, story_summary: story_summary
+      immediate_context: immediate_context, story_summary: story_summary,
+      validation_needs: validation_needs
     )
 
     if @config.contexts_only?
