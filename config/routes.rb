@@ -24,8 +24,13 @@ Rails.application.routes.draw do
     resources :dm_logs, only: [:index, :show]
     resources :ai_logs, only: [:index, :show]
     resources :encounters, only: [:index, :show]
+    resources :feature_flags, only: [:index] do
+      member { patch :toggle }
+    end
     resource :dm_config, only: [:show, :update]
   end
+
+  resources :feature_flags, only: [:index]
 
   get "sheets/create" => "stimulus#stimulus_version_sheet_creator"
 

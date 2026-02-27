@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_28_000010) do
+ActiveRecord::Schema[7.1].define(version: 2026_02_28_000011) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -248,6 +248,15 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_28_000010) do
     t.datetime "updated_at", null: false
     t.index ["category"], name: "index_feat_definitions_on_category"
     t.index ["name"], name: "index_feat_definitions_on_name"
+  end
+
+  create_table "feature_flags", force: :cascade do |t|
+    t.string "key", null: false
+    t.boolean "enabled", default: false, null: false
+    t.string "description"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_feature_flags_on_key", unique: true
   end
 
   create_table "item_definitions", id: :string, force: :cascade do |t|

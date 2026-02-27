@@ -17,6 +17,7 @@ export const AdventureCreation = () => {
   const [selectedStoryId, setSelectedStoryId] = useState<number | ''>('')
   const [selectedSheetId, setSelectedSheetId] = useState<number | ''>('')
   const [dmMode, setDmMode] = useState<'standard' | 'light'>('standard')
+  const [lightDmEnabled, setLightDmEnabled] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -28,11 +29,13 @@ export const AdventureCreation = () => {
       fetch('/stories').then(r => r.json()),
       fetch('/sheets.json').then(r => r.json()),
       fetch('/adventures.json').then(r => r.json()),
+      fetch('/feature_flags.json').then(r => r.json()),
     ])
-      .then(([storiesData, sheetsData, adventuresData]) => {
+      .then(([storiesData, sheetsData, adventuresData, flagsData]) => {
         setStories(storiesData)
         setSheets(sheetsData)
         setAdventures(adventuresData)
+        setLightDmEnabled(flagsData.enabled?.includes('light_dungeon_master') ?? false)
         setLoadingData(false)
       })
       .catch(err => {
@@ -153,33 +156,35 @@ export const AdventureCreation = () => {
                 </select>
               </div>
 
-              <div className="form-group">
-                <label>DM Mode</label>
-                <div className="dm-mode-selector">
-                  <label className={`dm-mode-option ${dmMode === 'standard' ? 'selected' : ''}`}>
-                    <input
-                      type="radio"
-                      name="dm_mode"
-                      value="standard"
-                      checked={dmMode === 'standard'}
-                      onChange={() => setDmMode('standard')}
-                    />
-                    <span className="dm-mode-label">Standard</span>
-                    <span className="dm-mode-desc">AI handles everything (classic)</span>
-                  </label>
-                  <label className={`dm-mode-option ${dmMode === 'light' ? 'selected' : ''}`}>
-                    <input
-                      type="radio"
-                      name="dm_mode"
-                      value="light"
-                      checked={dmMode === 'light'}
-                      onChange={() => setDmMode('light')}
-                    />
-                    <span className="dm-mode-label">Light</span>
-                    <span className="dm-mode-desc">App-managed combat, locations, and NPCs</span>
-                  </label>
+              {lightDmEnabled && (
+                <div className="form-group">
+                  <label>DM Mode</label>
+                  <div className="dm-mode-selector">
+                    <label className={`dm-mode-option ${dmMode === 'standard' ? 'selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name="dm_mode"
+                        value="standard"
+                        checked={dmMode === 'standard'}
+                        onChange={() => setDmMode('standard')}
+                      />
+                      <span className="dm-mode-label">Standard</span>
+                      <span className="dm-mode-desc">AI handles everything (classic)</span>
+                    </label>
+                    <label className={`dm-mode-option ${dmMode === 'light' ? 'selected' : ''}`}>
+                      <input
+                        type="radio"
+                        name="dm_mode"
+                        value="light"
+                        checked={dmMode === 'light'}
+                        onChange={() => setDmMode('light')}
+                      />
+                      <span className="dm-mode-label">Light</span>
+                      <span className="dm-mode-desc">App-managed combat, locations, and NPCs</span>
+                    </label>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {selectedSheet && (
                 <div className="character-preview">

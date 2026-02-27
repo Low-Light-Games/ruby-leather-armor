@@ -46,7 +46,11 @@ module Admin
       end
 
       if params[:dm_mode].present? && %w[standard light].include?(params[:dm_mode])
-        new_settings["dm_mode"] = params[:dm_mode]
+        if params[:dm_mode] == "light" && !FeatureFlag.enabled?(:light_dungeon_master)
+          new_settings["dm_mode"] = "standard"
+        else
+          new_settings["dm_mode"] = params[:dm_mode]
+        end
       end
 
       @config.update!(settings: new_settings)

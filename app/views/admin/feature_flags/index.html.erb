@@ -1,0 +1,194 @@
+<%= render 'admin/shared/navbar', active_nav: :feature_flags %>
+
+<div class="feature-flags-page">
+  <h1>Feature Flags</h1>
+  <p class="page-desc">Toggle features on and off. Changes take effect immediately.</p>
+
+  <% if flash[:notice] %>
+    <div class="flash-notice" onclick="this.style.display='none'"><%= flash[:notice] %></div>
+    <script>setTimeout(function(){ var el = document.querySelector('.flash-notice'); if(el) el.style.display='none'; }, 4000);</script>
+  <% end %>
+
+  <% if @flags.empty? %>
+    <p class="empty-msg">No feature flags defined.</p>
+  <% else %>
+    <table class="flags-table">
+      <thead>
+        <tr>
+          <th class="col-key">Flag</th>
+          <th class="col-desc">Description</th>
+          <th class="col-status">Status</th>
+          <th class="col-action">Toggle</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @flags.each do |flag| %>
+          <tr class="<%= flag.enabled? ? 'flag-on' : 'flag-off' %>">
+            <td class="col-key"><code><%= flag.key %></code></td>
+            <td class="col-desc"><%= flag.description %></td>
+            <td class="col-status">
+              <span class="flag-badge <%= flag.enabled? ? 'enabled' : 'disabled' %>">
+                <%= flag.enabled? ? 'ON' : 'OFF' %>
+              </span>
+            </td>
+            <td class="col-action">
+              <%= button_to(flag.enabled? ? 'Disable' : 'Enable',
+                    toggle_admin_feature_flag_path(flag),
+                    method: :patch,
+                    class: "toggle-btn #{flag.enabled? ? 'btn-disable' : 'btn-enable'}") %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>
+
+<%= render 'admin/shared/navbar_styles' %>
+
+<style>
+  .feature-flags-page {
+    padding: 20px 30px;
+    font-family: 'Arial', sans-serif;
+    max-width: 900px;
+    margin: 0 auto;
+
+    h1 {
+      font-size: 24px;
+      color: #333;
+      margin: 0 0 6px;
+    }
+  }
+
+  .page-desc {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  .flash-notice {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    padding: 12px 24px;
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 8px;
+    color: #155724;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
+    animation: flashSlideIn 0.3s ease;
+    max-width: 500px;
+  }
+
+  @keyframes flashSlideIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+
+  .empty-msg {
+    color: #888;
+    font-style: italic;
+  }
+
+  .flags-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+
+    th {
+      text-align: left;
+      padding: 10px 12px;
+      background-color: #343a40;
+      color: white;
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #e9ecef;
+      vertical-align: middle;
+    }
+
+    .col-key {
+      width: 220px;
+
+      code {
+        padding: 2px 8px;
+        background: #f5f5f5;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #333;
+      }
+    }
+
+    .col-desc {
+      color: #555;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .col-status {
+      width: 80px;
+      text-align: center;
+    }
+
+    .col-action {
+      width: 100px;
+      text-align: center;
+    }
+
+    tr.flag-on { background-color: #f1f8e9; }
+    tr.flag-off { background-color: #fff; }
+    tr:hover { background-color: #f5f5f5; }
+  }
+
+  .flag-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+
+    &.enabled {
+      background-color: #c8e6c9;
+      color: #2e7d32;
+    }
+
+    &.disabled {
+      background-color: #e0e0e0;
+      color: #757575;
+    }
+  }
+
+  .toggle-btn {
+    padding: 6px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-enable {
+    background: #28a745;
+    color: white;
+    &:hover { background: #218838; }
+  }
+
+  .btn-disable {
+    background: #dc3545;
+    color: white;
+    &:hover { background: #c82333; }
+  }
+</style>

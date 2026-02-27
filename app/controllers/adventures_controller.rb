@@ -40,6 +40,7 @@ class AdventuresController < ApplicationController
     dm_mode = params[:dm_mode].presence
     dm_mode = nil unless Adventure::DM_MODES.include?(dm_mode)
     dm_mode ||= DmConfig.instance.dm_mode
+    dm_mode = "standard" if dm_mode == "light" && !FeatureFlag.enabled?(:light_dungeon_master)
 
     @adventure = Adventure.new(
       user: current_user,
