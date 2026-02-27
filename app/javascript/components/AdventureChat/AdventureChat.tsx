@@ -3,6 +3,14 @@ import { AdventureMessage, RollRequest } from '../../types'
 import { csrfToken } from '../../utils/api'
 import './AdventureChat.scss'
 
+const OPTIMISTIC_ID = -1
+const THINKING_ID = -2
+const ERROR_ID = -3
+
+function isSentinel(id: number) {
+  return id === OPTIMISTIC_ID || id === THINKING_ID || id === ERROR_ID
+}
+
 interface AdventureChatProps {
   adventureId: number
   onAdventureComplete?: () => void
@@ -15,26 +23,24 @@ export const AdventureChat = ({ adventureId, onAdventureComplete }: AdventureCha
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [pendingRoll, setPendingRoll] = useState<RollRequest | null>(null)
   const [rollValue, setRollValue] = useState('')
+  const lastSentRef = useRef<
+    | { type: 'message'; text: string }
+    | { type: 'roll'; value: number; description: string }
+    | null
+  >(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const rollInputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-scroll to bottom on new messages
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [])
 
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages, scrollToBottom])
+  useEffect(() => { scrollToBottom() }, [messages, scrollToBottom])
 
-  // Auto-focus roll input when a pending roll appears
   useEffect(() => {
-    if (pendingRoll && rollInputRef.current) {
-      rollInputRef.current.focus()
-    }
+    if (pendingRoll && rollInputRef.current) rollInputRef.current.focus()
   }, [pendingRoll])
 
-  // Load conversation history
   useEffect(() => {
     const loadHistory = async () => {
       try {
@@ -45,15 +51,11 @@ export const AdventureChat = ({ adventureId, onAdventureComplete }: AdventureCha
         const data: AdventureMessage[] = await res.json()
         setMessages(data)
 
-        // Check if the last DM message has a pending roll request
         const lastDm = [...data].reverse().find(m => m.role === 'dm')
         if (lastDm?.message_type === 'roll_request' && lastDm.metadata?.roll_request) {
-          // Check if a roll_result was already submitted after it
           const lastDmIdx = data.findIndex(m => m.id === lastDm.id)
           const hasRollResult = data.slice(lastDmIdx + 1).some(m => m.message_type === 'roll_result')
-          if (!hasRollResult) {
-            setPendingRoll(lastDm.metadata.roll_request)
-          }
+          if (!hasRollResult) setPendingRoll(lastDm.metadata.roll_request)
         }
       } catch (err) {
         console.error('Error loading chat history:', err)
@@ -64,14 +66,22 @@ export const AdventureChat = ({ adventureId, onAdventureComplete }: AdventureCha
     loadHistory()
   }, [adventureId])
 
-  // Send a player message
-  const handleSend = async () => {
-    const text = input.trim()
-    if (!text || sending) return
+  // ---- Core send logic ----
 
-    setInput('')
+  const sendMessage = async (text: string) => {
     setSending(true)
     setPendingRoll(null)
+    lastSentRef.current = { type: 'message', text }
+
+    const optimistic: AdventureMessage = {
+      id: OPTIMISTIC_ID, role: 'player', content: text,
+      message_type: 'narrative', metadata: {}, created_at: new Date().toISOString(),
+    }
+    const thinking: AdventureMessage = {
+      id: THINKING_ID, role: 'dm', content: '',
+      message_type: 'narrative', metadata: {}, created_at: new Date().toISOString(),
+    }
+    setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), optimistic, thinking])
 
     try {
       const res = await fetch(`/adventures/${adventureId}/messages`, {
@@ -90,43 +100,42 @@ export const AdventureChat = ({ adventureId, onAdventureComplete }: AdventureCha
       }
 
       const data: { messages: AdventureMessage[] } = await res.json()
-      setMessages(prev => [...prev, ...data.messages])
+      setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), ...data.messages])
+      lastSentRef.current = null
 
-      // Check for roll request in the DM response
       const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
-      if (dmMsg?.metadata?.roll_request) {
-        setPendingRoll(dmMsg.metadata.roll_request)
-      }
+      if (dmMsg?.metadata?.roll_request) setPendingRoll(dmMsg.metadata.roll_request)
 
       const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
-      if (completeMsg && onAdventureComplete) {
-        onAdventureComplete()
-      }
+      if (completeMsg && onAdventureComplete) onAdventureComplete()
     } catch (err: any) {
       console.error('Error sending message:', err)
-      // Show a local error message
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now(),
-          role: 'system',
-          content: `Failed to send: ${err.message}`,
-          message_type: 'narrative',
-          metadata: {},
-          created_at: new Date().toISOString(),
-        },
-      ])
+      const errorMsg: AdventureMessage = {
+        id: ERROR_ID, role: 'system', content: `Failed to send: ${err.message}`,
+        message_type: 'narrative', metadata: {}, created_at: new Date().toISOString(),
+      }
+      setMessages(prev => [...prev.filter(m => m.id !== THINKING_ID && m.id !== ERROR_ID), errorMsg])
     } finally {
       setSending(false)
     }
   }
 
-  // Submit a roll result
-  const handleRollSubmit = async () => {
-    const value = parseInt(rollValue, 10)
-    if (isNaN(value) || value < 1 || !pendingRoll) return
-
+  const sendRoll = async (value: number, description: string) => {
     setSending(true)
+    lastSentRef.current = { type: 'roll', value, description }
+
+    const optimistic: AdventureMessage = {
+      id: OPTIMISTIC_ID, role: 'player',
+      content: `🎲 Rolled ${value} for: ${description}`,
+      message_type: 'roll_result',
+      metadata: { roll_value: value, roll_description: description },
+      created_at: new Date().toISOString(),
+    }
+    const thinking: AdventureMessage = {
+      id: THINKING_ID, role: 'dm', content: '',
+      message_type: 'narrative', metadata: {}, created_at: new Date().toISOString(),
+    }
+    setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), optimistic, thinking])
 
     try {
       const res = await fetch(`/adventures/${adventureId}/messages/roll`, {
@@ -136,10 +145,7 @@ export const AdventureChat = ({ adventureId, onAdventureComplete }: AdventureCha
           'X-CSRF-Token': csrfToken(),
           Accept: 'application/json',
         },
-        body: JSON.stringify({
-          roll_value: value,
-          roll_description: pendingRoll.description,
-        }),
+        body: JSON.stringify({ roll_value: value, roll_description: description }),
       })
 
       if (!res.ok) {
@@ -148,36 +154,49 @@ export const AdventureChat = ({ adventureId, onAdventureComplete }: AdventureCha
       }
 
       const data: { messages: AdventureMessage[] } = await res.json()
-      setMessages(prev => [...prev, ...data.messages])
-      setPendingRoll(null)
-      setRollValue('')
+      setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), ...data.messages])
+      lastSentRef.current = null
 
-      // Check if the new DM response requests another roll
       const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
-      if (dmMsg?.metadata?.roll_request) {
-        setPendingRoll(dmMsg.metadata.roll_request)
-      }
+      if (dmMsg?.metadata?.roll_request) setPendingRoll(dmMsg.metadata.roll_request)
 
       const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
-      if (completeMsg && onAdventureComplete) {
-        onAdventureComplete()
-      }
+      if (completeMsg && onAdventureComplete) onAdventureComplete()
     } catch (err: any) {
       console.error('Error submitting roll:', err)
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now(),
-          role: 'system',
-          content: `Failed to submit roll: ${err.message}`,
-          message_type: 'narrative',
-          metadata: {},
-          created_at: new Date().toISOString(),
-        },
-      ])
+      const errorMsg: AdventureMessage = {
+        id: ERROR_ID, role: 'system', content: `Failed to submit roll: ${err.message}`,
+        message_type: 'narrative', metadata: {}, created_at: new Date().toISOString(),
+      }
+      setMessages(prev => [...prev.filter(m => m.id !== THINKING_ID && m.id !== ERROR_ID), errorMsg])
     } finally {
       setSending(false)
     }
+  }
+
+  // ---- Handlers ----
+
+  const handleSend = () => {
+    const text = input.trim()
+    if (!text || sending) return
+    setInput('')
+    sendMessage(text)
+  }
+
+  const handleRollSubmit = () => {
+    const value = parseInt(rollValue, 10)
+    if (isNaN(value) || value < 1 || !pendingRoll) return
+    const description = pendingRoll.description
+    setPendingRoll(null)
+    setRollValue('')
+    sendRoll(value, description)
+  }
+
+  const handleRetry = () => {
+    const last = lastSentRef.current
+    if (!last || sending) return
+    if (last.type === 'message') sendMessage(last.text)
+    else sendRoll(last.value, last.description)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -187,11 +206,12 @@ export const AdventureChat = ({ adventureId, onAdventureComplete }: AdventureCha
     }
   }
 
+  // ---- Render ----
+
   return (
     <div className="adventure-chat">
       <h2>Dungeon Master</h2>
 
-      {/* Message list */}
       <div className="chat-messages">
         {loadingHistory ? (
           <div className="chat-loading">Loading conversation...</div>
@@ -200,27 +220,45 @@ export const AdventureChat = ({ adventureId, onAdventureComplete }: AdventureCha
             <p>Your adventure awaits! Describe what your character does to begin.</p>
           </div>
         ) : (
-          messages.map(msg => (
-            <div
-              key={msg.id}
-              className={`chat-message msg-${msg.role} msg-type-${msg.message_type}`}
-            >
-              <div className="msg-header">
-                <span className="msg-role">
-                  {msg.role === 'player' ? '🗡️ You' : msg.role === 'dm' ? '🐉 DM' : '📜 System'}
-                </span>
-              </div>
-              <div className="msg-content">{msg.content}</div>
-              {msg.message_type === 'roll_request' && msg.metadata?.roll_request && (
-                <div className="roll-request-badge">
-                  🎲 {msg.metadata.roll_request.description}
-                  {msg.metadata.roll_request.dc && (
-                    <span className="roll-dc"> (DC {msg.metadata.roll_request.dc})</span>
-                  )}
+          messages.map(msg => {
+            if (msg.id === THINKING_ID) {
+              return (
+                <div key="thinking" className="chat-message msg-dm msg-thinking">
+                  <div className="msg-header">
+                    <span className="msg-role">🐉 DM</span>
+                  </div>
+                  <div className="thinking-dots">
+                    <span /><span /><span />
+                  </div>
                 </div>
-              )}
-            </div>
-          ))
+              )
+            }
+
+            return (
+              <div
+                key={msg.id}
+                className={`chat-message msg-${msg.role} msg-type-${msg.message_type}`}
+              >
+                <div className="msg-header">
+                  <span className="msg-role">
+                    {msg.role === 'player' ? '🗡️ You' : msg.role === 'dm' ? '🐉 DM' : '📜 System'}
+                  </span>
+                </div>
+                <div className="msg-content">{msg.content}</div>
+                {msg.message_type === 'roll_request' && msg.metadata?.roll_request && (
+                  <div className="roll-request-badge">
+                    🎲 {msg.metadata.roll_request.description}
+                    {msg.metadata.roll_request.dc && (
+                      <span className="roll-dc"> (DC {msg.metadata.roll_request.dc})</span>
+                    )}
+                  </div>
+                )}
+                {msg.id === ERROR_ID && (
+                  <button className="retry-btn" onClick={handleRetry}>Retry</button>
+                )}
+              </div>
+            )
+          })
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -280,13 +318,7 @@ export const AdventureChat = ({ adventureId, onAdventureComplete }: AdventureCha
           disabled={sending || !input.trim()}
           className="chat-send-btn"
         >
-          {sending ? (
-            <span className="sending-indicator">
-              <span className="dot">.</span><span className="dot">.</span><span className="dot">.</span>
-            </span>
-          ) : (
-            '➤'
-          )}
+          ➤
         </button>
       </div>
     </div>
