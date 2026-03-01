@@ -144,7 +144,8 @@ export function useEquipment({
         i =>
           i.name.toLowerCase().includes(term) ||
           i.itemType.includes(term) ||
-          (i.weaponCategory?.includes(term) ?? false),
+          (i.weaponCategory?.includes(term) ?? false) ||
+          (i.summary?.toLowerCase().includes(term) ?? false),
       );
     }
 

@@ -137,7 +137,7 @@ export function useSpells({
     const term = spellSearch.toLowerCase().trim();
     let pool = availableSpells.filter(s => !selectedSpells.includes(s.id));
     if (term) {
-      pool = pool.filter(s => s.name.toLowerCase().includes(term) || s.school.includes(term));
+      pool = pool.filter(s => s.name.toLowerCase().includes(term) || s.school.includes(term) || s.summary.toLowerCase().includes(term));
     }
     return pool
       .map(spell => {

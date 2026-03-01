@@ -140,7 +140,7 @@ export function useFeats({
     const term = featSearch.toLowerCase().trim();
     let pool = getAllFeats().filter(f => !selectedFeats.includes(f.id));
     if (term) {
-      pool = pool.filter(f => f.name.toLowerCase().includes(term) || f.category.includes(term));
+      pool = pool.filter(f => f.name.toLowerCase().includes(term) || f.category.includes(term) || f.summary.toLowerCase().includes(term));
     }
     return pool.slice(0, 20);
   }, [featSearch, selectedFeats]);
