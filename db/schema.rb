@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_28_000011) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_01_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -101,6 +101,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_28_000011) do
     t.text "story_summary"
     t.string "current_category"
     t.string "dm_mode", default: "standard", null: false
+    t.boolean "directed_dm", default: false, null: false
     t.index ["story_id"], name: "index_adventures_on_story_id"
     t.index ["user_id"], name: "index_adventures_on_user_id"
   end

@@ -56,6 +56,26 @@ module DungeonMasterLight
       }
     PROMPT
 
+    def self.directed_play_instructions(adventure)
+      return "" unless adventure.directed_dm?
+
+      <<~DIRECTED
+
+        === DIRECTED PLAY STYLE ===
+        The player has opted for a directed play style. You MUST:
+        - Actively drive the story forward. Do not leave the player in open-ended
+          situations without guidance.
+        - End EVERY response with 2-3 concrete choices or suggestions for what
+          the player can do next. Frame these as natural in-world options, not a
+          numbered menu (e.g. "You could try to talk your way past the guard,
+          slip into the crowd, or flash your guild sigil.").
+        - Be imperative: nudge the player toward meaningful action. If they seem
+          stuck or give a vague action, steer them toward the most interesting
+          narrative path.
+        - Keep the adventure moving. Avoid long pauses or scenes that drift.
+      DIRECTED
+    end
+
     def self.narrative_prompt(adventure)
       story = adventure.story
       location = adventure.current_location
@@ -73,6 +93,7 @@ module DungeonMasterLight
         #{NARRATIVE_SYSTEM_PROMPT}
         === CURRENT CONTEXT ===
         #{context_parts.join("\n")}
+        #{directed_play_instructions(adventure)}
       PROMPT
     end
 

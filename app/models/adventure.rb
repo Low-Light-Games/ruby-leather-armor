@@ -20,6 +20,10 @@ class Adventure < ApplicationRecord
     dm_mode == "light"
   end
 
+  def directed_dm?
+    directed_dm == true
+  end
+
   def current_location
     locations.current.first
   end

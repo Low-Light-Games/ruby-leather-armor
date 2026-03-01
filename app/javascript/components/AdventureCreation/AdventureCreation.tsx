@@ -17,7 +17,9 @@ export const AdventureCreation = () => {
   const [selectedStoryId, setSelectedStoryId] = useState<number | ''>('')
   const [selectedSheetId, setSelectedSheetId] = useState<number | ''>('')
   const [dmMode, setDmMode] = useState<'standard' | 'light'>('standard')
+  const [directedDm, setDirectedDm] = useState(false)
   const [lightDmEnabled, setLightDmEnabled] = useState(false)
+  const [directedDmEnabled, setDirectedDmEnabled] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -36,6 +38,7 @@ export const AdventureCreation = () => {
         setSheets(sheetsData)
         setAdventures(adventuresData)
         setLightDmEnabled(flagsData.enabled?.includes('light_dungeon_master') ?? false)
+        setDirectedDmEnabled(flagsData.enabled?.includes('directed_dm') ?? false)
         setLoadingData(false)
       })
       .catch(err => {
@@ -66,6 +69,7 @@ export const AdventureCreation = () => {
           story_id: selectedStoryId,
           sheet_id: selectedSheetId,
           dm_mode: dmMode,
+          directed_dm: directedDm,
         }),
       })
 
@@ -183,6 +187,28 @@ export const AdventureCreation = () => {
                       <span className="dm-mode-desc">App-managed combat, locations, and NPCs</span>
                     </label>
                   </div>
+                </div>
+              )}
+
+              {directedDmEnabled && (
+                <div className="form-group">
+                  <label className="toggle-row" htmlFor="directed-dm-toggle">
+                    <span className="toggle-text">
+                      <span className="toggle-label">Directed Play</span>
+                      <span className="toggle-desc">The DM actively guides you with clear choices and direction</span>
+                    </span>
+                    <span className={`toggle-switch ${directedDm ? 'active' : ''}`} role="switch" aria-checked={directedDm}>
+                      <input
+                        id="directed-dm-toggle"
+                        type="checkbox"
+                        checked={directedDm}
+                        onChange={e => setDirectedDm(e.target.checked)}
+                      />
+                      <span className="toggle-track">
+                        <span className="toggle-knob" />
+                      </span>
+                    </span>
+                  </label>
                 </div>
               )}
 

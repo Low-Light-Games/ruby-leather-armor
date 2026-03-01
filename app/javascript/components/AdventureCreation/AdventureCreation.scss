@@ -113,6 +113,79 @@
     }
   }
 
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    cursor: pointer;
+    padding: 12px 16px;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    transition: border-color 0.2s;
+
+    &:hover {
+      border-color: #adb5bd;
+    }
+  }
+
+  .toggle-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .toggle-label {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+  }
+
+  .toggle-desc {
+    font-size: 12px;
+    color: #888;
+    font-weight: 400;
+  }
+
+  .toggle-switch {
+    flex-shrink: 0;
+
+    input[type="checkbox"] {
+      display: none;
+    }
+  }
+
+  .toggle-track {
+    display: block;
+    width: 44px;
+    height: 24px;
+    background-color: #ccc;
+    border-radius: 12px;
+    position: relative;
+    transition: background-color 0.2s;
+  }
+
+  .toggle-switch.active .toggle-track {
+    background-color: #007bff;
+  }
+
+  .toggle-knob {
+    display: block;
+    width: 20px;
+    height: 20px;
+    background-color: white;
+    border-radius: 50%;
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+
+  .toggle-switch.active .toggle-knob {
+    transform: translateX(20px);
+  }
+
   .submit-button {
     padding: 12px 24px;
     background-color: #28a745;

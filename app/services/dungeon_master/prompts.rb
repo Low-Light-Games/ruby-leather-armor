@@ -160,7 +160,7 @@ module DungeonMaster
           secrets, or information the player hasn't discovered yet.
 
         #{pacing_instructions(config)}
-
+        #{directed_play_instructions(adventure)}
         === RESPONSE FORMAT ===
         Respond ONLY with valid JSON (no markdown, no code fences):
         {
@@ -355,7 +355,7 @@ module DungeonMaster
           satisfying, final conclusion.
 
         #{pacing_instructions(config)}
-
+        #{directed_play_instructions(adventure)}
         === RESPONSE FORMAT ===
         Respond ONLY with valid JSON (no markdown, no code fences):
         {
@@ -592,6 +592,26 @@ module DungeonMaster
       parts << "#{currency['silver']} sp"   if currency["silver"].to_i > 0
       parts << "#{currency['copper']} cp"   if currency["copper"].to_i > 0
       parts.empty? ? "none" : parts.join(", ")
+    end
+
+    def self.directed_play_instructions(adventure)
+      return "" unless adventure.directed_dm?
+
+      <<~DIRECTED
+
+        === DIRECTED PLAY STYLE ===
+        The player has opted for a directed play style. You MUST:
+        - Actively drive the story forward. Do not leave the player in open-ended
+          situations without guidance.
+        - End EVERY response with 2-3 concrete choices or suggestions for what
+          the player can do next. Frame these as natural in-world options, not a
+          numbered menu (e.g. "You could try to talk your way past the guard,
+          slip into the crowd, or flash your guild sigil.").
+        - Be imperative: nudge the player toward meaningful action. If they seem
+          stuck or give a vague action, steer them toward the most interesting
+          narrative path.
+        - Keep the adventure moving. Avoid long pauses or scenes that drift.
+      DIRECTED
     end
 
     # @param config [DmConfig]

@@ -156,6 +156,7 @@ export interface Adventure {
   immediate_context: string | null
   story_summary: string | null
   current_category: string | null
+  directed_dm: boolean
 }
 
 export interface AdventureSummary {
