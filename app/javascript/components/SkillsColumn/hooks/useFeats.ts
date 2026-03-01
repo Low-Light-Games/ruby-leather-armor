@@ -138,11 +138,11 @@ export function useFeats({
 
   const filteredFeats = useMemo(() => {
     const term = featSearch.toLowerCase().trim();
-    if (!term) return [];
-    return getAllFeats()
-      .filter(f => !selectedFeats.includes(f.id))
-      .filter(f => f.name.toLowerCase().includes(term) || f.category.includes(term))
-      .slice(0, 12);
+    let pool = getAllFeats().filter(f => !selectedFeats.includes(f.id));
+    if (term) {
+      pool = pool.filter(f => f.name.toLowerCase().includes(term) || f.category.includes(term));
+    }
+    return pool.slice(0, 20);
   }, [featSearch, selectedFeats]);
 
   const filteredFeatsWithChecks = useMemo(() => {

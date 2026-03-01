@@ -134,21 +134,21 @@ export function useEquipment({
 
   const filteredItems = useMemo(() => {
     const term = search.toLowerCase().trim();
-    if (!term) return [];
 
     let pool = getItemDefinitions();
     if (typeFilter) {
       pool = pool.filter(i => i.itemType === typeFilter);
     }
-
-    return pool
-      .filter(
+    if (term) {
+      pool = pool.filter(
         i =>
           i.name.toLowerCase().includes(term) ||
           i.itemType.includes(term) ||
           (i.weaponCategory?.includes(term) ?? false),
-      )
-      .slice(0, 12);
+      );
+    }
+
+    return pool.slice(0, 20);
   }, [search, typeFilter]);
 
   // ── Selected items with resolved definitions ──

@@ -135,10 +135,11 @@ export function useSpells({
 
   const filteredSpellsWithChecks = useMemo(() => {
     const term = spellSearch.toLowerCase().trim();
-    if (!term) return [];
-    return availableSpells
-      .filter(s => !selectedSpells.includes(s.id))
-      .filter(s => s.name.toLowerCase().includes(term) || s.school.includes(term))
+    let pool = availableSpells.filter(s => !selectedSpells.includes(s.id));
+    if (term) {
+      pool = pool.filter(s => s.name.toLowerCase().includes(term) || s.school.includes(term));
+    }
+    return pool
       .map(spell => {
         if (!currentClass) {
           return {
@@ -157,7 +158,7 @@ export function useSpells({
         const slotReason = eligible && !hasSlot ? 'Spell slots full for this level' : undefined;
         return { spell, eligibility, selectable, slotReason };
       })
-      .slice(0, 12);
+      .slice(0, 20);
   }, [spellSearch, selectedSpells, availableSpells, currentClass, currentLevel, intelligenceScore]);
 
   // ── Selected spells with eligibility ────────────────────────────
