@@ -123,20 +123,25 @@
                 <label class="psr-label"><%= step.titleize %></label>
                 <span class="psr-hint"><%= DmConfig::STEP_MODEL_HINTS[step] %></span>
               </div>
-              <select name="step_models[<%= step %>]"
-                      class="config-select step-model-select"
-                      data-step="<%= step %>"
-                      id="step_models_<%= step %>">
-                <option value="">(Default)</option>
-                <% @models_with_metadata.each do |m| %>
-                  <option value="<%= m["id"] %>"
-                          data-default-budgets="<%= (m["default_token_budgets"] || {}).to_json %>"
-                          data-reasoning-model="<%= m["reasoning_model"] %>"
-                          <%= 'selected' if current_step_models[step] == m["id"] %>>
-                    <%= m["name"] %><%= " ⚙️" if m["reasoning_model"] %>
-                  </option>
-                <% end %>
-              </select>
+              <div class="psr-model-block">
+                <select name="step_models[<%= step %>]"
+                        class="config-select step-model-select"
+                        data-step="<%= step %>"
+                        id="step_models_<%= step %>">
+                  <option value="">(Default)</option>
+                  <% @models_with_metadata.each do |m| %>
+                    <option value="<%= m["id"] %>"
+                            data-default-budgets="<%= (m["default_token_budgets"] || {}).to_json %>"
+                            data-reasoning-model="<%= m["reasoning_model"] %>"
+                            data-input-cost="<%= m["input_cost"] %>"
+                            data-output-cost="<%= m["output_cost"] %>"
+                            <%= 'selected' if current_step_models[step] == m["id"] %>>
+                      <%= m["name"] %><%= " ⚙️" if m["reasoning_model"] %>
+                    </option>
+                  <% end %>
+                </select>
+                <span class="psr-cost" id="step_cost_<%= step %>"></span>
+              </div>
               <%= number_field_tag "token_budgets[#{step}]",
                     current_budgets[step].presence,
                     min: 100, max: 16000, step: 100,
@@ -261,9 +266,49 @@
     });
   }
 
-  // Update placeholders when any step model changes
+  function getDefaultModelCosts() {
+    var select = document.getElementById('model-select');
+    var opt = select.options[select.selectedIndex];
+    if (!opt) return { input: null, output: null };
+    return { input: opt.dataset.inputCost, output: opt.dataset.outputCost };
+  }
+
+  function updateStepPricing() {
+    var defaultCosts = getDefaultModelCosts();
+    var defaultName = getDefaultModelName();
+
+    document.querySelectorAll('.step-model-select').forEach(function(stepSelect) {
+      var step = stepSelect.dataset.step;
+      var costEl = document.getElementById('step_cost_' + step);
+      if (!costEl) return;
+
+      var opt = stepSelect.options[stepSelect.selectedIndex];
+      var inputCost, outputCost, label;
+
+      if (opt && opt.value) {
+        inputCost = opt.dataset.inputCost;
+        outputCost = opt.dataset.outputCost;
+        label = opt.textContent.trim();
+      } else {
+        inputCost = defaultCosts.input;
+        outputCost = defaultCosts.output;
+        label = defaultName;
+      }
+
+      if (inputCost && outputCost) {
+        costEl.innerHTML = '$' + inputCost + ' in · $' + outputCost + ' out <small>/ 1M tok</small>';
+      } else {
+        costEl.textContent = '';
+      }
+    });
+  }
+
+  // Update placeholders and pricing when any step model changes
   document.querySelectorAll('.step-model-select').forEach(function(select) {
-    select.addEventListener('change', updateBudgetPlaceholders);
+    select.addEventListener('change', function() {
+      updateBudgetPlaceholders();
+      updateStepPricing();
+    });
   });
 
   // Reset all step models to default and budgets to model defaults
@@ -277,6 +322,7 @@
       input.value = budgets[step] || '';
     });
     updateBudgetPlaceholders();
+    updateStepPricing();
   });
 
   // Per-step reset buttons
@@ -292,6 +338,7 @@
       budgetInput.value = budgets[step] || '';
 
       updateBudgetPlaceholders();
+      updateStepPricing();
     });
   });
 
@@ -316,6 +363,7 @@
 
     panel.innerHTML = parts.join('');
     updateBudgetPlaceholders();
+    updateStepPricing();
   }
 
   document.getElementById('model-select').addEventListener('change', updateModelDetails);
@@ -612,6 +660,25 @@
     font-size: 10px;
     color: #999;
     line-height: 1.3;
+  }
+
+  .psr-model-block {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .psr-cost {
+    font-size: 10px;
+    color: #28a745;
+    font-weight: 600;
+    line-height: 1.2;
+    min-height: 13px;
+
+    small {
+      font-weight: 400;
+      color: #999;
+    }
   }
 
   .btn-reset-step {
