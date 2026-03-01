@@ -12,6 +12,7 @@ import type { FeatDefinition } from './pathfinder_feats_types'
 import type { AdventureSheet, DerivedStats } from '../types'
 import { getItemById } from './pathfinder_items'
 import { getFeatById } from './pathfinder_feats'
+import { getUnarmedDamageDice } from './pathfinder_unarmed'
 
 // ── Property helpers ─────────────────────────────────────────
 
@@ -148,6 +149,61 @@ export function rollWeaponDamage(
     total,
     damageType: item.damageType ?? 'untyped',
     label,
+  }
+}
+
+// ── Unarmed damage roll ──────────────────────────────────────
+
+export function rollUnarmedDamage(
+  sheet: AdventureSheet,
+  ds: DerivedStats,
+): DamageRollResult {
+  const diceNotation = getUnarmedDamageDice(sheet.character_class, sheet.level)
+  const parsed: ParsedDice = parseDiceNotation(diceNotation)
+  const rolls = rollParsedDice(parsed)
+
+  let flatBonus = parsed.flat
+  const breakdown: string[] = []
+
+  const strMod = ds.mods.strength ?? 0
+  flatBonus += strMod
+  if (strMod !== 0) breakdown.push(`STR ${formatMod(strMod)}`)
+
+  const feats = loadFeats(sheet)
+  for (const feat of feats) {
+    for (const effect of feat.effects) {
+      if (effect.type !== 'bonus') continue
+      if (effect.target !== 'damage' && effect.target !== 'melee_damage') continue
+      if (effect.condition) {
+        breakdown.push(`(${formatMod(effect.bonus)} ${feat.name} — ${effect.condition})`)
+      } else {
+        flatBonus += effect.bonus
+        breakdown.push(`${feat.name} ${formatMod(effect.bonus)}`)
+      }
+    }
+  }
+
+  // Power Attack (optional toggle — show as note)
+  for (const feat of feats) {
+    for (const effect of feat.effects) {
+      if (effect.type !== 'attack_damage_trade') continue
+      const scaleFactor = Math.max(1, Math.floor(ds.bab / effect.scalingPerBAB))
+      const dmgBonus = effect.damageBonus * scaleFactor
+      breakdown.push(`(${formatMod(dmgBonus)} if ${feat.name})`)
+    }
+  }
+
+  const diceSum = rolls.reduce((a, b) => a + b, 0)
+  const total = Math.max(1, diceSum + flatBonus)
+
+  return {
+    rolls,
+    diceNotation,
+    flatBonus,
+    bonusBreakdown: breakdown,
+    total,
+    damageType: 'bludgeoning',
+    label: 'Unarmed Strike',
   }
 }
 

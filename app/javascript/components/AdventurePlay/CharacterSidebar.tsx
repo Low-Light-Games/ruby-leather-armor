@@ -8,8 +8,8 @@ import { formatMod, ABILITY_ABBR, ATTRIBUTE_ORDER } from '../../utils/formatting
 import { formatCurrency, getItemById } from '../../rules/pathfinder_items';
 import { getFeatById, featDisplayName } from '../../rules/pathfinder_feats';
 import { getSpellById, getCastingStyle } from '../../rules/pathfinder_spells';
-import { getWeaponAttackMod } from '../../rules/damage';
-import { spellHasDamage } from '../../rules/damage';
+import { getWeaponAttackMod, spellHasDamage } from '../../rules/damage';
+import { getUnarmedDamageDice } from '../../rules/pathfinder_unarmed';
 
 interface CharacterSidebarProps {
   sheet: AdventureSheet;
@@ -24,6 +24,7 @@ interface CharacterSidebarProps {
   rollSkill: (skillName: string, total: number) => void;
   rollWeaponDamage: (itemId: string) => void;
   rollSpellDamage: (spellId: string) => void;
+  rollUnarmedDamage: () => void;
   spellbookSearch: string;
   setSpellbookSearch: (v: string) => void;
   spellbookSaving: boolean;
@@ -47,6 +48,7 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
   rollSkill,
   rollWeaponDamage,
   rollSpellDamage,
+  rollUnarmedDamage,
   spellbookSearch,
   setSpellbookSearch,
   spellbookSaving,
@@ -171,6 +173,33 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
           <span className="save-value">{formatMod(ds.will)}</span>
           <span className="roll-dice-hint">🎲</span>
         </button>
+      </div>
+
+      <div className="damage-tiles">
+        {equippedWeapons.length > 0 ? (
+          equippedWeapons.map(({ item, id }) => (
+            <button
+              key={id}
+              className="damage-tile"
+              onClick={() => rollWeaponDamage(id)}
+              title={`Roll ${item.name} Damage`}
+            >
+              <span className="damage-tile-label">{item.name}</span>
+              <span className="damage-tile-dice">{item.damageDice}</span>
+              <span className="roll-dice-hint">🎲</span>
+            </button>
+          ))
+        ) : (
+          <button
+            className="damage-tile"
+            onClick={rollUnarmedDamage}
+            title="Roll Unarmed Damage"
+          >
+            <span className="damage-tile-label">Unarmed</span>
+            <span className="damage-tile-dice">{getUnarmedDamageDice(sheet.character_class, sheet.level)}</span>
+            <span className="roll-dice-hint">🎲</span>
+          </button>
+        )}
       </div>
 
       <div className="adventure-gold">

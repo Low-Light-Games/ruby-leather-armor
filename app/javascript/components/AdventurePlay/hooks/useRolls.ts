@@ -4,7 +4,7 @@ import type { RollResultDisplay } from '../../RollResultModal';
 import type { DamageRollResult } from '../../../rules/dice';
 import { formatMod, ABILITY_ABBR } from '../../../utils/formatting';
 import { rollD20 } from '../../../rules/dice';
-import { rollWeaponDamage as calcWeaponDamage, rollSpellDamage as calcSpellDamage } from '../../../rules/damage';
+import { rollWeaponDamage as calcWeaponDamage, rollSpellDamage as calcSpellDamage, rollUnarmedDamage as calcUnarmedDamage } from '../../../rules/damage';
 import { getSpellById } from '../../../rules/pathfinder_spells';
 
 interface UseRollsResult {
@@ -22,6 +22,7 @@ interface UseRollsResult {
   rollSkill: (skillName: string, total: number) => void;
   rollWeaponDamage: (itemId: string) => void;
   rollSpellDamage: (spellId: string) => void;
+  rollUnarmedDamage: () => void;
 }
 
 export function useRolls(ds: DerivedStats | null, sheet?: AdventureSheet | null): UseRollsResult {
@@ -87,6 +88,11 @@ export function useRolls(ds: DerivedStats | null, sheet?: AdventureSheet | null)
     if (result) setDamageDisplay(result);
   }, [sheet]);
 
+  const rollUnarmedDamage = useCallback(() => {
+    if (!ds || !sheet) return;
+    setDamageDisplay(calcUnarmedDamage(sheet, ds));
+  }, [ds, sheet]);
+
   return {
     rollDisplay,
     damageDisplay,
@@ -102,5 +108,6 @@ export function useRolls(ds: DerivedStats | null, sheet?: AdventureSheet | null)
     rollSkill,
     rollWeaponDamage,
     rollSpellDamage,
+    rollUnarmedDamage,
   };
 }

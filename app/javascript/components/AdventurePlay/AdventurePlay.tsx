@@ -72,6 +72,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           rollSkill={rolls.rollSkill}
           rollWeaponDamage={rolls.rollWeaponDamage}
           rollSpellDamage={rolls.rollSpellDamage}
+          rollUnarmedDamage={rolls.rollUnarmedDamage}
           spellbookSearch={spellbook.spellbookSearch}
           setSpellbookSearch={spellbook.setSpellbookSearch}
           spellbookSaving={spellbook.spellbookSaving}
