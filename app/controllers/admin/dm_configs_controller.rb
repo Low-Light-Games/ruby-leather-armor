@@ -4,6 +4,8 @@ module Admin
 
     def show
       @config = DmConfig.instance
+      available_ids = fetch_available_model_ids
+      @models_with_metadata = OpenaiModelCatalog.for_models(available_ids)
       render layout: 'application'
     end
 
@@ -45,11 +47,31 @@ module Admin
         new_settings["context_mode"] = params[:context_mode]
       end
 
+      if params[:model].present?
+        new_settings["model"] = params[:model]
+      end
+
       @config.update!(settings: new_settings)
       redirect_to admin_dm_config_path, notice: "DM settings updated."
     end
 
+    def models
+      render json: OpenaiModelCatalog.for_models(fetch_available_model_ids)
+    end
+
     private
+
+    def fetch_available_model_ids
+      client = OpenAI::Client.new
+      response = client.models.list
+      response.fetch("data", [])
+        .map { |m| m["id"] }
+        .select { |id| OpenaiModelCatalog.chat_model?(id) }
+        .sort
+    rescue StandardError => e
+      Rails.logger.error("[DmConfigsController] Failed to fetch OpenAI models: #{e.message}")
+      [DmConfig::DEFAULTS["model"]]
+    end
 
     def require_admin
       unless current_user&.admin?

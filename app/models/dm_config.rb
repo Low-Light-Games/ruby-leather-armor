@@ -12,6 +12,7 @@ class DmConfig < ApplicationRecord
   #   "classification_mode"     => str   (default "merged")     — "merged" or "parallel"
   #   "response_mode"           => str   (default "unified")    — "unified" or "sequential"
   #   "context_mode"            => str   (default "history")    — "history" or "contexts_only"
+  #   "model"                   => str   (default "gpt-4o-mini") — OpenAI model to use for chat completions
   DEFAULTS = {
     "verbose" => false,
     "temperature" => 0.8,
@@ -20,7 +21,8 @@ class DmConfig < ApplicationRecord
     "sanitization_threshold" => 30,
     "classification_mode" => "merged",
     "response_mode" => "unified",
-    "context_mode" => "history"
+    "context_mode" => "history",
+    "model" => "gpt-4o-mini"
   }.freeze
 
   def self.instance
@@ -78,5 +80,9 @@ class DmConfig < ApplicationRecord
 
   def contexts_only?
     context_mode == "contexts_only"
+  end
+
+  def model
+    get("model") || "gpt-4o-mini"
   end
 end

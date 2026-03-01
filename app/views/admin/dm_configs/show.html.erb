@@ -66,6 +66,34 @@
     </div>
 
     <div class="config-section">
+      <h2>Model</h2>
+
+      <div class="config-field">
+        <label for="model">OpenAI Model</label>
+        <select name="model" id="model-select" class="config-select">
+          <% @models_with_metadata.each do |m| %>
+            <option value="<%= m["id"] %>"
+                    data-description="<%= m["description"] %>"
+                    data-input-cost="<%= m["input_cost"] %>"
+                    data-output-cost="<%= m["output_cost"] %>"
+                    <%= 'selected' if m["id"] == @config.model %>>
+              <%= m["name"] %>
+            </option>
+          <% end %>
+          <% unless @models_with_metadata.any? { |m| m["id"] == @config.model } %>
+            <option value="<%= @config.model %>" selected><%= @config.model %> (unavailable)</option>
+          <% end %>
+        </select>
+
+        <div class="model-details" id="model-details"></div>
+
+        <p class="field-hint">
+          Chat-completion models available on your OpenAI account.
+        </p>
+      </div>
+    </div>
+
+    <div class="config-section">
       <h2>Creativity</h2>
 
       <div class="config-field">
@@ -166,6 +194,29 @@
   document.getElementById('threshold-slider').addEventListener('input', function() {
     document.getElementById('threshold-display').textContent = this.value;
   });
+
+  // Model details panel
+  function updateModelDetails() {
+    var select = document.getElementById('model-select');
+    var opt = select.options[select.selectedIndex];
+    var panel = document.getElementById('model-details');
+    if (!opt) { panel.innerHTML = ''; return; }
+
+    var id = opt.value;
+    var desc = opt.dataset.description;
+    var inputCost = opt.dataset.inputCost;
+    var outputCost = opt.dataset.outputCost;
+
+    var parts = ['<span class="md-id">' + id + '</span>'];
+    if (desc) parts.push('<span class="md-desc">' + desc + '</span>');
+    if (inputCost && inputCost !== '')
+      parts.push('<span class="md-cost">$' + inputCost + ' in · $' + outputCost + ' out <small>per 1M tokens</small></span>');
+
+    panel.innerHTML = parts.join('');
+  }
+
+  document.getElementById('model-select').addEventListener('change', updateModelDetails);
+  updateModelDetails();
 </script>
 
 <%= render 'admin/shared/navbar_styles' %>
@@ -329,6 +380,61 @@
     border-radius: 4px;
     font-size: 14px;
     box-sizing: border-box;
+  }
+
+  .config-select {
+    width: 100%;
+    padding: 8px 30px 8px 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+    background: white;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+
+    &:focus {
+      outline: none;
+      border-color: #007bff;
+      box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+    }
+  }
+
+  .model-details {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    min-height: 22px;
+  }
+
+  .md-id {
+    font-size: 12px;
+    font-family: monospace;
+    color: #6c757d;
+    background: #e9ecef;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  .md-desc {
+    font-size: 13px;
+    color: #495057;
+  }
+
+  .md-cost {
+    font-size: 12px;
+    color: #28a745;
+    font-weight: 600;
+
+    small {
+      font-weight: 400;
+      color: #888;
+    }
   }
 
   /* Temperature slider */

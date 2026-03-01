@@ -27,7 +27,9 @@ Rails.application.routes.draw do
     resources :feature_flags, only: [:index] do
       member { patch :toggle }
     end
-    resource :dm_config, only: [:show, :update]
+    resource :dm_config, only: [:show, :update] do
+      get :models, on: :member
+    end
   end
 
   resources :feature_flags, only: [:index]

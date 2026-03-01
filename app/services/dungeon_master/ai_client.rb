@@ -5,7 +5,6 @@ module DungeonMaster
   # Handles request construction, retries for degenerate responses,
   # JSON parsing with fallbacks, and HTTP-level error mapping.
   class AiClient
-    MODEL = "gpt-4o-mini".freeze
     MAX_RETRIES = 1
 
     attr_reader :last_failed_raw_response, :last_parse_status
@@ -13,6 +12,7 @@ module DungeonMaster
     def initialize(config)
       @client = OpenAI::Client.new
       @config = config
+      @model = config.model
       @last_failed_raw_response = nil
       @last_parse_status = nil
     end
@@ -35,7 +35,7 @@ module DungeonMaster
       end
 
       params = {
-        model: MODEL,
+        model: @model,
         messages: chat_messages,
         max_tokens: max_tokens,
         temperature: @config.temperature,
