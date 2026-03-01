@@ -52,15 +52,19 @@ class DungeonMasterService
       clean_input = triage[:sanitized_input]
       category = triage[:category]
 
+      classification_reason = triage[:classification_reasoning]
+
       if clean_input != player_input
         @log.dm_log!(
           "Message \"#{@log.truncate(player_input)}\" had to be sanitized " \
-          "(danger: #{triage[:danger_score]}/100). Clean version: \"#{@log.truncate(clean_input)}\" | Category: #{category}"
+          "(danger: #{triage[:danger_score]}/100). Clean version: \"#{@log.truncate(clean_input)}\" | " \
+          "Category: #{category}#{classification_reason ? " (#{classification_reason})" : ''}"
         )
       else
         @log.dm_log!(
           "Message \"#{@log.truncate(player_input)}\" passed sanitization " \
-          "(danger: #{triage[:danger_score]}/100, threshold: #{threshold}). Category: #{category}"
+          "(danger: #{triage[:danger_score]}/100, threshold: #{threshold}). " \
+          "Category: #{category}#{classification_reason ? " (#{classification_reason})" : ''}"
         )
       end
 
@@ -193,7 +197,8 @@ class DungeonMasterService
       danger_score: parsed["danger_score"].to_i,
       sanitized_input: parsed["sanitized_input"] || player_input,
       reason: parsed["reason"],
-      category: normalize_category(parsed["category"])
+      category: normalize_category(parsed["category"]),
+      classification_reasoning: parsed["classification_reasoning"]
     }
   rescue AiError => e
     fallback_raw = raw || @ai.last_failed_raw_response
@@ -208,7 +213,7 @@ class DungeonMasterService
     sanitized = sanitize_thread.value
     classification = classify_thread.value
 
-    sanitized.merge(category: classification[:category])
+    sanitized.merge(category: classification[:category], classification_reasoning: classification[:classification_reasoning])
   end
 
   def sanitize_input(player_input)
@@ -248,17 +253,20 @@ class DungeonMasterService
     raw = @ai.chat(
       system_prompt: system_prompt,
       user_message: player_input,
-      max_tokens: 100
+      max_tokens: 200
     )
 
     parsed = @ai.parse_json(raw)
     @log.ai_log!("classification", prompt_summary, raw, parsed, parse_status: @ai.last_parse_status, request_body: request_body)
 
-    { category: normalize_category(parsed["category"]) }
+    {
+      category: normalize_category(parsed["category"]),
+      classification_reasoning: parsed["classification_reasoning"]
+    }
   rescue AiError => e
     fallback_raw = raw || @ai.last_failed_raw_response
     @log.ai_log_error!("classification", prompt_summary, e, raw_response: fallback_raw, request_body: request_body)
-    { category: "dm_query" }
+    { category: "dm_query", classification_reasoning: nil }
   end
 
   # ----------------------------------------------------------------

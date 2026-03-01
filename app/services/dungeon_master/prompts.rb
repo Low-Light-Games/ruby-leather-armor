@@ -50,7 +50,8 @@ module DungeonMaster
 
       Respond ONLY with valid JSON (no markdown, no code fences):
       {
-        "category": "traversal"
+        "category": "traversal",
+        "classification_reasoning": "Brief explanation of why this category was chosen"
       }
     PROMPT
 
@@ -93,7 +94,8 @@ module DungeonMaster
         "danger_score": 0,
         "sanitized_input": "the cleaned version of the player's input",
         "reason": "explanation of the danger assessment, null if completely safe",
-        "category": "traversal"
+        "category": "traversal",
+        "classification_reasoning": "Brief explanation of why this category was chosen"
       }
     PROMPT
 
