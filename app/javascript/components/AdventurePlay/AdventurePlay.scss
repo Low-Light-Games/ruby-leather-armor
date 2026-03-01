@@ -682,12 +682,47 @@
         &.type-ammunition { background: #fde8e8; color: #c0392b; }
       }
 
-      .inventory-equipped {
+      .equip-error {
+        margin: 0 0 4px;
+        font-size: 11px;
+        color: #dc3545;
+      }
+
+      .inventory-row.is-equipped {
+        border-left: 3px solid #28a745;
+      }
+
+      .equip-toggle {
         font-size: 9px;
-        padding: 1px 5px;
+        padding: 1px 6px;
         border-radius: 3px;
-        background: #d4edda;
-        color: #155724;
+        border: 1px solid #ccc;
+        cursor: pointer;
+        background: #f8f9fa;
+        color: #555;
+        transition: background-color 0.15s, border-color 0.15s;
+
+        &:hover:not(:disabled) {
+          border-color: #007bff;
+          color: #007bff;
+        }
+
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+
+        &.equipped {
+          background: #d4edda;
+          border-color: #28a745;
+          color: #155724;
+
+          &:hover:not(:disabled) {
+            background: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+          }
+        }
       }
     }
 

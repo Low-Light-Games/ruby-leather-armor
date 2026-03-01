@@ -29,6 +29,9 @@ interface CharacterSidebarProps {
   spellbookSaving: boolean;
   spellbookSearchResults: SpellbookSearchResult[];
   addSpellToSpellbook: (spell: SpellDefinition) => void;
+  toggleEquip: (itemId: string) => void;
+  equipSaving: boolean;
+  equipError: string | null;
 }
 
 export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
@@ -49,6 +52,9 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
   spellbookSaving,
   spellbookSearchResults,
   addSpellToSpellbook,
+  toggleEquip,
+  equipSaving,
+  equipError,
 }) => {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     attributes: true,
@@ -288,18 +294,26 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
           onToggle={() => toggleSection('inventory')}
         >
           <div className="inventory-list">
+            {equipError && <p className="equip-error">{equipError}</p>}
             {allItems.length === 0 ? (
               <p className="empty-hint">No items.</p>
             ) : (
               allItems.map(({ item, id, quantity, equipped }) => (
-                <div key={id} className="inventory-row" title={item.summary ?? undefined}>
+                <div key={id} className={`inventory-row ${equipped ? 'is-equipped' : ''}`} title={item.summary ?? undefined}>
                   <span className="inventory-name">
                     {item.name}
                     {quantity > 1 && <span className="inventory-qty"> x{quantity}</span>}
                   </span>
                   <span className="inventory-meta">
                     <span className={`inventory-type type-${item.itemType}`}>{item.itemType}</span>
-                    {equipped && <span className="inventory-equipped">equipped</span>}
+                    <button
+                      className={`equip-toggle ${equipped ? 'equipped' : 'unequipped'}`}
+                      onClick={() => toggleEquip(id)}
+                      disabled={equipSaving}
+                      title={equipped ? 'Unequip' : 'Equip'}
+                    >
+                      {equipped ? 'Unequip' : 'Equip'}
+                    </button>
                   </span>
                 </div>
               ))

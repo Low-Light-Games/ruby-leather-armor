@@ -68,6 +68,24 @@ class AdventureSheetsController < ApplicationController
     render json: adventure_sheet_json(@adventure_sheet.reload)
   end
 
+  # PATCH /adventures/:adventure_id/adventure_sheet/toggle_equip
+  #
+  # Toggles the equipped state of a single item on the adventure sheet.
+  # Expects { item_id: "warhammer" }.
+  def toggle_equip
+    authorize @adventure, :show?
+
+    item = @adventure_sheet.adventure_sheet_items.find_by!(item_definition_id: params[:item_id])
+    item.equipped = !item.equipped
+
+    if item.save
+      @adventure_sheet.recompute_derived_stats!
+      render json: adventure_sheet_json(@adventure_sheet.reload)
+    else
+      render json: { error: item.errors.full_messages.join(", ") }, status: :unprocessable_entity
+    end
+  end
+
   private
 
   def set_adventure

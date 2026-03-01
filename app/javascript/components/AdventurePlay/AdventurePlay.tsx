@@ -8,6 +8,7 @@ import { StorySidebar } from './StorySidebar';
 import { useAdventure } from './hooks/useAdventure';
 import { useRolls } from './hooks/useRolls';
 import { useSpellbook } from './hooks/useSpellbook';
+import { useInventory } from './hooks/useInventory';
 import './AdventurePlay.scss';
 
 interface AdventurePlayProps {
@@ -21,6 +22,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const advSheet = adventure?.adventure_sheet ?? null;
   const rolls = useRolls(ds, advSheet);
   const spellbook = useSpellbook(adventure, ds, setAdventure);
+  const inventory = useInventory(adventure, setAdventure);
 
   // ── Early returns (loading / auth / error) ─────────────────────
 
@@ -75,6 +77,9 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           spellbookSaving={spellbook.spellbookSaving}
           spellbookSearchResults={spellbook.spellbookSearchResults}
           addSpellToSpellbook={spellbook.addSpellToSpellbook}
+          toggleEquip={inventory.toggleEquip}
+          equipSaving={inventory.equipSaving}
+          equipError={inventory.equipError}
         />
 
         {/* MIDDLE COLUMN — Chat */}
