@@ -53,6 +53,7 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     attributes: true,
     weapons: false,
+    inventory: false,
     skills: false,
     feats: false,
     spells: false,
@@ -77,6 +78,17 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
       if (def.itemType === 'weapon' || def.itemType === 'shield') {
         result.push({ item: def, id: owned.itemId });
       }
+    }
+    return result;
+  }, [sheet.details?.items]);
+
+  const allItems: { item: ItemDefinition; id: string; quantity: number; equipped: boolean }[] = useMemo(() => {
+    const items = sheet.details?.items ?? [];
+    const result: { item: ItemDefinition; id: string; quantity: number; equipped: boolean }[] = [];
+    for (const owned of items) {
+      const def = getItemById(owned.itemId);
+      if (!def) continue;
+      result.push({ item: def, id: owned.itemId, quantity: owned.quantity, equipped: owned.equipped });
     }
     return result;
   }, [sheet.details?.items]);
@@ -266,6 +278,31 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
                   </div>
                 );
               })
+            )}
+          </div>
+        </Accordion>
+
+        <Accordion
+          title={`Inventory (${allItems.length})`}
+          isOpen={openSections.inventory}
+          onToggle={() => toggleSection('inventory')}
+        >
+          <div className="inventory-list">
+            {allItems.length === 0 ? (
+              <p className="empty-hint">No items.</p>
+            ) : (
+              allItems.map(({ item, id, quantity, equipped }) => (
+                <div key={id} className="inventory-row" title={item.summary ?? undefined}>
+                  <span className="inventory-name">
+                    {item.name}
+                    {quantity > 1 && <span className="inventory-qty"> x{quantity}</span>}
+                  </span>
+                  <span className="inventory-meta">
+                    <span className={`inventory-type type-${item.itemType}`}>{item.itemType}</span>
+                    {equipped && <span className="inventory-equipped">equipped</span>}
+                  </span>
+                </div>
+              ))
             )}
           </div>
         </Accordion>

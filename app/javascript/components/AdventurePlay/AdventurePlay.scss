@@ -615,6 +615,82 @@
       }
     }
 
+    /* Inventory list */
+    .inventory-list {
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 240px;
+      overflow-y: auto;
+
+      .empty-hint {
+        margin: 0;
+        font-size: 12px;
+        color: #888;
+        font-style: italic;
+      }
+
+      .inventory-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        padding: 5px 8px;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+      }
+
+      .inventory-name {
+        font-size: 12px;
+        font-weight: 600;
+        color: #333;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+        flex: 1;
+      }
+
+      .inventory-qty {
+        font-weight: 400;
+        color: #666;
+      }
+
+      .inventory-meta {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        flex-shrink: 0;
+      }
+
+      .inventory-type {
+        font-size: 9px;
+        padding: 1px 5px;
+        border-radius: 3px;
+        background: #e9ecef;
+        color: #555;
+        text-transform: capitalize;
+
+        &.type-weapon { background: #fde8e8; color: #c0392b; }
+        &.type-armor { background: #e8f0fe; color: #2c5282; }
+        &.type-shield { background: #e8f0fe; color: #2c5282; }
+        &.type-gear { background: #e9ecef; color: #555; }
+        &.type-potion { background: #f0e8fe; color: #6b21a8; }
+        &.type-wondrous { background: #fef3c7; color: #92400e; }
+        &.type-ammunition { background: #fde8e8; color: #c0392b; }
+      }
+
+      .inventory-equipped {
+        font-size: 9px;
+        padding: 1px 5px;
+        border-radius: 3px;
+        background: #d4edda;
+        color: #155724;
+      }
+    }
+
     .fs-item .roll-dice-btn.spell-dmg {
       flex-shrink: 0;
       margin-left: auto;

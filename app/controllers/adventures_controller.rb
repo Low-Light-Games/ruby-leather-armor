@@ -71,7 +71,7 @@ class AdventuresController < ApplicationController
         subclass: sheet.subclass,
         level: sheet.level,
         details: (sheet.details || {}).deep_dup,
-        currency: (sheet.currency || {}).deep_dup,
+        currency: remaining_currency(sheet),
         hp: max_hp,
         max_hp: max_hp,
         items: nil,
@@ -177,6 +177,29 @@ class AdventuresController < ApplicationController
     base["details"] = details
 
     base
+  end
+
+  # Compute remaining currency after item purchases.
+  # Works in copper pieces to avoid floating-point drift.
+  def remaining_currency(sheet)
+    currency = (sheet.currency || {}).deep_dup
+    total_cp = (currency["platinum"].to_i * 1000) +
+               (currency["gold"].to_i * 100) +
+               (currency["silver"].to_i * 10) +
+               currency["copper"].to_i
+
+    items_cost_cp = sheet.sheet_items.includes(:item_definition).sum do |si|
+      cost_gp = si.item_definition&.cost_gp || 0
+      (cost_gp * 100 * si.quantity).round
+    end
+
+    remaining_cp = [total_cp - items_cost_cp, 0].max
+
+    pp, remaining_cp = remaining_cp.divmod(1000)
+    gp, remaining_cp = remaining_cp.divmod(100)
+    sp, cp = remaining_cp.divmod(10)
+
+    { "platinum" => pp, "gold" => gp, "silver" => sp, "copper" => cp }
   end
 
   # Compute starting HP: max hit die + CON modifier at level 1,
