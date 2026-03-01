@@ -10,7 +10,6 @@ class AdventureSheet < ApplicationRecord
   has_many :spell_definitions, through: :adventure_sheet_spells
   has_many :adventure_sheet_items, dependent: :destroy
   has_many :item_definitions, through: :adventure_sheet_items
-  has_many :encounter_participants, dependent: :destroy
 
   validates :name, presence: true
   validates :strength, :intelligence, :dexterity, :constitution, :wisdom, :charisma, presence: true

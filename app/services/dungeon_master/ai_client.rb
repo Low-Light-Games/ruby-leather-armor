@@ -2,19 +2,18 @@
 
 module DungeonMaster
   # Thin wrapper around the OpenAI API.
-  # Handles request construction, retries for degenerate responses,
-  # JSON parsing with fallbacks, and HTTP-level error mapping.
+  # Handles request construction, JSON parsing with fallbacks,
+  # and HTTP-level error mapping.
   class AiClient
-    MAX_RETRIES = 1
-
-    attr_reader :last_failed_raw_response, :last_parse_status
+    attr_reader :last_failed_raw_response, :last_parse_status, :last_model_used
 
     def initialize(config)
       @client = OpenAI::Client.new
       @config = config
-      @model = config.model
+      @default_model = config.model
       @last_failed_raw_response = nil
       @last_parse_status = nil
+      @last_model_used = nil
     end
 
     # Send a chat completion request and return the raw content string.
@@ -22,10 +21,16 @@ module DungeonMaster
     # @param system_prompt [String]
     # @param user_message  [String, nil]  single user message (convenience)
     # @param messages       [Array, nil]   full message list (takes precedence)
-    # @param max_tokens     [Integer]
+    # @param max_tokens     [Integer]      token budget for this step
+    # @param step_name      [String, nil]  pipeline step name for error messages
+    # @param model          [String, nil]  per-step model override (falls back to default)
     # @return [String] raw content from the AI
-    # @raise [DungeonMasterService::AiError]
-    def chat(system_prompt:, user_message: nil, messages: nil, max_tokens: 500)
+    # @raise [DungeonMaster::AiError]
+    def chat(system_prompt:, user_message: nil, messages: nil, max_tokens: 500, step_name: nil, model: nil)
+      effective_model = model || @default_model
+      @last_model_used = effective_model
+      supports_temp = OpenaiModelCatalog.supports_temperature?(effective_model)
+
       chat_messages = [{ role: "system", content: system_prompt }]
 
       if messages
@@ -35,61 +40,47 @@ module DungeonMaster
       end
 
       params = {
-        model: @model,
+        model: effective_model,
         messages: chat_messages,
-        max_tokens: max_tokens,
-        temperature: @config.temperature,
+        max_completion_tokens: max_tokens,
         response_format: { type: "json_object" }
       }
+      params[:temperature] = @config.temperature if supports_temp && @config.temperature != 1.0
 
-      attempt = 0
-      loop do
-        response = @client.chat(parameters: params)
+      response = @client.chat(parameters: params)
 
-        if response.dig("error")
-          raise DungeonMasterService::AiError,
-                response.dig("error", "message") || "OpenAI API error"
-        end
-
-        content       = response.dig("choices", 0, "message", "content")
-        finish_reason = response.dig("choices", 0, "finish_reason")
-
-        # Detect degenerate whitespace-only responses
-        if content.nil? || content.strip.empty?
-          attempt += 1
-          raw_preview = content&.first(200)&.inspect || "nil"
-          Rails.logger.warn(
-            "[DungeonMaster::AiClient] Empty/whitespace response (attempt #{attempt}). " \
-            "finish_reason=#{finish_reason}, raw preview=#{raw_preview}"
-          )
-
-          if attempt <= MAX_RETRIES
-            Rails.logger.info("[DungeonMaster::AiClient] Retrying with lower temperature...")
-            params[:temperature] = 0.4
-            next
-          end
-
-          @last_failed_raw_response = content
-          raise DungeonMasterService::AiError,
-                "Empty response from AI after #{attempt} attempts (finish_reason: #{finish_reason || 'unknown'})"
-        end
-
-        if finish_reason == "length"
-          Rails.logger.warn(
-            "[DungeonMaster::AiClient] Response truncated (finish_reason: length). " \
-            "Content length: #{content.length}. Proceeding with partial content."
-          )
-        end
-
-        return content
+      if response.dig("error")
+        raise AiError, response.dig("error", "message") || "OpenAI API error"
       end
+
+      content       = response.dig("choices", 0, "message", "content")
+      finish_reason = response.dig("choices", 0, "finish_reason")
+
+      if finish_reason == "length"
+        label = step_name || "unknown"
+        Rails.logger.error(
+          "[DungeonMaster::AiClient] Token budget exceeded on '#{label}' step " \
+          "(budget: #{max_tokens}, finish_reason: length, content_length: #{content&.length || 0})"
+        )
+        raise TokenBudgetExceededError.new(step_name: label, budget: max_tokens)
+      end
+
+      if content.nil? || content.strip.empty?
+        @last_failed_raw_response = content
+        raise AiError, "Empty response from AI (finish_reason: #{finish_reason || 'unknown'})"
+      end
+
+      content
     rescue Faraday::TooManyRequestsError
-      raise DungeonMasterService::AiError,
-            "Rate limited by OpenAI — please wait a moment and try again"
+      raise AiError, "Rate limited by OpenAI — please wait a moment and try again"
+    rescue Faraday::BadRequestError => e
+      body = e.response&.dig(:body) rescue nil
+      msg = body.is_a?(Hash) ? body.dig("error", "message") : e.message
+      Rails.logger.error("[DungeonMaster::AiClient] Bad request: #{msg}")
+      raise AiError, "AI request rejected: #{msg}"
     rescue Faraday::Error => e
       Rails.logger.error("[DungeonMaster::AiClient] Faraday error: #{e.class} - #{e.message}")
-      raise DungeonMasterService::AiError,
-            "Could not reach the AI service. Please try again shortly."
+      raise AiError, "Could not reach the AI service. Please try again shortly."
     end
 
     # Parse a raw JSON string from the AI, with fallback strategies
@@ -98,7 +89,7 @@ module DungeonMaster
     # @param raw         [String]
     # @param fallback_as [Symbol, nil]  :dm_response or :sanitization
     # @return [Hash]
-    # @raise [DungeonMasterService::AiError]
+    # @raise [DungeonMaster::AiError]
     def parse_json(raw, fallback_as: nil)
       @last_parse_status = "success"
 
@@ -117,14 +108,14 @@ module DungeonMaster
       if fallback_as == :dm_response && cleaned.present?
         Rails.logger.info("[DungeonMaster::AiClient] Falling back: treating raw response as narrative text")
         @last_parse_status = "parse_fallback"
-        { "narrative" => cleaned, "adventure_complete" => false, "roll_request" => nil, "immediate_context" => nil, "story_summary" => nil }
+        { "narrative" => cleaned, "adventure_complete" => false }
       elsif fallback_as == :sanitization && cleaned.present?
         Rails.logger.info("[DungeonMaster::AiClient] Falling back: treating sanitization as pass-through")
         @last_parse_status = "parse_fallback"
         { "danger_score" => 0, "sanitized_input" => nil, "reason" => nil }
       else
         @last_parse_status = "parse_error"
-        raise DungeonMasterService::AiError, "Failed to parse AI response"
+        raise AiError, "Failed to parse AI response"
       end
     end
   end

@@ -95,7 +95,9 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
         {/* RIGHT COLUMN — Story */}
         <StorySidebar
           story={story}
-          immediateContext={adventure.immediate_context}
+          traversalContext={adventure.traversal_context}
+          combatContext={adventure.combat_context}
+          socialContext={adventure.social_context}
           storySummary={adventure.story_summary}
           currentCategory={adventure.current_category}
         />

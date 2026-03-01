@@ -14,6 +14,12 @@ class OpenaiModelCatalog
     embedding moderation whisper dall-e diarize babbage davinci
   ].freeze
 
+  FALLBACK_TOKEN_BUDGETS = {
+    "triage" => 400, "dm_query" => 400, "intent" => 500, "ruling" => 600,
+    "evaluate" => 700, "narrate" => 900,
+    "micro_context_update" => 900, "macro_narrative_update" => 600
+  }.freeze
+
   def self.catalog
     @catalog ||= JSON.parse(CATALOG_PATH.read)
   rescue Errno::ENOENT, JSON::ParserError => e
@@ -30,11 +36,29 @@ class OpenaiModelCatalog
     EXCLUDE_KEYWORDS.none? { |kw| model_id.include?(kw) }
   end
 
+  def self.supports_temperature?(model_id)
+    caps = catalog.dig(model_id, "capabilities")
+    return true unless caps
+    caps.fetch("supports_temperature", true)
+  end
+
+  def self.reasoning_model?(model_id)
+    caps = catalog.dig(model_id, "capabilities")
+    return false unless caps
+    caps.fetch("reasoning_model", false)
+  end
+
+  def self.default_token_budgets(model_id)
+    catalog.dig(model_id, "default_token_budgets") || FALLBACK_TOKEN_BUDGETS
+  end
+
   def self.for_model(model_id)
     meta = catalog[model_id] || {}
     { "id" => model_id, "name" => meta["name"] || model_id,
       "description" => meta["description"],
-      "input_cost" => meta["input_cost"], "output_cost" => meta["output_cost"] }
+      "input_cost" => meta["input_cost"], "output_cost" => meta["output_cost"],
+      "reasoning_model" => reasoning_model?(model_id),
+      "default_token_budgets" => default_token_budgets(model_id) }
   end
 
   def self.for_models(model_ids)

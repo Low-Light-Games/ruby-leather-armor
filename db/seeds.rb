@@ -36,3 +36,4 @@ puts "Created/updated story: #{aboleth_story.title}"
 load Rails.root.join("db", "seeds", "feats.rb")
 load Rails.root.join("db", "seeds", "spells.rb")
 load Rails.root.join("db", "seeds", "items.rb")
+load Rails.root.join("db", "seeds", "bestiary.rb")

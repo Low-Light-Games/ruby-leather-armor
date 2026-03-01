@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_01_000002) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_01_202931) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -97,11 +97,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_01_000002) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.bigint "story_id", null: false
-    t.text "immediate_context"
     t.text "story_summary"
     t.string "current_category"
     t.string "dm_mode", default: "standard", null: false
     t.boolean "directed_dm", default: false, null: false
+    t.jsonb "traversal_context", default: {}, null: false
+    t.jsonb "combat_context", default: {}, null: false
+    t.jsonb "social_context", default: {}, null: false
     t.index ["story_id"], name: "index_adventures_on_story_id"
     t.index ["user_id"], name: "index_adventures_on_user_id"
   end
@@ -118,10 +120,39 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_01_000002) do
     t.datetime "updated_at", null: false
     t.text "request_body"
     t.string "dm_service", default: "standard", null: false
+    t.string "model_used"
     t.index ["adventure_id"], name: "index_ai_logs_on_adventure_id"
     t.index ["created_at"], name: "index_ai_logs_on_created_at"
     t.index ["dm_service"], name: "index_ai_logs_on_dm_service"
     t.index ["status"], name: "index_ai_logs_on_status"
+  end
+
+  create_table "bestiary_entries", id: :string, force: :cascade do |t|
+    t.string "name", null: false
+    t.string "source", default: "Pathfinder Roleplaying Game Reference Document (OGL)", null: false
+    t.decimal "cr", precision: 5, scale: 1
+    t.string "creature_type"
+    t.string "alignment"
+    t.string "size", default: "Medium"
+    t.integer "strength", default: 10
+    t.integer "dexterity", default: 10
+    t.integer "constitution", default: 10
+    t.integer "intelligence", default: 10
+    t.integer "wisdom", default: 10
+    t.integer "charisma", default: 10
+    t.string "hp_formula"
+    t.integer "ac", default: 10
+    t.integer "base_attack", default: 0
+    t.integer "speed", default: 30
+    t.jsonb "special_abilities", default: []
+    t.jsonb "feats", default: []
+    t.jsonb "skills", default: {}
+    t.text "description"
+    t.string "environment"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["cr"], name: "index_bestiary_entries_on_cr"
+    t.index ["creature_type"], name: "index_bestiary_entries_on_creature_type"
   end
 
   create_table "creature_sheet_feats", force: :cascade do |t|
@@ -203,40 +234,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_01_000002) do
     t.index ["user_id"], name: "index_dm_logs_on_user_id"
   end
 
-  create_table "encounter_participants", force: :cascade do |t|
-    t.bigint "encounter_id", null: false
-    t.bigint "adventure_sheet_id"
-    t.bigint "creature_sheet_id"
-    t.string "team", default: "enemy", null: false
-    t.integer "initiative", default: 0, null: false
-    t.integer "position_x", default: 0, null: false
-    t.integer "position_y", default: 0, null: false
-    t.integer "current_hp", default: 0, null: false
-    t.jsonb "conditions", default: [], null: false
-    t.boolean "is_active", default: true, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["adventure_sheet_id"], name: "index_encounter_participants_on_adventure_sheet_id"
-    t.index ["creature_sheet_id"], name: "index_encounter_participants_on_creature_sheet_id"
-    t.index ["encounter_id", "initiative"], name: "index_encounter_participants_on_encounter_id_and_initiative"
-    t.index ["encounter_id"], name: "index_encounter_participants_on_encounter_id"
-  end
-
-  create_table "encounters", force: :cascade do |t|
-    t.bigint "adventure_id", null: false
-    t.string "status", default: "pending", null: false
-    t.integer "round_number", default: 0, null: false
-    t.integer "current_turn_index", default: 0, null: false
-    t.integer "grid_width", default: 10, null: false
-    t.integer "grid_height", default: 10, null: false
-    t.jsonb "terrain_data", default: {}, null: false
-    t.text "narrative_summary"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["adventure_id", "status"], name: "index_encounters_on_adventure_id_and_status"
-    t.index ["adventure_id"], name: "index_encounters_on_adventure_id"
-  end
-
   create_table "feat_definitions", id: :string, force: :cascade do |t|
     t.string "name", null: false
     t.string "category", null: false
@@ -289,32 +286,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_01_000002) do
     t.index ["item_type"], name: "index_item_definitions_on_item_type"
     t.index ["name"], name: "index_item_definitions_on_name"
     t.index ["slot"], name: "index_item_definitions_on_slot"
-  end
-
-  create_table "location_edges", force: :cascade do |t|
-    t.bigint "from_location_id", null: false
-    t.bigint "to_location_id", null: false
-    t.decimal "distance_miles", precision: 8, scale: 2, null: false
-    t.string "terrain_type", default: "road"
-    t.text "description"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["from_location_id", "to_location_id"], name: "index_location_edges_on_from_location_id_and_to_location_id", unique: true
-    t.index ["from_location_id"], name: "index_location_edges_on_from_location_id"
-    t.index ["to_location_id"], name: "index_location_edges_on_to_location_id"
-  end
-
-  create_table "locations", force: :cascade do |t|
-    t.bigint "adventure_id", null: false
-    t.string "name", null: false
-    t.text "description"
-    t.string "terrain_type", default: "road"
-    t.boolean "is_current", default: false, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["adventure_id", "is_current"], name: "index_locations_on_adventure_id_and_is_current"
-    t.index ["adventure_id", "name"], name: "index_locations_on_adventure_id_and_name", unique: true
-    t.index ["adventure_id"], name: "index_locations_on_adventure_id"
   end
 
   create_table "sheet_feats", force: :cascade do |t|
@@ -442,13 +413,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_01_000002) do
   add_foreign_key "creature_sheets", "adventures"
   add_foreign_key "dm_logs", "adventures"
   add_foreign_key "dm_logs", "users"
-  add_foreign_key "encounter_participants", "adventure_sheets"
-  add_foreign_key "encounter_participants", "creature_sheets"
-  add_foreign_key "encounter_participants", "encounters"
-  add_foreign_key "encounters", "adventures"
-  add_foreign_key "location_edges", "locations", column: "from_location_id"
-  add_foreign_key "location_edges", "locations", column: "to_location_id"
-  add_foreign_key "locations", "adventures"
   add_foreign_key "sheet_feats", "feat_definitions", column: "feat_id"
   add_foreign_key "sheet_feats", "sheets"
   add_foreign_key "sheet_items", "item_definitions"

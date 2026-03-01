@@ -1,0 +1,120 @@
+action_economy:
+  name: "Action Economy"
+  text: |
+    Each round a character can take:
+    - 1 Standard action (attack, cast a spell, use an ability)
+    - 1 Move action (move up to base speed, stand from prone, draw a weapon)
+    - OR 1 Full-round action instead of both (full attack, charge, run)
+    - 1 Swift action (certain spells/abilities, once per round)
+    - Any number of Free actions (drop an item, speak briefly)
+    A character may substitute a move action for a standard action (e.g. two move actions).
+
+attack_resolution:
+  name: "Attack Resolution"
+  text: |
+    d20 + Base Attack Bonus (BAB) + Strength mod (melee) or Dexterity mod (ranged) + other modifiers vs target Armor Class (AC).
+    - Natural 20: automatic hit, confirm critical (roll again vs AC).
+    - Natural 1: automatic miss.
+    - Damage: weapon die + Strength mod (1.5x for two-handed, 0.5x for off-hand).
+
+armor_class:
+  name: "Armor Class"
+  text: |
+    AC = 10 + armor bonus + shield bonus + Dexterity mod + size mod + natural armor + deflection + dodge.
+    - Touch AC: excludes armor, shield, and natural armor.
+    - Flat-Footed AC: excludes Dexterity bonus and dodge bonuses.
+
+hit_points:
+  name: "Hit Points & Damage"
+  text: |
+    When HP reaches 0, the character is disabled (can take only a single action).
+    At negative HP, the character is unconscious and dying.
+    At negative HP equal to Constitution score, the character is dead.
+    Healing: cure spells, potions, rest (1 HP per character level per night of rest).
+
+initiative:
+  name: "Initiative"
+  text: |
+    d20 + Dexterity mod + miscellaneous modifiers.
+    Combat proceeds from highest to lowest initiative each round.
+    Initiative is rolled ONCE at the start of each combat encounter.
+
+attack_of_opportunity:
+  name: "Attack of Opportunity"
+  text: |
+    A character provokes an AoO when:
+    - Moving out of a threatened square (without using a 5-foot step or withdrawal)
+    - Casting a spell in a threatened area
+    - Using a ranged weapon in melee
+    - Performing certain actions (drinking a potion, standing from prone)
+    Each character gets 1 AoO per round (more with Combat Reflexes feat).
+  related: [withdrawal, five_foot_step]
+
+combat_maneuvers:
+  name: "Combat Maneuvers (CMB/CMD)"
+  text: |
+    CMB = BAB + Strength mod + size mod.
+    CMD = 10 + BAB + Strength mod + Dexterity mod + size mod.
+    Maneuvers: Bull Rush, Disarm, Grapple, Overrun, Sunder, Trip.
+    Roll d20 + CMB vs target CMD. Provokes AoO unless character has the Improved version of the maneuver.
+
+grapple:
+  name: "Grapple"
+  text: |
+    To start a grapple: d20 + CMB vs target CMD. Provokes AoO unless you have Improved Grapple.
+    While grappling: both combatants gain the grappled condition (-4 Dex, -2 attack rolls, can only use one hand).
+    Maintaining: each round, d20 + CMB to maintain. Options on success: damage, pin, move, or tie up.
+    Pin: target is helpless (but you lose Dex bonus to AC vs others). Pinned target can try to escape (CMB or Escape Artist vs your CMD).
+    Escaping: d20 + CMB or Escape Artist vs grappler's CMD.
+  related: [combat_maneuvers]
+
+withdrawal:
+  name: "Withdraw Action"
+  text: |
+    Withdrawing from melee combat is a full-round action. The character moves up to double their speed.
+    The first square of movement does not provoke an attack of opportunity from the creature(s) being withdrawn from.
+    Other creatures along the path may still get AoOs as normal.
+  related: [attack_of_opportunity, five_foot_step]
+
+five_foot_step:
+  name: "5-Foot Step"
+  text: |
+    A character can take a 5-foot step as a free action during their turn, but only if they have not otherwise moved during the round.
+    A 5-foot step does not provoke attacks of opportunity.
+    Cannot 5-foot step in difficult terrain or if movement is impaired.
+  related: [attack_of_opportunity]
+
+full_attack:
+  name: "Full Attack"
+  text: |
+    A full attack is a full-round action that allows multiple attacks if the character has a high enough BAB.
+    At BAB +6, the character gets a second attack at BAB -5 (e.g. +6/+1).
+    At BAB +11: three attacks (+11/+6/+1). At BAB +16: four attacks (+16/+11/+6/+1).
+    Two-weapon fighting grants an extra attack with the off-hand (penalties apply without Two-Weapon Fighting feat).
+
+charge:
+  name: "Charge"
+  text: |
+    A charge is a full-round action. The character must move at least 10 feet in a straight line toward the target, then make a single melee attack.
+    The charge grants +2 to the attack roll but imposes -2 to AC until the character's next turn.
+    Cannot charge through difficult terrain or if the path is not clear.
+
+conditions:
+  name: "Conditions"
+  text: |
+    - Flat-Footed: loses Dex bonus to AC (typically at start of combat before acting).
+    - Flanked: -2 AC against flanking attackers; flankers get +2 to hit.
+    - Prone: -4 to melee attack rolls, +4 AC vs ranged, -4 AC vs melee. Standing from prone provokes AoO and costs a move action.
+    - Staggered: can take only a single move or standard action per round.
+    - Shaken: -2 to attack rolls, saving throws, skill checks, and ability checks.
+    - Frightened: as shaken, plus the creature must flee from the source.
+    - Grappled: -4 Dex, -2 attack rolls, cannot take actions that require both hands, cannot move.
+    - Entangled: -2 attack, -4 Dex, half speed, DC 15 + spell level to cast spells.
+
+ranged_combat:
+  name: "Ranged Combat"
+  text: |
+    Ranged attacks use Dex mod instead of Str for attack rolls.
+    Range increments: each increment beyond the first imposes a cumulative -2 penalty (max 5 increments for thrown, 10 for projectile).
+    Firing into melee: -4 penalty to attack (negated by Precise Shot feat).
+    Cover: +4 AC bonus vs ranged attacks. Soft cover (ally in the way): +4 AC.

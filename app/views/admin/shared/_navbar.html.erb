@@ -7,7 +7,6 @@
     <a href="<%= admin_stories_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :stories %>">Stories</a>
     <a href="<%= admin_dm_logs_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :dm_logs %>">DM Logs</a>
     <a href="<%= admin_ai_logs_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :ai_logs %>">AI Logs</a>
-    <a href="<%= admin_encounters_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :encounters %>">Combat Logs</a>
     <a href="<%= admin_dm_config_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :dm_config %>">DM Config</a>
     <a href="<%= admin_feature_flags_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :feature_flags %>">Feature Flags</a>
     <%= button_to "Logout", logout_path, method: :delete, class: "logout-link" %>

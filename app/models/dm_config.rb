@@ -2,27 +2,40 @@ class DmConfig < ApplicationRecord
   # Single-row configuration for the AI Dungeon Master.
   # Settings are stored as a JSON hash, making it easy to add new knobs
   # without migrations.
-  #
-  # Current settings:
-  #   "verbose"                 => bool  (default false) — disables pacing constraints, lets DM write longer responses
-  #   "temperature"             => float (default 0.8)   — creativity level for DM responses
-  #   "pacing_words_min"        => int   (default 80)    — minimum word target per response
-  #   "pacing_words_max"        => int   (default 150)   — maximum word target per response
-  #   "sanitization_threshold"  => int   (default 50)    — danger score (0-100) above which input is rejected
-  #   "classification_mode"     => str   (default "merged")     — "merged" or "parallel"
-  #   "response_mode"           => str   (default "unified")    — "unified" or "sequential"
-  #   "context_mode"            => str   (default "history")    — "history" or "contexts_only"
-  #   "model"                   => str   (default "gpt-4o-mini") — OpenAI model to use for chat completions
+  TOKEN_BUDGET_STEPS = %w[
+    triage dm_query intent ruling evaluate narrate
+    micro_context_update macro_narrative_update
+  ].freeze
+
+  STEP_MODEL_HINTS = {
+    "triage"                 => "Fast, cheap model. Simple classification — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
+    "dm_query"               => "Fast, cheap model. Straightforward Q&A — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
+    "intent"                 => "Fast, cheap model. Pattern recognition — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
+    "ruling"                 => "Capable model. Rules application benefits from reasoning — e.g. o3-mini, o4-mini, gpt-5-mini.",
+    "evaluate"               => "Capable model. Mechanical resolution with edge cases — e.g. o3-mini, o4-mini, gpt-5-mini.",
+    "narrate"                => "Creative model. Narrative quality scales with capability — e.g. gpt-4.1, gpt-4o, gpt-5.",
+    "micro_context_update"   => "Mid-tier model. Structured JSON with moderate judgment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
+    "macro_narrative_update" => "Mid-tier model. Judges narrative significance — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano."
+  }.freeze
+
   DEFAULTS = {
     "verbose" => false,
     "temperature" => 0.8,
     "pacing_words_min" => 80,
     "pacing_words_max" => 150,
     "sanitization_threshold" => 30,
-    "classification_mode" => "merged",
-    "response_mode" => "unified",
-    "context_mode" => "history",
-    "model" => "gpt-4o-mini"
+    "model" => "gpt-4o-mini",
+    "step_models" => {},
+    "token_budgets" => {
+      "triage" => 300,
+      "dm_query" => 300,
+      "intent" => 400,
+      "ruling" => 500,
+      "evaluate" => 600,
+      "narrate" => 800,
+      "micro_context_update" => 800,
+      "macro_narrative_update" => 500
+    }
   }.freeze
 
   def self.instance
@@ -58,31 +71,17 @@ class DmConfig < ApplicationRecord
     (get("sanitization_threshold") || 30).to_i
   end
 
-  def classification_mode
-    get("classification_mode") || "merged"
-  end
-
-  def classification_merged?
-    classification_mode == "merged"
-  end
-
-  def response_mode
-    get("response_mode") || "unified"
-  end
-
-  def response_sequential?
-    response_mode == "sequential"
-  end
-
-  def context_mode
-    get("context_mode") || "history"
-  end
-
-  def contexts_only?
-    context_mode == "contexts_only"
-  end
-
   def model
     get("model") || "gpt-4o-mini"
+  end
+
+  def model_for(step)
+    overrides = get("step_models") || {}
+    overrides[step.to_s].presence || model
+  end
+
+  def token_budget_for(step)
+    budgets = get("token_budgets") || DEFAULTS["token_budgets"]
+    (budgets[step.to_s] || 500).to_i
   end
 end

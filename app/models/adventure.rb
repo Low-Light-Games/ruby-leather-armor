@@ -9,8 +9,6 @@ class Adventure < ApplicationRecord
   has_many :dm_logs, dependent: :destroy
   has_many :ai_logs, dependent: :destroy
   has_many :creature_sheets, dependent: :destroy
-  has_many :encounters, dependent: :destroy
-  has_many :locations, dependent: :destroy
 
   DM_MODES = %w[standard].freeze
 
@@ -18,13 +16,5 @@ class Adventure < ApplicationRecord
 
   def directed_dm?
     directed_dm == true
-  end
-
-  def current_location
-    locations.current.first
-  end
-
-  def active_encounter
-    encounters.active.order(created_at: :desc).first
   end
 end

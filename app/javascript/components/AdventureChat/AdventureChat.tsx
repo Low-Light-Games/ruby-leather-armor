@@ -17,16 +17,20 @@ interface AdventureChatProps {
   onDmResponse?: () => void
 }
 
+interface PendingRolls {
+  requests: RollRequest[]
+  values: Record<number, string>
+}
+
 export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }: AdventureChatProps) => {
   const [messages, setMessages] = useState<AdventureMessage[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [loadingHistory, setLoadingHistory] = useState(true)
-  const [pendingRoll, setPendingRoll] = useState<RollRequest | null>(null)
-  const [rollValue, setRollValue] = useState('')
+  const [pendingRolls, setPendingRolls] = useState<PendingRolls | null>(null)
   const lastSentRef = useRef<
     | { type: 'message'; text: string }
-    | { type: 'roll'; value: number; description: string }
+    | { type: 'rolls'; rolls: Array<{ roll_value: number; roll_description: string }> }
     | null
   >(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -39,8 +43,8 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
   useEffect(() => { scrollToBottom() }, [messages, scrollToBottom])
 
   useEffect(() => {
-    if (pendingRoll && rollInputRef.current) rollInputRef.current.focus()
-  }, [pendingRoll])
+    if (pendingRolls && rollInputRef.current) rollInputRef.current.focus()
+  }, [pendingRolls])
 
   useEffect(() => {
     const loadHistory = async () => {
@@ -53,10 +57,15 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
         setMessages(data)
 
         const lastDm = [...data].reverse().find(m => m.role === 'dm')
-        if (lastDm?.message_type === 'roll_request' && lastDm.metadata?.roll_request) {
+        if (lastDm?.message_type === 'roll_request') {
           const lastDmIdx = data.findIndex(m => m.id === lastDm.id)
           const hasRollResult = data.slice(lastDmIdx + 1).some(m => m.message_type === 'roll_result')
-          if (!hasRollResult) setPendingRoll(lastDm.metadata.roll_request)
+          if (!hasRollResult) {
+            const requests = extractRollRequests(lastDm)
+            if (requests.length > 0) {
+              setPendingRolls({ requests, values: {} })
+            }
+          }
         }
       } catch (err) {
         console.error('Error loading chat history:', err)
@@ -67,11 +76,19 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
     loadHistory()
   }, [adventureId])
 
-  // ---- Core send logic ----
+  function extractRollRequests(msg: AdventureMessage): RollRequest[] {
+    if (msg.metadata?.roll_requests && Array.isArray(msg.metadata.roll_requests)) {
+      return msg.metadata.roll_requests
+    }
+    if (msg.metadata?.roll_request) {
+      return [msg.metadata.roll_request]
+    }
+    return []
+  }
 
   const sendMessage = async (text: string) => {
     setSending(true)
-    setPendingRoll(null)
+    setPendingRolls(null)
     lastSentRef.current = { type: 'message', text }
 
     const optimistic: AdventureMessage = {
@@ -105,7 +122,12 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
       lastSentRef.current = null
 
       const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
-      if (dmMsg?.metadata?.roll_request) setPendingRoll(dmMsg.metadata.roll_request)
+      if (dmMsg) {
+        const requests = extractRollRequests(dmMsg)
+        if (requests.length > 0) {
+          setPendingRolls({ requests, values: {} })
+        }
+      }
 
       if (onDmResponse) onDmResponse()
 
@@ -123,16 +145,14 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
     }
   }
 
-  const sendRoll = async (value: number, description: string) => {
+  const sendRolls = async (rolls: Array<{ roll_value: number; roll_description: string }>) => {
     setSending(true)
-    lastSentRef.current = { type: 'roll', value, description }
+    lastSentRef.current = { type: 'rolls', rolls }
 
+    const rollSummary = rolls.map(r => `🎲 Rolled ${r.roll_value} for: ${r.roll_description}`).join('\n')
     const optimistic: AdventureMessage = {
-      id: OPTIMISTIC_ID, role: 'player',
-      content: `🎲 Rolled ${value} for: ${description}`,
-      message_type: 'roll_result',
-      metadata: { roll_value: value, roll_description: description },
-      created_at: new Date().toISOString(),
+      id: OPTIMISTIC_ID, role: 'player', content: rollSummary,
+      message_type: 'roll_result', metadata: { rolls }, created_at: new Date().toISOString(),
     }
     const thinking: AdventureMessage = {
       id: THINKING_ID, role: 'dm', content: '',
@@ -148,7 +168,7 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
           'X-CSRF-Token': csrfToken(),
           Accept: 'application/json',
         },
-        body: JSON.stringify({ roll_value: value, roll_description: description }),
+        body: JSON.stringify({ rolls }),
       })
 
       if (!res.ok) {
@@ -161,16 +181,21 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
       lastSentRef.current = null
 
       const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
-      if (dmMsg?.metadata?.roll_request) setPendingRoll(dmMsg.metadata.roll_request)
+      if (dmMsg) {
+        const requests = extractRollRequests(dmMsg)
+        if (requests.length > 0) {
+          setPendingRolls({ requests, values: {} })
+        }
+      }
 
       if (onDmResponse) onDmResponse()
 
       const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
       if (completeMsg && onAdventureComplete) onAdventureComplete()
     } catch (err: any) {
-      console.error('Error submitting roll:', err)
+      console.error('Error submitting rolls:', err)
       const errorMsg: AdventureMessage = {
-        id: ERROR_ID, role: 'system', content: `Failed to submit roll: ${err.message}`,
+        id: ERROR_ID, role: 'system', content: `Failed to submit rolls: ${err.message}`,
         message_type: 'narrative', metadata: {}, created_at: new Date().toISOString(),
       }
       setMessages(prev => [...prev.filter(m => m.id !== THINKING_ID && m.id !== ERROR_ID), errorMsg])
@@ -179,8 +204,6 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
     }
   }
 
-  // ---- Handlers ----
-
   const handleSend = () => {
     const text = input.trim()
     if (!text || sending) return
@@ -188,20 +211,36 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
     sendMessage(text)
   }
 
-  const handleRollSubmit = () => {
-    const value = parseInt(rollValue, 10)
-    if (isNaN(value) || value < 1 || !pendingRoll) return
-    const description = pendingRoll.description
-    setPendingRoll(null)
-    setRollValue('')
-    sendRoll(value, description)
+  const handleRollValueChange = (index: number, value: string) => {
+    if (!pendingRolls) return
+    setPendingRolls({
+      ...pendingRolls,
+      values: { ...pendingRolls.values, [index]: value },
+    })
+  }
+
+  const allRollsFilled = pendingRolls?.requests.every((_, i) => {
+    const v = parseInt(pendingRolls.values[i] || '', 10)
+    return !isNaN(v) && v >= 1
+  })
+
+  const handleRollsSubmit = () => {
+    if (!pendingRolls || !allRollsFilled) return
+
+    const rolls = pendingRolls.requests.map((req, i) => ({
+      roll_value: parseInt(pendingRolls.values[i], 10),
+      roll_description: req.description,
+    }))
+
+    setPendingRolls(null)
+    sendRolls(rolls)
   }
 
   const handleRetry = () => {
     const last = lastSentRef.current
     if (!last || sending) return
     if (last.type === 'message') sendMessage(last.text)
-    else sendRoll(last.value, last.description)
+    else sendRolls(last.rolls)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -210,8 +249,6 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
       handleSend()
     }
   }
-
-  // ---- Render ----
 
   return (
     <div className="adventure-chat">
@@ -239,6 +276,8 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
               )
             }
 
+            const rollRequests = msg.message_type === 'roll_request' ? extractRollRequests(msg) : []
+
             return (
               <div
                 key={msg.id}
@@ -250,12 +289,14 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
                   </span>
                 </div>
                 <div className="msg-content">{msg.content}</div>
-                {msg.message_type === 'roll_request' && msg.metadata?.roll_request && (
-                  <div className="roll-request-badge">
-                    🎲 {msg.metadata.roll_request.description}
-                    {msg.metadata.roll_request.dc && (
-                      <span className="roll-dc"> (DC {msg.metadata.roll_request.dc})</span>
-                    )}
+                {rollRequests.length > 0 && (
+                  <div className="roll-request-badges">
+                    {rollRequests.map((req, i) => (
+                      <div key={i} className="roll-request-badge">
+                        🎲 {req.description}
+                        {req.dc && <span className="roll-dc"> (DC {req.dc})</span>}
+                      </div>
+                    ))}
                   </div>
                 )}
                 {msg.id === ERROR_ID && (
@@ -268,47 +309,47 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Roll submission UI */}
-      {pendingRoll && !sending && (
+      {pendingRolls && !sending && (
         <div className="roll-submit-area">
-          <div className="roll-prompt">
-            <span className="roll-icon">🎲</span>
-            <span>{pendingRoll.description}</span>
-            {pendingRoll.dc && <span className="roll-dc">DC {pendingRoll.dc}</span>}
-          </div>
-          <div className="roll-input-row">
-            <input
-              ref={rollInputRef}
-              type="number"
-              min="1"
-              max="100"
-              placeholder="Enter your roll result"
-              value={rollValue}
-              onChange={e => setRollValue(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') handleRollSubmit()
-              }}
-              className="roll-input"
-            />
-            <button
-              onClick={handleRollSubmit}
-              disabled={!rollValue || parseInt(rollValue, 10) < 1}
-              className="roll-submit-btn"
-            >
-              Submit Roll
-            </button>
-          </div>
+          <div className="roll-prompt-header">🎲 Rolls Needed</div>
+          {pendingRolls.requests.map((req, i) => (
+            <div key={i} className="roll-entry">
+              <div className="roll-prompt">
+                <span>{req.description}</span>
+                {req.dc && <span className="roll-dc">DC {req.dc}</span>}
+              </div>
+              <input
+                ref={i === 0 ? rollInputRef : undefined}
+                type="number"
+                min="1"
+                max="100"
+                placeholder="Roll result"
+                value={pendingRolls.values[i] || ''}
+                onChange={e => handleRollValueChange(i, e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && allRollsFilled) handleRollsSubmit()
+                }}
+                className="roll-input"
+              />
+            </div>
+          ))}
+          <button
+            onClick={handleRollsSubmit}
+            disabled={!allRollsFilled}
+            className="roll-submit-btn"
+          >
+            Submit {pendingRolls.requests.length > 1 ? 'All Rolls' : 'Roll'}
+          </button>
         </div>
       )}
 
-      {/* Input area */}
       <div className="chat-input-area">
         <div className="chat-input-wrapper">
           <textarea
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={pendingRoll ? 'Submit your roll above, or describe another action...' : 'What does your character do?'}
+            placeholder={pendingRolls ? 'Submit your rolls above, or describe another action...' : 'What does your character do?'}
             disabled={sending}
             rows={2}
             maxLength={500}

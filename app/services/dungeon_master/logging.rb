@@ -31,7 +31,7 @@ module DungeonMaster
     # @param parsed_response [Hash]    the parsed result
     # @param parse_status    [String]  "success", "parse_fallback", etc.
     # @param request_body    [Hash, nil]  the system prompt + messages sent to the AI
-    def ai_log!(call_type, prompt_summary, raw_response, parsed_response, parse_status:, request_body: nil)
+    def ai_log!(call_type, prompt_summary, raw_response, parsed_response, parse_status:, request_body: nil, model_used: nil)
       AiLog.create!(
         adventure: @adventure,
         call_type: call_type,
@@ -41,7 +41,8 @@ module DungeonMaster
         parsed_response: parsed_response&.to_json,
         status: parse_status,
         error_message: nil,
-        dm_service: @dm_service
+        dm_service: @dm_service,
+        model_used: model_used
       )
     rescue => e
       Rails.logger.error("[DungeonMaster::Logging] Failed to write AiLog: #{e.message}")
@@ -54,7 +55,7 @@ module DungeonMaster
     # @param error          [StandardError]
     # @param raw_response   [String, nil]
     # @param request_body   [Hash, nil]
-    def ai_log_error!(call_type, prompt_summary, error, raw_response: nil, request_body: nil)
+    def ai_log_error!(call_type, prompt_summary, error, raw_response: nil, request_body: nil, status: "api_error", model_used: nil)
       AiLog.create!(
         adventure: @adventure,
         call_type: call_type,
@@ -62,9 +63,10 @@ module DungeonMaster
         request_body: request_body&.to_json,
         raw_response: raw_response,
         parsed_response: nil,
-        status: "api_error",
+        status: status,
         error_message: error.message,
-        dm_service: @dm_service
+        dm_service: @dm_service,
+        model_used: model_used
       )
     rescue => e
       Rails.logger.error("[DungeonMaster::Logging] Failed to write AiLog (error): #{e.message}")

@@ -35,20 +35,26 @@ module Admin
         new_settings["sanitization_threshold"] = params[:sanitization_threshold].to_i.clamp(0, 100)
       end
 
-      if params[:classification_mode].present? && %w[merged parallel].include?(params[:classification_mode])
-        new_settings["classification_mode"] = params[:classification_mode]
-      end
-
-      if params[:response_mode].present? && %w[unified sequential].include?(params[:response_mode])
-        new_settings["response_mode"] = params[:response_mode]
-      end
-
-      if params[:context_mode].present? && %w[history contexts_only].include?(params[:context_mode])
-        new_settings["context_mode"] = params[:context_mode]
-      end
-
       if params[:model].present?
         new_settings["model"] = params[:model]
+      end
+
+      if params[:step_models].present?
+        models = {}
+        DmConfig::TOKEN_BUDGET_STEPS.each do |step|
+          val = params[:step_models][step]
+          models[step] = val if val.present?
+        end
+        new_settings["step_models"] = models
+      end
+
+      if params[:token_budgets].present?
+        budgets = {}
+        DmConfig::TOKEN_BUDGET_STEPS.each do |step|
+          val = params[:token_budgets][step]
+          budgets[step] = val.to_i.clamp(100, 16_000) if val.present?
+        end
+        new_settings["token_budgets"] = budgets if budgets.any?
       end
 
       @config.update!(settings: new_settings)

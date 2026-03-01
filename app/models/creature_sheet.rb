@@ -10,8 +10,6 @@ class CreatureSheet < ApplicationRecord
   has_many :creature_sheet_spells, dependent: :destroy
   has_many :spell_definitions, through: :creature_sheet_spells
 
-  has_many :encounter_participants, dependent: :nullify
-
   CREATURE_TYPES = %w[npc monster beast animal].freeze
   ATTITUDES = %w[hostile unfriendly indifferent friendly helpful].freeze
 

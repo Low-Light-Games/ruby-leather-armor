@@ -1,0 +1,74 @@
+npc_attitude:
+  name: "NPC Attitude Scale"
+  text: |
+    NPCs have one of five attitudes toward the PC:
+    1. Hostile: will take risks to hurt the PC, may attack on sight.
+    2. Unfriendly: wishes the PC ill, won't help, may mislead.
+    3. Indifferent: doesn't care either way, will interact if profitable.
+    4. Friendly: wishes the PC well, will help if it's not risky or costly.
+    5. Helpful: will take risks to help the PC, provides meaningful aid.
+
+diplomacy:
+  name: "Diplomacy (Cha)"
+  text: |
+    Used to influence NPC attitude. Takes 1 minute of conversation (or full-round action in combat).
+    DC to shift attitude by one step:
+    - Hostile -> Unfriendly: DC 25 + creature's CHA mod
+    - Unfriendly -> Indifferent: DC 20 + creature's CHA mod
+    - Indifferent -> Friendly: DC 15 + creature's CHA mod
+    - Friendly -> Helpful: DC 10 + creature's CHA mod
+    Shifting two steps at once: +10 to DC.
+    Failure by 5+: attitude worsens by one step.
+    Cannot shift Hostile directly to better than Indifferent with a single check.
+  related: [npc_attitude]
+
+diplomacy_attitude:
+  name: "Diplomacy Attitude Shifts"
+  text: |
+    Diplomacy DCs to shift NPC attitude:
+    - Hostile -> Unfriendly: DC 25 + CHA mod
+    - Unfriendly -> Indifferent: DC 20 + CHA mod
+    - Indifferent -> Friendly: DC 15 + CHA mod
+    - Friendly -> Helpful: DC 10 + CHA mod
+    Failure by 5+ worsens attitude by one step. Shifting two steps: +10 DC.
+  related: [diplomacy, npc_attitude]
+
+intimidate:
+  name: "Intimidate (Cha)"
+  text: |
+    Demoralize: DC = 10 + target's HD + target's Wisdom mod.
+    Success: target is shaken for 1 round + 1 round per 5 you beat the DC.
+    Influence attitude: can force compliance through threats, but attitude becomes Unfriendly afterward.
+
+bluff:
+  name: "Bluff (Cha)"
+  text: |
+    Opposed by Sense Motive. Used to deceive or create distractions.
+    Modifiers:
+    - Believable lie: +0
+    - Unlikely: -5
+    - Far-fetched: -10
+    - Impossible: -20
+    - Target wants to believe: +5
+  related: [sense_motive]
+
+sense_motive:
+  name: "Sense Motive (Wis)"
+  text: |
+    Opposed by Bluff to detect lies.
+    Hunch (DC 20): get a gut feeling about a social situation or NPC trustworthiness.
+    Detect enchantment (DC 25): notice if someone's behavior is being magically influenced.
+  related: [bluff]
+
+gather_information:
+  name: "Gather Information (Diplomacy)"
+  text: |
+    DC 10: common knowledge available to most people in the area.
+    DC 20: uncommon knowledge, requires asking around (1d4+1 hours).
+    DC 25+: obscure or secret information.
+
+aid_another:
+  name: "Aid Another"
+  text: |
+    Aid Another in social or skill checks: DC 10 check grants +2 bonus to the primary character's roll.
+    In combat: DC 10 melee attack roll to grant +2 to an ally's next attack or +2 to an ally's AC vs one attack.

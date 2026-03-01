@@ -153,7 +153,9 @@ export interface Adventure {
   id: number
   adventure_sheet: AdventureSheet
   story: Story
-  immediate_context: string | null
+  traversal_context: Record<string, unknown> | null
+  combat_context: Record<string, unknown> | null
+  social_context: Record<string, unknown> | null
   story_summary: string | null
   current_category: string | null
   directed_dm: boolean
@@ -169,7 +171,7 @@ export interface AdventureSummary {
 }
 
 export interface RollRequest {
-  type: 'attack' | 'save_fort' | 'save_ref' | 'save_will' | 'skill_check' | 'initiative' | 'ability_check'
+  type: string
   skill?: string
   dc?: number
   description: string
@@ -182,8 +184,11 @@ export interface AdventureMessage {
   message_type: 'narrative' | 'sanitization_fail' | 'adventure_complete' | 'roll_request' | 'roll_result'
   metadata: {
     roll_request?: RollRequest
+    roll_requests?: RollRequest[]
     roll_value?: number
     roll_description?: string
+    rolls?: Array<{ roll_value: number; roll_description: string }>
+    [key: string]: unknown
   }
   created_at: string
 }

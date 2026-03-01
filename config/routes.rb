@@ -23,7 +23,6 @@ Rails.application.routes.draw do
     resources :stories, only: [:index, :new, :show, :create, :update, :destroy]
     resources :dm_logs, only: [:index, :show]
     resources :ai_logs, only: [:index, :show]
-    resources :encounters, only: [:index, :show]
     resources :feature_flags, only: [:index] do
       member { patch :toggle }
     end

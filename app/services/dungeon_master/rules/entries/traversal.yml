@@ -1,0 +1,85 @@
+movement_speeds:
+  name: "Movement Speeds"
+  text: |
+    Base speed depends on race and armor:
+    - Human/Half-elf/Half-orc: 30 ft
+    - Dwarf/Halfling/Gnome: 20 ft
+    - Heavy armor reduces speed by 10 ft (minimum 20 ft for Medium creatures, 15 ft for Small).
+    A character can move their speed as a move action, or double as a full-round action (double move).
+    Running: 4x speed (3x in heavy armor) as a full-round action; lose Dex bonus to AC.
+
+difficult_terrain:
+  name: "Difficult Terrain"
+  text: |
+    Difficult terrain costs 2 squares of movement per square entered.
+    Examples: rubble, dense undergrowth, shallow bog, steep slope, deep snow.
+    Characters cannot charge or run through difficult terrain.
+
+overland_travel:
+  name: "Overland Travel"
+  text: |
+    On foot (8 hours of travel per day):
+    - Flat terrain: 24 miles/day (30 ft speed), 16 miles/day (20 ft speed)
+    - Hills/forests: 16 miles/day (30 ft speed), 12 miles/day (20 ft speed)
+    - Mountains/swamp: 12 miles/day (30 ft speed), 8 miles/day (20 ft speed)
+
+forced_march:
+  name: "Forced March"
+  text: |
+    After 8 hours of travel, a character must make a DC 10 Constitution check each additional hour (+2 per hour).
+    Failure results in 1d6 nonlethal damage. A character who takes nonlethal damage from a forced march becomes fatigued.
+
+encumbrance:
+  name: "Encumbrance"
+  text: |
+    Light load: no penalty.
+    Medium load: max Dex +3, -3 armor check penalty, speed reduced (30->20, 20->15).
+    Heavy load: max Dex +1, -6 armor check penalty, speed reduced, run at x3.
+
+perception:
+  name: "Perception (Wis)"
+  text: |
+    Used to notice hidden objects, traps, ambushes, and secret doors.
+    DC varies by situation: hear sounds of combat DC -10, notice a visible creature DC 0, find a hidden trap DC 20+, find a secret door DC 20+.
+    Distance penalty: +1 DC per 10 feet of distance.
+
+survival:
+  name: "Survival (Wis)"
+  text: |
+    Used to track creatures, navigate wilderness, find food/water, and avoid getting lost.
+    Tracking DCs: soft ground DC 10, firm ground DC 15, hard ground DC 20.
+    Modifiers: each day since trail was made +1 DC, rain since trail +10, fresh snow covers trail.
+    Foraging: DC 10 in wilderness to provide food and water for one person per day.
+
+climb:
+  name: "Climb (Str)"
+  text: |
+    DC varies by surface: knotted rope DC 5, rough wall DC 15, smooth wall DC 25.
+    Failure by 5+ means falling from the current height.
+    Climbing speed is 1/4 normal speed (accelerated climb at 1/2 speed with -5 penalty).
+    Cannot climb while encumbered beyond light load without penalties.
+
+swim:
+  name: "Swim (Str)"
+  text: |
+    Calm water DC 10, rough water DC 15, stormy water DC 20.
+    Failure by 5+ means going underwater and beginning to drown.
+    A character can swim at 1/4 speed as a move action (1/2 speed with accelerated swim at -10 penalty).
+    Heavy armor or heavy load: -6 on Swim checks.
+
+acrobatics:
+  name: "Acrobatics (Dex)"
+  text: |
+    Balance on narrow surfaces: >1 ft wide DC 0, 7-11 in DC 5, 2-6 in DC 10, <2 in DC 20.
+    Move through threatened squares without provoking AoO: DC = opponent's CMD.
+    Tumble through enemy space: DC = opponent's CMD + 5.
+    Jump: DC = distance in feet for long jump, 4x height in feet for high jump. Running start halves DC.
+  related: [attack_of_opportunity]
+
+environmental_hazards:
+  name: "Environmental Hazards"
+  text: |
+    Falling: 1d6 damage per 10 ft fallen (max 20d6). DC 15 Acrobatics to reduce by 1d6.
+    Darkness: concealment (20% miss chance) or total concealment (50% miss chance).
+    Extreme heat: DC 15 Fortitude each hour or take 1d4 nonlethal damage. DC increases by +1 per hour.
+    Extreme cold: DC 15 Fortitude each hour or take 1d6 nonlethal damage.

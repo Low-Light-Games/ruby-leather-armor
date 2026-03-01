@@ -44,7 +44,9 @@ class AdventuresController < ApplicationController
       story: story,
       dm_mode: "standard",
       directed_dm: directed_dm,
-      immediate_context: story.initial_context,
+      traversal_context: story.initial_context.present? ? { "scene" => story.initial_context } : {},
+      combat_context: {},
+      social_context: {},
       story_summary: story.initial_summary
     )
 
@@ -134,7 +136,9 @@ class AdventuresController < ApplicationController
       id: adventure.id,
       adventure_sheet: adventure_sheet_json(adv_sheet),
       story: adventure.story,
-      immediate_context: adventure.immediate_context,
+      traversal_context: adventure.traversal_context,
+      combat_context: adventure.combat_context,
+      social_context: adventure.social_context,
       story_summary: adventure.story_summary,
       current_category: adventure.current_category,
       directed_dm: adventure.directed_dm?

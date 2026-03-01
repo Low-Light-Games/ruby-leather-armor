@@ -32,17 +32,26 @@ class AdventureMessagesController < ApplicationController
   end
 
   # POST /adventures/:adventure_id/messages/roll
-  # Submits a roll result for the DM to process
+  # Submits roll results (batched) for the DM to process.
+  # Accepts either:
+  #   - { rolls: [{ roll_value: 14, roll_description: "Swim check" }, ...] }  (batched)
+  #   - { roll_value: 14, roll_description: "Swim check" }  (legacy single roll)
   def roll
-    roll_value = params[:roll_value].to_i
-    roll_description = params[:roll_description]&.strip || "unknown check"
+    rolls = if params[:rolls].present?
+              Array(params[:rolls]).map do |r|
+                { roll_value: r[:roll_value].to_i, roll_description: r[:roll_description]&.strip || "unknown check" }
+              end
+            else
+              [{ roll_value: params[:roll_value].to_i, roll_description: params[:roll_description]&.strip || "unknown check" }]
+            end
 
-    unless (1..100).include?(roll_value)
+    invalid = rolls.find { |r| !(1..100).include?(r[:roll_value]) }
+    if invalid
       return render json: { error: "Roll value must be between 1 and 100" }, status: :unprocessable_entity
     end
 
     service = dm_service
-    result = service.process_roll_result(roll_value, roll_description)
+    result = service.process_roll_result(rolls)
 
     render json: {
       messages: result[:messages].map { |m| message_json(m) }

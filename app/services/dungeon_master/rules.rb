@@ -1,43 +1,87 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  # Loads and caches category-specific Pathfinder 1e OGC rule text files
-  # from app/services/dungeon_master/rules/.
+  # Loads and caches granular Pathfinder 1e OGC rule entries from YAML files
+  # in app/services/dungeon_master/rules/entries/.
+  #
+  # Each YAML file groups entries by domain (combat, traversal, social).
+  # Entries are keyed by slug and contain name, text, and optional related slugs.
   module Rules
-    CATEGORIES = Prompts::PROMPT_CATEGORIES
+    DOMAINS = %w[combat traversal social].freeze
+    ENTRIES_DIR = File.expand_path("rules/entries", __dir__)
+    GUIDANCE_DIR = File.expand_path("rules", __dir__)
 
-    RULES_DIR = File.expand_path("rules", __dir__)
-
-    @cache = {}
+    @entries = nil
     @guidance_cache = {}
 
-    def self.for(category)
-      category = category.to_s
-      return "" unless CATEGORIES.include?(category)
-
-      category = "combat" if category == "roll_request"
-
-      @cache[category] ||= begin
-        path = File.join(RULES_DIR, "#{category}.txt")
-        File.exist?(path) ? File.read(path) : ""
+    class << self
+      # Returns the full registry: { "slug" => { name:, domain:, text:, related: [] }, ... }
+      def all_entries
+        @entries ||= load_all_entries
       end
-    end
 
-    def self.guidance_for(category)
-      category = category.to_s
-      return "" unless CATEGORIES.include?(category)
-
-      category = "combat" if category == "roll_request"
-
-      @guidance_cache[category] ||= begin
-        path = File.join(RULES_DIR, "#{category}_guidance.txt")
-        File.exist?(path) ? File.read(path) : ""
+      # Compact manifest for inclusion in prompts (slug + name + domain only, ~1-2KB).
+      def manifest
+        all_entries.map do |slug, entry|
+          { slug: slug, name: entry[:name], domain: entry[:domain] }
+        end
       end
-    end
 
-    def self.clear_cache!
-      @cache = {}
-      @guidance_cache = {}
+      # Fetch concatenated rule text for the given slugs.
+      def fetch(*slugs)
+        slugs = slugs.flatten.map(&:to_s)
+        matched = slugs.filter_map { |s| all_entries[s] }
+        return "" if matched.empty?
+
+        matched.map { |e| "=== #{e[:name]} ===\n#{e[:text].strip}" }.join("\n\n")
+      end
+
+      # Fetch only the entries matching a given domain from the requested slugs.
+      def fetch_for_domain(domain, slugs)
+        domain = domain.to_s
+        slugs = Array(slugs).map(&:to_s)
+        matched = slugs.filter_map { |s| all_entries[s] if all_entries.dig(s, :domain) == domain }
+        return "" if matched.empty?
+
+        matched.map { |e| "=== #{e[:name]} ===\n#{e[:text].strip}" }.join("\n\n")
+      end
+
+      # DM guidance text for a domain (kept as plain text files).
+      def guidance_for(domain)
+        domain = domain.to_s
+        return "" unless DOMAINS.include?(domain)
+
+        @guidance_cache[domain] ||= begin
+          path = File.join(GUIDANCE_DIR, "#{domain}_guidance.txt")
+          File.exist?(path) ? File.read(path).strip : ""
+        end
+      end
+
+      def clear_cache!
+        @entries = nil
+        @guidance_cache = {}
+      end
+
+      private
+
+      def load_all_entries
+        entries = {}
+        DOMAINS.each do |domain|
+          path = File.join(ENTRIES_DIR, "#{domain}.yml")
+          next unless File.exist?(path)
+
+          yaml = YAML.safe_load_file(path, permitted_classes: [Symbol]) || {}
+          yaml.each do |slug, data|
+            entries[slug] = {
+              name: data["name"],
+              domain: domain,
+              text: data["text"] || "",
+              related: Array(data["related"]).map(&:to_s)
+            }
+          end
+        end
+        entries.freeze
+      end
     end
   end
 end
