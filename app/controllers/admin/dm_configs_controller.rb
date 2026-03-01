@@ -45,14 +45,6 @@ module Admin
         new_settings["context_mode"] = params[:context_mode]
       end
 
-      if params[:dm_mode].present? && %w[standard light].include?(params[:dm_mode])
-        if params[:dm_mode] == "light" && !FeatureFlag.enabled?(:light_dungeon_master)
-          new_settings["dm_mode"] = "standard"
-        else
-          new_settings["dm_mode"] = params[:dm_mode]
-        end
-      end
-
       @config.update!(settings: new_settings)
       redirect_to admin_dm_config_path, notice: "DM settings updated."
     end

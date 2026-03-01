@@ -12,13 +12,9 @@ class Adventure < ApplicationRecord
   has_many :encounters, dependent: :destroy
   has_many :locations, dependent: :destroy
 
-  DM_MODES = %w[standard light].freeze
+  DM_MODES = %w[standard].freeze
 
   validates :dm_mode, inclusion: { in: DM_MODES }, allow_nil: true
-
-  def light_mode?
-    dm_mode == "light"
-  end
 
   def directed_dm?
     directed_dm == true

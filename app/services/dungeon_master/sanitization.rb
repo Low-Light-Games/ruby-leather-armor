@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  # Shared sanitization logic used by both DungeonMasterService and
-  # DungeonMasterLightService. Evaluates player input for prompt injection,
-  # meta-gaming, and other dangers.
+  # Shared sanitization logic for the DungeonMasterService. Evaluates player
+  # input for prompt injection, meta-gaming, and other dangers.
   module Sanitization
     def run_sanitization(player_input)
       if @config.classification_merged?

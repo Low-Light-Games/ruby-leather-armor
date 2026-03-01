@@ -37,17 +37,12 @@ class AdventuresController < ApplicationController
 
     max_hp = compute_starting_hp(sheet)
 
-    dm_mode = params[:dm_mode].presence
-    dm_mode = nil unless Adventure::DM_MODES.include?(dm_mode)
-    dm_mode ||= DmConfig.instance.dm_mode
-    dm_mode = "standard" if dm_mode == "light" && !FeatureFlag.enabled?(:light_dungeon_master)
-
     directed_dm = ActiveModel::Type::Boolean.new.cast(params[:directed_dm]) && FeatureFlag.enabled?(:directed_dm)
 
     @adventure = Adventure.new(
       user: current_user,
       story: story,
-      dm_mode: dm_mode,
+      dm_mode: "standard",
       directed_dm: directed_dm,
       immediate_context: story.initial_context,
       story_summary: story.initial_summary
@@ -142,7 +137,6 @@ class AdventuresController < ApplicationController
       immediate_context: adventure.immediate_context,
       story_summary: adventure.story_summary,
       current_category: adventure.current_category,
-      dm_mode: adventure.dm_mode,
       directed_dm: adventure.directed_dm?
     }
   end

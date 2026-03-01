@@ -43,13 +43,7 @@
     <a href="<%= admin_ai_logs_path(request.query_parameters.merge(call_type: 'sanitization')) %>" class="qf <%= 'active' if params[:call_type] == 'sanitization' %>">🛡️ Sanitization</a>
     <a href="<%= admin_ai_logs_path(request.query_parameters.merge(call_type: 'dm_response')) %>" class="qf <%= 'active' if params[:call_type] == 'dm_response' %>">🐉 DM Response</a>
     <a href="<%= admin_ai_logs_path(request.query_parameters.merge(call_type: 'roll_response')) %>" class="qf <%= 'active' if params[:call_type] == 'roll_response' %>">🎲 Roll Response</a>
-    <a href="<%= admin_ai_logs_path(request.query_parameters.merge(call_type: 'light_narrative')) %>" class="qf <%= 'active' if params[:call_type] == 'light_narrative' %>">💡 Light Narrative</a>
-    <a href="<%= admin_ai_logs_path(request.query_parameters.merge(call_type: 'light_feedback')) %>" class="qf <%= 'active' if params[:call_type] == 'light_feedback' %>">🔄 Light Feedback</a>
-    <a href="<%= admin_ai_logs_path(request.query_parameters.merge(call_type: 'enemy_ai')) %>" class="qf <%= 'active' if params[:call_type] == 'enemy_ai' %>">👹 Enemy AI</a>
-    &nbsp;|&nbsp;
-    <strong>Service:</strong>
-    <a href="<%= admin_ai_logs_path(request.query_parameters.merge(dm_service: 'standard')) %>" class="qf <%= 'active' if params[:dm_service] == 'standard' %>">Standard</a>
-    <a href="<%= admin_ai_logs_path(request.query_parameters.merge(dm_service: 'light')) %>" class="qf <%= 'active' if params[:dm_service] == 'light' %>">Light</a>
+    <a href="<%= admin_ai_logs_path(request.query_parameters.merge(call_type: 'action_needs')) %>" class="qf <%= 'active' if params[:call_type] == 'action_needs' %>">🎯 Action Needs</a>
   </div>
 
   <% if @logs.empty? %>
@@ -345,10 +339,6 @@
     &.standard {
       background-color: #e3f2fd;
       color: #1565c0;
-    }
-    &.light {
-      background-color: #fff3e0;
-      color: #e65100;
     }
   }
 

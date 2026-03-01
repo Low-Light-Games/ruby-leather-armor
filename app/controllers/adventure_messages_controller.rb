@@ -56,11 +56,7 @@ class AdventureMessagesController < ApplicationController
   end
 
   def dm_service
-    if @adventure.light_mode?
-      DungeonMasterLightService.new(@adventure, user: current_user)
-    else
-      DungeonMasterService.new(@adventure, user: current_user)
-    end
+    DungeonMasterService.new(@adventure, user: current_user)
   end
 
   def message_json(message)

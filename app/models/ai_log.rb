@@ -4,11 +4,10 @@ class AiLog < ApplicationRecord
   CALL_TYPES = %w[
     sanitization dm_response roll_response
     triage_merged classification
-    scene_tracker story_chronicler narrator
-    light_narrative light_feedback enemy_ai
+    scene_tracker story_chronicler narrator action_needs
   ].freeze
 
-  DM_SERVICES = %w[standard light].freeze
+  DM_SERVICES = %w[standard].freeze
 
   validates :call_type, presence: true, inclusion: { in: CALL_TYPES }
   validates :prompt_summary, presence: true

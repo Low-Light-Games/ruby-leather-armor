@@ -12,8 +12,6 @@ class DmConfig < ApplicationRecord
   #   "classification_mode"     => str   (default "merged")     — "merged" or "parallel"
   #   "response_mode"           => str   (default "unified")    — "unified" or "sequential"
   #   "context_mode"            => str   (default "history")    — "history" or "contexts_only"
-  #   "dm_mode"                 => str   (default "standard")   — "standard" or "light"
-
   DEFAULTS = {
     "verbose" => false,
     "temperature" => 0.8,
@@ -22,8 +20,7 @@ class DmConfig < ApplicationRecord
     "sanitization_threshold" => 30,
     "classification_mode" => "merged",
     "response_mode" => "unified",
-    "context_mode" => "history",
-    "dm_mode" => "standard"
+    "context_mode" => "history"
   }.freeze
 
   def self.instance
@@ -81,13 +78,5 @@ class DmConfig < ApplicationRecord
 
   def contexts_only?
     context_mode == "contexts_only"
-  end
-
-  def dm_mode
-    get("dm_mode") || "standard"
-  end
-
-  def dm_mode_light?
-    dm_mode == "light"
   end
 end
