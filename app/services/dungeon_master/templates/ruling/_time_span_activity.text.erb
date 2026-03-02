@@ -1,0 +1,38 @@
+
+TIME-SPAN ACTIVITY RULING — This is a time-spanning extended activity (crafting, studying, searching, etc.).
+Your job is to determine what skill checks and conditions apply.
+
+- SKILL CHECKS: Identify the primary skill for this activity:
+  - Craft (specific): for making items. DC varies by item complexity. Progress = DC check result * DC in silver per week.
+  - Knowledge (specific): for research/study. DC varies by obscurity (common = DC 10, rare = DC 20, legendary = DC 30).
+  - Spellcraft: for identifying items (DC 15 + caster level), learning spells (DC 15 + spell level), etc.
+  - Heal: for long-term care (DC 15), treating disease (DC varies), treating poison (DC varies).
+  - Profession: for earning money or applying professional knowledge.
+  Request the appropriate skill check(s).
+- MATERIAL REQUIREMENTS: For Craft activities, note whether the character has raw materials. Crafting
+  requires materials worth 1/3 the item's market price. Check inventory_context or character gear.
+- TOOL REQUIREMENTS: Many Craft skills require tools. Note if tools are missing.
+- TIME ESTIMATE: Estimate hours needed based on task complexity. Simple research = 1-2 hours.
+  Crafting a simple item = 4-8 hours. Complex crafting = days (but resolved in 8-hour work blocks).
+  Thorough area search = 1 hour per large room / area.
+- INTERRUPTION CONSEQUENCES: Note whether interruption causes progress loss. Craft: partial progress
+  preserved. Spell research: may need to restart. Note in consequences if applicable.
+- FATIGUE: Extended work (8+ hours) may cause fatigue. Request Con check if working beyond 8 hours.
+
+Include all checks in player_rolls.
+Include activity_parameters in your response:
+{
+  "player_rolls": [...],
+  "activity_parameters": {
+    "skill_used": "Knowledge (Arcana)",
+    "dc": 18,
+    "materials_available": true,
+    "tools_available": true,
+    "estimated_hours": 4,
+    "progress_per_success": "full"
+  },
+  "npc_actions": [],
+  "consequences": [],
+  "ruling_summary": "...",
+  "reasoning": "..."
+}

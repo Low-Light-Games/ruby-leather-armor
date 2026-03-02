@@ -64,11 +64,39 @@ module Admin
     end
 
     def story_params
-      params.require(:story).permit(:title, :preview, :premise, :hook, :initial_context, :initial_summary)
+      params.require(:story).permit(
+        :title, :preview, :premise, :hook, :initial_context, :initial_summary,
+        story_locations_attributes: [
+          :id, :name, :description, :starting, :_destroy,
+          connections_from_attributes: [:id, :to_location_id, :distance_miles, :terrain_type, :description, :_destroy]
+        ],
+        encounter_tables_attributes: [
+          :id, :name, :description, :check_frequency_hours, :encounter_chance, :_destroy,
+          encounter_table_entries_attributes: [
+            :id, :title, :description, :entry_type, :weight, :terrain_types,
+            :min_party_level, :max_party_level, :_destroy
+          ]
+        ]
+      )
     end
 
     def story_json(story)
-      story.as_json(only: [:id, :title, :preview, :premise, :hook, :initial_context, :initial_summary, :created_at, :updated_at])
+      base = story.as_json(only: [:id, :title, :preview, :premise, :hook, :initial_context, :initial_summary, :created_at, :updated_at])
+      base["story_locations"] = story.story_locations.order(:id).map { |loc|
+        loc.as_json(only: [:id, :name, :description, :starting]).merge(
+          "connections_from" => loc.connections_from.map { |c|
+            c.as_json(only: [:id, :to_location_id, :distance_miles, :terrain_type, :description])
+          }
+        )
+      }
+      base["encounter_tables"] = story.encounter_tables.order(:id).map { |t|
+        t.as_json(only: [:id, :name, :description, :check_frequency_hours, :encounter_chance]).merge(
+          "encounter_table_entries" => t.encounter_table_entries.order(:id).map { |e|
+            e.as_json(only: [:id, :title, :description, :entry_type, :weight, :terrain_types, :min_party_level, :max_party_level])
+          }
+        )
+      }
+      base
     end
 
     def require_admin

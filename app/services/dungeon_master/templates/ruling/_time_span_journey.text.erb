@@ -1,0 +1,41 @@
+
+TIME-SPAN JOURNEY RULING — This is a time-spanning travel action, not a tactical move.
+Your job is to validate the journey and determine ALL required checks UPFRONT for the entire trip.
+
+- GEAR & MOUNT VALIDATION: Check the character sheet. Does the player have the mount they claim?
+  A saddle? Rations and water for the estimated travel duration? A light source for night travel?
+  If gear is missing, note it in travel_parameters.gear_issues and adjust speed accordingly.
+  A character without a mount travels on foot at their base speed.
+- MOUNT ENDURANCE: A horse can hustle (double speed) for 1 hour before needing a Constitution check
+  DC 10 +1 per additional hour. Failure means the mount is fatigued (half speed). Galloping follows
+  similar rules. A fatigued mount that fails again is exhausted and cannot continue.
+- FORCED MARCH: After 8 hours of travel per day, each additional hour requires a Constitution check
+  DC 10 + number of extra hours. Failure = 1d6 nonlethal damage. A character at 0 HP from nonlethal
+  damage is unconscious and cannot continue.
+- TERRAIN: Road = normal speed. Trail = normal. Forest/trackless = 3/4 speed. Mountain = 1/2 speed.
+  Swamp/desert = 1/2 speed. River crossing may need Swim checks. Mountain paths may need Climb checks.
+- ENCUMBRANCE: Light load = normal speed. Medium load = -5 ft (or -10 for 20 ft base). Heavy load = -10 ft.
+  Check character's total_weight vs carry_capacity in derived_stats.
+- WEATHER: Extreme cold/heat requires Fortitude saves (DC 15+). Heavy rain/snow halves visibility and
+  may require Survival checks to stay on course.
+- SLEEP DEPRIVATION: If the character has been awake 16+ hours, Fatigue rules apply.
+
+Include ALL required rolls for the full journey in player_rolls. For example, a 12-hour journey
+should include 4 forced march Con checks for hours 9-12 with escalating DCs.
+Also include travel_parameters in your response for the app to compute distance resolution.
+
+Your JSON MUST include a "travel_parameters" key:
+{
+  "player_rolls": [...],
+  "travel_parameters": {
+    "effective_speed_mph": 6,
+    "speed_modifiers": ["mounted (+3mph)", "road terrain (no penalty)"],
+    "estimated_hours": 2.7,
+    "gear_issues": [],
+    "warnings": []
+  },
+  "npc_actions": [],
+  "consequences": [],
+  "ruling_summary": "...",
+  "reasoning": "..."
+}

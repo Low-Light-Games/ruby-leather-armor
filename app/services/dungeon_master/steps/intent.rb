@@ -15,7 +15,8 @@ module DungeonMaster
 
         system_prompt = PromptRenderer.render("intent",
           contexts: PromptHelpers.build_micro_contexts_block(@adventure),
-          manifest_text: PromptHelpers.format_manifest(manifest))
+          manifest_text: PromptHelpers.format_manifest(manifest),
+          locations_text: format_story_locations)
         request_body = { system_prompt: system_prompt, user_message: sanitized_input }
 
         raw = @ai.chat(system_prompt: system_prompt, user_message: sanitized_input,
@@ -29,6 +30,10 @@ module DungeonMaster
         {
           intention: parsed["intention"] || sanitized_input,
           needs_mechanics: parsed["needs_mechanics"] == true,
+          time_spanning: parsed["time_spanning"] == true,
+          time_span_type: parsed["time_span_type"],
+          destination: parsed["destination"],
+          estimated_hours: parsed["estimated_hours"]&.to_f,
           affected_contexts: Array(parsed["affected_contexts"]).map(&:to_s) & %w[combat traversal social exploration rest inventory],
           primary_context: parsed["primary_context"]&.to_s,
           rules_needed: Array(parsed["rules_needed"]).map(&:to_s),
@@ -46,6 +51,23 @@ module DungeonMaster
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, model_used: @ai.last_model_used)
         raise
+      end
+
+      def format_story_locations
+        locs = @adventure.story.story_locations.includes(:connections_from, :connections_to)
+        return "(no locations defined for this story)" if locs.empty?
+
+        current = @adventure.current_location
+        lines = locs.map do |loc|
+          marker = loc.id == current&.id ? " [CURRENT]" : ""
+          marker += " [START]" if loc.starting
+          conns = loc.connections.map do |c|
+            other = c.other_location(loc)
+            "#{other.name} (#{c.distance_miles} mi, #{c.terrain_type})"
+          end
+          "- #{loc.name}#{marker}: #{loc.description&.truncate(80) || '(no description)'}#{conns.any? ? "\n  Connects to: #{conns.join(', ')}" : ''}"
+        end
+        lines.join("\n")
       end
     end
   end

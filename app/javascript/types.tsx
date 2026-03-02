@@ -120,8 +120,50 @@ export interface AdminStory {
   hook: string | null
   initial_context: string | null
   initial_summary: string | null
+  story_locations?: StoryLocationData[]
+  encounter_tables?: EncounterTableData[]
   created_at: string
   updated_at: string
+}
+
+export interface LocationConnectionData {
+  id?: number
+  to_location_id: number
+  distance_miles: number
+  terrain_type: string
+  description?: string
+  _destroy?: boolean
+}
+
+export interface StoryLocationData {
+  id?: number
+  name: string
+  description: string
+  starting: boolean
+  connections_from?: LocationConnectionData[]
+  _destroy?: boolean
+}
+
+export interface EncounterTableEntryData {
+  id?: number
+  title: string
+  description: string
+  entry_type: 'fixed' | 'ai_prompt'
+  weight: number
+  terrain_types?: string
+  min_party_level?: number | null
+  max_party_level?: number | null
+  _destroy?: boolean
+}
+
+export interface EncounterTableData {
+  id?: number
+  name: string
+  description: string
+  check_frequency_hours: number
+  encounter_chance: number
+  encounter_table_entries?: EncounterTableEntryData[]
+  _destroy?: boolean
 }
 
 export interface AdventureSheet {

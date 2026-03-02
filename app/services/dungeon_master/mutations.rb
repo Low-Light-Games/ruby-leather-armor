@@ -47,6 +47,42 @@ module DungeonMaster
       @log.dm_log!("Creature creation error: #{e.message}")
     end
 
+    def apply_time_span_mutations(mutations)
+      return unless mutations.is_a?(Hash)
+
+      ts = mutations["time_span"] || mutations[:time_span]
+      return unless ts.is_a?(Hash)
+
+      hours = ts["hours_elapsed"] || ts[:hours_elapsed]
+      span_type = ts["type"] || ts[:type]
+      @log.dm_log!("TimeSpan mutation: type=#{span_type}, hours=#{hours}")
+
+      if ts["arrived"] || ts[:arrived]
+        new_loc_id = ts["new_location_id"] || ts[:new_location_id]
+        if new_loc_id
+          @adventure.update!(current_location_id: new_loc_id)
+          @log.dm_log!("Location updated to id=#{new_loc_id}")
+        end
+      end
+
+      traversal = (@adventure.traversal_context || {}).dup
+      case span_type.to_s
+      when "journey"
+        dist = ts["distance_covered_miles"] || ts[:distance_covered_miles]
+        traversal["last_travel_hours"] = hours
+        traversal["last_travel_distance_miles"] = dist
+        if ts["arrived"] || ts[:arrived]
+          new_loc = StoryLocation.find_by(id: ts["new_location_id"] || ts[:new_location_id])
+          traversal["current_location"] = new_loc&.name
+        end
+      when "rest"
+        traversal["last_rest_hours"] = hours
+      end
+      @adventure.update!(traversal_context: traversal)
+    rescue => e
+      @log.dm_log!("Time-span mutation error: #{e.message}")
+    end
+
     # -- private helpers ------------------------------------------------
 
     def apply_player_mutations(player_muts)

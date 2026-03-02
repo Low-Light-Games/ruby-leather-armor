@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_02_162631) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_02_200001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -108,6 +108,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_02_162631) do
     t.jsonb "rest_context", default: {}, null: false
     t.jsonb "inventory_context", default: {}, null: false
     t.text "scene_summary"
+    t.bigint "current_location_id"
+    t.index ["current_location_id"], name: "index_adventures_on_current_location_id"
     t.index ["story_id"], name: "index_adventures_on_story_id"
     t.index ["user_id"], name: "index_adventures_on_user_id"
   end
@@ -243,6 +245,31 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_02_162631) do
     t.index ["user_id"], name: "index_dm_logs_on_user_id"
   end
 
+  create_table "encounter_table_entries", force: :cascade do |t|
+    t.bigint "encounter_table_id", null: false
+    t.string "title", null: false
+    t.text "description", null: false
+    t.string "entry_type", default: "fixed", null: false
+    t.integer "weight", default: 1, null: false
+    t.string "terrain_types"
+    t.integer "min_party_level"
+    t.integer "max_party_level"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["encounter_table_id"], name: "index_encounter_table_entries_on_encounter_table_id"
+  end
+
+  create_table "encounter_tables", force: :cascade do |t|
+    t.bigint "story_id"
+    t.string "name", null: false
+    t.text "description"
+    t.integer "check_frequency_hours", default: 4, null: false
+    t.integer "encounter_chance", default: 15, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["story_id"], name: "index_encounter_tables_on_story_id"
+  end
+
   create_table "feat_definitions", id: :string, force: :cascade do |t|
     t.string "name", null: false
     t.string "category", null: false
@@ -295,6 +322,19 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_02_162631) do
     t.index ["item_type"], name: "index_item_definitions_on_item_type"
     t.index ["name"], name: "index_item_definitions_on_name"
     t.index ["slot"], name: "index_item_definitions_on_slot"
+  end
+
+  create_table "location_connections", force: :cascade do |t|
+    t.bigint "from_location_id", null: false
+    t.bigint "to_location_id", null: false
+    t.decimal "distance_miles", precision: 8, scale: 2, null: false
+    t.string "terrain_type", default: "road", null: false
+    t.text "description"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["from_location_id", "to_location_id"], name: "idx_location_connections_pair", unique: true
+    t.index ["from_location_id"], name: "index_location_connections_on_from_location_id"
+    t.index ["to_location_id"], name: "index_location_connections_on_to_location_id"
   end
 
   create_table "sheet_feats", force: :cascade do |t|
@@ -392,6 +432,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_02_162631) do
     t.index ["discarded_at"], name: "index_stories_on_discarded_at"
   end
 
+  create_table "story_locations", force: :cascade do |t|
+    t.bigint "story_id", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.boolean "starting", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["story_id", "name"], name: "index_story_locations_on_story_id_and_name", unique: true
+    t.index ["story_id"], name: "index_story_locations_on_story_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email"
     t.string "password_digest"
@@ -411,6 +462,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_02_162631) do
   add_foreign_key "adventure_sheets", "adventures"
   add_foreign_key "adventure_sheets", "sheets"
   add_foreign_key "adventures", "stories"
+  add_foreign_key "adventures", "story_locations", column: "current_location_id"
   add_foreign_key "adventures", "users"
   add_foreign_key "ai_logs", "adventure_messages", column: "player_message_id", on_delete: :nullify
   add_foreign_key "ai_logs", "adventures", on_delete: :nullify
@@ -423,6 +475,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_02_162631) do
   add_foreign_key "creature_sheets", "adventures"
   add_foreign_key "dm_logs", "adventures", on_delete: :nullify
   add_foreign_key "dm_logs", "users"
+  add_foreign_key "encounter_table_entries", "encounter_tables"
+  add_foreign_key "encounter_tables", "stories"
+  add_foreign_key "location_connections", "story_locations", column: "from_location_id"
+  add_foreign_key "location_connections", "story_locations", column: "to_location_id"
   add_foreign_key "sheet_feats", "feat_definitions", column: "feat_id"
   add_foreign_key "sheet_feats", "sheets"
   add_foreign_key "sheet_items", "item_definitions"
@@ -430,4 +486,5 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_02_162631) do
   add_foreign_key "sheet_spells", "sheets"
   add_foreign_key "sheet_spells", "spell_definitions", column: "spell_id"
   add_foreign_key "sheets", "users"
+  add_foreign_key "story_locations", "stories"
 end

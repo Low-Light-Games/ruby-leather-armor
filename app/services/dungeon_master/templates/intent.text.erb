@@ -11,6 +11,9 @@ Given the player's action and the current game state, determine:
 You may request any combination of these rules by slug:
 <%= @manifest_text %>
 
+=== STORY LOCATIONS ===
+<%= @locations_text %>
+
 === INSTRUCTIONS ===
 - Set needs_mechanics to false for purely narrative actions (looking around, greeting someone, describing an action that has no mechanical consequence).
 - Set needs_mechanics to true when dice rolls, skill checks, attack rolls, saving throws, or rule adjudication are needed.
@@ -32,10 +35,30 @@ You may request any combination of these rules by slug:
 - transition signals context lifecycle changes: "combat_started", "combat_ended", "social_to_combat", etc. Set to null if no transition.
 - macro_significant should be true only for major story beats (completing a quest, defeating a boss, discovering a secret). False for routine actions.
 
+TIME-SPANNING ACTIONS:
+- Set time_spanning to true for actions that resolve over HOURS or DAYS rather than seconds/minutes.
+  Examples of time_spanning TRUE: traveling to a distant location (journey), camping overnight (rest),
+  waiting for someone to arrive (wait), spending hours studying a tome (activity), crafting a potion
+  (activity), thoroughly searching entire ruins (activity), standing guard until dawn (wait).
+  Examples of time_spanning FALSE: attacking an enemy, picking a lock, talking to an NPC, casting a
+  spell, moving 30 feet, searching a single room, short conversation.
+- time_span_type: "journey" (travel to a destination), "rest" (sleeping/camping), "wait" (waiting for
+  an event or condition), "activity" (crafting, studying, extended work). Set to null if not time_spanning.
+- For journey: set destination to the name of the target location from the STORY LOCATIONS list.
+  The app will compute distance and travel time. Set estimated_hours to null.
+- For rest: set estimated_hours to 8 (standard full rest). Set destination to null.
+- For wait: set estimated_hours to your best estimate, or null if open-ended. Set destination to null.
+- For activity: set estimated_hours based on task complexity. Set destination to null.
+- When time_spanning is true, needs_mechanics should also be true (travel/rest/activity rules apply).
+
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
   "intention": "Clear restatement of what the player wants to do",
   "needs_mechanics": true,
+  "time_spanning": false,
+  "time_span_type": null,
+  "destination": null,
+  "estimated_hours": null,
   "affected_contexts": ["combat"],
   "primary_context": "combat",
   "rules_needed": ["attack_resolution", "attack_of_opportunity"],

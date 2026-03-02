@@ -3,6 +3,7 @@
 class Adventure < ApplicationRecord
   belongs_to :user
   belongs_to :story
+  belongs_to :current_location, class_name: "StoryLocation", optional: true
 
   has_many :adventure_sheets, dependent: :destroy
   has_many :adventure_messages, dependent: :destroy

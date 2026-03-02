@@ -44,6 +44,7 @@ class AdventuresController < ApplicationController
       story: story,
       dm_mode: "standard",
       directed_dm: directed_dm,
+      current_location: story.starting_location,
       traversal_context: story.initial_context.present? ? { "scene" => story.initial_context } : {},
       combat_context: {},
       social_context: {},

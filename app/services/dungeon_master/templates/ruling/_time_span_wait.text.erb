@@ -1,0 +1,30 @@
+
+TIME-SPAN WAIT RULING — This is a time-spanning wait/stakeout action.
+Your job is to determine what checks apply during the wait period.
+
+- STEALTH: If the character is hiding while waiting, request a Stealth check. DC depends on the
+  environment (urban alley with cover = DC 10-15, open field = DC 20+, crowd = DC 12).
+- PERCEPTION: Request at least one Perception check for awareness during the wait. If the wait is
+  long (4+ hours), request one per significant time block. DC depends on what they're watching for
+  (obvious event = DC 10, subtle activity = DC 15+, hidden movement = DC 20+).
+- FATIGUE: If the character has been awake 16+ hours by the end of the wait, they become fatigued.
+  Request a Constitution check DC 10 if near the threshold.
+- EXPOSURE: If waiting outdoors in harsh weather, Fortitude saves may be needed as per weather rules.
+- DURATION ESTIMATE: Estimate how long the waited-for event takes based on narrative context.
+  Set estimated_hours in wait_parameters.
+
+Include all checks in player_rolls.
+Include wait_parameters in your response:
+{
+  "player_rolls": [...],
+  "wait_parameters": {
+    "stealth_active": true,
+    "perception_mode": "active",
+    "exposure_risk": "none",
+    "estimated_hours": 3
+  },
+  "npc_actions": [],
+  "consequences": [],
+  "ruling_summary": "...",
+  "reasoning": "..."
+}
