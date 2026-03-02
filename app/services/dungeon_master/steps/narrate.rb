@@ -7,15 +7,11 @@ module DungeonMaster
     module Narrate
       private
 
-      def run_narrate(outcome)
+      def run_narrate(outcome, player_action: nil, intent: nil)
         raw = nil
         prompt_summary = "Narrate"
 
-        micro_contexts = {
-          traversal: @adventure.traversal_context,
-          combat: @adventure.combat_context,
-          social: @adventure.social_context
-        }
+        micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
 
         system_prompt = PromptRenderer.render("narrate",
           story_title: @adventure.story.title,
@@ -23,10 +19,13 @@ module DungeonMaster
           story_summary: @adventure.story_summary,
           contexts_text: PromptHelpers.format_contexts(micro_contexts),
           outcome: outcome,
+          player_action: player_action,
+          player_intent: intent&.dig(:intention),
           pacing_text: PromptHelpers.pacing_instructions(@config),
           directed_play_text: PromptHelpers.directed_play_instructions(@adventure))
 
-        user_msg = outcome || "Narrate the current scene."
+        user_msg = outcome || player_action
+        raise AiError, "Narrate step reached without an outcome or player action — nothing to narrate" unless user_msg
         request_body = { system_prompt: system_prompt, user_message: user_msg }
         raw = @ai.chat(system_prompt: system_prompt, user_message: user_msg,
                         max_tokens: @config.token_budget_for("narrate"), step_name: "narrate",
@@ -37,8 +36,10 @@ module DungeonMaster
                      parse_status: @ai.last_parse_status, request_body: request_body,
                      model_used: @ai.last_model_used)
 
+        raise AiError, "Narrate step returned no narrative — model produced: #{raw.to_s.truncate(200)}" unless parsed["narrative"].present?
+
         {
-          narrative: parsed["narrative"] || "The Dungeon Master pauses thoughtfully...",
+          narrative: parsed["narrative"],
           adventure_complete: parsed["adventure_complete"] == true
         }
       rescue TokenBudgetExceededError => e

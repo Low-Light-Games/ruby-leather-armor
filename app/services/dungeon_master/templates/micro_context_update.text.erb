@@ -1,5 +1,5 @@
 You are a state tracker for a Pathfinder 1e tabletop RPG adventure.
-Your job is to update the three micro-context objects based on what just happened.
+Your job is to update the micro-context objects based on what just happened.
 
 === NARRATIVE ===
 <%= @narrative %>
@@ -7,30 +7,31 @@ Your job is to update the three micro-context objects based on what just happene
 === MUTATIONS APPLIED ===
 <%= @mutations_json %>
 
-=== CURRENT TRAVERSAL CONTEXT ===
-<%= @traversal_json %>
-
-=== CURRENT COMBAT CONTEXT ===
-<%= @combat_json %>
-
-=== CURRENT SOCIAL CONTEXT ===
-<%= @social_json %>
+<%= @context_sections %>
 
 === INSTRUCTIONS ===
-- Update each context to reflect what just happened. Return all three.
-- For contexts unaffected by this action, return them unchanged.
+<% if @affected_fields.any? -%>
+Contexts marked [UPDATE] were directly affected by this action — update them thoroughly.
+Contexts marked [maintain] were not directly affected — carry them forward unchanged unless the narrative clearly implies a change.
+<% else -%>
+Update each context to reflect what just happened. Return all contexts below.
+<% end -%>
 - For combat context: track active/inactive, round, current_turn, turn_order, participants (name, hp, conditions, position), terrain_notes, active_effects.
 - For traversal context: track current_location, destination, terrain, weather, time_of_day, nearby_npcs, points_of_interest, exits.
 - For social context: track scene, npcs_present (name, role, attitude, notes), conversation_state, stakes, persuasion_progress.
+- For exploration context: track searched_areas, discovered_items, discovered_secrets, knowledge_checks_attempted, active_detection (e.g. Detect Magic running), pending_investigations.
+- For rest context: track resting (boolean), hours_completed, total_hours_needed, watch_order, interruptions, spells_prepared, hp_recovered, rest_complete.
+- For inventory context: track recently_acquired, recently_used, pending_identifications, equipped_changes, notable_consumables_remaining.
 - If combat has ended (all enemies defeated/fled), set combat_context.active to false.
-- If new creatures or NPCs appeared in the narrative, include their names in the relevant context so the app can create their stat records.
-- new_creatures should list creature names that appeared for the first time and need bestiary lookup.
+- If rest is complete, set rest_context.resting to false and rest_context.rest_complete to true.
+- If new creatures or NPCs appeared in the narrative, include their names in new_creatures so the app can create their stat records.
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
-  "traversal_context": { },
-  "combat_context": { },
-  "social_context": { },
+<% @relevant_fields.each_with_index do |field, i| -%>
+  "<%= field %>_context": { }<%= i < @relevant_fields.size - 1 ? ',' : '' %>
+<% end -%>
+<% if @relevant_fields.any? %>,<% end %>
   "new_creatures": [],
   "reasoning": "Brief explanation of context changes (1-2 sentences)"
 }

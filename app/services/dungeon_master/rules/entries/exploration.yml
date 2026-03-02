@@ -1,0 +1,45 @@
+perception:
+  name: "Perception"
+  text: |
+    Perception covers all five senses — sight, hearing, touch, smell, taste.
+    DC varies by distance, concealment, and distraction.
+    Opposed by Stealth when detecting hidden creatures.
+    Take 10/20 is allowed when not in immediate danger.
+    Searching a 5-foot square is a move action; a room takes 1 round per 10x10 area.
+
+knowledge_checks:
+  name: "Knowledge Checks"
+  text: |
+    Knowledge skills: Arcana, Dungeoneering, Engineering, Geography, History,
+    Local, Nature, Nobility, Planes, Religion.
+    DC 10 + monster's CR for creature identification (reveals type, subtypes).
+    DC 15 + CR for special abilities; DC 20 + CR for vulnerabilities.
+    Untrained checks possible only for DC 10 or less.
+    One check per creature per character; cannot retry.
+
+detect_magic:
+  name: "Detect Magic"
+  text: |
+    Detect Magic: 60-foot cone, concentration up to 1 min/level.
+    Round 1: presence or absence of magical auras.
+    Round 2: number of auras and strength of the most potent.
+    Round 3: strength and location of each aura; Spellcraft DC 15 + spell level to identify school.
+    Overwhelming auras (caster level 21+) stun for 1 round.
+
+disable_device:
+  name: "Disable Device"
+  text: |
+    Disable Device: trained only. Requires thieves' tools (or -2 penalty).
+    Simple devices DC 10, tricky DC 15, difficult DC 20, extreme DC 25+.
+    Takes 1 round (simple) to 1d4 rounds (complex).
+    Failure by 5+ triggers the trap.
+    Open a lock: DC 20 (simple), 25 (average), 30 (good), 40 (amazing).
+
+search_and_traps:
+  name: "Searching for Traps"
+  text: |
+    Finding a trap: Perception check, DC varies by trap.
+    Magic traps: only characters with Trapfinding class feature can find them (DC 25+).
+    Mechanical traps: anyone can attempt with Perception.
+    Actively searching is a move action per 5-foot square.
+    Characters within 10 feet of a trap get a free Perception check to notice it.

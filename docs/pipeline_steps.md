@@ -47,29 +47,43 @@ considered but still left the mechanics call too overloaded. The 6-step
 design emerged from iteratively identifying which sub-tasks degraded
 when combined.
 
-### 2. Three micro-contexts instead of a single context blob
+### 2. Six micro-contexts instead of a single context blob
 
-**Decision:** maintain separate `traversal_context`, `combat_context`,
-and `social_context` JSONB fields on the Adventure, each with its own
-schema.
+**Decision:** maintain six separate JSONB context fields on the Adventure:
+`traversal_context`, `combat_context`, `social_context`,
+`exploration_context`, `rest_context`, and `inventory_context`, each with
+its own schema.
 
-**Why:** Pathfinder 1e naturally decomposes into these three domains.
-A player action can affect multiple domains simultaneously ("I jump into
-the sacred lake to escape my attackers" touches combat, traversal, and
-social), and each domain has fundamentally different state shapes:
+**Why:** Pathfinder 1e naturally decomposes into these six gameplay
+domains. A player action can affect multiple domains simultaneously ("I
+jump into the sacred lake to escape my attackers" touches combat,
+traversal, and social), and each domain has fundamentally different state
+shapes:
 
 - Combat: turn order, round number, participant HP, conditions, positions
 - Traversal: location, terrain, weather, exits, nearby NPCs
 - Social: NPC attitudes, conversation state, persuasion progress
+- Exploration: searched areas, discovered items/secrets, active detection
+- Rest: resting state, hours, watch order, spell preparation, recovery
+- Inventory: recently acquired/used items, identifications, equipped gear
 
-A single blob would force the AI to reason about all three schemas in
+The original design used three contexts (combat, traversal, social). The
+expansion to six came from observing that exploration ("I search the room
+for traps"), rest ("I set up camp for the night"), and inventory ("I use
+my Potion of Cure Light Wounds") are mechanically distinct domains with
+their own rules, state shapes, and tracking needs. Folding them into the
+original three produced awkward fits — "searching for traps" is not
+really traversal, and "drinking a potion" is not combat.
+
+A single blob would force the AI to reason about all six schemas in
 every call, even when only one is relevant. Separate contexts let the
 Ruling step receive *only the domain it's adjudicating*, keeping the
 prompt focused and the output structured.
 
-**Trade-off accepted:** the Context Update step must output all three
-contexts even when only one changed. This is minor overhead — the model
-returns unchanged contexts verbatim.
+**Trade-off accepted:** the Context Update step must output relevant
+contexts. This is mitigated by the selective context update optimization
+(see Decision 18) — only affected and active contexts are sent to the
+model.
 
 **Alternative rejected:** a single `game_state` JSON blob was the initial
 design. It produced inconsistent schemas (the model would invent different
@@ -377,14 +391,58 @@ failing and can investigate.
 
 **Decision:** steps 6a and 6b run concurrently in Ruby threads.
 
-**Why:** they write to different database fields (`traversal_context` /
-`combat_context` / `social_context` vs. `story_summary`) and have no
-data dependencies on each other. Running them in parallel saves one full
-AI round-trip of latency on turns where the macro update fires.
+**Why:** they write to different database fields (micro-context JSONB
+fields vs. `story_summary`) and have no data dependencies on each other.
+Running them in parallel saves one full AI round-trip of latency on
+turns where the macro update fires.
 
 **Trade-off accepted:** Ruby thread complexity. Mitigated by keeping the
 threads simple (each runs one AI call and one database write) with
 error isolation (each thread rescues independently).
+
+### 18. Selective context updates (affected + active only)
+
+**Decision:** the Micro Context Update step only includes *relevant*
+contexts in its prompt — those flagged as `affected_contexts` by the
+Intent step plus any that already contain data (active contexts). Contexts
+that are both unaffected and empty are omitted entirely.
+
+**Why:** with six context domains, sending all six to the model on every
+turn wastes tokens and dilutes the model's attention. A pure social
+interaction has no reason to include empty combat, rest, and inventory
+contexts. By scoping the prompt to only what matters, we:
+
+- Reduce prompt size (fewer input tokens billed)
+- Reduce output size (the JSON schema only requests relevant keys)
+- Focus the model on meaningful updates rather than copying empty objects
+- Preserve cross-context coherence by including *active* contexts even
+  when they weren't directly affected — e.g. an ongoing combat context
+  is visible during a traversal action so the model can mark combat as
+  ended if enemies were left behind
+
+Contexts included in the prompt are labelled `[UPDATE]` (directly
+affected) or `[maintain]` (active but not affected), giving the model
+clear instructions on where to focus effort versus where to carry
+forward the existing state.
+
+**Fallback:** if no relevant contexts can be determined (e.g. the very
+first turn of a new adventure where nothing has data yet), all six
+contexts are sent so the model can initialize whichever ones apply.
+
+**Trade-off accepted:** a context that is both empty and unaffected
+will not be initialized by this step. This is correct behavior — if the
+player hasn't done anything that touches combat, there shouldn't be a
+combat context yet. The context will be created naturally when the player
+first engages that domain.
+
+**Alternative rejected:** splitting the context update into six parallel
+AI calls (one per domain) was considered. This would eliminate cross-
+context interference entirely but at the cost of losing *cross-context
+awareness*. A single model call can recognize that a goblin dying affects
+combat context (participant removed), social context (NPCs react), and
+exploration context (the area is now safe to search). Six isolated calls
+cannot make those connections. The selective approach preserves this
+awareness while still reducing scope.
 
 ---
 
@@ -491,8 +549,8 @@ that happens to every player message. It has two jobs:
    AI calls are made.
 
 2. **Classification** — categorizes the input into exactly one of:
-   `combat`, `traversal`, `social`, `roll_request`, or `dm_query`. This
-   determines which branch the pipeline follows.
+   `combat`, `traversal`, `social`, `exploration`, `rest`, `inventory`,
+   or `dm_query`. This determines which branch the pipeline follows.
 
 ### Input
 
@@ -518,8 +576,9 @@ that happens to every player message. It has two jobs:
 - If `danger_score >= sanitization_threshold`: pipeline returns
   `{ action: :rejected }` immediately. The service persists a
   `sanitization_fail` message.
-- The `category` is normalized against the allowed list; unknown
-  categories fall back to `dm_query`.
+- The `category` is normalized against the allowed list; unrecognized
+  categories raise `AiError` (this is a hard failure — the model must
+  pick a valid category).
 - The `sanitized_input` (not the raw input) is forwarded to all
   subsequent steps.
 
@@ -597,7 +656,7 @@ by slug.
 
 | Field | Source |
 |---|---|
-| System prompt | `intent.text.erb` bound with: formatted micro-contexts (traversal, combat, social), rules manifest (available rule slugs with descriptions) |
+| System prompt | `intent.text.erb` bound with: formatted micro-contexts (all six: traversal, combat, social, exploration, rest, inventory), rules manifest (available rule slugs with descriptions) |
 | User message | Sanitized player input (from Triage) |
 
 ### Output (JSON)
@@ -620,9 +679,11 @@ by slug.
 - **`needs_mechanics`**: `false` for purely narrative actions (looking
   around, greeting someone). When false, the pipeline skips Ruling and
   Evaluate, going straight to Narrate.
-- **`affected_contexts`**: drives the Ruling loop. If multiple contexts
-  are listed (e.g. `["combat", "traversal"]` for "I leap across the
-  chasm to escape my attackers"), the Ruling step runs once per context.
+- **`affected_contexts`**: drives the Ruling loop and scopes the Context
+  Update step. Valid values: `combat`, `traversal`, `social`,
+  `exploration`, `rest`, `inventory`. If multiple contexts are listed
+  (e.g. `["combat", "traversal"]` for "I leap across the chasm to escape
+  my attackers"), the Ruling step runs once per context.
 - **`primary_context`**: determines the order of the Ruling loop. The
   primary context is always processed first, so subsequent rulings can
   reference its summary.
@@ -881,8 +942,8 @@ This is the text the player actually reads.
 
 | Field | Source |
 |---|---|
-| System prompt | `narrate.text.erb` bound with: story title, story premise, story summary, formatted micro-contexts, mechanical outcome text (from Evaluate, or nil), pacing instructions (from DmConfig verbose/word count settings), directed play instructions (if `directed_dm` is enabled on the Adventure) |
-| User message | The outcome text, or "Narrate the current scene." if no mechanical outcome |
+| System prompt | `narrate.text.erb` bound with: story title, story premise, story summary, formatted micro-contexts, mechanical outcome text (from Evaluate, or nil), player action and intent (for non-mechanical path), pacing instructions (from DmConfig verbose/word count settings), directed play instructions (if `directed_dm` is enabled on the Adventure) |
+| User message | The outcome text (mechanical path), or the player's action text (non-mechanical path). Raises `AiError` if neither is available. |
 
 ### Output (JSON)
 
@@ -943,18 +1004,32 @@ This separation means:
 
 ### Purpose
 
-Updates the three micro-context JSONB fields on the Adventure model
-(`traversal_context`, `combat_context`, `social_context`) to reflect
+Updates the micro-context JSONB fields on the Adventure model
+(`traversal_context`, `combat_context`, `social_context`,
+`exploration_context`, `rest_context`, `inventory_context`) to reflect
 what just happened.
+
+Only **relevant** contexts are included in the prompt: those flagged as
+`affected_contexts` by the Intent step plus any that already contain
+data (active contexts). This reduces output size and keeps the model
+focused on what actually changed, while still giving it visibility into
+active contexts that might need incidental updates (e.g. combat ending
+after a traversal action that caused enemies to flee).
+
+If no relevant contexts can be determined (e.g. early in the adventure),
+all six are sent as a fallback.
 
 ### Input
 
 | Field | Source |
 |---|---|
-| System prompt | `micro_context_update.text.erb` bound with: the narration text, mutations JSON (from Evaluate), current values of all three context fields |
+| System prompt | `micro_context_update.text.erb` bound with: the narration text, mutations JSON (from Evaluate), context sections (only relevant contexts, labelled `[UPDATE]` or `[maintain]`), list of relevant and affected field names |
 | User message | "Update contexts based on the above." |
 
 ### Output (JSON)
+
+Only the relevant contexts appear in the output. For example, if `affected_contexts`
+is `["traversal", "combat"]` and `social_context` also has data, the output is:
 
 ```json
 {
@@ -981,6 +1056,8 @@ what just happened.
 }
 ```
 
+Contexts not included in the prompt are left untouched app-side.
+
 ### Context field schemas
 
 **Traversal context** tracks:
@@ -995,6 +1072,21 @@ what just happened.
 **Social context** tracks:
 - `scene`, `npcs_present` (name, role, attitude, notes)
 - `conversation_state`, `stakes`, `persuasion_progress`
+
+**Exploration context** tracks:
+- `searched_areas`, `discovered_items`, `discovered_secrets`
+- `knowledge_checks_attempted`, `active_detection` (e.g. Detect Magic)
+- `pending_investigations`
+
+**Rest context** tracks:
+- `resting` (boolean), `hours_completed`, `total_hours_needed`
+- `watch_order`, `interruptions`
+- `spells_prepared`, `hp_recovered`, `rest_complete`
+
+**Inventory context** tracks:
+- `recently_acquired`, `recently_used`
+- `pending_identifications`, `equipped_changes`
+- `notable_consumables_remaining`
 
 ### App-side post-processing
 

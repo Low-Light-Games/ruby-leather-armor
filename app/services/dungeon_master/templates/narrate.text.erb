@@ -14,6 +14,14 @@ Premise: <%= @story_premise %>
 
 === WHAT HAPPENED ===
 <%= @outcome.presence || "(no mechanical outcome — this is a purely narrative moment)" %>
+<% if @player_action.present? && @outcome.blank? -%>
+
+=== PLAYER ACTION ===
+<%= @player_action %>
+<% if @player_intent.present? -%>
+Intent: <%= @player_intent %>
+<% end -%>
+<% end -%>
 
 <%= @pacing_text %>
 <%= @directed_play_text %>
@@ -21,7 +29,9 @@ Premise: <%= @story_premise %>
 - Write the narrative for what just happened. Be vivid, descriptive, and engaging.
 - Stay in character as a DM. Do not break the fourth wall.
 - If an outcome was provided, narrate it faithfully (do not contradict the mechanical results).
-- If no outcome was provided, narrate the player's action and the scene's response.
+- If a player action was provided without a mechanical outcome, narrate the player performing
+  that action and the world's response. The player DID this — describe it happening and show
+  how the environment, NPCs, and scene react. Do NOT ignore the player's action.
 - Consider whether this is a natural endpoint for the adventure. Only set adventure_complete
   to true when the story has truly reached a satisfying final conclusion.
 

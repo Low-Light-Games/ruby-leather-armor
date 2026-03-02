@@ -3,14 +3,14 @@
 module DungeonMaster
   module Steps
     # Pipeline Step 6a/6b: Context updates.
-    # 6a — Micro context update (traversal / combat / social)
+    # 6a — Micro context update (affected + active contexts only)
     # 6b — Macro narrative update (story summary)
     # Run in parallel; 6b is conditional on macro_significant.
     module ContextUpdate
       private
 
-      def run_context_updates(narrative, mutations, macro_significant: false)
-        micro_thread = Thread.new { run_micro_context_update(narrative, mutations) }
+      def run_context_updates(narrative, mutations, affected_contexts: [], macro_significant: false)
+        micro_thread = Thread.new { run_micro_context_update(narrative, mutations, affected_contexts) }
         macro_thread = macro_significant ? Thread.new { run_macro_narrative_update(narrative) } : nil
 
         micro_result = micro_thread.value
@@ -25,21 +25,29 @@ module DungeonMaster
         @log.dm_log!("Context update error: #{e.message}")
       end
 
-      def run_micro_context_update(narrative, mutations)
+      def run_micro_context_update(narrative, mutations, affected_contexts)
         raw = nil
         prompt_summary = "Micro context update"
-        micro_contexts = {
-          traversal: @adventure.traversal_context,
-          combat: @adventure.combat_context,
-          social: @adventure.social_context
-        }
+        micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
+
+        affected = Array(affected_contexts).map(&:to_s)
+        active = PromptHelpers::CONTEXT_FIELDS.select { |f| micro_contexts[f.to_sym].present? }
+        relevant = (affected | active).uniq & PromptHelpers::CONTEXT_FIELDS
+
+        relevant = PromptHelpers::CONTEXT_FIELDS if relevant.empty?
+
+        context_sections = relevant.map do |field|
+          ctx = micro_contexts[field.to_sym]
+          label = affected.include?(field) ? "#{field.upcase} CONTEXT [UPDATE]" : "#{field.upcase} CONTEXT [maintain]"
+          "=== #{label} ===\n#{ctx.present? ? ctx.to_json : '{}'}"
+        end
 
         system_prompt = PromptRenderer.render("micro_context_update",
+          context_sections: context_sections.join("\n\n"),
+          relevant_fields: relevant,
+          affected_fields: affected,
           narrative: narrative,
-          mutations_json: mutations.present? ? mutations.to_json : "(no mechanical mutations)",
-          traversal_json: micro_contexts[:traversal].present? ? micro_contexts[:traversal].to_json : "{}",
-          combat_json: micro_contexts[:combat].present? ? micro_contexts[:combat].to_json : "{}",
-          social_json: micro_contexts[:social].present? ? micro_contexts[:social].to_json : "{}")
+          mutations_json: mutations.present? ? mutations.to_json : "(no mechanical mutations)")
 
         user_msg = "Update contexts based on the above."
         request_body = { system_prompt: system_prompt, user_message: user_msg }
@@ -99,10 +107,10 @@ module DungeonMaster
       end
 
       def persist_micro_contexts(parsed)
-        updates = {}
-        updates[:traversal_context] = parsed["traversal_context"] if parsed["traversal_context"].present?
-        updates[:combat_context] = parsed["combat_context"] if parsed["combat_context"].present?
-        updates[:social_context] = parsed["social_context"] if parsed["social_context"].present?
+        updates = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, h|
+          key = "#{field}_context"
+          h[key.to_sym] = parsed[key] if parsed[key].present?
+        end
         @adventure.update!(updates) if updates.any?
       end
     end

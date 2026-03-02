@@ -12,7 +12,7 @@ module DungeonMaster
   #   run_rolls   -> resolution_flow  (resumption after player rolls)
   #
   class Pipeline
-    PROMPT_CATEGORIES = %w[combat traversal social roll_request dm_query].freeze
+    PROMPT_CATEGORIES = %w[combat traversal social exploration rest inventory dm_query].freeze
 
     include Steps::Triage
     include Steps::DmQuery
@@ -81,8 +81,10 @@ module DungeonMaster
         return run_resolution_flow(intent, merged, "(no player rolls required)")
       end
 
-      narration = run_narrate(nil)
-      run_context_updates(narration[:narrative], nil, macro_significant: intent[:macro_significant])
+      narration = run_narrate(nil, player_action: clean_input, intent: intent)
+      run_context_updates(narration[:narrative], nil,
+                          affected_contexts: intent[:affected_contexts],
+                          macro_significant: intent[:macro_significant])
       { action: :narrated, narrative: narration[:narrative], adventure_complete: narration[:adventure_complete] }
     end
 
@@ -93,6 +95,7 @@ module DungeonMaster
 
       narration = run_narrate(eval_result[:outcome])
       run_context_updates(narration[:narrative], eval_result[:mutations],
+                          affected_contexts: intent[:affected_contexts],
                           macro_significant: intent[:macro_significant])
       { action: :narrated, narrative: narration[:narrative], adventure_complete: narration[:adventure_complete] }
     end
@@ -117,8 +120,9 @@ module DungeonMaster
     end
 
     def normalize_category(category)
-      category = category.to_s.downcase.strip
-      PROMPT_CATEGORIES.include?(category) ? category : "dm_query"
+      normalized = category.to_s.downcase.strip
+      raise AiError, "Triage returned unrecognized category '#{category}' — expected one of: #{PROMPT_CATEGORIES.join(', ')}" unless PROMPT_CATEGORIES.include?(normalized)
+      normalized
     end
   end
 end

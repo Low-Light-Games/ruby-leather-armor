@@ -278,10 +278,12 @@ largest budget because narrative output is the longest.
 
 ### 7. Micro Context Update
 
-**What it does:** after narration, updates the three micro-context JSONB
-fields on the Adventure (traversal, combat, social). Reads the narrative
-and mutations, decides what changed, and outputs the new context state as
-structured JSON.
+**What it does:** after narration, updates the micro-context JSONB fields
+on the Adventure (traversal, combat, social, exploration, rest,
+inventory). Only *relevant* contexts are included in the prompt — those
+flagged as affected by the Intent step plus any that already have data.
+Reads the narrative and mutations, decides what changed, and outputs the
+updated context state as structured JSON.
 
 **Cognitive demand:** moderate. Must accurately reflect mechanical changes
 (enemy died, player moved, social attitude shifted) in a structured format.

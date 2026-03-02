@@ -12,13 +12,10 @@ module DungeonMaster
         raw = nil
         prompt_summary = "Evaluate: \"#{@log.truncate(intent[:intention])}\""
 
-        micro_contexts = {
-          traversal: @adventure.traversal_context,
-          combat: @adventure.combat_context,
-          social: @adventure.social_context
-        }
+        micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
 
-        char_block = @sheet ? CharacterBlock.full(@sheet) : "Unknown character"
+        raise AiError, "Evaluate step reached without a character sheet — cannot resolve mechanics" unless @sheet
+        char_block = CharacterBlock.full(@sheet)
         all_roll_results = [roll_results, npc_results].reject(&:blank?).join("\n\n")
 
         system_prompt = PromptRenderer.render("evaluate",
@@ -37,8 +34,10 @@ module DungeonMaster
                      parse_status: @ai.last_parse_status, request_body: request_body,
                      model_used: @ai.last_model_used)
 
+        raise AiError, "Evaluate step returned no outcome — model produced: #{raw.to_s.truncate(200)}" unless parsed["outcome"].present?
+
         {
-          outcome: parsed["outcome"] || "The action resolves.",
+          outcome: parsed["outcome"],
           mutations: parsed["mutations"] || {}
         }
       rescue TokenBudgetExceededError => e

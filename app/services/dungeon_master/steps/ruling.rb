@@ -12,8 +12,8 @@ module DungeonMaster
       def run_ruling_loop(intent)
         raw = nil
         contexts = intent[:affected_contexts]
-        contexts = [intent[:primary_context]] if contexts.empty? && intent[:primary_context]
-        contexts = ["combat"] if contexts.empty?
+        contexts = [intent[:primary_context]] if contexts.empty? && intent[:primary_context].present?
+        raise AiError, "Ruling step reached with no affected contexts and no primary context — Intent step failed to classify" if contexts.empty?
 
         primary = intent[:primary_context]
         if primary && contexts.include?(primary)

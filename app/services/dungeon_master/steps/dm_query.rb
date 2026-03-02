@@ -12,11 +12,7 @@ module DungeonMaster
         raw = nil
         prompt_summary = "DM Query: \"#{@log.truncate(sanitized_input)}\""
 
-        micro_contexts = {
-          traversal: @adventure.traversal_context,
-          combat: @adventure.combat_context,
-          social: @adventure.social_context
-        }
+        micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
 
         system_prompt = PromptRenderer.render("dm_query",
           story_title: @adventure.story.title,
@@ -33,7 +29,9 @@ module DungeonMaster
                      parse_status: @ai.last_parse_status, request_body: request_body,
                      model_used: @ai.last_model_used)
 
-        { answer: parsed["answer"] || "The DM ponders your question..." }
+        raise AiError, "DM Query step returned no answer — model produced: #{raw.to_s.truncate(200)}" unless parsed["answer"].present?
+
+        { answer: parsed["answer"] }
       rescue TokenBudgetExceededError => e
         @log.ai_log_error!("dm_query", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,

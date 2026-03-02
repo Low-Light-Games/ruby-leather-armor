@@ -6,26 +6,27 @@ module DungeonMaster
   module PromptHelpers
     module_function
 
+    CONTEXT_FIELDS = %w[traversal combat social exploration rest inventory].freeze
+
+    def all_micro_contexts(adventure)
+      CONTEXT_FIELDS.each_with_object({}) do |field, h|
+        h[field.to_sym] = adventure.send("#{field}_context")
+      end
+    end
+
     def build_micro_contexts_block(adventure)
-      parts = []
-      if adventure.traversal_context.present?
-        parts << "=== TRAVERSAL CONTEXT ===\n#{adventure.traversal_context.to_json}"
-      end
-      if adventure.combat_context.present?
-        parts << "=== COMBAT CONTEXT ===\n#{adventure.combat_context.to_json}"
-      end
-      if adventure.social_context.present?
-        parts << "=== SOCIAL CONTEXT ===\n#{adventure.social_context.to_json}"
+      parts = CONTEXT_FIELDS.filter_map do |field|
+        ctx = adventure.send("#{field}_context")
+        "=== #{field.upcase} CONTEXT ===\n#{ctx.to_json}" if ctx.present?
       end
       parts.any? ? parts.join("\n\n") : "=== CONTEXT ===\n(no active contexts — adventure just started)"
     end
 
     def format_contexts(micro_contexts)
-      parts = []
-      parts << "Traversal: #{micro_contexts[:traversal].present? ? micro_contexts[:traversal].to_json : '(none)'}"
-      parts << "Combat: #{micro_contexts[:combat].present? ? micro_contexts[:combat].to_json : '(none)'}"
-      parts << "Social: #{micro_contexts[:social].present? ? micro_contexts[:social].to_json : '(none)'}"
-      parts.join("\n")
+      CONTEXT_FIELDS.map do |field|
+        ctx = micro_contexts[field.to_sym]
+        "#{field.titleize}: #{ctx.present? ? ctx.to_json : '(none)'}"
+      end.join("\n")
     end
 
     def format_manifest(manifest)

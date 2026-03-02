@@ -29,7 +29,7 @@ module DungeonMaster
         {
           intention: parsed["intention"] || sanitized_input,
           needs_mechanics: parsed["needs_mechanics"] == true,
-          affected_contexts: Array(parsed["affected_contexts"]).map(&:to_s) & %w[combat traversal social],
+          affected_contexts: Array(parsed["affected_contexts"]).map(&:to_s) & %w[combat traversal social exploration rest inventory],
           primary_context: parsed["primary_context"]&.to_s,
           rules_needed: Array(parsed["rules_needed"]).map(&:to_s),
           transition: parsed["transition"],

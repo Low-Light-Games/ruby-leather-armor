@@ -7,7 +7,7 @@ module DungeonMaster
   # Each YAML file groups entries by domain (combat, traversal, social).
   # Entries are keyed by slug and contain name, text, and optional related slugs.
   module Rules
-    DOMAINS = %w[combat traversal social].freeze
+    DOMAINS = %w[combat traversal social exploration rest inventory].freeze
     ENTRIES_DIR = File.expand_path("rules/entries", __dir__)
     GUIDANCE_DIR = File.expand_path("rules", __dir__)
 
