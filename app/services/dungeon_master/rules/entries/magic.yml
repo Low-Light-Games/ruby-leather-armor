@@ -1,0 +1,62 @@
+casting_prepared_spells:
+  name: "Casting Prepared Spells"
+  text: |
+    Prepared casters (Wizards, Clerics, Druids) must prepare spells after 8 hours
+    of rest. Preparing spells takes 1 hour. A prepared spell is expended when cast.
+    Casting a spell is typically a standard action (unless noted otherwise).
+    Casting provokes attacks of opportunity unless the caster casts defensively
+    (Concentration check DC 15 + spell level × 2).
+    Spell failure from arcane spell failure chance applies to arcane spells with
+    somatic components when wearing armor.
+
+spell_components:
+  name: "Spell Components"
+  text: |
+    V (Verbal): spoken incantation. Cannot cast if silenced or gagged.
+    S (Somatic): hand gestures. Cannot cast with both hands bound; arcane spell
+    failure applies if wearing armor (arcane casters only).
+    M (Material): consumed or held component. Must have component in hand or use
+    a spell component pouch (standard gear).
+    F (Focus): reusable item that must be held. Not consumed.
+    DF (Divine Focus): holy symbol for divine casters.
+
+concentration:
+  name: "Concentration Checks"
+  text: |
+    Concentration = d20 + caster level + casting stat modifier.
+    Cast defensively: DC 15 + double spell level.
+    Damaged while casting: DC 10 + damage dealt + spell level.
+    Vigorous motion (riding): DC 10 + spell level.
+    Violent motion (stormy sea): DC 15 + spell level.
+    Grappled or pinned: DC 10 + grappler's CMB + spell level.
+    Entangled: DC 15 + spell level.
+    Failure means the spell is lost (slot expended, no effect).
+
+counterspelling:
+  name: "Counterspelling"
+  text: |
+    Ready an action to counterspell. Identify spell with Spellcraft (DC 15 + spell level).
+    Counter with the same spell, or Dispel Magic as a universal counter.
+    If using the same spell, both spells are expended with no effect.
+    Greater Dispel Magic can counter any spell up to its caster level.
+
+mount_spell:
+  name: "Mount (Spell)"
+  text: |
+    Mount: Conjuration (Summoning) [see Summon Monster I].
+    Level: Wizard/Sorcerer 1. Casting Time: 1 round. Range: close (25 ft + 5 ft/2 levels).
+    Duration: 2 hours/level (D). Components: V, S, M (a bit of horse hair).
+    Summons a light horse or pony (caster's choice). The mount serves willingly
+    and to the best of its ability. It comes with bit, bridle, and riding saddle.
+    The mount has the statistics of a light horse (HP 15, Speed 50 ft, AC 11).
+    It cannot fight (disappears if it takes damage). Functions as a trained mount.
+
+summon_monster:
+  name: "Summon Monster Rules"
+  text: |
+    Summoned creatures appear at the start of the caster's next turn.
+    They act on the caster's initiative. They cannot use spells, spell-like
+    abilities, or supernatural abilities unless noted.
+    A summoned creature cannot summon or conjure other creatures.
+    Summoned creatures disappear when reduced to 0 HP or when the spell ends.
+    Casting time: 1 round (full-round action).

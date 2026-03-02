@@ -27,7 +27,7 @@ module DungeonMaster
           prompt_summary = "Ruling [#{domain}] iteration #{idx + 1}/#{contexts.size}: " \
                            "\"#{@log.truncate(intent[:intention])}\""
 
-          rules_text = Rules.fetch_for_domain(domain, intent[:rules_needed])
+          rules_text = Rules.fetch(*intent[:rules_needed])
           char_block = CharacterBlock.for(@sheet, category: domain)
           micro_ctx  = @adventure.send("#{domain}_context")
           creature_stats = CharacterBlock.creature_stats_for(@adventure)
