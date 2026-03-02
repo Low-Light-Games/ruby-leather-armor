@@ -18,9 +18,22 @@ module ApplicationHelper
     case status
     when "success" then "status-success"
     when "parse_fallback" then "status-fallback"
-    when "parse_error" then "status-error"
-    when "api_error" then "status-error"
+    when "parse_error", "api_error", "token_budget_exceeded" then "status-error"
     else ""
+    end
+  end
+
+  def ai_log_type_badge_class(call_type)
+    case call_type
+    when "triage"                then "type-triage"
+    when "intent"                then "type-intent"
+    when "ruling"                then "type-ruling"
+    when "evaluate"              then "type-evaluate"
+    when "narrate"               then "type-narrate"
+    when "dm_query"              then "type-dm-query"
+    when "micro_context_update"  then "type-ctx"
+    when "macro_narrative_update" then "type-ctx"
+    else "type-default"
     end
   end
 

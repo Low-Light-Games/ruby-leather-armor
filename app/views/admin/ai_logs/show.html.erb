@@ -4,7 +4,16 @@
   <div class="log-show-header">
     <a href="<%= admin_ai_logs_path %>" class="back-link">← Back to AI Logs</a>
     <h1>AI Log #<%= @log.id %></h1>
+    <span class="type-badge type-hero <%= ai_log_type_badge_class(@log.call_type) %>"><%= @log.call_type.humanize %></span>
   </div>
+
+  <% if @log.player_message.present? %>
+    <div class="player-message-block">
+      <span class="pm-label">Player Message #<%= @log.player_message_id %></span>
+      <a href="<%= pipeline_admin_ai_logs_path(@log.player_message_id) %>" class="pm-pipeline-link">View Pipeline</a>
+      <p class="pm-content"><%= @log.player_message.content %></p>
+    </div>
+  <% end %>
 
   <div class="log-meta">
     <div class="meta-item">
@@ -18,17 +27,15 @@
       </span>
     </div>
     <div class="meta-item">
-      <span class="meta-label">DM Service</span>
-      <span class="meta-value"><%= @log.dm_service.capitalize %></span>
-    </div>
-    <div class="meta-item">
-      <span class="meta-label">Call Type</span>
-      <span class="meta-value"><%= @log.call_type.humanize %></span>
-    </div>
-    <div class="meta-item">
       <span class="meta-label">Status</span>
       <span class="status-badge <%= @log.status %>"><%= @log.status.humanize %></span>
     </div>
+    <% if @log.model_used.present? %>
+      <div class="meta-item">
+        <span class="meta-label">Model</span>
+        <span class="meta-value"><%= @log.model_used %></span>
+      </div>
+    <% end %>
   </div>
 
   <% if @log.error_message.present? %>
@@ -43,33 +50,132 @@
     <pre class="log-pre"><%= @log.prompt_summary %></pre>
   </div>
 
+  <% if @log.parsed_response.present? %>
+    <div class="log-section">
+      <h2>Parsed Response</h2>
+      <% begin %>
+        <% parsed = JSON.parse(@log.parsed_response) %>
+        <div class="parsed-fields-grid">
+          <%= render partial: 'admin/ai_logs/parsed_fields', locals: { parsed: parsed } %>
+        </div>
+        <details class="full-json-details">
+          <summary>Full JSON</summary>
+          <pre class="log-pre"><%= JSON.pretty_generate(parsed) %></pre>
+        </details>
+      <% rescue %>
+        <pre class="log-pre"><%= @log.parsed_response %></pre>
+      <% end %>
+    </div>
+  <% end %>
+
   <div class="log-section">
-    <h2>Request Body (what we sent to the AI)</h2>
+    <h2>Request Body</h2>
     <% if @log.request_body.present? %>
-      <pre class="log-pre"><%= begin; JSON.pretty_generate(JSON.parse(@log.request_body)); rescue; @log.request_body; end %></pre>
+      <% begin %>
+        <% body = JSON.parse(@log.request_body) %>
+        <% if body.is_a?(Hash) && (body["system_prompt"] || body["user_message"]) %>
+          <% if body["system_prompt"].present? %>
+            <div class="request-field">
+              <details open>
+                <summary class="request-field-label">System Prompt</summary>
+                <pre class="log-pre request-prompt-pre"><%= body["system_prompt"] %></pre>
+              </details>
+            </div>
+          <% end %>
+          <% if body["user_message"].present? %>
+            <div class="request-field">
+              <details open>
+                <summary class="request-field-label">User Message</summary>
+                <pre class="log-pre"><%= body["user_message"] %></pre>
+              </details>
+            </div>
+          <% end %>
+          <% extra_keys = body.keys - %w[system_prompt user_message] %>
+          <% if extra_keys.any? %>
+            <div class="request-field">
+              <details>
+                <summary class="request-field-label">Other Fields</summary>
+                <pre class="log-pre"><%= JSON.pretty_generate(body.slice(*extra_keys)) %></pre>
+              </details>
+            </div>
+          <% end %>
+        <% else %>
+          <pre class="log-pre"><%= JSON.pretty_generate(body) %></pre>
+        <% end %>
+      <% rescue %>
+        <pre class="log-pre"><%= @log.request_body %></pre>
+      <% end %>
     <% else %>
-      <p class="empty-cell">No request body captured (logged before this feature was added)</p>
+      <p class="empty-cell">No request body captured</p>
     <% end %>
   </div>
 
-  <div class="log-section">
-    <h2>Raw AI Response</h2>
-    <% if @log.raw_response.present? %>
-      <pre class="log-pre"><%= @log.raw_response %></pre>
-    <% else %>
-      <p class="empty-cell">No raw response captured (API error before response)</p>
-    <% end %>
-  </div>
-
-  <div class="log-section">
-    <h2>Parsed Response</h2>
-    <% if @log.parsed_response.present? %>
-      <pre class="log-pre"><%= begin; JSON.pretty_generate(JSON.parse(@log.parsed_response)); rescue; @log.parsed_response; end %></pre>
-    <% else %>
-      <p class="empty-cell">No parsed response</p>
-    <% end %>
-  </div>
+  <% if @log.raw_response.present? %>
+    <div class="log-section">
+      <h2>Raw AI Response</h2>
+      <pre class="log-pre"><%= begin; JSON.pretty_generate(JSON.parse(@log.raw_response)); rescue; @log.raw_response; end %></pre>
+    </div>
+  <% end %>
 </div>
 
 <%= render 'admin/shared/navbar_styles' %>
 <%= render partial: 'admin/shared/log_show_styles' %>
+
+<style>
+  .type-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;
+    &.type-triage { background-color: #e0e0e0; color: #424242; }
+    &.type-intent { background-color: #bbdefb; color: #0d47a1; }
+    &.type-ruling { background-color: #ffe0b2; color: #e65100; }
+    &.type-evaluate { background-color: #e1bee7; color: #6a1b9a; }
+    &.type-narrate { background-color: #c8e6c9; color: #1b5e20; }
+    &.type-dm-query { background-color: #b2dfdb; color: #004d40; }
+    &.type-ctx { background-color: #f5f5f5; color: #616161; border: 1px solid #e0e0e0; }
+    &.type-default { background-color: #f5f5f5; color: #757575; }
+  }
+
+  .type-hero {
+    font-size: 14px; padding: 4px 14px; margin-left: 12px; vertical-align: middle;
+  }
+
+  .player-message-block {
+    background: #fffde7; border: 1px solid #fff9c4; border-radius: 6px;
+    padding: 12px 16px; margin-bottom: 20px;
+  }
+  .pm-label {
+    font-size: 12px; font-weight: 600; color: #f57f17; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .pm-pipeline-link {
+    font-size: 12px; color: #1565c0; text-decoration: none; margin-left: 12px;
+    &:hover { text-decoration: underline; }
+  }
+  .pm-content {
+    margin: 8px 0 0; font-size: 14px; color: #333; font-style: italic;
+  }
+
+  .parsed-fields-grid {
+    .parsed-field {
+      margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #f0f0f0;
+      &:last-child { border-bottom: none; margin-bottom: 0; }
+    }
+    .parsed-field-label {
+      display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+      color: #888; font-weight: 600; margin-bottom: 4px;
+    }
+    .parsed-field-value { font-size: 14px; color: #333; line-height: 1.5; }
+    .parsed-field-json {
+      font-size: 12px; font-family: 'Consolas', monospace;
+      background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px;
+      padding: 8px; white-space: pre-wrap; word-break: break-word;
+      max-height: 250px; overflow-y: auto; margin: 0;
+    }
+  }
+
+  .full-json-details {
+    margin-top: 12px;
+    summary {
+      font-size: 12px; color: #888; cursor: pointer; user-select: none;
+      &:hover { color: #555; }
+    }
+  }
+</style>

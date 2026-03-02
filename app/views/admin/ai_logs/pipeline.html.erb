@@ -1,0 +1,212 @@
+<%= render 'admin/shared/navbar', active_nav: :pipelines %>
+
+<div class="pipeline-show">
+  <div class="pipeline-show-header">
+    <a href="<%= pipelines_admin_ai_logs_path %>" class="back-link">← Back to Pipeline Logs</a>
+    <h1>Pipeline Run</h1>
+  </div>
+
+  <div class="pipeline-player-msg">
+    <span class="pm-label">Player Message #<%= @player_message.id %></span>
+    <% if @adventure %>
+      <a href="<%= admin_ai_logs_path(adventure_id: @adventure.id) %>" class="pm-adventure-link">Adventure #<%= @adventure.id %></a>
+    <% end %>
+    <blockquote class="pm-quote"><%= @player_message.content %></blockquote>
+  </div>
+
+  <% if @logs.any? %>
+    <div class="pipeline-summary">
+      <div class="ps-item">
+        <span class="ps-label">Steps</span>
+        <span class="ps-value"><%= @logs.size %></span>
+      </div>
+      <div class="ps-item">
+        <span class="ps-label">Status</span>
+        <% has_error = @logs.any? { |l| l.status.in?(%w[api_error parse_error token_budget_exceeded]) } %>
+        <% has_fallback = @logs.any? { |l| l.status == "parse_fallback" } %>
+        <% overall = has_error ? "error" : (has_fallback ? "partial" : "complete") %>
+        <span class="pipeline-status-badge pipeline-<%= overall %>"><%= overall.capitalize %></span>
+      </div>
+      <div class="ps-item">
+        <span class="ps-label">Duration</span>
+        <% total_ms = ((@logs.last.created_at - @logs.first.created_at) * 1000).round %>
+        <span class="ps-value"><%= total_ms > 1000 ? "#{(total_ms / 1000.0).round(1)}s" : "#{total_ms}ms" %></span>
+      </div>
+      <div class="ps-item">
+        <span class="ps-label">Models</span>
+        <span class="ps-value"><%= @logs.filter_map(&:model_used).uniq.join(', ') %></span>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="pipeline-timeline">
+    <% previous_at = @player_message.created_at %>
+    <% @logs.each_with_index do |log, idx| %>
+      <% step_ms = ((log.created_at - previous_at) * 1000).round %>
+      <% is_error = log.status.in?(%w[api_error parse_error token_budget_exceeded]) %>
+
+      <% if idx > 0 %>
+        <div class="timeline-connector">
+          <div class="connector-line"></div>
+          <span class="connector-duration"><%= step_ms > 1000 ? "#{(step_ms / 1000.0).round(1)}s" : "#{step_ms}ms" %></span>
+        </div>
+      <% end %>
+
+      <div class="timeline-card <%= 'card-error' if is_error %>">
+        <div class="card-header">
+          <span class="type-badge <%= ai_log_type_badge_class(log.call_type) %>"><%= log.call_type.humanize %></span>
+          <span class="status-badge <%= log.status %>"><%= log.status.humanize %></span>
+          <% if log.model_used.present? %>
+            <span class="card-model"><%= log.model_used %></span>
+          <% end %>
+          <a href="<%= admin_ai_log_path(log) %>" class="card-log-link">#<%= log.id %></a>
+        </div>
+
+        <% if is_error && log.error_message.present? %>
+          <div class="card-error-msg"><%= log.error_message %></div>
+        <% end %>
+
+        <% if log.parsed_response.present? %>
+          <div class="card-fields">
+            <% begin %>
+              <% parsed = JSON.parse(log.parsed_response) %>
+              <%= render partial: 'admin/ai_logs/parsed_fields', locals: { parsed: parsed } %>
+            <% rescue %>
+              <pre class="card-raw"><%= log.parsed_response %></pre>
+            <% end %>
+          </div>
+
+          <details class="card-full-json">
+            <summary>Full Response JSON</summary>
+            <pre><%= begin; JSON.pretty_generate(JSON.parse(log.parsed_response)); rescue; log.parsed_response; end %></pre>
+          </details>
+        <% end %>
+      </div>
+
+      <% previous_at = log.created_at %>
+    <% end %>
+  </div>
+</div>
+
+<%= render 'admin/shared/navbar_styles' %>
+
+<style>
+  .pipeline-show {
+    padding: 20px 30px; font-family: 'Arial', sans-serif; max-width: 900px; margin: 0 auto;
+  }
+  .pipeline-show-header {
+    margin-bottom: 20px;
+    h1 { margin: 8px 0 0; font-size: 24px; color: #333; }
+  }
+  .back-link {
+    color: #1565c0; text-decoration: none; font-size: 14px;
+    &:hover { text-decoration: underline; }
+  }
+
+  .pipeline-player-msg {
+    background: #fffde7; border: 1px solid #fff9c4; border-radius: 6px;
+    padding: 16px; margin-bottom: 24px;
+  }
+  .pm-label { font-size: 12px; font-weight: 600; color: #f57f17; text-transform: uppercase; letter-spacing: 0.5px; }
+  .pm-adventure-link { font-size: 12px; color: #1565c0; text-decoration: none; margin-left: 12px; &:hover { text-decoration: underline; } }
+  .pm-quote {
+    margin: 10px 0 0; padding: 8px 16px; border-left: 3px solid #f57f17;
+    font-size: 15px; color: #333; font-style: italic; background: rgba(255,255,255,0.6);
+  }
+
+  .pipeline-summary {
+    display: flex; flex-wrap: wrap; gap: 24px; padding: 14px 16px;
+    background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; margin-bottom: 24px;
+  }
+  .ps-item { display: flex; flex-direction: column; gap: 4px; }
+  .ps-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; font-weight: 600; }
+  .ps-value { font-size: 14px; color: #333; font-family: monospace; }
+
+  .pipeline-status-badge {
+    display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 600;
+    &.pipeline-complete { background-color: #c8e6c9; color: #2e7d32; }
+    &.pipeline-error { background-color: #ffcdd2; color: #c62828; }
+    &.pipeline-partial { background-color: #fff9c4; color: #f57f17; }
+  }
+
+  .pipeline-timeline { position: relative; }
+
+  .timeline-connector {
+    display: flex; align-items: center; gap: 8px; padding: 6px 0 6px 24px;
+  }
+  .connector-line { width: 2px; height: 20px; background: #dee2e6; }
+  .connector-duration { font-size: 11px; color: #999; font-family: monospace; }
+
+  .timeline-card {
+    border: 1px solid #e9ecef; border-radius: 8px; padding: 16px; margin-bottom: 4px;
+    background: white; transition: box-shadow 0.15s;
+    &:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    &.card-error { border-color: #ef9a9a; background: #fff8f8; }
+  }
+  .card-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+  }
+  .card-model { font-size: 12px; color: #666; font-family: monospace; }
+  .card-log-link { font-size: 12px; color: #999; text-decoration: none; margin-left: auto; &:hover { color: #1565c0; } }
+  .card-error-msg {
+    background: #ffebee; border: 1px solid #ffcdd2; border-radius: 4px;
+    padding: 8px 12px; margin-bottom: 12px; font-size: 13px; color: #c62828;
+  }
+
+  .card-fields {
+    .parsed-field {
+      margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #f5f5f5;
+      &:last-child { border-bottom: none; margin-bottom: 0; }
+    }
+    .parsed-field-label {
+      display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+      color: #999; font-weight: 600; margin-bottom: 2px;
+    }
+    .parsed-field-value { font-size: 13px; color: #333; line-height: 1.4; }
+    .parsed-field-json {
+      font-size: 11px; font-family: 'Consolas', monospace;
+      background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px;
+      padding: 6px; white-space: pre-wrap; word-break: break-word;
+      max-height: 150px; overflow-y: auto; margin: 0;
+    }
+  }
+
+  .card-full-json {
+    margin-top: 10px; border-top: 1px solid #f0f0f0; padding-top: 8px;
+    summary { font-size: 12px; color: #aaa; cursor: pointer; user-select: none; &:hover { color: #666; } }
+    pre {
+      font-size: 11px; font-family: 'Consolas', monospace;
+      background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px;
+      padding: 10px; white-space: pre-wrap; word-break: break-word;
+      max-height: 300px; overflow-y: auto; margin-top: 6px;
+    }
+  }
+
+  .card-raw {
+    font-size: 11px; font-family: 'Consolas', monospace;
+    background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 4px;
+    padding: 8px; white-space: pre-wrap; word-break: break-word;
+    max-height: 200px; overflow-y: auto; margin: 0;
+  }
+
+  .type-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;
+    &.type-triage { background-color: #e0e0e0; color: #424242; }
+    &.type-intent { background-color: #bbdefb; color: #0d47a1; }
+    &.type-ruling { background-color: #ffe0b2; color: #e65100; }
+    &.type-evaluate { background-color: #e1bee7; color: #6a1b9a; }
+    &.type-narrate { background-color: #c8e6c9; color: #1b5e20; }
+    &.type-dm-query { background-color: #b2dfdb; color: #004d40; }
+    &.type-ctx { background-color: #f5f5f5; color: #616161; border: 1px solid #e0e0e0; }
+    &.type-default { background-color: #f5f5f5; color: #757575; }
+  }
+
+  .status-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;
+    &.success { background-color: #c8e6c9; color: #2e7d32; }
+    &.parse_fallback { background-color: #fff9c4; color: #f57f17; }
+    &.parse_error { background-color: #ffcdd2; color: #c62828; }
+    &.api_error { background-color: #ffcdd2; color: #c62828; }
+    &.token_budget_exceeded { background-color: #ffcdd2; color: #c62828; }
+  }
+</style>

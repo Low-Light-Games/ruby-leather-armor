@@ -22,7 +22,12 @@ Rails.application.routes.draw do
   namespace :admin do
     resources :stories, only: [:index, :new, :show, :create, :update, :destroy]
     resources :dm_logs, only: [:index, :show]
-    resources :ai_logs, only: [:index, :show]
+    resources :ai_logs, only: [:index, :show] do
+      collection do
+        get :pipelines
+        get "pipelines/:player_message_id", action: :pipeline, as: :pipeline
+      end
+    end
     resources :feature_flags, only: [:index] do
       member { patch :toggle }
     end

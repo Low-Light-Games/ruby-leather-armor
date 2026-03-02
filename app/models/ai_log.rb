@@ -1,5 +1,6 @@
 class AiLog < ApplicationRecord
   belongs_to :adventure
+  belongs_to :player_message, class_name: "AdventureMessage", optional: true
 
   CALL_TYPES = %w[
     triage dm_query intent ruling evaluate narrate

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_02_001156) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_02_140107) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -124,9 +124,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_02_001156) do
     t.text "request_body"
     t.string "dm_service", default: "standard", null: false
     t.string "model_used"
+    t.bigint "player_message_id"
     t.index ["adventure_id"], name: "index_ai_logs_on_adventure_id"
     t.index ["created_at"], name: "index_ai_logs_on_created_at"
     t.index ["dm_service"], name: "index_ai_logs_on_dm_service"
+    t.index ["player_message_id"], name: "index_ai_logs_on_player_message_id"
     t.index ["status"], name: "index_ai_logs_on_status"
   end
 
@@ -406,6 +408,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_02_001156) do
   add_foreign_key "adventure_sheets", "sheets"
   add_foreign_key "adventures", "stories"
   add_foreign_key "adventures", "users"
+  add_foreign_key "ai_logs", "adventure_messages", column: "player_message_id"
   add_foreign_key "ai_logs", "adventures"
   add_foreign_key "creature_sheet_feats", "creature_sheets"
   add_foreign_key "creature_sheet_feats", "feat_definitions", column: "feat_id"
