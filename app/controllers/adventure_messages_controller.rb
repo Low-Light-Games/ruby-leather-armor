@@ -23,8 +23,9 @@ class AdventureMessagesController < ApplicationController
       return render json: { error: "Message too long (max 500 characters)" }, status: :unprocessable_entity
     end
 
+    mode = params[:mode]&.strip
     service = dm_service
-    result = service.process_player_prompt(player_input)
+    result = service.process_player_prompt(player_input, mode: mode)
 
     render json: {
       messages: result[:messages].map { |m| message_json(m) }

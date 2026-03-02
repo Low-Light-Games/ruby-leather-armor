@@ -25,6 +25,7 @@ interface PendingRolls {
 export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }: AdventureChatProps) => {
   const [messages, setMessages] = useState<AdventureMessage[]>([])
   const [input, setInput] = useState('')
+  const [askDm, setAskDm] = useState(false)
   const [sending, setSending] = useState(false)
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [pendingRolls, setPendingRolls] = useState<PendingRolls | null>(null)
@@ -86,7 +87,7 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
     return []
   }
 
-  const sendMessage = async (text: string) => {
+  const sendMessage = async (text: string, mode?: string) => {
     setSending(true)
     setPendingRolls(null)
     lastSentRef.current = { type: 'message', text }
@@ -109,7 +110,7 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
           'X-CSRF-Token': csrfToken(),
           Accept: 'application/json',
         },
-        body: JSON.stringify({ content: text }),
+        body: JSON.stringify({ content: text, ...(mode && { mode }) }),
       })
 
       if (!res.ok) {
@@ -207,8 +208,10 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
   const handleSend = () => {
     const text = input.trim()
     if (!text || sending) return
+    const mode = askDm ? 'dm_query' : undefined
     setInput('')
-    sendMessage(text)
+    setAskDm(false)
+    sendMessage(text, mode)
   }
 
   const handleRollValueChange = (index: number, value: string) => {
@@ -344,16 +347,25 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
       )}
 
       <div className="chat-input-area">
+        <button
+          type="button"
+          className={`ask-dm-toggle ${askDm ? 'active' : ''}`}
+          onClick={() => setAskDm(prev => !prev)}
+          disabled={sending}
+          title="Toggle to ask the Dungeon Master for help, rules clarifications, or information about the game world — without taking an action."
+        >
+          ❓ Ask DM
+        </button>
         <div className="chat-input-wrapper">
           <textarea
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={pendingRolls ? 'Submit your rolls above, or describe another action...' : 'What does your character do?'}
+            placeholder={askDm ? 'Ask the DM a question...' : (pendingRolls ? 'Submit your rolls above, or describe another action...' : 'What does your character do?')}
             disabled={sending}
             rows={2}
             maxLength={500}
-            className="chat-input"
+            className={`chat-input ${askDm ? 'ask-dm-mode' : ''}`}
           />
           <span className={`char-counter ${input.length > 450 ? 'near-limit' : ''} ${input.length >= 500 ? 'at-limit' : ''}`}>
             {input.length}/500

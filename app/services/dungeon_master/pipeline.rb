@@ -33,7 +33,17 @@ module DungeonMaster
 
     # Main entry point: player typed something.
     # Returns a hash with :action key describing the outcome.
-    def run_prompt(player_input)
+    # @param mode [String, nil] "dm_query" when the player explicitly toggled Ask DM mode
+    def run_prompt(player_input, mode: nil)
+      if mode == "dm_query"
+        triage = run_sanitize_only(player_input)
+        if triage[:danger_score] >= @config.sanitization_threshold
+          @log.dm_log!("Rejected (danger: #{triage[:danger_score]}): #{triage[:reason]}")
+          return { action: :rejected, reason: triage[:reason], danger: triage[:danger_score] }
+        end
+        return run_dm_query_flow(triage[:sanitized_input])
+      end
+
       triage = run_triage(player_input)
 
       if triage[:danger_score] >= @config.sanitization_threshold

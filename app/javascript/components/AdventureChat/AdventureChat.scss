@@ -234,10 +234,40 @@
   .chat-input-area {
     flex-shrink: 0;
     display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     align-items: flex-end;
     padding-top: 8px;
     border-top: 1px solid #e9ecef;
+
+    .ask-dm-toggle {
+      padding: 3px 10px;
+      border: 1px solid #dee2e6;
+      border-radius: 14px;
+      background: #f8f9fa;
+      color: #888;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      align-self: flex-start;
+
+      &:hover:not(:disabled):not(.active) {
+        background: #e9ecef;
+        color: #666;
+      }
+
+      &.active {
+        background: #6a1b9a;
+        border-color: #6a1b9a;
+        color: white;
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
 
     .chat-input-wrapper {
       flex: 1;
@@ -257,11 +287,21 @@
       min-height: 36px;
       max-height: 80px;
       box-sizing: border-box;
+      transition: border-color 0.15s, box-shadow 0.15s;
 
       &:focus {
         outline: none;
         border-color: #007bff;
         box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+      }
+
+      &.ask-dm-mode {
+        border-color: #ce93d8;
+
+        &:focus {
+          border-color: #6a1b9a;
+          box-shadow: 0 0 0 2px rgba(106, 27, 154, 0.15);
+        }
       }
 
       &:disabled {

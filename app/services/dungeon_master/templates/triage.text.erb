@@ -31,11 +31,23 @@ Classify the player's input into exactly ONE of these categories:
 - exploration: searching, investigating, examining objects, knowledge checks, detecting magic, perception checks, studying something, recalling lore
 - rest: resting, camping, sleeping, spell preparation, recovering HP, taking a long break
 - inventory: using items, drinking potions, equipping gear, identifying magic items, managing equipment
-- dm_query: player asking the DM a question about rules, their character, or the game state (out-of-character)
+- dm_query: player asking the DM a question about rules, their character, the game state, or hypothetical scenarios (out-of-character)
 
-IMPORTANT: Casting utility or buff spells (Mount, Mage Armor, Shield, Comprehend Languages, etc.)
-outside of active combat is NOT combat. Classify based on the PURPOSE of the action. "I cast Mount
-and ride to the village" is traversal — the spell enables travel.
+CRITICAL CLASSIFICATION RULES (apply in order):
+1. IN-CHARACTER DIALOGUE IS social: If the player is speaking to or questioning an NPC, classify
+   as social — NOT dm_query. Signs of NPC dialogue:
+   - Explicit address: "I ask the guard...", "I say to the merchant...", "I tell him..."
+   - Second-person "you" directed at a character: "What do you know about...", "Can you help me..."
+   - Continuing an ongoing NPC conversation (look at context for active social interaction)
+   - In-character imperative: "Tell me about the ruins", "Show me the way"
+2. OUT-OF-CHARACTER QUESTIONS ARE dm_query: If the input is a question directed at the DM (not
+   an NPC) — especially hypothetical ("What if...", "What would happen if...", "How about..."),
+   mechanical ("How far am I...", "What's my AC...", "How many spell slots..."), or informational
+   about game state ("What are my options...", "How long would that take...") — classify as dm_query.
+   The DM answers questions; the DM does not narrate them.
+3. SPELL PURPOSE: Casting utility or buff spells (Mount, Mage Armor, Shield, etc.) outside of
+   active combat is NOT combat. Classify based on the PURPOSE of the action. "I cast Mount and
+   ride to the village" is traversal — the spell enables travel.
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {

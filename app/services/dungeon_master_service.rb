@@ -27,12 +27,12 @@ class DungeonMasterService
   # Public API
   # ----------------------------------------------------------------
 
-  def process_player_prompt(player_input)
+  def process_player_prompt(player_input, mode: nil)
     player_msg = persist_message(role: "player", content: player_input, message_type: "narrative")
     @log.player_message_id = player_msg.id
     @log.start_pipeline_run!(player_input)
 
-    result = pipeline.run_prompt(player_input)
+    result = pipeline.run_prompt(player_input, mode: mode)
     { messages: [player_msg] + messages_for(result) }
   rescue SanitizationRejected => e
     rejection = persist_message(role: "system", content: e.message, message_type: "sanitization_fail")
