@@ -177,6 +177,7 @@ export interface AdventureSummary {
 export interface RollRequest {
   type: string
   skill?: string
+  spell?: string
   dc?: number
   description: string
 }

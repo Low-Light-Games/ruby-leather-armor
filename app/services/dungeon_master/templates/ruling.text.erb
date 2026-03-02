@@ -23,6 +23,12 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
 
 === INSTRUCTIONS ===
 - Determine what player rolls are needed (skill checks, attack rolls, saves, etc.) for this domain.
+  IMPORTANT: Only request rolls the rules actually require. Many actions simply succeed with no roll:
+  - Casting a prepared spell in safe conditions (no threats, not casting defensively) requires NO roll.
+  - Walking, riding a trained mount on a road, or other routine actions require NO roll.
+  - Using an item, equipping gear, or other standard actions require NO roll unless rules say otherwise.
+  If no rolls are needed, return an EMPTY player_rolls array. Do NOT invent rolls the rules don't call for.
+  Every roll MUST include a numeric "dc" value. If you cannot determine a valid DC, the roll is not needed.
 - Determine what NPC actions occur in this domain in response to the player's action.
   For each NPC action, include the NPC name, action type, target, and their attack/skill modifier.
 - List any automatic consequences that don't require rolls (e.g. attitude shifts from witnessed actions).

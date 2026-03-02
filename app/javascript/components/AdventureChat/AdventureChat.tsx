@@ -296,8 +296,9 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
                   <div className="roll-request-badges">
                     {rollRequests.map((req, i) => (
                       <div key={i} className="roll-request-badge">
-                        🎲 {req.description}
-                        {req.dc && <span className="roll-dc"> (DC {req.dc})</span>}
+                        <span className="roll-badge-label">🎲 {req.skill || req.type?.replace(/_/g, ' ') || 'Roll'}</span>
+                        {req.dc != null && <span className="roll-dc">DC {req.dc}</span>}
+                        <span className="roll-badge-desc">{req.description}</span>
                       </div>
                     ))}
                   </div>
@@ -318,8 +319,9 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
           {pendingRolls.requests.map((req, i) => (
             <div key={i} className="roll-entry">
               <div className="roll-prompt">
-                <span>{req.description}</span>
-                {req.dc && <span className="roll-dc">DC {req.dc}</span>}
+                <span className="roll-prompt-type">{req.skill || req.type?.replace(/_/g, ' ') || 'Roll'}</span>
+                {req.dc != null && <span className="roll-dc">DC {req.dc}</span>}
+                <span className="roll-prompt-desc">{req.description}</span>
               </div>
               <input
                 ref={i === 0 ? rollInputRef : undefined}

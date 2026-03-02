@@ -136,19 +136,44 @@
   }
 
   /* ===== Roll request badge ===== */
-  .roll-request-badge {
+  .roll-request-badges {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
     margin-top: 8px;
+  }
+
+  .roll-request-badge {
     padding: 6px 10px;
     background-color: #fff8e1;
     border: 1px dashed #ffca28;
     border-radius: 4px;
     font-size: 12px;
-    font-weight: 600;
-    color: #f57f17;
+    color: #333;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+
+    .roll-badge-label {
+      font-weight: 700;
+      color: #f57f17;
+      text-transform: capitalize;
+    }
 
     .roll-dc {
+      font-weight: 600;
+      font-size: 11px;
+      color: #fff;
+      background: #f57f17;
+      padding: 1px 6px;
+      border-radius: 8px;
+    }
+
+    .roll-badge-desc {
       font-weight: 400;
-      color: #888;
+      color: #555;
+      font-size: 12px;
     }
   }
 
@@ -163,26 +188,33 @@
 
     .roll-prompt {
       display: flex;
-      align-items: center;
-      gap: 8px;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 6px;
       font-size: 13px;
-      font-weight: 600;
-      color: #e65100;
+      color: #333;
       margin-bottom: 8px;
 
-      .roll-icon {
-        font-size: 18px;
+      .roll-prompt-type {
+        font-weight: 700;
+        color: #e65100;
+        text-transform: capitalize;
       }
 
       .roll-dc {
-        margin-left: auto;
-        font-size: 12px;
+        font-weight: 600;
+        font-size: 11px;
+        color: #fff;
+        background: #e65100;
+        padding: 1px 6px;
+        border-radius: 8px;
+      }
+
+      .roll-prompt-desc {
         font-weight: 400;
-        color: #888;
-        background-color: white;
-        padding: 2px 8px;
-        border-radius: 10px;
-        border: 1px solid #ddd;
+        color: #555;
+        font-size: 12px;
+        flex-basis: 100%;
       }
     }
 
