@@ -63,14 +63,19 @@
               <a href="<%= admin_ai_log_path(log) %>" class="filter-link"><%= log.created_at.strftime('%b %d %H:%M:%S') %></a>
             </td>
             <td class="col-adventure">
-              <a href="<%= admin_ai_logs_path(adventure_id: log.adventure_id) %>" class="filter-link">
-                #<%= log.adventure_id %>
-              </a>
+              <% if log.adventure_id %>
+                <a href="<%= admin_ai_logs_path(adventure_id: log.adventure_id) %>" class="filter-link">
+                  #<%= log.adventure_id %>
+                </a>
+              <% else %>
+                <span class="empty-cell">—</span>
+              <% end %>
             </td>
             <td class="col-message">
-              <% if log.player_message.present? %>
-                <a href="<%= pipeline_admin_ai_logs_path(log.player_message_id) %>" class="msg-link" title="<%= log.player_message.content.truncate(200) %>">
-                  #<%= log.player_message_id %>
+              <% if log.pipeline_run_id.present? %>
+                <% tooltip = log.player_message&.content&.truncate(200) || log.player_message_content&.truncate(200) %>
+                <a href="<%= pipeline_admin_ai_logs_path(log.pipeline_run_id) %>" class="msg-link" title="<%= tooltip %>">
+                  pipeline
                 </a>
               <% else %>
                 <span class="empty-cell">—</span>

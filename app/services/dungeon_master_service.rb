@@ -30,6 +30,7 @@ class DungeonMasterService
   def process_player_prompt(player_input)
     player_msg = persist_message(role: "player", content: player_input, message_type: "narrative")
     @log.player_message_id = player_msg.id
+    @log.start_pipeline_run!(player_input)
 
     result = pipeline.run_prompt(player_input)
     { messages: [player_msg] + messages_for(result) }
@@ -52,6 +53,7 @@ class DungeonMasterService
       message_type: "roll_result",
       metadata: { rolls: roll_results_from_player })
     @log.player_message_id = roll_msg.id
+    @log.start_pipeline_run!(format_roll_results(roll_results_from_player))
 
     result = pipeline.run_rolls(format_roll_results(roll_results_from_player), metadata)
     { messages: [roll_msg] + messages_for(result) }

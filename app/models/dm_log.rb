@@ -1,5 +1,5 @@
 class DmLog < ApplicationRecord
-  belongs_to :adventure
+  belongs_to :adventure, optional: true
   belongs_to :user
 
   validates :content, presence: true

@@ -7,11 +7,20 @@
     <span class="type-badge type-hero <%= ai_log_type_badge_class(@log.call_type) %>"><%= @log.call_type.humanize %></span>
   </div>
 
-  <% if @log.player_message.present? %>
+  <% if @log.pipeline_run_id.present? || @log.player_message.present? %>
     <div class="player-message-block">
-      <span class="pm-label">Player Message #<%= @log.player_message_id %></span>
-      <a href="<%= pipeline_admin_ai_logs_path(@log.player_message_id) %>" class="pm-pipeline-link">View Pipeline</a>
-      <p class="pm-content"><%= @log.player_message.content %></p>
+      <% if @log.player_message.present? %>
+        <span class="pm-label">Player Message #<%= @log.player_message_id %></span>
+      <% else %>
+        <span class="pm-label">Pipeline Run</span>
+      <% end %>
+      <% if @log.pipeline_run_id.present? %>
+        <a href="<%= pipeline_admin_ai_logs_path(@log.pipeline_run_id) %>" class="pm-pipeline-link">View Pipeline</a>
+      <% end %>
+      <% content = @log.player_message&.content || @log.player_message_content %>
+      <% if content.present? %>
+        <p class="pm-content"><%= content %></p>
+      <% end %>
     </div>
   <% end %>
 
@@ -23,7 +32,11 @@
     <div class="meta-item">
       <span class="meta-label">Adventure</span>
       <span class="meta-value">
-        <a href="<%= admin_ai_logs_path(adventure_id: @log.adventure_id) %>">#<%= @log.adventure_id %></a>
+        <% if @log.adventure_id %>
+          <a href="<%= admin_ai_logs_path(adventure_id: @log.adventure_id) %>">#<%= @log.adventure_id %></a>
+        <% else %>
+          <span class="empty-cell">deleted</span>
+        <% end %>
       </span>
     </div>
     <div class="meta-item">

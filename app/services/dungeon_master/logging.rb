@@ -4,13 +4,20 @@ module DungeonMaster
   # Encapsulates all DM-related logging: debug DmLogs and raw AiLogs.
   # Every write is rescue'd so a logging failure never breaks gameplay.
   class Logging
-    attr_accessor :player_message_id
+    attr_accessor :player_message_id, :pipeline_run_id, :player_message_content
 
     def initialize(adventure:, user:, dm_service: "standard")
       @adventure = adventure
       @user = user
       @dm_service = dm_service
       @player_message_id = nil
+      @pipeline_run_id = nil
+      @player_message_content = nil
+    end
+
+    def start_pipeline_run!(message_content)
+      @pipeline_run_id = SecureRandom.uuid
+      @player_message_content = message_content&.truncate(500)
     end
 
     # Write a human-readable debug entry (visible in Admin -> DM Logs).
@@ -37,7 +44,9 @@ module DungeonMaster
         error_message: nil,
         dm_service: @dm_service,
         model_used: model_used,
-        player_message_id: @player_message_id
+        player_message_id: @player_message_id,
+        pipeline_run_id: @pipeline_run_id,
+        player_message_content: @player_message_content
       )
     rescue => e
       Rails.logger.error("[DungeonMaster::Logging] Failed to write AiLog: #{e.message}")
@@ -56,7 +65,9 @@ module DungeonMaster
         error_message: error.message,
         dm_service: @dm_service,
         model_used: model_used,
-        player_message_id: @player_message_id
+        player_message_id: @player_message_id,
+        pipeline_run_id: @pipeline_run_id,
+        player_message_content: @player_message_content
       )
     rescue => e
       Rails.logger.error("[DungeonMaster::Logging] Failed to write AiLog (error): #{e.message}")

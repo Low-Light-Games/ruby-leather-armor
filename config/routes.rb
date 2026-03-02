@@ -25,7 +25,7 @@ Rails.application.routes.draw do
     resources :ai_logs, only: [:index, :show] do
       collection do
         get :pipelines
-        get "pipelines/:player_message_id", action: :pipeline, as: :pipeline
+        get "pipelines/:pipeline_run_id", action: :pipeline, as: :pipeline
       end
     end
     resources :feature_flags, only: [:index] do

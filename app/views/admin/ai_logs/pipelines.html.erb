@@ -26,16 +26,20 @@
           <% overall = run[:has_error] ? "error" : (run[:has_fallback] ? "partial" : "complete") %>
           <tr class="pipeline-row pipeline-<%= overall %>">
             <td class="col-time">
-              <a href="<%= pipeline_admin_ai_logs_path(run[:player_message_id]) %>" class="filter-link">
+              <a href="<%= pipeline_admin_ai_logs_path(run[:pipeline_run_id]) %>" class="filter-link">
                 <%= run[:first_at].strftime('%b %d %H:%M:%S') %>
               </a>
             </td>
             <td class="col-adv">
-              <a href="<%= admin_ai_logs_path(adventure_id: run[:adventure_id]) %>" class="filter-link">#<%= run[:adventure_id] %></a>
+              <% if run[:adventure_id] %>
+                <a href="<%= admin_ai_logs_path(adventure_id: run[:adventure_id]) %>" class="filter-link">#<%= run[:adventure_id] %></a>
+              <% else %>
+                <span class="empty-cell">—</span>
+              <% end %>
             </td>
             <td class="col-message">
-              <% if run[:message] %>
-                <span class="player-msg-text"><%= truncate(run[:message].content, length: 80) %></span>
+              <% if run[:message_content].present? %>
+                <span class="player-msg-text"><%= truncate(run[:message_content], length: 80) %></span>
               <% else %>
                 <span class="empty-cell">—</span>
               <% end %>

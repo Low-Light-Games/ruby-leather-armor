@@ -24,7 +24,11 @@
     <div class="meta-item">
       <span class="meta-label">Adventure</span>
       <span class="meta-value">
-        <a href="<%= admin_dm_logs_path(adventure_id: @log.adventure_id) %>">#<%= @log.adventure_id %></a>
+        <% if @log.adventure_id %>
+          <a href="<%= admin_dm_logs_path(adventure_id: @log.adventure_id) %>">#<%= @log.adventure_id %></a>
+        <% else %>
+          <span class="empty-cell">deleted</span>
+        <% end %>
       </span>
     </div>
   </div>

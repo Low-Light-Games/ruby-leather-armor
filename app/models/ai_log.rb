@@ -1,5 +1,5 @@
 class AiLog < ApplicationRecord
-  belongs_to :adventure
+  belongs_to :adventure, optional: true
   belongs_to :player_message, class_name: "AdventureMessage", optional: true
 
   CALL_TYPES = %w[

@@ -7,11 +7,17 @@
   </div>
 
   <div class="pipeline-player-msg">
-    <span class="pm-label">Player Message #<%= @player_message.id %></span>
+    <% if @player_message %>
+      <span class="pm-label">Player Message #<%= @player_message.id %></span>
+    <% else %>
+      <span class="pm-label">Pipeline Run</span>
+    <% end %>
     <% if @adventure %>
       <a href="<%= admin_ai_logs_path(adventure_id: @adventure.id) %>" class="pm-adventure-link">Adventure #<%= @adventure.id %></a>
     <% end %>
-    <blockquote class="pm-quote"><%= @player_message.content %></blockquote>
+    <% if @player_message_content.present? %>
+      <blockquote class="pm-quote"><%= @player_message_content %></blockquote>
+    <% end %>
   </div>
 
   <% if @logs.any? %>

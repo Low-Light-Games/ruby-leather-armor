@@ -26,32 +26,35 @@ module Admin
     end
 
     def pipelines
-      runs = AiLog.where.not(player_message_id: nil)
-                  .select("player_message_id, MIN(created_at) AS first_at, MAX(created_at) AS last_at, COUNT(*) AS step_count, adventure_id")
-                  .group(:player_message_id, :adventure_id)
+      runs = AiLog.where.not(pipeline_run_id: [nil, ""])
+                  .select("pipeline_run_id, MIN(created_at) AS first_at, MAX(created_at) AS last_at, COUNT(*) AS step_count, MIN(adventure_id) AS adventure_id")
+                  .group(:pipeline_run_id)
                   .order("first_at DESC")
 
       @page = [params[:page].to_i, 1].max
-      @total_count = AiLog.where.not(player_message_id: nil).distinct.count(:player_message_id)
+      @total_count = AiLog.where.not(pipeline_run_id: [nil, ""]).distinct.count(:pipeline_run_id)
       @total_pages = (@total_count.to_f / PER_PAGE).ceil
       runs = runs.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
 
-      msg_ids = runs.map(&:player_message_id)
-      @messages = AdventureMessage.where(id: msg_ids).index_by(&:id)
-
-      logs_by_msg = AiLog.where(player_message_id: msg_ids)
+      run_ids = runs.map(&:pipeline_run_id)
+      logs_by_run = AiLog.where(pipeline_run_id: run_ids)
                          .order(:created_at)
-                         .group_by(&:player_message_id)
+                         .group_by(&:pipeline_run_id)
+
+      msg_ids = logs_by_run.values.flatten.filter_map(&:player_message_id).uniq
+      messages = AdventureMessage.where(id: msg_ids).index_by(&:id)
 
       @pipeline_runs = runs.map do |run|
-        logs = logs_by_msg[run.player_message_id] || []
+        logs = logs_by_run[run.pipeline_run_id] || []
+        first_log = logs.first
+        msg = first_log && messages[first_log.player_message_id]
         {
-          player_message_id: run.player_message_id,
+          pipeline_run_id: run.pipeline_run_id,
           adventure_id: run.adventure_id,
           first_at: run.first_at,
           last_at: run.last_at,
           step_count: run.step_count,
-          message: @messages[run.player_message_id],
+          message_content: msg&.content || first_log&.player_message_content,
           logs: logs,
           has_error: logs.any? { |l| l.status.in?(%w[api_error parse_error token_budget_exceeded]) },
           has_fallback: logs.any? { |l| l.status == "parse_fallback" }
@@ -62,11 +65,18 @@ module Admin
     end
 
     def pipeline
-      @player_message = AdventureMessage.find(params[:player_message_id])
-      @logs = AiLog.where(player_message_id: @player_message.id)
+      @logs = AiLog.where(pipeline_run_id: params[:pipeline_run_id])
                    .order(:created_at)
                    .includes(:adventure)
+      if @logs.empty?
+        redirect_to pipelines_admin_ai_logs_path, alert: "Pipeline run not found"
+        return
+      end
       @adventure = @logs.first&.adventure
+      first_log = @logs.first
+      @player_message = first_log.player_message
+      @player_message_content = @player_message&.content || first_log.player_message_content
+      @pipeline_run_id = params[:pipeline_run_id]
 
       render layout: 'application'
     end
