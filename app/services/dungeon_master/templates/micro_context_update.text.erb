@@ -13,6 +13,11 @@ Your job is to update the micro-context objects based on what just happened.
 <% if @affected_fields.any? -%>
 Contexts marked [UPDATE] were directly affected by this action — update them thoroughly.
 Contexts marked [maintain] were not directly affected — carry them forward unchanged unless the narrative clearly implies a change.
+CRITICAL: An [UPDATE] context MUST NEVER be returned as an empty object `{}`. If it was empty
+before, this action just CREATED that context — populate it with structured data extracted from
+the narrative, mutations, and your knowledge of what happened. For example, a social interaction
+must produce npcs_present, conversation_state, etc. A traversal action must produce current_location,
+terrain, etc. Returning `{}` for an [UPDATE] context is always wrong.
 <% else -%>
 Update each context to reflect what just happened. Return all contexts below.
 <% end -%>

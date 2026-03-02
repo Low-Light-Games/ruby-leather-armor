@@ -61,8 +61,11 @@ sense_motive:
   related: [bluff]
 
 gather_information:
-  name: "Gather Information (Diplomacy)"
+  name: "Gather Information (use Diplomacy skill)"
   text: |
+    This is NOT a standalone skill. In Pathfinder 1e, gathering information is a
+    specific use of the DIPLOMACY skill. Always request a Diplomacy check, never
+    a "Gather Information" check.
     DC 10: common knowledge available to most people in the area.
     DC 20: uncommon knowledge, requires asking around (1d4+1 hours).
     DC 25+: obscure or secret information.
