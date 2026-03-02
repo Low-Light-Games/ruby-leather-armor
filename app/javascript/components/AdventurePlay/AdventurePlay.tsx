@@ -98,7 +98,11 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           traversalContext={adventure.traversal_context}
           combatContext={adventure.combat_context}
           socialContext={adventure.social_context}
+          explorationContext={adventure.exploration_context}
+          restContext={adventure.rest_context}
+          inventoryContext={adventure.inventory_context}
           storySummary={adventure.story_summary}
+          sceneSummary={adventure.scene_summary}
           currentCategory={adventure.current_category}
         />
       </div>

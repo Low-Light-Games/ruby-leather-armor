@@ -4,6 +4,7 @@
     <span class="admin-badge">Admin</span>
   </div>
   <div class="navbar-right">
+    <a href="/adventures/new" class="nav-link player-view-link">Player View</a>
     <a href="<%= admin_stories_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :stories %>">Stories</a>
     <a href="<%= admin_dm_logs_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :dm_logs %>">DM Logs</a>
     <a href="<%= admin_ai_logs_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :ai_logs %>">AI Logs</a>

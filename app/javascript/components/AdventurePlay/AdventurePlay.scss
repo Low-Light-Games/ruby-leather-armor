@@ -920,6 +920,21 @@
           background: #e3f2fd;
           color: #1565c0;
         }
+
+        &.cat-exploration {
+          background: #fff3e0;
+          color: #e65100;
+        }
+
+        &.cat-rest {
+          background: #f3e5f5;
+          color: #6a1b9a;
+        }
+
+        &.cat-inventory {
+          background: #efebe9;
+          color: #4e342e;
+        }
       }
 
       .context-body {
@@ -932,6 +947,71 @@
       .context-placeholder {
         color: #aaa;
         font-style: italic;
+      }
+
+      .scene-summary {
+        font-weight: 500;
+        color: #444;
+      }
+    }
+
+    .context-debug-panel {
+      margin-top: 8px;
+
+      .context-debug-toggle {
+        background: none;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        padding: 6px 10px;
+        font-size: 11px;
+        color: #888;
+        cursor: pointer;
+        width: 100%;
+        text-align: left;
+        font-family: inherit;
+
+        &:hover {
+          background: #f8f9fa;
+          color: #555;
+        }
+      }
+
+      .context-debug-section {
+        margin-top: 8px;
+        padding: 8px;
+        background: #fafafa;
+        border: 1px dashed #ddd;
+        border-radius: 4px;
+
+        h4 {
+          margin: 0;
+          font-size: 11px;
+          text-transform: uppercase;
+          color: #888;
+          letter-spacing: 0.5px;
+          font-weight: 600;
+        }
+
+        .context-detail-list {
+          .context-entry {
+            display: flex;
+            gap: 8px;
+            padding: 2px 0;
+            font-size: 11px;
+
+            .context-key {
+              color: #999;
+              text-transform: capitalize;
+              flex-shrink: 0;
+              min-width: 80px;
+            }
+
+            .context-value {
+              color: #555;
+              word-break: break-word;
+            }
+          }
+        }
       }
     }
   }

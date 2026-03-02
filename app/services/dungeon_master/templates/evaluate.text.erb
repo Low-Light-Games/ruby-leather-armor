@@ -25,6 +25,12 @@ determine the mechanical outcome and produce structured mutations.
 - Include conditions added or removed.
 - Include items consumed (potions used, ammunition spent) and spells used.
 - The outcome field should be a factual summary (not narrative prose).
+- TRAVEL: If the action involves movement or travel (forced march, riding, walking to a
+  destination, climbing, swimming across), you MUST populate the "travel" field. Estimate
+  distance and time based on the character's speed, mount speed, terrain, and Pathfinder 1e
+  movement rules. A light horse moves at 50 ft (overland ~48 miles/day). Walking speed of
+  20 ft covers ~16 miles/day. If the destination is known, state how close the player is now.
+  Set travel to null ONLY when the action involves no meaningful movement.
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
@@ -36,6 +42,11 @@ Respond ONLY with valid JSON (no markdown, no code fences):
       { "name": "NPC Name", "hp_change": -8, "conditions_add": [], "conditions_remove": [], "defeated": false, "attitude_change": null }
     ],
     "items_consumed": [],
-    "spells_used": []
+    "spells_used": [],
+    "travel": {
+      "hours_traveled": 0,
+      "distance_covered": "description of distance covered",
+      "new_location": "where the player is now relative to known landmarks"
+    }
   }
 }

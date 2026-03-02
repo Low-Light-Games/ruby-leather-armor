@@ -15,6 +15,7 @@ module DungeonMaster
 
         micro_result = micro_thread.value
         persist_micro_contexts(micro_result)
+        persist_scene_summary(micro_result["scene_summary"])
         handle_new_creatures(micro_result["new_creatures"]) if micro_result["new_creatures"].present?
 
         if macro_thread
@@ -112,6 +113,10 @@ module DungeonMaster
           h[key.to_sym] = parsed[key] if parsed[key].present?
         end
         @adventure.update!(updates) if updates.any?
+      end
+
+      def persist_scene_summary(summary)
+        @adventure.update!(scene_summary: summary) if summary.present?
       end
     end
   end

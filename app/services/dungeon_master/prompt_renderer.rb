@@ -16,6 +16,18 @@ module DungeonMaster
       template.result(ctx.send(:get_binding)).strip
     end
 
+    # Renders a partial template. Returns empty string if the file does not
+    # exist, so callers can safely inject domain-specific fragments that may
+    # or may not be defined.
+    def self.render_partial(partial_path, **locals)
+      path = TEMPLATE_DIR.join("#{partial_path}.text.erb")
+      return "" unless path.exist?
+
+      template = load_template(partial_path)
+      ctx = TemplateContext.new(**locals)
+      template.result(ctx.send(:get_binding)).strip
+    end
+
     def self.reload!
       @templates = nil
     end

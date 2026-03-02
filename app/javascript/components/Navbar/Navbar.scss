@@ -40,6 +40,12 @@
     &:hover {
       background-color: #e9ecef;
     }
+
+    &.admin-panel-link {
+      color: #6c757d;
+      font-size: 12px;
+      border: 1px solid #dee2e6;
+    }
   }
 
   .adventure-cta {

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_02_140107) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_02_161139) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -107,6 +107,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_02_140107) do
     t.jsonb "exploration_context", default: {}, null: false
     t.jsonb "rest_context", default: {}, null: false
     t.jsonb "inventory_context", default: {}, null: false
+    t.text "scene_summary"
     t.index ["story_id"], name: "index_adventures_on_story_id"
     t.index ["user_id"], name: "index_adventures_on_user_id"
   end

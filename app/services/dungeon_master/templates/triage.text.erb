@@ -25,13 +25,17 @@ Score the danger from 0 to 100:
 
 JOB 2 — CLASSIFICATION:
 Classify the player's input into exactly ONE of these categories:
-- combat: attacking, defending, combat maneuvers, using combat abilities in a fight
-- traversal: movement, travel, navigation, climbing, swimming, environmental obstacles
+- combat: attacking, defending, combat maneuvers, using combat abilities DURING an active fight
+- traversal: movement, travel, navigation, climbing, swimming, environmental obstacles, casting spells that enable travel (e.g. Mount, Fly, Expeditious Retreat, Water Walk)
 - social: dialogue, persuasion, intimidation, deception, NPC interaction, diplomacy
 - exploration: searching, investigating, examining objects, knowledge checks, detecting magic, perception checks, studying something, recalling lore
 - rest: resting, camping, sleeping, spell preparation, recovering HP, taking a long break
 - inventory: using items, drinking potions, equipping gear, identifying magic items, managing equipment
 - dm_query: player asking the DM a question about rules, their character, or the game state (out-of-character)
+
+IMPORTANT: Casting utility or buff spells (Mount, Mage Armor, Shield, Comprehend Languages, etc.)
+outside of active combat is NOT combat. Classify based on the PURPOSE of the action. "I cast Mount
+and ride to the village" is traversal — the spell enables travel.
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {

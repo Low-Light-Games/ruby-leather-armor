@@ -28,6 +28,7 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
 - List any automatic consequences that don't require rolls (e.g. attitude shifts from witnessed actions).
 - Write a ruling_summary that describes what happens mechanically in this domain. This summary will be passed to subsequent rulings for other domains.
 - Only adjudicate for the <%= @domain.upcase %> domain. Do not rule on other domains.
+<%= @domain_instructions %>
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {

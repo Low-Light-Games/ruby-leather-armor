@@ -32,13 +32,16 @@ module DungeonMaster
           micro_ctx  = @adventure.send("#{domain}_context")
           creature_stats = CharacterBlock.creature_stats_for(@adventure)
 
+          domain_instructions = PromptRenderer.render_partial("ruling/_#{domain}")
+
           system_prompt = PromptRenderer.render("ruling",
             domain: domain,
             character_block: char_block,
             micro_context: micro_ctx.present? ? micro_ctx.to_json : nil,
             creature_stats: creature_stats,
             previous_summaries: previous_summaries,
-            rules_text: rules_text)
+            rules_text: rules_text,
+            domain_instructions: domain_instructions)
 
           request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
           raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],

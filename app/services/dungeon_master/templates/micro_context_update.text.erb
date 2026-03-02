@@ -25,6 +25,16 @@ Update each context to reflect what just happened. Return all contexts below.
 - If combat has ended (all enemies defeated/fled), set combat_context.active to false.
 - If rest is complete, set rest_context.resting to false and rest_context.rest_complete to true.
 - If new creatures or NPCs appeared in the narrative, include their names in new_creatures so the app can create their stat records.
+- TRAVEL: If the mutations contain a "travel" object, you MUST update traversal_context.current_location
+  to match the travel.new_location value. Do NOT carry forward the old location when travel has occurred.
+  Also update scene, terrain, time_of_day, and other traversal fields to reflect the new position.
+- NARRATIVE CONSISTENCY: The narrative describes what the player just experienced. If the narrative
+  describes the player arriving at, approaching, or leaving a location, the traversal context MUST
+  reflect that change. Never carry forward a stale current_location that contradicts the narrative.
+- SCENE SUMMARY: Write a single concise sentence (under 15 words) describing the player's current
+  situation. This is displayed to the player as a status line. Examples: "Traveling by horseback
+  toward the village.", "Engaged in melee combat with two goblins.", "Resting at camp, preparing
+  spells for tomorrow.", "Investigating the ruins beneath the old mill."
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
@@ -33,5 +43,6 @@ Respond ONLY with valid JSON (no markdown, no code fences):
 <% end -%>
 <% if @relevant_fields.any? %>,<% end %>
   "new_creatures": [],
+  "scene_summary": "Single concise sentence describing the player's current situation",
   "reasoning": "Brief explanation of context changes (1-2 sentences)"
 }

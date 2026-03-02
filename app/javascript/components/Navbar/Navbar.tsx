@@ -15,6 +15,7 @@ export const Navbar = () => {
       <div className="header-actions">
         <a href="/sheets" className="nav-link">Sheets</a>
         <a href="/adventures/new" className="adventure-cta">Adventure!</a>
+        {user.admin && <a href="/admin/stories" className="nav-link admin-panel-link">Admin Panel</a>}
         <button onClick={logout} className="logout-button">Logout</button>
       </div>
     </div>

@@ -17,6 +17,7 @@ export const AdminNavbar = ({ active }: AdminNavbarProps) => {
         <span className="admin-badge">Admin</span>
       </div>
       <div className="navbar-right">
+        <a href="/adventures/new" className="nav-link player-view-link">Player View</a>
         <a href="/admin/stories" className={`nav-link${active === 'stories' ? ' active-link' : ''}`}>Stories</a>
         <a href="/admin/dm_logs" className={`nav-link${active === 'dm_logs' ? ' active-link' : ''}`}>DM Logs</a>
         <a href="/admin/ai_logs" className={`nav-link${active === 'ai_logs' ? ' active-link' : ''}`}>AI Logs</a>

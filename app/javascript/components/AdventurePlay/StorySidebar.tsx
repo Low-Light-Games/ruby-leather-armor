@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import type { Story } from '../../types';
 
 const CATEGORY_LABELS: Record<string, { label: string; className: string }> = {
   combat: { label: 'Combat', className: 'cat-combat' },
   social: { label: 'Social', className: 'cat-social' },
   traversal: { label: 'Traversal', className: 'cat-traversal' },
+  exploration: { label: 'Exploration', className: 'cat-exploration' },
+  rest: { label: 'Rest', className: 'cat-rest' },
+  inventory: { label: 'Inventory', className: 'cat-inventory' },
 }
 
 interface StorySidebarProps {
@@ -12,7 +16,11 @@ interface StorySidebarProps {
   traversalContext: Record<string, unknown> | null;
   combatContext: Record<string, unknown> | null;
   socialContext: Record<string, unknown> | null;
+  explorationContext: Record<string, unknown> | null;
+  restContext: Record<string, unknown> | null;
+  inventoryContext: Record<string, unknown> | null;
   storySummary: string | null;
+  sceneSummary: string | null;
   currentCategory: string | null;
 }
 
@@ -27,9 +35,9 @@ const ContextSection: React.FC<{
   if (!isContextActive(context)) return null;
 
   return (
-    <div className="context-section">
+    <div className="context-section context-debug-section">
       <div className="context-header">
-        <h3>{label}</h3>
+        <h4>{label}</h4>
         <span className={`category-badge ${className}`}>{label}</span>
       </div>
       <div className="context-body context-detail-list">
@@ -64,15 +72,29 @@ export const StorySidebar: React.FC<StorySidebarProps> = ({
   traversalContext,
   combatContext,
   socialContext,
+  explorationContext,
+  restContext,
+  inventoryContext,
   storySummary,
+  sceneSummary,
   currentCategory,
 }) => {
-  const hasAnyContext =
-    isContextActive(traversalContext) ||
-    isContextActive(combatContext) ||
-    isContextActive(socialContext);
+  const { user } = useAuth();
+  const isAdmin = user?.admin ?? false;
+  const [debugOpen, setDebugOpen] = useState(false);
 
   const categoryInfo = currentCategory ? CATEGORY_LABELS[currentCategory] : null;
+
+  const contexts: Array<{ key: string; label: string; className: string; ctx: Record<string, unknown> | null }> = [
+    { key: 'traversal', label: 'Traversal', className: 'cat-traversal', ctx: traversalContext },
+    { key: 'combat', label: 'Combat', className: 'cat-combat', ctx: combatContext },
+    { key: 'social', label: 'Social', className: 'cat-social', ctx: socialContext },
+    { key: 'exploration', label: 'Exploration', className: 'cat-exploration', ctx: explorationContext },
+    { key: 'rest', label: 'Rest', className: 'cat-rest', ctx: restContext },
+    { key: 'inventory', label: 'Inventory', className: 'cat-inventory', ctx: inventoryContext },
+  ];
+
+  const activeContextCount = contexts.filter(c => isContextActive(c.ctx)).length;
 
   return (
     <div className="adventure-column story-column">
@@ -93,30 +115,32 @@ export const StorySidebar: React.FC<StorySidebarProps> = ({
         </div>
       </div>
 
-      {hasAnyContext ? (
-        <>
-          <ContextSection
-            label="Traversal"
-            className="cat-traversal"
-            context={traversalContext}
-          />
-          <ContextSection
-            label="Combat"
-            className="cat-combat"
-            context={combatContext}
-          />
-          <ContextSection
-            label="Social"
-            className="cat-social"
-            context={socialContext}
-          />
-        </>
-      ) : (
-        <div className="context-section">
-          <h3>Current Scene</h3>
-          <div className="context-body">
-            <span className="context-placeholder">No scene details yet.</span>
-          </div>
+      <div className="context-section">
+        <h3>Current Scene</h3>
+        <div className="context-body scene-summary-body">
+          {sceneSummary
+            ? <span className="scene-summary">{sceneSummary}</span>
+            : <span className="context-placeholder">No scene details yet.</span>
+          }
+        </div>
+      </div>
+
+      {isAdmin && activeContextCount > 0 && (
+        <div className="context-debug-panel">
+          <button
+            className="context-debug-toggle"
+            onClick={() => setDebugOpen(prev => !prev)}
+          >
+            {debugOpen ? '▾' : '▸'} Micro Contexts ({activeContextCount})
+          </button>
+          {debugOpen && contexts.map(c => (
+            <ContextSection
+              key={c.key}
+              label={c.label}
+              className={c.className}
+              context={c.ctx}
+            />
+          ))}
         </div>
       )}
     </div>

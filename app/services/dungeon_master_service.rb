@@ -92,7 +92,7 @@ class DungeonMasterService
     when :awaiting_rolls
       [persist_message(
         role: "dm",
-        content: "The DM awaits your rolls...",
+        content: roll_explanation(result[:merged][:ruling_summaries]),
         message_type: "roll_request",
         metadata: {
           roll_requests: result[:merged][:player_rolls],
@@ -132,6 +132,15 @@ class DungeonMasterService
     else
       error.message
     end
+  end
+
+  def roll_explanation(ruling_summaries)
+    return "The DM awaits your rolls..." if ruling_summaries.blank?
+
+    ruling_summaries
+      .map { |s| s.sub(/\A\[\w+\]\s*/, "") }
+      .join(" ")
+      .presence || "The DM awaits your rolls..."
   end
 
   def persist_message(role:, content:, message_type:, metadata: {})

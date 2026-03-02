@@ -444,6 +444,106 @@ exploration context (the area is now safe to search). Six isolated calls
 cannot make those connections. The selective approach preserves this
 awareness while still reducing scope.
 
+### 19. Travel tracking through the pipeline
+
+**Decision:** the pipeline explicitly tracks travel and distance changes
+across three steps:
+
+1. **Ruling** (traversal domain only): the prompt instructs the model to
+   estimate travel time and distance using Pathfinder 1e overland movement
+   rules (speed, mount, terrain, forced march). The estimate appears in the
+   `ruling_summary`.
+2. **Evaluate**: a new `mutations.travel` object
+   (`{ hours_traveled, distance_covered, new_location }`) captures the
+   mechanical travel outcome alongside HP/condition mutations.
+3. **Context Update**: the prompt explicitly instructs the model to update
+   `traversal_context.current_location` from `travel.new_location` and to
+   enforce narrative consistency (never carry forward a stale location that
+   contradicts the narrative).
+
+**Why:** without this chain, travel was a "gap" in the pipeline. The Ruling
+step asked for Constitution checks (forced march fatigue) but never
+computed how far the player traveled. The Evaluate step processed the roll
+but left `position: null`. The Narrate step might creatively advance the
+player, but the Context Update step would see no mechanical signal and
+carry forward the old location unchanged. This created a state where the
+narrative says the player arrived at the village but the context still says
+"2 days away."
+
+**Trade-off accepted:** the travel estimate is approximate — the model
+computes an estimate based on rules of thumb (light horse ~48 mi/day on
+road), not a precise simulation. This is acceptable because the DM
+narrative is inherently approximate about distances, and the key
+requirement is that *relative position updates* (closer, arrived, departed)
+are mechanically tracked rather than left to creative interpretation.
+
+### 20. Purpose-based triage classification
+
+**Decision:** the Triage step classifies actions by their **purpose**, not
+by the surface mechanics involved. Casting a utility spell (Mount, Mage
+Armor, Fly) outside active combat is NOT classified as `combat` — it is
+classified based on what the spell enables (e.g., `traversal` for Mount).
+
+**Why:** misclassifying "I cast Mount and ride to the village" as `combat`
+caused a wasted ruling iteration for a non-existent combat context and
+skewed downstream steps. The classification should answer "what is the
+player trying to accomplish?" not "does this involve spellcasting?"
+
+### 21. Domain-specific ruling partials
+
+**Decision:** the Ruling step loads domain-specific instructions from
+separate partial files (`templates/ruling/_combat.text.erb`,
+`_traversal.text.erb`, etc.) rather than inlining all domain logic in a
+single template with `if/elsif` blocks.
+
+**How:** `PromptRenderer.render_partial("ruling/_#{domain}")` loads the
+partial for the current domain. If no partial exists (e.g., a future
+`magic` domain has no instructions yet), it returns an empty string
+gracefully. The rendered text is injected into the main ruling template
+via `@domain_instructions`.
+
+**Why:** with six domains each needing domain-specific Pathfinder 1e
+guidance (combat: AoO, flanking, concentration; traversal: overland
+movement, forced march; social: diplomacy DCs; etc.), a single template
+with conditionals became unwieldy. Separate files are easier to review,
+edit, and version-control independently.
+
+**Domains covered:** `combat`, `traversal`, `social`, `exploration`,
+`rest`, `inventory`.
+
+### 22. Scene summary as player-facing status
+
+**Decision:** the Micro Context Update step (6a) produces a `scene_summary`
+— a single concise sentence (under 15 words) describing the player's
+current situation. It is persisted on the `Adventure` model and displayed
+in the player-facing UI.
+
+**Why:** the raw micro-context JSONB fields are developer/admin-oriented
+data (key-value pairs like `current_location`, `active: true`, etc.) that
+are not meaningful to the player. The scene summary bridges this gap by
+giving the player a quick status line ("Traveling by horseback toward the
+village.") without exposing internal state tracking.
+
+**UI behavior:** all players see the scene summary. Admin users
+additionally see a collapsible "Micro Contexts" debug section showing all
+six raw context objects.
+
+### 23. Player-visible roll explanations
+
+**Decision:** when the pipeline pauses for player rolls, the roll request
+message now contains the ruling summaries as human-readable content rather
+than the static placeholder "The DM awaits your rolls..."
+
+**How:** `DungeonMasterService#roll_explanation` strips `[DOMAIN]`
+prefixes from the ruling summaries and joins them into a paragraph. The
+ruling summaries explain the mechanical reasoning behind the requested
+rolls.
+
+**Why:** players were confused by roll requests that appeared without
+context (e.g., two identical-looking Constitution checks without
+explanation). The ruling summaries already contain the "why" — they just
+weren't being shown.
+
 ---
 
 ## Architecture Overview
@@ -551,6 +651,10 @@ that happens to every player message. It has two jobs:
 2. **Classification** — categorizes the input into exactly one of:
    `combat`, `traversal`, `social`, `exploration`, `rest`, `inventory`,
    or `dm_query`. This determines which branch the pipeline follows.
+   Classification is based on the **purpose** of the action, not surface
+   mechanics: casting utility spells (Mount, Fly, Mage Armor) outside
+   active combat is classified by the action's goal (e.g., `traversal`
+   for Mount + travel), not as `combat`.
 
 ### Input
 
@@ -718,6 +822,21 @@ than reciting them from memory (which would produce hallucinated rules).
 The mechanical core of the pipeline. Determines what dice rolls are
 needed, what NPC actions occur, and what automatic consequences follow —
 all within the framework of Pathfinder 1e rules.
+
+Each domain receives **domain-specific instructions** loaded from partial
+files (`templates/ruling/_combat.text.erb`, `_traversal.text.erb`, etc.)
+via `PromptRenderer.render_partial`. These partials contain Pathfinder 1e
+rules guidance relevant to that domain: combat covers AoO, flanking, and
+concentration; traversal covers overland movement and forced march;
+social covers diplomacy DCs and attitude tracking; and so on. If a
+domain has no partial file, the ruling proceeds without domain-specific
+instructions.
+
+For **traversal** domains specifically, the ruling also estimates travel
+time and distance using Pathfinder 1e overland movement rules (base
+speed, mount speed, terrain modifiers, forced march). This travel
+estimate is included in the `ruling_summary` so the downstream Evaluate
+step can compute the player's new position.
 
 ### The loop
 
@@ -894,10 +1013,22 @@ that the app applies to the database.
       }
     ],
     "items_consumed": ["Potion of Cure Light Wounds"],
-    "spells_used": ["Magic Missile"]
+    "spells_used": ["Magic Missile"],
+    "travel": {
+      "hours_traveled": 10,
+      "distance_covered": "~40 miles on horseback along road",
+      "new_location": "approaching the village outskirts"
+    }
   }
 }
 ```
+
+The `travel` field is present when the action involves movement or travel
+(e.g., forced march, riding, swimming across). It is `null` when no
+meaningful movement occurs. The field is computed using Pathfinder 1e
+overland movement rules (speed, terrain modifiers, forced march rules) and
+is passed downstream to the Narrate and Context Update steps so they can
+accurately reflect the player's new position.
 
 ### App-side post-processing
 
@@ -907,6 +1038,9 @@ The `mutations` hash is applied by `DungeonMaster::Mutations#apply_mutations`:
 - **NPC HP**: clamped between 0 and `max_hp`
 - **NPC attitude changes**: validated against `CreatureSheet::ATTITUDES`
   before persisting
+- **Travel**: the `travel` field is not consumed by `apply_mutations`
+  directly — it flows through to the Context Update step (Step 6a) where
+  it drives `traversal_context.current_location` updates
 - **Conditions, items, spells**: logged but not yet mechanically enforced
   (future enhancement)
 
@@ -1057,6 +1191,24 @@ is `["traversal", "combat"]` and `social_context` also has data, the output is:
 ```
 
 Contexts not included in the prompt are left untouched app-side.
+
+### Travel tracking
+
+When mutations contain a `travel` object (from the Evaluate step), the
+prompt explicitly instructs the model to update
+`traversal_context.current_location` to match `travel.new_location`. The
+prompt also enforces **narrative consistency**: if the narrative describes
+the player arriving at or departing from a location, the context must
+reflect that — stale locations must never be carried forward.
+
+### Scene summary
+
+The context update step also produces a `scene_summary` — a single
+concise sentence (under 15 words) describing the player's current
+situation. This is persisted on the `Adventure` model (`scene_summary`
+text column) and shown to the player in the story sidebar as a status
+line. It is generated alongside the context updates at no additional AI
+cost.
 
 ### Context field schemas
 

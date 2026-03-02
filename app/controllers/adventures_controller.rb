@@ -139,7 +139,11 @@ class AdventuresController < ApplicationController
       traversal_context: adventure.traversal_context,
       combat_context: adventure.combat_context,
       social_context: adventure.social_context,
+      exploration_context: adventure.exploration_context,
+      rest_context: adventure.rest_context,
+      inventory_context: adventure.inventory_context,
       story_summary: adventure.story_summary,
+      scene_summary: adventure.scene_summary,
       current_category: adventure.current_category,
       directed_dm: adventure.directed_dm?
     }

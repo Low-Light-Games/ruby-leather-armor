@@ -156,7 +156,11 @@ export interface Adventure {
   traversal_context: Record<string, unknown> | null
   combat_context: Record<string, unknown> | null
   social_context: Record<string, unknown> | null
+  exploration_context: Record<string, unknown> | null
+  rest_context: Record<string, unknown> | null
+  inventory_context: Record<string, unknown> | null
   story_summary: string | null
+  scene_summary: string | null
   current_category: string | null
   directed_dm: boolean
 }
