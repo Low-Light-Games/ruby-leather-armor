@@ -6,6 +6,7 @@ import { formatMod, ABILITY_ABBR } from '../../../utils/formatting';
 import { rollD20 } from '../../../rules/dice';
 import { rollWeaponDamage as calcWeaponDamage, rollSpellDamage as calcSpellDamage, rollUnarmedDamage as calcUnarmedDamage } from '../../../rules/damage';
 import { getSpellById } from '../../../rules/pathfinder_spells';
+import { getClassById } from '../../../rules/pathfinder_classes';
 
 interface UseRollsResult {
   rollDisplay: RollResultDisplay | null;
@@ -23,6 +24,8 @@ interface UseRollsResult {
   rollWeaponDamage: (itemId: string) => void;
   rollSpellDamage: (spellId: string) => void;
   rollUnarmedDamage: () => void;
+  rollConcentration: () => void;
+  concentrationMod: number | null;
 }
 
 export function useRolls(ds: DerivedStats | null, sheet?: AdventureSheet | null): UseRollsResult {
@@ -93,6 +96,25 @@ export function useRolls(ds: DerivedStats | null, sheet?: AdventureSheet | null)
     setDamageDisplay(calcUnarmedDamage(sheet, ds));
   }, [ds, sheet]);
 
+  const concentrationMod = (() => {
+    if (!ds || !sheet?.character_class) return null;
+    const cls = getClassById(sheet.character_class);
+    if (!cls?.spellcasting) return null;
+    const abilityKey = cls.spellcasting.ability as AttributeType;
+    const abilityMod = ds.mods[abilityKey] ?? 0;
+    const casterLevel = sheet.level;
+    return casterLevel + abilityMod;
+  })();
+
+  const rollConcentration = useCallback(() => {
+    if (concentrationMod === null || !ds || !sheet?.character_class) return;
+    const cls = getClassById(sheet.character_class);
+    const abilityName = cls?.spellcasting?.ability ?? 'unknown';
+    const abbr = ABILITY_ABBR[abilityName as AttributeType] ?? abilityName.slice(0, 3).toUpperCase();
+    doRoll('Concentration', concentrationMod,
+      `CL ${sheet.level} + ${abbr} ${formatMod(ds.mods[abilityName as AttributeType] ?? 0)}`);
+  }, [concentrationMod, ds, sheet, doRoll]);
+
   return {
     rollDisplay,
     damageDisplay,
@@ -109,5 +131,7 @@ export function useRolls(ds: DerivedStats | null, sheet?: AdventureSheet | null)
     rollWeaponDamage,
     rollSpellDamage,
     rollUnarmedDamage,
+    rollConcentration,
+    concentrationMod,
   };
 }

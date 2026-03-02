@@ -25,6 +25,8 @@ interface CharacterSidebarProps {
   rollWeaponDamage: (itemId: string) => void;
   rollSpellDamage: (spellId: string) => void;
   rollUnarmedDamage: () => void;
+  rollConcentration: () => void;
+  concentrationMod: number | null;
   spellbookSearch: string;
   setSpellbookSearch: (v: string) => void;
   spellbookSaving: boolean;
@@ -49,6 +51,8 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
   rollWeaponDamage,
   rollSpellDamage,
   rollUnarmedDamage,
+  rollConcentration,
+  concentrationMod,
   spellbookSearch,
   setSpellbookSearch,
   spellbookSaving,
@@ -466,6 +470,15 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
         <button className="roll-btn attack" onClick={rollMeleeAttack}>⚔️ Melee Attack</button>
         <button className="roll-btn ranged" onClick={rollRangedAttack}>🏹 Ranged Attack</button>
         <button className="roll-btn initiative" onClick={rollInitiative}>⏱️ Roll Initiative</button>
+        {concentrationMod !== null && (
+          <button
+            className="roll-btn concentration"
+            onClick={rollConcentration}
+            title={`Concentration Check: d20 ${formatMod(concentrationMod)} (CL + casting ability mod)`}
+          >
+            🔮 Concentration ({formatMod(concentrationMod)})
+          </button>
+        )}
       </div>
     </div>
   );
