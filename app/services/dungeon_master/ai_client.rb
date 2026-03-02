@@ -5,6 +5,9 @@ module DungeonMaster
   # Handles request construction, JSON parsing with fallbacks,
   # and HTTP-level error mapping.
   class AiClient
+    MAX_RETRIES = 2
+    RETRY_BASE_DELAY = 1.0 # seconds; doubles each retry
+
     attr_reader :last_failed_raw_response, :last_parse_status, :last_model_used
 
     def initialize(config)
@@ -17,6 +20,7 @@ module DungeonMaster
     end
 
     # Send a chat completion request and return the raw content string.
+    # Retries up to MAX_RETRIES times on transient network errors and rate limits.
     #
     # @param system_prompt [String]
     # @param user_message  [String, nil]  single user message (convenience)
@@ -47,7 +51,33 @@ module DungeonMaster
       }
       params[:temperature] = @config.temperature if supports_temp && @config.temperature != 1.0
 
-      response = @client.chat(parameters: params)
+      attempt = 0
+      begin
+        attempt += 1
+        response = @client.chat(parameters: params)
+      rescue Faraday::TooManyRequestsError => e
+        if attempt <= MAX_RETRIES
+          delay = RETRY_BASE_DELAY * (2**(attempt - 1))
+          Rails.logger.warn("[DungeonMaster::AiClient] Rate limited (attempt #{attempt}/#{MAX_RETRIES + 1}), retrying in #{delay}s")
+          sleep(delay)
+          retry
+        end
+        raise AiError, "Rate limited by OpenAI after #{attempt} attempts"
+      rescue Faraday::BadRequestError => e
+        body = e.response&.dig(:body) rescue nil
+        msg = body.is_a?(Hash) ? body.dig("error", "message") : e.message
+        Rails.logger.error("[DungeonMaster::AiClient] Bad request: #{msg}")
+        raise AiError, "AI request rejected: #{msg}"
+      rescue Faraday::Error => e
+        if attempt <= MAX_RETRIES
+          delay = RETRY_BASE_DELAY * (2**(attempt - 1))
+          Rails.logger.warn("[DungeonMaster::AiClient] #{e.class} (attempt #{attempt}/#{MAX_RETRIES + 1}), retrying in #{delay}s: #{e.message}")
+          sleep(delay)
+          retry
+        end
+        Rails.logger.error("[DungeonMaster::AiClient] #{e.class} after #{attempt} attempts: #{e.message}")
+        raise AiError, "Could not reach the AI service after #{attempt} attempts. Please try again shortly."
+      end
 
       if response.dig("error")
         raise AiError, response.dig("error", "message") || "OpenAI API error"
@@ -71,16 +101,6 @@ module DungeonMaster
       end
 
       content
-    rescue Faraday::TooManyRequestsError
-      raise AiError, "Rate limited by OpenAI — please wait a moment and try again"
-    rescue Faraday::BadRequestError => e
-      body = e.response&.dig(:body) rescue nil
-      msg = body.is_a?(Hash) ? body.dig("error", "message") : e.message
-      Rails.logger.error("[DungeonMaster::AiClient] Bad request: #{msg}")
-      raise AiError, "AI request rejected: #{msg}"
-    rescue Faraday::Error => e
-      Rails.logger.error("[DungeonMaster::AiClient] Faraday error: #{e.class} - #{e.message}")
-      raise AiError, "Could not reach the AI service. Please try again shortly."
     end
 
     # Parse a raw JSON string from the AI, with fallback strategies

@@ -31,7 +31,11 @@ module DungeonMaster
 
     def format_manifest(manifest)
       manifest.group_by { |e| e[:domain] }.map do |domain, entries|
-        slugs = entries.map { |e| "  - #{e[:slug]}: #{e[:name]}" }.join("\n")
+        slugs = entries.map do |e|
+          line = "  - #{e[:slug]}: #{e[:name]}"
+          line += " — #{e[:brief]}" if e[:brief].present?
+          line
+        end.join("\n")
         "[#{domain}]\n#{slugs}"
       end.join("\n")
     end

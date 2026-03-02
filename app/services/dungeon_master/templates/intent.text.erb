@@ -14,11 +14,19 @@ You may request any combination of these rules by slug:
 === INSTRUCTIONS ===
 - Set needs_mechanics to false for purely narrative actions (looking around, greeting someone, describing an action that has no mechanical consequence).
 - Set needs_mechanics to true when dice rolls, skill checks, attack rolls, saving throws, or rule adjudication are needed.
-- List ALL affected contexts. Valid contexts: combat, traversal, social, exploration, rest, inventory.
-  Most actions affect only one. Some affect multiple (e.g. fleeing combat into water affects combat + traversal).
+- affected_contexts: list ONLY contexts that the action DIRECTLY and IMMEDIATELY changes.
+  Valid values: combat, traversal, social, exploration, rest, inventory.
+  IMPORTANT: Do NOT include speculative or hypothetical contexts. If the player is NOT currently
+  in combat, do not add "combat" just because an encounter *might* happen later. If the action
+  does not involve using, equipping, or managing items, do not add "inventory". Only include
+  contexts where the game state will mechanically change as a direct result of this action.
+  Most actions affect exactly one context. Two is uncommon. Three or more is very rare.
+  - traversal: movement, travel, changing location, navigating terrain
+  - combat: actions taken during active combat (attacking, defending, casting offensive spells in a fight)
+  - social: interacting with NPCs, persuasion, intimidation, diplomacy
   - exploration: searching, investigating, knowledge checks, detecting magic, perception, studying objects
   - rest: resting, camping, spell preparation, HP recovery, setting watches
-  - inventory: using/equipping items, drinking potions, identifying magic items
+  - inventory: using/equipping items, drinking potions, identifying magic items, managing gear
 - primary_context is the main context driving the action.
 - rules_needed should list the slugs of rules relevant to adjudicating this action.
 - transition signals context lifecycle changes: "combat_started", "combat_ended", "social_to_combat", etc. Set to null if no transition.

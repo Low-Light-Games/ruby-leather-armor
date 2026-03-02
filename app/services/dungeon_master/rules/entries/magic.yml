@@ -43,12 +43,11 @@ counterspelling:
 mount_spell:
   name: "Mount (Spell)"
   text: |
-    Mount: Conjuration (Summoning) [see Summon Monster I].
+    Mount is a Conjuration (Summoning) spell that summons a new light horse or pony out of thin air; it is NOT cast on an existing animal.
     Level: Wizard/Sorcerer 1. Casting Time: 1 round. Range: close (25 ft + 5 ft/2 levels).
     Duration: 2 hours/level (D). Components: V, S, M (a bit of horse hair).
-    Summons a light horse or pony (caster's choice). The mount serves willingly
-    and to the best of its ability. It comes with bit, bridle, and riding saddle.
-    The mount has the statistics of a light horse (HP 15, Speed 50 ft, AC 11).
+    The summoned mount serves willingly and comes with bit, bridle, and riding saddle.
+    Statistics: light horse (HP 15, Speed 50 ft, AC 11).
     It cannot fight (disappears if it takes damage). Functions as a trained mount.
 
 summon_monster:

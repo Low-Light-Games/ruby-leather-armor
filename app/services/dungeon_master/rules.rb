@@ -20,10 +20,12 @@ module DungeonMaster
         @entries ||= load_all_entries
       end
 
-      # Compact manifest for inclusion in prompts (slug + name + domain only, ~1-2KB).
+      # Compact manifest for inclusion in prompts (slug + name + domain + brief summary).
       def manifest
         all_entries.map do |slug, entry|
-          { slug: slug, name: entry[:name], domain: entry[:domain] }
+          brief = entry[:text].to_s.split(/\.(\s|\z)/).first&.strip
+          brief = "#{brief}." if brief.present? && !brief.end_with?(".")
+          { slug: slug, name: entry[:name], domain: entry[:domain], brief: brief }
         end
       end
 
