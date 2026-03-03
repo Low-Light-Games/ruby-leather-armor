@@ -23,11 +23,21 @@ puts "Created/updated test user: #{test_user.email} (password: test123)"
 aboleth_story = Story.find_or_initialize_by(title: 'The Lake of Whispers')
 aboleth_story.preview = 'A village has been having some people kidnapped at night, particularly from the houses nearer the lake.'
 aboleth_story.premise = <<~PREMISE.strip
-  The actual story has to do with an Aboleth that was evoked by a mad sorcerer who has since created a spell to kill himself, trap his essence in a statue and keeps the Aboleth at bay. But the aboleth has been using kuo-toa to kidnap people and see if he can eventually get to the village priest who may be able to suppress or destroy the statue and make the Aboleth free. The Aboleth does not know exactly what is supressing his powers, but he does know he is somewhat free inside the lake.
+  The people vanishing from the village are being kidnapped and taken deep into the lake for the Aboleth to extract their memories and learn what is suppressing his power.
+
+  The Kuo-Toa eat the people after the Aboleth abducts them, unbeknownst to the Aboleth, because they do so out of the water, where the Aboleth's power is suppresed by the statue of the Mad Mage.
+
+  The statue of the Mad Mage is actually the self-petrified mage, who cast a spell upon himself to forever keep the Aboleth at bay, protecting the village he doomed.
+
+  The Aboleth got there by being invoked by the mad mage 150 years ago. The Mage quickly realized he had doomed the village, and before thinking too much, he hastely petrified himself with a custom spell that made him petrified and forever a dormant protector of the village.
 PREMISE
 aboleth_story.initial_context = <<~CONTEXT.strip
-  The player arrives at the small fishing village of Millhaven on a cool, misty morning. The village sits along the southern shore of Lake Whisper, a wide, dark body of water shrouded in perpetual haze. Wooden houses line a muddy main road leading to a small dock. A few fishermen mend nets near the shore, casting uneasy glances at the lake. The village elder has posted a notice at the tavern requesting help: several villagers have gone missing during the night, always from the houses nearest the water.
+  The player is leaving his last camp, at 6 in the morning, just as the sun is coming up. Still 60 miles away from the village. The path ahead is a well worn dirt road with heavy foliage at the sides.
 CONTEXT
+aboleth_story.initial_summary = <<~SUMMARY.strip
+  The player doesn't know anything about the disappearances in the village except what the Quest Posting said:
+  "People disappearing. Need adventurer help. Intelligent detectives or competent guards welcome"
+SUMMARY
 aboleth_story.save!
 
 puts "Created/updated story: #{aboleth_story.title}"

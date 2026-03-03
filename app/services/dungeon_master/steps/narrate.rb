@@ -7,15 +7,16 @@ module DungeonMaster
     module Narrate
       private
 
-      def run_narrate(outcome, player_action: nil, intent: nil)
+      def run_narrate(outcome, player_action: nil, intent: nil, dm_brief: nil)
         raw = nil
         prompt_summary = "Narrate"
 
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
+        story_context = narrate_story_context(dm_brief)
 
         system_prompt = PromptRenderer.render("narrate",
           story_title: @adventure.story.title,
-          story_premise: @adventure.story.premise,
+          story_context: story_context,
           story_summary: @adventure.story_summary,
           contexts_text: PromptHelpers.format_contexts(micro_contexts),
           outcome: outcome,
@@ -53,6 +54,24 @@ module DungeonMaster
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, model_used: @ai.last_model_used)
         raise
+      end
+
+      def narrate_story_context(dm_brief)
+        hook = @adventure.story.hook
+        enriched_world = @adventure.enriched_world || {}
+        atmosphere = enriched_world["atmosphere"]
+
+        parts = []
+        parts << "Hook: #{hook}" if hook.present?
+        parts << "Atmosphere: #{atmosphere}" if atmosphere.present?
+
+        if dm_brief.present?
+          parts << "DM Brief (follow these instructions carefully): #{dm_brief}"
+        else
+          parts << "Hook: #{@adventure.story.hook || @adventure.story.preview}"
+        end
+
+        parts.join("\n")
       end
     end
   end

@@ -162,6 +162,68 @@
     </div>
 
     <div class="config-section">
+      <h2 class="collapsible-header" id="authoring-tools-toggle">
+        Authoring Tools
+        <span class="collapse-arrow" id="authoring-tools-arrow">▸</span>
+      </h2>
+      <div id="authoring-tools-body" style="display: none;">
+        <p class="field-hint" style="margin-bottom: 12px;">
+          Configure the AI models used by the Enricher (story-level structure extraction)
+          and Embellisher (adventure-level flavor generation). These run outside the per-message pipeline.
+        </p>
+
+        <div class="config-field">
+          <label for="enricher_model">Enricher Model</label>
+          <select name="enricher_model" id="enricher_model" class="config-select">
+            <option value="">(Default — uses main model)</option>
+            <% @models_with_metadata.each do |m| %>
+              <option value="<%= m["id"] %>"
+                      <%= 'selected' if @config.get("enricher_model") == m["id"] %>>
+                <%= m["name"] %><%= " ⚙️" if m["reasoning_model"] %>
+              </option>
+            <% end %>
+          </select>
+          <p class="field-hint"><%= DmConfig::ENRICHER_MODEL_HINT %></p>
+        </div>
+
+        <div class="config-field">
+          <label>Embellisher Mode</label>
+          <div class="radio-group">
+            <% DmConfig::EMBELLISHER_MODES.each do |mode| %>
+              <label class="radio-label">
+                <%= radio_button_tag :embellisher_mode, mode, @config.get("embellisher_mode") == mode || (mode == "embellish" && @config.get("embellisher_mode").blank?) %>
+                <span>
+                  <strong><%= mode.capitalize %></strong>
+                  <% if mode == "off" %>
+                    — No enrichment. Story data used as-is.
+                  <% elsif mode == "embellish" %>
+                    — Adds flavor (names, descriptions, atmosphere) to existing story data. Safe for any model.
+                  <% elsif mode == "expand" %>
+                    — All of Embellish, plus creates up to 2 new NPCs and 2 new clues per adventure for unique playthroughs. Benefits from a capable model.
+                  <% end %>
+                </span>
+              </label>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="config-field">
+          <label for="embellisher_model">Embellisher Model</label>
+          <select name="embellisher_model" id="embellisher_model" class="config-select">
+            <option value="">(Default — uses main model)</option>
+            <% @models_with_metadata.each do |m| %>
+              <option value="<%= m["id"] %>"
+                      <%= 'selected' if @config.get("embellisher_model") == m["id"] %>>
+                <%= m["name"] %><%= " ⚙️" if m["reasoning_model"] %>
+              </option>
+            <% end %>
+          </select>
+          <p class="field-hint"><%= DmConfig::EMBELLISHER_MODEL_HINT %></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-section">
       <h2>Creativity</h2>
 
       <div class="config-field">
@@ -206,6 +268,19 @@
   // Update threshold display
   document.getElementById('threshold-slider').addEventListener('input', function() {
     document.getElementById('threshold-display').textContent = this.value;
+  });
+
+  // Collapsible Authoring Tools section
+  document.getElementById('authoring-tools-toggle').addEventListener('click', function() {
+    var body = document.getElementById('authoring-tools-body');
+    var arrow = document.getElementById('authoring-tools-arrow');
+    if (body.style.display === 'none') {
+      body.style.display = 'block';
+      arrow.textContent = '▾';
+    } else {
+      body.style.display = 'none';
+      arrow.textContent = '▸';
+    }
   });
 
   // Collapsible Pipeline Steps section

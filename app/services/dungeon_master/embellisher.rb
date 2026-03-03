@@ -1,0 +1,122 @@
+# frozen_string_literal: true
+
+module DungeonMaster
+  # Runs once at adventure creation to add unique flavor to a story's
+  # structured data. In Embellish mode it only decorates; in Expand mode
+  # it also creates adventure-specific NPC and Clue records.
+  #
+  # Produces:
+  #   adventure.enriched_world  (JSONB)
+  #   adventure.enriched_premise (text)
+  #   StoryNpc / StoryClue records with adventure_id (Expand mode only)
+  class Embellisher
+    MODES = %w[off embellish expand].freeze
+
+    def initialize(adventure)
+      @adventure = adventure
+      @story = adventure.story
+      @config = DmConfig.instance
+      @mode = @config.get("embellisher_mode").presence || "embellish"
+    end
+
+    def run
+      return if @mode == "off"
+
+      client = AiClient.new(@config)
+      model = @config.get("embellisher_model").presence || @config.model
+
+      prompt = PromptRenderer.render("embellisher",
+        premise: @story.premise,
+        locations: location_data,
+        npcs: npc_data,
+        clues: clue_data,
+        mode: @mode,
+      )
+
+      raw = client.chat(
+        system_prompt: prompt,
+        user_message: "Create a unique, vivid version of this story for a new adventure.",
+        max_tokens: 2500,
+        step_name: "embellisher",
+        model: model,
+      )
+
+      parsed = client.parse_json(raw)
+      apply_results(parsed)
+    end
+
+    private
+
+    def location_data
+      @story.story_locations.order(:id).map do |loc|
+        { name: loc.name, description: loc.description }
+      end
+    end
+
+    def npc_data
+      StoryNpc.where(story_id: @story.id, adventure_id: nil).order(:id).map do |npc|
+        { id: npc.id, name: npc.name, role: npc.role, attitude: npc.attitude, description: npc.description }
+      end
+    end
+
+    def clue_data
+      StoryClue.where(story_id: @story.id, adventure_id: nil).order(:id).map do |clue|
+        { id: clue.id, title: clue.title, description: clue.description, discovery_method: clue.discovery_method, difficulty: clue.difficulty }
+      end
+    end
+
+    def apply_results(parsed)
+      @adventure.update!(
+        enriched_world: parsed["enriched_world"] || {},
+        enriched_premise: parsed["enriched_premise"].to_s.strip.presence || @story.premise,
+      )
+
+      return unless @mode == "expand"
+
+      create_expand_npcs(parsed["new_npcs"] || [])
+      create_expand_clues(parsed["new_clues"] || [])
+    end
+
+    def create_expand_npcs(raw_npcs)
+      location_map = @story.story_locations.index_by(&:name)
+
+      raw_npcs.first(2).each do |raw|
+        @adventure.story_npcs.create!(
+          story: @story,
+          source: "embellisher",
+          name: raw["name"].to_s.strip.presence || "Unnamed NPC",
+          role: validated_enum(raw["role"], StoryNpc::ROLES, "bystander"),
+          location: location_map[raw["location_name"]],
+          description: raw["description"].to_s.strip,
+          knowledge: raw["knowledge"].to_s.strip,
+          attitude: validated_enum(raw["attitude"], StoryNpc::ATTITUDES, "indifferent"),
+          secret: raw["secret"] == true,
+        )
+      end
+    end
+
+    def create_expand_clues(raw_clues)
+      location_map = @story.story_locations.index_by(&:name)
+      all_npcs = StoryNpc.for_adventure(@adventure).index_by(&:name)
+
+      raw_clues.first(2).each do |raw|
+        @adventure.story_clues.create!(
+          story: @story,
+          source: "embellisher",
+          title: raw["title"].to_s.strip.presence || "Untitled Clue",
+          description: raw["description"].to_s.strip.presence || "No description",
+          discovery_method: validated_enum(raw["discovery_method"], StoryClue::DISCOVERY_METHODS, "exploration"),
+          location: location_map[raw["location_name"]],
+          npc: all_npcs[raw["npc_name"]],
+          difficulty: validated_enum(raw["difficulty"], StoryClue::DIFFICULTIES, "moderate"),
+          prerequisite_clue_ids: [],
+          reveals_secret: raw["reveals_secret"].to_s.strip.presence,
+        )
+      end
+    end
+
+    def validated_enum(value, allowed, fallback)
+      allowed.include?(value.to_s) ? value.to_s : fallback
+    end
+  end
+end

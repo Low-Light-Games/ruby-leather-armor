@@ -3,9 +3,13 @@ class DmConfig < ApplicationRecord
   # Settings are stored as a JSON hash, making it easy to add new knobs
   # without migrations.
   TOKEN_BUDGET_STEPS = %w[
-    triage dm_query intent ruling evaluate narrate
+    triage dm_query intent ruling evaluate chronicler narrate
     micro_context_update macro_narrative_update
   ].freeze
+
+  ENRICHER_MODEL_HINT = "Capable model recommended. Structural extraction benefits from strong reasoning — e.g. o3-mini, o4-mini, gpt-4.1, gpt-5-mini."
+  EMBELLISHER_MODEL_HINT = "Creative model. Flavor generation benefits from vivid writing — e.g. gpt-4.1, gpt-4o, gpt-5. Expand mode benefits from reasoning — e.g. o3-mini, gpt-5-mini."
+  EMBELLISHER_MODES = %w[off embellish expand].freeze
 
   STEP_MODEL_HINTS = {
     "triage"                 => "Fast, cheap model. Simple classification — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
@@ -13,10 +17,29 @@ class DmConfig < ApplicationRecord
     "intent"                 => "Fast, cheap model. Pattern recognition — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "ruling"                 => "Capable model. Rules application benefits from reasoning — e.g. o3-mini, o4-mini, gpt-5-mini.",
     "evaluate"               => "Capable model. Mechanical resolution with edge cases — e.g. o3-mini, o4-mini, gpt-5-mini.",
+    "chronicler"             => "Mid-tier model. Condition matching with structured output — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
     "narrate"                => "Creative model. Narrative quality scales with capability — e.g. gpt-4.1, gpt-4o, gpt-5.",
     "micro_context_update"   => "Mid-tier model. Structured JSON with moderate judgment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
     "macro_narrative_update" => "Mid-tier model. Judges narrative significance — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano."
   }.freeze
+
+  WAIT_MESSAGES_DEFAULT = [
+    "Sculpting nightmarish creatures from clay...",
+    "Convincing the universe to exist...",
+    "Teaching goblins to read...",
+    "Populating taverns with suspicious characters...",
+    "Rolling for initiative on your behalf...",
+    "Brewing mysterious potions...",
+    "Arguing with a dragon about property taxes...",
+    "Consulting ancient tomes of forbidden knowledge...",
+    "Hiring bards to compose your theme song...",
+    "Placing traps in convenient locations...",
+    "Negotiating with the dungeon's landlord...",
+    "Convincing mimics to hold still...",
+    "Calibrating the alignment of the stars...",
+    "Sharpening every sword in the kingdom...",
+    "Asking the oracle for directions...",
+  ].freeze
 
   DEFAULTS = {
     "verbose" => false,
@@ -26,12 +49,15 @@ class DmConfig < ApplicationRecord
     "sanitization_threshold" => 30,
     "model" => "gpt-4o-mini",
     "step_models" => {},
+    "embellisher_mode" => "embellish",
+    "wait_messages" => WAIT_MESSAGES_DEFAULT,
     "token_budgets" => {
       "triage" => 300,
       "dm_query" => 300,
       "intent" => 400,
       "ruling" => 500,
       "evaluate" => 600,
+      "chronicler" => 500,
       "narrate" => 800,
       "micro_context_update" => 800,
       "macro_narrative_update" => 500

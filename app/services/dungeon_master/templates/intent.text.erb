@@ -14,6 +14,13 @@ You may request any combination of these rules by slug:
 === STORY LOCATIONS ===
 <%= @locations_text %>
 
+<% if @plot_manifest.present? -%>
+=== PLOT RELEVANCE MANIFEST ===
+The following locations, NPCs, and discovery methods have plot-relevant content.
+Set plot_relevant to true if the player's action involves ANY of these:
+<%= @plot_manifest %>
+<% end -%>
+
 === INSTRUCTIONS ===
 - Set needs_mechanics to false for purely narrative actions (looking around, greeting someone, describing an action that has no mechanical consequence).
 - Set needs_mechanics to true when dice rolls, skill checks, attack rolls, saving throws, or rule adjudication are needed.
@@ -34,6 +41,7 @@ You may request any combination of these rules by slug:
 - rules_needed should list the slugs of rules relevant to adjudicating this action.
 - transition signals context lifecycle changes: "combat_started", "combat_ended", "social_to_combat", etc. Set to null if no transition.
 - macro_significant should be true only for major story beats (completing a quest, defeating a boss, discovering a secret). False for routine actions.
+- plot_relevant should be true when the player's action could interact with the story's plot (using a discovery method at a plotted location, talking to a plot-relevant NPC, investigating something related to the plot manifest). False for routine combat, generic movement, or actions unrelated to any plotted element. If no PLOT RELEVANCE MANIFEST is provided, always set this to false.
 
 TIME-SPANNING ACTIONS:
 - Set time_spanning to true for actions that resolve over HOURS or DAYS rather than seconds/minutes.
@@ -64,5 +72,6 @@ Respond ONLY with valid JSON (no markdown, no code fences):
   "rules_needed": ["attack_resolution", "attack_of_opportunity"],
   "transition": null,
   "macro_significant": false,
+  "plot_relevant": false,
   "reasoning": "Brief explanation of intent interpretation (1-2 sentences)"
 }

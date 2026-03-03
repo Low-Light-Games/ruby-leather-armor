@@ -39,6 +39,13 @@ module Admin
         new_settings["model"] = params[:model]
       end
 
+      new_settings["enricher_model"] = params[:enricher_model].presence
+      new_settings["embellisher_model"] = params[:embellisher_model].presence
+
+      if params[:embellisher_mode].present? && DmConfig::EMBELLISHER_MODES.include?(params[:embellisher_mode])
+        new_settings["embellisher_mode"] = params[:embellisher_mode]
+      end
+
       if params[:step_models].present?
         models = {}
         DmConfig::TOKEN_BUDGET_STEPS.each do |step|

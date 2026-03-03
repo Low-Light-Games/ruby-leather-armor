@@ -97,6 +97,18 @@ class AdventuresController < ApplicationController
       end
 
       adv_sheet.recompute_derived_stats!
+
+      @adventure.update!(plot_state: {
+        "discovered_clues" => [],
+        "attempted_clues" => [],
+        "reached_milestones" => [],
+        "npc_met" => [],
+        "npc_attitudes" => {},
+        "custom_facts" => [],
+      })
+
+      run_embellisher(@adventure)
+
       @adventure.reload
       render json: adventure_json(@adventure), status: :created
     else
@@ -180,6 +192,12 @@ class AdventuresController < ApplicationController
     base["details"] = details
 
     base
+  end
+
+  def run_embellisher(adventure)
+    DungeonMaster::Embellisher.new(adventure).run
+  rescue DungeonMaster::AiError, DungeonMaster::TokenBudgetExceededError => e
+    Rails.logger.error("[AdventuresController] Embellisher failed: #{e.message}")
   end
 
   # Compute remaining currency after item purchases.

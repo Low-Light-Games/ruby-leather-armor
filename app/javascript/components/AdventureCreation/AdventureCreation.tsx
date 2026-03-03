@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../Navbar'
 import Login from '../Login'
@@ -7,6 +7,24 @@ import { csrfToken } from '../../utils/api'
 import { formatCurrency } from '../../rules/pathfinder_items'
 import type { Currency } from '../../rules/pathfinder_items_types'
 import './AdventureCreation.scss'
+
+const WAIT_MESSAGES = [
+  "Sculpting nightmarish creatures from clay...",
+  "Convincing the universe to exist...",
+  "Teaching goblins to read...",
+  "Populating taverns with suspicious characters...",
+  "Rolling for initiative on your behalf...",
+  "Brewing mysterious potions...",
+  "Arguing with a dragon about property taxes...",
+  "Consulting ancient tomes of forbidden knowledge...",
+  "Hiring bards to compose your theme song...",
+  "Placing traps in convenient locations...",
+  "Negotiating with the dungeon's landlord...",
+  "Convincing mimics to hold still...",
+  "Calibrating the alignment of the stars...",
+  "Sharpening every sword in the kingdom...",
+  "Asking the oracle for directions...",
+]
 
 export const AdventureCreation = () => {
   const { user, loading: authLoading } = useAuth()
@@ -21,6 +39,26 @@ export const AdventureCreation = () => {
   const [loadingData, setLoadingData] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [waitMessage, setWaitMessage] = useState('')
+  const waitIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const startWaitMessages = useCallback(() => {
+    const shuffled = [...WAIT_MESSAGES].sort(() => Math.random() - 0.5)
+    let idx = 0
+    setWaitMessage(shuffled[0])
+    waitIntervalRef.current = setInterval(() => {
+      idx = (idx + 1) % shuffled.length
+      setWaitMessage(shuffled[idx])
+    }, 3500)
+  }, [])
+
+  const stopWaitMessages = useCallback(() => {
+    if (waitIntervalRef.current) {
+      clearInterval(waitIntervalRef.current)
+      waitIntervalRef.current = null
+    }
+    setWaitMessage('')
+  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -54,6 +92,7 @@ export const AdventureCreation = () => {
 
     setSubmitting(true)
     setError(null)
+    startWaitMessages()
 
     try {
       const response = await fetch('/adventures', {
@@ -77,6 +116,7 @@ export const AdventureCreation = () => {
       const adventure = await response.json()
       window.location.href = `/adventures/${adventure.id}`
     } catch (err) {
+      stopWaitMessages()
       setError(err instanceof Error ? err.message : 'Something went wrong')
       setSubmitting(false)
     }
@@ -201,8 +241,12 @@ export const AdventureCreation = () => {
                 className="submit-button"
                 disabled={!selectedStoryId || !selectedSheetId || submitting}
               >
-                {submitting ? 'Setting off...' : 'Begin Adventure'}
+                {submitting ? 'Preparing your adventure...' : 'Begin Adventure'}
               </button>
+
+              {submitting && waitMessage && (
+                <p className="wait-message">{waitMessage}</p>
+              )}
             </form>
           )}
         </div>

@@ -42,24 +42,16 @@ puts "Seeded default encounter table: #{default_table.name} (#{default_table.enc
 story = Story.find_by(title: "The Lake of Whispers")
 if story
   locs = {
-    "Millhaven" => {
-      description: "A small fishing village on the southern shore of Lake Whisper. Wooden houses line a muddy main road leading to a dock.",
+    "Starting Encampment" => {
+      description: "A random encampment made by the player before the start of the story",
       starting: true
     },
-    "Lake Shore" => {
-      description: "The misty southern shore of Lake Whisper. Dark water laps at pebbled banks. Fishermen avoid this stretch after dusk.",
+    "Village" => {
+      description: "The Village that has been having the disappearances.",
       starting: false
     },
-    "Forest Path" => {
-      description: "A narrow trail winding through dense woodland north of Millhaven. The canopy blocks most sunlight.",
-      starting: false
-    },
-    "Abandoned Mine" => {
-      description: "An old iron mine in the hills, long since exhausted. The entrance is partially collapsed but passable.",
-      starting: false
-    },
-    "Sorcerer's Cove" => {
-      description: "A hidden rocky inlet on the lake's eastern shore. Strange lights have been reported here at night.",
+    "Closest Big City" => {
+      description: "The closest big city the player may go to for resources he cannot get in the village.",
       starting: false
     }
   }
@@ -72,11 +64,8 @@ if story
   end
 
   connections = [
-    ["Millhaven", "Lake Shore", 1.5, "trail"],
-    ["Millhaven", "Forest Path", 2.0, "road"],
-    ["Forest Path", "Abandoned Mine", 8.0, "forest"],
-    ["Lake Shore", "Sorcerer's Cove", 5.0, "coast"],
-    ["Forest Path", "Sorcerer's Cove", 12.0, "forest"],
+    ["Starting Encampment", "Village", 60.0, "trail"],
+    ["Closest Big City", "Village", 180.0, "road"],
   ]
 
   connections.each do |from_name, to_name, dist, terrain|
@@ -87,6 +76,184 @@ if story
   end
 
   puts "Seeded #{location_records.size} locations and #{connections.size} connections for '#{story.title}'"
+
+  # ---- NPCs ----
+
+  npc_defs = [
+    {
+      name: "Priest",
+      role: "informant",
+      location_key: "Village",
+      description: "The Priest is the one that placed Quest Postings around. He believes the disappearances have to do with a secret cult brewing in the village.",
+      knowledge: "That the lake is to be avoided due to great evil within, but he has that information as folk knowledge.",
+      attitude: "friendly",
+      secret: false,
+    },
+    {
+      name: "Escapee Abductee",
+      role: "informant",
+      location_key: "Village",
+      description: "This villager was almost abducted and had his memories read, but he escaped the Kuo-Toa before they ate him. His mind is shattered, but he can let the player know about the kuo-toa.",
+      knowledge: "",
+      attitude: "indifferent",
+      secret: true,
+    },
+    {
+      name: "Bartender",
+      role: "informant",
+      location_key: "Village",
+      description: "The Bartender can clue the player to the rumoured Escapee Abductee.",
+      knowledge: "Knows of the Escapee Abductee",
+      attitude: "indifferent",
+      secret: false,
+    },
+    {
+      name: "Young Mage Apprentice",
+      role: "informant",
+      location_key: "Village",
+      description: "This NPC can be seen only at night, near the Mage Statue. He studies the local history of the village and he believes the Mage statue is a secret to more power.",
+      knowledge: "He knows the mage statue is magic and not just decoration.",
+      attitude: "indifferent",
+      secret: false,
+    },
+    {
+      name: "The Aboleth",
+      role: "antagonist",
+      location_key: "Village",
+      description: "The Aboleth is deep inside the lake, it controls the fish people and cannot reach minds outside of the water.",
+      knowledge: "",
+      attitude: "indifferent",
+      secret: true,
+    },
+  ]
+
+  npc_records = {}
+  npc_defs.each do |attrs|
+    location_key = attrs.delete(:location_key)
+    npc = story.story_npcs.find_or_initialize_by(name: attrs[:name], adventure_id: nil)
+    npc.assign_attributes(attrs.merge(source: "manual", location: location_key ? location_records[location_key] : nil))
+    npc.save!
+    npc_records[npc.name] = npc
+  end
+
+  puts "Seeded #{npc_records.size} NPCs for '#{story.title}'"
+
+  # ---- Clues ----
+
+  clue_defs = [
+    {
+      title: "The Lake Is Avoided",
+      description: "Even though the village setup is clearly that of a fishing village, no villager goes close to the lake.",
+      discovery_method: "exploration",
+      difficulty: "easy",
+      location_key: "Village",
+      npc_name: "Priest",
+      prerequisite_titles: [],
+      reveals_secret: "This lets the player know there is something wrong with the lake and possibly deduce the lake is dangerous. A hard check may enable the player to deduce the possible water-based threats.",
+    },
+    {
+      title: "The Mage Statue Is Magical",
+      description: "The Mage Statue is magical, and it seems to be warding off something.",
+      discovery_method: "exploration",
+      difficulty: "easy",
+      location_key: "Village",
+      npc_name: "Young Mage Apprentice",
+      prerequisite_titles: [],
+      reveals_secret: "This lets the player know further interaction with the statue may help",
+    },
+    {
+      title: "There Is An Aboleth Controlling The Fish People (Abductee)",
+      description: "The escapee abductee can reveal his meeting with the Aboleth if his mind is read in a conscious effort to remember the night he was abducted. The checks for such reveal are exceedingly hard though, he will most likely reveal just the fish people.",
+      discovery_method: "exploration",
+      difficulty: "hard",
+      location_key: "Village",
+      npc_name: "Escapee Abductee",
+      prerequisite_titles: [],
+      reveals_secret: "The main antagonist behind the disappearances is the Aboleth.",
+    },
+    {
+      title: "There Is An Aboleth Controlling The Fish People (Kuo-Toa)",
+      description: "If a Kuo-Toa is captured and interrogated by someone that can understand it or has \"Speak With Dead\" cast on it, it may reveal the Aboleth.",
+      discovery_method: "exploration",
+      difficulty: "moderate",
+      location_key: nil,
+      npc_name: nil,
+      prerequisite_titles: [],
+      reveals_secret: "The main antagonist behind the disappearances is the Aboleth.",
+    },
+    {
+      title: "There Are Fish People Kidnapping The Villagers",
+      description: "Kuo-toa are the ones culpable for the missing villagers",
+      discovery_method: "exploration",
+      difficulty: "moderate",
+      location_key: "Village",
+      npc_name: "Escapee Abductee",
+      prerequisite_titles: [],
+      reveals_secret: "There Are Fish People Kidnapping The Villagers",
+    },
+    {
+      title: "Someone was abducted but escaped",
+      description: "There is a survivor of an attempted kidnapping",
+      discovery_method: "exploration",
+      difficulty: "easy",
+      location_key: nil,
+      npc_name: "Bartender",
+      prerequisite_titles: [],
+      reveals_secret: "The location and nature of the Escapee Abductee",
+    },
+  ]
+
+  clue_records = {}
+  clue_defs.each do |attrs|
+    location_key = attrs.delete(:location_key)
+    npc_name = attrs.delete(:npc_name)
+    prerequisite_titles = attrs.delete(:prerequisite_titles)
+
+    clue = story.story_clues.find_or_initialize_by(title: attrs[:title], adventure_id: nil)
+    clue.assign_attributes(
+      attrs.merge(
+        source: "manual",
+        location: location_key ? location_records[location_key] : nil,
+        npc: npc_name ? npc_records[npc_name] : nil,
+        prerequisite_clue_ids: prerequisite_titles.map { |t| clue_records[t]&.id }.compact,
+      )
+    )
+    clue.save!
+    clue_records[clue.title] = clue
+  end
+
+  puts "Seeded #{clue_records.size} clues for '#{story.title}'"
+
+  # ---- Milestones ----
+
+  milestone_defs = [
+    {
+      title: "Discovered the Fish People Are Behind The Disappearances",
+      description: "The Player discovered the fish people are the ones kidnapping the people.",
+      trigger_titles: ["There Are Fish People Kidnapping The Villagers"],
+      consequence: "",
+    },
+    {
+      title: "Discovered The Aboleth Is Behind The Disappearances",
+      description: "The Player discovered the Aboleth is behind the kidnappings.",
+      trigger_titles: ["There Is An Aboleth Controlling The Fish People (Abductee)", "There Is An Aboleth Controlling The Fish People (Kuo-Toa)"],
+      consequence: "",
+    },
+  ]
+
+  milestone_defs.each do |attrs|
+    trigger_titles = attrs.delete(:trigger_titles)
+    ms = story.story_milestones.find_or_initialize_by(title: attrs[:title])
+    ms.assign_attributes(
+      attrs.merge(
+        source: "manual",
+        trigger_clue_ids: trigger_titles.map { |t| clue_records[t]&.id }.compact,
+      )
+    )
+    ms.save!
+  end
+
+  puts "Seeded #{milestone_defs.size} milestones for '#{story.title}'"
 else
   puts "Story 'The Lake of Whispers' not found — skipping location seed"
 end

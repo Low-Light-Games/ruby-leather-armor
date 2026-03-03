@@ -16,7 +16,8 @@ module DungeonMaster
         system_prompt = PromptRenderer.render("intent",
           contexts: PromptHelpers.build_micro_contexts_block(@adventure),
           manifest_text: PromptHelpers.format_manifest(manifest),
-          locations_text: format_story_locations)
+          locations_text: format_story_locations,
+          plot_manifest: build_plot_manifest)
         request_body = { system_prompt: system_prompt, user_message: sanitized_input }
 
         raw = @ai.chat(system_prompt: system_prompt, user_message: sanitized_input,
@@ -38,7 +39,8 @@ module DungeonMaster
           primary_context: parsed["primary_context"]&.to_s,
           rules_needed: Array(parsed["rules_needed"]).map(&:to_s),
           transition: parsed["transition"],
-          macro_significant: parsed["macro_significant"] == true
+          macro_significant: parsed["macro_significant"] == true,
+          plot_relevant: parsed["plot_relevant"] == true
         }
       rescue TokenBudgetExceededError => e
         @log.ai_log_error!("intent", prompt_summary, e,
@@ -51,6 +53,29 @@ module DungeonMaster
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, model_used: @ai.last_model_used)
         raise
+      end
+
+      def build_plot_manifest
+        story = @adventure.story
+        npcs = StoryNpc.for_adventure(@adventure).where(secret: false)
+        clues = StoryClue.for_adventure(@adventure)
+        discovered = (@adventure.plot_state || {})["discovered_clues"] || []
+        undiscovered = clues.reject { |c| discovered.include?(c.id) }
+
+        return nil if npcs.empty? && undiscovered.empty?
+
+        lines = []
+
+        loc_names = undiscovered.filter_map { |c| c.location&.name }.uniq
+        lines << "Locations with discoverable content: #{loc_names.join(', ')}" if loc_names.any?
+
+        npc_names = npcs.filter_map(&:name).uniq
+        lines << "NPCs with plot knowledge: #{npc_names.join(', ')}" if npc_names.any?
+
+        methods = undiscovered.map(&:discovery_method).uniq
+        lines << "Discovery methods with content: #{methods.join(', ')}" if methods.any?
+
+        lines.join("\n")
       end
 
       def format_story_locations

@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 class LocationConnection < ApplicationRecord
-  belongs_to :from_location, class_name: "StoryLocation"
-  belongs_to :to_location,   class_name: "StoryLocation"
+  belongs_to :from_location, class_name: "StoryLocation", inverse_of: :connections_from
+  belongs_to :to_location,   class_name: "StoryLocation", inverse_of: :connections_to
 
   validates :distance_miles, presence: true, numericality: { greater_than: 0 }
   validates :terrain_type, presence: true

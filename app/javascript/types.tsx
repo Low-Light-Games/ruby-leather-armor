@@ -122,6 +122,9 @@ export interface AdminStory {
   initial_summary: string | null
   story_locations?: StoryLocationData[]
   encounter_tables?: EncounterTableData[]
+  story_npcs?: StoryNpcData[]
+  story_clues?: StoryClueData[]
+  story_milestones?: StoryMilestoneData[]
   created_at: string
   updated_at: string
 }
@@ -163,6 +166,53 @@ export interface EncounterTableData {
   check_frequency_hours: number
   encounter_chance: number
   encounter_table_entries?: EncounterTableEntryData[]
+  _destroy?: boolean
+}
+
+export type NpcSource = 'manual' | 'enricher' | 'embellisher'
+export type NpcRole = 'quest_giver' | 'informant' | 'antagonist' | 'bystander' | 'merchant'
+export type NpcAttitude = 'friendly' | 'indifferent' | 'unfriendly'
+
+export interface StoryNpcData {
+  id?: number
+  source: NpcSource
+  name: string
+  role: NpcRole
+  location_id?: number | null
+  description: string
+  knowledge: string
+  attitude: NpcAttitude
+  secret: boolean
+  _destroy?: boolean
+}
+
+export type ClueSource = 'manual' | 'enricher' | 'embellisher'
+export type DiscoveryMethod = 'social' | 'exploration' | 'magic' | 'combat' | 'automatic'
+export type ClueDifficulty = 'automatic' | 'easy' | 'moderate' | 'hard'
+
+export interface StoryClueData {
+  id?: number
+  source: ClueSource
+  title: string
+  description: string
+  discovery_method: DiscoveryMethod
+  location_id?: number | null
+  npc_id?: number | null
+  prerequisite_clue_ids: number[]
+  reveals_secret: string
+  difficulty: ClueDifficulty
+  _destroy?: boolean
+}
+
+export type MilestoneSource = 'manual' | 'enricher'
+
+export interface StoryMilestoneData {
+  id?: number
+  source: MilestoneSource
+  title: string
+  description: string
+  trigger_clue_ids: number[]
+  consequence: string
   _destroy?: boolean
 }
 

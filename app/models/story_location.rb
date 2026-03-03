@@ -4,9 +4,11 @@ class StoryLocation < ApplicationRecord
   belongs_to :story
 
   has_many :connections_from, class_name: "LocationConnection",
-           foreign_key: :from_location_id, dependent: :destroy
+           foreign_key: :from_location_id, dependent: :destroy, inverse_of: :from_location
   has_many :connections_to, class_name: "LocationConnection",
-           foreign_key: :to_location_id, dependent: :destroy
+           foreign_key: :to_location_id, dependent: :destroy, inverse_of: :to_location
+  has_many :story_npcs, foreign_key: :location_id, dependent: :nullify
+  has_many :story_clues, foreign_key: :location_id, dependent: :nullify
 
   accepts_nested_attributes_for :connections_from, allow_destroy: true
 

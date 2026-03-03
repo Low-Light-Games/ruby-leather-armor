@@ -10,6 +10,8 @@ class Adventure < ApplicationRecord
   has_many :dm_logs, dependent: :nullify
   has_many :ai_logs, dependent: :nullify
   has_many :creature_sheets, dependent: :destroy
+  has_many :story_npcs, dependent: :destroy
+  has_many :story_clues, dependent: :destroy
 
   DM_MODES = %w[standard].freeze
 

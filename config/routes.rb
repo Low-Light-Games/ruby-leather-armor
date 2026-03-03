@@ -20,7 +20,9 @@ Rails.application.routes.draw do
   get "admin/all_sheets" => "admin#all_sheets"
 
   namespace :admin do
-    resources :stories, only: [:index, :new, :show, :create, :update, :destroy]
+    resources :stories, only: [:index, :new, :show, :create, :update, :destroy] do
+      member { post :enrich }
+    end
     resources :dm_logs, only: [:index, :show]
     resources :ai_logs, only: [:index, :show] do
       collection do

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_02_200001) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_03_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -109,6 +109,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_02_200001) do
     t.jsonb "inventory_context", default: {}, null: false
     t.text "scene_summary"
     t.bigint "current_location_id"
+    t.jsonb "enriched_world", default: {}, null: false
+    t.text "enriched_premise"
+    t.jsonb "plot_state", default: {}, null: false
     t.index ["current_location_id"], name: "index_adventures_on_current_location_id"
     t.index ["story_id"], name: "index_adventures_on_story_id"
     t.index ["user_id"], name: "index_adventures_on_user_id"
@@ -432,6 +435,26 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_02_200001) do
     t.index ["discarded_at"], name: "index_stories_on_discarded_at"
   end
 
+  create_table "story_clues", force: :cascade do |t|
+    t.bigint "story_id", null: false
+    t.bigint "adventure_id"
+    t.string "source", default: "manual", null: false
+    t.string "title", null: false
+    t.text "description", null: false
+    t.string "discovery_method", default: "exploration", null: false
+    t.bigint "location_id"
+    t.bigint "npc_id"
+    t.integer "prerequisite_clue_ids", default: [], array: true
+    t.text "reveals_secret"
+    t.string "difficulty", default: "moderate", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_id"], name: "index_story_clues_on_adventure_id"
+    t.index ["location_id"], name: "index_story_clues_on_location_id"
+    t.index ["npc_id"], name: "index_story_clues_on_npc_id"
+    t.index ["story_id"], name: "index_story_clues_on_story_id"
+  end
+
   create_table "story_locations", force: :cascade do |t|
     t.bigint "story_id", null: false
     t.string "name", null: false
@@ -441,6 +464,36 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_02_200001) do
     t.datetime "updated_at", null: false
     t.index ["story_id", "name"], name: "index_story_locations_on_story_id_and_name", unique: true
     t.index ["story_id"], name: "index_story_locations_on_story_id"
+  end
+
+  create_table "story_milestones", force: :cascade do |t|
+    t.bigint "story_id", null: false
+    t.string "source", default: "manual", null: false
+    t.string "title", null: false
+    t.text "description", null: false
+    t.integer "trigger_clue_ids", default: [], array: true
+    t.text "consequence"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["story_id"], name: "index_story_milestones_on_story_id"
+  end
+
+  create_table "story_npcs", force: :cascade do |t|
+    t.bigint "story_id", null: false
+    t.bigint "adventure_id"
+    t.string "source", default: "manual", null: false
+    t.string "name", null: false
+    t.string "role", default: "bystander", null: false
+    t.bigint "location_id"
+    t.text "description"
+    t.text "knowledge"
+    t.string "attitude", default: "indifferent", null: false
+    t.boolean "secret", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_id"], name: "index_story_npcs_on_adventure_id"
+    t.index ["location_id"], name: "index_story_npcs_on_location_id"
+    t.index ["story_id"], name: "index_story_npcs_on_story_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -486,5 +539,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_02_200001) do
   add_foreign_key "sheet_spells", "sheets"
   add_foreign_key "sheet_spells", "spell_definitions", column: "spell_id"
   add_foreign_key "sheets", "users"
+  add_foreign_key "story_clues", "adventures"
+  add_foreign_key "story_clues", "stories"
+  add_foreign_key "story_clues", "story_locations", column: "location_id", on_delete: :nullify
+  add_foreign_key "story_clues", "story_npcs", column: "npc_id"
   add_foreign_key "story_locations", "stories"
+  add_foreign_key "story_milestones", "stories"
+  add_foreign_key "story_npcs", "adventures"
+  add_foreign_key "story_npcs", "stories"
+  add_foreign_key "story_npcs", "story_locations", column: "location_id", on_delete: :nullify
 end

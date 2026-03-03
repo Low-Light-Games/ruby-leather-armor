@@ -1,0 +1,119 @@
+# frozen_string_literal: true
+
+module DungeonMaster
+  # Parses an admin's story premise into structured StoryNpc, StoryClue,
+  # and StoryMilestone records. Returns proposed records as hashes —
+  # the admin reviews and saves them through the normal story editor flow.
+  class Enricher
+    def initialize(story)
+      @story = story
+      @config = DmConfig.instance
+    end
+
+    # Returns a hash of proposed records: { npcs: [...], clues: [...], milestones: [...] }
+    # Does NOT persist anything to the database.
+    def enrich
+      client = AiClient.new(@config)
+      model = @config.get("enricher_model").presence || @config.model
+
+      prompt = PromptRenderer.render("enricher",
+        premise: @story.premise,
+        locations: location_data,
+        existing_npcs: existing_npc_data,
+        existing_clues: existing_clue_data,
+        existing_milestones: existing_milestone_data,
+      )
+
+      raw = client.chat(
+        system_prompt: prompt,
+        user_message: "Analyze the premise and extract structured story data.",
+        max_tokens: 2000,
+        step_name: "enricher",
+        model: model,
+      )
+
+      parsed = client.parse_json(raw)
+      build_proposed_records(parsed)
+    end
+
+    private
+
+    def location_data
+      @story.story_locations.order(:id).map do |loc|
+        { name: loc.name, description: loc.description }
+      end
+    end
+
+    def existing_npc_data
+      @story.story_npcs.where(adventure_id: nil, source: "manual").map do |npc|
+        { name: npc.name, role: npc.role }
+      end
+    end
+
+    def existing_clue_data
+      @story.story_clues.where(adventure_id: nil, source: "manual").map do |clue|
+        { title: clue.title }
+      end
+    end
+
+    def existing_milestone_data
+      @story.story_milestones.where(source: "manual").map do |ms|
+        { title: ms.title }
+      end
+    end
+
+    def build_proposed_records(parsed)
+      location_map = @story.story_locations.index_by(&:name)
+
+      npcs = (parsed["npcs"] || []).map do |raw_npc|
+        {
+          source: "enricher",
+          name: raw_npc["name"].to_s.strip.presence || "Unnamed NPC",
+          role: validated_enum(raw_npc["role"], StoryNpc::ROLES, "bystander"),
+          location_id: location_map[raw_npc["location_name"]]&.id,
+          description: raw_npc["description"].to_s.strip,
+          knowledge: raw_npc["knowledge"].to_s.strip,
+          attitude: validated_enum(raw_npc["attitude"], StoryNpc::ATTITUDES, "indifferent"),
+          secret: raw_npc["secret"] == true,
+        }
+      end
+
+      npc_name_map = npcs.each_with_index.to_h { |npc, i| [npc[:name], i] }
+
+      clues = (parsed["clues"] || []).map do |raw_clue|
+        {
+          source: "enricher",
+          title: raw_clue["title"].to_s.strip.presence || "Untitled Clue",
+          description: raw_clue["description"].to_s.strip,
+          discovery_method: validated_enum(raw_clue["discovery_method"], StoryClue::DISCOVERY_METHODS, "exploration"),
+          location_id: location_map[raw_clue["location_name"]]&.id,
+          npc_name: raw_clue["npc_name"].to_s.strip.presence,
+          prerequisite_titles: Array(raw_clue["prerequisite_titles"]).map(&:to_s),
+          reveals_secret: raw_clue["reveals_secret"].to_s.strip.presence,
+          difficulty: validated_enum(raw_clue["difficulty"], StoryClue::DIFFICULTIES, "moderate"),
+        }
+      end
+
+      milestones = (parsed["milestones"] || []).map do |raw_ms|
+        {
+          source: "enricher",
+          title: raw_ms["title"].to_s.strip.presence || "Untitled Milestone",
+          description: raw_ms["description"].to_s.strip,
+          trigger_titles: Array(raw_ms["trigger_titles"]).map(&:to_s),
+          consequence: raw_ms["consequence"].to_s.strip,
+        }
+      end
+
+      {
+        npcs: npcs,
+        clues: clues,
+        milestones: milestones,
+        reasoning: parsed["reasoning"].to_s.strip,
+      }
+    end
+
+    def validated_enum(value, allowed, fallback)
+      allowed.include?(value.to_s) ? value.to_s : fallback
+    end
+  end
+end
