@@ -9,7 +9,9 @@ module DungeonMaster
   #
   # Flow:
   #   run_prompt  -> sanitize + classify (parallel) -> dm_query_flow | action_flow
-  #   action_flow -> intent -> dispatchers (parallel) -> converge -> ruling | narrate
+  #   action_flow -> intent -> dispatchers (parallel) -> converge
+  #               -> capability_guardrail + mechanical_evaluation (parallel)
+  #               -> [roll pause if needed] -> ruling (outcome + mutations) -> narrate
   #   run_rolls   -> resolution_flow  (resumption after player rolls)
   #
   class Pipeline
@@ -19,8 +21,9 @@ module DungeonMaster
     include Steps::DmQuery
     include Steps::Intent
     include Steps::InterpretationDispatcher
+    include Steps::MechanicalEvaluation
+    include Steps::CapabilityGuardrail
     include Steps::Ruling
-    include Steps::Evaluate
     include Steps::Chronicler
     include Steps::Narrate
     include Steps::ContextUpdate
@@ -99,8 +102,14 @@ module DungeonMaster
       end
 
       if intent[:needs_mechanics]
-        rulings = run_ruling_loop(intent)
-        merged  = merge_rulings(rulings)
+        evaluations, guardrail = run_mechanics_gate(intent)
+
+        unless guardrail[:allowed]
+          @log.dm_log!("CapabilityGuardrail rejected: #{guardrail[:reason]}")
+          return { action: :rejected, reason: guardrail[:reason] }
+        end
+
+        merged = merge_mechanical_evaluations(evaluations)
 
         if merged[:player_rolls].any?
           return { action: :awaiting_rolls, intent: intent, merged: merged }
@@ -127,10 +136,16 @@ module DungeonMaster
         intent[:affected_contexts] = (Array(intent[:affected_contexts]) + ["traversal"]).uniq
       end
 
-      rulings = run_ruling_loop(intent)
-      merged  = merge_rulings(rulings)
+      evaluations, guardrail = run_mechanics_gate(intent)
 
-      time_span_params = rulings.first&.dig(:time_span_parameters) || {}
+      unless guardrail[:allowed]
+        @log.dm_log!("CapabilityGuardrail rejected: #{guardrail[:reason]}")
+        return { action: :rejected, reason: guardrail[:reason] }
+      end
+
+      merged = merge_mechanical_evaluations(evaluations)
+
+      time_span_params = evaluations.first&.dig(:time_span_parameters) || {}
       merged[:time_span_parameters] = time_span_params
 
       if merged[:player_rolls].any?
@@ -142,9 +157,9 @@ module DungeonMaster
 
     def run_time_span_resolution(intent, merged, roll_results)
       npc_results = resolve_npc_actions(merged[:npc_actions])
-      eval_result = run_evaluate(intent, merged, roll_results: roll_results, npc_results: npc_results)
+      ruling_result = run_ruling(intent, merged, roll_results: roll_results, npc_results: npc_results)
 
-      ts_result = run_time_span(intent, eval_result, merged)
+      ts_result = run_time_span(intent, ruling_result, merged)
 
       if ts_result[:stop_reason] == :encounter
         narration = run_narrate(ts_result[:narrative_seed], player_action: nil, intent: intent)
@@ -157,12 +172,12 @@ module DungeonMaster
                  time_span_interrupted: true }
       end
 
-      apply_mutations(eval_result[:mutations])
+      apply_mutations(ruling_result[:mutations])
       apply_time_span_mutations(ts_result[:mutations])
 
       dm_brief = nil
       if intent[:plot_relevant]
-        plot_result = resolve_plot(intent, evaluate_outcome: eval_result[:outcome])
+        plot_result = resolve_plot(intent, ruling_outcome: ruling_result[:outcome])
         dm_brief = plot_result&.dig(:dm_brief)
       end
 
@@ -175,17 +190,17 @@ module DungeonMaster
 
     def run_resolution_flow(intent, merged, roll_results)
       npc_results = resolve_npc_actions(merged[:npc_actions])
-      eval_result = run_evaluate(intent, merged, roll_results: roll_results, npc_results: npc_results)
-      apply_mutations(eval_result[:mutations])
+      ruling_result = run_ruling(intent, merged, roll_results: roll_results, npc_results: npc_results)
+      apply_mutations(ruling_result[:mutations])
 
       dm_brief = nil
       if intent[:plot_relevant]
-        plot_result = resolve_plot(intent, evaluate_outcome: eval_result[:outcome])
+        plot_result = resolve_plot(intent, ruling_outcome: ruling_result[:outcome])
         dm_brief = plot_result&.dig(:dm_brief)
       end
 
-      narration = run_narrate(eval_result[:outcome], dm_brief: dm_brief)
-      run_context_updates(narration[:narrative], eval_result[:mutations],
+      narration = run_narrate(ruling_result[:outcome], dm_brief: dm_brief)
+      run_context_updates(narration[:narrative], ruling_result[:mutations],
                           affected_contexts: intent[:affected_contexts],
                           macro_significant: intent[:macro_significant])
       { action: :narrated, narrative: narration[:narrative], adventure_complete: narration[:adventure_complete] }
@@ -208,20 +223,37 @@ module DungeonMaster
     end
 
     # ----------------------------------------------------------------
+    # Gate: parallel mechanical_evaluation + capability_guardrail
+    # ----------------------------------------------------------------
+
+    def run_mechanics_gate(intent)
+      evaluations = nil
+      guardrail = nil
+
+      eval_thread = Thread.new { evaluations = run_mechanical_evaluation_loop(intent) }
+      guard_thread = Thread.new { guardrail = run_capability_guardrail(intent) }
+
+      eval_thread.value
+      guard_thread.value
+
+      [evaluations, guardrail]
+    end
+
+    # ----------------------------------------------------------------
     # Helpers
     # ----------------------------------------------------------------
 
     def restore_from_metadata(metadata)
       intent = metadata["intent"]&.deep_symbolize_keys ||
                { intention: "continue", affected_contexts: [], macro_significant: false }
-      ruling_summaries = metadata["ruling_summaries"] || []
+      mechanical_summaries = metadata["mechanical_summaries"] || metadata["ruling_summaries"] || []
       npc_actions  = (metadata["pending_npc_actions"]  || []).map(&:deep_symbolize_keys)
       consequences = (metadata["pending_consequences"] || []).map(&:deep_symbolize_keys)
       time_span_parameters = (metadata["time_span_parameters"] || {}).deep_symbolize_keys
 
       merged = {
         player_rolls: [], npc_actions: npc_actions,
-        consequences: consequences, ruling_summaries: ruling_summaries,
+        consequences: consequences, mechanical_summaries: mechanical_summaries,
         time_span_parameters: time_span_parameters
       }
 
@@ -239,11 +271,11 @@ module DungeonMaster
     end
 
     # Runs the AI Chronicler if available, otherwise falls back to heuristic DC matching.
-    def resolve_plot(intent, evaluate_outcome: nil)
+    def resolve_plot(intent, ruling_outcome: nil)
       if should_run_chronicler?
-        run_chronicler(intent, evaluate_outcome: evaluate_outcome)
+        run_chronicler(intent, ruling_outcome: ruling_outcome)
       elsif has_structured_story_data?
-        heuristic_chronicler(intent, evaluate_outcome: evaluate_outcome)
+        heuristic_chronicler(intent, ruling_outcome: ruling_outcome)
       end
     end
 
@@ -256,7 +288,7 @@ module DungeonMaster
       "magic" => "exploration", "combat" => "combat", "automatic" => nil,
     }.freeze
 
-    def heuristic_chronicler(intent, evaluate_outcome: nil)
+    def heuristic_chronicler(intent, ruling_outcome: nil)
       plot_state = @adventure.plot_state || {}
       discovered_ids = plot_state["discovered_clues"] || []
       current_loc_id = @adventure.current_location_id

@@ -325,9 +325,10 @@
     var title = document.getElementById('modalTitle');
     var body = document.getElementById('modalBody');
     var typeBadgeClass = {
-      'triage': 'type-triage', 'sanitize': 'type-triage', 'classify': 'type-triage', 'dispatcher': 'type-triage',
-      'intent': 'type-intent', 'ruling': 'type-ruling',
-      'evaluate': 'type-evaluate', 'narrate': 'type-narrate', 'dm_query': 'type-dm-query',
+      'triage': 'type-triage', 'sanitize': 'type-triage', 'classify': 'type-triage',
+      'dispatcher': 'type-triage', 'capability_guardrail': 'type-triage',
+      'intent': 'type-intent', 'mechanical_evaluation': 'type-ruling',
+      'ruling': 'type-evaluate', 'narrate': 'type-narrate', 'dm_query': 'type-dm-query',
       'micro_context_update': 'type-ctx', 'macro_narrative_update': 'type-ctx'
     }[callType] || 'type-default';
     title.innerHTML = 'AI Log #' + logId + ' <span class="type-badge ' + typeBadgeClass + '">' + callType.replace(/_/g, ' ') + '</span>';

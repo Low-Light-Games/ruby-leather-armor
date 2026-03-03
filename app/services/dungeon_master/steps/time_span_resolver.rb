@@ -2,7 +2,7 @@
 
 module DungeonMaster
   module Steps
-    # Deterministic time-span resolution: runs AFTER ruling+evaluate.
+    # Deterministic time-span resolution: runs AFTER mechanical_evaluation + ruling.
     # Simulates the passage of time in segments, rolling for encounters.
     # Supports journey, rest, wait, and activity types.
     module TimeSpanResolver
@@ -10,12 +10,12 @@ module DungeonMaster
 
       SPEED_FT_TO_MPH = 30.0 / 3.0 # 30ft base = ~3 mph walking
 
-      def run_time_span(intent, eval_result, ruling_merged)
+      def run_time_span(intent, ruling_result, mech_eval_merged)
         span_type = (intent[:time_span_type] || "journey").to_s
-        time_span_params = extract_time_span_params(ruling_merged)
-        eval_mutations = eval_result[:mutations] || {}
-        travel_eval = (eval_mutations["time_span"] || eval_mutations[:time_span] ||
-                       eval_mutations["travel"]   || eval_mutations[:travel]   || {}).deep_symbolize_keys
+        time_span_params = extract_time_span_params(mech_eval_merged)
+        ruling_mutations = ruling_result[:mutations] || {}
+        travel_eval = (ruling_mutations["time_span"] || ruling_mutations[:time_span] ||
+                       ruling_mutations["travel"]   || ruling_mutations[:travel]   || {}).deep_symbolize_keys
 
         effective_hours = compute_effective_hours(span_type, intent, time_span_params, travel_eval)
         @log.dm_log!("TimeSpan: type=#{span_type}, effective_hours=#{effective_hours}")
@@ -35,7 +35,7 @@ module DungeonMaster
           intent: intent
         )
 
-        resolution[:ruling_summary] = ruling_merged[:ruling_summaries]&.join("; ")
+        resolution[:mechanical_summary] = mech_eval_merged[:mechanical_summaries]&.join("; ")
         resolution[:time_span_type] = span_type
         resolution
       end

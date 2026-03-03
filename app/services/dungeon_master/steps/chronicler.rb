@@ -8,7 +8,7 @@ module DungeonMaster
     module Chronicler
       private
 
-      def run_chronicler(intent, evaluate_outcome: nil)
+      def run_chronicler(intent, ruling_outcome: nil)
         raw = nil
         prompt_summary = "Chronicler: plot_relevant action at #{@adventure.current_location&.name || 'unknown'}"
 
@@ -35,7 +35,7 @@ module DungeonMaster
           intention: intent[:intention],
           primary_context: intent[:primary_context],
           current_location: @adventure.current_location&.name,
-          evaluate_outcome: evaluate_outcome,
+          ruling_outcome: ruling_outcome,
           undiscovered_clues: build_undiscovered_clues(all_clues, discovered_ids),
           available_npcs: build_available_npcs(all_npcs, npc_enrichments),
         )

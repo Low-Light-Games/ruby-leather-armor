@@ -96,13 +96,13 @@ class DungeonMasterService
         roll_requests: result[:merged][:player_rolls],
         pending_npc_actions: result[:merged][:npc_actions],
         pending_consequences: result[:merged][:consequences],
-        ruling_summaries: result[:merged][:ruling_summaries],
+        mechanical_summaries: result[:merged][:mechanical_summaries],
         intent: result[:intent]
       }
       meta[:time_span_parameters] = result[:merged][:time_span_parameters] if result[:time_spanning]
       [persist_message(
         role: "dm",
-        content: roll_explanation(result[:merged][:ruling_summaries]),
+        content: roll_explanation(result[:merged][:mechanical_summaries]),
         message_type: "roll_request",
         metadata: meta)]
 

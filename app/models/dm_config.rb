@@ -3,7 +3,8 @@ class DmConfig < ApplicationRecord
   # Settings are stored as a JSON hash, making it easy to add new knobs
   # without migrations.
   TOKEN_BUDGET_STEPS = %w[
-    sanitize classify dm_query intent dispatcher ruling evaluate chronicler narrate
+    sanitize classify dm_query intent dispatcher mechanical_evaluation
+    capability_guardrail ruling chronicler narrate
     micro_context_update macro_narrative_update
   ].freeze
 
@@ -17,8 +18,9 @@ class DmConfig < ApplicationRecord
     "dm_query"               => "Fast, cheap model. Straightforward Q&A — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "intent"                 => "Fast, cheap model. Simple restatement — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "dispatcher"             => "Fast, cheap model. Per-domain interpretation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
-    "ruling"                 => "Capable model. Rules application benefits from reasoning — e.g. o3-mini, o4-mini, gpt-5-mini.",
-    "evaluate"               => "Capable model. Mechanical resolution with edge cases — e.g. o3-mini, o4-mini, gpt-5-mini.",
+    "mechanical_evaluation"  => "Capable model. Determines required rolls and NPC actions — e.g. o3-mini, o4-mini, gpt-5-mini.",
+    "capability_guardrail"   => "Fast, cheap model. Sheet validation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini. Only used in AI mode.",
+    "ruling"                 => "Capable model. Post-roll arbitration and mutation generation — e.g. o3-mini, o4-mini, gpt-5-mini.",
     "chronicler"             => "Mid-tier model. Condition matching with structured output — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
     "narrate"                => "Creative model. Narrative quality scales with capability — e.g. gpt-4.1, gpt-4o, gpt-5.",
     "micro_context_update"   => "Mid-tier model. Structured JSON with moderate judgment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
@@ -63,8 +65,9 @@ class DmConfig < ApplicationRecord
       "dm_query" => 300,
       "intent" => 200,
       "dispatcher" => 400,
-      "ruling" => 500,
-      "evaluate" => 600,
+      "mechanical_evaluation" => 500,
+      "capability_guardrail" => 300,
+      "ruling" => 600,
       "chronicler" => 500,
       "narrate" => 800,
       "micro_context_update" => 800,
