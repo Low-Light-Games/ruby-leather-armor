@@ -8,7 +8,9 @@ matters most.
 
 This guide groups available models into tiers, explains what each pipeline
 step actually asks the model to do, and recommends where to spend and where
-to save.
+to save. See [Design Philosophy](design_philosophy.md) for the principles
+behind these choices (especially *Structured decomposition over model
+reasoning* and *When in doubt, add a toggle*).
 
 ---
 

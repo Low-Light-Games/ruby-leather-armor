@@ -3,6 +3,9 @@
 Design document describing the AI Dungeon Master pipeline: what each step
 does, what it receives, what it produces, and how the steps connect.
 
+For the guiding principles behind these decisions, see
+[Design Philosophy](design_philosophy.md).
+
 ---
 
 ## Design Decisions
