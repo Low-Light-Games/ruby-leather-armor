@@ -97,11 +97,12 @@ o3/o4-mini.
 
 ## Step-by-step Recommendations
 
-### 1. Triage
+### 1a. Sanitize
 
-**What it does:** classifies the player input into a category (combat,
-traversal, social, dm_query), assigns a danger score for sanitization,
-optionally rewrites the input. Output is a small JSON blob.
+**What it does:** security filter. Scores the player input on a 0-100
+danger scale for prompt injection, jailbreaking, harassment, and
+meta-gaming. Can kill the pipeline if the score exceeds the configured
+`sanitization_threshold`. Runs in parallel with Classify.
 
 **Cognitive demand:** very low. Pattern matching on a single sentence.
 
@@ -109,13 +110,28 @@ optionally rewrites the input. Output is a small JSON blob.
 
 **Acceptable:** gpt-4.1-mini, gpt-5-mini
 
-**Avoid:** any full or pro model. You're paying 20-100x more for a task
-a nano model handles with near-identical accuracy. Reasoning models are
-especially wasteful here — internal chain-of-thought tokens inflate the
-budget with no benefit for a classification task.
+**Avoid:** any full or pro model. This is pure pattern detection.
 
-**Token budget:** 300 (non-reasoning) / 1200 (reasoning). Non-reasoning
-models are strongly preferred to keep this step fast and lean.
+**Token budget:** 300 (non-reasoning) / 1200 (reasoning).
+
+---
+
+### 1b. Classify
+
+**What it does:** buckets the player input into one game domain (combat,
+traversal, social, exploration, rest, inventory, dm_query). Runs in
+parallel with Sanitize. Output is a small JSON blob with a `category` field.
+
+**Cognitive demand:** very low. Single-label classification.
+
+**Recommended:** gpt-4.1-nano, gpt-5-nano, gpt-4o-mini
+
+**Acceptable:** gpt-4.1-mini, gpt-5-mini
+
+**Avoid:** any full or pro model. Reasoning models are especially wasteful
+here — internal chain-of-thought tokens inflate the budget with no benefit.
+
+**Token budget:** 200 (non-reasoning) / 800 (reasoning).
 
 ---
 
@@ -143,14 +159,16 @@ is pure waste.
 
 ### 3. Intent
 
-**What it does:** given the sanitized input and current micro-contexts,
-determines what the player is trying to do — the intention, which contexts
+**What it does:** pure intention extraction. Given the player input and
+current micro-contexts, determines the player's intention, which contexts
 are affected, whether mechanics are needed, and whether the action is
-macro-significant. Output is structured JSON.
+macro-significant. Does **not** interpret rules or dispatch domain logic —
+that is handled by InterpretationDispatcher. Output is a small structured
+JSON blob.
 
-**Cognitive demand:** low to moderate. Slightly more nuanced than triage
-(it must understand multi-context actions like "I jump into the sacred
-lake to flee my attackers"), but the output is still a small classification.
+**Cognitive demand:** low to moderate. Must understand multi-context actions
+like "I jump into the sacred lake to flee my attackers", but the output is
+still extractive classification.
 
 **Recommended:** gpt-4.1-nano, gpt-5-nano, gpt-4o-mini
 
@@ -158,81 +176,136 @@ lake to flee my attackers"), but the output is still a small classification.
 frequently misclassified with nano, stepping up to mini is worthwhile.
 
 **Avoid:** full and pro models. The task is fundamentally extractive, not
-generative. The model reads a player sentence and picks from known
-categories — more compute doesn't materially improve this.
+generative.
 
 **Token budget:** 400 (non-reasoning) / 1600 (reasoning).
 
 ---
 
-### 4. Ruling
+### 4. InterpretationDispatcher
 
-**What it does:** the most rules-heavy step. Given the player's intent and
-the relevant Pathfinder rules, determines what checks are needed, what the
-DCs are, what NPC actions occur, and what consequences follow. This step
-runs in a **loop** — once per affected context (combat, traversal, social)
-— with each iteration receiving a summary of previous rulings.
+**What it does:** dispatches domain-specific interpretation in parallel.
+One interpreter fires per affected context (e.g., `combat_interpreter`,
+`traversal_interpreter`, `social_interpreter`). Each interprets the player's
+intent within its domain rules and produces a structured domain brief. Which
+contexts receive prompts is configurable via `interpreter_scope` toggle:
+`"always_all"` sends every context, `"classify_driven"` only sends those
+flagged by Classify.
+
+**Cognitive demand:** moderate. Each interpreter must understand its
+domain's rules well enough to produce accurate structured output, but the
+scope is narrower than a full ruling.
+
+**Recommended:** gpt-4o-mini, gpt-4.1-mini, gpt-5-nano
+
+Mini models are the sweet spot — smart enough for domain-specific rule
+interpretation, cheap enough to run several in parallel.
+
+**Acceptable:** gpt-5-mini, o4-mini
+
+Stepping up to reasoning minis is worthwhile if interpreters frequently
+misjudge rule interactions within their domain.
+
+**Avoid:**
+
+- Full and pro models: you may run 2-6 interpreters per turn; full-tier
+pricing multiplied by dispatcher count gets expensive fast.
+- gpt-3.5-turbo: struggles with structured domain output.
+
+**Token budget:** 400 (non-reasoning) / 1600 (reasoning) per dispatcher.
+Total cost scales with the number of dispatched domains.
+
+---
+
+### 5. CapabilityGuardrail
+
+**What it does:** validates that the player's character can actually
+perform the intended action — checks spells known, feat prerequisites,
+item possession, class features, etc. Runs in parallel with
+MechanicalEvaluation. Configurable via `guardrail_mode`: `"code"` uses
+app-level validation, `"ai"` uses an AI call. **Only the AI mode requires
+model selection.**
+
+**Cognitive demand:** moderate. Must cross-reference the character sheet
+with the intended action and identify capability mismatches.
+
+**Recommended:** gpt-4o-mini, gpt-4.1-mini, gpt-5-nano
+
+The task is a structured lookup against the character sheet — mini models
+handle it well.
+
+**Acceptable:** gpt-5-mini, o4-mini
+
+**Avoid:**
+
+- Full and pro models: overpowered for a validation check.
+- Nano models (non-reasoning): may miss subtle prerequisites (e.g.,
+caster level requirements, feat chains).
+
+**Token budget:** 400 (non-reasoning) / 1600 (reasoning).
+
+---
+
+### 6. MechanicalEvaluation
+
+**What it does:** the most rules-heavy step. Given the player's intent,
+domain interpretations, and the relevant Pathfinder rules, determines what
+dice rolls are needed, what the DCs are, and what NPC actions occur. This
+step can request player rolls (pausing the pipeline) or resolve NPC rolls
+internally.
 
 **Cognitive demand:** high. The model must accurately interpret Pathfinder 1e
 rules (attack of opportunity triggers, grapple flowcharts, skill check DCs,
 spell effects), compose them correctly with the current context, and produce
-structured JSON that the app can act on mechanically. Mistakes here cause
-incorrect gameplay.
+structured JSON. Mistakes here cause incorrect gameplay.
 
 **Recommended:** o3-mini, o4-mini, gpt-5-mini
 
-These are the sweet spot: reasoning capability for rules interpretation at
-moderate cost. The chain-of-thought helps the model "think through" the
-rules rather than pattern-match (which often produces plausible but wrong
-rulings). gpt-5-mini brings GPT-5-class reasoning at $0.25/$2.00, making
-it a strong contender.
+Reasoning capability for rules interpretation at moderate cost. The
+chain-of-thought helps the model "think through" the rules rather than
+pattern-match. gpt-5-mini brings GPT-5-class reasoning at $0.25/$2.00.
 
 **Acceptable:** gpt-5, o3, gpt-4.1
 
 gpt-4.1 is the best non-reasoning option if you want temperature control,
 but it lacks chain-of-thought and can miss edge cases in complex rule
-interactions. gpt-5 and o3 are reliable but roughly 5-8x the cost of
-their mini variants.
+interactions.
 
 **Avoid:**
 
 - Nano models: they will frequently misapply rules, miss AoO triggers,
-or produce malformed ruling JSON on complex multi-check scenarios.
-- Pro models: correct but absurdly expensive. o3-pro at $20/$80 per 1M
-tokens for a step that runs multiple times per turn is unjustifiable.
+or produce malformed JSON on complex multi-check scenarios.
+- Pro models: correct but absurdly expensive.
 - gpt-3.5-turbo: cannot reliably handle Pathfinder's rule complexity.
 
-**Token budget:** 500 (non-reasoning) / 2000 (reasoning). Because this
-step loops, the per-call budget is per ruling context, not per turn. Total
-cost scales with the number of affected contexts.
+**Token budget:** 500 (non-reasoning) / 2000 (reasoning).
 
 ---
 
-### 5. Evaluate
+### 7. Ruling
 
-**What it does:** given roll results (player and NPC), the ruling, and the
-player's character sheet, determines the mechanical outcome. Did the attack
-hit? How much damage? Did the grapple succeed? What conditions apply? Output
-is structured JSON with mutations (HP changes, conditions, position updates).
+**What it does:** post-roll arbitration. Given roll results (player and NPC),
+the mechanical evaluation, and the player's character sheet, determines the
+final mechanical outcome. Did the attack hit? How much damage? Did the
+grapple succeed? What conditions apply? Output is structured JSON with
+mutations (HP changes, conditions, position updates).
 
-**Cognitive demand:** high. Similar to ruling but with concrete numbers.
-The model must correctly apply modifiers, compare against DCs/ACs, handle
-critical hit confirmation, damage reduction, spell resistance, etc. Errors
-here directly produce wrong HP values, missed conditions, or ignored saves.
+**Cognitive demand:** high. The model must correctly apply modifiers,
+compare against DCs/ACs, handle critical hit confirmation, damage reduction,
+spell resistance, etc. Errors here directly produce wrong HP values,
+missed conditions, or ignored saves.
 
 **Recommended:** o3-mini, o4-mini, gpt-5-mini
 
-Same reasoning as Ruling: chain-of-thought helps the model work through
-arithmetic and conditional logic step-by-step instead of jumping to
-(frequently wrong) conclusions.
+Chain-of-thought helps the model work through arithmetic and conditional
+logic step-by-step instead of jumping to (frequently wrong) conclusions.
 
 **Acceptable:** gpt-5, o3, gpt-4.1
 
 **Avoid:**
 
 - Nano models: arithmetic errors are common, especially with multiple
-stacking modifiers. A -nano model might forget to apply Power Attack
-damage bonus while remembering the attack penalty.
+stacking modifiers.
 - Pro models: not worth the cost.
 - gpt-3.5-turbo: struggles with multi-step arithmetic.
 
@@ -240,7 +313,20 @@ damage bonus while remembering the attack penalty.
 
 ---
 
-### 6. Narrate
+### 8. Evaluate (code-only)
+
+**What it does:** a code-only synthesis and routing step. Takes the ruling
+outcome, generates a `narrative_seed` and `context_update_directives`, and
+dispatches the output phase (Narrate + ContextUpdate). **No AI call — no
+model selection needed.** Included here for pipeline completeness.
+
+The output phase mode is controlled by the `narration_mode` toggle:
+`"parallel"` runs Narrate and ContextUpdate concurrently, `"subjugated"`
+runs ContextUpdate first, then Narrate.
+
+---
+
+### 9. Narrate
 
 **What it does:** the player-facing creative step. Takes the mechanical
 outcome (or lack thereof, for non-mechanical actions) and produces the
@@ -289,14 +375,16 @@ largest budget because narrative output is the longest.
 
 ---
 
-### 7. Micro Context Update
+### 10. Micro Context Update
 
-**What it does:** after narration, updates the micro-context JSONB fields
-on the Adventure (traversal, combat, social, exploration, rest,
-inventory). Only *relevant* contexts are included in the prompt — those
-flagged as affected by the Intent step plus any that already have data.
-Reads the narrative and mutations, decides what changed, and outputs the
-updated context state as structured JSON.
+**What it does:** updates the micro-context JSONB fields on the Adventure
+(traversal, combat, social, exploration, rest, inventory). Only *relevant*
+contexts are included in the prompt — those flagged as affected by the
+Intent step plus any that already have data. Receives the factual outcome
+summary and mutations (not the narrative text), decides what changed, and
+outputs the updated context state as structured JSON. Runs in parallel
+with Narrate (in parallel narration mode) or before Narrate (in
+subjugated mode).
 
 **Cognitive demand:** moderate. Must accurately reflect mechanical changes
 (enemy died, player moved, social attitude shifted) in a structured format.
@@ -325,7 +413,7 @@ update is wasted compute.
 
 ---
 
-### 8. Macro Narrative Update
+### 11. Macro Narrative Update
 
 **What it does:** conditionally updates the adventure's `story_summary`
 field. Only fires when the intent step flagged the action as
@@ -360,68 +448,147 @@ over time.
 
 ---
 
+### 12. Chronicler
+
+**What it does:** summarizes the pipeline outcome for logging and the
+time-span resolver. Produces a concise scene summary and optional story
+beat. Fires after the output phase.
+
+**Cognitive demand:** low to moderate. Summarization of known outcomes.
+
+**Recommended:** gpt-4o-mini, gpt-4.1-mini, gpt-5-nano
+
+**Acceptable:** gpt-4.1-nano
+
+**Avoid:** full and pro models.
+
+**Token budget:** 400 (non-reasoning) / 1600 (reasoning).
+
+---
+
+### Edge Pipeline (alternative mode)
+
+**What it does:** a single monolithic AI call that handles the entire
+pipeline — sanitization, intent, capability checks, mechanics (with
+internally simulated dice rolls), mutations, narration, and context updates.
+Activated via `pipeline_mode: "edge"` in DmConfig.
+
+**Cognitive demand:** very high. The model must juggle every responsibility
+in one pass. Quality depends heavily on the model's ability to follow a
+complex, multi-section prompt.
+
+**Recommended:** gpt-5, o3, gpt-4.1
+
+Full-tier models are the minimum for acceptable output. The prompt is long
+and the model must produce multiple structured sections plus narrative.
+gpt-4.1 at $2.00/$8.00 is the best non-reasoning option.
+
+**Acceptable:** gpt-5-mini, o3-mini
+
+Mini reasoning models can handle it but may miss nuance in narration or
+produce abbreviated context updates.
+
+**Avoid:**
+
+- Nano models: will fail on the multi-section structured output.
+- Pro models: the cost of a single edge call at pro pricing is
+prohibitive for real-time use.
+
+**Token budget:** 2000 (non-reasoning) / 8000 (reasoning). This is the
+largest budget in the system because the model produces all outputs in
+one response.
+
+---
+
 ## Cost Profiles
 
-The following estimates assume one player turn = triage + intent + 1.5
-ruling calls (average context count) + evaluate + narrate + micro context
-update, with macro narrative update firing ~20% of the time.
+The following estimates assume one player turn = sanitize + classify
+(parallel) + intent + 2 interpretation dispatchers (average) +
+capability guardrail + mechanical evaluation (parallel with guardrail) +
+ruling + narrate + micro context update + macro narrative update (~20%
+of the time). Evaluate is code-only and has no AI cost.
 
 ### Budget build (minimize cost)
 
 
-| Step       | Model        | Est. cost/turn   |
-| ---------- | ------------ | ---------------- |
-| Triage     | gpt-4.1-nano | ~$0.0001         |
-| DM Query   | gpt-4.1-nano | ~$0.0001         |
-| Intent     | gpt-4.1-nano | ~$0.0002         |
-| Ruling     | gpt-4o-mini  | ~$0.0005         |
-| Evaluate   | gpt-4o-mini  | ~$0.0005         |
-| Narrate    | gpt-4.1-mini | ~$0.001          |
-| Micro Ctx  | gpt-4.1-nano | ~$0.0002         |
-| Macro Narr | gpt-4.1-nano | ~$0.0001         |
-| **Total**  |              | **~$0.003/turn** |
+| Step             | Model        | Est. cost/turn   |
+| ---------------- | ------------ | ---------------- |
+| Sanitize         | gpt-4.1-nano | ~$0.0001         |
+| Classify         | gpt-4.1-nano | ~$0.0001         |
+| DM Query         | gpt-4.1-nano | ~$0.0001         |
+| Intent           | gpt-4.1-nano | ~$0.0002         |
+| Dispatchers (×2) | gpt-4o-mini  | ~$0.0004         |
+| Cap. Guardrail   | gpt-4.1-nano | ~$0.0001         |
+| Mech. Eval       | gpt-4o-mini  | ~$0.0005         |
+| Ruling           | gpt-4o-mini  | ~$0.0005         |
+| Narrate          | gpt-4.1-mini | ~$0.001          |
+| Micro Ctx        | gpt-4.1-nano | ~$0.0002         |
+| Macro Narr       | gpt-4.1-nano | ~$0.0001         |
+| **Total**        |              | **~$0.004/turn** |
 
 
-Quality trade-off: rulings may occasionally misfire on complex
-interactions; narrative will be competent but not immersive.
+Quality trade-off: more AI calls than before, but cheap steps stay
+cheap. Rulings may occasionally misfire on complex interactions;
+narrative will be competent but not immersive.
 
 ### Balanced build (recommended starting point)
 
 
-| Step       | Model       | Est. cost/turn  |
-| ---------- | ----------- | --------------- |
-| Triage     | gpt-5-nano  | ~$0.0001        |
-| DM Query   | gpt-5-nano  | ~$0.0001        |
-| Intent     | gpt-5-nano  | ~$0.0002        |
-| Ruling     | o4-mini     | ~$0.005         |
-| Evaluate   | o4-mini     | ~$0.005         |
-| Narrate    | gpt-4.1     | ~$0.008         |
-| Micro Ctx  | gpt-4o-mini | ~$0.0005        |
-| Macro Narr | gpt-4o-mini | ~$0.0002        |
-| **Total**  |             | **~$0.02/turn** |
+| Step             | Model       | Est. cost/turn   |
+| ---------------- | ----------- | ---------------- |
+| Sanitize         | gpt-5-nano  | ~$0.0001         |
+| Classify         | gpt-5-nano  | ~$0.0001         |
+| DM Query         | gpt-5-nano  | ~$0.0001         |
+| Intent           | gpt-5-nano  | ~$0.0002         |
+| Dispatchers (×2) | gpt-4o-mini | ~$0.001          |
+| Cap. Guardrail   | gpt-4o-mini | ~$0.0003         |
+| Mech. Eval       | o4-mini     | ~$0.005          |
+| Ruling           | o4-mini     | ~$0.005          |
+| Narrate          | gpt-4.1     | ~$0.008          |
+| Micro Ctx        | gpt-4o-mini | ~$0.0005         |
+| Macro Narr       | gpt-4o-mini | ~$0.0002         |
+| **Total**        |             | **~$0.02/turn**  |
 
 
 Quality trade-off: strong rules accuracy from reasoning models, good
-narrative from a full-tier model. The bulk of cost comes from narration.
+narrative from a full-tier model. The bulk of cost comes from narration
+and the two mechanical steps.
 
 ### Premium build (maximize quality)
 
 
-| Step       | Model        | Est. cost/turn  |
-| ---------- | ------------ | --------------- |
-| Triage     | gpt-4o-mini  | ~$0.0002        |
-| DM Query   | gpt-4.1-mini | ~$0.0005        |
-| Intent     | gpt-4.1-mini | ~$0.001         |
-| Ruling     | o3           | ~$0.01          |
-| Evaluate   | o3           | ~$0.01          |
-| Narrate    | gpt-5        | ~$0.01          |
-| Micro Ctx  | gpt-4.1-mini | ~$0.001         |
-| Macro Narr | gpt-4.1      | ~$0.003         |
-| **Total**  |              | **~$0.04/turn** |
+| Step             | Model        | Est. cost/turn   |
+| ---------------- | ------------ | ---------------- |
+| Sanitize         | gpt-4o-mini  | ~$0.0002         |
+| Classify         | gpt-4o-mini  | ~$0.0002         |
+| DM Query         | gpt-4.1-mini | ~$0.0005         |
+| Intent           | gpt-4.1-mini | ~$0.001          |
+| Dispatchers (×2) | gpt-4.1-mini | ~$0.002          |
+| Cap. Guardrail   | gpt-4.1-mini | ~$0.0005         |
+| Mech. Eval       | o3           | ~$0.01           |
+| Ruling           | o3           | ~$0.01           |
+| Narrate          | gpt-5        | ~$0.01           |
+| Micro Ctx        | gpt-4.1-mini | ~$0.001          |
+| Macro Narr       | gpt-4.1      | ~$0.003          |
+| **Total**        |              | **~$0.04/turn**  |
 
 
-Quality trade-off: best available accuracy and prose. Twice the cost of
-balanced, but every step has headroom.
+Quality trade-off: best available accuracy and prose. The additional
+dispatcher and guardrail steps add marginal cost but meaningfully improve
+rule accuracy and capability validation.
+
+### Edge build (single-call alternative)
+
+
+| Step          | Model   | Est. cost/turn   |
+| ------------- | ------- | ---------------- |
+| Edge Pipeline | gpt-4.1 | ~$0.015          |
+| **Total**     |         | **~$0.015/turn** |
+
+
+Quality trade-off: simplest deployment, no inter-step latency, but less
+fine-grained control over model selection per concern. Quality depends
+entirely on the chosen model's ability to handle the compound prompt.
 
 ---
 
@@ -442,12 +609,13 @@ ignore the temperature setting. This matters most for the Narrate step,
 where temperature directly controls creative variance. If you use a
 reasoning model for narration, you lose this control.
 
-### The ruling step loops
+### Interpretation dispatchers scale with affected contexts
 
-Unlike other steps, Ruling executes once per affected context (combat,
-traversal, social). A multi-context action ("I leap into the sacred lake
-to escape my attackers") may produce 2-3 ruling calls. Factor this into
-cost estimates.
+InterpretationDispatcher fires one AI call per affected domain context.
+A multi-context action ("I leap into the sacred lake to escape my
+attackers") may produce 2-3 parallel dispatcher calls. Factor this into
+cost estimates — the more contexts touched, the higher the per-turn
+dispatcher cost.
 
 ### Context updates compound over time
 
@@ -457,15 +625,31 @@ quality loss across all subsequent turns. This is a subtle cost that
 doesn't show up in per-turn pricing but can degrade the adventure over
 a long session. When in doubt, spend slightly more here.
 
+### Parallel steps add latency savings but not cost savings
+
+Sanitize + Classify, CapabilityGuardrail + MechanicalEvaluation, and
+Narrate + ContextUpdate (in parallel mode) run concurrently. Wall-clock
+time improves, but you still pay for every call. When budgeting, count
+all parallel steps at full price.
+
+### Edge pipeline vs. standard pipeline trade-off
+
+Edge mode collapses all AI calls into one, eliminating inter-step
+latency and simplifying deployment. However, you lose per-step model
+selection, per-step token budgets, and fine-grained logging. It's best
+suited for low-traffic deployments or as a fast fallback when latency
+is more important than accuracy.
+
 ### Fine-tuning potential
 
-Steps that produce structured JSON with consistent schemas (triage,
-intent, ruling, evaluate, context updates) are strong candidates for
-fine-tuning on a cheaper base model. Over time, you can collect
-AiLog data, curate high-quality examples, and fine-tune gpt-4o-mini or
-gpt-4.1-nano to match the accuracy of larger models at a fraction of
-the cost. Narration is harder to fine-tune because quality is subjective,
-but it's possible with a well-curated dataset.
+Steps that produce structured JSON with consistent schemas (sanitize,
+classify, intent, interpretation dispatchers, mechanical evaluation,
+ruling, context updates) are strong candidates for fine-tuning on a
+cheaper base model. Over time, you can collect AiLog data, curate
+high-quality examples, and fine-tune gpt-4o-mini or gpt-4.1-nano to
+match the accuracy of larger models at a fraction of the cost. Narration
+is harder to fine-tune because quality is subjective, but it's possible
+with a well-curated dataset.
 
 ---
 
@@ -490,8 +674,8 @@ per pipeline step, and outlines what an integration would require.
 **Strengths:**
 
 - Excellent at following complex, multi-constraint instructions — directly
-relevant to the Ruling and Evaluate steps where Pathfinder rules must be
-interpreted precisely.
+relevant to the MechanicalEvaluation and Ruling steps where Pathfinder
+rules must be interpreted precisely.
 - Claude models tend to produce high-quality, stylistically consistent
 prose, making them strong Narrate candidates.
 - Very large context windows (200K tokens) mean micro/macro context can be
@@ -511,19 +695,22 @@ use.
 **Step fit:**
 
 
-| Step       | Fit       | Model          | Why                                    |
-| ---------- | --------- | -------------- | -------------------------------------- |
-| Triage     | Overkill  | Haiku          | Works but OpenAI nano is cheaper       |
-| DM Query   | Good      | Haiku          | Comparable to gpt-4o-mini              |
-| Intent     | Good      | Haiku          | Reliable classification                |
-| Ruling     | Excellent | Sonnet         | Instruction-following shines here      |
-| Evaluate   | Excellent | Sonnet         | Careful with modifiers and arithmetic  |
-| Narrate    | Excellent | Sonnet / Opus  | Best-in-class prose at the Sonnet tier |
-| Micro Ctx  | Good      | Haiku          | Clean JSON output                      |
-| Macro Narr | Good      | Haiku / Sonnet | Good judgment on significance          |
+| Step             | Fit       | Model          | Why                                    |
+| ---------------- | --------- | -------------- | -------------------------------------- |
+| Sanitize         | Overkill  | Haiku          | Works but OpenAI nano is cheaper       |
+| Classify         | Overkill  | Haiku          | Works but OpenAI nano is cheaper       |
+| DM Query         | Good      | Haiku          | Comparable to gpt-4o-mini              |
+| Intent           | Good      | Haiku          | Reliable classification                |
+| Dispatchers      | Good      | Haiku          | Clean domain interpretation            |
+| Cap. Guardrail   | Good      | Haiku          | Strong instruction-following           |
+| Mech. Eval       | Excellent | Sonnet         | Instruction-following shines here      |
+| Ruling           | Excellent | Sonnet         | Careful with modifiers and arithmetic  |
+| Narrate          | Excellent | Sonnet / Opus  | Best-in-class prose at the Sonnet tier |
+| Micro Ctx        | Good      | Haiku          | Clean JSON output                      |
+| Macro Narr       | Good      | Haiku / Sonnet | Good judgment on significance          |
 
 
-**Desirability: High.** Claude Sonnet for ruling/evaluate/narrate paired
+**Desirability: High.** Claude Sonnet for mech. eval/ruling/narrate paired
 with OpenAI nano for cheap steps would be a strong hybrid setup. Sonnet's
 instruction-following is arguably better than o3-mini for rule-heavy steps,
 and its prose rivals gpt-4.1 at a comparable price point.
@@ -569,16 +756,19 @@ message roles, different tool call format, different streaming).
 **Step fit:**
 
 
-| Step       | Fit        | Model     | Why                                 |
-| ---------- | ---------- | --------- | ----------------------------------- |
-| Triage     | Excellent  | 2.0 Flash | Extremely cheap classification      |
-| DM Query   | Good       | 2.5 Flash | Fast Q&A                            |
-| Intent     | Good       | 2.5 Flash | Cheap and capable enough            |
-| Ruling     | Good       | 2.5 Pro   | Thinking mode helps with rules      |
-| Evaluate   | Good       | 2.5 Pro   | Thinking mode helps with arithmetic |
-| Narrate    | Mediocre   | 2.5 Pro   | Functional but less immersive prose |
-| Micro Ctx  | Good       | 2.5 Flash | Cheap structured output             |
-| Macro Narr | Acceptable | 2.5 Flash | Tends to over-include in summaries  |
+| Step             | Fit        | Model     | Why                                 |
+| ---------------- | ---------- | --------- | ----------------------------------- |
+| Sanitize         | Excellent  | 2.0 Flash | Extremely cheap classification      |
+| Classify         | Excellent  | 2.0 Flash | Extremely cheap classification      |
+| DM Query         | Good       | 2.5 Flash | Fast Q&A                            |
+| Intent           | Good       | 2.5 Flash | Cheap and capable enough            |
+| Dispatchers      | Good       | 2.5 Flash | Cheap domain interpretation         |
+| Cap. Guardrail   | Good       | 2.5 Flash | Fast validation                     |
+| Mech. Eval       | Good       | 2.5 Pro   | Thinking mode helps with rules      |
+| Ruling           | Good       | 2.5 Pro   | Thinking mode helps with arithmetic |
+| Narrate          | Mediocre   | 2.5 Pro   | Functional but less immersive prose |
+| Micro Ctx        | Good       | 2.5 Flash | Cheap structured output             |
+| Macro Narr       | Acceptable | 2.5 Flash | Tends to over-include in summaries  |
 
 
 **Desirability: Medium.** The cost advantage is real, especially on the
@@ -614,14 +804,14 @@ entirely (only infrastructure cost). Attractive for high-volume use.
 (sometimes faster than OpenAI).
 - Llama 4 Maverick is competitive with GPT-4o on many benchmarks.
 - Fine-tuning is unrestricted and much cheaper than OpenAI fine-tuning.
-Particularly relevant for steps with consistent schemas (triage, intent,
-ruling).
+Particularly relevant for steps with consistent schemas (sanitize,
+classify, intent, mechanical evaluation, ruling).
 - No content policy restrictions — the model won't refuse fantasy violence.
 
 **Weaknesses:**
 
-- Instruction-following on complex multi-constraint prompts (ruling,
-evaluate) is noticeably weaker than GPT-4.1 or Claude Sonnet, especially
+- Instruction-following on complex multi-constraint prompts (mechanical
+evaluation, ruling) is noticeably weaker than GPT-4.1 or Claude Sonnet, especially
 for Pathfinder edge cases the model has seen less of in training.
 - JSON output reliability is lower. Llama models more frequently produce
 malformed JSON, hallucinate extra fields, or omit required ones. Needs
@@ -636,21 +826,24 @@ Maverick is better but still a step below.
 **Step fit:**
 
 
-| Step       | Fit        | Model              | Why                                             |
-| ---------- | ---------- | ------------------ | ----------------------------------------------- |
-| Triage     | Good       | Scout / 3.3 70B    | Simple enough task, very cheap                  |
-| DM Query   | Good       | Scout / 3.3 70B    | Straightforward lookups                         |
-| Intent     | Acceptable | Maverick / 3.3 70B | May need prompt tuning for multi-context        |
-| Ruling     | Weak       | Maverick / 405B    | Rule misapplication risk without reasoning mode |
-| Evaluate   | Weak       | Maverick / 405B    | Arithmetic and modifier stacking issues         |
-| Narrate    | Acceptable | Maverick           | Functional prose, lacks flair                   |
-| Micro Ctx  | Acceptable | 3.3 70B            | JSON output needs validation layer              |
-| Macro Narr | Acceptable | 3.3 70B            | Tends toward verbose summaries                  |
+| Step             | Fit        | Model              | Why                                             |
+| ---------------- | ---------- | ------------------ | ----------------------------------------------- |
+| Sanitize         | Good       | Scout / 3.3 70B    | Simple enough task, very cheap                  |
+| Classify         | Good       | Scout / 3.3 70B    | Simple enough task, very cheap                  |
+| DM Query         | Good       | Scout / 3.3 70B    | Straightforward lookups                         |
+| Intent           | Acceptable | Maverick / 3.3 70B | May need prompt tuning for multi-context        |
+| Dispatchers      | Acceptable | 3.3 70B            | Needs prompt tuning for domain accuracy         |
+| Cap. Guardrail   | Acceptable | 3.3 70B            | Validation checks, but may miss prerequisites   |
+| Mech. Eval       | Weak       | Maverick / 405B    | Rule misapplication risk without reasoning mode |
+| Ruling           | Weak       | Maverick / 405B    | Arithmetic and modifier stacking issues         |
+| Narrate          | Acceptable | Maverick           | Functional prose, lacks flair                   |
+| Micro Ctx        | Acceptable | 3.3 70B            | JSON output needs validation layer              |
+| Macro Narr       | Acceptable | 3.3 70B            | Tends toward verbose summaries                  |
 
 
 **Desirability: Medium-Low for hosted, Medium-High for self-hosted with
 fine-tuning.** Out of the box, Llama models aren't competitive with OpenAI
-or Claude on the critical steps (ruling, evaluate, narrate). However, if
+or Claude on the critical steps (mech. eval, ruling, narrate). However, if
 you invest in fine-tuning — using AiLog data from a higher-quality model
 as training examples — a fine-tuned Llama 3.3 70B could potentially match
 gpt-4o-mini accuracy on structured steps at near-zero marginal cost. This
@@ -684,8 +877,9 @@ is useful for structured pipeline steps.
 **Weaknesses:**
 
 - Smaller training data footprint means less exposure to Pathfinder/d20
-rules compared to OpenAI or Anthropic models. Ruling accuracy may
-suffer on niche rules (grapple flowchart, combat maneuver bonuses).
+rules compared to OpenAI or Anthropic models. Mechanical evaluation and
+ruling accuracy may suffer on niche rules (grapple flowchart, combat
+maneuver bonuses).
 - Prose quality on Mistral Large is functional but tends to be more
 utilitarian than GPT-4.1 or Claude. Narration may feel workmanlike.
 - The model lineup changes frequently and older models are deprecated
@@ -695,16 +889,19 @@ aggressively, requiring more maintenance.
 **Step fit:**
 
 
-| Step       | Fit        | Model             | Why                                      |
-| ---------- | ---------- | ----------------- | ---------------------------------------- |
-| Triage     | Good       | Small             | Cheap classification                     |
-| DM Query   | Good       | Small             | Simple Q&A                               |
-| Intent     | Good       | Small             | Pattern recognition                      |
-| Ruling     | Acceptable | Large             | Functional but less Pathfinder knowledge |
-| Evaluate   | Acceptable | Large             | Decent arithmetic, some edge case misses |
-| Narrate    | Mediocre   | Large             | Prose is serviceable but dry             |
-| Micro Ctx  | Good       | Codestral / Small | Clean JSON from Codestral                |
-| Macro Narr | Acceptable | Small             | Reasonable judgment                      |
+| Step             | Fit        | Model             | Why                                      |
+| ---------------- | ---------- | ----------------- | ---------------------------------------- |
+| Sanitize         | Good       | Small             | Cheap classification                     |
+| Classify         | Good       | Small             | Cheap classification                     |
+| DM Query         | Good       | Small             | Simple Q&A                               |
+| Intent           | Good       | Small             | Pattern recognition                      |
+| Dispatchers      | Acceptable | Small / Large     | Small for simple domains, Large for edge |
+| Cap. Guardrail   | Acceptable | Small             | Basic validation                         |
+| Mech. Eval       | Acceptable | Large             | Functional but less Pathfinder knowledge |
+| Ruling           | Acceptable | Large             | Decent arithmetic, some edge case misses |
+| Narrate          | Mediocre   | Large             | Prose is serviceable but dry             |
+| Micro Ctx        | Good       | Codestral / Small | Clean JSON from Codestral                |
+| Macro Narr       | Acceptable | Small             | Reasonable judgment                      |
 
 
 **Desirability: Low-Medium.** Mistral doesn't clearly outperform OpenAI on
@@ -729,7 +926,7 @@ are pure JSON transformation.
 **Strengths:**
 
 - DeepSeek-R1 is a dedicated reasoning model at a fraction of o3's price.
-For ruling and evaluate steps, the cost savings compared to o3-mini
+For mechanical evaluation and ruling steps, the cost savings compared to o3-mini
 ($1.10/$4.40) are significant.
 - DeepSeek-V3 benchmarks competitively with GPT-4o on many tasks at
 roughly 1/10 the price.
@@ -753,20 +950,23 @@ for some deployments.
 **Step fit:**
 
 
-| Step       | Fit        | Model | Why                                         |
-| ---------- | ---------- | ----- | ------------------------------------------- |
-| Triage     | Good       | V3    | Cheap, fast classification                  |
-| DM Query   | Good       | V3    | Straightforward                             |
-| Intent     | Good       | V3    | Capable classification                      |
-| Ruling     | Good       | R1    | Reasoning at great price                    |
-| Evaluate   | Good       | R1    | Chain-of-thought helps arithmetic           |
-| Narrate    | Acceptable | V3    | Functional but English prose can feel stiff |
-| Micro Ctx  | Good       | V3    | Clean JSON output                           |
-| Macro Narr | Acceptable | V3    | Adequate judgment                           |
+| Step             | Fit        | Model | Why                                         |
+| ---------------- | ---------- | ----- | ------------------------------------------- |
+| Sanitize         | Good       | V3    | Cheap, fast classification                  |
+| Classify         | Good       | V3    | Cheap, fast classification                  |
+| DM Query         | Good       | V3    | Straightforward                             |
+| Intent           | Good       | V3    | Capable classification                      |
+| Dispatchers      | Good       | V3    | Decent domain interpretation                |
+| Cap. Guardrail   | Good       | V3    | Capable validation                          |
+| Mech. Eval       | Good       | R1    | Reasoning at great price                    |
+| Ruling           | Good       | R1    | Chain-of-thought helps arithmetic           |
+| Narrate          | Acceptable | V3    | Functional but English prose can feel stiff |
+| Micro Ctx        | Good       | V3    | Clean JSON output                           |
+| Macro Narr       | Acceptable | V3    | Adequate judgment                           |
 
 
 **Desirability: Medium-High (with caveats).** DeepSeek offers the best
-price-to-reasoning-quality ratio available. R1 on ruling/evaluate is
+price-to-reasoning-quality ratio available. R1 on mech. eval/ruling is
 a compelling alternative to o3-mini at half the cost. The main risks are
 operational (uptime, latency) rather than capability. If reliability
 concerns are acceptable, DeepSeek is a strong secondary provider.
