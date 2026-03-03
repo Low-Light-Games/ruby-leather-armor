@@ -1,0 +1,643 @@
+<%= render 'admin/shared/navbar', active_nav: :adventures %>
+
+<div class="adv-dash">
+  <div class="dash-header">
+    <a href="<%= admin_adventures_path %>" class="back-link">← All Adventures</a>
+    <h1>Adventure #<%= @adventure.id %></h1>
+    <div class="header-meta">
+      <span class="meta-pill">User: <strong><%= @adventure.user&.email&.split('@')&.first %></strong></span>
+      <span class="meta-pill">Story: <a href="<%= admin_story_path(@adventure.story) %>"><%= @adventure.story&.title %></a></span>
+      <span class="meta-pill">Created: <%= @adventure.created_at.strftime('%b %d, %Y %H:%M') %></span>
+      <span class="meta-pill">Location: <strong><%= @adventure.current_location&.name || 'None' %></strong></span>
+    </div>
+  </div>
+
+  <% if flash[:notice] %>
+    <div class="flash-notice"><%= flash[:notice] %></div>
+  <% end %>
+  <% if flash[:alert] %>
+    <div class="flash-alert"><%= flash[:alert] %></div>
+  <% end %>
+
+  <%# ═══════ ADVENTURER SHEET ═══════ %>
+  <details class="dash-section" open>
+    <summary class="section-title">Adventurer — <%= @sheet&.name || 'No sheet' %></summary>
+    <% if @sheet %>
+      <div class="sheet-grid">
+        <div class="sheet-card">
+          <div class="card-label">Identity</div>
+          <div class="identity-line"><strong><%= @sheet.name %></strong> — Level <%= @sheet.level %> <%= @sheet.race %> <%= @sheet.character_class %><%= " (#{@sheet.subclass})" if @sheet.subclass.present? %></div>
+        </div>
+        <div class="sheet-card">
+          <div class="card-label">HP</div>
+          <div class="hp-bar">
+            <div class="hp-fill" style="width: <%= @sheet.max_hp > 0 ? ([(@sheet.hp.to_f / @sheet.max_hp * 100), 0].max).round : 0 %>%"></div>
+            <span class="hp-text"><%= @sheet.hp %> / <%= @sheet.max_hp %></span>
+          </div>
+        </div>
+        <div class="sheet-card">
+          <div class="card-label">Ability Scores</div>
+          <div class="stats-row">
+            <% %w[strength dexterity constitution intelligence wisdom charisma].each do |stat| %>
+              <div class="stat-box">
+                <span class="stat-abbr"><%= stat[0..2].upcase %></span>
+                <span class="stat-val"><%= @sheet.send(stat) %></span>
+                <span class="stat-mod"><%= mod = (@sheet.send(stat) - 10) / 2; mod >= 0 ? "+#{mod}" : mod.to_s %></span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+        <div class="sheet-card">
+          <div class="card-label">Derived Stats</div>
+          <div class="derived-row">
+            <% (@sheet.derived_stats || {}).each do |key, val| %>
+              <span class="derived-pill"><%= key.to_s.upcase %>: <%= val %></span>
+            <% end %>
+          </div>
+        </div>
+        <div class="sheet-card">
+          <div class="card-label">Currency</div>
+          <div class="currency-row">
+            <% (@sheet.currency || {}).each do |coin, amt| %>
+              <span class="currency-pill"><%= coin.to_s.capitalize %>: <%= amt %></span>
+            <% end %>
+          </div>
+        </div>
+        <% if @sheet.adventure_sheet_items.any? %>
+          <div class="sheet-card full-width">
+            <div class="card-label">Items (<%= @sheet.adventure_sheet_items.size %>)</div>
+            <div class="items-list">
+              <% @sheet.adventure_sheet_items.each do |item| %>
+                <span class="item-pill<%= ' equipped' if item.equipped %>"><%= item.item_definition_id %><%= " x#{item.quantity}" if item.quantity > 1 %><%= ' ★' if item.equipped %></span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+        <% if @sheet.adventure_sheet_spells.any? %>
+          <div class="sheet-card full-width">
+            <div class="card-label">Spells (<%= @sheet.adventure_sheet_spells.size %>)</div>
+            <div class="items-list">
+              <% @sheet.adventure_sheet_spells.each do |spell| %>
+                <span class="item-pill spell"><%= spell.spell_id %> (<%= spell.storage_type %>)</span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+        <% if @sheet.adventure_sheet_feats.any? %>
+          <div class="sheet-card full-width">
+            <div class="card-label">Feats (<%= @sheet.adventure_sheet_feats.size %>)</div>
+            <div class="items-list">
+              <% @sheet.adventure_sheet_feats.each do |feat| %>
+                <span class="item-pill feat"><%= feat.feat_id %><%= " (#{feat.choice})" if feat.choice.present? %></span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+
+      <details class="edit-panel">
+        <summary class="edit-toggle">Edit Character Sheet</summary>
+        <%= form_with url: update_sheet_admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do |f| %>
+          <div class="edit-row">
+            <label>HP</label>
+            <input type="number" name="sheet[hp]" value="<%= @sheet.hp %>" class="input-sm">
+            <label>Max HP</label>
+            <input type="number" name="sheet[max_hp]" value="<%= @sheet.max_hp %>" class="input-sm">
+            <label>Level</label>
+            <input type="number" name="sheet[level]" value="<%= @sheet.level %>" class="input-sm">
+          </div>
+          <div class="edit-row">
+            <% %w[strength dexterity constitution intelligence wisdom charisma].each do |stat| %>
+              <label><%= stat[0..2].upcase %></label>
+              <input type="number" name="sheet[<%= stat %>]" value="<%= @sheet.send(stat) %>" class="input-sm">
+            <% end %>
+          </div>
+          <button type="submit" class="btn btn-primary">Save Sheet</button>
+        <% end %>
+      </details>
+    <% else %>
+      <p class="empty-msg">No character sheet for this adventure.</p>
+    <% end %>
+  </details>
+
+  <%# ═══════ SCENE & LOCATION ═══════ %>
+  <details class="dash-section" open>
+    <summary class="section-title">Scene &amp; Location</summary>
+    <div class="meta-grid">
+      <div class="meta-card">
+        <div class="card-label">Scene Summary</div>
+        <div class="meta-value"><%= @adventure.scene_summary.presence || '—' %></div>
+      </div>
+      <div class="meta-card">
+        <div class="card-label">Current Location</div>
+        <div class="meta-value"><%= @adventure.current_location&.name || 'None set' %></div>
+      </div>
+    </div>
+
+    <details class="edit-panel">
+      <summary class="edit-toggle">Edit Scene &amp; Location</summary>
+      <%= form_with url: admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do |f| %>
+        <div class="edit-row">
+          <label>Location</label>
+          <select name="adventure[current_location_id]" class="input-md">
+            <option value="">— None —</option>
+            <% @adventure.story.story_locations.each do |loc| %>
+              <option value="<%= loc.id %>" <%= 'selected' if @adventure.current_location_id == loc.id %>><%= loc.name %></option>
+            <% end %>
+          </select>
+        </div>
+        <div class="edit-row full">
+          <label>Scene Summary</label>
+          <input type="text" name="adventure[scene_summary]" value="<%= @adventure.scene_summary %>" class="input-full">
+        </div>
+        <button type="submit" class="btn btn-primary">Save</button>
+      <% end %>
+    </details>
+  </details>
+
+  <%# ═══════ CONTEXTS ═══════ %>
+  <details class="dash-section" open>
+    <summary class="section-title">Micro Contexts</summary>
+    <div class="contexts-grid">
+      <% Admin::AdventuresController::CONTEXT_FIELDS.each do |field| %>
+        <% ctx = @adventure.send("#{field}_context") %>
+        <div class="context-card<%= ' empty-context' if ctx.blank? || ctx == {} %>">
+          <div class="context-header">
+            <span class="context-name"><%= field.titleize %></span>
+            <% if ctx.present? && ctx != {} %>
+              <%= button_to "Reset", reset_context_admin_adventure_path(@adventure, context_field: field),
+                    method: :patch, class: "btn btn-danger btn-xs",
+                    data: { confirm: "Reset #{field} context to {}?" } %>
+            <% end %>
+          </div>
+          <pre class="context-json"><%= ctx.present? && ctx != {} ? JSON.pretty_generate(ctx) : '{}' %></pre>
+
+          <details class="edit-panel">
+            <summary class="edit-toggle">Edit JSON</summary>
+            <%= form_with url: admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do %>
+              <input type="hidden" name="context_field" value="<%= field %>">
+              <textarea name="context_value" rows="8" class="json-editor"><%= ctx.present? && ctx != {} ? JSON.pretty_generate(ctx) : '{}' %></textarea>
+              <button type="submit" class="btn btn-primary">Save Context</button>
+            <% end %>
+          </details>
+        </div>
+      <% end %>
+    </div>
+  </details>
+
+  <%# ═══════ STORY STATE ═══════ %>
+  <details class="dash-section" open>
+    <summary class="section-title">Story State</summary>
+    <div class="story-state-grid">
+      <div class="story-card full-width">
+        <div class="card-label">Story Summary</div>
+        <div class="story-text"><%= @adventure.story_summary.presence || '—' %></div>
+        <details class="edit-panel">
+          <summary class="edit-toggle">Edit</summary>
+          <%= form_with url: admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do %>
+            <textarea name="adventure[story_summary]" rows="4" class="input-full"><%= @adventure.story_summary %></textarea>
+            <button type="submit" class="btn btn-primary">Save</button>
+          <% end %>
+        </details>
+      </div>
+
+      <div class="story-card full-width">
+        <div class="card-label">Enriched Premise</div>
+        <div class="story-text"><%= @adventure.enriched_premise.presence || '—' %></div>
+        <details class="edit-panel">
+          <summary class="edit-toggle">Edit</summary>
+          <%= form_with url: admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do %>
+            <textarea name="adventure[enriched_premise]" rows="4" class="input-full"><%= @adventure.enriched_premise %></textarea>
+            <button type="submit" class="btn btn-primary">Save</button>
+          <% end %>
+        </details>
+      </div>
+
+      <% if @adventure.enriched_world.present? && @adventure.enriched_world != {} %>
+        <div class="story-card full-width">
+          <div class="card-label">Enriched World</div>
+          <pre class="context-json"><%= JSON.pretty_generate(@adventure.enriched_world) %></pre>
+        </div>
+      <% end %>
+
+      <% if @adventure.plot_state.present? && @adventure.plot_state != {} %>
+        <div class="story-card full-width">
+          <div class="card-label">Plot State</div>
+          <pre class="context-json"><%= JSON.pretty_generate(@adventure.plot_state) %></pre>
+        </div>
+      <% end %>
+    </div>
+  </details>
+
+  <%# ═══════ STORY ELEMENTS ═══════ %>
+  <details class="dash-section">
+    <summary class="section-title">Story Elements</summary>
+
+    <%# --- Locations --- %>
+    <h3 class="sub-title">Locations (<%= @locations.size %>)</h3>
+    <table class="elements-table">
+      <thead>
+        <tr><th>Name</th><th>Starting</th><th>Connections</th><th>Description</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% @locations.each do |loc| %>
+          <tr>
+            <td class="el-name"><%= loc.name %><%= ' ★' if @adventure.current_location_id == loc.id %></td>
+            <td><%= loc.starting ? '✓' : '' %></td>
+            <td class="el-conn">
+              <% loc.connections_from.each do |c| %>
+                <span class="conn-pill">→ <%= c.to_location.name %> (<%= c.distance_miles %>mi, <%= c.terrain_type %>)</span>
+              <% end %>
+            </td>
+            <td class="el-desc"><%= truncate(loc.description || '', length: 80) %></td>
+            <td>
+              <button class="btn btn-xs btn-outline" onclick="toggleEdit('loc-<%= loc.id %>')">Edit</button>
+            </td>
+          </tr>
+          <tr id="loc-<%= loc.id %>" class="edit-row-panel" style="display:none;">
+            <td colspan="5">
+              <%= form_with url: update_story_element_admin_adventure_path(@adventure), method: :patch, local: true, class: "inline-edit-form" do %>
+                <input type="hidden" name="element_type" value="story_location">
+                <input type="hidden" name="element_id" value="<%= loc.id %>">
+                <label>Name</label>
+                <input type="text" name="element[name]" value="<%= loc.name %>" class="input-md">
+                <label>Description</label>
+                <textarea name="element[description]" rows="2" class="input-full"><%= loc.description %></textarea>
+                <button type="submit" class="btn btn-primary btn-xs">Save</button>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+
+    <%# --- NPCs --- %>
+    <h3 class="sub-title">NPCs (<%= @npcs.size %>)</h3>
+    <% if @npcs.any? %>
+      <table class="elements-table">
+        <thead>
+          <tr><th>Name</th><th>Role</th><th>Attitude</th><th>Location</th><th>Source</th><th></th></tr>
+        </thead>
+        <tbody>
+          <% @npcs.each do |npc| %>
+            <tr>
+              <td class="el-name"><%= npc.name %><%= ' 🔒' if npc.secret %></td>
+              <td><span class="role-badge"><%= npc.role %></span></td>
+              <td><span class="attitude-badge attitude-<%= npc.attitude %>"><%= npc.attitude %></span></td>
+              <td><%= npc.location&.name || '—' %></td>
+              <td><span class="source-badge"><%= npc.source %></span></td>
+              <td>
+                <button class="btn btn-xs btn-outline" onclick="toggleEdit('npc-<%= npc.id %>')">Edit</button>
+              </td>
+            </tr>
+            <tr id="npc-<%= npc.id %>" class="edit-row-panel" style="display:none;">
+              <td colspan="6">
+                <%= form_with url: update_story_element_admin_adventure_path(@adventure), method: :patch, local: true, class: "inline-edit-form" do %>
+                  <input type="hidden" name="element_type" value="story_npc">
+                  <input type="hidden" name="element_id" value="<%= npc.id %>">
+                  <label>Name</label>
+                  <input type="text" name="element[name]" value="<%= npc.name %>" class="input-md">
+                  <label>Role</label>
+                  <input type="text" name="element[role]" value="<%= npc.role %>" class="input-sm">
+                  <label>Attitude</label>
+                  <select name="element[attitude]" class="input-sm">
+                    <% StoryNpc::ATTITUDES.each do |att| %>
+                      <option value="<%= att %>" <%= 'selected' if npc.attitude == att %>><%= att %></option>
+                    <% end %>
+                  </select>
+                  <label>Location</label>
+                  <select name="element[location_id]" class="input-sm">
+                    <option value="">— None —</option>
+                    <% @locations.each do |loc| %>
+                      <option value="<%= loc.id %>" <%= 'selected' if npc.location_id == loc.id %>><%= loc.name %></option>
+                    <% end %>
+                  </select>
+                  <label>Description</label>
+                  <textarea name="element[description]" rows="2" class="input-full"><%= npc.description %></textarea>
+                  <label>Knowledge</label>
+                  <textarea name="element[knowledge]" rows="2" class="input-full"><%= npc.knowledge %></textarea>
+                  <label class="checkbox-label">
+                    <input type="hidden" name="element[secret]" value="0">
+                    <input type="checkbox" name="element[secret]" value="1" <%= 'checked' if npc.secret %>> Secret
+                  </label>
+                  <button type="submit" class="btn btn-primary btn-xs">Save</button>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p class="empty-msg">No NPCs.</p>
+    <% end %>
+
+    <%# --- Clues --- %>
+    <h3 class="sub-title">Clues (<%= @clues.size %>)</h3>
+    <% if @clues.any? %>
+      <% discovered_ids = (@adventure.plot_state || {})["discovered_clues"] || [] %>
+      <table class="elements-table">
+        <thead>
+          <tr><th>Title</th><th>Difficulty</th><th>Method</th><th>Location</th><th>NPC</th><th>Discovered</th><th></th></tr>
+        </thead>
+        <tbody>
+          <% @clues.each do |clue| %>
+            <tr class="<%= 'discovered-row' if discovered_ids.include?(clue.id) %>">
+              <td class="el-name"><%= clue.title %></td>
+              <td><span class="diff-badge diff-<%= clue.difficulty %>"><%= clue.difficulty %></span></td>
+              <td><%= clue.discovery_method %></td>
+              <td><%= clue.location&.name || '—' %></td>
+              <td><%= clue.npc&.name || '—' %></td>
+              <td><%= discovered_ids.include?(clue.id) ? '✓' : '' %></td>
+              <td>
+                <button class="btn btn-xs btn-outline" onclick="toggleEdit('clue-<%= clue.id %>')">Edit</button>
+              </td>
+            </tr>
+            <tr id="clue-<%= clue.id %>" class="edit-row-panel" style="display:none;">
+              <td colspan="7">
+                <%= form_with url: update_story_element_admin_adventure_path(@adventure), method: :patch, local: true, class: "inline-edit-form" do %>
+                  <input type="hidden" name="element_type" value="story_clue">
+                  <input type="hidden" name="element_id" value="<%= clue.id %>">
+                  <label>Title</label>
+                  <input type="text" name="element[title]" value="<%= clue.title %>" class="input-md">
+                  <label>Difficulty</label>
+                  <select name="element[difficulty]" class="input-sm">
+                    <% %w[automatic easy moderate hard].each do |d| %>
+                      <option value="<%= d %>" <%= 'selected' if clue.difficulty == d %>><%= d %></option>
+                    <% end %>
+                  </select>
+                  <label>Method</label>
+                  <select name="element[discovery_method]" class="input-sm">
+                    <% %w[exploration social magic combat automatic].each do |m| %>
+                      <option value="<%= m %>" <%= 'selected' if clue.discovery_method == m %>><%= m %></option>
+                    <% end %>
+                  </select>
+                  <label>Location</label>
+                  <select name="element[location_id]" class="input-sm">
+                    <option value="">— None —</option>
+                    <% @locations.each do |loc| %>
+                      <option value="<%= loc.id %>" <%= 'selected' if clue.location_id == loc.id %>><%= loc.name %></option>
+                    <% end %>
+                  </select>
+                  <label>Description</label>
+                  <textarea name="element[description]" rows="2" class="input-full"><%= clue.description %></textarea>
+                  <label>Reveals Secret</label>
+                  <textarea name="element[reveals_secret]" rows="2" class="input-full"><%= clue.reveals_secret %></textarea>
+                  <button type="submit" class="btn btn-primary btn-xs">Save</button>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% else %>
+      <p class="empty-msg">No clues.</p>
+    <% end %>
+  </details>
+
+  <%# ═══════ CREATURES ═══════ %>
+  <% if @creatures.any? %>
+    <details class="dash-section">
+      <summary class="section-title">Active Creatures (<%= @creatures.size %>)</summary>
+      <table class="elements-table">
+        <thead>
+          <tr><th>Name</th><th>Type</th><th>Attitude</th><th>HP</th><th>AC</th><th>Level</th></tr>
+        </thead>
+        <tbody>
+          <% @creatures.each do |c| %>
+            <tr>
+              <td class="el-name"><%= c.name %></td>
+              <td><%= c.creature_type %></td>
+              <td><span class="attitude-badge attitude-<%= c.attitude %>"><%= c.attitude %></span></td>
+              <td><%= c.hp %>/<%= c.max_hp %></td>
+              <td><%= c.derived_stats&.dig("ac") || '—' %></td>
+              <td><%= c.level %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </details>
+  <% end %>
+
+  <%# ═══════ RECENT ACTIVITY ═══════ %>
+  <details class="dash-section">
+    <summary class="section-title">Recent Messages (<%= @recent_messages.size %>)</summary>
+    <div class="messages-list">
+      <% @recent_messages.reverse_each do |msg| %>
+        <div class="message-item message-<%= msg.role %>">
+          <span class="msg-role"><%= msg.role %></span>
+          <span class="msg-type"><%= msg.message_type %></span>
+          <span class="msg-time"><%= msg.created_at.strftime('%H:%M:%S') %></span>
+          <div class="msg-content"><%= truncate(msg.content || '', length: 300) %></div>
+        </div>
+      <% end %>
+    </div>
+  </details>
+
+  <%# ═══════ PIPELINE RUNS ═══════ %>
+  <% if @pipeline_run_ids.any? %>
+    <details class="dash-section">
+      <summary class="section-title">Recent Pipeline Runs</summary>
+      <div class="pipeline-links">
+        <% @pipeline_run_ids.each do |run_id| %>
+          <a href="<%= pipeline_admin_ai_logs_path(run_id) %>" class="pipeline-link"><%= run_id[0..7] %>…</a>
+        <% end %>
+        <a href="<%= admin_ai_logs_path(adventure_id: @adventure.id) %>" class="pipeline-link all-link">All AI Logs →</a>
+      </div>
+    </details>
+  <% end %>
+</div>
+
+<%= render 'admin/shared/navbar_styles' %>
+
+<script>
+  function toggleEdit(id) {
+    var row = document.getElementById(id);
+    row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+  }
+</script>
+
+<style>
+  .adv-dash {
+    padding: 20px 30px; font-family: 'Arial', sans-serif; max-width: 1400px; margin: 0 auto;
+  }
+
+  /* Header */
+  .dash-header { margin-bottom: 24px; }
+  .back-link { color: #1565c0; text-decoration: none; font-size: 13px; &:hover { text-decoration: underline; } }
+  .dash-header h1 { margin: 6px 0 10px; font-size: 26px; color: #333; }
+  .header-meta { display: flex; flex-wrap: wrap; gap: 12px; }
+  .meta-pill {
+    font-size: 13px; color: #555; background: #f0f0f0; padding: 4px 12px; border-radius: 12px;
+    a { color: #1565c0; text-decoration: none; &:hover { text-decoration: underline; } }
+    strong { color: #333; }
+  }
+
+  /* Flash */
+  .flash-notice { padding: 10px 16px; background: #e8f5e9; color: #2e7d32; border-radius: 6px; margin-bottom: 16px; font-size: 13px; }
+  .flash-alert  { padding: 10px 16px; background: #ffebee; color: #c62828; border-radius: 6px; margin-bottom: 16px; font-size: 13px; }
+
+  /* Sections */
+  .dash-section {
+    margin-bottom: 16px; background: white; border: 1px solid #e0e0e0;
+    border-radius: 8px; overflow: hidden;
+  }
+  .section-title {
+    font-size: 16px; font-weight: 700; color: #333; padding: 14px 20px;
+    background: #f8f9fa; cursor: pointer; user-select: none;
+    &:hover { background: #f0f0f0; }
+    &::marker { color: #999; }
+  }
+  .sub-title { font-size: 14px; color: #555; margin: 16px 20px 8px; padding-bottom: 6px; border-bottom: 1px solid #eee; }
+  .empty-msg { color: #888; font-style: italic; padding: 8px 20px; font-size: 13px; }
+
+  /* Sheet grid */
+  .sheet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; padding: 16px 20px; }
+  .sheet-card { background: #f8f9fa; border-radius: 6px; padding: 12px 16px; }
+  .sheet-card.full-width { grid-column: 1 / -1; }
+  .card-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; font-weight: 600; margin-bottom: 6px; }
+
+  .identity-line { font-size: 14px; color: #333; }
+
+  .hp-bar {
+    position: relative; background: #e0e0e0; border-radius: 8px; height: 24px; overflow: hidden;
+  }
+  .hp-fill { height: 100%; background: linear-gradient(90deg, #43a047, #66bb6a); border-radius: 8px; transition: width 0.3s; }
+  .hp-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 12px; font-weight: 700; color: #333; }
+
+  .stats-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .stat-box {
+    display: flex; flex-direction: column; align-items: center; background: white;
+    border: 1px solid #e0e0e0; border-radius: 6px; padding: 6px 10px; min-width: 50px;
+  }
+  .stat-abbr { font-size: 10px; font-weight: 700; color: #888; }
+  .stat-val { font-size: 16px; font-weight: 700; color: #333; }
+  .stat-mod { font-size: 11px; color: #666; }
+
+  .derived-row, .currency-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .derived-pill, .currency-pill {
+    font-size: 12px; padding: 3px 10px; background: white; border: 1px solid #e0e0e0;
+    border-radius: 10px; color: #555;
+  }
+
+  .items-list { display: flex; flex-wrap: wrap; gap: 4px; }
+  .item-pill {
+    font-size: 11px; padding: 2px 8px; background: #e8eaf6; color: #283593; border-radius: 8px;
+    &.equipped { background: #c8e6c9; color: #1b5e20; font-weight: 600; }
+    &.spell { background: #f3e5f5; color: #6a1b9a; }
+    &.feat { background: #fff3e0; color: #e65100; }
+  }
+
+  /* Meta grid */
+  .meta-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; padding: 16px 20px; }
+  .meta-card { background: #f8f9fa; border-radius: 6px; padding: 12px 16px; }
+  .meta-value { font-size: 14px; color: #333; }
+
+  /* Context cards */
+  .contexts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 12px; padding: 16px 20px; }
+  .context-card { background: #f8f9fa; border-radius: 6px; padding: 12px 16px; }
+  .context-card.empty-context { opacity: 0.5; }
+  .context-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .context-name { font-size: 13px; font-weight: 700; color: #333; text-transform: uppercase; letter-spacing: 0.5px; }
+  .context-json {
+    font-family: 'Consolas', 'Monaco', monospace; font-size: 12px; background: white;
+    border: 1px solid #e0e0e0; border-radius: 4px; padding: 10px; white-space: pre-wrap;
+    word-break: break-word; max-height: 200px; overflow-y: auto; margin: 0;
+  }
+
+  /* Story state */
+  .story-state-grid { padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .story-card { background: #f8f9fa; border-radius: 6px; padding: 12px 16px; }
+  .story-card.full-width { width: 100%; }
+  .story-text { font-size: 13px; color: #333; line-height: 1.6; white-space: pre-wrap; }
+
+  /* Elements tables */
+  .elements-table {
+    width: calc(100% - 40px); border-collapse: collapse; font-size: 13px; margin: 0 20px 16px;
+    th {
+      text-align: left; padding: 6px 10px; background: #e9ecef; color: #555;
+      font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+    tr:hover { background: #fafafa; }
+  }
+  .el-name { font-weight: 600; color: #333; white-space: nowrap; }
+  .el-desc { color: #666; max-width: 250px; }
+  .el-conn { max-width: 300px; }
+  .conn-pill { display: inline-block; font-size: 11px; background: #e3f2fd; color: #0d47a1; padding: 1px 6px; border-radius: 6px; margin: 1px 2px; }
+  .role-badge { font-size: 11px; background: #e8eaf6; color: #283593; padding: 1px 8px; border-radius: 8px; }
+  .source-badge { font-size: 10px; background: #f5f5f5; color: #888; padding: 1px 6px; border-radius: 6px; }
+  .attitude-badge {
+    font-size: 11px; padding: 1px 8px; border-radius: 8px;
+    &.attitude-friendly { background: #c8e6c9; color: #1b5e20; }
+    &.attitude-indifferent { background: #e0e0e0; color: #555; }
+    &.attitude-unfriendly { background: #fff9c4; color: #f57f17; }
+    &.attitude-hostile { background: #ffcdd2; color: #c62828; }
+    &.attitude-helpful { background: #b2dfdb; color: #004d40; }
+  }
+  .diff-badge {
+    font-size: 11px; padding: 1px 8px; border-radius: 8px;
+    &.diff-automatic { background: #e0e0e0; color: #555; }
+    &.diff-easy { background: #c8e6c9; color: #1b5e20; }
+    &.diff-moderate { background: #fff9c4; color: #f57f17; }
+    &.diff-hard { background: #ffcdd2; color: #c62828; }
+  }
+  .discovered-row { background: #f1f8e9; }
+  .edit-row-panel td { background: #fafafa; padding: 12px 16px; }
+
+  /* Edit panels */
+  .edit-panel { margin: 8px 0 0; }
+  .edit-toggle {
+    font-size: 12px; color: #1565c0; cursor: pointer; padding: 4px 0; user-select: none;
+    &:hover { text-decoration: underline; }
+  }
+  .edit-form { margin-top: 8px; }
+  .inline-edit-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+  .edit-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .edit-row label { font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase; }
+  .edit-row.full { flex-direction: column; align-items: stretch; }
+  .inline-edit-form label { font-size: 11px; font-weight: 600; color: #666; }
+  .inline-edit-form textarea { min-width: 100%; }
+  .checkbox-label { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+
+  .input-sm { width: 60px; padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+  .input-md { width: 200px; padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+  .input-full { width: 100%; padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; box-sizing: border-box; }
+  .json-editor {
+    width: 100%; font-family: 'Consolas', monospace; font-size: 12px; padding: 8px;
+    border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
+  }
+  select { padding: 4px 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-block; padding: 6px 16px; border: none; border-radius: 4px;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+    text-decoration: none;
+  }
+  .btn-primary { background: #1565c0; color: white; &:hover { background: #0d47a1; } }
+  .btn-danger { background: #dc3545; color: white; &:hover { background: #c62828; } }
+  .btn-outline { background: white; color: #555; border: 1px solid #ccc; &:hover { background: #f5f5f5; } }
+  .btn-xs { padding: 2px 10px; font-size: 11px; }
+
+  /* Messages */
+  .messages-list { padding: 12px 20px; display: flex; flex-direction: column; gap: 8px; }
+  .message-item {
+    padding: 8px 12px; border-radius: 6px; border-left: 3px solid #e0e0e0;
+    &.message-player { border-left-color: #1565c0; background: #e3f2fd; }
+    &.message-dm { border-left-color: #43a047; background: #e8f5e9; }
+    &.message-system { border-left-color: #ff8f00; background: #fff8e1; }
+  }
+  .msg-role { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #555; }
+  .msg-type { font-size: 10px; color: #999; margin-left: 6px; }
+  .msg-time { font-size: 10px; color: #bbb; margin-left: 6px; font-family: monospace; }
+  .msg-content { font-size: 13px; color: #333; margin-top: 4px; line-height: 1.5; }
+
+  /* Pipeline links */
+  .pipeline-links { padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .pipeline-link {
+    font-family: monospace; font-size: 12px; color: #1565c0; text-decoration: none;
+    background: #e3f2fd; padding: 4px 12px; border-radius: 12px;
+    &:hover { background: #bbdefb; }
+    &.all-link { background: #f5f5f5; color: #555; &:hover { background: #e0e0e0; } }
+  }
+</style>

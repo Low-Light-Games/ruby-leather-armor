@@ -148,6 +148,9 @@ class DungeonMasterService
   end
 
   def persist_message(role:, content:, message_type:, metadata: {})
+    if role == "dm" && @log.pipeline_run_id
+      metadata = metadata.merge("pipeline_run_id" => @log.pipeline_run_id)
+    end
     @adventure.adventure_messages.create!(
       role: role, content: content,
       message_type: message_type, metadata: metadata)

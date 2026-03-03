@@ -287,5 +287,6 @@ export interface AdventureMessage {
     rolls?: Array<{ roll_value: number; roll_description: string }>
     [key: string]: unknown
   }
+  pipeline_run_id?: string | null
   created_at: string
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { AdventureMessage, RollRequest } from '../../types'
 import { csrfToken } from '../../utils/api'
+import { useAuth } from '../../contexts/AuthContext'
 import './AdventureChat.scss'
 
 const OPTIMISTIC_ID = -1
@@ -23,6 +24,7 @@ interface PendingRolls {
 }
 
 export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }: AdventureChatProps) => {
+  const { user } = useAuth()
   const [messages, setMessages] = useState<AdventureMessage[]>([])
   const [input, setInput] = useState('')
   const [askDm, setAskDm] = useState(false)
@@ -290,6 +292,17 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
                   <span className="msg-role">
                     {msg.role === 'player' ? '🗡️ You' : msg.role === 'dm' ? '🐉 DM' : '📜 System'}
                   </span>
+                  {user?.admin && msg.pipeline_run_id && (
+                    <a
+                      href={`/admin/ai_logs/pipelines/${msg.pipeline_run_id}`}
+                      className="pipeline-id-link"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="View pipeline run"
+                    >
+                      {msg.pipeline_run_id.slice(0, 8)}…
+                    </a>
+                  )}
                 </div>
                 <div className="msg-content">{msg.content}</div>
                 {rollRequests.length > 0 && (

@@ -70,7 +70,7 @@ class AdventureMessagesController < ApplicationController
   end
 
   def message_json(message)
-    {
+    json = {
       id: message.id,
       role: message.role,
       content: message.content,
@@ -78,5 +78,9 @@ class AdventureMessagesController < ApplicationController
       metadata: message.metadata,
       created_at: message.created_at
     }
+    if current_user&.admin? && message.role == "dm"
+      json[:pipeline_run_id] = message.metadata&.dig("pipeline_run_id")
+    end
+    json
   end
 end

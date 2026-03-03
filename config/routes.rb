@@ -20,6 +20,13 @@ Rails.application.routes.draw do
   get "admin/all_sheets" => "admin#all_sheets"
 
   namespace :admin do
+    resources :adventures, only: [:index, :show, :update] do
+      member do
+        patch :reset_context
+        patch :update_sheet
+        patch :update_story_element
+      end
+    end
     resources :stories, only: [:index, :new, :show, :create, :update, :destroy] do
       member { post :enrich }
     end

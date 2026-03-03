@@ -42,12 +42,32 @@
 
     .msg-header {
       margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
 
       .msg-role {
         font-size: 11px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+      }
+
+      .pipeline-id-link {
+        font-size: 10px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        color: #90a4ae;
+        text-decoration: none;
+        background: rgba(0, 0, 0, 0.05);
+        padding: 1px 6px;
+        border-radius: 4px;
+        transition: color 0.15s, background 0.15s;
+
+        &:hover {
+          color: #1565c0;
+          background: rgba(21, 101, 192, 0.1);
+          text-decoration: underline;
+        }
       }
     }
 
