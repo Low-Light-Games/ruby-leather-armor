@@ -72,8 +72,13 @@ class DungeonMasterService
   # ----------------------------------------------------------------
 
   def pipeline
-    @pipeline ||= DungeonMaster::Pipeline.new(
-      adventure: @adventure, config: @config, ai: @ai, log: @log, sheet: @sheet)
+    @pipeline ||= if @config.get("pipeline_mode") == "edge"
+                    DungeonMaster::EdgePipeline.new(
+                      adventure: @adventure, config: @config, ai: @ai, log: @log, sheet: @sheet)
+                  else
+                    DungeonMaster::Pipeline.new(
+                      adventure: @adventure, config: @config, ai: @ai, log: @log, sheet: @sheet)
+                  end
   end
 
   # ----------------------------------------------------------------

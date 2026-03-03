@@ -11,7 +11,8 @@ module DungeonMaster
   #   run_prompt  -> sanitize + classify (parallel) -> dm_query_flow | action_flow
   #   action_flow -> intent -> dispatchers (parallel) -> converge
   #               -> capability_guardrail + mechanical_evaluation (parallel)
-  #               -> [roll pause if needed] -> ruling (outcome + mutations) -> narrate
+  #               -> [roll pause if needed] -> ruling (outcome + mutations)
+  #               -> evaluate (synthesis) -> narrate + context_updates (parallel | subjugated)
   #   run_rolls   -> resolution_flow  (resumption after player rolls)
   #
   class Pipeline
@@ -24,6 +25,7 @@ module DungeonMaster
     include Steps::MechanicalEvaluation
     include Steps::CapabilityGuardrail
     include Steps::Ruling
+    include Steps::Evaluate
     include Steps::Chronicler
     include Steps::Narrate
     include Steps::ContextUpdate
@@ -124,11 +126,8 @@ module DungeonMaster
         dm_brief = plot_result&.dig(:dm_brief)
       end
 
-      narration = run_narrate(nil, player_action: clean_input, intent: intent, dm_brief: dm_brief)
-      run_context_updates(narration[:narrative], nil,
-                          affected_contexts: intent[:affected_contexts],
-                          macro_significant: intent[:macro_significant])
-      { action: :narrated, narrative: narration[:narrative], adventure_complete: narration[:adventure_complete] }
+      run_output_phase(intent, narrate_seed: nil, mutations: nil,
+                       dm_brief: dm_brief, player_action: clean_input)
     end
 
     def run_time_span_flow(intent, clean_input)
@@ -162,14 +161,13 @@ module DungeonMaster
       ts_result = run_time_span(intent, ruling_result, merged)
 
       if ts_result[:stop_reason] == :encounter
-        narration = run_narrate(ts_result[:narrative_seed], player_action: nil, intent: intent)
         partial_mutations = ts_result[:mutations]
         apply_time_span_mutations(partial_mutations)
-        run_context_updates(narration[:narrative], partial_mutations,
-                            affected_contexts: intent[:affected_contexts],
-                            macro_significant: false)
-        return { action: :narrated, narrative: narration[:narrative], adventure_complete: false,
-                 time_span_interrupted: true }
+        encounter_intent = intent.merge(macro_significant: false)
+        return run_output_phase(encounter_intent,
+                                narrate_seed: ts_result[:narrative_seed],
+                                mutations: partial_mutations,
+                                extra: { time_span_interrupted: true })
       end
 
       apply_mutations(ruling_result[:mutations])
@@ -181,11 +179,8 @@ module DungeonMaster
         dm_brief = plot_result&.dig(:dm_brief)
       end
 
-      narration = run_narrate(ts_result[:narrative_seed], player_action: nil, intent: intent, dm_brief: dm_brief)
-      run_context_updates(narration[:narrative], ts_result[:mutations],
-                          affected_contexts: intent[:affected_contexts],
-                          macro_significant: intent[:macro_significant])
-      { action: :narrated, narrative: narration[:narrative], adventure_complete: narration[:adventure_complete] }
+      run_output_phase(intent, narrate_seed: ts_result[:narrative_seed],
+                       mutations: ts_result[:mutations], dm_brief: dm_brief)
     end
 
     def run_resolution_flow(intent, merged, roll_results)
@@ -199,11 +194,8 @@ module DungeonMaster
         dm_brief = plot_result&.dig(:dm_brief)
       end
 
-      narration = run_narrate(ruling_result[:outcome], dm_brief: dm_brief)
-      run_context_updates(narration[:narrative], ruling_result[:mutations],
-                          affected_contexts: intent[:affected_contexts],
-                          macro_significant: intent[:macro_significant])
-      { action: :narrated, narrative: narration[:narrative], adventure_complete: narration[:adventure_complete] }
+      run_output_phase(intent, narrate_seed: ruling_result[:outcome],
+                       mutations: ruling_result[:mutations], dm_brief: dm_brief)
     end
 
     # ----------------------------------------------------------------

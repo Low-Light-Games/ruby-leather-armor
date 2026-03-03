@@ -9,9 +9,9 @@ module DungeonMaster
     module ContextUpdate
       private
 
-      def run_context_updates(narrative, mutations, affected_contexts: [], macro_significant: false)
-        micro_thread = Thread.new { run_micro_context_update(narrative, mutations, affected_contexts) }
-        macro_thread = macro_significant ? Thread.new { run_macro_narrative_update(narrative) } : nil
+      def run_context_updates(what_happened, mutations, affected_contexts: [], macro_significant: false)
+        micro_thread = Thread.new { run_micro_context_update(what_happened, mutations, affected_contexts) }
+        macro_thread = macro_significant ? Thread.new { run_macro_narrative_update(what_happened) } : nil
 
         micro_result = micro_thread.value
         persist_micro_contexts(micro_result)
@@ -26,7 +26,7 @@ module DungeonMaster
         @log.dm_log!("Context update error: #{e.message}")
       end
 
-      def run_micro_context_update(narrative, mutations, affected_contexts)
+      def run_micro_context_update(what_happened, mutations, affected_contexts)
         raw = nil
         prompt_summary = "Micro context update"
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
@@ -47,7 +47,7 @@ module DungeonMaster
           context_sections: context_sections.join("\n\n"),
           relevant_fields: relevant,
           affected_fields: affected,
-          narrative: narrative,
+          what_happened: what_happened,
           mutations_json: mutations.present? ? mutations.to_json : "(no mechanical mutations)")
 
         user_msg = "Update contexts based on the above."
@@ -74,14 +74,14 @@ module DungeonMaster
         {}
       end
 
-      def run_macro_narrative_update(narrative)
+      def run_macro_narrative_update(what_happened)
         raw = nil
         prompt_summary = "Macro narrative update"
 
         system_prompt = PromptRenderer.render("macro_narrative_update",
           story_intro: @adventure.story.hook.presence || @adventure.story.title,
           story_summary: @adventure.story_summary,
-          narrative: narrative)
+          what_happened: what_happened)
 
         user_msg = "Update the story summary."
         request_body = { system_prompt: system_prompt, user_message: user_msg }

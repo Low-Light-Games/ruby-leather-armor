@@ -1,8 +1,8 @@
 You are a state tracker for a Pathfinder 1e tabletop RPG adventure.
 Your job is to update the micro-context objects based on what just happened.
 
-=== NARRATIVE ===
-<%= @narrative %>
+=== WHAT HAPPENED ===
+<%= @what_happened %>
 
 === MUTATIONS APPLIED ===
 <%= @mutations_json %>
@@ -12,10 +12,10 @@ Your job is to update the micro-context objects based on what just happened.
 === INSTRUCTIONS ===
 <% if @affected_fields.any? -%>
 Contexts marked [UPDATE] were directly affected by this action — update them thoroughly.
-Contexts marked [maintain] were not directly affected — carry them forward unchanged unless the narrative clearly implies a change.
+Contexts marked [maintain] were not directly affected — carry them forward unchanged unless the outcome clearly implies a change.
 CRITICAL: An [UPDATE] context MUST NEVER be returned as an empty object `{}`. If it was empty
 before, this action just CREATED that context — populate it with structured data extracted from
-the narrative, mutations, and your knowledge of what happened. For example, a social interaction
+the outcome, mutations, and your knowledge of what happened. For example, a social interaction
 must produce npcs_present, conversation_state, etc. A traversal action must produce current_location,
 terrain, etc. Returning `{}` for an [UPDATE] context is always wrong.
 <% else -%>
@@ -29,16 +29,16 @@ Update each context to reflect what just happened. Return all contexts below.
 - For inventory context: track recently_acquired, recently_used, pending_identifications, equipped_changes, notable_consumables_remaining.
 - If combat has ended (all enemies defeated/fled), set combat_context.active to false.
 - If rest is complete, set rest_context.resting to false and rest_context.rest_complete to true.
-- If new creatures or NPCs appeared in the narrative, include their names in new_creatures so the app can create their stat records.
+- If new creatures or NPCs appeared in the outcome, include their names in new_creatures so the app can create their stat records.
 - TRAVEL: If the mutations contain a "travel" or "time_span" object with type "journey", you MUST
   update traversal_context to reflect the travel. If travel.new_location is set, update current_location
   to match it. If time_span.arrived is true, update current_location to the destination. If the journey
   is still in progress (arrived is false), set destination to where the player is heading and update
   scene to reflect being en route. Do NOT carry forward stale location data when travel has occurred.
   Also update terrain, time_of_day, and other traversal fields to reflect the new position.
-- NARRATIVE CONSISTENCY: The narrative describes what the player just experienced. If the narrative
+- OUTCOME CONSISTENCY: The outcome describes what mechanically happened. If the outcome
   describes the player arriving at, approaching, or leaving a location, the traversal context MUST
-  reflect that change. Never carry forward a stale current_location that contradicts the narrative.
+  reflect that change. Never carry forward a stale current_location that contradicts the outcome.
 - SCENE SUMMARY: Write a single concise sentence (under 15 words) describing the player's current
   situation. This is displayed to the player as a status line. Examples: "Traveling by horseback
   toward the village.", "Engaged in melee combat with two goblins.", "Resting at camp, preparing

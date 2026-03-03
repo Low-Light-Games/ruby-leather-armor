@@ -6,6 +6,7 @@ class DmConfig < ApplicationRecord
     sanitize classify dm_query intent dispatcher mechanical_evaluation
     capability_guardrail ruling chronicler narrate
     micro_context_update macro_narrative_update
+    edge_pipeline
   ].freeze
 
   ENRICHER_MODEL_HINT = "Capable model recommended. Structural extraction benefits from strong reasoning — e.g. o3-mini, o4-mini, gpt-4.1, gpt-5-mini."
@@ -24,7 +25,8 @@ class DmConfig < ApplicationRecord
     "chronicler"             => "Mid-tier model. Condition matching with structured output — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
     "narrate"                => "Creative model. Narrative quality scales with capability — e.g. gpt-4.1, gpt-4o, gpt-5.",
     "micro_context_update"   => "Mid-tier model. Structured JSON with moderate judgment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
-    "macro_narrative_update" => "Mid-tier model. Judges narrative significance — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano."
+    "macro_narrative_update" => "Mid-tier model. Judges narrative significance — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
+    "edge_pipeline"          => "Capable, creative model. Handles everything in one call — e.g. gpt-4.1, gpt-4o, gpt-5, o3-mini."
   }.freeze
 
   WAIT_MESSAGES_DEFAULT = [
@@ -71,7 +73,8 @@ class DmConfig < ApplicationRecord
       "chronicler" => 500,
       "narrate" => 800,
       "micro_context_update" => 800,
-      "macro_narrative_update" => 500
+      "macro_narrative_update" => 500,
+      "edge_pipeline" => 2000
     }
   }.freeze
 

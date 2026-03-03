@@ -33,6 +33,7 @@ module ApplicationHelper
     when "dm_query"              then "type-dm-query"
     when "micro_context_update"  then "type-ctx"
     when "macro_narrative_update" then "type-ctx"
+    when "edge_pipeline"         then "type-narrate"
     else "type-default"
     end
   end
