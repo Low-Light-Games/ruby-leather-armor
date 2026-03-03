@@ -9,6 +9,7 @@ module DungeonMaster
   #
   # Flow:
   #   run_prompt  -> sanitize + classify (parallel) -> dm_query_flow | action_flow
+  #   action_flow -> intent -> dispatchers (parallel) -> converge -> ruling | narrate
   #   run_rolls   -> resolution_flow  (resumption after player rolls)
   #
   class Pipeline
@@ -17,6 +18,7 @@ module DungeonMaster
     include Steps::Triage
     include Steps::DmQuery
     include Steps::Intent
+    include Steps::InterpretationDispatcher
     include Steps::Ruling
     include Steps::Evaluate
     include Steps::Chronicler
@@ -59,7 +61,7 @@ module DungeonMaster
         return run_dm_query_flow(clean_input)
       end
 
-      run_action_flow(clean_input)
+      run_action_flow(clean_input, classify_result[:category])
     end
 
     # Resumption entry point: player submitted roll results.
@@ -88,8 +90,9 @@ module DungeonMaster
       { action: :dm_query, answer: result[:answer] }
     end
 
-    def run_action_flow(clean_input)
-      intent = run_intent(clean_input)
+    def run_action_flow(clean_input, category = nil)
+      intention = run_intent(clean_input)
+      intent = run_dispatchers(intention, category)
 
       if intent[:time_spanning]
         return run_time_span_flow(intent, clean_input)

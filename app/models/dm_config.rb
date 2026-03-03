@@ -3,7 +3,7 @@ class DmConfig < ApplicationRecord
   # Settings are stored as a JSON hash, making it easy to add new knobs
   # without migrations.
   TOKEN_BUDGET_STEPS = %w[
-    sanitize classify dm_query intent ruling evaluate chronicler narrate
+    sanitize classify dm_query intent dispatcher ruling evaluate chronicler narrate
     micro_context_update macro_narrative_update
   ].freeze
 
@@ -15,7 +15,8 @@ class DmConfig < ApplicationRecord
     "sanitize"               => "Fast, cheap model. Security scoring — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "classify"               => "Fast, cheap model. Simple classification — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "dm_query"               => "Fast, cheap model. Straightforward Q&A — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
-    "intent"                 => "Fast, cheap model. Pattern recognition — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
+    "intent"                 => "Fast, cheap model. Simple restatement — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
+    "dispatcher"             => "Fast, cheap model. Per-domain interpretation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "ruling"                 => "Capable model. Rules application benefits from reasoning — e.g. o3-mini, o4-mini, gpt-5-mini.",
     "evaluate"               => "Capable model. Mechanical resolution with edge cases — e.g. o3-mini, o4-mini, gpt-5-mini.",
     "chronicler"             => "Mid-tier model. Condition matching with structured output — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
@@ -51,12 +52,17 @@ class DmConfig < ApplicationRecord
     "model" => "gpt-4o-mini",
     "step_models" => {},
     "embellisher_mode" => "embellish",
+    "pipeline_mode" => "budget",
+    "interpreter_scope" => "all",
+    "guardrail_mode" => "code",
+    "narration_mode" => "parallel",
     "wait_messages" => WAIT_MESSAGES_DEFAULT,
     "token_budgets" => {
       "sanitize" => 300,
       "classify" => 200,
       "dm_query" => 300,
-      "intent" => 400,
+      "intent" => 200,
+      "dispatcher" => 400,
       "ruling" => 500,
       "evaluate" => 600,
       "chronicler" => 500,
