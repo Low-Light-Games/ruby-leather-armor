@@ -39,19 +39,28 @@ class AdventuresController < ApplicationController
 
     directed_dm = ActiveModel::Type::Boolean.new.cast(params[:directed_dm]) && FeatureFlag.enabled?(:directed_dm)
 
+    start_loc = story.starting_location
+
     @adventure = Adventure.new(
       user: current_user,
       story: story,
       dm_mode: "standard",
       directed_dm: directed_dm,
-      current_location: story.starting_location,
-      traversal_context: story.initial_context.present? ? { "scene" => story.initial_context } : {},
+      current_location: start_loc,
+      traversal_context: build_initial_traversal(start_loc),
       combat_context: {},
       social_context: {},
       story_summary: story.initial_summary
     )
 
     if @adventure.save
+      opening_text = story.initial_context.presence || story.preview
+      @adventure.adventure_messages.create!(
+        role: "dm",
+        content: opening_text,
+        message_type: "narrative"
+      )
+
       # Create adventure sheet — a full copy of the character for this adventure
       adv_sheet = @adventure.adventure_sheets.create!(
         sheet: sheet,
@@ -127,6 +136,20 @@ class AdventuresController < ApplicationController
 
   def set_adventure
     @adventure = Adventure.find(params[:id])
+  end
+
+  def build_initial_traversal(start_loc)
+    return {} unless start_loc
+
+    ctx = {
+      "current_location" => start_loc.name,
+      "scene" => start_loc.description,
+    }
+
+    exits = start_loc.neighbors.pluck(:name)
+    ctx["exits"] = exits if exits.any?
+
+    ctx
   end
 
   def adventure_summary(adventure)
