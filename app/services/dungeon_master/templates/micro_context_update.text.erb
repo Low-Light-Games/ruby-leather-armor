@@ -30,9 +30,12 @@ Update each context to reflect what just happened. Return all contexts below.
 - If combat has ended (all enemies defeated/fled), set combat_context.active to false.
 - If rest is complete, set rest_context.resting to false and rest_context.rest_complete to true.
 - If new creatures or NPCs appeared in the narrative, include their names in new_creatures so the app can create their stat records.
-- TRAVEL: If the mutations contain a "travel" object, you MUST update traversal_context.current_location
-  to match the travel.new_location value. Do NOT carry forward the old location when travel has occurred.
-  Also update scene, terrain, time_of_day, and other traversal fields to reflect the new position.
+- TRAVEL: If the mutations contain a "travel" or "time_span" object with type "journey", you MUST
+  update traversal_context to reflect the travel. If travel.new_location is set, update current_location
+  to match it. If time_span.arrived is true, update current_location to the destination. If the journey
+  is still in progress (arrived is false), set destination to where the player is heading and update
+  scene to reflect being en route. Do NOT carry forward stale location data when travel has occurred.
+  Also update terrain, time_of_day, and other traversal fields to reflect the new position.
 - NARRATIVE CONSISTENCY: The narrative describes what the player just experienced. If the narrative
   describes the player arriving at, approaching, or leaving a location, the traversal context MUST
   reflect that change. Never carry forward a stale current_location that contradicts the narrative.

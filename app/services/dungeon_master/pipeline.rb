@@ -120,6 +120,10 @@ module DungeonMaster
     end
 
     def run_time_span_flow(intent, clean_input)
+      if intent[:time_span_type] == "journey" && !Array(intent[:affected_contexts]).include?("traversal")
+        intent[:affected_contexts] = (Array(intent[:affected_contexts]) + ["traversal"]).uniq
+      end
+
       rulings = run_ruling_loop(intent)
       merged  = merge_rulings(rulings)
 

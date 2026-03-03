@@ -14,7 +14,8 @@ module DungeonMaster
         span_type = (intent[:time_span_type] || "journey").to_s
         time_span_params = extract_time_span_params(ruling_merged)
         eval_mutations = eval_result[:mutations] || {}
-        travel_eval = (eval_mutations["time_span"] || eval_mutations[:time_span] || {}).deep_symbolize_keys
+        travel_eval = (eval_mutations["time_span"] || eval_mutations[:time_span] ||
+                       eval_mutations["travel"]   || eval_mutations[:travel]   || {}).deep_symbolize_keys
 
         effective_hours = compute_effective_hours(span_type, intent, time_span_params, travel_eval)
         @log.dm_log!("TimeSpan: type=#{span_type}, effective_hours=#{effective_hours}")
@@ -105,6 +106,7 @@ module DungeonMaster
           dest_location = resolve_destination(intent)
 
           mutations["time_span"]["distance_covered_miles"] = distance.round(2)
+          mutations["time_span"]["destination"] = intent[:destination] if intent[:destination].present?
           mutations["time_span"]["new_location_id"] = dest_location&.id if arrived
           mutations["time_span"]["arrived"] = arrived
         end
@@ -223,13 +225,10 @@ module DungeonMaster
       end
 
       def extract_time_span_params(ruling_merged)
-        first_ruling = ruling_merged.is_a?(Hash) ? ruling_merged : {}
-        if ruling_merged.is_a?(Hash) && ruling_merged[:ruling_summaries]
-          first_ruling = {}
+        if ruling_merged.is_a?(Hash)
+          return (ruling_merged[:time_span_parameters] || {}).dup
         end
 
-        # Time-span params come from the ruling's type-specific parameters hash
-        # stored on the ruling by run_time_span_ruling
         params = {}
         if ruling_merged.is_a?(Array)
           ruling_merged.each do |r|

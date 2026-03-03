@@ -69,11 +69,15 @@ module DungeonMaster
       case span_type.to_s
       when "journey"
         dist = ts["distance_covered_miles"] || ts[:distance_covered_miles]
+        destination = ts["destination"] || ts[:destination]
         traversal["last_travel_hours"] = hours
         traversal["last_travel_distance_miles"] = dist
         if ts["arrived"] || ts[:arrived]
           new_loc = StoryLocation.find_by(id: ts["new_location_id"] || ts[:new_location_id])
           traversal["current_location"] = new_loc&.name
+          traversal["destination"] = nil
+        else
+          traversal["destination"] = destination
         end
       when "rest"
         traversal["last_rest_hours"] = hours
