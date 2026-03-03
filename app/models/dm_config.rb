@@ -3,7 +3,7 @@ class DmConfig < ApplicationRecord
   # Settings are stored as a JSON hash, making it easy to add new knobs
   # without migrations.
   TOKEN_BUDGET_STEPS = %w[
-    triage dm_query intent ruling evaluate chronicler narrate
+    sanitize classify dm_query intent ruling evaluate chronicler narrate
     micro_context_update macro_narrative_update
   ].freeze
 
@@ -12,7 +12,8 @@ class DmConfig < ApplicationRecord
   EMBELLISHER_MODES = %w[off embellish expand].freeze
 
   STEP_MODEL_HINTS = {
-    "triage"                 => "Fast, cheap model. Simple classification — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
+    "sanitize"               => "Fast, cheap model. Security scoring — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
+    "classify"               => "Fast, cheap model. Simple classification — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "dm_query"               => "Fast, cheap model. Straightforward Q&A — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "intent"                 => "Fast, cheap model. Pattern recognition — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "ruling"                 => "Capable model. Rules application benefits from reasoning — e.g. o3-mini, o4-mini, gpt-5-mini.",
@@ -52,7 +53,8 @@ class DmConfig < ApplicationRecord
     "embellisher_mode" => "embellish",
     "wait_messages" => WAIT_MESSAGES_DEFAULT,
     "token_budgets" => {
-      "triage" => 300,
+      "sanitize" => 300,
+      "classify" => 200,
       "dm_query" => 300,
       "intent" => 400,
       "ruling" => 500,

@@ -22,6 +22,11 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
 <%= @rules_text.presence || "(no specific rules requested for this domain)" %>
 
 === INSTRUCTIONS ===
+- SHEET VALIDATION: Before adjudicating, verify the player actually has the spell, feat, or
+  item they are attempting to use by checking the PLAYER CHARACTER section above. If the
+  character does not possess the required spell, feat, or item on their sheet, the action
+  FAILS — set player_rolls to empty and state in ruling_summary that the character does not
+  have it. Do NOT invent abilities not on the sheet.
 - Determine what player rolls are needed (skill checks, attack rolls, saves, etc.) for this domain.
   IMPORTANT: Only request rolls the rules actually require. Many actions simply succeed with no roll:
   - Casting a prepared spell in safe conditions (no threats, not casting defensively) requires NO roll.

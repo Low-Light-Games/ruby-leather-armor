@@ -325,7 +325,8 @@
     var title = document.getElementById('modalTitle');
     var body = document.getElementById('modalBody');
     var typeBadgeClass = {
-      'triage': 'type-triage', 'intent': 'type-intent', 'ruling': 'type-ruling',
+      'triage': 'type-triage', 'sanitize': 'type-triage', 'classify': 'type-triage',
+      'intent': 'type-intent', 'ruling': 'type-ruling',
       'evaluate': 'type-evaluate', 'narrate': 'type-narrate', 'dm_query': 'type-dm-query',
       'micro_context_update': 'type-ctx', 'macro_narrative_update': 'type-ctx'
     }[callType] || 'type-default';

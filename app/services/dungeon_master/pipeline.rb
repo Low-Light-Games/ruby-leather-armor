@@ -8,7 +8,7 @@ module DungeonMaster
   # (DungeonMasterService) is responsible for those side effects.
   #
   # Flow:
-  #   run_prompt  -> triage -> dm_query_flow | action_flow
+  #   run_prompt  -> sanitize + classify (parallel) -> dm_query_flow | action_flow
   #   run_rolls   -> resolution_flow  (resumption after player rolls)
   #
   class Pipeline
@@ -38,24 +38,24 @@ module DungeonMaster
     # @param mode [String, nil] "dm_query" when the player explicitly toggled Ask DM mode
     def run_prompt(player_input, mode: nil)
       if mode == "dm_query"
-        triage = run_sanitize_only(player_input)
-        if triage[:danger_score] >= @config.sanitization_threshold
-          @log.dm_log!("Rejected (danger: #{triage[:danger_score]}): #{triage[:reason]}")
-          return { action: :rejected, reason: triage[:reason], danger: triage[:danger_score] }
+        sanitize_result = run_sanitize(player_input)
+        if sanitize_result[:danger_score] >= @config.sanitization_threshold
+          @log.dm_log!("Rejected (danger: #{sanitize_result[:danger_score]}): #{sanitize_result[:reason]}")
+          return { action: :rejected, reason: sanitize_result[:reason], danger: sanitize_result[:danger_score] }
         end
-        return run_dm_query_flow(triage[:sanitized_input])
+        return run_dm_query_flow(sanitize_result[:sanitized_input])
       end
 
-      triage = run_triage(player_input)
+      sanitize_result, classify_result = run_gate(player_input)
 
-      if triage[:danger_score] >= @config.sanitization_threshold
-        @log.dm_log!("Rejected (danger: #{triage[:danger_score]}): #{triage[:reason]}")
-        return { action: :rejected, reason: triage[:reason], danger: triage[:danger_score] }
+      if sanitize_result[:danger_score] >= @config.sanitization_threshold
+        @log.dm_log!("Rejected (danger: #{sanitize_result[:danger_score]}): #{sanitize_result[:reason]}")
+        return { action: :rejected, reason: sanitize_result[:reason], danger: sanitize_result[:danger_score] }
       end
 
-      clean_input = triage[:sanitized_input]
+      clean_input = sanitize_result[:sanitized_input]
 
-      if triage[:category] == "dm_query"
+      if classify_result[:category] == "dm_query"
         return run_dm_query_flow(clean_input)
       end
 
@@ -186,6 +186,22 @@ module DungeonMaster
                           affected_contexts: intent[:affected_contexts],
                           macro_significant: intent[:macro_significant])
       { action: :narrated, narrative: narration[:narrative], adventure_complete: narration[:adventure_complete] }
+    end
+
+    # ----------------------------------------------------------------
+    # Gate: parallel sanitize + classify
+    # ----------------------------------------------------------------
+
+    def run_gate(player_input)
+      sanitize_result = classify_result = nil
+
+      sanitize_thread = Thread.new { sanitize_result = run_sanitize(player_input) }
+      classify_thread = Thread.new { classify_result = run_classify(player_input) }
+
+      sanitize_thread.value
+      classify_thread.value
+
+      [sanitize_result, classify_result]
     end
 
     # ----------------------------------------------------------------
