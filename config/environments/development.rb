@@ -59,6 +59,12 @@ Rails.application.configure do
   # Highlight code that enqueued background job in logs.
   config.active_job.verbose_enqueue_logs = true
 
+  # Use Sidekiq for background jobs
+  config.active_job.queue_adapter = :sidekiq
+
+  # Allow ActionCable from any origin in development
+  config.action_cable.disable_request_forgery_protection = true
+
   # Suppress logger output for asset requests.
   config.assets.quiet = true
 

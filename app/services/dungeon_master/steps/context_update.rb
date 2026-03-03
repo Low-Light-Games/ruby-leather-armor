@@ -10,8 +10,14 @@ module DungeonMaster
       private
 
       def run_context_updates(what_happened, mutations, affected_contexts: [], macro_significant: false)
-        micro_thread = Thread.new { run_micro_context_update(what_happened, mutations, affected_contexts) }
-        macro_thread = macro_significant ? Thread.new { run_macro_narrative_update(what_happened) } : nil
+        micro_thread = Thread.new do
+          ActiveRecord::Base.connection_pool.with_connection { run_micro_context_update(what_happened, mutations, affected_contexts) }
+        end
+        macro_thread = if macro_significant
+                         Thread.new do
+                           ActiveRecord::Base.connection_pool.with_connection { run_macro_narrative_update(what_happened) }
+                         end
+                       end
 
         micro_result = micro_thread.value
         persist_micro_contexts(micro_result)

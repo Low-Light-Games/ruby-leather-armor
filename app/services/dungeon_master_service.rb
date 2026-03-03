@@ -7,6 +7,10 @@
 #   1. Persisting AdventureMessage records
 #   2. Catching errors and producing player-safe messages
 #
+# Supports two modes of operation:
+#   Sync  — process_player_prompt / process_roll_result (original, blocking)
+#   Async — prepare_prompt + execute_prompt (split across controller + Sidekiq job)
+#
 # See DungeonMaster::Pipeline for the step-by-step flow.
 #
 class DungeonMasterService
@@ -24,7 +28,7 @@ class DungeonMasterService
   end
 
   # ----------------------------------------------------------------
-  # Public API
+  # Sync API (original — blocks until pipeline completes)
   # ----------------------------------------------------------------
 
   def process_player_prompt(player_input, mode: nil)
@@ -63,6 +67,72 @@ class DungeonMasterService
       content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
       message_type: "narrative")
     { messages: [roll_msg, error_msg] }
+  end
+
+  # ----------------------------------------------------------------
+  # Async API — Phase 1 (controller: persist + enqueue)
+  # ----------------------------------------------------------------
+
+  def prepare_prompt(player_input)
+    persist_message(role: "player", content: player_input, message_type: "narrative")
+  end
+
+  def prepare_roll(roll_results_from_player)
+    roll_msg = persist_message(
+      role: "player",
+      content: format_roll_results(roll_results_from_player),
+      message_type: "roll_result",
+      metadata: { rolls: roll_results_from_player })
+    roll_msg
+  end
+
+  # ----------------------------------------------------------------
+  # Async API — Phase 2 (Sidekiq job: run pipeline + broadcast)
+  # ----------------------------------------------------------------
+
+  def execute_prompt(player_input, player_message_id:, mode: nil)
+    @log.player_message_id = player_message_id
+    @log.start_pipeline_run!(player_input)
+
+    result = pipeline.run_prompt(player_input, mode: mode)
+    messages_for(result)
+  rescue SanitizationRejected => e
+    [persist_message(role: "system", content: e.message, message_type: "sanitization_fail")]
+  rescue AiError => e
+    [persist_message(
+      role: "system",
+      content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
+      message_type: "narrative")]
+  end
+
+  def execute_rolls(roll_results_text, player_message_id:)
+    @log.player_message_id = player_message_id
+    @log.start_pipeline_run!(roll_results_text)
+    metadata = latest_roll_metadata
+
+    result = pipeline.run_rolls(roll_results_text, metadata)
+    messages_for(result)
+  rescue AiError => e
+    [persist_message(
+      role: "system",
+      content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
+      message_type: "narrative")]
+  end
+
+  # Serialize a message for JSON broadcast / API response.
+  def self.message_json(message, admin: false)
+    json = {
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      message_type: message.message_type,
+      metadata: message.metadata,
+      created_at: message.created_at
+    }
+    if admin && message.role == "dm"
+      json[:pipeline_run_id] = message.metadata&.dig("pipeline_run_id")
+    end
+    json
   end
 
   private

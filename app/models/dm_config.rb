@@ -60,6 +60,7 @@ class DmConfig < ApplicationRecord
     "interpreter_scope" => "all",
     "guardrail_mode" => "code",
     "narration_mode" => "parallel",
+    "async_pipeline" => false,
     "wait_messages" => WAIT_MESSAGES_DEFAULT,
     "token_budgets" => {
       "sanitize" => 300,

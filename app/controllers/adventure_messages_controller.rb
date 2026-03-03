@@ -3,15 +3,12 @@ class AdventureMessagesController < ApplicationController
   before_action -> { authorize(@adventure, :show?) }
 
   # GET /adventures/:adventure_id/messages
-  # Returns conversation history for the adventure
   def index
     messages = @adventure.adventure_messages.chronological
-
     render json: messages.map { |m| message_json(m) }
   end
 
   # POST /adventures/:adventure_id/messages
-  # Sends a player prompt through the DM pipeline
   def create
     player_input = params[:content]&.strip
 
@@ -25,18 +22,18 @@ class AdventureMessagesController < ApplicationController
 
     mode = params[:mode]&.strip
     service = dm_service
-    result = service.process_player_prompt(player_input, mode: mode)
 
-    render json: {
-      messages: result[:messages].map { |m| message_json(m) }
-    }
+    if async_pipeline?
+      player_msg = service.prepare_prompt(player_input)
+      PipelineJob.perform_later(@adventure.id, player_msg.id, player_input, mode, current_user.id)
+      render json: { async: true, messages: [message_json(player_msg)] }, status: :accepted
+    else
+      result = service.process_player_prompt(player_input, mode: mode)
+      render json: { messages: result[:messages].map { |m| message_json(m) } }
+    end
   end
 
   # POST /adventures/:adventure_id/messages/roll
-  # Submits roll results (batched) for the DM to process.
-  # Accepts either:
-  #   - { rolls: [{ roll_value: 14, roll_description: "Swim check" }, ...] }  (batched)
-  #   - { roll_value: 14, roll_description: "Swim check" }  (legacy single roll)
   def roll
     rolls = if params[:rolls].present?
               Array(params[:rolls]).map do |r|
@@ -52,11 +49,16 @@ class AdventureMessagesController < ApplicationController
     end
 
     service = dm_service
-    result = service.process_roll_result(rolls)
 
-    render json: {
-      messages: result[:messages].map { |m| message_json(m) }
-    }
+    if async_pipeline?
+      roll_msg = service.prepare_roll(rolls)
+      roll_text = service.send(:format_roll_results, rolls)
+      RollPipelineJob.perform_later(@adventure.id, roll_msg.id, roll_text, current_user.id)
+      render json: { async: true, messages: [message_json(roll_msg)] }, status: :accepted
+    else
+      result = service.process_roll_result(rolls)
+      render json: { messages: result[:messages].map { |m| message_json(m) } }
+    end
   end
 
   private
@@ -69,18 +71,11 @@ class AdventureMessagesController < ApplicationController
     DungeonMasterService.new(@adventure, user: current_user)
   end
 
+  def async_pipeline?
+    DmConfig.instance.get("async_pipeline") == true
+  end
+
   def message_json(message)
-    json = {
-      id: message.id,
-      role: message.role,
-      content: message.content,
-      message_type: message.message_type,
-      metadata: message.metadata,
-      created_at: message.created_at
-    }
-    if current_user&.admin? && message.role == "dm"
-      json[:pipeline_run_id] = message.metadata&.dig("pipeline_run_id")
-    end
-    json
+    DungeonMasterService.message_json(message, admin: current_user&.admin?)
   end
 end

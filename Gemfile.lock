@@ -248,6 +248,10 @@ GEM
       erb
       psych (>= 4.0.0)
       tsort
+    redis (5.4.1)
+      redis-client (>= 0.22.0)
+    redis-client (0.26.4)
+      connection_pool
     regexp_parser (2.11.3)
     reline (0.6.3)
       io-console (~> 0.5)
@@ -264,6 +268,12 @@ GEM
       rexml (~> 3.2, >= 3.2.5)
       rubyzip (>= 1.2.2, < 4.0)
       websocket (~> 1.0)
+    sidekiq (8.0.10)
+      connection_pool (>= 2.5.0)
+      json (>= 2.9.0)
+      logger (>= 1.6.2)
+      rack (>= 3.1.0)
+      redis-client (>= 0.23.2)
     sprockets (4.2.2)
       concurrent-ruby (~> 1.0)
       logger
@@ -318,8 +328,10 @@ DEPENDENCIES
   puma (>= 5.0)
   rails (~> 7.1.6)
   rake (~> 13.3)
+  redis (>= 4.0.1)
   ruby-openai
   selenium-webdriver
+  sidekiq
   sprockets-rails
   stimulus-rails
   web-console

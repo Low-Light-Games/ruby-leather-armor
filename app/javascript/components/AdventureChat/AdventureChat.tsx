@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createConsumer } from '@rails/actioncable'
 import { AdventureMessage, RollRequest } from '../../types'
 import { csrfToken } from '../../utils/api'
 import { useAuth } from '../../contexts/AuthContext'
@@ -11,6 +12,8 @@ const ERROR_ID = -3
 function isSentinel(id: number) {
   return id === OPTIMISTIC_ID || id === THINKING_ID || id === ERROR_ID
 }
+
+const cable = createConsumer()
 
 interface AdventureChatProps {
   adventureId: number
@@ -49,6 +52,35 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
     if (pendingRolls && rollInputRef.current) rollInputRef.current.focus()
   }, [pendingRolls])
 
+  // ActionCable subscription for async pipeline results
+  useEffect(() => {
+    const subscription = cable.subscriptions.create(
+      { channel: 'AdventureChannel', adventure_id: adventureId },
+      {
+        received(data: { type: string; messages: AdventureMessage[] }) {
+          if (data.type === 'pipeline_result' && data.messages) {
+            setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), ...data.messages])
+            setSending(false)
+            lastSentRef.current = null
+
+            const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
+            if (dmMsg) {
+              const requests = extractRollRequests(dmMsg)
+              if (requests.length > 0) setPendingRolls({ requests, values: {} })
+            }
+
+            if (onDmResponse) onDmResponse()
+            const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
+            if (completeMsg && onAdventureComplete) onAdventureComplete()
+          }
+        },
+      }
+    )
+
+    return () => { subscription.unsubscribe() }
+  }, [adventureId, onDmResponse, onAdventureComplete])
+
+  // Load message history on mount
   useEffect(() => {
     const loadHistory = async () => {
       try {
@@ -120,22 +152,31 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
         throw new Error(body.error || `HTTP ${res.status}`)
       }
 
-      const data: { messages: AdventureMessage[] } = await res.json()
-      setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), ...data.messages])
-      lastSentRef.current = null
+      const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()
 
-      const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
-      if (dmMsg) {
-        const requests = extractRollRequests(dmMsg)
-        if (requests.length > 0) {
-          setPendingRolls({ requests, values: {} })
+      if (data.async) {
+        // Async mode: replace optimistic with persisted player msg, keep thinking indicator.
+        // ActionCable subscription will deliver DM response and clear sending state.
+        setMessages(prev => [
+          ...prev.filter(m => m.id !== OPTIMISTIC_ID),
+          ...data.messages,
+        ])
+      } else {
+        // Sync mode: full response inline
+        setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), ...data.messages])
+        lastSentRef.current = null
+        setSending(false)
+
+        const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
+        if (dmMsg) {
+          const requests = extractRollRequests(dmMsg)
+          if (requests.length > 0) setPendingRolls({ requests, values: {} })
         }
+
+        if (onDmResponse) onDmResponse()
+        const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
+        if (completeMsg && onAdventureComplete) onAdventureComplete()
       }
-
-      if (onDmResponse) onDmResponse()
-
-      const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
-      if (completeMsg && onAdventureComplete) onAdventureComplete()
     } catch (err: any) {
       console.error('Error sending message:', err)
       const errorMsg: AdventureMessage = {
@@ -143,7 +184,6 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
         message_type: 'narrative', metadata: {}, created_at: new Date().toISOString(),
       }
       setMessages(prev => [...prev.filter(m => m.id !== THINKING_ID && m.id !== ERROR_ID), errorMsg])
-    } finally {
       setSending(false)
     }
   }
@@ -179,22 +219,28 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
         throw new Error(body.error || `HTTP ${res.status}`)
       }
 
-      const data: { messages: AdventureMessage[] } = await res.json()
-      setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), ...data.messages])
-      lastSentRef.current = null
+      const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()
 
-      const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
-      if (dmMsg) {
-        const requests = extractRollRequests(dmMsg)
-        if (requests.length > 0) {
-          setPendingRolls({ requests, values: {} })
+      if (data.async) {
+        setMessages(prev => [
+          ...prev.filter(m => m.id !== OPTIMISTIC_ID),
+          ...data.messages,
+        ])
+      } else {
+        setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), ...data.messages])
+        lastSentRef.current = null
+        setSending(false)
+
+        const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
+        if (dmMsg) {
+          const requests = extractRollRequests(dmMsg)
+          if (requests.length > 0) setPendingRolls({ requests, values: {} })
         }
+
+        if (onDmResponse) onDmResponse()
+        const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
+        if (completeMsg && onAdventureComplete) onAdventureComplete()
       }
-
-      if (onDmResponse) onDmResponse()
-
-      const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
-      if (completeMsg && onAdventureComplete) onAdventureComplete()
     } catch (err: any) {
       console.error('Error submitting rolls:', err)
       const errorMsg: AdventureMessage = {
@@ -202,7 +248,6 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
         message_type: 'narrative', metadata: {}, created_at: new Date().toISOString(),
       }
       setMessages(prev => [...prev.filter(m => m.id !== THINKING_ID && m.id !== ERROR_ID), errorMsg])
-    } finally {
       setSending(false)
     }
   }

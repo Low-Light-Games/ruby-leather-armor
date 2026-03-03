@@ -205,8 +205,12 @@ module DungeonMaster
     def run_gate(player_input)
       sanitize_result = classify_result = nil
 
-      sanitize_thread = Thread.new { sanitize_result = run_sanitize(player_input) }
-      classify_thread = Thread.new { classify_result = run_classify(player_input) }
+      sanitize_thread = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection { sanitize_result = run_sanitize(player_input) }
+      end
+      classify_thread = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection { classify_result = run_classify(player_input) }
+      end
 
       sanitize_thread.value
       classify_thread.value
@@ -222,8 +226,12 @@ module DungeonMaster
       evaluations = nil
       guardrail = nil
 
-      eval_thread = Thread.new { evaluations = run_mechanical_evaluation_loop(intent) }
-      guard_thread = Thread.new { guardrail = run_capability_guardrail(intent) }
+      eval_thread = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection { evaluations = run_mechanical_evaluation_loop(intent) }
+      end
+      guard_thread = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection { guardrail = run_capability_guardrail(intent) }
+      end
 
       eval_thread.value
       guard_thread.value

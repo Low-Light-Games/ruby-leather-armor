@@ -7,11 +7,14 @@ services:
       - bundle_cache:/bundle
     depends_on:
       - postgres
+      - redis
     env_file:
       - .env
     environment:
       DATABASE_URL: postgres://exercises:sekret@postgres:5432/exercises_development
+      REDIS_URL: redis://redis:6379/0
       BIND: tcp://0.0.0.0:3000
+      RAILS_MAX_THREADS: "12"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.app.rule=Host(`exercises.localhost`)"
@@ -19,6 +22,23 @@ services:
       - "traefik.http.services.app.loadbalancer.server.port=3000"
       - "traefik.http.services.app.loadbalancer.healthcheck.path=/up"
       - "traefik.http.services.app.loadbalancer.healthcheck.interval=5s"
+
+  worker:
+    build:
+      context: ./
+    volumes:
+      - .:/app
+      - bundle_cache:/bundle
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://exercises:sekret@postgres:5432/exercises_development
+      REDIS_URL: redis://redis:6379/0
+      RAILS_MAX_THREADS: "12"
+    command: bundle exec sidekiq -C config/sidekiq.yml
 
   proxy:
     image: traefik:v3.4

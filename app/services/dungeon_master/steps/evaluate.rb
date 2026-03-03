@@ -45,13 +45,17 @@ module DungeonMaster
         narration = nil
 
         narrate_thread = Thread.new do
-          narration = run_narrate(narrate_seed, player_action: player_action,
-                                  intent: intent, dm_brief: dm_brief)
+          ActiveRecord::Base.connection_pool.with_connection do
+            narration = run_narrate(narrate_seed, player_action: player_action,
+                                    intent: intent, dm_brief: dm_brief)
+          end
         end
         ctx_thread = Thread.new do
-          run_context_updates(what_happened, mutations,
-                              affected_contexts: intent[:affected_contexts],
-                              macro_significant: intent[:macro_significant])
+          ActiveRecord::Base.connection_pool.with_connection do
+            run_context_updates(what_happened, mutations,
+                                affected_contexts: intent[:affected_contexts],
+                                macro_significant: intent[:macro_significant])
+          end
         end
 
         narrate_thread.value

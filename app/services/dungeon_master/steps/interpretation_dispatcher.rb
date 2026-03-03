@@ -19,8 +19,10 @@ module DungeonMaster
 
         threads = domains.map do |domain|
           Thread.new do
-            result = run_single_dispatcher(intention, domain)
-            results[domain] = result
+            ActiveRecord::Base.connection_pool.with_connection do
+              result = run_single_dispatcher(intention, domain)
+              results[domain] = result
+            end
           end
         end
 
