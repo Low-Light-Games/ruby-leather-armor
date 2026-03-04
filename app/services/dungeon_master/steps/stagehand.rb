@@ -2,23 +2,23 @@
 
 module DungeonMaster
   module Steps
-    # Pipeline Step: Evaluate (synthesis + output orchestration).
+    # Pipeline Step: Stagehand (output orchestration).
     #
-    # Code-only step — no AI call. Sits between ruling and narrate/context_updates.
+    # Code-only step — no AI call. Sits between Verdict and Narrate/ContextUpdates.
     # Responsibilities:
-    #   1. Package ruling outcome + dm_brief into a narrative seed for Narrate
+    #   1. Package verdict outcome + dm_brief into a narrative seed for Narrate
     #   2. Package factual outcome + mutations into directives for ContextUpdate
     #   3. Orchestrate Narrate + ContextUpdate based on narration_mode config:
     #        "parallel"   — both run simultaneously (default)
     #        "subjugated" — context updates run first, then narrate sees fresh DB state
-    module Evaluate
+    module Stagehand
       private
 
       # Unified output phase for all pipeline flow paths.
       #
-      # @param intent [Hash] the converged intent from dispatchers
+      # @param intent [Hash] the converged intent from Beacon
       # @param narrate_seed [String, nil] factual outcome or narrative seed for narrate
-      # @param mutations [Hash, nil] ruling mutations (already applied to DB)
+      # @param mutations [Hash, nil] verdict mutations (already applied to DB)
       # @param dm_brief [String, nil] plot guidance from chronicler
       # @param player_action [String, nil] raw player input (no-mechanics path)
       # @param extra [Hash] additional result keys to merge (e.g. encounter_interrupted)

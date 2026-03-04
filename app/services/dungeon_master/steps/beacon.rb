@@ -2,45 +2,46 @@
 
 module DungeonMaster
   module Steps
-    # Phase 2: InterpretationDispatchers — parallel per-domain interpretation.
+    # Pipeline Step: Beacon — parallel per-domain interpretation.
     #
-    # Given the pure intention from the Intent step, each dispatcher evaluates
-    # how that intention affects a single game domain (combat, traversal, etc.).
-    # Dispatchers run in parallel; results are merged by converge_dispatchers.
-    module InterpretationDispatcher
+    # Given the pure intention from the PlayerInterpreter step, each domain
+    # beacon evaluates how that intention affects a single game domain
+    # (combat, traversal, etc.). Beacons run in parallel; results are merged
+    # by converge_beacons.
+    module Beacon
       DOMAINS = PromptHelpers::CONTEXT_FIELDS.freeze # %w[traversal combat social exploration rest inventory]
 
       private
 
-      # Run dispatchers for all domains (or filtered set) and merge results.
-      def run_dispatchers(intention, category)
-        domains = dispatcher_domains(category)
+      # Run beacons for all domains (or filtered set) and merge results.
+      def run_beacon(intention, category)
+        domains = beacon_domains(category)
         results = {}
 
         threads = domains.map do |domain|
           Thread.new do
             ActiveRecord::Base.connection_pool.with_connection do
-              result = run_single_dispatcher(intention, domain)
+              result = run_single_beacon(intention, domain)
               results[domain] = result
             end
           end
         end
 
         threads.each(&:value)
-        converge_dispatchers(results, intention, category)
+        converge_beacons(results, intention, category)
       end
 
-      def run_single_dispatcher(intention, domain)
+      def run_single_beacon(intention, domain)
         raw = nil
-        prompt_summary = "Dispatcher [#{domain}]: \"#{@log.truncate(intention)}\""
+        prompt_summary = "Beacon [#{domain}]: \"#{@log.truncate(intention)}\""
 
         char_data = CharacterBlock.for(@sheet, category: domain)
         domain_context = @adventure.send("#{domain}_context")
         rules_manifest = domain_rules_manifest(domain)
-        domain_instructions = PromptRenderer.render_partial("dispatcher/_#{domain}")
+        domain_instructions = PromptRenderer.render_partial("beacon/_#{domain}")
         extra_context = domain == "traversal" ? traversal_extra_context : nil
 
-        system_prompt = PromptRenderer.render("interpretation_dispatcher",
+        system_prompt = PromptRenderer.render("beacon",
           domain: domain,
           character_data: char_data,
           domain_context: domain_context,
@@ -50,10 +51,10 @@ module DungeonMaster
 
         request_body = { system_prompt: system_prompt, user_message: intention }
         raw = @ai.chat(system_prompt: system_prompt, user_message: intention,
-                        max_tokens: @config.token_budget_for("dispatcher"), step_name: "dispatcher",
-                        model: @config.model_for("dispatcher"))
+                        max_tokens: @config.token_budget_for("beacon"), step_name: "beacon",
+                        model: @config.model_for("beacon"))
         parsed = @ai.parse_json(raw)
-        @log.ai_log!("dispatcher", prompt_summary, raw, parsed,
+        @log.ai_log!("beacon", prompt_summary, raw, parsed,
                      parse_status: @ai.last_parse_status, request_body: request_body,
                      model_used: @ai.last_model_used)
 
@@ -68,22 +69,22 @@ module DungeonMaster
           destination: parsed["destination"]
         }
       rescue TokenBudgetExceededError => e
-        @log.ai_log_error!("dispatcher", prompt_summary, e,
+        @log.ai_log_error!("beacon", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, status: "token_budget_exceeded",
                            model_used: @ai.last_model_used)
         { domain: domain, affected: false, needs_mechanics: false, macro_significant: false,
           rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil, destination: nil }
       rescue AiError => e
-        @log.ai_log_error!("dispatcher", prompt_summary, e,
+        @log.ai_log_error!("beacon", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, model_used: @ai.last_model_used)
         { domain: domain, affected: false, needs_mechanics: false, macro_significant: false,
           rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil, destination: nil }
       end
 
-      # Merge parallel dispatcher results into a unified intent-compatible hash.
-      def converge_dispatchers(results, intention, category)
+      # Merge parallel beacon results into a unified intent-compatible hash.
+      def converge_beacons(results, intention, category)
         affected = results.select { |_, r| r[:affected] }
         needs_mechanics = affected.any? { |_, r| r[:needs_mechanics] }
         macro_significant = results.any? { |_, r| r[:macro_significant] }
@@ -107,12 +108,12 @@ module DungeonMaster
           transition: transition,
           macro_significant: macro_significant,
           plot_relevant: plot_relevant,
-          dispatcher_results: results
+          beacon_results: results
         }
       end
 
-      # Determine which domains to dispatch to based on config.
-      def dispatcher_domains(category)
+      # Determine which domains to beacon based on config.
+      def beacon_domains(category)
         scope = @config.get("interpreter_scope") || "all"
 
         if scope == "filtered"

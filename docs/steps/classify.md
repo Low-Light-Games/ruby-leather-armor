@@ -34,7 +34,7 @@ Valid categories: `combat`, `traversal`, `social`, `exploration`, `rest`,
   unrecognized categories raise `AiError`.
 - If `category == "dm_query"`, the pipeline branches to the DM Query fast
   path.
-- Otherwise, the category is passed to the InterpretationDispatcher to
+- Otherwise, the category is passed to the Beacon to
   influence domain selection (when `interpreter_scope` is `"filtered"`).
 
 ## Design rationale

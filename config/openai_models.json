@@ -6,7 +6,7 @@
     "output_cost": 14.00,
     "capabilities": { "reasoning_model": true, "supports_temperature": false },
     "default_token_budgets": {
-      "triage": 1200, "dm_query": 1600, "intent": 1600, "ruling": 2000,
+      "triage": 1200, "dm_query": 1600, "player_interpreter": 1600, "verdict": 2000,
       "evaluate": 2400, "narrate": 3200,
       "micro_context_update": 3200, "macro_narrative_update": 2000
     }
@@ -18,7 +18,7 @@
     "output_cost": 10.00,
     "capabilities": { "reasoning_model": true, "supports_temperature": false },
     "default_token_budgets": {
-      "triage": 1200, "dm_query": 1600, "intent": 1600, "ruling": 2000,
+      "triage": 1200, "dm_query": 1600, "player_interpreter": 1600, "verdict": 2000,
       "evaluate": 2400, "narrate": 3200,
       "micro_context_update": 3200, "macro_narrative_update": 2000
     }
@@ -30,7 +30,7 @@
     "output_cost": 10.00,
     "capabilities": { "reasoning_model": true, "supports_temperature": false },
     "default_token_budgets": {
-      "triage": 1200, "dm_query": 1600, "intent": 1600, "ruling": 2000,
+      "triage": 1200, "dm_query": 1600, "player_interpreter": 1600, "verdict": 2000,
       "evaluate": 2400, "narrate": 3200,
       "micro_context_update": 3200, "macro_narrative_update": 2000
     }
@@ -42,7 +42,7 @@
     "output_cost": 2.00,
     "capabilities": { "reasoning_model": true, "supports_temperature": false },
     "default_token_budgets": {
-      "triage": 1200, "dm_query": 1600, "intent": 1600, "ruling": 2000,
+      "triage": 1200, "dm_query": 1600, "player_interpreter": 1600, "verdict": 2000,
       "evaluate": 2400, "narrate": 3200,
       "micro_context_update": 3200, "macro_narrative_update": 2000
     }
@@ -54,7 +54,7 @@
     "output_cost": 0.40,
     "capabilities": { "reasoning_model": true, "supports_temperature": false },
     "default_token_budgets": {
-      "triage": 1200, "dm_query": 1600, "intent": 1600, "ruling": 2000,
+      "triage": 1200, "dm_query": 1600, "player_interpreter": 1600, "verdict": 2000,
       "evaluate": 2400, "narrate": 3200,
       "micro_context_update": 3200, "macro_narrative_update": 2000
     }
@@ -66,7 +66,7 @@
     "output_cost": 168.00,
     "capabilities": { "reasoning_model": true, "supports_temperature": false },
     "default_token_budgets": {
-      "triage": 1200, "dm_query": 1600, "intent": 1600, "ruling": 2000,
+      "triage": 1200, "dm_query": 1600, "player_interpreter": 1600, "verdict": 2000,
       "evaluate": 2400, "narrate": 3200,
       "micro_context_update": 3200, "macro_narrative_update": 2000
     }
@@ -78,7 +78,7 @@
     "output_cost": 120.00,
     "capabilities": { "reasoning_model": true, "supports_temperature": false },
     "default_token_budgets": {
-      "triage": 1200, "dm_query": 1600, "intent": 1600, "ruling": 2000,
+      "triage": 1200, "dm_query": 1600, "player_interpreter": 1600, "verdict": 2000,
       "evaluate": 2400, "narrate": 3200,
       "micro_context_update": 3200, "macro_narrative_update": 2000
     }
@@ -90,7 +90,7 @@
     "output_cost": 8.00,
     "capabilities": { "reasoning_model": false, "supports_temperature": true },
     "default_token_budgets": {
-      "triage": 300, "dm_query": 300, "intent": 400, "ruling": 500,
+      "triage": 300, "dm_query": 300, "player_interpreter": 400, "verdict": 500,
       "evaluate": 600, "narrate": 800,
       "micro_context_update": 800, "macro_narrative_update": 500
     }
@@ -102,7 +102,7 @@
     "output_cost": 1.60,
     "capabilities": { "reasoning_model": false, "supports_temperature": true },
     "default_token_budgets": {
-      "triage": 300, "dm_query": 300, "intent": 400, "ruling": 500,
+      "triage": 300, "dm_query": 300, "player_interpreter": 400, "verdict": 500,
       "evaluate": 600, "narrate": 800,
       "micro_context_update": 800, "macro_narrative_update": 500
     }
@@ -114,7 +114,7 @@
     "output_cost": 0.40,
     "capabilities": { "reasoning_model": false, "supports_temperature": true },
     "default_token_budgets": {
-      "triage": 300, "dm_query": 300, "intent": 400, "ruling": 500,
+      "triage": 300, "dm_query": 300, "player_interpreter": 400, "verdict": 500,
       "evaluate": 600, "narrate": 800,
       "micro_context_update": 800, "macro_narrative_update": 500
     }
@@ -126,7 +126,7 @@
     "output_cost": 10.00,
     "capabilities": { "reasoning_model": false, "supports_temperature": true },
     "default_token_budgets": {
-      "triage": 300, "dm_query": 300, "intent": 400, "ruling": 500,
+      "triage": 300, "dm_query": 300, "player_interpreter": 400, "verdict": 500,
       "evaluate": 600, "narrate": 800,
       "micro_context_update": 800, "macro_narrative_update": 500
     }
@@ -138,7 +138,7 @@
     "output_cost": 0.60,
     "capabilities": { "reasoning_model": false, "supports_temperature": true },
     "default_token_budgets": {
-      "triage": 300, "dm_query": 300, "intent": 400, "ruling": 500,
+      "triage": 300, "dm_query": 300, "player_interpreter": 400, "verdict": 500,
       "evaluate": 600, "narrate": 800,
       "micro_context_update": 800, "macro_narrative_update": 500
     }
@@ -150,7 +150,7 @@
     "output_cost": 30.00,
     "capabilities": { "reasoning_model": false, "supports_temperature": true },
     "default_token_budgets": {
-      "triage": 300, "dm_query": 300, "intent": 400, "ruling": 500,
+      "triage": 300, "dm_query": 300, "player_interpreter": 400, "verdict": 500,
       "evaluate": 600, "narrate": 800,
       "micro_context_update": 800, "macro_narrative_update": 500
     }
@@ -162,7 +162,7 @@
     "output_cost": 60.00,
     "capabilities": { "reasoning_model": false, "supports_temperature": true },
     "default_token_budgets": {
-      "triage": 300, "dm_query": 300, "intent": 400, "ruling": 500,
+      "triage": 300, "dm_query": 300, "player_interpreter": 400, "verdict": 500,
       "evaluate": 600, "narrate": 800,
       "micro_context_update": 800, "macro_narrative_update": 500
     }
@@ -174,7 +174,7 @@
     "output_cost": 1.50,
     "capabilities": { "reasoning_model": false, "supports_temperature": true },
     "default_token_budgets": {
-      "triage": 300, "dm_query": 300, "intent": 400, "ruling": 500,
+      "triage": 300, "dm_query": 300, "player_interpreter": 400, "verdict": 500,
       "evaluate": 600, "narrate": 800,
       "micro_context_update": 800, "macro_narrative_update": 500
     }
@@ -186,7 +186,7 @@
     "output_cost": 8.00,
     "capabilities": { "reasoning_model": true, "supports_temperature": false },
     "default_token_budgets": {
-      "triage": 1200, "dm_query": 1600, "intent": 1600, "ruling": 2000,
+      "triage": 1200, "dm_query": 1600, "player_interpreter": 1600, "verdict": 2000,
       "evaluate": 2400, "narrate": 3200,
       "micro_context_update": 3200, "macro_narrative_update": 2000
     }
@@ -198,7 +198,7 @@
     "output_cost": 4.40,
     "capabilities": { "reasoning_model": true, "supports_temperature": false },
     "default_token_budgets": {
-      "triage": 1200, "dm_query": 1600, "intent": 1600, "ruling": 2000,
+      "triage": 1200, "dm_query": 1600, "player_interpreter": 1600, "verdict": 2000,
       "evaluate": 2400, "narrate": 3200,
       "micro_context_update": 3200, "macro_narrative_update": 2000
     }
@@ -210,7 +210,7 @@
     "output_cost": 4.40,
     "capabilities": { "reasoning_model": true, "supports_temperature": false },
     "default_token_budgets": {
-      "triage": 1200, "dm_query": 1600, "intent": 1600, "ruling": 2000,
+      "triage": 1200, "dm_query": 1600, "player_interpreter": 1600, "verdict": 2000,
       "evaluate": 2400, "narrate": 3200,
       "micro_context_update": 3200, "macro_narrative_update": 2000
     }
@@ -222,7 +222,7 @@
     "output_cost": 80.00,
     "capabilities": { "reasoning_model": true, "supports_temperature": false },
     "default_token_budgets": {
-      "triage": 1200, "dm_query": 1600, "intent": 1600, "ruling": 2000,
+      "triage": 1200, "dm_query": 1600, "player_interpreter": 1600, "verdict": 2000,
       "evaluate": 2400, "narrate": 3200,
       "micro_context_update": 3200, "macro_narrative_update": 2000
     }
@@ -234,7 +234,7 @@
     "output_cost": 60.00,
     "capabilities": { "reasoning_model": true, "supports_temperature": false },
     "default_token_budgets": {
-      "triage": 1200, "dm_query": 1600, "intent": 1600, "ruling": 2000,
+      "triage": 1200, "dm_query": 1600, "player_interpreter": 1600, "verdict": 2000,
       "evaluate": 2400, "narrate": 3200,
       "micro_context_update": 3200, "macro_narrative_update": 2000
     }
@@ -246,7 +246,7 @@
     "output_cost": 600.00,
     "capabilities": { "reasoning_model": true, "supports_temperature": false },
     "default_token_budgets": {
-      "triage": 1200, "dm_query": 1600, "intent": 1600, "ruling": 2000,
+      "triage": 1200, "dm_query": 1600, "player_interpreter": 1600, "verdict": 2000,
       "evaluate": 2400, "narrate": 3200,
       "micro_context_update": 3200, "macro_narrative_update": 2000
     }
@@ -258,7 +258,7 @@
     "output_cost": 4.40,
     "capabilities": { "reasoning_model": true, "supports_temperature": false },
     "default_token_budgets": {
-      "triage": 1200, "dm_query": 1600, "intent": 1600, "ruling": 2000,
+      "triage": 1200, "dm_query": 1600, "player_interpreter": 1600, "verdict": 2000,
       "evaluate": 2400, "narrate": 3200,
       "micro_context_update": 3200, "macro_narrative_update": 2000
     }

@@ -8,7 +8,7 @@
 
 Updates the adventure's `story_summary` field, the high-level "story so
 far" that carries across the entire adventure. Only runs when the
-dispatchers flagged the action as `macro_significant`.
+beacon flagged the action as `macro_significant`.
 
 ## Input
 
@@ -36,6 +36,6 @@ run, they execute concurrently since they write to different fields.
 
 The story summary feeds into every future Narrate prompt, giving the DM
 long-term memory. But updating it on every turn would cause bloat and
-inaccuracy. The `macro_significant` flag from the dispatchers acts as a
+inaccuracy. The `macro_significant` flag from the beacon acts as a
 filter: only story-changing events (quest completion, boss defeat, plot
 revelation) trigger an update.

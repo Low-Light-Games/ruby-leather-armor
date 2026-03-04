@@ -17,7 +17,7 @@ rule interactions, writing narrative prose, deciding what's
 macro-significant, evaluating whether a context changed.
 
 **Code is better at:** rolling dice, applying HP changes, validating JSON
-schemas, routing pipeline steps, merging dispatcher results, looking up
+schemas, routing pipeline steps, merging beacon results, looking up
 stat blocks, enforcing clamping bounds.
 
 The temptation is to let the AI do everything because it *can*. Resist
@@ -77,9 +77,9 @@ receives a bloated, 13,000-character prompt doing eight things.
 **In practice:**
 - The original single-prompt DM was replaced by a 10+ step pipeline
 - Triage was split into Sanitize + Classify when both tasks degraded
-- Intent was split from InterpretationDispatcher when context routing
+- Intent was split from Beacon when context routing
   suffered
-- MechanicalEvaluation was split from Ruling when roll arbitration
+- MechanicalEvaluation was split from Verdict when roll arbitration
   conflated with roll identification
 - Context updates were decoupled from narrative so they work from
   unambiguous factual outcomes
@@ -139,7 +139,7 @@ better than a 4-second turn that miscalculates damage.
 - Truncated AI responses are hard errors, not gracefully degraded —
   partial JSON is worse than no JSON
 - NPC rolls are app-side deterministic, not AI-generated
-- The Ruling step produces structured mutations, not natural language —
+- The Verdict step produces structured mutations, not natural language —
   `{ "hp_change": -8 }` is unambiguous, "takes some damage" is not
 
 **Exception:** the Edge Pipeline deliberately trades accuracy for speed.
@@ -193,7 +193,7 @@ would see: the DM's words and the dice they need to roll.
 
 Every AI call is logged with its full request, response, parsed output,
 model used, and the AI's own reasoning. Every mutation is traceable to
-the ruling that produced it. Every plot state change records which clues
+the verdict that produced it. Every plot state change records which clues
 were discovered and why.
 
 **Why:** AI behavior is non-deterministic. When something goes wrong (and
@@ -203,7 +203,7 @@ logging, debugging AI is guesswork.
 
 **The `reasoning` field:** every AI step's JSON schema includes a
 `reasoning` field. This costs ~20-40 tokens per call (negligible) and
-provides the model's own explanation of its decision. When a ruling is
+provides the model's own explanation of its decision. When a verdict is
 wrong, the reasoning field often reveals *why* — "I assumed the player
 had Improved Grapple" is immediately actionable.
 
@@ -221,7 +221,7 @@ observe where it breaks, and split at the fault line.
   and inventory didn't fit
 - Started with combined Triage → split into Sanitize + Classify when
   both tasks suffered
-- Started with monolithic Intent → split into Intent + Dispatchers when
+- Started with monolithic Intent → split into Intent + Beacon when
   context routing failed
 - Started with synchronous HTTP → added async Sidekiq when connection
   pool exhausted
@@ -244,7 +244,7 @@ paths alive behind a toggle and let observation determine which wins.
 - Sync and async pipelines coexist (`async_pipeline` toggle)
 - Budget and Edge pipelines coexist (`pipeline_mode` toggle)
 - Code and AI guardrails coexist (`guardrail_mode` toggle)
-- All-domain and filtered dispatchers coexist (`interpreter_scope` toggle)
+- All-domain and filtered beacon modes coexist (`interpreter_scope` toggle)
 - Parallel and subjugated narration coexist (`narration_mode` toggle)
 
 This principle is a direct consequence of principles 4 and 9: if you
@@ -287,7 +287,7 @@ micro-contexts. Time is "above" the domains — it affects all of them but
 belongs to none of them.
 
 **Key decisions:**
-- TimeKeeper estimates time after Ruling (when the outcome is known), not
+- TimeKeeper estimates time after Verdict (when the outcome is known), not
   during intent (when it's still speculative)
 - Time estimation is code-first: journeys to known destinations use
   deterministic distance/speed/terrain math; combat, rest, and Take 20 use
@@ -306,11 +306,39 @@ belongs to none of them.
 
 This separation means time tracking works universally — for traversal, rest,
 crafting, waiting, Take 20, or any other passage of time — without requiring
-each domain's dispatcher to understand time mechanics.
+each domain's beacon to understand time mechanics.
 
 ---
 
-## 13. Document the why, not just the what
+## 13. Naming: whimsical for AI, functional for code
+
+Pipeline steps and modules follow a naming convention that makes their
+nature immediately obvious:
+
+**AI steps get character/persona names** — evocative, easy to remember,
+scoped to one responsibility. If you can't name it without a compound
+word, the step is probably doing too much.
+
+Current AI step names: PlayerInterpreter, Beacon, Sequencer, Verdict,
+MechanicalEvaluation, RollQualifier, CapabilityGuardrail, TimeKeeper,
+Chronicler, Narrate, Sanitize, Classify, DM Query.
+
+**Code-only steps get role/object names** — functional, clearly
+non-creative, conveying "no AI judgment here."
+
+Current code-only names: Stagehand, CoreResolver, GameClock, Harbinger,
+Mutations.
+
+**Why this matters:** when debugging a pipeline, the name tells you
+whether a step's output is deterministic (code) or probabilistic (AI).
+If the Stagehand produced wrong data, it's a code bug. If the Verdict
+produced wrong data, it's a prompt or model issue. The naming convention
+encodes this diagnostic shortcut into every conversation about the
+pipeline.
+
+---
+
+## 14. Document the why, not just the what
 
 Design documents explain the reasoning behind decisions, not just the
 decisions themselves. Every design decision in `pipeline_steps.md`

@@ -14,7 +14,7 @@ This is the text the player actually reads.
 
 | Field | Source |
 |---|---|
-| System prompt | `narrate.text.erb` bound with: story title, story context (hook + atmosphere + DM brief), story summary, formatted micro-contexts, mechanical outcome text (from Ruling, or nil), player action and intent (for non-mechanical path), pacing instructions, directed play instructions |
+| System prompt | `narrate.text.erb` bound with: story title, story context (hook + atmosphere + DM brief), story summary, formatted micro-contexts, mechanical outcome text (from Verdict, or nil), player action and intent (for non-mechanical path), pacing instructions, directed play instructions |
 | User message | The outcome text (mechanical path), or the player's action text (non-mechanical path) |
 
 ## Output (JSON)
@@ -55,7 +55,7 @@ even with a passive player.
 Narration is deliberately isolated from mechanical resolution. The model
 receives a factual outcome ("you hit for 8 damage, goblin has 4 HP
 remaining") and transforms it into prose. It does not adjudicate rules,
-determine hit/miss, or decide outcomes -- that was done in Ruling.
+determine hit/miss, or decide outcomes -- that was done in Verdict.
 
 See [Design Philosophy - Immersion preservation](../design_philosophy.md)
-and [Decision 5: Ruling before narration](../pipeline_steps.md).
+and [Decision 5: Verdict before narration](../pipeline_steps.md).

@@ -4,13 +4,13 @@
 
 The DM pipeline runs synchronously inside the HTTP request/response cycle. A single pipeline run takes 5-15 seconds (dominated by sequential and parallel OpenAI API calls) and holds a Puma thread hostage for the entire duration.
 
-The pipeline spawns parallel Ruby threads for concurrent AI calls (dispatchers, gates, output phase). Each thread needs its own ActiveRecord database connection. With the default pool of 5 and up to 7 concurrent threads, this causes `ActiveRecord::ConnectionTimeoutError` and 500 errors.
+The pipeline spawns parallel Ruby threads for concurrent AI calls (beacon, gates, output phase). Each thread needs its own ActiveRecord database connection. With the default pool of 5 and up to 7 concurrent threads, this causes `ActiveRecord::ConnectionTimeoutError` and 500 errors.
 
 We raised the pool to 12, which fixes the immediate crash but introduces a deeper scaling constraint:
 
 ```
 1 pipeline run = 1 Puma thread blocked for 5-15s
-               + up to 8 DB connections at peak (main + 6 dispatchers + 1 gate residual)
+               + up to 8 DB connections at peak (main + 6 beacon + 1 gate residual)
 
 12-thread Puma / 8 connections per pipeline = ~1.5 concurrent pipelines max
 ```
@@ -47,14 +47,14 @@ sequenceDiagram
     Puma->>Pipeline: run_prompt (blocking)
     Pipeline->>OpenAI: sanitize + classify
     OpenAI-->>Pipeline: results
-    Pipeline->>OpenAI: intent
+    Pipeline->>OpenAI: player_interpreter
     OpenAI-->>Pipeline: result
-    Pipeline->>OpenAI: 6x dispatchers
+    Pipeline->>OpenAI: 6x beacon
     Note over Pipeline,Postgres: 7 DB connections held simultaneously
     OpenAI-->>Pipeline: results
     Pipeline->>OpenAI: mech_eval + guardrail
     OpenAI-->>Pipeline: results
-    Pipeline->>OpenAI: ruling
+    Pipeline->>OpenAI: verdict
     OpenAI-->>Pipeline: result
     Pipeline->>OpenAI: narrate + context_updates
     OpenAI-->>Pipeline: results

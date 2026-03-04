@@ -1,8 +1,8 @@
-# Step 5: Ruling
+# Verdict (post-roll arbitration)
 
-**File:** `app/services/dungeon_master/steps/ruling.rb`
-**Template:** `app/services/dungeon_master/templates/ruling.text.erb`
-**Pipeline step name:** `ruling`
+**File:** `app/services/dungeon_master/steps/verdict.rb`
+**Template:** `app/services/dungeon_master/templates/verdict.text.erb`
+**Pipeline step name:** `verdict`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ that the app applies to the database.
 
 | Field | Source |
 |---|---|
-| System prompt | `ruling.text.erb` bound with: full player character block, mechanical evaluation summaries text, combined roll results (player + NPC), pending consequences, formatted micro-contexts |
-| User message | The player's intention (from Intent step) |
+| System prompt | `verdict.text.erb` bound with: full player character block, mechanical evaluation summaries text, combined roll results (player + NPC), pending consequences, formatted micro-contexts |
+| User message | The player's intention (from PlayerInterpreter step) |
 
 ## Output (JSON)
 
@@ -72,15 +72,15 @@ The `mutations` hash is applied by `DungeonMaster::Mutations#apply_mutations`:
 - **Conditions, items, spells**: logged but not yet mechanically enforced
   (future enhancement)
 
-The `outcome` text is forwarded as the `narrate_seed` to the Evaluate
-(synthesis) step.
+The `outcome` text is forwarded as the `narrate_seed` to the Stagehand
+(output orchestration) step.
 
 ## Design rationale
 
-Separating ruling from narration ensures the mechanical outcome is
+Separating verdict from narration ensures the mechanical outcome is
 determined objectively before the narrative is written. The mutations
 structure is intentionally explicit (HP changes, not "takes damage") so
 the app can apply them without interpreting natural language.
 
 See [Design Philosophy](../design_philosophy.md) (Correctness over speed)
-and [Decision 5: Ruling before narration](../pipeline_steps.md).
+and [Decision 5: Verdict before narration](../pipeline_steps.md).

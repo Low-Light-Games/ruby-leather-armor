@@ -1,15 +1,15 @@
-# Step 3: InterpretationDispatcher
+# Beacon (parallel per-domain interpretation)
 
-**File:** `app/services/dungeon_master/steps/interpretation_dispatcher.rb`
-**Template:** `app/services/dungeon_master/templates/interpretation_dispatcher.text.erb`
-**Pipeline step name:** `dispatcher`
+**File:** `app/services/dungeon_master/steps/beacon.rb`
+**Template:** `app/services/dungeon_master/templates/beacon.text.erb`
+**Pipeline step name:** `beacon`
 
 ## Purpose
 
 Parallel per-domain interpretation. Given the pure intention from the
-Intent step, each dispatcher evaluates how the action affects its domain
-(combat, traversal, social, exploration, rest, inventory). Results are
-merged by a code-based convergence step.
+PlayerInterpreter step, each domain beacon evaluates how the action
+affects its domain (combat, traversal, social, exploration, rest,
+inventory). Results are merged by a code-based convergence step.
 
 ## Domain selection
 
@@ -21,8 +21,8 @@ Controlled by `DmConfig` `interpreter_scope`:
 
 | Field | Source |
 |---|---|
-| System prompt | `interpretation_dispatcher.text.erb` bound with: domain name, domain-specific character data, domain micro-context, domain rules manifest, domain-specific instruction partial, extra context (story locations for traversal) |
-| User message | The intention string (from Intent step) |
+| System prompt | `beacon.text.erb` bound with: domain name, domain-specific character data, domain micro-context, domain rules manifest, domain-specific instruction partial, extra context (story locations for traversal) |
+| User message | The intention string (from PlayerInterpreter step) |
 
 ## Output (JSON, per domain)
 
@@ -41,28 +41,31 @@ Controlled by `DmConfig` `interpreter_scope`:
 
 ## Convergence (code-only)
 
-`converge_dispatchers` merges all domain results into a unified intent hash:
+`converge_beacons` merges all domain results into a unified intent hash:
 
 - `affected_contexts`: domains where `affected == true`
 - `needs_mechanics`: any affected domain needs mechanics
 - `macro_significant`: any domain flagged it
 - `rules_needed`: union of all affected domains' rules
 - `primary_context`: the Classify category if it's affected, otherwise the first affected domain
-- `destination`: from traversal dispatcher (used by TimeKeeper for journey distance)
+- `destination`: from traversal beacon (used by TimeKeeper for journey distance)
 - `plot_relevant`: determined by `determine_plot_relevance` (checks for undiscovered clues and story NPCs)
 
 ## Error handling
 
-Individual dispatcher failures are non-fatal. A failed dispatcher returns
+Individual beacon failures are non-fatal. A failed beacon returns
 `affected: false`, ensuring the pipeline can continue with the remaining
 domains. The error is logged.
 
 ## Design rationale
 
-The dispatcher pattern gives each domain focused attention. A combat
-dispatcher can reason about AoO triggers without being distracted by
+The beacon pattern gives each domain focused attention. A combat
+beacon can reason about AoO triggers without being distracted by
 traversal movement rules. Running them in parallel means wall-clock time
 equals the slowest single domain, not the sum of all domains.
 
+The name "Beacon" conveys that the step signals all domains simultaneously
+(see naming convention in `docs/design_philosophy.md`).
+
 See [Design Philosophy - Prompt isolation](../design_philosophy.md) and
-[Decision 25: InterpretationDispatcher](../pipeline_steps.md).
+[Decision 25: Beacon](../pipeline_steps.md).

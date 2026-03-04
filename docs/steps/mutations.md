@@ -4,11 +4,11 @@
 
 ## Purpose
 
-Handles all non-AI state changes between the Ruling and Narrate steps.
+Handles all non-AI state changes between the Verdict and Narrate steps.
 
 ## `apply_mutations(mutations)`
 
-Applies the structured mutations hash from the Ruling step:
+Applies the structured mutations hash from the Verdict step:
 
 - **Player HP changes**: applied to the player's `CreatureSheet`,
   clamped between negative constitution (death) and max HP

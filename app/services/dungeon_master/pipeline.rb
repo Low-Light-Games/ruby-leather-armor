@@ -9,7 +9,7 @@ module DungeonMaster
   #
   # Flow:
   #   run_prompt          -> sanitize + classify (parallel) -> dm_query_flow | orchestrate_actions
-  #   orchestrate_actions -> sequencer -> [ for each action: intent -> CoreResolver.resolve ] -> output_phase
+  #   orchestrate_actions -> sequencer -> [ for each action: player_interpreter -> CoreResolver.resolve ] -> output_phase
   #   run_rolls           -> CoreResolver.finish_resolution -> continue queue if remaining -> output_phase
   #
   class Pipeline
@@ -17,15 +17,15 @@ module DungeonMaster
 
     include Steps::Triage
     include Steps::DmQuery
-    include Steps::Intent
+    include Steps::PlayerInterpreter
     include Steps::Sequencer
-    include Steps::InterpretationDispatcher
+    include Steps::Beacon
     include Steps::MechanicalEvaluation
     include Steps::RollQualifier
     include Steps::CapabilityGuardrail
-    include Steps::Ruling
+    include Steps::Verdict
     include Steps::TimeKeeper
-    include Steps::Evaluate
+    include Steps::Stagehand
     include Steps::Chronicler
     include Steps::Narrate
     include Steps::ContextUpdate
@@ -114,7 +114,7 @@ module DungeonMaster
       actions.each_with_index do |action_text, idx|
         set_action_label(idx, total)
 
-        intention = run_intent(action_text)
+        intention = run_player_interpreter(action_text)
         result = resolve(intention, category)
 
         case result[:status]
@@ -158,7 +158,7 @@ module DungeonMaster
         action_idx = base_idx + idx
         set_action_label(action_idx, total_original)
 
-        intention = run_intent(action_text)
+        intention = run_player_interpreter(action_text)
         result = resolve(intention, category)
 
         case result[:status]
@@ -204,8 +204,8 @@ module DungeonMaster
       dm_brief = nil
       last_resolved = results.last
       if merged_intent[:plot_relevant]
-        ruling_outcome = last_resolved[:narrate_seed]
-        plot_result = resolve_plot(merged_intent, ruling_outcome: ruling_outcome)
+        verdict_outcome = last_resolved[:narrate_seed]
+        plot_result = resolve_plot(merged_intent, verdict_outcome: verdict_outcome)
         dm_brief = plot_result&.dig(:dm_brief)
       end
 
@@ -233,7 +233,7 @@ module DungeonMaster
         macro_significant: intents.any? { |i| i[:macro_significant] },
         plot_relevant: intents.any? { |i| i[:plot_relevant] },
         primary_context: intents.last[:primary_context],
-        dispatcher_results: intents.last[:dispatcher_results]
+        beacon_results: intents.last[:beacon_results]
       }
     end
 
@@ -314,11 +314,11 @@ module DungeonMaster
     end
 
     # Runs the AI Chronicler if available, otherwise falls back to heuristic DC matching.
-    def resolve_plot(intent, ruling_outcome: nil)
+    def resolve_plot(intent, verdict_outcome: nil)
       if should_run_chronicler?
-        run_chronicler(intent, ruling_outcome: ruling_outcome)
+        run_chronicler(intent, verdict_outcome: verdict_outcome)
       elsif has_structured_story_data?
-        heuristic_chronicler(intent, ruling_outcome: ruling_outcome)
+        heuristic_chronicler(intent, verdict_outcome: verdict_outcome)
       end
     end
 
@@ -331,7 +331,7 @@ module DungeonMaster
       "magic" => "exploration", "combat" => "combat", "automatic" => nil,
     }.freeze
 
-    def heuristic_chronicler(intent, ruling_outcome: nil)
+    def heuristic_chronicler(intent, verdict_outcome: nil)
       plot_state = @adventure.plot_state || {}
       discovered_ids = plot_state["discovered_clues"] || []
       current_loc_id = @adventure.current_location_id

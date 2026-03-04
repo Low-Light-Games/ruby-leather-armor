@@ -11,7 +11,7 @@ Answers out-of-character player questions ("What are my known spells?",
 advancing the scene or triggering any mechanics.
 
 This is a **fast path**: when Classify categorizes the input as `dm_query`,
-the pipeline skips Intent, dispatchers, evaluation, ruling, narration, and
+the pipeline skips Intent, beacon, evaluation, verdict, narration, and
 context updates entirely. The question goes in, an answer comes out,
 nothing changes.
 

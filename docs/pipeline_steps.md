@@ -29,12 +29,12 @@ problems:
 - **Accuracy degrades with task count.** When a model handles
   sanitization, classification, rules lookup, mechanical resolution,
   narrative writing, and context updates simultaneously, each sub-task
-  gets less attention. Ruling accuracy suffered most — the model would
+  gets less attention. Verdict accuracy suffered most — the model would
   skip attack-of-opportunity triggers or misapply grapple rules because
   it was also thinking about prose quality.
 - **Token budgets are impossible to tune.** A single call needs a budget
   large enough for the worst case (long narration + complex multi-context
-  ruling), wasting tokens on simple turns.
+  verdict), wasting tokens on simple turns.
 - **Debugging is opaque.** When the output is wrong, you can't tell
   which sub-task failed. With separate calls, each step has its own log
   entry, reasoning field, and model attribution.
@@ -112,9 +112,9 @@ data), we guarantee that NPC combat is mechanically honest. The
 MechanicalEvaluation step decides *what* the NPC does and *what modifier*
 applies; the app decides *what the die shows*.
 
-**Trade-off accepted:** the Ruling step receives NPC results as text
+**Trade-off accepted:** the Verdict step receives NPC results as text
 ("Goblin A rolled 14 + 3 = 17 vs AC 15: HIT") rather than structured
-data. This is slightly more work to parse but keeps the ruling prompt
+data. This is slightly more work to parse but keeps the verdict prompt
 human-readable.
 
 **Player rolls are different:** the player submits their own roll results
@@ -146,11 +146,11 @@ less common than single-context ones, and the accuracy improvement is
 dramatic.
 
 **Alternative rejected:** forking the entire pipeline per context was
-considered but would have duplicated ruling, narration, and context
+considered but would have duplicated verdict, narration, and context
 updates — far more expensive and harder to merge into a coherent
 narrative.
 
-### 5. Ruling before narration (mechanics-first ordering)
+### 5. Verdict before narration (mechanics-first ordering)
 
 **Decision:** determine the factual mechanical outcome before writing
 any narrative.
@@ -161,9 +161,9 @@ bias corrupts mechanical accuracy. The model might write a dramatic
 goblin at 3 HP — or vice versa, produce correct mutations but a
 narrative that contradicts them.
 
-By ruling first, the Narrate step receives a factual outcome it must
-faithfully narrate. It cannot contradict the mechanics because it didn't
-determine them.
+By running Verdict first, the Narrate step receives a factual outcome it
+must faithfully narrate. It cannot contradict the mechanics because it
+didn't determine them.
 
 **Trade-off accepted:** two AI calls where one might suffice. The cost
 is justified by correctness — mechanical errors in a Pathfinder game
@@ -172,7 +172,7 @@ player's trust in the DM.
 
 ### 6. Structured mutations instead of natural language
 
-**Decision:** the Ruling step outputs explicit structured mutations
+**Decision:** the Verdict step outputs explicit structured mutations
 (`{ "hp_change": -8 }`) rather than prose ("the goblin takes 8 damage").
 
 **Why:** the app must apply these changes to the database. If the AI
@@ -181,14 +181,14 @@ produces natural language, the app must parse it — "takes 8 damage",
 thing but require NLP to extract. Structured JSON is unambiguous and
 directly actionable.
 
-This also makes mutations auditable. Every `AiLog` entry for a `ruling`
+This also makes mutations auditable. Every `AiLog` entry for a `verdict`
 step contains the exact mutations that were applied, traceable back to
 the rolls and evaluations that produced them.
 
 ### 7. Rules fetched by slug from a YAML index
 
 **Decision:** rules are stored as YAML files keyed by slug. The
-InterpretationDispatcher step requests rules by slug, and the app
+Beacon step requests rules by slug, and the app
 fetches the corresponding text to inject into the MechanicalEvaluation
 prompt.
 
@@ -204,10 +204,10 @@ description) and having it request what it needs, we ensure:
 - The rules can be updated or corrected without retraining
 - We can audit which rules were used for each evaluation
 
-**Trade-off accepted:** the dispatcher step must correctly identify which
+**Trade-off accepted:** the beacon step must correctly identify which
 rules are relevant. If it misses a rule, the MechanicalEvaluation step
 won't have it. This is mitigated by providing domain-scoped rule
-manifests — each dispatcher sees rules relevant to its domain.
+manifests — each beacon sees rules relevant to its domain.
 
 ### 8. OGL/SRD-compliant bestiary
 
@@ -284,7 +284,7 @@ to understand any single part.
 
 The separation means:
 - `Pipeline#run_prompt` reads like a linear script: sanitize + classify,
-  then branch, then intent, then dispatchers, then mechanics gate, etc.
+  then branch, then player_interpreter, then beacon, then mechanics gate, etc.
   A developer can read the full flow in ~40 lines.
 - The service's `process_player_prompt` is equally clear: persist the
   player message, run the pipeline, map the result to messages, catch
@@ -314,7 +314,7 @@ cheap steps or under-serving expensive ones. Per-step selection lets you
 put the budget where it matters.
 
 This also future-proofs for fine-tuning: steps with consistent schemas
-(sanitize, classify, intent, dispatchers, context updates) are strong
+(sanitize, classify, player_interpreter, beacon, context updates) are strong
 fine-tuning candidates. You can fine-tune a cheap model on logged examples
 and slot it in for one step without affecting others.
 
@@ -327,7 +327,7 @@ sensible defaults.
 **Decision:** every pipeline step's JSON schema includes a `reasoning`
 field that the model must populate.
 
-**Why:** when something goes wrong (incorrect evaluation, bad ruling,
+**Why:** when something goes wrong (incorrect evaluation, bad verdict,
 stale context), the `reasoning` field in `AiLog` reveals *why* the model
 made that decision. Without it, debugging requires reconstructing the
 model's thought process from the input/output alone.
@@ -348,7 +348,7 @@ error — even if the response contains partial content.
 **Why:** truncated JSON is worse than no JSON. A partial response might
 parse successfully but with missing fields, leading to:
 - An evaluation with `player_rolls` cut off mid-array
-- A ruling with mutations missing NPC entries
+- A verdict with mutations missing NPC entries
 - A narration that stops mid-sentence
 
 These partial results would propagate through the pipeline and produce
@@ -413,13 +413,13 @@ round-trips of latency per turn.
 pool pressure. Mitigated by wrapping all `Thread.new` blocks with
 `ActiveRecord::Base.connection_pool.with_connection` to ensure proper
 checkout and return. The connection pool is sized at 12 to accommodate
-peak parallelism (~8 concurrent connections during dispatcher fan-out).
+peak parallelism (~8 concurrent connections during beacon fan-out).
 
 ### 18. Selective context updates (affected + active only)
 
 **Decision:** the Micro Context Update step only includes *relevant*
 contexts in its prompt — those flagged as `affected_contexts` by the
-dispatchers plus any that already contain data (active contexts). Contexts
+beacon plus any that already contain data (active contexts). Contexts
 that are both unaffected and empty are omitted entirely.
 
 **Why:** with six context domains, sending all six to the model on every
@@ -468,7 +468,7 @@ across three steps:
    the model to estimate travel time and distance using Pathfinder 1e
    overland movement rules (speed, mount, terrain, forced march). The
    estimate appears in the `mechanical_summary`.
-2. **Ruling**: a `mutations.travel` object
+2. **Verdict**: a `mutations.travel` object
    (`{ hours_traveled, distance_covered, new_location }`) captures the
    mechanical travel outcome alongside HP/condition mutations.
 3. **Context Update**: the prompt explicitly instructs the model to update
@@ -478,7 +478,7 @@ across three steps:
 
 **Why:** without this chain, travel was a "gap" in the pipeline. The
 evaluation step asked for Constitution checks (forced march fatigue) but
-never computed how far the player traveled. The ruling step processed the
+never computed how far the player traveled. The verdict step processed the
 roll but left `position: null`. The Narrate step might creatively advance
 the player, but the Context Update step would see no mechanical signal and
 carry forward the old location unchanged. This created a state where the
@@ -508,9 +508,9 @@ player trying to accomplish?" not "does this involve spellcasting?"
 ### 21. Domain-specific instruction partials
 
 **Decision:** both the MechanicalEvaluation step and the
-InterpretationDispatcher load domain-specific instructions from separate
+Beacon load domain-specific instructions from separate
 partial files (`templates/mechanical_evaluation/_combat.text.erb`,
-`templates/dispatcher/_traversal.text.erb`, etc.) rather than inlining
+`templates/beacon/_traversal.text.erb`, etc.) rather than inlining
 all domain logic in a single template with `if/elsif` blocks.
 
 **How:** `PromptRenderer.render_partial("mechanical_evaluation/_#{domain}")`
@@ -579,21 +579,21 @@ Sanitize can kill the pipeline if `danger_score >= sanitization_threshold`
 (configurable in DmConfig). This gate fires before any expensive
 downstream calls.
 
-### 25. InterpretationDispatcher (parallel per-domain interpretation)
+### 25. Beacon (parallel per-domain interpretation)
 
-**Decision:** after the Intent step produces a pure intention, dispatch
+**Decision:** after the PlayerInterpreter step produces a pure intention, dispatch
 parallel per-domain interpreters that each evaluate how the action affects
 their domain.
 
-**Why:** asking a single Intent step to handle pure intention extraction
+**Why:** asking a single PlayerInterpreter step to handle pure intention extraction
 AND domain-specific rule interpretation AND context routing overloaded
-the prompt. The Intent step frequently misidentified affected contexts
+the prompt. The PlayerInterpreter step frequently misidentified affected contexts
 when it was also trying to determine mechanics. By separating "what does
-the player want?" (Intent) from "how does that affect combat/traversal/
-social?" (dispatchers), each task gets focused attention.
+the player want?" (PlayerInterpreter) from "how does that affect combat/traversal/
+social?" (beacon), each task gets focused attention.
 
-The dispatcher model is configurable via `interpreter_scope`:
-- `"all"` (default): every domain gets a dispatcher call, erring on the
+The beacon model is configurable via `interpreter_scope`:
+- `"all"` (default): every domain gets a beacon call, erring on the
   side of caution
 - `"filtered"`: only the classified domain + active contexts get calls,
   reducing cost at the risk of missing cross-domain effects
@@ -619,18 +619,18 @@ Two modes are available via `guardrail_mode`:
 Both modes fail open on errors (return `allowed: true`) to avoid blocking
 the player on a validation failure.
 
-### 27. Evaluate as code-only synthesis step
+### 27. Stagehand as code-only synthesis step
 
-**Decision:** make the Evaluate step a pure code step with no AI call.
-It sits between Ruling and the output phase (Narrate + ContextUpdate),
+**Decision:** make the Stagehand step a pure code step with no AI call.
+It sits between Verdict and the output phase (Narrate + ContextUpdate),
 packaging results and dispatching the output steps.
 
-**Why:** the original Evaluate step was an AI call that duplicated work
-already done by the Ruling step. Both received roll results and produced
-outcomes — the only difference was that Evaluate was supposed to be
-"factual" and Ruling was "mechanical." In practice, the model often
-contradicted itself between the two. By making Evaluate a code-only
-routing layer, we eliminate the redundancy and guarantee consistency.
+**Why:** the original step was an AI call that duplicated work already
+done by the Verdict step. Both received roll results and produced
+outcomes — the only difference was one was "factual" and one was
+"mechanical." In practice, the model often contradicted itself. By
+making Stagehand a code-only routing layer, we eliminate the redundancy
+and guarantee consistency.
 
 ### 28. Narration mode toggle (parallel vs. subjugated)
 
@@ -640,7 +640,7 @@ routing layer, we eliminate the redundancy and guarantee consistency.
   fresh DB state
 
 **Why:** in parallel mode, Narrate and ContextUpdate don't see each
-other's output. This is usually fine — Narrate works from the ruling
+other's output. This is usually fine — Narrate works from the verdict
 outcome, and ContextUpdate works from the factual "what happened" seed.
 However, in subjugated mode, Narrate can read the freshly updated
 contexts, which may produce more consistent results at the cost of
@@ -706,7 +706,7 @@ The pipeline has **two entry points**:
 **Action queuing:** when `action_queue` is enabled, the Sequencer step
 detects compound player inputs ("I rest, then head to the village") and
 splits them into an ordered queue. Each action is resolved sequentially
-by the CoreResolver (dispatchers → mechanics → ruling → time_keeper).
+by the CoreResolver (beacon → mechanics → verdict → time_keeper).
 Encounters break the loop; roll requests pause it with remaining actions
 stored in metadata for resumption.
 
@@ -741,7 +741,7 @@ run_prompt(player_input)
          |
          v  FOR EACH ACTION:
 +---------------------------------+
-| INTENT (pure restatement)       |
+| PLAYER_INTERPRETER (pure restatement) |
 +--------------+------------------+
                |
                v
@@ -751,7 +751,7 @@ run_prompt(player_input)
                |
                v
 +------------------------------------+
-| INTERPRETATION DISPATCHERS         |
+| BEACON                             |
 | (parallel: one per domain)         |
 | +-----++-----++-----++-----+ ...  |
 | |cbt  ||trav ||soc  ||expl |      |
@@ -835,20 +835,20 @@ Each step is documented in detail in its own file.
 | 1a | **Sanitize** | AI (parallel with 1b) | [steps/sanitize.md](steps/sanitize.md) |
 | 1b | **Classify** | AI (parallel with 1a) | [steps/classify.md](steps/classify.md) |
 | 1c | **DM Query** | AI (fast path) | [steps/dm_query.md](steps/dm_query.md) |
-| 1d | **Sequencer** | AI (before Intent, toggled) | [steps/sequencer.md](steps/sequencer.md) |
+| 1d | **Sequencer** | AI (before PlayerInterpreter, toggled) | [steps/sequencer.md](steps/sequencer.md) |
 | -- | **CoreResolver** (module) | Code orchestration | [modules/core_resolver.md](modules/core_resolver.md) |
-| 2 | **Intent** | AI (per action in queue) | [steps/intent.md](steps/intent.md) |
-| 3 | **InterpretationDispatcher** | AI (parallel per domain) | [steps/interpretation_dispatcher.md](steps/interpretation_dispatcher.md) |
+| 2 | **PlayerInterpreter** | AI (per action in queue) | [steps/player_interpreter.md](steps/player_interpreter.md) |
+| 3 | **Beacon** | AI (parallel per domain) | [steps/beacon.md](steps/beacon.md) |
 | 4a | **MechanicalEvaluation** | AI (loop, parallel with 4b) | [steps/mechanical_evaluation.md](steps/mechanical_evaluation.md) |
 | 4c | **RollQualifier** | AI (per domain, after 4a when rolls exist) | [steps/roll_qualifier.md](steps/roll_qualifier.md) |
 | 4b | **CapabilityGuardrail** | Code or AI (parallel with 4a) | [steps/capability_guardrail.md](steps/capability_guardrail.md) |
 | -- | **NPC Roll Resolution** | App-side | [steps/npc_rolls.md](steps/npc_rolls.md) |
-| 5 | **Ruling** | AI | [steps/ruling.md](steps/ruling.md) |
+| 5 | **Verdict** | AI | [steps/verdict.md](steps/verdict.md) |
 | 5b | **TimeKeeper** | Code-first, AI fallback | [steps/time_keeper.md](steps/time_keeper.md) |
 | -- | **Harbinger** (utility) | Code-only (called by TimeKeeper) | [steps/harbinger.md](steps/harbinger.md) |
 | -- | **GameClock** (utility) | Code-only (called by TimeKeeper) | [utilities/game_clock.md](utilities/game_clock.md) |
 | 5d | **Chronicler** | AI (conditional) | [steps/chronicler.md](steps/chronicler.md) |
-| 6 | **Evaluate** | Code-only | [steps/evaluate.md](steps/evaluate.md) |
+| 6 | **Stagehand** | Code-only | [steps/stagehand.md](steps/stagehand.md) |
 | 7 | **Narrate** | AI | [steps/narrate.md](steps/narrate.md) |
 | 8a | **Micro Context Update** | AI (parallel with 8b) | [steps/micro_context_update.md](steps/micro_context_update.md) |
 | 8b | **Macro Narrative Update** | AI (conditional, parallel with 8a) | [steps/macro_narrative_update.md](steps/macro_narrative_update.md) |
@@ -865,14 +865,14 @@ All AI steps follow the same error handling pattern:
    returns `finish_reason: length`. This is a hard error for critical
    steps -- even truncated non-empty responses are rejected. The error is
    logged with `status: "token_budget_exceeded"` and re-raised (for
-   sanitize, classify, intent, mechanical evaluation, ruling, narrate) or
+   sanitize, classify, player_interpreter, mechanical evaluation, verdict, narrate) or
    swallowed with an empty result (for context updates and capability
    guardrail, which are non-critical).
 
 2. **`AiError`**: covers API unreachability, malformed responses, and
    other failures. Same re-raise/swallow pattern as above.
 
-3. **Dispatcher resilience**: individual InterpretationDispatcher failures
+3. **Beacon resilience**: individual Beacon failures
    return `{ affected: false }` for that domain, allowing the pipeline to
    continue with the remaining domains.
 
@@ -896,7 +896,7 @@ Every AI call produces an `AiLog` record containing:
 
 | Field | Description |
 |---|---|
-| `step` | Pipeline step name (sanitize, classify, intent, dispatcher, mechanical_evaluation, capability_guardrail, ruling, chronicler, narrate, micro_context_update, macro_narrative_update, edge_pipeline) |
+| `step` | Pipeline step name (sanitize, classify, player_interpreter, beacon, mechanical_evaluation, capability_guardrail, verdict, chronicler, narrate, micro_context_update, macro_narrative_update, edge_pipeline) |
 | `prompt_summary` | Truncated description of what was asked |
 | `raw_response` | The complete API response |
 | `parsed_response` | The parsed JSON |
@@ -940,11 +940,11 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `sanitize` | 300 |
 | `classify` | 200 |
 | `dm_query` | 300 |
-| `intent` | 200 |
-| `dispatcher` | 400 |
+| `player_interpreter` | 200 |
+| `beacon` | 400 |
 | `mechanical_evaluation` | 500 |
 | `capability_guardrail` | 300 |
-| `ruling` | 600 |
+| `verdict` | 600 |
 | `time_keeper` | 300 |
 | `chronicler` | 500 |
 | `narrate` | 800 |

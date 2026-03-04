@@ -2,35 +2,35 @@
 
 module DungeonMaster
   module Steps
-    # Pipeline Step: Pure intent interpretation.
+    # Pipeline Step: PlayerInterpreter (pure intent interpretation).
     # Restates what the player wants to do — nothing else.
     # No context classification, no mechanics decision, no rules.
-    module Intent
+    module PlayerInterpreter
       private
 
-      def run_intent(sanitized_input)
+      def run_player_interpreter(sanitized_input)
         raw = nil
-        prompt_summary = "Intent: \"#{@log.truncate(sanitized_input)}\""
-        system_prompt = PromptRenderer.render("intent")
+        prompt_summary = "PlayerInterpreter: \"#{@log.truncate(sanitized_input)}\""
+        system_prompt = PromptRenderer.render("player_interpreter")
         request_body = { system_prompt: system_prompt, user_message: sanitized_input }
 
         raw = @ai.chat(system_prompt: system_prompt, user_message: sanitized_input,
-                        max_tokens: @config.token_budget_for("intent"), step_name: "intent",
-                        model: @config.model_for("intent"))
+                        max_tokens: @config.token_budget_for("player_interpreter"), step_name: "player_interpreter",
+                        model: @config.model_for("player_interpreter"))
         parsed = @ai.parse_json(raw)
-        @log.ai_log!("intent", prompt_summary, raw, parsed,
+        @log.ai_log!("player_interpreter", prompt_summary, raw, parsed,
                      parse_status: @ai.last_parse_status, request_body: request_body,
                      model_used: @ai.last_model_used)
 
         parsed["intention"] || sanitized_input
       rescue TokenBudgetExceededError => e
-        @log.ai_log_error!("intent", prompt_summary, e,
+        @log.ai_log_error!("player_interpreter", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, status: "token_budget_exceeded",
                            model_used: @ai.last_model_used)
         raise
       rescue AiError => e
-        @log.ai_log_error!("intent", prompt_summary, e,
+        @log.ai_log_error!("player_interpreter", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, model_used: @ai.last_model_used)
         raise

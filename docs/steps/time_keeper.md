@@ -2,7 +2,7 @@
 
 Pipeline step that estimates in-game time for any player action and orchestrates
 time-related utilities (Harbinger encounter checks, GameClock advancement).
-Runs after Ruling, before the output phase.
+Runs after Verdict, before the output phase.
 
 ---
 
@@ -70,7 +70,7 @@ short rest = 1 hour. No AI call.
 
 ### 5. Take 20 (code shortcut)
 
-Detected from ruling outcome or intention. ~40 minutes (0.67 hours)
+Detected from verdict outcome or intention. ~40 minutes (0.67 hours)
 per PF1e rules. No AI call.
 
 ### 6. AI fallback (everything else)

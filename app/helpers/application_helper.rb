@@ -25,10 +25,10 @@ module ApplicationHelper
 
   def ai_log_type_badge_class(call_type)
     case call_type
-    when "triage", "sanitize", "classify", "dispatcher", "capability_guardrail", "chronicler" then "type-triage"
-    when "sequencer", "intent"   then "type-intent"
+    when "triage", "sanitize", "classify", "dispatcher", "beacon", "capability_guardrail", "chronicler" then "type-triage"
+    when "sequencer", "intent", "player_interpreter" then "type-intent"
     when "mechanical_evaluation", "roll_qualifier" then "type-ruling"
-    when "ruling"                then "type-evaluate"
+    when "ruling", "verdict"     then "type-evaluate"
     when "time_keeper"           then "type-ctx"
     when "narrate"               then "type-narrate"
     when "dm_query"              then "type-dm-query"

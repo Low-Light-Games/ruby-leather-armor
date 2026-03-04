@@ -163,7 +163,7 @@ is pure waste.
 
 **What it does:** detects compound player inputs that describe multiple
 sequential actions ("I rest, then head to the village") and splits them
-into an ordered queue. Runs before Intent when `action_queue` is enabled.
+into an ordered queue. Runs before PlayerInterpreter when `action_queue` is enabled.
 
 **Cognitive demand:** low. Classification + extraction of temporal
 sequences. Must distinguish simultaneous actions ("sneak and pick the
@@ -179,13 +179,13 @@ lock") from sequential ones ("rest, then travel").
 
 ---
 
-### 3. Intent
+### 3. PlayerInterpreter
 
 **What it does:** pure intention extraction. Given the player input and
 current micro-contexts, determines the player's intention, which contexts
 are affected, whether mechanics are needed, and whether the action is
 macro-significant. Does **not** interpret rules or dispatch domain logic —
-that is handled by InterpretationDispatcher. Output is a small structured
+that is handled by Beacon. Output is a small structured
 JSON blob.
 
 **Cognitive demand:** low to moderate. Must understand multi-context actions
@@ -204,7 +204,7 @@ generative.
 
 ---
 
-### 4. InterpretationDispatcher
+### 4. Beacon
 
 **What it does:** dispatches domain-specific interpretation in parallel.
 One interpreter fires per affected context (e.g., `combat_interpreter`,
@@ -231,10 +231,10 @@ misjudge rule interactions within their domain.
 **Avoid:**
 
 - Full and pro models: you may run 2-6 interpreters per turn; full-tier
-pricing multiplied by dispatcher count gets expensive fast.
+pricing multiplied by beacon count gets expensive fast.
 - gpt-3.5-turbo: struggles with structured domain output.
 
-**Token budget:** 400 (non-reasoning) / 1600 (reasoning) per dispatcher.
+**Token budget:** 400 (non-reasoning) / 1600 (reasoning) per beacon.
 Total cost scales with the number of dispatched domains.
 
 ---
@@ -338,7 +338,7 @@ provides better judgment.
 
 ---
 
-### 7. Ruling
+### 7. Verdict
 
 **What it does:** post-roll arbitration. Given roll results (player and NPC),
 the mechanical evaluation, and the player's character sheet, determines the
@@ -400,9 +400,9 @@ from chain-of-thought — it's a simple lookup.
 
 ---
 
-### 8. Evaluate (code-only)
+### 8. Stagehand (code-only)
 
-**What it does:** a code-only synthesis and routing step. Takes the ruling
+**What it does:** a code-only synthesis and routing step. Takes the verdict
 outcome, generates a `narrative_seed` and `context_update_directives`, and
 dispatches the output phase (Narrate + ContextUpdate). **No AI call — no
 model selection needed.** Included here for pipeline completeness.
@@ -467,7 +467,7 @@ largest budget because narrative output is the longest.
 **What it does:** updates the micro-context JSONB fields on the Adventure
 (traversal, combat, social, exploration, rest, inventory). Only *relevant*
 contexts are included in the prompt — those flagged as affected by the
-Intent step plus any that already have data. Receives the factual outcome
+PlayerInterpreter step plus any that already have data. Receives the factual outcome
 summary and mutations (not the narrative text), decides what changed, and
 outputs the updated context state as structured JSON. Runs in parallel
 with Narrate (in parallel narration mode) or before Narrate (in
@@ -503,7 +503,7 @@ update is wasted compute.
 ### 11. Macro Narrative Update
 
 **What it does:** conditionally updates the adventure's `story_summary`
-field. Only fires when the intent step flagged the action as
+field. Only fires when the player_interpreter step flagged the action as
 `macro_significant`. Reads the current narrative and summary, and decides
 whether and how to update the high-level story arc.
 
@@ -556,7 +556,7 @@ beat. Fires after the output phase.
 ### Edge Pipeline (alternative mode)
 
 **What it does:** a single monolithic AI call that handles the entire
-pipeline — sanitization, intent, capability checks, mechanics (with
+pipeline — sanitization, player_interpreter, capability checks, mechanics (with
 internally simulated dice rolls), mutations, narration, and context updates.
 Activated via `pipeline_mode: "edge"` in DmConfig.
 
@@ -590,11 +590,11 @@ one response.
 ## Cost Profiles
 
 The following estimates assume one player turn = sanitize + classify
-(parallel) + intent + 2 interpretation dispatchers (average) +
+(parallel) + player_interpreter + 2 beacon calls (average) +
 capability guardrail + mechanical evaluation (parallel with guardrail) +
 roll qualifier (when rolls exist, ~50% of turns) +
-ruling + narrate + micro context update + macro narrative update (~20%
-of the time). Evaluate is code-only and has no AI cost.
+verdict + narrate + micro context update + macro narrative update (~20%
+of the time). Stagehand is code-only and has no AI cost.
 
 ### Budget build (minimize cost)
 
@@ -604,12 +604,12 @@ of the time). Evaluate is code-only and has no AI cost.
 | Sanitize         | gpt-4.1-nano | ~$0.0001         |
 | Classify         | gpt-4.1-nano | ~$0.0001         |
 | DM Query         | gpt-4.1-nano | ~$0.0001         |
-| Intent           | gpt-4.1-nano | ~$0.0002         |
-| Dispatchers (×2) | gpt-4o-mini  | ~$0.0004         |
+| PlayerInterpreter | gpt-4.1-nano | ~$0.0002         |
+| Beacon (×2) | gpt-4o-mini  | ~$0.0004         |
 | Cap. Guardrail   | gpt-4.1-nano | ~$0.0001         |
 | Mech. Eval       | gpt-4o-mini  | ~$0.0005         |
 | Roll Qualifier   | gpt-4.1-nano | ~$0.0001         |
-| Ruling           | gpt-4o-mini  | ~$0.0005         |
+| Verdict          | gpt-4o-mini  | ~$0.0005         |
 | TimeKeeper       | gpt-4.1-nano | ~$0.0001         |
 | Narrate          | gpt-4.1-mini | ~$0.001          |
 | Micro Ctx        | gpt-4.1-nano | ~$0.0002         |
@@ -629,12 +629,12 @@ narrative will be competent but not immersive.
 | Sanitize         | gpt-5-nano  | ~$0.0001         |
 | Classify         | gpt-5-nano  | ~$0.0001         |
 | DM Query         | gpt-5-nano  | ~$0.0001         |
-| Intent           | gpt-5-nano  | ~$0.0002         |
-| Dispatchers (×2) | gpt-4o-mini | ~$0.001          |
+| PlayerInterpreter | gpt-5-nano  | ~$0.0002         |
+| Beacon (×2) | gpt-4o-mini | ~$0.001          |
 | Cap. Guardrail   | gpt-4o-mini | ~$0.0003         |
 | Mech. Eval       | o4-mini     | ~$0.005          |
 | Roll Qualifier   | gpt-4o-mini | ~$0.0003         |
-| Ruling           | o4-mini     | ~$0.005          |
+| Verdict          | o4-mini     | ~$0.005          |
 | TimeKeeper       | gpt-5-nano  | ~$0.0001         |
 | Narrate          | gpt-4.1     | ~$0.008          |
 | Micro Ctx        | gpt-4o-mini | ~$0.0005         |
@@ -654,12 +654,12 @@ and the two mechanical steps.
 | Sanitize         | gpt-4o-mini  | ~$0.0002         |
 | Classify         | gpt-4o-mini  | ~$0.0002         |
 | DM Query         | gpt-4.1-mini | ~$0.0005         |
-| Intent           | gpt-4.1-mini | ~$0.001          |
-| Dispatchers (×2) | gpt-4.1-mini | ~$0.002          |
+| PlayerInterpreter | gpt-4.1-mini | ~$0.001          |
+| Beacon (×2) | gpt-4.1-mini | ~$0.002          |
 | Cap. Guardrail   | gpt-4.1-mini | ~$0.0005         |
 | Mech. Eval       | o3           | ~$0.01           |
 | Roll Qualifier   | gpt-4.1-mini | ~$0.0005         |
-| Ruling           | o3           | ~$0.01           |
+| Verdict          | o3           | ~$0.01           |
 | TimeKeeper       | gpt-4o-mini  | ~$0.0002         |
 | Narrate          | gpt-5        | ~$0.01           |
 | Micro Ctx        | gpt-4.1-mini | ~$0.001          |
@@ -668,7 +668,7 @@ and the two mechanical steps.
 
 
 Quality trade-off: best available accuracy and prose. The additional
-dispatcher and guardrail steps add marginal cost but meaningfully improve
+beacon and guardrail steps add marginal cost but meaningfully improve
 rule accuracy and capability validation.
 
 ### Edge build (single-call alternative)
@@ -703,13 +703,13 @@ ignore the temperature setting. This matters most for the Narrate step,
 where temperature directly controls creative variance. If you use a
 reasoning model for narration, you lose this control.
 
-### Interpretation dispatchers scale with affected contexts
+### Beacon scales with affected contexts
 
-InterpretationDispatcher fires one AI call per affected domain context.
+Beacon fires one AI call per affected domain context.
 A multi-context action ("I leap into the sacred lake to escape my
-attackers") may produce 2-3 parallel dispatcher calls. Factor this into
+attackers") may produce 2-3 parallel beacon calls. Factor this into
 cost estimates — the more contexts touched, the higher the per-turn
-dispatcher cost.
+beacon cost.
 
 ### Context updates compound over time
 
@@ -737,8 +737,8 @@ is more important than accuracy.
 ### Fine-tuning potential
 
 Steps that produce structured JSON with consistent schemas (sanitize,
-classify, intent, interpretation dispatchers, mechanical evaluation,
-ruling, context updates) are strong candidates for fine-tuning on a
+classify, player_interpreter, beacon, mechanical evaluation,
+verdict, context updates) are strong candidates for fine-tuning on a
 cheaper base model. Over time, you can collect AiLog data, curate
 high-quality examples, and fine-tune gpt-4o-mini or gpt-4.1-nano to
 match the accuracy of larger models at a fraction of the cost. Narration
@@ -768,7 +768,7 @@ per pipeline step, and outlines what an integration would require.
 **Strengths:**
 
 - Excellent at following complex, multi-constraint instructions — directly
-relevant to the MechanicalEvaluation and Ruling steps where Pathfinder
+relevant to the MechanicalEvaluation and Verdict steps where Pathfinder
 rules must be interpreted precisely.
 - Claude models tend to produce high-quality, stylistically consistent
 prose, making them strong Narrate candidates.
@@ -794,17 +794,17 @@ use.
 | Sanitize         | Overkill  | Haiku          | Works but OpenAI nano is cheaper       |
 | Classify         | Overkill  | Haiku          | Works but OpenAI nano is cheaper       |
 | DM Query         | Good      | Haiku          | Comparable to gpt-4o-mini              |
-| Intent           | Good      | Haiku          | Reliable classification                |
-| Dispatchers      | Good      | Haiku          | Clean domain interpretation            |
+| PlayerInterpreter | Good      | Haiku          | Reliable classification                |
+| Beacon           | Good      | Haiku          | Clean domain interpretation            |
 | Cap. Guardrail   | Good      | Haiku          | Strong instruction-following           |
 | Mech. Eval       | Excellent | Sonnet         | Instruction-following shines here      |
-| Ruling           | Excellent | Sonnet         | Careful with modifiers and arithmetic  |
+| Verdict          | Excellent | Sonnet         | Careful with modifiers and arithmetic  |
 | Narrate          | Excellent | Sonnet / Opus  | Best-in-class prose at the Sonnet tier |
 | Micro Ctx        | Good      | Haiku          | Clean JSON output                      |
 | Macro Narr       | Good      | Haiku / Sonnet | Good judgment on significance          |
 
 
-**Desirability: High.** Claude Sonnet for mech. eval/ruling/narrate paired
+**Desirability: High.** Claude Sonnet for mech. eval/verdict/narrate paired
 with OpenAI nano for cheap steps would be a strong hybrid setup. Sonnet's
 instruction-following is arguably better than o3-mini for rule-heavy steps,
 and its prose rivals gpt-4.1 at a comparable price point.
@@ -855,11 +855,11 @@ message roles, different tool call format, different streaming).
 | Sanitize         | Excellent  | 2.0 Flash | Extremely cheap classification      |
 | Classify         | Excellent  | 2.0 Flash | Extremely cheap classification      |
 | DM Query         | Good       | 2.5 Flash | Fast Q&A                            |
-| Intent           | Good       | 2.5 Flash | Cheap and capable enough            |
-| Dispatchers      | Good       | 2.5 Flash | Cheap domain interpretation         |
+| PlayerInterpreter | Good       | 2.5 Flash | Cheap and capable enough            |
+| Beacon           | Good       | 2.5 Flash | Cheap domain interpretation         |
 | Cap. Guardrail   | Good       | 2.5 Flash | Fast validation                     |
 | Mech. Eval       | Good       | 2.5 Pro   | Thinking mode helps with rules      |
-| Ruling           | Good       | 2.5 Pro   | Thinking mode helps with arithmetic |
+| Verdict          | Good       | 2.5 Pro   | Thinking mode helps with arithmetic |
 | Narrate          | Mediocre   | 2.5 Pro   | Functional but less immersive prose |
 | Micro Ctx        | Good       | 2.5 Flash | Cheap structured output             |
 | Macro Narr       | Acceptable | 2.5 Flash | Tends to over-include in summaries  |
@@ -899,13 +899,13 @@ entirely (only infrastructure cost). Attractive for high-volume use.
 - Llama 4 Maverick is competitive with GPT-4o on many benchmarks.
 - Fine-tuning is unrestricted and much cheaper than OpenAI fine-tuning.
 Particularly relevant for steps with consistent schemas (sanitize,
-classify, intent, mechanical evaluation, ruling).
+classify, player_interpreter, mechanical evaluation, verdict).
 - No content policy restrictions — the model won't refuse fantasy violence.
 
 **Weaknesses:**
 
 - Instruction-following on complex multi-constraint prompts (mechanical
-evaluation, ruling) is noticeably weaker than GPT-4.1 or Claude Sonnet, especially
+evaluation, verdict) is noticeably weaker than GPT-4.1 or Claude Sonnet, especially
 for Pathfinder edge cases the model has seen less of in training.
 - JSON output reliability is lower. Llama models more frequently produce
 malformed JSON, hallucinate extra fields, or omit required ones. Needs
@@ -925,11 +925,11 @@ Maverick is better but still a step below.
 | Sanitize         | Good       | Scout / 3.3 70B    | Simple enough task, very cheap                  |
 | Classify         | Good       | Scout / 3.3 70B    | Simple enough task, very cheap                  |
 | DM Query         | Good       | Scout / 3.3 70B    | Straightforward lookups                         |
-| Intent           | Acceptable | Maverick / 3.3 70B | May need prompt tuning for multi-context        |
-| Dispatchers      | Acceptable | 3.3 70B            | Needs prompt tuning for domain accuracy         |
+| PlayerInterpreter | Acceptable | Maverick / 3.3 70B | May need prompt tuning for multi-context        |
+| Beacon           | Acceptable | 3.3 70B            | Needs prompt tuning for domain accuracy         |
 | Cap. Guardrail   | Acceptable | 3.3 70B            | Validation checks, but may miss prerequisites   |
 | Mech. Eval       | Weak       | Maverick / 405B    | Rule misapplication risk without reasoning mode |
-| Ruling           | Weak       | Maverick / 405B    | Arithmetic and modifier stacking issues         |
+| Verdict          | Weak       | Maverick / 405B    | Arithmetic and modifier stacking issues        |
 | Narrate          | Acceptable | Maverick           | Functional prose, lacks flair                   |
 | Micro Ctx        | Acceptable | 3.3 70B            | JSON output needs validation layer              |
 | Macro Narr       | Acceptable | 3.3 70B            | Tends toward verbose summaries                  |
@@ -937,7 +937,7 @@ Maverick is better but still a step below.
 
 **Desirability: Medium-Low for hosted, Medium-High for self-hosted with
 fine-tuning.** Out of the box, Llama models aren't competitive with OpenAI
-or Claude on the critical steps (mech. eval, ruling, narrate). However, if
+or Claude on the critical steps (mech. eval, verdict, narrate). However, if
 you invest in fine-tuning — using AiLog data from a higher-quality model
 as training examples — a fine-tuned Llama 3.3 70B could potentially match
 gpt-4o-mini accuracy on structured steps at near-zero marginal cost. This
@@ -988,11 +988,11 @@ aggressively, requiring more maintenance.
 | Sanitize         | Good       | Small             | Cheap classification                     |
 | Classify         | Good       | Small             | Cheap classification                     |
 | DM Query         | Good       | Small             | Simple Q&A                               |
-| Intent           | Good       | Small             | Pattern recognition                      |
-| Dispatchers      | Acceptable | Small / Large     | Small for simple domains, Large for edge |
+| PlayerInterpreter | Good       | Small             | Pattern recognition                      |
+| Beacon           | Acceptable | Small / Large     | Small for simple domains, Large for edge |
 | Cap. Guardrail   | Acceptable | Small             | Basic validation                         |
 | Mech. Eval       | Acceptable | Large             | Functional but less Pathfinder knowledge |
-| Ruling           | Acceptable | Large             | Decent arithmetic, some edge case misses |
+| Verdict          | Acceptable | Large             | Decent arithmetic, some edge case misses |
 | Narrate          | Mediocre   | Large             | Prose is serviceable but dry             |
 | Micro Ctx        | Good       | Codestral / Small | Clean JSON from Codestral                |
 | Macro Narr       | Acceptable | Small             | Reasonable judgment                      |
@@ -1020,7 +1020,7 @@ are pure JSON transformation.
 **Strengths:**
 
 - DeepSeek-R1 is a dedicated reasoning model at a fraction of o3's price.
-For mechanical evaluation and ruling steps, the cost savings compared to o3-mini
+For mechanical evaluation and verdict steps, the cost savings compared to o3-mini
 ($1.10/$4.40) are significant.
 - DeepSeek-V3 benchmarks competitively with GPT-4o on many tasks at
 roughly 1/10 the price.
@@ -1049,18 +1049,18 @@ for some deployments.
 | Sanitize         | Good       | V3    | Cheap, fast classification                  |
 | Classify         | Good       | V3    | Cheap, fast classification                  |
 | DM Query         | Good       | V3    | Straightforward                             |
-| Intent           | Good       | V3    | Capable classification                      |
-| Dispatchers      | Good       | V3    | Decent domain interpretation                |
+| PlayerInterpreter | Good       | V3    | Capable classification                      |
+| Beacon           | Good       | V3    | Decent domain interpretation                |
 | Cap. Guardrail   | Good       | V3    | Capable validation                          |
 | Mech. Eval       | Good       | R1    | Reasoning at great price                    |
-| Ruling           | Good       | R1    | Chain-of-thought helps arithmetic           |
+| Verdict          | Good       | R1    | Chain-of-thought helps arithmetic           |
 | Narrate          | Acceptable | V3    | Functional but English prose can feel stiff |
 | Micro Ctx        | Good       | V3    | Clean JSON output                           |
 | Macro Narr       | Acceptable | V3    | Adequate judgment                           |
 
 
 **Desirability: Medium-High (with caveats).** DeepSeek offers the best
-price-to-reasoning-quality ratio available. R1 on mech. eval/ruling is
+price-to-reasoning-quality ratio available. R1 on mech. eval/verdict is
 a compelling alternative to o3-mini at half the cost. The main risks are
 operational (uptime, latency) rather than capability. If reliability
 concerns are acceptable, DeepSeek is a strong secondary provider.

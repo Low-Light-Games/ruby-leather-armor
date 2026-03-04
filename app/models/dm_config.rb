@@ -3,8 +3,8 @@ class DmConfig < ApplicationRecord
   # Settings are stored as a JSON hash, making it easy to add new knobs
   # without migrations.
   TOKEN_BUDGET_STEPS = %w[
-    sanitize classify dm_query sequencer intent dispatcher mechanical_evaluation
-    roll_qualifier capability_guardrail ruling time_keeper chronicler narrate
+    sanitize classify dm_query sequencer player_interpreter beacon mechanical_evaluation
+    roll_qualifier capability_guardrail verdict time_keeper chronicler narrate
     micro_context_update macro_narrative_update
     edge_pipeline
   ].freeze
@@ -18,12 +18,12 @@ class DmConfig < ApplicationRecord
     "classify"               => "Fast, cheap model. Simple classification — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "dm_query"               => "Fast, cheap model. Straightforward Q&A — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "sequencer"              => "Fast, cheap model. Compound action detection — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
-    "intent"                 => "Fast, cheap model. Simple restatement — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
-    "dispatcher"             => "Fast, cheap model. Per-domain interpretation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
+    "player_interpreter"     => "Fast, cheap model. Simple restatement — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
+    "beacon"                 => "Fast, cheap model. Per-domain interpretation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "mechanical_evaluation"  => "Capable model. Determines required rolls and NPC actions — e.g. o3-mini, o4-mini, gpt-5-mini.",
     "roll_qualifier"         => "Fast, cheap model with broader context. Situational modifiers and Take 10/20 — e.g. gpt-4.1-nano, gpt-4o-mini.",
     "capability_guardrail"   => "Fast, cheap model. Sheet validation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini. Only used in AI mode.",
-    "ruling"                 => "Capable model. Post-roll arbitration and mutation generation — e.g. o3-mini, o4-mini, gpt-5-mini.",
+    "verdict"                => "Capable model. Post-roll arbitration and mutation generation — e.g. o3-mini, o4-mini, gpt-5-mini.",
     "time_keeper"            => "Fast, cheap model. Estimates in-game time for an action — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "chronicler"             => "Mid-tier model. Condition matching with structured output — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
     "narrate"                => "Creative model. Narrative quality scales with capability — e.g. gpt-4.1, gpt-4o, gpt-5.",
@@ -80,12 +80,12 @@ class DmConfig < ApplicationRecord
       "classify" => 200,
       "dm_query" => 300,
       "sequencer" => 200,
-      "intent" => 200,
-      "dispatcher" => 400,
+      "player_interpreter" => 200,
+      "beacon" => 400,
       "mechanical_evaluation" => 500,
       "roll_qualifier" => 400,
       "capability_guardrail" => 300,
-      "ruling" => 600,
+      "verdict" => 600,
       "time_keeper" => 300,
       "chronicler" => 500,
       "narrate" => 800,

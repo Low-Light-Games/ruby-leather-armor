@@ -15,9 +15,9 @@ module DungeonMaster
   module CoreResolver
     private
 
-    # Full resolution: dispatchers → mechanics gate → [ruling + mutations + time_keeper]
+    # Full resolution: beacon → mechanics gate → [verdict + mutations + time_keeper]
     def resolve(intention, category)
-      intent = run_dispatchers(intention, category)
+      intent = run_beacon(intention, category)
 
       if intent[:needs_mechanics]
         evaluations, guardrail = run_mechanics_gate(intent)
@@ -54,27 +54,27 @@ module DungeonMaster
       }
     end
 
-    # Post-roll completion: ruling → mutations → time_keeper
+    # Post-roll completion: verdict → mutations → time_keeper
     def finish_resolution(intent, merged, roll_results)
       npc_results = resolve_npc_actions(merged[:npc_actions])
-      ruling_result = run_ruling(intent, merged, roll_results: roll_results, npc_results: npc_results)
-      apply_mutations(ruling_result[:mutations])
+      verdict_result = run_verdict(intent, merged, roll_results: roll_results, npc_results: npc_results)
+      apply_mutations(verdict_result[:mutations])
 
-      time_result = run_time_keeper(intent, ruling_result)
+      time_result = run_time_keeper(intent, verdict_result)
 
       if time_result[:encounter]
         return {
           status: :encounter, intent: intent,
           narrate_seed: time_result[:encounter_narrative],
-          mutations: ruling_result[:mutations],
+          mutations: verdict_result[:mutations],
           time_result: time_result
         }
       end
 
       {
         status: :resolved, intent: intent,
-        narrate_seed: ruling_result[:outcome],
-        mutations: ruling_result[:mutations],
+        narrate_seed: verdict_result[:outcome],
+        mutations: verdict_result[:mutations],
         time_result: time_result
       }
     end

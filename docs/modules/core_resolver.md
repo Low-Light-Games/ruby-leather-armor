@@ -4,20 +4,20 @@
 
 ## Purpose
 
-The inner pipeline: resolves a single player action from dispatchers
+The inner pipeline: resolves a single player action from beacon
 through time_keeper. Extracted from `Pipeline` so the outer orchestrator
 (`orchestrate_actions`) can loop over queued actions without duplicating
 resolution logic.
 
 CoreResolver is a module included by `Pipeline`. It calls step methods
-(dispatchers, mechanics gate, ruling, time_keeper) that are already mixed
+(beacon, mechanics gate, verdict, time_keeper) that are already mixed
 into Pipeline via their own step modules.
 
 ## Interface
 
 ### `resolve(intention, category)`
 
-Full resolution: dispatchers → mechanics gate → [ruling + mutations +
+Full resolution: beacon → mechanics gate → [verdict + mutations +
 time_keeper]. Returns a result hash with `:status`:
 
 | Status | Meaning |
@@ -29,7 +29,7 @@ time_keeper]. Returns a result hash with `:status`:
 
 ### `finish_resolution(intent, merged, roll_results)`
 
-Post-roll completion: ruling → mutations → time_keeper. Called when the
+Post-roll completion: verdict → mutations → time_keeper. Called when the
 player submits roll results. Returns the same result hash structure as
 `resolve`.
 
@@ -54,7 +54,7 @@ action in the Sequencer's queue:
 
 ```ruby
 actions.each do |action_text|
-  intention = run_intent(action_text)
+  intention = run_player_interpreter(action_text)
   result = resolve(intention, category)
   # handle :awaiting_rolls, :encounter, :resolved, :rejected
 end
@@ -66,7 +66,7 @@ Roll resumption calls `finish_resolution` then continues the queue if
 ## Design rationale
 
 **Why a module, not a class?** CoreResolver calls step methods
-(`run_dispatchers`, `run_mechanics_gate`, `run_ruling`, etc.) that are
+(`run_beacon`, `run_mechanics_gate`, `run_verdict`, etc.) that are
 mixed into Pipeline. A separate class would need all those dependencies
 injected. A module shares Pipeline's instance variables naturally.
 

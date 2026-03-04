@@ -12,7 +12,7 @@ Updates the micro-context JSONB fields on the Adventure model
 what just happened.
 
 Only **relevant** contexts are included in the prompt: those flagged as
-`affected_contexts` by the dispatchers plus any that already contain
+`affected_contexts` by the beacon plus any that already contain
 data (active contexts). This reduces output size and keeps the model
 focused on what actually changed.
 

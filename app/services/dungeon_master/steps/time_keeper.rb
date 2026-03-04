@@ -25,8 +25,8 @@ module DungeonMaster
 
       private
 
-      def run_time_keeper(intent, ruling_result)
-        estimated = estimate_time(intent, ruling_result)
+      def run_time_keeper(intent, verdict_result)
+        estimated = estimate_time(intent, verdict_result)
         @log.dm_log!("TimeKeeper: estimated=#{estimated[:hours].round(4)}h, source=#{estimated[:source]}")
 
         harbinger_result = consult_harbinger_if_needed(estimated, intent)
@@ -57,7 +57,7 @@ module DungeonMaster
 
       # ── Estimation ────────────────────────────────────────────────
 
-      def estimate_time(intent, ruling_result)
+      def estimate_time(intent, verdict_result)
         journey = try_journey_estimate(intent)
         return journey if journey
 
@@ -67,10 +67,10 @@ module DungeonMaster
         rest = try_rest_estimate(intent)
         return rest if rest
 
-        take20 = try_take20_estimate(intent, ruling_result)
+        take20 = try_take20_estimate(intent, verdict_result)
         return take20 if take20
 
-        estimate_via_ai(intent, ruling_result)
+        estimate_via_ai(intent, verdict_result)
       end
 
       def try_journey_estimate(intent)
@@ -134,10 +134,10 @@ module DungeonMaster
           speed_mph: nil, journey_data: nil }
       end
 
-      def try_take20_estimate(intent, ruling_result)
-        return nil unless ruling_result.is_a?(Hash)
+      def try_take20_estimate(intent, verdict_result)
+        return nil unless verdict_result.is_a?(Hash)
 
-        outcome = (ruling_result[:outcome] || "").downcase
+        outcome = (verdict_result[:outcome] || "").downcase
         intention = (intent[:intention] || "").downcase
         return nil unless outcome.include?("take 20") || intention.include?("take 20")
 
@@ -145,10 +145,10 @@ module DungeonMaster
           speed_mph: nil, journey_data: nil }
       end
 
-      def estimate_via_ai(intent, ruling_result)
+      def estimate_via_ai(intent, verdict_result)
         raw = nil
         time_ctx = @adventure.time_context || {}
-        outcome  = ruling_result&.dig(:outcome) || intent[:intention]
+        outcome  = verdict_result&.dig(:outcome) || intent[:intention]
         prompt_summary = "TimeKeeper: \"#{@log.truncate(outcome)}\""
 
         system_prompt = PromptRenderer.render("time_keeper",

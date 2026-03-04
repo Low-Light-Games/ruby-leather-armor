@@ -21,7 +21,7 @@ For each NPC action:
 
 ## Output
 
-A text block of all NPC roll results, which feeds into the Ruling step.
+A text block of all NPC roll results, which feeds into the Verdict step.
 
 ## Player Roll Submission
 

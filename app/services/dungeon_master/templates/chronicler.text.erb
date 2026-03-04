@@ -13,8 +13,8 @@ NPCs met: <%= @npcs_met.any? ? @npcs_met.map { |n| n[:name] }.join(", ") : "(non
 Intent: <%= @intention %>
 Primary context: <%= @primary_context %>
 Location: <%= @current_location || "(unknown)" %>
-<% if @ruling_outcome -%>
-Outcome: <%= @ruling_outcome %>
+<% if @verdict_outcome -%>
+Outcome: <%= @verdict_outcome %>
 <% end -%>
 
 === UNDISCOVERED CLUES ===

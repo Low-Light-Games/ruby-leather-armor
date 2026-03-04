@@ -3,16 +3,16 @@ class AiLog < ApplicationRecord
   belongs_to :player_message, class_name: "AdventureMessage", optional: true
 
   CALL_TYPES = %w[
-    sanitize classify dm_query sequencer intent dispatcher
+    sanitize classify dm_query sequencer player_interpreter beacon
     mechanical_evaluation roll_qualifier capability_guardrail
-    ruling time_keeper chronicler narrate
+    verdict time_keeper chronicler narrate
     micro_context_update macro_narrative_update
     edge_pipeline encounter_expand
   ].freeze
 
   # Legacy types kept for backward compatibility with existing log rows
   LEGACY_CALL_TYPES = %w[
-    triage evaluate
+    triage evaluate ruling intent dispatcher
     sanitization dm_response roll_response
     triage_merged classification
     scene_tracker story_chronicler narrator action_needs

@@ -17,7 +17,7 @@ guidance relevant to that domain.
 
 ## The loop
 
-This step runs **once per affected context** identified by the dispatchers.
+This step runs **once per affected context** identified by the beacon.
 The primary context is processed first, so subsequent evaluations can
 reference its summary.
 
@@ -37,7 +37,7 @@ Iteration 2: MechanicalEvaluation for TRAVERSAL
 | Field | Source |
 |---|---|
 | System prompt | `mechanical_evaluation.text.erb` bound with: domain name, domain-specific character block, micro-context for this domain, creature/NPC stat blocks, previous evaluation summaries, fetched rules text, domain-specific instruction partial |
-| User message | The player's intention (from Intent step) |
+| User message | The player's intention (from PlayerInterpreter step) |
 
 ## Output (JSON, per iteration)
 

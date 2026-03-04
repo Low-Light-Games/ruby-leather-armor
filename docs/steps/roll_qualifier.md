@@ -58,7 +58,7 @@ only the specified contexts. Falls back to `"domain"` if hints are empty.
 | Field | Source |
 |---|---|
 | System prompt | `roll_qualifier.text.erb` bound with: domain name, mechanical_summary from preceding evaluation, context block (per scope toggle), scene_summary, rolls to qualify as JSON |
-| User message | The player's intention (from Intent step) |
+| User message | The player's intention (from PlayerInterpreter step) |
 
 ## Output (JSON)
 

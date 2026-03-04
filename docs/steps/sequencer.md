@@ -7,15 +7,15 @@
 ## Purpose
 
 Detects compound player inputs that describe multiple sequential actions
-and splits them into an ordered array of action texts. Runs before Intent
-so each action gets its own Intent interpretation and resolution cycle.
+and splits them into an ordered array of action texts. Runs before PlayerInterpreter
+so each action gets its own PlayerInterpreter interpretation and resolution cycle.
 
 Single actions (the vast majority) return a one-element array. The
 pipeline loop body executes once — identical to the pre-Sequencer flow.
 
 ## When it runs
 
-- After the gate (sanitize + classify) and before Intent
+- After the gate (sanitize + classify) and before PlayerInterpreter
 - Skipped entirely when `DmConfig.action_queue` is `false`
 - Errors fall back gracefully to `[original_input]` (single action)
 
@@ -47,7 +47,7 @@ one action happening after another in time. It explicitly excludes:
 
 ## Model selection
 
-Fast, cheap model — same tier as Intent and Classify. The task is
+Fast, cheap model — same tier as PlayerInterpreter and Classify. The task is
 classification + extraction, not reasoning. Budget: 200 tokens.
 
 ## Design rationale
@@ -57,12 +57,12 @@ done") seem parseable by pattern matching, but edge cases are unbounded.
 "I then cast fireball" should not split. "I fire, then reload" is
 ambiguous. See design_philosophy.md principle 1 (corollary on regex).
 
-**Why not inside Intent?** Intent is a nano-model step focused on
+**Why not inside PlayerInterpreter?** PlayerInterpreter is a nano-model step focused on
 restating what the player wants. Adding compound detection would bloat
 its prompt and risk degrading its core task on cheap models. Separation
 keeps both steps focused and independently testable.
 
-**Why before Intent, not parallel?** Each action in the queue needs its
-own Intent call. Running Sequencer in parallel with Intent would produce
-an Intent output for the full compound input, which gets discarded for
+**Why before PlayerInterpreter, not parallel?** Each action in the queue needs its
+own PlayerInterpreter call. Running Sequencer in parallel with PlayerInterpreter would produce
+a PlayerInterpreter output for the full compound input, which gets discarded for
 compound actions — wasteful. Sequential ordering is cleaner.
