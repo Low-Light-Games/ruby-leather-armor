@@ -155,6 +155,38 @@
     </details>
   </details>
 
+  <%# ═══════ TIME CONTEXT ═══════ %>
+  <details class="dash-section" open>
+    <summary class="section-title">Time Context</summary>
+    <% tc = @adventure.time_context || {} %>
+    <div class="meta-grid">
+      <div class="meta-card">
+        <div class="card-label">Current Time</div>
+        <div class="meta-value">Day <strong><%= tc["adventure_day"] || 1 %></strong>, Hour <strong><%= tc["current_hour"] || 8 %></strong></div>
+      </div>
+      <div class="meta-card">
+        <div class="card-label">Light Conditions</div>
+        <div class="meta-value"><span class="light-badge light-<%= tc['light_conditions'] || 'day' %>"><%= (tc["light_conditions"] || "day").capitalize %></span></div>
+      </div>
+      <div class="meta-card">
+        <div class="card-label">Hours Since Last Rest</div>
+        <div class="meta-value"><%= tc["hours_since_last_rest"] || 0 %></div>
+      </div>
+      <div class="meta-card">
+        <div class="card-label">Hours Since Last Encounter Check</div>
+        <div class="meta-value"><%= tc["hours_since_last_encounter_check"] || 0 %></div>
+      </div>
+    </div>
+
+    <details class="edit-panel" style="padding: 0 20px 16px;">
+      <summary class="edit-toggle">Edit Time Context (JSON)</summary>
+      <%= form_with url: admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do %>
+        <textarea name="time_context_json" rows="6" class="json-editor"><%= tc.present? && tc != {} ? JSON.pretty_generate(tc) : '{}' %></textarea>
+        <button type="submit" class="btn btn-primary">Save Time Context</button>
+      <% end %>
+    </details>
+  </details>
+
   <%# ═══════ CONTEXTS ═══════ %>
   <details class="dash-section" open>
     <summary class="section-title">Micro Contexts</summary>
@@ -531,6 +563,13 @@
   .meta-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; padding: 16px 20px; }
   .meta-card { background: #f8f9fa; border-radius: 6px; padding: 12px 16px; }
   .meta-value { font-size: 14px; color: #333; }
+  .light-badge {
+    font-size: 12px; padding: 2px 10px; border-radius: 10px; font-weight: 600;
+    &.light-dawn  { background: #fff3e0; color: #e65100; }
+    &.light-day   { background: #fff9c4; color: #f57f17; }
+    &.light-dusk  { background: #ede7f6; color: #4527a0; }
+    &.light-night { background: #263238; color: #b0bec5; }
+  }
 
   /* Context cards */
   .contexts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 12px; padding: 16px 20px; }

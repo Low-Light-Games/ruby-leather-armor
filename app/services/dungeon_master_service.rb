@@ -175,7 +175,6 @@ class DungeonMasterService
         intent: result[:intent],
         show_dc: @adventure.effective_dm_setting("show_roll_dc")
       }
-      meta[:time_span_parameters] = result[:merged][:time_span_parameters] if result[:time_spanning]
       [persist_message(
         role: "dm",
         content: roll_explanation(result[:merged][:mechanical_summaries]),

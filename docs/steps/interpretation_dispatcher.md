@@ -34,10 +34,7 @@ Controlled by `DmConfig` `interpreter_scope`:
   "rules_needed": [],
   "domain_interpretation": "How this action relates to this domain",
   "transition": null,
-  "time_spanning": false,
-  "time_span_type": null,
   "destination": null,
-  "estimated_hours": null,
   "reasoning": "Brief explanation"
 }
 ```
@@ -51,7 +48,7 @@ Controlled by `DmConfig` `interpreter_scope`:
 - `macro_significant`: any domain flagged it
 - `rules_needed`: union of all affected domains' rules
 - `primary_context`: the Classify category if it's affected, otherwise the first affected domain
-- `time_spanning`: true if traversal or rest dispatcher flagged it
+- `destination`: from traversal dispatcher (used by TimeKeeper for journey distance)
 - `plot_relevant`: determined by `determine_plot_relevance` (checks for undiscovered clues and story NPCs)
 
 ## Error handling

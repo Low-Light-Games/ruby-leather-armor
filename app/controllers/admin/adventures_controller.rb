@@ -32,7 +32,9 @@ module Admin
     end
 
     def update
-      if params[:context_field].present?
+      if params[:time_context_json].present?
+        update_time_context
+      elsif params[:context_field].present?
         update_context
       elsif params[:adventure].present?
         @adventure.update!(adventure_params)
@@ -102,6 +104,12 @@ module Admin
       value = params[:context_value].present? ? JSON.parse(params[:context_value]) : {}
       @adventure.update!("#{field}_context" => value)
       redirect_to admin_adventure_path(@adventure), notice: "#{field.titleize} context updated."
+    end
+
+    def update_time_context
+      value = JSON.parse(params[:time_context_json])
+      @adventure.update!(time_context: value)
+      redirect_to admin_adventure_path(@adventure), notice: "Time context updated."
     end
 
     def resolve_story_element

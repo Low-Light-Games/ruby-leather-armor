@@ -65,10 +65,7 @@ module DungeonMaster
           rules_needed: Array(parsed["rules_needed"]).map(&:to_s),
           domain_interpretation: parsed["domain_interpretation"],
           transition: parsed["transition"],
-          time_spanning: parsed["time_spanning"] == true,
-          time_span_type: parsed["time_span_type"],
-          destination: parsed["destination"],
-          estimated_hours: parsed["estimated_hours"]&.to_f
+          destination: parsed["destination"]
         }
       rescue TokenBudgetExceededError => e
         @log.ai_log_error!("dispatcher", prompt_summary, e,
@@ -76,15 +73,13 @@ module DungeonMaster
                            request_body: request_body, status: "token_budget_exceeded",
                            model_used: @ai.last_model_used)
         { domain: domain, affected: false, needs_mechanics: false, macro_significant: false,
-          rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil,
-          time_spanning: false, time_span_type: nil, destination: nil, estimated_hours: nil }
+          rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil, destination: nil }
       rescue AiError => e
         @log.ai_log_error!("dispatcher", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, model_used: @ai.last_model_used)
         { domain: domain, affected: false, needs_mechanics: false, macro_significant: false,
-          rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil,
-          time_spanning: false, time_span_type: nil, destination: nil, estimated_hours: nil }
+          rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil, destination: nil }
       end
 
       # Merge parallel dispatcher results into a unified intent-compatible hash.
@@ -98,22 +93,14 @@ module DungeonMaster
         affected_contexts = affected.keys
         primary_context = affected_contexts.include?(category) ? category : affected_contexts.first
 
-        traversal = results["traversal"] || {}
-        time_spanning = traversal[:time_spanning] || false
-        rest = results["rest"] || {}
-        time_spanning ||= rest[:time_spanning] || false
-
-        time_span_source = traversal[:time_spanning] ? traversal : (rest[:time_spanning] ? rest : {})
+        destination = results.dig("traversal", :destination)
 
         plot_relevant = determine_plot_relevance(primary_context)
 
         {
           intention: intention,
           needs_mechanics: needs_mechanics,
-          time_spanning: time_spanning,
-          time_span_type: time_span_source[:time_span_type],
-          destination: time_span_source[:destination],
-          estimated_hours: time_span_source[:estimated_hours],
+          destination: destination,
           affected_contexts: affected_contexts,
           primary_context: primary_context || category,
           rules_needed: rules_needed,

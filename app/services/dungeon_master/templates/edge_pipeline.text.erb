@@ -12,6 +12,13 @@ You handle EVERYTHING in a single response: security, intent, mechanics, narrati
 === STORY ===
 <%= @story_block %>
 
+=== TIME ===
+<% if @time_context.present? -%>
+Day <%= @time_context["adventure_day"] || 1 %>, Hour <%= @time_context["current_hour"] || 8 %> (<%= @time_context["light_conditions"] || "day" %>)
+<% else -%>
+(unknown)
+<% end -%>
+
 === CURRENT STATE ===
 <%= @micro_contexts %>
 
@@ -48,13 +55,18 @@ Process the player's input through these stages (internally, in one response):
 6. NARRATION — Write vivid, engaging narrative prose for the player. Faithfully reflect
    the mechanical outcome. Stay in character as a DM.
 
-7. CONTEXT UPDATES — Update any micro-contexts that changed. Only include contexts that
+7. TIME TRACKING — Estimate how much in-game time this action consumed and include
+   "time_update" in your response: { "hours_elapsed": N }. Use Pathfinder 1e timing
+   (combat round = 6 seconds, standard action = 6 seconds, travel = hours, rest = 8 hours).
+   Reflect the current time of day naturally in your narration (dawn/day/dusk/night).
+
+8. CONTEXT UPDATES — Update any micro-contexts that changed. Only include contexts that
    actually changed. Use the same field names as the current state above.
 
-8. SCENE SUMMARY — One concise sentence (under 15 words) describing the player's current
+9. SCENE SUMMARY — One concise sentence (under 15 words) describing the player's current
    situation after this action.
 
-9. STORY SUMMARY — If this was a significant story event, provide an updated story summary.
+10. STORY SUMMARY — If this was a significant story event, provide an updated story summary.
    Otherwise omit "story_summary_update".
 
 Respond ONLY with valid JSON (no markdown, no code fences):
@@ -67,6 +79,7 @@ Respond ONLY with valid JSON (no markdown, no code fences):
   "narrative": "Your DM narration here",
   "adventure_complete": false,
   "mutations": {},
+  "time_update": { "hours_elapsed": 0.0017 },
   "context_updates": {},
   "scene_summary": "Concise current-situation sentence",
   "story_summary_update": null,

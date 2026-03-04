@@ -9,6 +9,13 @@ Title: <%= @story_title %>
 === STORY SO FAR ===
 <%= @story_summary.presence || "(adventure just started)" %>
 
+=== TIME ===
+<% if @time_context.present? -%>
+Day <%= @time_context["adventure_day"] || 1 %>, Hour <%= @time_context["current_hour"] || 8 %> (<%= @time_context["light_conditions"] || "day" %>)
+<% else -%>
+(unknown)
+<% end -%>
+
 === CURRENT STATE ===
 <%= @contexts_text %>
 
@@ -27,6 +34,8 @@ Intent: <%= @player_intent %>
 <%= @directed_play_text %>
 === INSTRUCTIONS ===
 - Write the narrative for what just happened. Be vivid, descriptive, and engaging.
+- Reflect the current time of day and light conditions naturally in the prose
+  (e.g. "as dusk settles...", "under the midday sun..."). Do NOT announce the exact hour.
 - Stay in character as a DM. Do not break the fourth wall.
 - If an outcome was provided, narrate it faithfully (do not contradict the mechanical results).
 - If a player action was provided without a mechanical outcome, narrate the player performing

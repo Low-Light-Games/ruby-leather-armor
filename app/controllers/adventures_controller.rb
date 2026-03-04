@@ -50,6 +50,7 @@ class AdventuresController < ApplicationController
       traversal_context: build_initial_traversal(start_loc),
       combat_context: {},
       social_context: {},
+      time_context: build_initial_time_context(story),
       story_summary: story.initial_summary
     )
 
@@ -138,6 +139,47 @@ class AdventuresController < ApplicationController
     @adventure = Adventure.find(params[:id])
   end
 
+  TIME_CUE_PATTERNS = {
+    /\b(\d{1,2})\s*(?:in the\s+)?(?:am|a\.m\.|in the morning)\b/i => ->(m) { m[1].to_i },
+    /\b(\d{1,2})\s*(?:pm|p\.m\.|in the (?:afternoon|evening))\b/i => ->(m) { m[1].to_i + 12 },
+    /\bmidnight\b/i      => ->(_) { 0 },
+    /\bnoon\b/i          => ->(_) { 12 },
+    /\bmidday\b/i        => ->(_) { 12 },
+    /\bdawn\b/i          => ->(_) { 6 },
+    /\bsunrise\b/i       => ->(_) { 6 },
+    /\bdusk\b/i          => ->(_) { 19 },
+    /\bsunset\b/i        => ->(_) { 19 },
+    /\bmorning\b/i       => ->(_) { 8 },
+    /\bafternoon\b/i     => ->(_) { 14 },
+    /\bevening\b/i       => ->(_) { 19 },
+    /\bnight\b/i         => ->(_) { 21 },
+  }.freeze
+
+  def build_initial_time_context(story)
+    hour = parse_time_cue(story.initial_context) ||
+           parse_time_cue(story.hook) ||
+           8
+    hour = hour.clamp(0, 23)
+
+    {
+      "current_hour" => hour,
+      "adventure_day" => 1,
+      "light_conditions" => DungeonMaster::Utilities::GameClock.light_for_hour(hour),
+      "hours_since_last_rest" => 0,
+      "hours_since_last_encounter_check" => 0
+    }
+  end
+
+  def parse_time_cue(text)
+    return nil if text.blank?
+
+    TIME_CUE_PATTERNS.each do |pattern, extractor|
+      match = text.match(pattern)
+      return extractor.call(match) if match
+    end
+    nil
+  end
+
   def build_initial_traversal(start_loc)
     return {} unless start_loc
 
@@ -178,6 +220,7 @@ class AdventuresController < ApplicationController
       exploration_context: adventure.exploration_context,
       rest_context: adventure.rest_context,
       inventory_context: adventure.inventory_context,
+      time_context: adventure.time_context,
       story_summary: adventure.story_summary,
       scene_summary: adventure.scene_summary,
       current_category: adventure.current_category,

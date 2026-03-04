@@ -13,12 +13,14 @@ module DungeonMaster
 
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
         story_context = narrate_story_context(dm_brief)
+        time_ctx = @adventure.time_context || {}
 
         system_prompt = PromptRenderer.render("narrate",
           story_title: @adventure.story.title,
           story_context: story_context,
           story_summary: @adventure.story_summary,
           contexts_text: PromptHelpers.format_contexts(micro_contexts),
+          time_context: time_ctx,
           outcome: outcome,
           player_action: player_action,
           player_intent: intent&.dig(:intention),

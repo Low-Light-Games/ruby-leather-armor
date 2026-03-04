@@ -14,10 +14,6 @@ module DungeonMaster
       private
 
       def run_mechanical_evaluation_loop(intent)
-        if intent[:time_spanning]
-          return run_time_span_mechanical_evaluation(intent)
-        end
-
         contexts = intent[:affected_contexts]
         contexts = [intent[:primary_context]] if contexts.empty? && intent[:primary_context].present?
         raise AiError, "MechanicalEvaluation reached with no affected contexts and no primary context" if contexts.empty?
@@ -93,65 +89,6 @@ module DungeonMaster
                            raw_response: current_raw || @ai.last_failed_raw_response,
                            request_body: current_request_body,
                            model_used: @ai.last_model_used)
-        raise
-      end
-
-      def run_time_span_mechanical_evaluation(intent)
-        span_type = intent[:time_span_type] || "journey"
-        domain = "time_span_#{span_type}"
-        raw = nil
-        prompt_summary = "MechEval [#{domain}]: \"#{@log.truncate(intent[:intention])}\""
-
-        rules_text = Rules.fetch(*intent[:rules_needed])
-        char_block = CharacterBlock.full(@sheet)
-        traversal_ctx = @adventure.traversal_context
-
-        domain_instructions = PromptRenderer.render_partial("mechanical_evaluation/_#{domain}")
-
-        system_prompt = PromptRenderer.render("mechanical_evaluation",
-          domain: domain,
-          character_block: char_block,
-          micro_context: traversal_ctx.present? ? traversal_ctx.to_json : nil,
-          creature_stats: nil,
-          previous_summaries: [],
-          rules_text: rules_text,
-          domain_instructions: domain_instructions)
-
-        request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
-        raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
-                        max_tokens: @config.token_budget_for("mechanical_evaluation"),
-                        step_name: "mechanical_evaluation",
-                        model: @config.model_for("mechanical_evaluation"))
-        parsed = @ai.parse_json(raw)
-        @log.ai_log!("mechanical_evaluation", prompt_summary, raw, parsed,
-                     parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used)
-
-        type_params_key = "#{span_type}_parameters"
-
-        evaluation = {
-          domain: domain,
-          player_rolls: Array(parsed["player_rolls"]).map(&:deep_symbolize_keys),
-          npc_actions: Array(parsed["npc_actions"]).map(&:deep_symbolize_keys),
-          consequences: Array(parsed["consequences"]).map(&:deep_symbolize_keys),
-          mechanical_summary: parsed["mechanical_summary"] || parsed["ruling_summary"] || "",
-          time_span_parameters: (parsed[type_params_key] || parsed["travel_parameters"] || {}).deep_symbolize_keys,
-          qualifier_context_hints: Array(parsed["qualifier_context_hints"])
-        }
-
-        evaluation = run_roll_qualifier(evaluation, intent)
-
-        [evaluation]
-      rescue TokenBudgetExceededError => e
-        @log.ai_log_error!("mechanical_evaluation", prompt_summary || "Time-span MechEval failed", e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used)
-        raise
-      rescue AiError => e
-        @log.ai_log_error!("mechanical_evaluation", prompt_summary || "Time-span MechEval failed", e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, model_used: @ai.last_model_used)
         raise
       end
 

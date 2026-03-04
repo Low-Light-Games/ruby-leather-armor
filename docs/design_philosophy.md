@@ -270,7 +270,38 @@ see the character sheet. A classifier doesn't see the rules manifest.
 
 ---
 
-## 12. Document the why, not just the what
+## 12. Time as a higher-order context
+
+Time of day, adventure day, and light conditions are tracked as a
+code-managed context (`time_context`) separate from the six domain-specific
+micro-contexts. Time is "above" the domains — it affects all of them but
+belongs to none of them.
+
+**Key decisions:**
+- TimeKeeper estimates time after Ruling (when the outcome is known), not
+  during intent (when it's still speculative)
+- Time estimation is code-first: journeys to known destinations use
+  deterministic distance/speed/terrain math; combat, rest, and Take 20 use
+  fixed values. AI is only called for freeform actions (wait, craft, etc.)
+- The clock is advanced by GameClock (a code-only utility), never by AI —
+  deterministic hour arithmetic eliminates desynchronization
+- Light conditions (dawn/day/dusk/night) are derived from `current_hour` via
+  a fixed mapping in GameClock, ensuring consistency
+- Harbinger (encounter utility) is consulted before clock advancement —
+  it may interrupt the passage, and the clock is updated with *actual*
+  elapsed hours, not estimated
+- Terrain speed modifiers are admin-configurable via DmConfig, with PF1e
+  defaults (road 1.0x, forest 0.5x, mountain 0.25x, etc.)
+- `time_context` is initialized during adventure creation from story cues
+  (e.g., "at dawn" → hour 6) and defaults to hour 8 (morning)
+
+This separation means time tracking works universally — for traversal, rest,
+crafting, waiting, Take 20, or any other passage of time — without requiring
+each domain's dispatcher to understand time mechanics.
+
+---
+
+## 13. Document the why, not just the what
 
 Design documents explain the reasoning behind decisions, not just the
 decisions themselves. Every design decision in `pipeline_steps.md`

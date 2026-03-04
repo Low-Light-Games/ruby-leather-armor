@@ -780,9 +780,12 @@ run_prompt(player_input)
 |  1. Resolve NPC actions (app-side rolls) |
 |  2. RULING (AI -- post-roll arbitration) |
 |  3. Apply mutations (app-side)           |
-|  4. CHRONICLER (plot state, optional)    |
-|  5. EVALUATE (code -- synthesis/routing) |
-|  6. OUTPUT PHASE                         |
+|  4. TIME KEEPER (code-first + AI fallback)|
+|     -> Harbinger util (encounter check)  |
+|     -> GameClock util (clock advance)    |
+|  5. CHRONICLER (plot state, optional)    |
+|  6. EVALUATE (code -- synthesis/routing) |
+|  7. OUTPUT PHASE                         |
 |     +-------------------------------+    |
 |     | narration_mode == "parallel": |    |
 |     |   NARRATE    ||  CONTEXT UPD. |    |
@@ -816,7 +819,10 @@ Each step is documented in detail in its own file.
 | 4b | **CapabilityGuardrail** | Code or AI (parallel with 4a) | [steps/capability_guardrail.md](steps/capability_guardrail.md) |
 | -- | **NPC Roll Resolution** | App-side | [steps/npc_rolls.md](steps/npc_rolls.md) |
 | 5 | **Ruling** | AI | [steps/ruling.md](steps/ruling.md) |
-| 5b | **Chronicler** | AI (conditional) | [steps/chronicler.md](steps/chronicler.md) |
+| 5b | **TimeKeeper** | Code-first, AI fallback | [steps/time_keeper.md](steps/time_keeper.md) |
+| -- | **Harbinger** (utility) | Code-only (called by TimeKeeper) | [steps/harbinger.md](steps/harbinger.md) |
+| -- | **GameClock** (utility) | Code-only (called by TimeKeeper) | [utilities/game_clock.md](utilities/game_clock.md) |
+| 5d | **Chronicler** | AI (conditional) | [steps/chronicler.md](steps/chronicler.md) |
 | 6 | **Evaluate** | Code-only | [steps/evaluate.md](steps/evaluate.md) |
 | 7 | **Narrate** | AI | [steps/narrate.md](steps/narrate.md) |
 | 8a | **Micro Context Update** | AI (parallel with 8b) | [steps/micro_context_update.md](steps/micro_context_update.md) |
@@ -914,6 +920,7 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `mechanical_evaluation` | 500 |
 | `capability_guardrail` | 300 |
 | `ruling` | 600 |
+| `time_keeper` | 300 |
 | `chronicler` | 500 |
 | `narrate` | 800 |
 | `micro_context_update` | 800 |

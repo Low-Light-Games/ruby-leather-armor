@@ -13,6 +13,7 @@ module DungeonMaster
   #               -> capability_guardrail + mechanical_evaluation (parallel)
   #               -> roll_qualifier (per domain, when rolls exist)
   #               -> [roll pause if needed] -> ruling (outcome + mutations)
+  #               -> time_keeper (time estimation + harbinger encounter sim)
   #               -> evaluate (synthesis) -> narrate + context_updates (parallel | subjugated)
   #   run_rolls   -> resolution_flow  (resumption after player rolls)
   #
@@ -27,11 +28,11 @@ module DungeonMaster
     include Steps::RollQualifier
     include Steps::CapabilityGuardrail
     include Steps::Ruling
+    include Steps::TimeKeeper
     include Steps::Evaluate
     include Steps::Chronicler
     include Steps::Narrate
     include Steps::ContextUpdate
-    include Steps::TimeSpanResolver
     include Mutations
 
     def initialize(adventure:, config:, ai:, log:, sheet:)
@@ -74,11 +75,6 @@ module DungeonMaster
     # Resumption entry point: player submitted roll results.
     def run_rolls(roll_results, metadata)
       intent, merged = restore_from_metadata(metadata)
-
-      if intent[:time_spanning]
-        return run_time_span_resolution(intent, merged, roll_results)
-      end
-
       run_resolution_flow(intent, merged, roll_results)
     end
 
@@ -101,10 +97,6 @@ module DungeonMaster
       intention = run_intent(clean_input)
       intent = run_dispatchers(intention, category)
 
-      if intent[:time_spanning]
-        return run_time_span_flow(intent, clean_input)
-      end
-
       if intent[:needs_mechanics]
         evaluations, guardrail = run_mechanics_gate(intent)
 
@@ -123,6 +115,14 @@ module DungeonMaster
         return run_resolution_flow(intent, merged, "(no player rolls required)")
       end
 
+      time_result = run_time_keeper(intent, nil)
+
+      if time_result[:encounter]
+        return run_output_phase(intent,
+          narrate_seed: time_result[:encounter_narrative],
+          mutations: nil, extra: { encounter_triggered: true })
+      end
+
       dm_brief = nil
       if intent[:plot_relevant]
         plot_result = resolve_plot(intent)
@@ -133,64 +133,19 @@ module DungeonMaster
                        dm_brief: dm_brief, player_action: clean_input)
     end
 
-    def run_time_span_flow(intent, clean_input)
-      if intent[:time_span_type] == "journey" && !Array(intent[:affected_contexts]).include?("traversal")
-        intent[:affected_contexts] = (Array(intent[:affected_contexts]) + ["traversal"]).uniq
-      end
-
-      evaluations, guardrail = run_mechanics_gate(intent)
-
-      unless guardrail[:allowed]
-        @log.dm_log!("CapabilityGuardrail rejected: #{guardrail[:reason]}")
-        return { action: :rejected, reason: guardrail[:reason] }
-      end
-
-      merged = merge_mechanical_evaluations(evaluations)
-      filter_auto_success_rolls!(merged)
-
-      time_span_params = evaluations.first&.dig(:time_span_parameters) || {}
-      merged[:time_span_parameters] = time_span_params
-
-      if merged[:player_rolls].any?
-        return { action: :awaiting_rolls, intent: intent, merged: merged, time_spanning: true }
-      end
-
-      run_time_span_resolution(intent, merged, "(no player rolls required)")
-    end
-
-    def run_time_span_resolution(intent, merged, roll_results)
-      npc_results = resolve_npc_actions(merged[:npc_actions])
-      ruling_result = run_ruling(intent, merged, roll_results: roll_results, npc_results: npc_results)
-
-      ts_result = run_time_span(intent, ruling_result, merged)
-
-      if ts_result[:stop_reason] == :encounter
-        partial_mutations = ts_result[:mutations]
-        apply_time_span_mutations(partial_mutations)
-        encounter_intent = intent.merge(macro_significant: false)
-        return run_output_phase(encounter_intent,
-                                narrate_seed: ts_result[:narrative_seed],
-                                mutations: partial_mutations,
-                                extra: { time_span_interrupted: true })
-      end
-
-      apply_mutations(ruling_result[:mutations])
-      apply_time_span_mutations(ts_result[:mutations])
-
-      dm_brief = nil
-      if intent[:plot_relevant]
-        plot_result = resolve_plot(intent, ruling_outcome: ruling_result[:outcome])
-        dm_brief = plot_result&.dig(:dm_brief)
-      end
-
-      run_output_phase(intent, narrate_seed: ts_result[:narrative_seed],
-                       mutations: ts_result[:mutations], dm_brief: dm_brief)
-    end
-
     def run_resolution_flow(intent, merged, roll_results)
       npc_results = resolve_npc_actions(merged[:npc_actions])
       ruling_result = run_ruling(intent, merged, roll_results: roll_results, npc_results: npc_results)
       apply_mutations(ruling_result[:mutations])
+
+      time_result = run_time_keeper(intent, ruling_result)
+
+      if time_result[:encounter]
+        return run_output_phase(intent,
+          narrate_seed: time_result[:encounter_narrative],
+          mutations: ruling_result[:mutations],
+          extra: { encounter_triggered: true })
+      end
 
       dm_brief = nil
       if intent[:plot_relevant]
@@ -253,12 +208,10 @@ module DungeonMaster
       mechanical_summaries = metadata["mechanical_summaries"] || metadata["ruling_summaries"] || []
       npc_actions  = (metadata["pending_npc_actions"]  || []).map(&:deep_symbolize_keys)
       consequences = (metadata["pending_consequences"] || []).map(&:deep_symbolize_keys)
-      time_span_parameters = (metadata["time_span_parameters"] || {}).deep_symbolize_keys
 
       merged = {
         player_rolls: [], npc_actions: npc_actions,
-        consequences: consequences, mechanical_summaries: mechanical_summaries,
-        time_span_parameters: time_span_parameters
+        consequences: consequences, mechanical_summaries: mechanical_summaries
       }
 
       [intent, merged]

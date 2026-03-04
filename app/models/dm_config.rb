@@ -4,7 +4,7 @@ class DmConfig < ApplicationRecord
   # without migrations.
   TOKEN_BUDGET_STEPS = %w[
     sanitize classify dm_query intent dispatcher mechanical_evaluation
-    roll_qualifier capability_guardrail ruling chronicler narrate
+    roll_qualifier capability_guardrail ruling time_keeper chronicler narrate
     micro_context_update macro_narrative_update
     edge_pipeline
   ].freeze
@@ -23,6 +23,7 @@ class DmConfig < ApplicationRecord
     "roll_qualifier"         => "Fast, cheap model with broader context. Situational modifiers and Take 10/20 — e.g. gpt-4.1-nano, gpt-4o-mini.",
     "capability_guardrail"   => "Fast, cheap model. Sheet validation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini. Only used in AI mode.",
     "ruling"                 => "Capable model. Post-roll arbitration and mutation generation — e.g. o3-mini, o4-mini, gpt-5-mini.",
+    "time_keeper"            => "Fast, cheap model. Estimates in-game time for an action — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "chronicler"             => "Mid-tier model. Condition matching with structured output — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
     "narrate"                => "Creative model. Narrative quality scales with capability — e.g. gpt-4.1, gpt-4o, gpt-5.",
     "micro_context_update"   => "Mid-tier model. Structured JSON with moderate judgment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
@@ -66,6 +67,11 @@ class DmConfig < ApplicationRecord
     "async_pipeline" => false,
     "show_roll_dc" => true,
     "roll_qualifier_scope" => "domain",
+    "terrain_speed_modifiers" => {
+      "road" => 1.0, "trail" => 0.75, "urban" => 1.0, "coast" => 0.75,
+      "forest" => 0.5, "swamp" => 0.5, "desert" => 0.75, "river" => 0.5,
+      "mountain" => 0.25, "underground" => 0.5
+    },
     "wait_messages" => WAIT_MESSAGES_DEFAULT,
     "token_budgets" => {
       "sanitize" => 300,
@@ -77,6 +83,7 @@ class DmConfig < ApplicationRecord
       "roll_qualifier" => 400,
       "capability_guardrail" => 300,
       "ruling" => 600,
+      "time_keeper" => 300,
       "chronicler" => 500,
       "narrate" => 800,
       "micro_context_update" => 800,

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_04_015136) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_04_060001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -113,6 +113,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_04_015136) do
     t.text "enriched_premise"
     t.jsonb "plot_state", default: {}, null: false
     t.jsonb "dm_settings", default: {}, null: false
+    t.jsonb "time_context", default: {"current_hour"=>8, "adventure_day"=>1, "light_conditions"=>"day", "hours_since_last_rest"=>0, "hours_since_last_encounter_check"=>0}, null: false
     t.index ["current_location_id"], name: "index_adventures_on_current_location_id"
     t.index ["story_id"], name: "index_adventures_on_story_id"
     t.index ["user_id"], name: "index_adventures_on_user_id"

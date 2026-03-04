@@ -29,6 +29,7 @@ module ApplicationHelper
     when "intent"                then "type-intent"
     when "mechanical_evaluation", "roll_qualifier" then "type-ruling"
     when "ruling"                then "type-evaluate"
+    when "time_keeper"           then "type-ctx"
     when "narrate"               then "type-narrate"
     when "dm_query"              then "type-dm-query"
     when "micro_context_update"  then "type-ctx"

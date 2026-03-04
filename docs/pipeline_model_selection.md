@@ -349,6 +349,37 @@ stacking modifiers.
 
 ---
 
+### 7b. TimeKeeper
+
+**What it does:** estimates in-game time for any player action and orchestrates
+time-related utilities. Uses code-first estimation for journeys (deterministic
+distance/speed/terrain math), combat (6 seconds), rest (8 hours), and Take 20
+(~40 minutes). Falls back to a cheap AI call for freeform actions (wait, craft,
+freeform travel). Output: `{ "hours_elapsed": N, "reasoning": "..." }`.
+
+Also consults Harbinger (encounter utility) for interrupt checks and calls
+GameClock (clock utility) for time advancement. Both utilities are code-only.
+
+**AI is only called for freeform actions** — most common actions (journey to
+a known destination, combat, rest) are resolved entirely in code.
+
+**Cognitive demand:** very low (when AI is needed). Simple estimation of a
+single number based on Pathfinder 1e time conventions.
+
+**Recommended:** gpt-4.1-nano, gpt-5-nano, gpt-4o-mini
+
+Nano models handle this perfectly. The output is 2-3 fields and the task is
+straightforward time estimation.
+
+**Acceptable:** gpt-4.1-mini, gpt-5-mini
+
+**Avoid:** full, reasoning, and pro models. This is not a task that benefits
+from chain-of-thought — it's a simple lookup.
+
+**Token budget:** 300 (non-reasoning) / 1200 (reasoning).
+
+---
+
 ### 8. Evaluate (code-only)
 
 **What it does:** a code-only synthesis and routing step. Takes the ruling
@@ -559,6 +590,7 @@ of the time). Evaluate is code-only and has no AI cost.
 | Mech. Eval       | gpt-4o-mini  | ~$0.0005         |
 | Roll Qualifier   | gpt-4.1-nano | ~$0.0001         |
 | Ruling           | gpt-4o-mini  | ~$0.0005         |
+| TimeKeeper       | gpt-4.1-nano | ~$0.0001         |
 | Narrate          | gpt-4.1-mini | ~$0.001          |
 | Micro Ctx        | gpt-4.1-nano | ~$0.0002         |
 | Macro Narr       | gpt-4.1-nano | ~$0.0001         |
@@ -583,6 +615,7 @@ narrative will be competent but not immersive.
 | Mech. Eval       | o4-mini     | ~$0.005          |
 | Roll Qualifier   | gpt-4o-mini | ~$0.0003         |
 | Ruling           | o4-mini     | ~$0.005          |
+| TimeKeeper       | gpt-5-nano  | ~$0.0001         |
 | Narrate          | gpt-4.1     | ~$0.008          |
 | Micro Ctx        | gpt-4o-mini | ~$0.0005         |
 | Macro Narr       | gpt-4o-mini | ~$0.0002         |
@@ -607,6 +640,7 @@ and the two mechanical steps.
 | Mech. Eval       | o3           | ~$0.01           |
 | Roll Qualifier   | gpt-4.1-mini | ~$0.0005         |
 | Ruling           | o3           | ~$0.01           |
+| TimeKeeper       | gpt-4o-mini  | ~$0.0002         |
 | Narrate          | gpt-5        | ~$0.01           |
 | Micro Ctx        | gpt-4.1-mini | ~$0.001          |
 | Macro Narr       | gpt-4.1      | ~$0.003          |

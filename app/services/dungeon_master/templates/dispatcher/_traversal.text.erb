@@ -1,9 +1,6 @@
 
-- TIME-SPANNING: If the action involves travel to a distant location, long movement, or
-  environmental traversal that takes HOURS (not seconds), set time_spanning to true.
-  - time_span_type: "journey" for travel to a destination. Set to null if not time_spanning.
-  - destination: the name of the target location from the STORY LOCATIONS above, if any.
-    Match the player's words to the closest location name. Set to null if no match.
-  - estimated_hours: null for journeys (the app computes distance). For other time_spanning
-    traversal, estimate hours.
-  Short movements (30 feet, crossing a room, climbing a wall) are NOT time_spanning.
+- Affected when the player is moving, traveling, changing location, or navigating terrain.
+  Short movements (30 feet, crossing a room, climbing a wall) still count if they
+  matter mechanically (e.g. provoking opportunity attacks, difficult terrain).
+- destination: the name of the target location from the STORY LOCATIONS above, if any.
+  Match the player's words to the closest location name. Set to null if no match.

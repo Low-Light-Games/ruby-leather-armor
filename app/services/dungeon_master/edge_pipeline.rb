@@ -40,6 +40,7 @@ module DungeonMaster
       system_prompt = PromptRenderer.render("edge_pipeline",
         character_block: char_block,
         micro_contexts: micro_contexts,
+        time_context: @adventure.time_context || {},
         creature_stats: creature_stats,
         story_block: story,
         pacing_text: pacing,
@@ -103,6 +104,7 @@ module DungeonMaster
       end
 
       apply_edge_mutations(parsed["mutations"]) if parsed["mutations"].present?
+      apply_edge_time_update(parsed["time_update"]) if parsed["time_update"].present?
       persist_context_updates(parsed["context_updates"]) if parsed["context_updates"].present?
       persist_scene_summary(parsed["scene_summary"])
       update_story_summary(parsed["story_summary_update"]) if parsed["story_summary_update"].present?
@@ -118,6 +120,15 @@ module DungeonMaster
       apply_mutations(mutations.deep_symbolize_keys)
     rescue => e
       @log.dm_log!("Edge mutation error: #{e.message}")
+    end
+
+    def apply_edge_time_update(time_update)
+      hours = (time_update["hours_elapsed"] || 0).to_f
+      return if hours <= 0
+
+      Utilities::GameClock.advance_clock!(@adventure, hours)
+    rescue => e
+      @log.dm_log!("Edge time update error: #{e.message}")
     end
 
     def persist_context_updates(updates)

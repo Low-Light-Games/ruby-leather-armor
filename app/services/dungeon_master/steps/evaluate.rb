@@ -21,7 +21,7 @@ module DungeonMaster
       # @param mutations [Hash, nil] ruling mutations (already applied to DB)
       # @param dm_brief [String, nil] plot guidance from chronicler
       # @param player_action [String, nil] raw player input (no-mechanics path)
-      # @param extra [Hash] additional result keys to merge (e.g. time_span_interrupted)
+      # @param extra [Hash] additional result keys to merge (e.g. encounter_interrupted)
       def run_output_phase(intent, narrate_seed:, mutations:, dm_brief: nil,
                            player_action: nil, extra: {})
         narration_mode = @config.get("narration_mode") || "parallel"
