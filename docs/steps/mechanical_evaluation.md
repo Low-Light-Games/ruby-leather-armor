@@ -52,12 +52,28 @@ Iteration 2: MechanicalEvaluation for TRAVERSAL
   "consequences": [
     { "target": "NPC Name", "effect": "attitude_shift", "from": "friendly", "to": "unfriendly", "reason": "explanation" }
   ],
+  "qualifier_context_hints": ["combat", "traversal"],
   "mechanical_summary": "Brief mechanical summary of what happens in this domain",
   "reasoning": "Brief explanation of rules applied"
 }
 ```
 
+### qualifier_context_hints
+
+When `roll_qualifier_scope` is set to `"dynamic"`, MechanicalEvaluation
+outputs a `qualifier_context_hints` array indicating which micro-contexts
+the downstream [RollQualifier](roll_qualifier.md) should examine. This
+allows the AI that determined the rolls to also signal what broader context
+matters for judging situational modifiers and Take 10/20 eligibility.
+
+If MechanicalEvaluation omits the field or returns an empty array, the
+RollQualifier falls back to the domain's own context.
+
 ## App-side post-processing
+
+After each domain iteration, if `player_rolls` are present, the
+**RollQualifier** step runs to annotate each roll with situational modifiers
+and Take 10/Take 20 eligibility. See [RollQualifier](roll_qualifier.md).
 
 After all iterations complete, results are **merged** by
 `merge_mechanical_evaluations`:
@@ -71,9 +87,13 @@ After all iterations complete, results are **merged** by
 }
 ```
 
-If `player_rolls` is non-empty, the pipeline **pauses** and returns
-`{ action: :awaiting_rolls }`. The merged data is persisted in the
-`roll_request` message's metadata so the pipeline can resume later.
+A code-only **auto-success filter** then removes rolls guaranteed to succeed
+(DC <= 0, modifier guarantees success, or Take 10 auto-succeeds).
+
+If `player_rolls` is non-empty after filtering, the pipeline **pauses** and
+returns `{ action: :awaiting_rolls }`. The merged data (including qualifier
+annotations) is persisted in the `roll_request` message's metadata so the
+pipeline can resume later.
 
 If no player rolls are needed (e.g. only NPC actions and consequences),
 the pipeline proceeds directly to the Resolution Flow.

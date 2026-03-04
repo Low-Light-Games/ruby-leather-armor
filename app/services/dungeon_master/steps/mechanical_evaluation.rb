@@ -70,8 +70,11 @@ module DungeonMaster
             player_rolls: Array(parsed["player_rolls"]).map(&:deep_symbolize_keys),
             npc_actions: Array(parsed["npc_actions"]).map(&:deep_symbolize_keys),
             consequences: Array(parsed["consequences"]).map(&:deep_symbolize_keys),
-            mechanical_summary: parsed["mechanical_summary"] || parsed["ruling_summary"] || ""
+            mechanical_summary: parsed["mechanical_summary"] || parsed["ruling_summary"] || "",
+            qualifier_context_hints: Array(parsed["qualifier_context_hints"])
           }
+
+          evaluation = run_roll_qualifier(evaluation, intent)
 
           previous_summaries << "[#{domain.upcase}] #{evaluation[:mechanical_summary]}"
           evaluations << evaluation
@@ -132,8 +135,11 @@ module DungeonMaster
           npc_actions: Array(parsed["npc_actions"]).map(&:deep_symbolize_keys),
           consequences: Array(parsed["consequences"]).map(&:deep_symbolize_keys),
           mechanical_summary: parsed["mechanical_summary"] || parsed["ruling_summary"] || "",
-          time_span_parameters: (parsed[type_params_key] || parsed["travel_parameters"] || {}).deep_symbolize_keys
+          time_span_parameters: (parsed[type_params_key] || parsed["travel_parameters"] || {}).deep_symbolize_keys,
+          qualifier_context_hints: Array(parsed["qualifier_context_hints"])
         }
+
+        evaluation = run_roll_qualifier(evaluation, intent)
 
         [evaluation]
       rescue TokenBudgetExceededError => e

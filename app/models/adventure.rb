@@ -20,4 +20,11 @@ class Adventure < ApplicationRecord
   def directed_dm?
     directed_dm == true
   end
+
+  def effective_dm_setting(key)
+    local = dm_settings[key.to_s]
+    return local unless local.nil?
+
+    DmConfig.instance.get(key)
+  end
 end

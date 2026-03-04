@@ -89,6 +89,8 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
         <div className="adventure-column middle-column">
           <AdventureChat
             adventureId={adventureId}
+            derivedStats={ds}
+            adventureSheet={advSheet}
             onAdventureComplete={reload}
             onDmResponse={reload}
           />

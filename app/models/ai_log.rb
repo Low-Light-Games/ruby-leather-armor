@@ -4,7 +4,7 @@ class AiLog < ApplicationRecord
 
   CALL_TYPES = %w[
     sanitize classify dm_query intent dispatcher
-    mechanical_evaluation capability_guardrail
+    mechanical_evaluation roll_qualifier capability_guardrail
     ruling chronicler narrate
     micro_context_update macro_narrative_update
     edge_pipeline encounter_expand

@@ -748,6 +748,9 @@ run_prompt(player_input)
 |  | MECH. EVAL   | |CAPABILITY |  |
 |  | (loop per    | |GUARDRAIL  |  |
 |  |  context)    | |           |  |
+|  |  + ROLL      | |           |  |
+|  |  QUALIFIER   | |           |  |
+|  |  (per domain)| |           |  |
 |  +------+-------+ +-----+----+  |
 +---------+---------------+--------+
           |               |
@@ -755,6 +758,8 @@ run_prompt(player_input)
           |    +-- yes --> { action: :rejected }
           |    |
           v    v
+     filter_auto_success_rolls!
+          |
      player rolls needed?
           |
           +-- yes --> { action: :awaiting_rolls }
@@ -807,6 +812,7 @@ Each step is documented in detail in its own file.
 | 2 | **Intent** | AI | [steps/intent.md](steps/intent.md) |
 | 3 | **InterpretationDispatcher** | AI (parallel per domain) | [steps/interpretation_dispatcher.md](steps/interpretation_dispatcher.md) |
 | 4a | **MechanicalEvaluation** | AI (loop, parallel with 4b) | [steps/mechanical_evaluation.md](steps/mechanical_evaluation.md) |
+| 4c | **RollQualifier** | AI (per domain, after 4a when rolls exist) | [steps/roll_qualifier.md](steps/roll_qualifier.md) |
 | 4b | **CapabilityGuardrail** | Code or AI (parallel with 4a) | [steps/capability_guardrail.md](steps/capability_guardrail.md) |
 | -- | **NPC Roll Resolution** | App-side | [steps/npc_rolls.md](steps/npc_rolls.md) |
 | 5 | **Ruling** | AI | [steps/ruling.md](steps/ruling.md) |

@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createConsumer } from '@rails/actioncable'
-import { AdventureMessage, RollRequest } from '../../types'
+import { AdventureMessage, RollRequest, DerivedStats, AdventureSheet } from '../../types'
 import { csrfToken } from '../../utils/api'
+import { formatMod } from '../../utils/formatting'
+import { resolveRollRequest, ResolvedRoll } from '../../utils/rollResolver'
+import { rollD20, DiceRollResult } from '../../rules/dice'
+import RollResultModal, { RollResultDisplay } from '../RollResultModal'
 import { useAuth } from '../../contexts/AuthContext'
 import './AdventureChat.scss'
 
@@ -17,16 +21,25 @@ const cable = createConsumer()
 
 interface AdventureChatProps {
   adventureId: number
+  derivedStats?: DerivedStats | null
+  adventureSheet?: AdventureSheet | null
   onAdventureComplete?: () => void
   onDmResponse?: () => void
 }
 
-interface PendingRolls {
-  requests: RollRequest[]
-  values: Record<number, string>
+interface PendingRollEntry {
+  request: RollRequest
+  resolved: ResolvedRoll | null
+  value: number | null
 }
 
-export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }: AdventureChatProps) => {
+interface PendingRolls {
+  requests: RollRequest[]
+  entries: PendingRollEntry[]
+  showDc: boolean
+}
+
+export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdventureComplete, onDmResponse }: AdventureChatProps) => {
   const { user } = useAuth()
   const [messages, setMessages] = useState<AdventureMessage[]>([])
   const [input, setInput] = useState('')
@@ -34,6 +47,8 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
   const [sending, setSending] = useState(false)
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [pendingRolls, setPendingRolls] = useState<PendingRolls | null>(null)
+  const [rollModalDisplay, setRollModalDisplay] = useState<RollResultDisplay | null>(null)
+  const [rollModalTargetIdx, setRollModalTargetIdx] = useState<number | null>(null)
   const lastSentRef = useRef<
     | { type: 'message'; text: string }
     | { type: 'rolls'; rolls: Array<{ roll_value: number; roll_description: string }> }
@@ -64,10 +79,7 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
             lastSentRef.current = null
 
             const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
-            if (dmMsg) {
-              const requests = extractRollRequests(dmMsg)
-              if (requests.length > 0) setPendingRolls({ requests, values: {} })
-            }
+            if (dmMsg) activatePendingRolls(dmMsg)
 
             if (onDmResponse) onDmResponse()
             const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
@@ -96,10 +108,7 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
           const lastDmIdx = data.findIndex(m => m.id === lastDm.id)
           const hasRollResult = data.slice(lastDmIdx + 1).some(m => m.message_type === 'roll_result')
           if (!hasRollResult) {
-            const requests = extractRollRequests(lastDm)
-            if (requests.length > 0) {
-              setPendingRolls({ requests, values: {} })
-            }
+            activatePendingRolls(lastDm)
           }
         }
       } catch (err) {
@@ -119,6 +128,23 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
       return [msg.metadata.roll_request]
     }
     return []
+  }
+
+  function buildPendingRolls(requests: RollRequest[], showDc: boolean): PendingRolls {
+    const entries: PendingRollEntry[] = requests.map(req => ({
+      request: req,
+      resolved: derivedStats ? resolveRollRequest(req, derivedStats) : null,
+      value: null,
+    }))
+    return { requests, entries, showDc }
+  }
+
+  function activatePendingRolls(msg: AdventureMessage) {
+    const requests = extractRollRequests(msg)
+    if (requests.length > 0) {
+      const showDc = msg.metadata?.show_dc !== false
+      setPendingRolls(buildPendingRolls(requests, showDc))
+    }
   }
 
   const sendMessage = async (text: string, mode?: string) => {
@@ -168,10 +194,7 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
         setSending(false)
 
         const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
-        if (dmMsg) {
-          const requests = extractRollRequests(dmMsg)
-          if (requests.length > 0) setPendingRolls({ requests, values: {} })
-        }
+        if (dmMsg) activatePendingRolls(dmMsg)
 
         if (onDmResponse) onDmResponse()
         const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
@@ -232,10 +255,7 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
         setSending(false)
 
         const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
-        if (dmMsg) {
-          const requests = extractRollRequests(dmMsg)
-          if (requests.length > 0) setPendingRolls({ requests, values: {} })
-        }
+        if (dmMsg) activatePendingRolls(dmMsg)
 
         if (onDmResponse) onDmResponse()
         const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
@@ -261,25 +281,52 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
     sendMessage(text, mode)
   }
 
-  const handleRollValueChange = (index: number, value: string) => {
+  const setRollValue = (index: number, value: number) => {
     if (!pendingRolls) return
-    setPendingRolls({
-      ...pendingRolls,
-      values: { ...pendingRolls.values, [index]: value },
+    const updated = [...pendingRolls.entries]
+    updated[index] = { ...updated[index], value }
+    setPendingRolls({ ...pendingRolls, entries: updated })
+  }
+
+  const handleManualRollChange = (index: number, raw: string) => {
+    const v = parseInt(raw, 10)
+    setRollValue(index, isNaN(v) ? 0 : v)
+  }
+
+  const handleRollD20 = (index: number) => {
+    if (!pendingRolls) return
+    const entry = pendingRolls.entries[index]
+    if (!entry.resolved) return
+
+    const result = rollD20(entry.resolved.modifier)
+    setRollModalTargetIdx(index)
+    setRollModalDisplay({
+      label: entry.resolved.label,
+      result,
+      modifierLabel: entry.resolved.modifierLabel,
     })
   }
 
-  const allRollsFilled = pendingRolls?.requests.every((_, i) => {
-    const v = parseInt(pendingRolls.values[i] || '', 10)
-    return !isNaN(v) && v >= 1
-  })
+  const handleTake = (index: number, takeValue: number) => {
+    setRollValue(index, takeValue)
+  }
+
+  const handleRollModalClose = () => {
+    if (rollModalDisplay && rollModalTargetIdx != null) {
+      setRollValue(rollModalTargetIdx, rollModalDisplay.result.total)
+    }
+    setRollModalDisplay(null)
+    setRollModalTargetIdx(null)
+  }
+
+  const allRollsFilled = pendingRolls?.entries.every(e => e.value != null && e.value >= 1) ?? false
 
   const handleRollsSubmit = () => {
     if (!pendingRolls || !allRollsFilled) return
 
-    const rolls = pendingRolls.requests.map((req, i) => ({
-      roll_value: parseInt(pendingRolls.values[i], 10),
-      roll_description: req.description,
+    const rolls = pendingRolls.entries.map(e => ({
+      roll_value: e.value!,
+      roll_description: e.request.description,
     }))
 
     setPendingRolls(null)
@@ -327,6 +374,7 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
             }
 
             const rollRequests = msg.message_type === 'roll_request' ? extractRollRequests(msg) : []
+            const msgShowDc = msg.metadata?.show_dc !== false
 
             return (
               <div
@@ -355,7 +403,7 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
                     {rollRequests.map((req, i) => (
                       <div key={i} className="roll-request-badge">
                         <span className="roll-badge-label">🎲 {req.skill || req.type?.replace(/_/g, ' ') || 'Roll'}</span>
-                        {req.dc != null && <span className="roll-dc">DC {req.dc}</span>}
+                        {msgShowDc && req.dc != null && <span className="roll-dc">DC {req.dc}</span>}
                         <span className="roll-badge-desc">{req.description}</span>
                       </div>
                     ))}
@@ -374,37 +422,85 @@ export const AdventureChat = ({ adventureId, onAdventureComplete, onDmResponse }
       {pendingRolls && !sending && (
         <div className="roll-submit-area">
           <div className="roll-prompt-header">🎲 Rolls Needed</div>
-          {pendingRolls.requests.map((req, i) => (
-            <div key={i} className="roll-entry">
-              <div className="roll-prompt">
-                <span className="roll-prompt-type">{req.skill || req.type?.replace(/_/g, ' ') || 'Roll'}</span>
-                {req.dc != null && <span className="roll-dc">DC {req.dc}</span>}
-                <span className="roll-prompt-desc">{req.description}</span>
+          {pendingRolls.entries.map((entry, i) => {
+            const { request: req, resolved, value } = entry
+            const isHallucination = derivedStats && !resolved
+
+            return (
+              <div key={i} className={`roll-entry ${isHallucination ? 'roll-unresolved' : ''}`}>
+                <div className="roll-prompt">
+                  <span className="roll-prompt-type">
+                    {resolved ? resolved.label : (req.skill || req.type?.replace(/_/g, ' ') || 'Roll')}
+                  </span>
+                  {pendingRolls.showDc && req.dc != null && <span className="roll-dc">DC {req.dc}</span>}
+                  <span className="roll-prompt-desc">{req.description}</span>
+                  {resolved && (
+                    <span className="roll-modifier">{formatMod(resolved.modifier)}</span>
+                  )}
+                  {isHallucination && (
+                    <span className="roll-warning">Not on character sheet</span>
+                  )}
+                </div>
+                <div className="roll-actions">
+                  {resolved ? (
+                    <>
+                      <button
+                        className={`roll-btn roll-d20 ${value != null ? 'roll-done' : ''}`}
+                        onClick={() => handleRollD20(i)}
+                        disabled={value != null}
+                      >
+                        {value != null ? `Rolled: ${value}` : `Roll (${formatMod(resolved.modifier)})`}
+                      </button>
+                      {req.take_10_eligible && req.take_10_value != null && value == null && (
+                        <button
+                          className="roll-btn roll-take"
+                          onClick={() => handleTake(i, req.take_10_value!)}
+                        >
+                          Take 10 (= {req.take_10_value})
+                        </button>
+                      )}
+                      {req.take_20_eligible && req.take_20_value != null && value == null && (
+                        <button
+                          className="roll-btn roll-take"
+                          onClick={() => handleTake(i, req.take_20_value!)}
+                        >
+                          Take 20 (= {req.take_20_value})
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <input
+                      ref={i === 0 ? rollInputRef : undefined}
+                      type="number"
+                      min="1"
+                      max="100"
+                      placeholder="Roll result"
+                      value={value ?? ''}
+                      onChange={e => handleManualRollChange(i, e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && allRollsFilled) handleRollsSubmit()
+                      }}
+                      className="roll-input"
+                    />
+                  )}
+                </div>
               </div>
-              <input
-                ref={i === 0 ? rollInputRef : undefined}
-                type="number"
-                min="1"
-                max="100"
-                placeholder="Roll result"
-                value={pendingRolls.values[i] || ''}
-                onChange={e => handleRollValueChange(i, e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && allRollsFilled) handleRollsSubmit()
-                }}
-                className="roll-input"
-              />
-            </div>
-          ))}
+            )
+          })}
           <button
             onClick={handleRollsSubmit}
             disabled={!allRollsFilled}
             className="roll-submit-btn"
           >
-            Submit {pendingRolls.requests.length > 1 ? 'All Rolls' : 'Roll'}
+            Submit {pendingRolls.entries.length > 1 ? 'All Rolls' : 'Roll'}
           </button>
         </div>
       )}
+
+      <RollResultModal
+        roll={rollModalDisplay}
+        onClose={handleRollModalClose}
+      />
 
       <div className="chat-input-area">
         <button

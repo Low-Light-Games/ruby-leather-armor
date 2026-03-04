@@ -172,7 +172,8 @@ class DungeonMasterService
         pending_npc_actions: result[:merged][:npc_actions],
         pending_consequences: result[:merged][:consequences],
         mechanical_summaries: result[:merged][:mechanical_summaries],
-        intent: result[:intent]
+        intent: result[:intent],
+        show_dc: @adventure.effective_dm_setting("show_roll_dc")
       }
       meta[:time_span_parameters] = result[:merged][:time_span_parameters] if result[:time_spanning]
       [persist_message(

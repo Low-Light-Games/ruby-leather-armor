@@ -11,6 +11,7 @@ module DungeonMaster
   #   run_prompt  -> sanitize + classify (parallel) -> dm_query_flow | action_flow
   #   action_flow -> intent -> dispatchers (parallel) -> converge
   #               -> capability_guardrail + mechanical_evaluation (parallel)
+  #               -> roll_qualifier (per domain, when rolls exist)
   #               -> [roll pause if needed] -> ruling (outcome + mutations)
   #               -> evaluate (synthesis) -> narrate + context_updates (parallel | subjugated)
   #   run_rolls   -> resolution_flow  (resumption after player rolls)
@@ -23,6 +24,7 @@ module DungeonMaster
     include Steps::Intent
     include Steps::InterpretationDispatcher
     include Steps::MechanicalEvaluation
+    include Steps::RollQualifier
     include Steps::CapabilityGuardrail
     include Steps::Ruling
     include Steps::Evaluate
@@ -112,6 +114,7 @@ module DungeonMaster
         end
 
         merged = merge_mechanical_evaluations(evaluations)
+        filter_auto_success_rolls!(merged)
 
         if merged[:player_rolls].any?
           return { action: :awaiting_rolls, intent: intent, merged: merged }
@@ -143,6 +146,7 @@ module DungeonMaster
       end
 
       merged = merge_mechanical_evaluations(evaluations)
+      filter_auto_success_rolls!(merged)
 
       time_span_params = evaluations.first&.dig(:time_span_parameters) || {}
       merged[:time_span_parameters] = time_span_params
@@ -336,6 +340,53 @@ module DungeonMaster
         atmosphere_notes: "",
         milestones_reached: [],
       }
+    end
+
+    # ----------------------------------------------------------------
+    # Auto-success filter: removes rolls guaranteed to succeed
+    # ----------------------------------------------------------------
+
+    def filter_auto_success_rolls!(merged)
+      skills_lookup = build_skills_lookup
+      removed = []
+
+      merged[:player_rolls] = merged[:player_rolls].reject do |roll|
+        dc = roll[:dc].to_i
+        reason = auto_success_reason(roll, dc, skills_lookup)
+        if reason
+          removed << "#{roll[:skill] || roll[:type]} DC #{dc}: #{reason}"
+          true
+        end
+      end
+
+      if removed.any?
+        @log.dm_log!("Auto-success filter removed #{removed.size} roll(s): #{removed.join('; ')}")
+      end
+    end
+
+    def auto_success_reason(roll, dc, skills_lookup)
+      return "DC <= 0 (impossible to fail)" if dc <= 0
+
+      if roll[:type].to_s == "skill_check"
+        modifier = skills_lookup[roll[:skill].to_s]
+        if modifier && (modifier + 1) >= dc
+          return "modifier #{modifier} guarantees success (min roll 1 + #{modifier} = #{modifier + 1} >= DC #{dc})"
+        end
+
+        if roll[:take_10_eligible] && roll[:take_10_value].to_i >= dc
+          return "Take 10 auto-succeeds (#{roll[:take_10_value]} >= DC #{dc})"
+        end
+      end
+
+      nil
+    end
+
+    def build_skills_lookup
+      return {} unless @sheet&.derived_stats.is_a?(Hash)
+
+      Array(@sheet.derived_stats["skills"]).each_with_object({}) do |skill, h|
+        h[skill["name"].to_s] = skill["total"].to_i if skill["name"].present?
+      end
     end
 
     def normalize_category(category)

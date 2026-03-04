@@ -284,6 +284,40 @@ or produce malformed JSON on complex multi-check scenarios.
 
 ---
 
+### 6b. RollQualifier
+
+**What it does:** runs after each MechanicalEvaluation domain iteration that
+produces player rolls. Evaluates the character's situational state to
+determine: (a) situational modifiers like flanking, high ground, cover, or
+circumstance bonuses, and (b) Take 10 / Take 20 eligibility based on
+threat level, time pressure, and failure consequences.
+
+**Cognitive demand:** low to moderate. The model reads broader context
+(configurable scope) and makes a situational judgment. No complex rules
+calculation — just assessing "is the character under duress?"
+
+**Recommended:** gpt-4.1-nano, gpt-5-nano, gpt-4o-mini
+
+Fast and cheap. The task is straightforward situational assessment, not
+rules adjudication. A nano model with sufficient context window handles
+this reliably.
+
+**Acceptable:** gpt-4.1-mini, o3-mini
+
+If you want higher reliability on edge cases (e.g., "is the nearby NPC
+hostile enough to count as a threat for Take 10?"), a mini-class model
+provides better judgment.
+
+**Avoid:**
+
+- Pro models: massive overkill for a simple assessment.
+- Reasoning models are unnecessary here unless context is very large (use
+  `roll_qualifier_scope: "all"` with a larger model).
+
+**Token budget:** 400.
+
+---
+
 ### 7. Ruling
 
 **What it does:** post-roll arbitration. Given roll results (player and NPC),
@@ -507,6 +541,7 @@ one response.
 The following estimates assume one player turn = sanitize + classify
 (parallel) + intent + 2 interpretation dispatchers (average) +
 capability guardrail + mechanical evaluation (parallel with guardrail) +
+roll qualifier (when rolls exist, ~50% of turns) +
 ruling + narrate + micro context update + macro narrative update (~20%
 of the time). Evaluate is code-only and has no AI cost.
 
@@ -522,6 +557,7 @@ of the time). Evaluate is code-only and has no AI cost.
 | Dispatchers (×2) | gpt-4o-mini  | ~$0.0004         |
 | Cap. Guardrail   | gpt-4.1-nano | ~$0.0001         |
 | Mech. Eval       | gpt-4o-mini  | ~$0.0005         |
+| Roll Qualifier   | gpt-4.1-nano | ~$0.0001         |
 | Ruling           | gpt-4o-mini  | ~$0.0005         |
 | Narrate          | gpt-4.1-mini | ~$0.001          |
 | Micro Ctx        | gpt-4.1-nano | ~$0.0002         |
@@ -545,6 +581,7 @@ narrative will be competent but not immersive.
 | Dispatchers (×2) | gpt-4o-mini | ~$0.001          |
 | Cap. Guardrail   | gpt-4o-mini | ~$0.0003         |
 | Mech. Eval       | o4-mini     | ~$0.005          |
+| Roll Qualifier   | gpt-4o-mini | ~$0.0003         |
 | Ruling           | o4-mini     | ~$0.005          |
 | Narrate          | gpt-4.1     | ~$0.008          |
 | Micro Ctx        | gpt-4o-mini | ~$0.0005         |
@@ -568,6 +605,7 @@ and the two mechanical steps.
 | Dispatchers (×2) | gpt-4.1-mini | ~$0.002          |
 | Cap. Guardrail   | gpt-4.1-mini | ~$0.0005         |
 | Mech. Eval       | o3           | ~$0.01           |
+| Roll Qualifier   | gpt-4.1-mini | ~$0.0005         |
 | Ruling           | o3           | ~$0.01           |
 | Narrate          | gpt-5        | ~$0.01           |
 | Micro Ctx        | gpt-4.1-mini | ~$0.001          |

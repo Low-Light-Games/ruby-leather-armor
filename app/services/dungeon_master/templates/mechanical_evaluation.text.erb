@@ -35,6 +35,12 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
 - Write a mechanical_summary that describes what happens mechanically in this domain. This summary
   will be passed to subsequent evaluations for other domains.
 - Only adjudicate for the <%= @domain.upcase %> domain. Do not rule on other domains.
+- If player_rolls are needed, include "qualifier_context_hints": an array of context names
+  (combat, exploration, social, traversal, rest, inventory) that a follow-up step should
+  examine to judge situational modifiers and Take 10/Take 20 eligibility. For example,
+  if flanking or threat awareness matters, include "combat". If terrain or environmental
+  conditions matter, include "traversal". If social pressure applies, include "social".
+  Empty array if the domain's own context is sufficient.
 <%= @domain_instructions %>
 
 Respond ONLY with valid JSON (no markdown, no code fences):
@@ -48,6 +54,7 @@ Respond ONLY with valid JSON (no markdown, no code fences):
   "consequences": [
     { "target": "NPC Name", "effect": "attitude_shift", "from": "friendly", "to": "unfriendly", "reason": "explanation" }
   ],
+  "qualifier_context_hints": [],
   "mechanical_summary": "Brief mechanical summary of what happens in this domain",
   "reasoning": "Brief explanation of rules applied (1-2 sentences)"
 }

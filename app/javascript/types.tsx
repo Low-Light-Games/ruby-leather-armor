@@ -266,12 +266,23 @@ export interface AdventureSummary {
   updated_at: string
 }
 
+export interface SituationalModifier {
+  source: string
+  bonus: number
+  type?: string
+}
+
 export interface RollRequest {
   type: string
   skill?: string
   spell?: string
   dc?: number
   description: string
+  take_10_eligible?: boolean
+  take_20_eligible?: boolean
+  take_10_value?: number | null
+  take_20_value?: number | null
+  situational_modifiers?: SituationalModifier[]
 }
 
 export interface AdventureMessage {

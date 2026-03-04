@@ -27,7 +27,7 @@ module ApplicationHelper
     case call_type
     when "triage", "sanitize", "classify", "dispatcher", "capability_guardrail", "chronicler" then "type-triage"
     when "intent"                then "type-intent"
-    when "mechanical_evaluation" then "type-ruling"
+    when "mechanical_evaluation", "roll_qualifier" then "type-ruling"
     when "ruling"                then "type-evaluate"
     when "narrate"               then "type-narrate"
     when "dm_query"              then "type-dm-query"

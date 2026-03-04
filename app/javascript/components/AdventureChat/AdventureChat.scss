@@ -238,9 +238,81 @@
       }
     }
 
-    .roll-input-row {
+    .roll-entry {
+      margin-bottom: 10px;
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 4px;
+      border: 1px solid #ffe0b2;
+
+      &.roll-unresolved {
+        opacity: 0.7;
+        border-color: #e0e0e0;
+        background: #fafafa;
+      }
+    }
+
+    .roll-modifier {
+      font-weight: 700;
+      font-size: 12px;
+      color: #2e7d32;
+      background: #e8f5e9;
+      padding: 1px 5px;
+      border-radius: 6px;
+    }
+
+    .roll-warning {
+      font-size: 11px;
+      color: #c62828;
+      font-style: italic;
+    }
+
+    .roll-actions {
       display: flex;
-      gap: 8px;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .roll-btn {
+      padding: 5px 12px;
+      border: 1px solid #e65100;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      transition: background-color 0.15s, border-color 0.15s;
+
+      &.roll-d20 {
+        background-color: #fff3e0;
+        color: #e65100;
+
+        &:hover:not(:disabled) {
+          background-color: #ffe0b2;
+        }
+
+        &.roll-done {
+          background-color: #e8f5e9;
+          border-color: #4caf50;
+          color: #2e7d32;
+          cursor: default;
+        }
+
+        &:disabled {
+          cursor: default;
+        }
+      }
+
+      &.roll-take {
+        background-color: #e3f2fd;
+        border-color: #1565c0;
+        color: #1565c0;
+
+        &:hover {
+          background-color: #bbdefb;
+        }
+      }
     }
 
     .roll-input {
@@ -250,7 +322,8 @@
       border-radius: 4px;
       font-size: 14px;
       font-family: inherit;
-      min-width: 0;
+      min-width: 80px;
+      max-width: 120px;
 
       &:focus {
         outline: none;
