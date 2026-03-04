@@ -3,6 +3,9 @@ module Admin
     before_action :require_admin
 
     PER_PAGE = 50
+    TERMINAL_STEPS = %w[narrate dm_query edge_pipeline].freeze
+    ERROR_STATUSES = %w[api_error parse_error token_budget_exceeded logging_error].freeze
+    RETRY_WINDOW = 5.minutes
 
     def index
       @logs = AiLog.includes(:adventure, :player_message)
@@ -48,6 +51,16 @@ module Admin
         logs = logs_by_run[run.pipeline_run_id] || []
         first_log = logs.first
         msg = first_log && messages[first_log.player_message_id]
+        step_types = logs.map(&:call_type)
+        has_error = logs.any? { |l| l.status.in?(ERROR_STATUSES) }
+        has_terminal = step_types.any? { |t| TERMINAL_STEPS.include?(t) }
+
+        status = if has_error && !has_terminal then "errored"
+                 elsif has_error                then "partial"
+                 elsif has_terminal             then "complete"
+                 else                                "incomplete"
+                 end
+
         {
           pipeline_run_id: run.pipeline_run_id,
           adventure_id: run.adventure_id,
@@ -56,10 +69,11 @@ module Admin
           step_count: run.step_count,
           message_content: msg&.content || first_log&.player_message_content,
           logs: logs,
-          has_error: logs.any? { |l| l.status.in?(%w[api_error parse_error token_budget_exceeded]) },
-          has_fallback: logs.any? { |l| l.status == "parse_fallback" }
+          status: status
         }
       end
+
+      detect_retries!(@pipeline_runs)
 
       render layout: 'application'
     end
@@ -86,6 +100,23 @@ module Admin
     def require_admin
       unless current_user&.admin?
         redirect_to root_path, alert: "Unauthorized"
+      end
+    end
+
+    # Groups consecutive pipelines that share adventure + similar player message
+    # within a time window, marking later entries as retries.
+    def detect_retries!(pipeline_runs)
+      sorted = pipeline_runs.sort_by { |r| r[:first_at] }
+      sorted.each_with_index do |run, idx|
+        run[:retry_of] = nil
+        next if idx == 0
+        prev = sorted[idx - 1]
+        next unless run[:adventure_id] && run[:adventure_id] == prev[:adventure_id]
+        next unless run[:first_at] - prev[:first_at] < RETRY_WINDOW
+        next unless run[:message_content].present? && prev[:message_content].present?
+        next unless run[:message_content].strip == prev[:message_content].strip
+
+        run[:retry_of] = prev[:retry_of] || prev[:pipeline_run_id]
       end
     end
   end

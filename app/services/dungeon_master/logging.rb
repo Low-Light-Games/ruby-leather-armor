@@ -20,6 +20,11 @@ module DungeonMaster
       @player_message_content = message_content&.truncate(500)
     end
 
+    def resume_pipeline_run!(existing_run_id, message_content)
+      @pipeline_run_id = existing_run_id
+      @player_message_content = message_content&.truncate(500)
+    end
+
     # Write a human-readable debug entry (visible in Admin -> DM Logs).
     def dm_log!(content)
       DmLog.create!(
@@ -28,7 +33,7 @@ module DungeonMaster
         content: content
       )
     rescue => e
-      Rails.logger.error("[DungeonMaster::Logging] Failed to write DmLog: #{e.message}")
+      report_error(e, context: { method: "dm_log!", content: content&.truncate(200) })
     end
 
     # Write a full AI exchange record (visible in Admin -> AI Logs).
@@ -49,7 +54,8 @@ module DungeonMaster
         player_message_content: @player_message_content
       )
     rescue => e
-      Rails.logger.error("[DungeonMaster::Logging] Failed to write AiLog: #{e.message}")
+      report_error(e, context: { method: "ai_log!", call_type: call_type })
+      try_fallback_log(call_type, e)
     end
 
     # Write an AI error record when a call fails.
@@ -70,11 +76,44 @@ module DungeonMaster
         player_message_content: @player_message_content
       )
     rescue => e
-      Rails.logger.error("[DungeonMaster::Logging] Failed to write AiLog (error): #{e.message}")
+      report_error(e, context: { method: "ai_log_error!", call_type: call_type, original_error: error.message })
+      try_fallback_log(call_type, e)
     end
 
     def truncate(text, length: 200)
       text.length > length ? "#{text.first(length)}…" : text
+    end
+
+    private
+
+    def report_error(exception, context: {})
+      full_context = {
+        pipeline_run_id: @pipeline_run_id,
+        adventure_id: @adventure&.id,
+        player_message_id: @player_message_id
+      }.merge(context)
+
+      Rails.error.report(exception, handled: true, context: full_context)
+    end
+
+    # Last-resort write when the primary ai_log! or ai_log_error! fails.
+    # Uses minimal fields to maximize the chance of passing validation.
+    def try_fallback_log(call_type, original_error)
+      AiLog.create!(
+        adventure: @adventure,
+        call_type: call_type,
+        prompt_summary: "LOGGING FAILURE: #{original_error.message.truncate(400)}",
+        raw_response: nil,
+        parsed_response: nil,
+        status: "logging_error",
+        error_message: original_error.message,
+        dm_service: @dm_service,
+        player_message_id: @player_message_id,
+        pipeline_run_id: @pipeline_run_id,
+        player_message_content: @player_message_content
+      )
+    rescue => inner
+      report_error(inner, context: { method: "try_fallback_log", call_type: call_type, original_error: original_error.message })
     end
   end
 end

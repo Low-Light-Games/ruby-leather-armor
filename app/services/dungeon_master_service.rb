@@ -57,7 +57,7 @@ class DungeonMasterService
       message_type: "roll_result",
       metadata: { rolls: roll_results_from_player })
     @log.player_message_id = roll_msg.id
-    @log.start_pipeline_run!(format_roll_results(roll_results_from_player))
+    resume_or_start_pipeline!(metadata, format_roll_results(roll_results_from_player))
 
     result = pipeline.run_rolls(format_roll_results(roll_results_from_player), metadata)
     { messages: [roll_msg] + messages_for(result) }
@@ -107,8 +107,8 @@ class DungeonMasterService
 
   def execute_rolls(roll_results_text, player_message_id:)
     @log.player_message_id = player_message_id
-    @log.start_pipeline_run!(roll_results_text)
     metadata = latest_roll_metadata
+    resume_or_start_pipeline!(metadata, roll_results_text)
 
     result = pipeline.run_rolls(roll_results_text, metadata)
     messages_for(result)
@@ -196,6 +196,15 @@ class DungeonMasterService
   # ----------------------------------------------------------------
   # Helpers
   # ----------------------------------------------------------------
+
+  def resume_or_start_pipeline!(metadata, message_content)
+    original_run_id = metadata&.dig("pipeline_run_id")
+    if original_run_id.present?
+      @log.resume_pipeline_run!(original_run_id, message_content)
+    else
+      @log.start_pipeline_run!(message_content)
+    end
+  end
 
   def latest_roll_metadata
     last_roll_msg = @adventure.adventure_messages

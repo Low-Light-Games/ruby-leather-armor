@@ -28,9 +28,14 @@
       </div>
       <div class="ps-item">
         <span class="ps-label">Status</span>
-        <% has_error = @logs.any? { |l| l.status.in?(%w[api_error parse_error token_budget_exceeded]) } %>
-        <% has_fallback = @logs.any? { |l| l.status == "parse_fallback" } %>
-        <% overall = has_error ? "error" : (has_fallback ? "partial" : "complete") %>
+        <% step_types = @logs.map(&:call_type) %>
+        <% has_error = @logs.any? { |l| l.status.in?(%w[api_error parse_error token_budget_exceeded logging_error]) } %>
+        <% has_terminal = step_types.any? { |t| t.in?(%w[narrate dm_query edge_pipeline]) } %>
+        <% overall = if has_error && !has_terminal then "errored"
+                     elsif has_error                then "partial"
+                     elsif has_terminal             then "complete"
+                     else                                "incomplete"
+                     end %>
         <span class="pipeline-status-badge pipeline-<%= overall %>"><%= overall.capitalize %></span>
       </div>
       <div class="ps-item">
@@ -49,7 +54,7 @@
     <% previous_at = @player_message.created_at %>
     <% @logs.each_with_index do |log, idx| %>
       <% step_ms = ((log.created_at - previous_at) * 1000).round %>
-      <% is_error = log.status.in?(%w[api_error parse_error token_budget_exceeded]) %>
+      <% is_error = log.status.in?(%w[api_error parse_error token_budget_exceeded logging_error]) %>
 
       <% if idx > 0 %>
         <div class="timeline-connector">
@@ -131,7 +136,8 @@
   .pipeline-status-badge {
     display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 600;
     &.pipeline-complete { background-color: #c8e6c9; color: #2e7d32; }
-    &.pipeline-error { background-color: #ffcdd2; color: #c62828; }
+    &.pipeline-errored { background-color: #ffcdd2; color: #c62828; }
+    &.pipeline-incomplete { background-color: #ffe0b2; color: #e65100; }
     &.pipeline-partial { background-color: #fff9c4; color: #f57f17; }
   }
 
@@ -214,5 +220,6 @@
     &.parse_error { background-color: #ffcdd2; color: #c62828; }
     &.api_error { background-color: #ffcdd2; color: #c62828; }
     &.token_budget_exceeded { background-color: #ffcdd2; color: #c62828; }
+    &.logging_error { background-color: #f3e5f5; color: #7b1fa2; }
   }
 </style>
