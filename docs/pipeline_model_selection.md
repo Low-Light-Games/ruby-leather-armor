@@ -159,6 +159,26 @@ is pure waste.
 
 ---
 
+### 2b. Sequencer
+
+**What it does:** detects compound player inputs that describe multiple
+sequential actions ("I rest, then head to the village") and splits them
+into an ordered queue. Runs before Intent when `action_queue` is enabled.
+
+**Cognitive demand:** low. Classification + extraction of temporal
+sequences. Must distinguish simultaneous actions ("sneak and pick the
+lock") from sequential ones ("rest, then travel").
+
+**Recommended:** gpt-4.1-nano, gpt-5-nano, gpt-4o-mini
+
+**Acceptable:** gpt-4.1-mini for edge cases with subtle temporal cues.
+
+**Avoid:** full and pro models. Task is simple classification.
+
+**Token budget:** 200 (non-reasoning). Output is a small JSON array.
+
+---
+
 ### 3. Intent
 
 **What it does:** pure intention extraction. Given the player input and

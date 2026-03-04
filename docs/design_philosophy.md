@@ -28,6 +28,15 @@ The inverse is also true: don't write brittle regex parsers for tasks
 where you cannot enumerate all valid inputs. If you can't be 100% certain
 a code-only solution covers every case, the AI will do a better job.
 
+**Corollary: distrust clever regexing.** Pattern matching against player
+input is brittle for the same reasons code-first solutions fail on
+uncertain inputs. Temporal conjunctions ("then", "after that", "once
+done") seem parseable by regex, but edge cases are unbounded: "I then
+cast fireball" should not split, "I fire, then reload" is ambiguous.
+If the input space is natural language, use AI. The Sequencer step
+exists because regex-based compound action detection would be fragile
+in exactly the ways that matter most.
+
 ---
 
 ## 2. Honor system

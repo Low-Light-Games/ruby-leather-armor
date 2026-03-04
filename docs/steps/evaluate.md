@@ -25,8 +25,8 @@ Responsibilities:
 
 This step exists as a routing layer to keep the pipeline's flow method
 clean. By encapsulating the parallel-vs-sequential decision and the
-data packaging in one place, the main flow methods (`run_action_flow`,
-`run_resolution_flow`) remain simple dispatchers.
+data packaging in one place, the outer orchestrator (`orchestrate_actions`)
+and the CoreResolver remain simple dispatchers.
 
 See [Decision 27: Evaluate as code-only synthesis step](../pipeline_steps.md)
 and [Decision 28: Narration mode toggle](../pipeline_steps.md).

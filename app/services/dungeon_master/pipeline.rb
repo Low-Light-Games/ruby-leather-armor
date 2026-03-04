@@ -8,14 +8,9 @@ module DungeonMaster
   # (DungeonMasterService) is responsible for those side effects.
   #
   # Flow:
-  #   run_prompt  -> sanitize + classify (parallel) -> dm_query_flow | action_flow
-  #   action_flow -> intent -> dispatchers (parallel) -> converge
-  #               -> capability_guardrail + mechanical_evaluation (parallel)
-  #               -> roll_qualifier (per domain, when rolls exist)
-  #               -> [roll pause if needed] -> ruling (outcome + mutations)
-  #               -> time_keeper (time estimation + harbinger encounter sim)
-  #               -> evaluate (synthesis) -> narrate + context_updates (parallel | subjugated)
-  #   run_rolls   -> resolution_flow  (resumption after player rolls)
+  #   run_prompt          -> sanitize + classify (parallel) -> dm_query_flow | orchestrate_actions
+  #   orchestrate_actions -> sequencer -> [ for each action: intent -> CoreResolver.resolve ] -> output_phase
+  #   run_rolls           -> CoreResolver.finish_resolution -> continue queue if remaining -> output_phase
   #
   class Pipeline
     PROMPT_CATEGORIES = %w[combat traversal social exploration rest inventory dm_query].freeze
@@ -23,6 +18,7 @@ module DungeonMaster
     include Steps::Triage
     include Steps::DmQuery
     include Steps::Intent
+    include Steps::Sequencer
     include Steps::InterpretationDispatcher
     include Steps::MechanicalEvaluation
     include Steps::RollQualifier
@@ -33,6 +29,7 @@ module DungeonMaster
     include Steps::Chronicler
     include Steps::Narrate
     include Steps::ContextUpdate
+    include CoreResolver
     include Mutations
 
     def initialize(adventure:, config:, ai:, log:, sheet:)
@@ -69,13 +66,28 @@ module DungeonMaster
         return run_dm_query_flow(clean_input)
       end
 
-      run_action_flow(clean_input, classify_result[:category])
+      orchestrate_actions(clean_input, classify_result[:category])
     end
 
     # Resumption entry point: player submitted roll results.
     def run_rolls(roll_results, metadata)
       intent, merged = restore_from_metadata(metadata)
-      run_resolution_flow(intent, merged, roll_results)
+      result = finish_resolution(intent, merged, roll_results)
+
+      remaining   = metadata["remaining_actions"] || []
+      prior_seeds = metadata["prior_narrate_seeds"] || []
+      category    = metadata["category"]
+
+      if result[:status] == :resolved && remaining.any?
+        prior_seeds << result[:narrate_seed]
+        run_remaining_queue(remaining, prior_seeds, category,
+                            accumulated_intents: [result[:intent]],
+                            accumulated_mutations: [result[:mutations]])
+      else
+        run_accumulated_output_phase(
+          [result], prior_seeds: prior_seeds,
+          player_action: metadata["player_message_content"])
+      end
     end
 
     private
@@ -93,68 +105,142 @@ module DungeonMaster
       { action: :dm_query, answer: result[:answer] }
     end
 
-    def run_action_flow(clean_input, category = nil)
-      intention = run_intent(clean_input)
-      intent = run_dispatchers(intention, category)
+    # Outer orchestrator: sequencer → action queue loop → output phase.
+    def orchestrate_actions(clean_input, category = nil)
+      actions = run_sequencer(clean_input)
+      total = actions.size
+      accumulated = []
 
-      if intent[:needs_mechanics]
-        evaluations, guardrail = run_mechanics_gate(intent)
+      actions.each_with_index do |action_text, idx|
+        set_action_label(idx, total)
 
-        unless guardrail[:allowed]
-          @log.dm_log!("CapabilityGuardrail rejected: #{guardrail[:reason]}")
-          return { action: :rejected, reason: guardrail[:reason] }
+        intention = run_intent(action_text)
+        result = resolve(intention, category)
+
+        case result[:status]
+        when :rejected
+          return { action: :rejected, reason: result[:reason] }
+
+        when :awaiting_rolls
+          prior_seeds = accumulated.filter_map { |r| r[:narrate_seed] }
+          remaining = actions[(idx + 1)..]
+          log_queue_pause(idx, total, remaining)
+          return {
+            action: :awaiting_rolls, intent: result[:intent], merged: result[:merged],
+            remaining_actions: remaining, prior_narrate_seeds: prior_seeds,
+            category: category
+          }
+
+        when :encounter
+          accumulated << result
+          log_queue_interrupt(idx, total, actions[(idx + 1)..])
+          break
+
+        when :resolved
+          accumulated << result
         end
-
-        merged = merge_mechanical_evaluations(evaluations)
-        filter_auto_success_rolls!(merged)
-
-        if merged[:player_rolls].any?
-          return { action: :awaiting_rolls, intent: intent, merged: merged }
-        end
-
-        return run_resolution_flow(intent, merged, "(no player rolls required)")
       end
 
-      time_result = run_time_keeper(intent, nil)
+      clear_action_label
+      log_queue_completed(total) if total > 1
 
-      if time_result[:encounter]
-        return run_output_phase(intent,
-          narrate_seed: time_result[:encounter_narrative],
-          mutations: nil, extra: { encounter_triggered: true })
-      end
-
-      dm_brief = nil
-      if intent[:plot_relevant]
-        plot_result = resolve_plot(intent)
-        dm_brief = plot_result&.dig(:dm_brief)
-      end
-
-      run_output_phase(intent, narrate_seed: nil, mutations: nil,
-                       dm_brief: dm_brief, player_action: clean_input)
+      run_accumulated_output_phase(accumulated, player_action: clean_input)
     end
 
-    def run_resolution_flow(intent, merged, roll_results)
-      npc_results = resolve_npc_actions(merged[:npc_actions])
-      ruling_result = run_ruling(intent, merged, roll_results: roll_results, npc_results: npc_results)
-      apply_mutations(ruling_result[:mutations])
+    # Continue the action queue after a roll pause or from a mid-queue resume.
+    def run_remaining_queue(remaining, prior_seeds, category,
+                            accumulated_intents: [], accumulated_mutations: [])
+      total_original = prior_seeds.size + remaining.size + 1
+      base_idx = total_original - remaining.size
+      accumulated = []
 
-      time_result = run_time_keeper(intent, ruling_result)
+      remaining.each_with_index do |action_text, idx|
+        action_idx = base_idx + idx
+        set_action_label(action_idx, total_original)
 
-      if time_result[:encounter]
-        return run_output_phase(intent,
-          narrate_seed: time_result[:encounter_narrative],
-          mutations: ruling_result[:mutations],
-          extra: { encounter_triggered: true })
+        intention = run_intent(action_text)
+        result = resolve(intention, category)
+
+        case result[:status]
+        when :rejected
+          next
+
+        when :awaiting_rolls
+          new_prior = prior_seeds + accumulated.filter_map { |r| r[:narrate_seed] }
+          new_remaining = remaining[(idx + 1)..]
+          log_queue_pause(action_idx, total_original, new_remaining)
+          return {
+            action: :awaiting_rolls, intent: result[:intent], merged: result[:merged],
+            remaining_actions: new_remaining, prior_narrate_seeds: new_prior,
+            category: category
+          }
+
+        when :encounter
+          accumulated << result
+          log_queue_interrupt(action_idx, total_original, remaining[(idx + 1)..])
+          break
+
+        when :resolved
+          accumulated << result
+        end
       end
 
+      clear_action_label
+      run_accumulated_output_phase(accumulated, prior_seeds: prior_seeds)
+    end
+
+    # ----------------------------------------------------------------
+    # Accumulated output phase
+    # ----------------------------------------------------------------
+
+    def run_accumulated_output_phase(results, prior_seeds: [], player_action: nil)
+      return { action: :narrated, narrative: "", adventure_complete: false } if results.empty?
+
+      merged_intent = merge_result_intents(results)
+      all_seeds = prior_seeds + results.filter_map { |r| r[:narrate_seed] }
+      all_mutations = results.filter_map { |r| r[:mutations] }
+      encounter_triggered = results.any? { |r| r[:status] == :encounter }
+
       dm_brief = nil
-      if intent[:plot_relevant]
-        plot_result = resolve_plot(intent, ruling_outcome: ruling_result[:outcome])
+      last_resolved = results.last
+      if merged_intent[:plot_relevant]
+        ruling_outcome = last_resolved[:narrate_seed]
+        plot_result = resolve_plot(merged_intent, ruling_outcome: ruling_outcome)
         dm_brief = plot_result&.dig(:dm_brief)
       end
 
-      run_output_phase(intent, narrate_seed: ruling_result[:outcome],
-                       mutations: ruling_result[:mutations], dm_brief: dm_brief)
+      combined_seed = all_seeds.compact.join("\n\nThen: ") if all_seeds.any?
+      combined_mutations = all_mutations.compact.reduce({}) { |acc, m| deep_merge_mutations(acc, m) }
+
+      extra = {}
+      extra[:encounter_triggered] = true if encounter_triggered
+
+      run_output_phase(merged_intent,
+        narrate_seed: combined_seed,
+        mutations: combined_mutations.presence,
+        dm_brief: dm_brief,
+        player_action: combined_seed.blank? ? player_action : nil,
+        extra: extra)
+    end
+
+    def merge_result_intents(results)
+      intents = results.map { |r| r[:intent] }.compact
+      return intents.first if intents.size <= 1
+
+      {
+        intention: intents.map { |i| i[:intention] }.compact.join("; "),
+        affected_contexts: intents.flat_map { |i| Array(i[:affected_contexts]) }.uniq,
+        macro_significant: intents.any? { |i| i[:macro_significant] },
+        plot_relevant: intents.any? { |i| i[:plot_relevant] },
+        primary_context: intents.last[:primary_context],
+        dispatcher_results: intents.last[:dispatcher_results]
+      }
+    end
+
+    def deep_merge_mutations(base, overlay)
+      return overlay if base.blank?
+      return base if overlay.blank?
+      base.deep_merge(overlay)
     end
 
     # ----------------------------------------------------------------
@@ -346,6 +432,36 @@ module DungeonMaster
       normalized = category.to_s.downcase.strip
       raise AiError, "Triage returned unrecognized category '#{category}' — expected one of: #{PROMPT_CATEGORIES.join(', ')}" unless PROMPT_CATEGORIES.include?(normalized)
       normalized
+    end
+
+    # ----------------------------------------------------------------
+    # Action label helpers (for queue index annotation in logs)
+    # ----------------------------------------------------------------
+
+    def set_action_label(idx, total)
+      @log.action_label = total > 1 ? "[action #{idx + 1}/#{total}]" : nil
+    end
+
+    def clear_action_label
+      @log.action_label = nil
+    end
+
+    # ----------------------------------------------------------------
+    # Queue lifecycle logging
+    # ----------------------------------------------------------------
+
+    def log_queue_pause(idx, total, remaining)
+      return unless total > 1
+      @log.dm_log!("Action queue paused at action #{idx + 1}/#{total} (awaiting rolls). Remaining: #{remaining.inspect}")
+    end
+
+    def log_queue_interrupt(idx, total, remaining)
+      return unless total > 1
+      @log.dm_log!("Action queue interrupted at action #{idx + 1}/#{total} (encounter). Aborted: #{remaining.inspect}")
+    end
+
+    def log_queue_completed(total)
+      @log.dm_log!("Action queue completed: #{total}/#{total} actions resolved")
     end
   end
 end

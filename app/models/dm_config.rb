@@ -3,7 +3,7 @@ class DmConfig < ApplicationRecord
   # Settings are stored as a JSON hash, making it easy to add new knobs
   # without migrations.
   TOKEN_BUDGET_STEPS = %w[
-    sanitize classify dm_query intent dispatcher mechanical_evaluation
+    sanitize classify dm_query sequencer intent dispatcher mechanical_evaluation
     roll_qualifier capability_guardrail ruling time_keeper chronicler narrate
     micro_context_update macro_narrative_update
     edge_pipeline
@@ -17,6 +17,7 @@ class DmConfig < ApplicationRecord
     "sanitize"               => "Fast, cheap model. Security scoring — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "classify"               => "Fast, cheap model. Simple classification — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "dm_query"               => "Fast, cheap model. Straightforward Q&A — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
+    "sequencer"              => "Fast, cheap model. Compound action detection — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "intent"                 => "Fast, cheap model. Simple restatement — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "dispatcher"             => "Fast, cheap model. Per-domain interpretation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "mechanical_evaluation"  => "Capable model. Determines required rolls and NPC actions — e.g. o3-mini, o4-mini, gpt-5-mini.",
@@ -64,6 +65,7 @@ class DmConfig < ApplicationRecord
     "interpreter_scope" => "all",
     "guardrail_mode" => "code",
     "narration_mode" => "parallel",
+    "action_queue" => true,
     "async_pipeline" => false,
     "show_roll_dc" => true,
     "roll_qualifier_scope" => "domain",
@@ -77,6 +79,7 @@ class DmConfig < ApplicationRecord
       "sanitize" => 300,
       "classify" => 200,
       "dm_query" => 300,
+      "sequencer" => 200,
       "intent" => 200,
       "dispatcher" => 400,
       "mechanical_evaluation" => 500,

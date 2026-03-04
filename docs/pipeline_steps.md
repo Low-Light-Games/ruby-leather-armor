@@ -703,6 +703,13 @@ The pipeline has **two entry points**:
 1. `run_prompt(player_input)` -- player typed something new
 2. `run_rolls(roll_results, metadata)` -- player submitted dice results
 
+**Action queuing:** when `action_queue` is enabled, the Sequencer step
+detects compound player inputs ("I rest, then head to the village") and
+splits them into an ordered queue. Each action is resolved sequentially
+by the CoreResolver (dispatchers → mechanics → ruling → time_keeper).
+Encounters break the loop; roll requests pause it with remaining actions
+stored in metadata for resumption.
+
 ---
 
 ## Flow Diagram
@@ -723,8 +730,24 @@ run_prompt(player_input)
          |           |
          v           v
 +---------------------------------+
+| orchestrate_actions             |
++---------------------------------+
+         |
+         v
++---------------------------------+
+| SEQUENCER (compound detection)  |
+| -> returns action queue [1..N]  |
++--------------+------------------+
+         |
+         v  FOR EACH ACTION:
++---------------------------------+
 | INTENT (pure restatement)       |
 +--------------+------------------+
+               |
+               v
++---------------------------------+
+| CoreResolver.resolve            |
++---------------------------------+
                |
                v
 +------------------------------------+
@@ -812,7 +835,9 @@ Each step is documented in detail in its own file.
 | 1a | **Sanitize** | AI (parallel with 1b) | [steps/sanitize.md](steps/sanitize.md) |
 | 1b | **Classify** | AI (parallel with 1a) | [steps/classify.md](steps/classify.md) |
 | 1c | **DM Query** | AI (fast path) | [steps/dm_query.md](steps/dm_query.md) |
-| 2 | **Intent** | AI | [steps/intent.md](steps/intent.md) |
+| 1d | **Sequencer** | AI (before Intent, toggled) | [steps/sequencer.md](steps/sequencer.md) |
+| -- | **CoreResolver** (module) | Code orchestration | [modules/core_resolver.md](modules/core_resolver.md) |
+| 2 | **Intent** | AI (per action in queue) | [steps/intent.md](steps/intent.md) |
 | 3 | **InterpretationDispatcher** | AI (parallel per domain) | [steps/interpretation_dispatcher.md](steps/interpretation_dispatcher.md) |
 | 4a | **MechanicalEvaluation** | AI (loop, parallel with 4b) | [steps/mechanical_evaluation.md](steps/mechanical_evaluation.md) |
 | 4c | **RollQualifier** | AI (per domain, after 4a when rolls exist) | [steps/roll_qualifier.md](steps/roll_qualifier.md) |

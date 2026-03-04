@@ -30,6 +30,17 @@ step returns `parsed["intention"]` directly (not a hash).
 }
 ```
 
+## Relationship with Sequencer
+
+When `action_queue` is enabled, the Sequencer step runs before Intent
+and splits compound player inputs into an ordered queue of action texts.
+Intent then runs **once per action** in the queue, interpreting each
+action text individually.
+
+For single actions (the majority), this is transparent — Intent runs
+exactly once, as before. Intent's prompt and output are completely
+unchanged by the Sequencer feature.
+
 ## Design rationale
 
 Intent is deliberately minimal. By separating "what does the player want?"

@@ -173,7 +173,10 @@ class DungeonMasterService
         pending_consequences: result[:merged][:consequences],
         mechanical_summaries: result[:merged][:mechanical_summaries],
         intent: result[:intent],
-        show_dc: @adventure.effective_dm_setting("show_roll_dc")
+        show_dc: @adventure.effective_dm_setting("show_roll_dc"),
+        remaining_actions: result[:remaining_actions],
+        prior_narrate_seeds: result[:prior_narrate_seeds],
+        category: result[:category]
       }
       [persist_message(
         role: "dm",

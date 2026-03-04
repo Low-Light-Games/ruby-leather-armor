@@ -3,7 +3,7 @@ class AiLog < ApplicationRecord
   belongs_to :player_message, class_name: "AdventureMessage", optional: true
 
   CALL_TYPES = %w[
-    sanitize classify dm_query intent dispatcher
+    sanitize classify dm_query sequencer intent dispatcher
     mechanical_evaluation roll_qualifier capability_guardrail
     ruling time_keeper chronicler narrate
     micro_context_update macro_narrative_update
