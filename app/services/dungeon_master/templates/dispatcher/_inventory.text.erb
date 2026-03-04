@@ -1,3 +1,8 @@
 
-- Affected when the player is using, equipping, drinking, identifying, or managing items
+- Affected when the player is equipping, drinking, identifying, or managing physical items
   and gear. Routine item use (drawing a weapon in combat) may not need mechanics.
+- Casting a spell the character knows or has prepared is NOT an inventory action, even if
+  a matching rule (e.g. wand_and_scroll_use) appears in the rules manifest. Spell effects
+  belong to the domain they affect (combat, traversal, exploration, etc.).
+- Only flag wand_and_scroll_use when the player explicitly references activating a physical
+  item ("I use my wand of…", "I read the scroll of…", "I drink the potion").
