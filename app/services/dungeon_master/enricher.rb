@@ -22,6 +22,9 @@ module DungeonMaster
         existing_npcs: existing_npc_data,
         existing_clues: existing_clue_data,
         existing_milestones: existing_milestone_data,
+        encounter_entries: encounter_entry_data,
+        bestiary_catalog: bestiary_catalog,
+        has_encounter_tables: @story.encounter_tables.exists?,
       )
 
       raw = client.chat(
@@ -60,6 +63,19 @@ module DungeonMaster
       @story.story_milestones.where(source: "manual").map do |ms|
         { title: ms.title }
       end
+    end
+
+    def encounter_entry_data
+      @story.encounter_tables.flat_map do |table|
+        table.encounter_table_entries.map do |entry|
+          { title: entry.title, description: entry.description, table_name: table.name }
+        end
+      end
+    end
+
+    def bestiary_catalog
+      return [] unless defined?(BestiaryEntry)
+      BestiaryEntry.order(:name).pluck(:id, :name).map { |id, name| { id: id, name: name } }
     end
 
     def build_proposed_records(parsed)
@@ -104,10 +120,48 @@ module DungeonMaster
         }
       end
 
+      encounter_manifests = (parsed["encounter_manifests"] || []).map do |raw_em|
+        {
+          encounter_entry_title: raw_em["encounter_entry_title"].to_s.strip,
+          creatures: Array(raw_em["creatures"]).map do |c|
+            {
+              bestiary_entry_id: c["bestiary_entry_id"],
+              count: (c["count"] || 1).to_i,
+              display_name: c["display_name"].to_s.strip.presence || "Creature",
+            }
+          end
+        }
+      end
+
+      proposed_encounter_tables = (parsed["proposed_encounter_tables"] || []).map do |raw_table|
+        {
+          name: raw_table["name"].to_s.strip.presence || "Encounters",
+          encounter_chance: (raw_table["encounter_chance"] || 15).to_i.clamp(0, 100),
+          check_frequency_hours: (raw_table["check_frequency_hours"] || 4).to_i.clamp(1, 24),
+          entries: Array(raw_table["entries"]).map do |raw_entry|
+            {
+              title: raw_entry["title"].to_s.strip.presence || "Encounter",
+              description: raw_entry["description"].to_s.strip,
+              entry_type: %w[fixed ai_prompt].include?(raw_entry["entry_type"]) ? raw_entry["entry_type"] : "ai_prompt",
+              weight: (raw_entry["weight"] || 1).to_i.clamp(1, 10),
+              creatures: Array(raw_entry["creatures"]).map do |c|
+                {
+                  bestiary_entry_id: c["bestiary_entry_id"],
+                  count: (c["count"] || 1).to_i,
+                  display_name: c["display_name"].to_s.strip.presence || "Creature",
+                }
+              end
+            }
+          end
+        }
+      end
+
       {
         npcs: npcs,
         clues: clues,
         milestones: milestones,
+        encounter_manifests: encounter_manifests,
+        proposed_encounter_tables: proposed_encounter_tables,
         reasoning: parsed["reasoning"].to_s.strip,
       }
     end

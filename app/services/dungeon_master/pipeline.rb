@@ -69,6 +69,32 @@ module DungeonMaster
       orchestrate_actions(clean_input, classify_result[:category])
     end
 
+    # Resumption entry point: player submitted initiative roll.
+    def run_initiative(player_initiative, metadata)
+      creature_data = metadata["creature_data"] || []
+      Utilities::Warmaster.finalize_combat!(
+        adventure: @adventure, creature_data: creature_data.map(&:deep_symbolize_keys),
+        player_initiative: player_initiative)
+
+      intent = metadata["intent"]&.deep_symbolize_keys || { intention: "combat", affected_contexts: ["combat"], macro_significant: false }
+      narrate_seed = metadata["narrate_seed"]
+      mutations = metadata["mutations"]
+      remaining = metadata["remaining_actions"] || []
+      prior_seeds = metadata["prior_narrate_seeds"] || []
+      category = metadata["category"]
+
+      if remaining.any?
+        prior_seeds << narrate_seed if narrate_seed.present?
+        run_remaining_queue(remaining, prior_seeds, category,
+                            accumulated_intents: [intent],
+                            accumulated_mutations: [mutations].compact)
+      else
+        run_accumulated_output_phase(
+          [{ status: :encounter, intent: intent, narrate_seed: narrate_seed, mutations: mutations }],
+          player_action: metadata["player_message_content"])
+      end
+    end
+
     # Resumption entry point: player submitted roll results.
     def run_rolls(roll_results, metadata)
       intent, merged = restore_from_metadata(metadata)
@@ -131,6 +157,21 @@ module DungeonMaster
             category: category
           }
 
+        when :awaiting_initiative
+          prior_seeds = accumulated.filter_map { |r| r[:narrate_seed] }
+          remaining = actions[(idx + 1)..]
+          log_queue_pause(idx, total, remaining)
+          return {
+            action: :awaiting_initiative,
+            intent: result[:intent],
+            creature_data: result[:creature_data],
+            narrate_seed: result[:narrate_seed],
+            mutations: result[:mutations],
+            remaining_actions: remaining,
+            prior_narrate_seeds: prior_seeds,
+            category: category
+          }
+
         when :encounter
           accumulated << result
           log_queue_interrupt(idx, total, actions[(idx + 1)..])
@@ -175,6 +216,21 @@ module DungeonMaster
             category: category
           }
 
+        when :awaiting_initiative
+          new_prior = prior_seeds + accumulated.filter_map { |r| r[:narrate_seed] }
+          new_remaining = remaining[(idx + 1)..]
+          log_queue_pause(action_idx, total_original, new_remaining)
+          return {
+            action: :awaiting_initiative,
+            intent: result[:intent],
+            creature_data: result[:creature_data],
+            narrate_seed: result[:narrate_seed],
+            mutations: result[:mutations],
+            remaining_actions: new_remaining,
+            prior_narrate_seeds: new_prior,
+            category: category
+          }
+
         when :encounter
           accumulated << result
           log_queue_interrupt(action_idx, total_original, remaining[(idx + 1)..])
@@ -215,12 +271,18 @@ module DungeonMaster
       extra = {}
       extra[:encounter_triggered] = true if encounter_triggered
 
-      run_output_phase(merged_intent,
+      output_result = run_output_phase(merged_intent,
         narrate_seed: combined_seed,
         mutations: combined_mutations.presence,
         dm_brief: dm_brief,
         player_action: combined_seed.blank? ? player_action : nil,
         extra: extra)
+
+      if output_result[:action] == :awaiting_initiative
+        return output_result
+      end
+
+      output_result
     end
 
     def merge_result_intents(results)

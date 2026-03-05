@@ -583,4 +583,57 @@
     padding: 4px 10px;
     font-size: 12px;
   }
+
+  // ---- Creature Manifest ----
+
+  .manifest-section {
+    margin-top: 6px;
+    padding: 6px 8px;
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid #eee;
+    border-radius: 4px;
+
+    .manifest-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+
+      strong { font-size: 12px; color: #666; }
+    }
+
+    .manifest-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 3px;
+
+      .manifest-name {
+        flex: 2;
+        font-size: 12px;
+        padding: 3px 6px;
+      }
+
+      .manifest-bestiary {
+        flex: 2;
+        font-size: 12px;
+        padding: 3px 6px;
+        color: #666;
+      }
+
+      .manifest-count {
+        display: flex;
+        align-items: center;
+        font-size: 12px;
+        gap: 2px;
+
+        input {
+          width: 40px;
+          font-size: 12px;
+          padding: 3px 4px;
+          text-align: center;
+        }
+      }
+    }
+  }
 }

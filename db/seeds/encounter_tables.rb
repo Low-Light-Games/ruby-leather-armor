@@ -13,9 +13,16 @@ default_table.update!(
 
 entries = [
   { title: "Wolf Pack", entry_type: "fixed", weight: 3,
-    description: "A pack of 3 wolves emerges from the undergrowth, snarling and circling. They are hungry and aggressive." },
+    description: "A pack of 3 wolves emerges from the undergrowth, snarling and circling. They are hungry and aggressive.",
+    creature_manifest: [
+      { "bestiary_entry_id" => "wolf", "count" => 3, "display_name" => "Wolf" }
+    ] },
   { title: "Bandit Ambush", entry_type: "fixed", weight: 2,
-    description: "Four bandits step out from behind rocks, weapons drawn. Their leader demands gold and valuables." },
+    description: "Four bandits step out from behind rocks, weapons drawn. Their leader demands gold and valuables.",
+    creature_manifest: [
+      { "bestiary_entry_id" => "bandit", "count" => 3, "display_name" => "Bandit" },
+      { "bestiary_entry_id" => "bandit", "count" => 1, "display_name" => "Bandit Leader" }
+    ] },
   { title: "Traveling Merchant", entry_type: "ai_prompt", weight: 2,
     description: "A traveling merchant with unusual wares and a story to tell. Make the merchant memorable with a quirky personality and at least one intriguing item." },
   { title: "Unusual Weather", entry_type: "ai_prompt", weight: 1,
@@ -23,7 +30,10 @@ entries = [
   { title: "Strange Discovery", entry_type: "ai_prompt", weight: 2,
     description: "The party stumbles upon something unexpected by the roadside — ruins, a body, a strange marker, or an abandoned camp." },
   { title: "Wild Animal", entry_type: "fixed", weight: 2,
-    description: "A large wild animal blocks the path — a bear, boar, or territorial elk. It may be aggressive or simply defensive of its territory." },
+    description: "A large wild animal blocks the path — a bear, boar, or territorial elk. It may be aggressive or simply defensive of its territory.",
+    creature_manifest: [
+      { "bestiary_entry_id" => "bear", "count" => 1, "display_name" => "Bear" }
+    ] },
   { title: "Travelers in Need", entry_type: "ai_prompt", weight: 1,
     description: "A group of NPCs in some kind of trouble — a broken cart, an injury, or a dispute. The party can help, ignore, or take advantage." },
   { title: "Ancient Shrine", entry_type: "ai_prompt", weight: 1,

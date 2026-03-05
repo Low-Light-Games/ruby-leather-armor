@@ -857,6 +857,7 @@ Each step is documented in detail in its own file.
 | 5 | **Verdict** | AI | [steps/verdict.md](steps/verdict.md) |
 | 5b | **TimeKeeper** | Code-first, AI fallback | [steps/time_keeper.md](steps/time_keeper.md) |
 | -- | **Harbinger** (utility) | Code-only (called by TimeKeeper) | [steps/harbinger.md](steps/harbinger.md) |
+| -- | **Warmaster** (utility) | Code + opt. AI (creature_generation) | [steps/warmaster.md](steps/warmaster.md) |
 | -- | **GameClock** (utility) | Code-only (called by TimeKeeper) | [utilities/game_clock.md](utilities/game_clock.md) |
 | 5d | **Chronicler** | AI (conditional) | [steps/chronicler.md](steps/chronicler.md) |
 | 6 | **Stagehand** | Code-only | [steps/stagehand.md](steps/stagehand.md) |
@@ -923,6 +924,75 @@ exactly which model was used, not just which was configured.
 
 ---
 
+## Encounter-to-Combat Lifecycle
+
+When combat starts, the pipeline must transition from narrative flow to
+mechanical combat state. This is handled by the **Warmaster** utility
+through two entry paths:
+
+### Path A — Harbinger-triggered encounter
+
+```
+TimeKeeper → Harbinger (roll encounter) → encounter_entry found
+  → CoreResolver#maybe_warmaster_for_encounter
+    → Warmaster.initialize_from_encounter!
+      → spawn creatures (manifest or fuzzy bestiary + dynamic fallback)
+      → roll creature initiative
+      → return :awaiting_initiative
+  → Pipeline pauses, sends initiative_request to player
+```
+
+### Path B — Narrative-originated combat
+
+```
+Beacon (combat domain) → transition: "combat_started", combatants: [...]
+  → Stagehand#maybe_initialize_combat
+    → Warmaster.initialize_from_names!
+      → fuzzy bestiary lookup + dynamic fallback
+      → roll creature initiative
+      → return :awaiting_initiative
+  → Pipeline pauses, sends initiative_request to player
+```
+
+### Initiative Resolution
+
+1. Player submits initiative → `finalize_combat!` → `combat_context` populated → pipeline continues
+2. Player ignores prompt and sends new action → `auto_finalize_pending_initiative!` →
+   auto-roll (d20 + DEX mod) → `finalize_combat!` → new action processed in combat context
+
+### Guards
+
+- `combat_active?` check in `TimeKeeper#consult_harbinger_if_needed` prevents encounters during combat
+- `stagehand_combat_active?` check prevents re-initialization when combat is already active
+- Combat beacon partial shows active participants, preventing AI from re-signaling `combat_started`
+
+### Creature Resolution Chain
+
+1. **Manifest** (if `EncounterTableEntry#has_manifest?`): deterministic bestiary lookup by ID
+2. **Fuzzy bestiary match**: singularize → exact LOWER → ILIKE → id fallback
+3. **Dynamic fallback** (per `creature_creation_fallback` config):
+   - `"ai"`: AI generates PF1e stat block via `creature_generation` step
+   - `"template"`: tier-scaled generic stat block
+   - `"none"`: creature not created
+
+See [steps/warmaster.md](steps/warmaster.md) for detailed documentation.
+
+---
+
+## Abandoned Pipeline Detection
+
+When a player sends a new message while a previous pipeline is waiting for
+rolls or initiative, the service layer logs the abandonment via `DmLog`:
+
+```
+"Previous pipeline abandoned (roll_request): player sent new input.
+ Original intent: I cast fireball at the goblin"
+```
+
+This is visible in the admin pipeline logs for diagnostic purposes.
+
+---
+
 ## Configuration
 
 All pipeline behavior is configurable through `DmConfig` (admin UI at
@@ -943,6 +1013,8 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `guardrail_mode` | `"code"` | `"code"` (deterministic) or `"ai"` (prompt-based) |
 | `narration_mode` | `"parallel"` | `"parallel"` (concurrent) or `"subjugated"` (sequential) |
 | `async_pipeline` | `false` | When true, pipeline runs in Sidekiq with ActionCable delivery |
+| `creature_creation_fallback` | `"ai"` | `"ai"` (bestiary + AI gen), `"template"` (bestiary + generic stats), `"none"` |
+| `scene_history_depth` | `10` | Number of scene summaries retained for world consistency checks |
 
 ### Default token budgets
 
@@ -962,6 +1034,7 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `narrate` | 800 |
 | `micro_context_update` | 800 |
 | `macro_narrative_update` | 500 |
+| `creature_generation` | 600 |
 | `edge_pipeline` | 2000 |
 
 See `docs/pipeline_model_selection.md` for detailed model recommendations

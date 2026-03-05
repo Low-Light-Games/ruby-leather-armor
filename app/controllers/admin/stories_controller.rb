@@ -83,7 +83,8 @@ module Admin
           :id, :name, :description, :check_frequency_hours, :encounter_chance, :_destroy,
           encounter_table_entries_attributes: [
             :id, :title, :description, :entry_type, :weight, :terrain_types,
-            :min_party_level, :max_party_level, :_destroy
+            :min_party_level, :max_party_level, :_destroy,
+            creature_manifest: [:bestiary_entry_id, :count, :display_name]
           ]
         ],
         story_npcs_attributes: [
@@ -114,7 +115,7 @@ module Admin
       base["encounter_tables"] = story.encounter_tables.order(:id).map { |t|
         t.as_json(only: [:id, :name, :description, :check_frequency_hours, :encounter_chance]).merge(
           "encounter_table_entries" => t.encounter_table_entries.order(:id).map { |e|
-            e.as_json(only: [:id, :title, :description, :entry_type, :weight, :terrain_types, :min_party_level, :max_party_level])
+            e.as_json(only: [:id, :title, :description, :entry_type, :weight, :terrain_types, :min_party_level, :max_party_level, :creature_manifest])
           }
         )
       }

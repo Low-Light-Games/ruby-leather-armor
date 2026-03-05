@@ -6,24 +6,28 @@ module DungeonMaster
     #
     # Code-only step — no AI call. Sits between Verdict and Narrate/ContextUpdates.
     # Responsibilities:
-    #   1. Package verdict outcome + dm_brief into a narrative seed for Narrate
-    #   2. Package factual outcome + mutations into directives for ContextUpdate
-    #   3. Orchestrate Narrate + ContextUpdate based on narration_mode config:
+    #   1. Check if combat beacon signaled combat_started (Path B Warmaster gate)
+    #   2. Package verdict outcome + dm_brief into a narrative seed for Narrate
+    #   3. Package factual outcome + mutations into directives for ContextUpdate
+    #   4. Orchestrate Narrate + ContextUpdate based on narration_mode config:
     #        "parallel"   — both run simultaneously (default)
     #        "subjugated" — context updates run first, then narrate sees fresh DB state
     module Stagehand
       private
 
-      # Unified output phase for all pipeline flow paths.
-      #
-      # @param intent [Hash] the converged intent from Beacon
-      # @param narrate_seed [String, nil] factual outcome or narrative seed for narrate
-      # @param mutations [Hash, nil] verdict mutations (already applied to DB)
-      # @param dm_brief [String, nil] plot guidance from chronicler
-      # @param player_action [String, nil] raw player input (no-mechanics path)
-      # @param extra [Hash] additional result keys to merge (e.g. encounter_interrupted)
       def run_output_phase(intent, narrate_seed:, mutations:, dm_brief: nil,
                            player_action: nil, extra: {})
+        warmaster_result = maybe_initialize_combat(intent)
+        if warmaster_result && warmaster_result[:status] == :awaiting_initiative
+          return {
+            action: :awaiting_initiative,
+            intent: intent,
+            creature_data: warmaster_result[:creature_data],
+            narrate_seed: narrate_seed,
+            mutations: mutations
+          }.merge(extra)
+        end
+
         narration_mode = @config.get("narration_mode") || "parallel"
 
         what_happened = narrate_seed || player_action || intent[:intention]
@@ -71,6 +75,27 @@ module DungeonMaster
 
         run_narrate(narrate_seed, player_action: player_action,
                     intent: intent, dm_brief: dm_brief)
+      end
+
+      def maybe_initialize_combat(intent)
+        combat_beacon = intent.dig(:beacon_results, :combat) || intent.dig(:beacon_results, "combat")
+        return nil unless combat_beacon.is_a?(Hash)
+
+        transition = combat_beacon["transition"] || combat_beacon[:transition]
+        return nil unless transition == "combat_started"
+        return nil if stagehand_combat_active?
+
+        combatants = Array(combat_beacon["combatants"] || combat_beacon[:combatants])
+        return nil if combatants.empty?
+
+        Utilities::Warmaster.initialize_from_names!(
+          adventure: @adventure, combatant_names: combatants,
+          sheet: @sheet, log: @log, config: @config, ai: @ai)
+      end
+
+      def stagehand_combat_active?
+        ctx = @adventure.combat_context
+        ctx.is_a?(Hash) && ctx["active"] == true && Array(ctx["participants"]).any?
       end
     end
   end

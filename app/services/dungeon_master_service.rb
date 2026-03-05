@@ -32,6 +32,9 @@ class DungeonMasterService
   # ----------------------------------------------------------------
 
   def process_player_prompt(player_input, mode: nil)
+    maybe_log_abandoned_pipeline
+    auto_finalize_pending_initiative!
+
     player_msg = persist_message(role: "player", content: player_input, message_type: "narrative")
     @log.player_message_id = player_msg.id
     @log.start_pipeline_run!(player_input)
@@ -69,12 +72,40 @@ class DungeonMasterService
     { messages: [roll_msg, error_msg] }
   end
 
+  def process_initiative_result(player_initiative)
+    metadata = latest_initiative_metadata
+    init_msg = persist_message(
+      role: "player",
+      content: "Initiative: #{player_initiative}",
+      message_type: "initiative_result",
+      metadata: { initiative: player_initiative })
+    @log.player_message_id = init_msg.id
+    resume_or_start_pipeline!(metadata, "Initiative: #{player_initiative}")
+
+    result = pipeline.run_initiative(player_initiative.to_i, metadata)
+    { messages: [init_msg] + messages_for(result) }
+  rescue AiError => e
+    error_msg = persist_message(
+      role: "system",
+      content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
+      message_type: "narrative")
+    { messages: [init_msg, error_msg] }
+  end
+
   # ----------------------------------------------------------------
   # Async API — Phase 1 (controller: persist + enqueue)
   # ----------------------------------------------------------------
 
   def prepare_prompt(player_input)
     persist_message(role: "player", content: player_input, message_type: "narrative")
+  end
+
+  def prepare_initiative(player_initiative)
+    persist_message(
+      role: "player",
+      content: "Initiative: #{player_initiative}",
+      message_type: "initiative_result",
+      metadata: { initiative: player_initiative })
   end
 
   def prepare_roll(roll_results_from_player)
@@ -91,6 +122,9 @@ class DungeonMasterService
   # ----------------------------------------------------------------
 
   def execute_prompt(player_input, player_message_id:, mode: nil)
+    maybe_log_abandoned_pipeline
+    auto_finalize_pending_initiative!
+
     @log.player_message_id = player_message_id
     @log.start_pipeline_run!(player_input)
 
@@ -111,6 +145,20 @@ class DungeonMasterService
     resume_or_start_pipeline!(metadata, roll_results_text)
 
     result = pipeline.run_rolls(roll_results_text, metadata)
+    messages_for(result)
+  rescue AiError => e
+    [persist_message(
+      role: "system",
+      content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
+      message_type: "narrative")]
+  end
+
+  def execute_initiative(player_initiative, player_message_id:)
+    @log.player_message_id = player_message_id
+    metadata = latest_initiative_metadata
+    resume_or_start_pipeline!(metadata, "Initiative: #{player_initiative}")
+
+    result = pipeline.run_initiative(player_initiative.to_i, metadata)
     messages_for(result)
   rescue AiError => e
     [persist_message(
@@ -184,6 +232,22 @@ class DungeonMasterService
         message_type: "roll_request",
         metadata: meta)]
 
+    when :awaiting_initiative
+      meta = {
+        creature_data: result[:creature_data],
+        intent: result[:intent],
+        narrate_seed: result[:narrate_seed],
+        mutations: result[:mutations],
+        remaining_actions: result[:remaining_actions],
+        prior_narrate_seeds: result[:prior_narrate_seeds],
+        category: result[:category]
+      }
+      [persist_message(
+        role: "dm",
+        content: "Roll for initiative!",
+        message_type: "initiative_request",
+        metadata: meta)]
+
     when :narrated
       msgs = [persist_message(role: "dm", content: result[:narrative], message_type: "narrative")]
       if result[:adventure_complete]
@@ -214,6 +278,52 @@ class DungeonMasterService
                               .where(message_type: "roll_request")
                               .order(created_at: :desc).first
     last_roll_msg&.metadata || {}
+  end
+
+  def latest_initiative_metadata
+    last_init_msg = @adventure.adventure_messages
+                              .where(message_type: "initiative_request")
+                              .order(created_at: :desc).first
+    last_init_msg&.metadata || {}
+  end
+
+  def maybe_log_abandoned_pipeline
+    last_request = @adventure.adventure_messages
+                             .where(message_type: %w[roll_request initiative_request])
+                             .order(created_at: :desc).first
+    return unless last_request&.metadata&.dig("intent")
+
+    last_player_msg = @adventure.adventure_messages
+                                .where(role: "player")
+                                .order(created_at: :desc).first
+    return if last_player_msg&.message_type.in?(%w[roll_result initiative_result])
+
+    intent_summary = last_request.metadata.dig("intent", "intention").to_s.truncate(80)
+    @log.dm_log!("Previous pipeline abandoned (#{last_request.message_type}): player sent new input. " \
+                 "Original intent: #{intent_summary}")
+  end
+
+  def auto_finalize_pending_initiative!
+    last_init_msg = @adventure.adventure_messages
+                              .where(message_type: "initiative_request")
+                              .order(created_at: :desc).first
+    return unless last_init_msg&.metadata&.dig("creature_data")
+
+    last_player_response = @adventure.adventure_messages
+                                     .where(role: "player")
+                                     .where("created_at > ?", last_init_msg.created_at)
+                                     .order(created_at: :desc).first
+    return unless last_player_response
+    return if last_player_response.message_type == "initiative_result"
+
+    player_init = DungeonMaster::Utilities::Warmaster.auto_roll_player_initiative(@sheet)
+    creature_data = last_init_msg.metadata["creature_data"].map(&:deep_symbolize_keys)
+
+    DungeonMaster::Utilities::Warmaster.finalize_combat!(
+      adventure: @adventure, creature_data: creature_data,
+      player_initiative: player_init)
+
+    @log.dm_log!("Auto-rolled player initiative (#{player_init}) — player ignored initiative prompt")
   end
 
   def player_facing_error(error)

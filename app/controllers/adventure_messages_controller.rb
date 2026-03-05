@@ -33,6 +33,25 @@ class AdventureMessagesController < ApplicationController
     end
   end
 
+  # POST /adventures/:adventure_id/messages/initiative
+  def initiative
+    player_initiative = params[:initiative].to_i
+    unless (1..40).include?(player_initiative)
+      return render json: { error: "Initiative must be between 1 and 40" }, status: :unprocessable_entity
+    end
+
+    service = dm_service
+
+    if async_pipeline?
+      init_msg = service.prepare_initiative(player_initiative)
+      InitiativePipelineJob.perform_later(@adventure.id, init_msg.id, player_initiative, current_user.id) if defined?(InitiativePipelineJob)
+      render json: { async: true, messages: [message_json(init_msg)] }, status: :accepted
+    else
+      result = service.process_initiative_result(player_initiative)
+      render json: { messages: result[:messages].map { |m| message_json(m) } }
+    end
+  end
+
   # POST /adventures/:adventure_id/messages/roll
   def roll
     rolls = if params[:rolls].present?

@@ -211,6 +211,7 @@ module DungeonMaster
         no_op = { interrupted: false, stop_reason: :skipped, hours_granted: estimated[:hours],
                   distance_covered_miles: 0, narrative_seed: nil, encounter_entry: nil }
 
+        return no_op if combat_active?
         return no_op if estimated[:hours] < 0.01
 
         table = EncounterTable.table_for(@adventure.story)

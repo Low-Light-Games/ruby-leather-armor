@@ -29,4 +29,8 @@ class EncounterTableEntry < ApplicationRecord
     return level <= max_party_level if min_party_level.nil?
     level.between?(min_party_level, max_party_level)
   end
+
+  def has_manifest?
+    creature_manifest.is_a?(Array) && creature_manifest.any?
+  end
 end

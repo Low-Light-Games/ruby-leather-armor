@@ -6,7 +6,7 @@ class DmConfig < ApplicationRecord
     sanitize classify dm_query sequencer player_interpreter beacon mechanical_evaluation
     roll_qualifier sanity_checker sanity_checker_world verdict time_keeper chronicler narrate
     micro_context_update macro_narrative_update
-    edge_pipeline
+    edge_pipeline creature_generation
   ].freeze
 
   ENRICHER_MODEL_HINT = "Capable model recommended. Structural extraction benefits from strong reasoning — e.g. o3-mini, o4-mini, gpt-4.1, gpt-5-mini."
@@ -30,8 +30,11 @@ class DmConfig < ApplicationRecord
     "narrate"                => "Creative model. Narrative quality scales with capability — e.g. gpt-4.1, gpt-4o, gpt-5.",
     "micro_context_update"   => "Mid-tier model. Structured JSON with moderate judgment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
     "macro_narrative_update" => "Mid-tier model. Judges narrative significance — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
-    "edge_pipeline"          => "Capable, creative model. Handles everything in one call — e.g. gpt-4.1, gpt-4o, gpt-5, o3-mini."
+    "edge_pipeline"          => "Capable, creative model. Handles everything in one call — e.g. gpt-4.1, gpt-4o, gpt-5, o3-mini.",
+    "creature_generation"    => "Mid-tier model recommended. Must produce valid PF1e stat blocks — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini."
   }.freeze
+
+  CREATURE_CREATION_FALLBACKS = %w[ai template none].freeze
 
   ROLL_QUALIFIER_SCOPES = %w[all domain dynamic social_traversal traversal_combat scene].freeze
 
@@ -71,6 +74,7 @@ class DmConfig < ApplicationRecord
     "show_roll_dc" => true,
     "roll_qualifier_scope" => "domain",
     "scene_history_depth" => 10,
+    "creature_creation_fallback" => "ai",
     "terrain_speed_modifiers" => {
       "road" => 1.0, "trail" => 0.75, "urban" => 1.0, "coast" => 0.75,
       "forest" => 0.5, "swamp" => 0.5, "desert" => 0.75, "river" => 0.5,
@@ -94,7 +98,8 @@ class DmConfig < ApplicationRecord
       "narrate" => 800,
       "micro_context_update" => 800,
       "macro_narrative_update" => 500,
-      "edge_pipeline" => 2000
+      "edge_pipeline" => 2000,
+      "creature_generation" => 600
     }
   }.freeze
 

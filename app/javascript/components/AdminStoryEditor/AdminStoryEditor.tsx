@@ -6,7 +6,7 @@ import FlashMessage from '../FlashMessage'
 import { apiFetch } from '../../utils/api'
 import type {
   StoryLocationData, LocationConnectionData,
-  EncounterTableData, EncounterTableEntryData,
+  EncounterTableData, EncounterTableEntryData, CreatureManifestEntry,
   StoryNpcData, StoryClueData, StoryMilestoneData,
   NpcRole, NpcAttitude, DiscoveryMethod, ClueDifficulty,
 } from '../../types'
@@ -671,10 +671,52 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
       }))
       setMilestones([...markedOldMs, ...newMs])
 
+      // Apply encounter manifests to matching entries
+      const manifests: any[] = result.encounter_manifests || []
+      if (manifests.length > 0) {
+        setEncounterTables(prev => prev.map(table => ({
+          ...table,
+          encounter_table_entries: (table.encounter_table_entries || []).map(entry => {
+            const match = manifests.find((m: any) =>
+              m.encounter_entry_title?.toLowerCase() === entry.title?.toLowerCase()
+            )
+            if (match?.creatures?.length) {
+              return { ...entry, creature_manifest: match.creatures }
+            }
+            return entry
+          })
+        })))
+        setEncounterTablesOpen(true)
+      }
+
+      // Apply proposed encounter tables
+      const proposedTables: any[] = result.proposed_encounter_tables || []
+      if (proposedTables.length > 0) {
+        const newTables: EncounterTableData[] = proposedTables.map((t: any) => ({
+          name: t.name || 'Encounters',
+          description: '',
+          check_frequency_hours: t.check_frequency_hours || 4,
+          encounter_chance: t.encounter_chance || 15,
+          encounter_table_entries: (t.entries || []).map((e: any) => ({
+            title: e.title || 'Encounter',
+            description: e.description || '',
+            entry_type: e.entry_type || 'ai_prompt',
+            weight: e.weight || 1,
+            creature_manifest: e.creatures || [],
+          })),
+        }))
+        setEncounterTables(prev => [...prev, ...newTables])
+        setEncounterTablesOpen(true)
+      }
+
       setNpcsOpen(true)
       setCluesOpen(true)
       setMilestonesOpen(true)
-      showFeedback('success', 'Enrichment complete — review the proposed records below and Save to persist.')
+      const extras: string[] = []
+      if (manifests.length > 0) extras.push(`${manifests.length} encounter manifest(s)`)
+      if (proposedTables.length > 0) extras.push(`${proposedTables.length} proposed encounter table(s)`)
+      const extraMsg = extras.length > 0 ? ` Also applied: ${extras.join(', ')}.` : ''
+      showFeedback('success', `Enrichment complete — review the proposed records below and Save to persist.${extraMsg}`)
     } catch (err: any) {
       showFeedback('error', `Enrichment failed: ${err.message}`)
     } finally {
@@ -981,6 +1023,45 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
                                     placeholder={entry.entry_type === 'fixed'
                                       ? 'Full encounter description...'
                                       : 'AI prompt hint — the AI will expand this into a scene...'} />
+
+                                  {/* Creature Manifest */}
+                                  <div className="manifest-section">
+                                    <div className="manifest-header">
+                                      <strong>Creatures ({(entry.creature_manifest || []).length})</strong>
+                                      <button className="btn-add-sm" onClick={() => {
+                                        const manifest = [...(entry.creature_manifest || []), { bestiary_entry_id: null, count: 1, display_name: '' }]
+                                        updateEntry(tableIdx, entryIdx, { creature_manifest: manifest })
+                                      }}>+ Creature</button>
+                                    </div>
+                                    {(entry.creature_manifest || []).map((c: CreatureManifestEntry, cIdx: number) => (
+                                      <div key={cIdx} className="manifest-row">
+                                        <input type="text" className="manifest-name" value={c.display_name}
+                                          placeholder="Display name" onChange={e => {
+                                            const manifest = [...(entry.creature_manifest || [])]
+                                            manifest[cIdx] = { ...manifest[cIdx], display_name: e.target.value }
+                                            updateEntry(tableIdx, entryIdx, { creature_manifest: manifest })
+                                          }} />
+                                        <input type="text" className="manifest-bestiary" value={c.bestiary_entry_id || ''}
+                                          placeholder="Bestiary ID" onChange={e => {
+                                            const manifest = [...(entry.creature_manifest || [])]
+                                            manifest[cIdx] = { ...manifest[cIdx], bestiary_entry_id: e.target.value || null }
+                                            updateEntry(tableIdx, entryIdx, { creature_manifest: manifest })
+                                          }} />
+                                        <label className="manifest-count">
+                                          x<input type="number" min={1} value={c.count}
+                                            onChange={e => {
+                                              const manifest = [...(entry.creature_manifest || [])]
+                                              manifest[cIdx] = { ...manifest[cIdx], count: Number(e.target.value) || 1 }
+                                              updateEntry(tableIdx, entryIdx, { creature_manifest: manifest })
+                                            }} />
+                                        </label>
+                                        <button className="btn-remove-sm" onClick={() => {
+                                          const manifest = (entry.creature_manifest || []).filter((_: any, i: number) => i !== cIdx)
+                                          updateEntry(tableIdx, entryIdx, { creature_manifest: manifest })
+                                        }}>&#x2715;</button>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
                               )
                             })}

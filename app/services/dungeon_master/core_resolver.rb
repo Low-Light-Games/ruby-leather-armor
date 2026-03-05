@@ -8,10 +8,11 @@ module DungeonMaster
   # without duplicating resolution logic.
   #
   # Returns a standardized result hash with :status indicating the outcome:
-  #   :resolved        — action fully resolved, narrate_seed and mutations available
-  #   :awaiting_rolls  — rolls needed, intent and merged available for resumption
-  #   :encounter       — Harbinger triggered an encounter mid-action
-  #   :rejected        — SanityChecker rejected the action
+  #   :resolved             — action fully resolved, narrate_seed and mutations available
+  #   :awaiting_rolls       — rolls needed, intent and merged available for resumption
+  #   :awaiting_initiative  — combat starting, waiting for player initiative roll
+  #   :encounter            — Harbinger triggered an encounter mid-action
+  #   :rejected             — SanityChecker rejected the action
   module CoreResolver
     private
 
@@ -51,11 +52,7 @@ module DungeonMaster
       time_result = run_time_keeper(intent, nil)
 
       if time_result[:encounter]
-        return {
-          status: :encounter, intent: intent,
-          narrate_seed: time_result[:encounter_narrative],
-          mutations: nil, time_result: time_result
-        }
+        return maybe_warmaster_for_encounter(intent, time_result, mutations: nil)
       end
 
       {
@@ -74,12 +71,7 @@ module DungeonMaster
       time_result = run_time_keeper(intent, verdict_result)
 
       if time_result[:encounter]
-        return {
-          status: :encounter, intent: intent,
-          narrate_seed: time_result[:encounter_narrative],
-          mutations: verdict_result[:mutations],
-          time_result: time_result
-        }
+        return maybe_warmaster_for_encounter(intent, time_result, mutations: verdict_result[:mutations])
       end
 
       {
@@ -88,6 +80,30 @@ module DungeonMaster
         mutations: verdict_result[:mutations],
         time_result: time_result
       }
+    end
+
+    # Call Warmaster when Harbinger triggers an encounter (Path A)
+    def maybe_warmaster_for_encounter(intent, time_result, mutations:)
+      encounter_entry = time_result.dig(:encounter_entry)
+
+      if encounter_entry
+        warmaster_result = Utilities::Warmaster.initialize_from_encounter!(
+          adventure: @adventure, encounter_entry: encounter_entry,
+          sheet: @sheet, log: @log, config: @config, ai: @ai)
+
+        if warmaster_result[:status] == :awaiting_initiative
+          return {
+            status: :awaiting_initiative, intent: intent,
+            creature_data: warmaster_result[:creature_data],
+            narrate_seed: time_result[:encounter_narrative],
+            mutations: mutations, time_result: time_result
+          }
+        end
+      end
+
+      { status: :encounter, intent: intent,
+        narrate_seed: time_result[:encounter_narrative],
+        mutations: mutations, time_result: time_result }
     end
   end
 end

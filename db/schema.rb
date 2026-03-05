@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_05_110920) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_05_145324) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -262,6 +262,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_05_110920) do
     t.integer "max_party_level"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "creature_manifest", default: [], null: false
     t.index ["encounter_table_id"], name: "index_encounter_table_entries_on_encounter_table_id"
   end
 

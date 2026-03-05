@@ -147,6 +147,12 @@ export interface StoryLocationData {
   _destroy?: boolean
 }
 
+export interface CreatureManifestEntry {
+  bestiary_entry_id: string | null
+  count: number
+  display_name: string
+}
+
 export interface EncounterTableEntryData {
   id?: number
   title: string
@@ -156,6 +162,7 @@ export interface EncounterTableEntryData {
   terrain_types?: string
   min_party_level?: number | null
   max_party_level?: number | null
+  creature_manifest?: CreatureManifestEntry[]
   _destroy?: boolean
 }
 
