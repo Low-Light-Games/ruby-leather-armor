@@ -50,7 +50,7 @@ game. The joy of tabletop is agency and trust between the player and the
 DM. A system that second-guesses every player input ("did you really roll
 a 19?") is adversarial and breaks immersion.
 
-**Where we draw the line:** the CapabilityGuardrail validates that the
+**Where we draw the line:** the SanityChecker validates that the
 player *possesses* the spells, feats, and items they reference — not that
 they used them correctly. This is the same standard a real DM applies:
 "you can't cast Fireball because it's not on your spell list" is fair;
@@ -320,8 +320,9 @@ scoped to one responsibility. If you can't name it without a compound
 word, the step is probably doing too much.
 
 Current AI step names: PlayerInterpreter, Beacon, Sequencer, Verdict,
-MechanicalEvaluation, RollQualifier, CapabilityGuardrail, TimeKeeper,
-Chronicler, Narrate, Sanitize, Classify, DM Query.
+MechanicalEvaluation, RollQualifier, SanityChecker (capability check +
+world consistency check), TimeKeeper, Chronicler, Narrate, Sanitize,
+Classify, DM Query.
 
 **Code-only steps get role/object names** — functional, clearly
 non-creative, conveying "no AI judgment here."

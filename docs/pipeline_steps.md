@@ -401,7 +401,7 @@ failing and can investigate.
 
 **Decision:** several step pairs run concurrently in Ruby threads:
 - Sanitize + Classify (the gate)
-- MechanicalEvaluation + CapabilityGuardrail (the mechanics gate)
+- MechanicalEvaluation + SanityChecker (capability check + world consistency check) — the full gate
 - Narrate + ContextUpdate (the output phase, in parallel mode)
 - Micro Context Update + Macro Narrative Update (within context updates)
 
@@ -598,26 +598,37 @@ The beacon model is configurable via `interpreter_scope`:
 - `"filtered"`: only the classified domain + active contexts get calls,
   reducing cost at the risk of missing cross-domain effects
 
-### 26. CapabilityGuardrail (character validation)
+### 26. SanityChecker (capability + world consistency validation)
 
-**Decision:** add a dedicated step that validates whether the player
-actually possesses the spells, feats, or items they're attempting to use.
-Runs in parallel with MechanicalEvaluation.
+**Decision:** rename CapabilityGuardrail to SanityChecker and split it
+into two sub-checks:
 
-**Why:** the original pipeline had no explicit capability check. The
-mechanical evaluation step was supposed to reject impossible actions,
-but a model focused on "what rolls are needed?" frequently assumed the
-player could cast a spell they didn't know or use an item they didn't
-have. Splitting validation into its own step ensures it's never overlooked.
+**A) Capability Check** — validates that the player possesses the spells,
+feats, or items they reference. Runs in parallel with MechanicalEvaluation
+(only on the mechanics path). Two modes via `guardrail_mode`:
+- `"code"` (default): deterministic fuzzy-match against character sheet.
+- `"ai"`: AI prompt for holistic validation.
 
-Two modes are available via `guardrail_mode`:
-- `"code"` (default): deterministic fuzzy-match against the character
-  sheet. Fast, no AI cost, but limited to exact name matching.
-- `"ai"`: an AI call that holistically validates the action against the
-  full character block. More nuanced but costs an API call.
+**B) World Consistency Check** — validates that the entities, targets, or
+objects the player references actually exist in the current scene. AI-only
+step that runs ALWAYS (via the full gate on mechanics path, or standalone
+on the non-mechanics path). Receives all non-empty micro-contexts, scene
+summary, scene history, and story NPCs.
 
-Both modes fail open on errors (return `allowed: true`) to avoid blocking
-the player on a validation failure.
+**Why:** the capability check alone was insufficient. Players could
+reference non-existent creatures, NPCs, or objects (e.g., "attack the
+goblin" when no goblin exists) and the pipeline would process the action
+as valid. The world consistency check closes this gap.
+
+The full gate runs 3 threads in parallel (MechanicalEvaluation + Capability
+Check + World Consistency Check) — zero added latency on the happy path.
+On the non-mechanics path, the world check runs as a standalone AI call.
+
+Both sub-checks fail open on errors to avoid blocking the player.
+
+**Model note:** the World Consistency Check requires a capable model
+(gpt-4o-mini or better). Unlike other steps, this one cannot be
+effectively decomposed for budget models.
 
 ### 27. Stagehand as code-only synthesis step
 
@@ -841,7 +852,7 @@ Each step is documented in detail in its own file.
 | 3 | **Beacon** | AI (parallel per domain) | [steps/beacon.md](steps/beacon.md) |
 | 4a | **MechanicalEvaluation** | AI (loop, parallel with 4b) | [steps/mechanical_evaluation.md](steps/mechanical_evaluation.md) |
 | 4c | **RollQualifier** | AI (per domain, after 4a when rolls exist) | [steps/roll_qualifier.md](steps/roll_qualifier.md) |
-| 4b | **CapabilityGuardrail** | Code or AI (parallel with 4a) | [steps/capability_guardrail.md](steps/capability_guardrail.md) |
+| 4b | **SanityChecker** (capability + world) | Code/AI + AI (parallel with 4a) | [steps/sanity_checker.md](steps/sanity_checker.md) |
 | -- | **NPC Roll Resolution** | App-side | [steps/npc_rolls.md](steps/npc_rolls.md) |
 | 5 | **Verdict** | AI | [steps/verdict.md](steps/verdict.md) |
 | 5b | **TimeKeeper** | Code-first, AI fallback | [steps/time_keeper.md](steps/time_keeper.md) |
@@ -880,8 +891,8 @@ All AI steps follow the same error handling pattern:
    return empty hashes rather than failing the pipeline. A failed context
    update degrades future prompts but doesn't break the current turn.
 
-5. **CapabilityGuardrail resilience**: both code and AI modes fail open
-   (`{ allowed: true }`) on errors, preventing validation system failures
+5. **SanityChecker resilience**: both capability check and world consistency
+   check fail open on errors, preventing validation system failures
    from blocking the player.
 
 At the service level, all errors are caught and translated into a
@@ -896,7 +907,7 @@ Every AI call produces an `AiLog` record containing:
 
 | Field | Description |
 |---|---|
-| `step` | Pipeline step name (sanitize, classify, player_interpreter, beacon, mechanical_evaluation, capability_guardrail, verdict, chronicler, narrate, micro_context_update, macro_narrative_update, edge_pipeline) |
+| `step` | Pipeline step name (sanitize, classify, player_interpreter, beacon, mechanical_evaluation, sanity_checker, sanity_checker_world, verdict, chronicler, narrate, micro_context_update, macro_narrative_update, edge_pipeline) |
 | `prompt_summary` | Truncated description of what was asked |
 | `raw_response` | The complete API response |
 | `parsed_response` | The parsed JSON |
@@ -943,7 +954,8 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `player_interpreter` | 200 |
 | `beacon` | 400 |
 | `mechanical_evaluation` | 500 |
-| `capability_guardrail` | 300 |
+| `sanity_checker` | 300 |
+| `sanity_checker_world` | 500 |
 | `verdict` | 600 |
 | `time_keeper` | 300 |
 | `chronicler` | 500 |

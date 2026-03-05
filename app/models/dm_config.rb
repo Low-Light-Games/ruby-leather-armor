@@ -4,7 +4,7 @@ class DmConfig < ApplicationRecord
   # without migrations.
   TOKEN_BUDGET_STEPS = %w[
     sanitize classify dm_query sequencer player_interpreter beacon mechanical_evaluation
-    roll_qualifier capability_guardrail verdict time_keeper chronicler narrate
+    roll_qualifier sanity_checker sanity_checker_world verdict time_keeper chronicler narrate
     micro_context_update macro_narrative_update
     edge_pipeline
   ].freeze
@@ -22,7 +22,8 @@ class DmConfig < ApplicationRecord
     "beacon"                 => "Fast, cheap model. Per-domain interpretation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "mechanical_evaluation"  => "Capable model. Determines required rolls and NPC actions — e.g. o3-mini, o4-mini, gpt-5-mini.",
     "roll_qualifier"         => "Fast, cheap model with broader context. Situational modifiers and Take 10/20 — e.g. gpt-4.1-nano, gpt-4o-mini.",
-    "capability_guardrail"   => "Fast, cheap model. Sheet validation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini. Only used in AI mode.",
+    "sanity_checker"         => "Fast, cheap model. Sheet validation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini. Only used in AI mode.",
+    "sanity_checker_world"   => "⚠️ Capable model REQUIRED. Cross-references player actions against full game state. Unlikely to perform well with budget models. Recommended: gpt-4o-mini or better (gpt-4.1-mini, o3-mini, gpt-5-mini).",
     "verdict"                => "Capable model. Post-roll arbitration and mutation generation — e.g. o3-mini, o4-mini, gpt-5-mini.",
     "time_keeper"            => "Fast, cheap model. Estimates in-game time for an action — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "chronicler"             => "Mid-tier model. Condition matching with structured output — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
@@ -69,6 +70,7 @@ class DmConfig < ApplicationRecord
     "async_pipeline" => false,
     "show_roll_dc" => true,
     "roll_qualifier_scope" => "domain",
+    "scene_history_depth" => 10,
     "terrain_speed_modifiers" => {
       "road" => 1.0, "trail" => 0.75, "urban" => 1.0, "coast" => 0.75,
       "forest" => 0.5, "swamp" => 0.5, "desert" => 0.75, "river" => 0.5,
@@ -84,7 +86,8 @@ class DmConfig < ApplicationRecord
       "beacon" => 400,
       "mechanical_evaluation" => 500,
       "roll_qualifier" => 400,
-      "capability_guardrail" => 300,
+      "sanity_checker" => 300,
+      "sanity_checker_world" => 500,
       "verdict" => 600,
       "time_keeper" => 300,
       "chronicler" => 500,

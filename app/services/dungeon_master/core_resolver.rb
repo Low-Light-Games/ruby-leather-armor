@@ -11,20 +11,25 @@ module DungeonMaster
   #   :resolved        — action fully resolved, narrate_seed and mutations available
   #   :awaiting_rolls  — rolls needed, intent and merged available for resumption
   #   :encounter       — Harbinger triggered an encounter mid-action
-  #   :rejected        — CapabilityGuardrail rejected the action
+  #   :rejected        — SanityChecker rejected the action
   module CoreResolver
     private
 
-    # Full resolution: beacon → mechanics gate → [verdict + mutations + time_keeper]
+    # Full resolution: beacon → full gate (mech eval + world check + cap check) → [verdict + mutations + time_keeper]
     def resolve(intention, category)
       intent = run_beacon(intention, category)
 
       if intent[:needs_mechanics]
-        evaluations, guardrail = run_mechanics_gate(intent)
+        evaluations, world, capability = run_full_gate(intent)
 
-        unless guardrail[:allowed]
-          @log.dm_log!("CapabilityGuardrail rejected: #{guardrail[:reason]}")
-          return { status: :rejected, intent: intent, reason: guardrail[:reason] }
+        unless world[:consistent]
+          @log.dm_log!("SanityChecker world check failed: #{world[:reason]}")
+          return { status: :rejected, intent: intent, reason: world[:reason] }
+        end
+
+        unless capability[:allowed]
+          @log.dm_log!("SanityChecker capability check failed: #{capability[:reason]}")
+          return { status: :rejected, intent: intent, reason: capability[:reason] }
         end
 
         merged = merge_mechanical_evaluations(evaluations)
@@ -35,6 +40,12 @@ module DungeonMaster
         end
 
         return finish_resolution(intent, merged, "(no player rolls required)")
+      end
+
+      world = run_world_consistency_check(intent)
+      unless world[:consistent]
+        @log.dm_log!("SanityChecker world check failed: #{world[:reason]}")
+        return { status: :rejected, intent: intent, reason: world[:reason] }
       end
 
       time_result = run_time_keeper(intent, nil)

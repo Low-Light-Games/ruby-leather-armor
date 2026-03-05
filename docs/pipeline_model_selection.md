@@ -239,14 +239,14 @@ Total cost scales with the number of dispatched domains.
 
 ---
 
-### 5. CapabilityGuardrail
+### 5a. SanityChecker — Capability Check
 
 **What it does:** validates that the player's character can actually
 perform the intended action — checks spells known, feat prerequisites,
 item possession, class features, etc. Runs in parallel with
-MechanicalEvaluation. Configurable via `guardrail_mode`: `"code"` uses
-app-level validation, `"ai"` uses an AI call. **Only the AI mode requires
-model selection.**
+MechanicalEvaluation (only on the mechanics path). Configurable via
+`guardrail_mode`: `"code"` uses app-level validation, `"ai"` uses an AI
+call. **Only the AI mode requires model selection.**
 
 **Cognitive demand:** moderate. Must cross-reference the character sheet
 with the intended action and identify capability mismatches.
@@ -265,6 +265,38 @@ handle it well.
 caster level requirements, feat chains).
 
 **Token budget:** 400 (non-reasoning) / 1600 (reasoning).
+
+---
+
+### 5b. SanityChecker — World Consistency Check
+
+**What it does:** validates that the entities, targets, or objects the
+player references actually exist in the current game world state. Runs
+ALWAYS — via the full gate (parallel with mech eval + capability check)
+on the mechanics path, or standalone on the non-mechanics path. AI-only
+step with no code mode.
+
+**Cognitive demand:** HIGH. Must cross-reference the player's action
+against all non-empty micro-contexts, scene summary, scene history, and
+story NPCs. Requires genuine reasoning about what exists in the scene vs
+what the player is hallucinating.
+
+**Recommended:** gpt-4o-mini, gpt-4.1-mini, gpt-5-mini
+
+This is the first pipeline step where the design explicitly acknowledges
+that no amount of prompt engineering will make a budget model reliable.
+The AI receives the broadest context of any step and must reason about
+entity presence across multiple data sources.
+
+**Acceptable:** o3-mini, o4-mini, gpt-4.1
+
+**Avoid:**
+
+- Nano models: will miss subtle inconsistencies and may false-positive
+on creative but valid actions.
+- Full/pro models: acceptable but expensive for a per-turn check.
+
+**Token budget:** 600 (non-reasoning) / 2000 (reasoning).
 
 ---
 
@@ -721,7 +753,7 @@ a long session. When in doubt, spend slightly more here.
 
 ### Parallel steps add latency savings but not cost savings
 
-Sanitize + Classify, CapabilityGuardrail + MechanicalEvaluation, and
+Sanitize + Classify, SanityChecker (capability + world) + MechanicalEvaluation, and
 Narrate + ContextUpdate (in parallel mode) run concurrently. Wall-clock
 time improves, but you still pay for every call. When budgeting, count
 all parallel steps at full price.

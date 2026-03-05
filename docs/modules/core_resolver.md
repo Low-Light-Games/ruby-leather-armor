@@ -17,15 +17,16 @@ into Pipeline via their own step modules.
 
 ### `resolve(intention, category)`
 
-Full resolution: beacon → mechanics gate → [verdict + mutations +
-time_keeper]. Returns a result hash with `:status`:
+Full resolution: beacon → full gate (mech eval + world check + cap check)
+→ [verdict + mutations + time_keeper]. On the non-mechanics path: beacon
+→ world check → time_keeper. Returns a result hash with `:status`:
 
 | Status | Meaning |
 |---|---|
 | `:resolved` | Action fully resolved. `narrate_seed` and `mutations` available. |
 | `:awaiting_rolls` | Rolls needed. `intent` and `merged` available for roll pause. |
 | `:encounter` | Harbinger triggered an encounter. `narrate_seed` has the encounter narrative. |
-| `:rejected` | CapabilityGuardrail rejected the action. `reason` available. |
+| `:rejected` | SanityChecker rejected the action (capability or world consistency). `reason` available. |
 
 ### `finish_resolution(intent, merged, roll_results)`
 
@@ -66,7 +67,7 @@ Roll resumption calls `finish_resolution` then continues the queue if
 ## Design rationale
 
 **Why a module, not a class?** CoreResolver calls step methods
-(`run_beacon`, `run_mechanics_gate`, `run_verdict`, etc.) that are
+(`run_beacon`, `run_full_gate`, `run_verdict`, etc.) that are
 mixed into Pipeline. A separate class would need all those dependencies
 injected. A module shares Pipeline's instance variables naturally.
 

@@ -22,7 +22,7 @@ module DungeonMaster
     include Steps::Beacon
     include Steps::MechanicalEvaluation
     include Steps::RollQualifier
-    include Steps::CapabilityGuardrail
+    include Steps::SanityChecker
     include Steps::Verdict
     include Steps::TimeKeeper
     include Steps::Stagehand
@@ -264,24 +264,29 @@ module DungeonMaster
     end
 
     # ----------------------------------------------------------------
-    # Gate: parallel mechanical_evaluation + capability_guardrail
+    # Gate: parallel mechanical_evaluation + capability_check + world_consistency_check
     # ----------------------------------------------------------------
 
-    def run_mechanics_gate(intent)
+    def run_full_gate(intent)
       evaluations = nil
-      guardrail = nil
+      world = nil
+      capability = nil
 
       eval_thread = Thread.new do
         ActiveRecord::Base.connection_pool.with_connection { evaluations = run_mechanical_evaluation_loop(intent) }
       end
-      guard_thread = Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection { guardrail = run_capability_guardrail(intent) }
+      world_thread = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection { world = run_world_consistency_check(intent) }
+      end
+      cap_thread = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection { capability = run_capability_check(intent) }
       end
 
       eval_thread.value
-      guard_thread.value
+      world_thread.value
+      cap_thread.value
 
-      [evaluations, guardrail]
+      [evaluations, world, capability]
     end
 
     # ----------------------------------------------------------------

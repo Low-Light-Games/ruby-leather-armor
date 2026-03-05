@@ -9,7 +9,7 @@ module DungeonMaster
     #
     # Renamed from the original "Ruling" step — this step focuses purely on
     # identifying required mechanics (rolls, NPC reactions, consequences).
-    # Capability validation is handled by the parallel CapabilityGuardrail.
+    # Capability validation is handled by the parallel SanityChecker.
     module MechanicalEvaluation
       private
 

@@ -122,7 +122,14 @@ module DungeonMaster
       end
 
       def persist_scene_summary(summary)
-        @adventure.update!(scene_summary: summary) if summary.present?
+        return unless summary.present?
+
+        max_history = (@config.get("scene_history_depth") || 10).to_i
+        history = Array(@adventure.scene_history)
+        history.push({ "summary" => summary, "at" => Time.current.iso8601 })
+        history = history.last(max_history)
+
+        @adventure.update!(scene_summary: summary, scene_history: history)
       end
     end
   end

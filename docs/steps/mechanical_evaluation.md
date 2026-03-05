@@ -8,7 +8,7 @@
 
 The rules engine. Determines what dice rolls are needed, what NPC actions
 occur, and what automatic consequences follow -- all within Pathfinder 1e
-rules. Runs in parallel with CapabilityGuardrail.
+rules. Runs in parallel with SanityChecker (capability check + world consistency check).
 
 Each domain receives **domain-specific instructions** loaded from partial
 files (`templates/mechanical_evaluation/_combat.text.erb`,

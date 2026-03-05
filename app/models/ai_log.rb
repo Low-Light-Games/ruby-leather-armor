@@ -4,7 +4,7 @@ class AiLog < ApplicationRecord
 
   CALL_TYPES = %w[
     sanitize classify dm_query sequencer player_interpreter beacon
-    mechanical_evaluation roll_qualifier capability_guardrail
+    mechanical_evaluation roll_qualifier sanity_checker sanity_checker_world
     verdict time_keeper chronicler narrate
     micro_context_update macro_narrative_update
     edge_pipeline encounter_expand
@@ -12,7 +12,7 @@ class AiLog < ApplicationRecord
 
   # Legacy types kept for backward compatibility with existing log rows
   LEGACY_CALL_TYPES = %w[
-    triage evaluate ruling intent dispatcher
+    triage evaluate ruling intent dispatcher capability_guardrail
     sanitization dm_response roll_response
     triage_merged classification
     scene_tracker story_chronicler narrator action_needs
