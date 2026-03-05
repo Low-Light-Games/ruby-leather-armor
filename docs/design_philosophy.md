@@ -7,6 +7,36 @@ check it against these principles first.
 
 ---
 
+## The fundamental tradeoff: freedom for graphics
+
+This is a text-only adventure. There are no sprites, no animations, no
+visual fidelity to fall back on. What justifies that constraint is one
+thing: unboundedness. A graphically rich game can look beautiful but must
+restrict the player to pre-authored paths, scripted encounters, and
+enumerated choices. An AI-driven text game looks plain but can respond to
+anything the player imagines.
+
+That tradeoff — graphics for freedom — is the entire value proposition.
+Every design decision must be evaluated against it. When a problem tempts
+you toward a rigid, deterministic solution that clips player agency, stop
+and ask: does this preserve the freedom that justifies the medium? If it
+doesn't, the solution is wrong regardless of how clean the code is.
+
+The principles that follow (especially #1, "AI for judgment, code for
+certainty") exist to make the system *reliable*, not *restrictive*.
+Deterministic code handles dice rolls, HP math, and clock arithmetic
+because those have objectively correct answers. But the moment determinism
+encroaches on what the player can attempt, how the world responds, or what
+outcomes are possible, the system has traded away the only thing it has.
+
+**The test:** if a player tries something surprising and the system shrugs
+it off with a canned response — or ignores it because no code path handles
+it — the design has failed. Not because of a bug, but because it violated
+the core tradeoff. When in doubt, lean toward the AI path. A hallucination
+can be corrected; a missing degree of freedom cannot be experienced.
+
+---
+
 ## 1. AI for judgment, code for certainty
 
 Use AI where the outcome is uncertain, subjective, or requires contextual
