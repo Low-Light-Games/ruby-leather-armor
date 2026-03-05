@@ -32,6 +32,7 @@ module DungeonMaster
       end
 
       def run_single_beacon(intention, domain)
+        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         raw = nil
         prompt_summary = "Beacon [#{domain}]: \"#{@log.truncate(intention)}\""
 
@@ -54,9 +55,10 @@ module DungeonMaster
                         max_tokens: @config.token_budget_for("beacon"), step_name: "beacon",
                         model: @config.model_for("beacon"))
         parsed = @ai.parse_json(raw)
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log!("beacon", prompt_summary, raw, parsed,
                      parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used)
+                     model_used: @ai.last_model_used, duration_ms: duration_ms)
 
         {
           domain: domain,
@@ -69,16 +71,19 @@ module DungeonMaster
           destination: parsed["destination"]
         }
       rescue TokenBudgetExceededError => e
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log_error!("beacon", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used)
+                           model_used: @ai.last_model_used, duration_ms: duration_ms)
         { domain: domain, affected: false, needs_mechanics: false, macro_significant: false,
           rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil, destination: nil }
       rescue AiError => e
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log_error!("beacon", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, model_used: @ai.last_model_used)
+                           request_body: request_body, model_used: @ai.last_model_used,
+                           duration_ms: duration_ms)
         { domain: domain, affected: false, needs_mechanics: false, macro_significant: false,
           rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil, destination: nil }
       end

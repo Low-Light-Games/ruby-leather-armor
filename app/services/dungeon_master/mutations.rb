@@ -133,6 +133,7 @@ module DungeonMaster
     end
 
     def create_from_ai(name, party_level)
+      t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       raw = nil
       prompt_summary = "CreatureGeneration: #{name} (party level #{party_level})"
 
@@ -148,9 +149,10 @@ module DungeonMaster
         model: @config.model_for("creature_generation"))
 
       parsed = @ai.parse_json(raw)
+      duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
       @log.ai_log!("creature_generation", prompt_summary, raw, parsed,
                     parse_status: @ai.last_parse_status, request_body: request_body,
-                    model_used: @ai.last_model_used)
+                    model_used: @ai.last_model_used, duration_ms: duration_ms)
 
       hp = roll_hp(parsed["hp_formula"])
       @adventure.creature_sheets.create!(

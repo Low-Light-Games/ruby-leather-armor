@@ -18,11 +18,49 @@ module DungeonMaster
     def start_pipeline_run!(message_content)
       @pipeline_run_id = SecureRandom.uuid
       @player_message_content = message_content&.truncate(500)
+      PipelineRun.create!(
+        pipeline_run_id: @pipeline_run_id,
+        adventure: @adventure,
+        player_message_id: @player_message_id,
+        status: "running",
+        started_at: Time.current
+      )
+    rescue => e
+      report_error(e, context: { method: "start_pipeline_run!" })
     end
 
     def resume_pipeline_run!(existing_run_id, message_content)
       @pipeline_run_id = existing_run_id
       @player_message_content = message_content&.truncate(500)
+      pipeline_run_record&.update!(status: "running")
+    rescue => e
+      report_error(e, context: { method: "resume_pipeline_run!" })
+    end
+
+    def finish_pipeline_segment!(duration_ms)
+      pr = pipeline_run_record
+      return unless pr
+      pr.update!(active_duration_ms: pr.active_duration_ms + duration_ms)
+    rescue => e
+      report_error(e, context: { method: "finish_pipeline_segment!" })
+    end
+
+    def pause_pipeline_run!
+      pipeline_run_record&.update!(status: "paused")
+    rescue => e
+      report_error(e, context: { method: "pause_pipeline_run!" })
+    end
+
+    def complete_pipeline_run!
+      pipeline_run_record&.update!(status: "completed", finished_at: Time.current)
+    rescue => e
+      report_error(e, context: { method: "complete_pipeline_run!" })
+    end
+
+    def error_pipeline_run!
+      pipeline_run_record&.update!(status: "errored", finished_at: Time.current)
+    rescue => e
+      report_error(e, context: { method: "error_pipeline_run!" })
     end
 
     # Write a human-readable debug entry (visible in Admin -> DM Logs).
@@ -37,7 +75,7 @@ module DungeonMaster
     end
 
     # Write a full AI exchange record (visible in Admin -> AI Logs).
-    def ai_log!(call_type, prompt_summary, raw_response, parsed_response, parse_status:, request_body: nil, model_used: nil)
+    def ai_log!(call_type, prompt_summary, raw_response, parsed_response, parse_status:, request_body: nil, model_used: nil, duration_ms: nil)
       summary = @action_label ? "#{@action_label} #{prompt_summary}" : prompt_summary
       AiLog.create!(
         adventure: @adventure,
@@ -52,7 +90,8 @@ module DungeonMaster
         model_used: model_used,
         player_message_id: @player_message_id,
         pipeline_run_id: @pipeline_run_id,
-        player_message_content: @player_message_content
+        player_message_content: @player_message_content,
+        duration_ms: duration_ms
       )
     rescue => e
       report_error(e, context: { method: "ai_log!", call_type: call_type })
@@ -60,7 +99,7 @@ module DungeonMaster
     end
 
     # Write an AI error record when a call fails.
-    def ai_log_error!(call_type, prompt_summary, error, raw_response: nil, request_body: nil, status: "api_error", model_used: nil)
+    def ai_log_error!(call_type, prompt_summary, error, raw_response: nil, request_body: nil, status: "api_error", model_used: nil, duration_ms: nil)
       summary = @action_label ? "#{@action_label} #{prompt_summary}" : prompt_summary
       AiLog.create!(
         adventure: @adventure,
@@ -75,7 +114,8 @@ module DungeonMaster
         model_used: model_used,
         player_message_id: @player_message_id,
         pipeline_run_id: @pipeline_run_id,
-        player_message_content: @player_message_content
+        player_message_content: @player_message_content,
+        duration_ms: duration_ms
       )
     rescue => e
       report_error(e, context: { method: "ai_log_error!", call_type: call_type, original_error: error.message })
@@ -87,6 +127,11 @@ module DungeonMaster
     end
 
     private
+
+    def pipeline_run_record
+      return nil unless @pipeline_run_id
+      PipelineRun.find_by(pipeline_run_id: @pipeline_run_id)
+    end
 
     def report_error(exception, context: {})
       full_context = {

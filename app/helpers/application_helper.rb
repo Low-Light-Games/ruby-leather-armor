@@ -39,6 +39,19 @@ module ApplicationHelper
     end
   end
 
+  def pipeline_step_title(log)
+    title = log.call_type.humanize
+    if log.call_type == "beacon" && log.prompt_summary =~ /\[(\w+)\]/
+      title = "#{title} — #{$1}"
+    end
+    title
+  end
+
+  def format_duration_ms(ms)
+    return "—" unless ms
+    ms > 1000 ? "#{(ms / 1000.0).round(1)}s" : "#{ms}ms"
+  end
+
   def pagination_link(path_helper, page, current_page, label: nil, params: {})
     text = label || page.to_s
     if page == current_page

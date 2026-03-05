@@ -59,9 +59,12 @@
               <span class="pipeline-status-badge pipeline-<%= status %>"><%= status.capitalize %></span>
             </td>
             <td class="col-duration">
-              <% if run[:first_at] && run[:last_at] %>
+              <% pr = run[:pipeline_run] %>
+              <% if pr && pr.active_duration_ms > 0 %>
+                <span class="duration"><%= format_duration_ms(pr.active_duration_ms) %></span>
+              <% elsif run[:first_at] && run[:last_at] %>
                 <% duration_ms = ((run[:last_at].to_f - run[:first_at].to_f) * 1000).round %>
-                <span class="duration"><%= duration_ms > 1000 ? "#{(duration_ms / 1000.0).round(1)}s" : "#{duration_ms}ms" %></span>
+                <span class="duration"><%= format_duration_ms(duration_ms) %></span>
               <% end %>
             </td>
             <td class="col-models">
@@ -124,9 +127,9 @@
     .filter-link { color: #1565c0; text-decoration: none; &:hover { text-decoration: underline; } }
     tr:hover { background-color: #f5f5f5; }
     tr.pipeline-errored { background-color: #fce4ec; }
-    tr.pipeline-incomplete { background-color: #fff3e0; }
-    tr.pipeline-partial { background-color: #fff8e1; }
-    tr.pipeline-complete { background-color: #f1f8e9; }
+    tr.pipeline-incomplete, tr.pipeline-running { background-color: #fff3e0; }
+    tr.pipeline-partial, tr.pipeline-paused { background-color: #fff8e1; }
+    tr.pipeline-complete, tr.pipeline-completed { background-color: #f1f8e9; }
     tr.pipeline-retry { opacity: 0.65; }
   }
 
@@ -150,10 +153,10 @@
 
   .pipeline-status-badge {
     display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 600;
-    &.pipeline-complete { background-color: #c8e6c9; color: #2e7d32; }
+    &.pipeline-complete, &.pipeline-completed { background-color: #c8e6c9; color: #2e7d32; }
     &.pipeline-errored { background-color: #ffcdd2; color: #c62828; }
-    &.pipeline-incomplete { background-color: #ffe0b2; color: #e65100; }
-    &.pipeline-partial { background-color: #fff9c4; color: #f57f17; }
+    &.pipeline-incomplete, &.pipeline-running { background-color: #ffe0b2; color: #e65100; }
+    &.pipeline-partial, &.pipeline-paused { background-color: #fff9c4; color: #f57f17; }
   }
 
   .retry-label {

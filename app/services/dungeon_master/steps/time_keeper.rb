@@ -149,6 +149,7 @@ module DungeonMaster
       end
 
       def estimate_via_ai(intent, verdict_result)
+        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         raw = nil
         time_ctx = @adventure.time_context || {}
         outcome  = verdict_result&.dig(:outcome) || intent[:intention]
@@ -169,9 +170,10 @@ module DungeonMaster
                        step_name: "time_keeper",
                        model: @config.model_for("time_keeper"))
         parsed = @ai.parse_json(raw)
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log!("time_keeper", prompt_summary, raw, parsed,
                      parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used)
+                     model_used: @ai.last_model_used, duration_ms: duration_ms)
 
         hours = (parsed["hours_elapsed"] || 0.0017).to_f.clamp(0, 720)
         distance = parsed["distance_miles"]&.to_f
@@ -194,16 +196,19 @@ module DungeonMaster
           } : nil
         }
       rescue TokenBudgetExceededError => e
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log_error!("time_keeper", prompt_summary || "TimeKeeper failed", e,
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used)
+                           model_used: @ai.last_model_used, duration_ms: duration_ms)
         { hours: 0.0017, source: :ai_fallback, terrain: nil, is_journey: false,
           speed_mph: nil, journey_data: nil }
       rescue AiError => e
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log_error!("time_keeper", prompt_summary || "TimeKeeper failed", e,
                            raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, model_used: @ai.last_model_used)
+                           request_body: request_body, model_used: @ai.last_model_used,
+                           duration_ms: duration_ms)
         { hours: 0.0017, source: :ai_fallback, terrain: nil, is_journey: false,
           speed_mph: nil, journey_data: nil }
       end

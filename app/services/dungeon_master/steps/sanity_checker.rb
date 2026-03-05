@@ -119,6 +119,7 @@ module DungeonMaster
       end
 
       def run_ai_capability_check(intent)
+        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         raw = nil
         prompt_summary = "SanityChecker/capability: \"#{@log.truncate(intent[:intention])}\""
 
@@ -133,24 +134,28 @@ module DungeonMaster
                         step_name: "sanity_checker",
                         model: @config.model_for("sanity_checker"))
         parsed = @ai.parse_json(raw)
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log!("sanity_checker", prompt_summary, raw, parsed,
                      parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used)
+                     model_used: @ai.last_model_used, duration_ms: duration_ms)
 
         {
           allowed: parsed["allowed"] != false,
           reason: parsed["reason"]
         }
       rescue TokenBudgetExceededError => e
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log_error!("sanity_checker", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used)
+                           model_used: @ai.last_model_used, duration_ms: duration_ms)
         { allowed: true, reason: nil }
       rescue AiError => e
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log_error!("sanity_checker", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, model_used: @ai.last_model_used)
+                           request_body: request_body, model_used: @ai.last_model_used,
+                           duration_ms: duration_ms)
         { allowed: true, reason: nil }
       end
 
@@ -159,6 +164,7 @@ module DungeonMaster
       # ------------------------------------------------------------------
 
       def run_world_consistency_check(intent)
+        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         raw = nil
         prompt_summary = "SanityChecker/world: \"#{@log.truncate(intent[:intention])}\""
 
@@ -188,9 +194,10 @@ module DungeonMaster
                         step_name: "sanity_checker_world",
                         model: @config.model_for("sanity_checker_world"))
         parsed = @ai.parse_json(raw)
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log!("sanity_checker_world", prompt_summary, raw, parsed,
                      parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used)
+                     model_used: @ai.last_model_used, duration_ms: duration_ms)
 
         {
           consistent: parsed["consistent"] != false,
@@ -198,15 +205,18 @@ module DungeonMaster
           referenced_entities: Array(parsed["referenced_entities"])
         }
       rescue TokenBudgetExceededError => e
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log_error!("sanity_checker_world", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used)
+                           model_used: @ai.last_model_used, duration_ms: duration_ms)
         { consistent: true, reason: nil, referenced_entities: [] }
       rescue AiError => e
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log_error!("sanity_checker_world", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, model_used: @ai.last_model_used)
+                           request_body: request_body, model_used: @ai.last_model_used,
+                           duration_ms: duration_ms)
         { consistent: true, reason: nil, referenced_entities: [] }
       end
     end

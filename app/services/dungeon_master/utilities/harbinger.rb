@@ -94,6 +94,7 @@ module DungeonMaster
         return entry.description if entry.fixed?
         return entry.description unless ai && config && log
 
+        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         raw = nil
         prompt_summary = "Encounter expansion: #{entry.title}"
 
@@ -107,9 +108,10 @@ module DungeonMaster
                       max_tokens: config.token_budget_for("narrate"), step_name: "encounter_expand",
                       model: config.model_for("narrate"))
         parsed = ai.parse_json(raw, fallback_as: :dm_response)
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         log.ai_log!("encounter_expand", prompt_summary, raw, parsed,
                     parse_status: ai.last_parse_status, request_body: request_body,
-                    model_used: ai.last_model_used)
+                    model_used: ai.last_model_used, duration_ms: duration_ms)
 
         parsed["scene"] || parsed["narrative"] || parsed["description"] || entry.description
       rescue => e

@@ -9,6 +9,7 @@ module DungeonMaster
       private
 
       def run_verdict(intent, merged, roll_results:, npc_results:)
+        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         raw = nil
         prompt_summary = "Verdict: \"#{@log.truncate(intent[:intention])}\""
 
@@ -30,9 +31,10 @@ module DungeonMaster
                         max_tokens: @config.token_budget_for("verdict"), step_name: "verdict",
                         model: @config.model_for("verdict"))
         parsed = @ai.parse_json(raw)
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log!("verdict", prompt_summary, raw, parsed,
                      parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used)
+                     model_used: @ai.last_model_used, duration_ms: duration_ms)
 
         raise AiError, "Verdict step returned no outcome — model produced: #{raw.to_s.truncate(200)}" unless parsed["outcome"].present?
 
@@ -41,15 +43,18 @@ module DungeonMaster
           mutations: parsed["mutations"] || {}
         }
       rescue TokenBudgetExceededError => e
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log_error!("verdict", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used)
+                           model_used: @ai.last_model_used, duration_ms: duration_ms)
         raise
       rescue AiError => e
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log_error!("verdict", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, model_used: @ai.last_model_used)
+                           request_body: request_body, model_used: @ai.last_model_used,
+                           duration_ms: duration_ms)
         raise
       end
     end

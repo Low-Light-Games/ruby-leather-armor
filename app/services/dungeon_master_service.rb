@@ -39,12 +39,14 @@ class DungeonMasterService
     @log.player_message_id = player_msg.id
     @log.start_pipeline_run!(player_input)
 
-    result = pipeline.run_prompt(player_input, mode: mode)
+    result = run_timed_pipeline { pipeline.run_prompt(player_input, mode: mode) }
     { messages: [player_msg] + messages_for(result) }
   rescue SanitizationRejected => e
+    @log.error_pipeline_run!
     rejection = persist_message(role: "system", content: e.message, message_type: "sanitization_fail")
     { messages: [player_msg, rejection] }
   rescue AiError => e
+    @log.error_pipeline_run!
     error_msg = persist_message(
       role: "system",
       content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
@@ -62,9 +64,10 @@ class DungeonMasterService
     @log.player_message_id = roll_msg.id
     resume_or_start_pipeline!(metadata, format_roll_results(roll_results_from_player))
 
-    result = pipeline.run_rolls(format_roll_results(roll_results_from_player), metadata)
+    result = run_timed_pipeline { pipeline.run_rolls(format_roll_results(roll_results_from_player), metadata) }
     { messages: [roll_msg] + messages_for(result) }
   rescue AiError => e
+    @log.error_pipeline_run!
     error_msg = persist_message(
       role: "system",
       content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
@@ -82,9 +85,10 @@ class DungeonMasterService
     @log.player_message_id = init_msg.id
     resume_or_start_pipeline!(metadata, "Initiative: #{player_initiative}")
 
-    result = pipeline.run_initiative(player_initiative.to_i, metadata)
+    result = run_timed_pipeline { pipeline.run_initiative(player_initiative.to_i, metadata) }
     { messages: [init_msg] + messages_for(result) }
   rescue AiError => e
+    @log.error_pipeline_run!
     error_msg = persist_message(
       role: "system",
       content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
@@ -128,11 +132,13 @@ class DungeonMasterService
     @log.player_message_id = player_message_id
     @log.start_pipeline_run!(player_input)
 
-    result = pipeline.run_prompt(player_input, mode: mode)
+    result = run_timed_pipeline { pipeline.run_prompt(player_input, mode: mode) }
     messages_for(result)
   rescue SanitizationRejected => e
+    @log.error_pipeline_run!
     [persist_message(role: "system", content: e.message, message_type: "sanitization_fail")]
   rescue AiError => e
+    @log.error_pipeline_run!
     [persist_message(
       role: "system",
       content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
@@ -144,9 +150,10 @@ class DungeonMasterService
     metadata = latest_roll_metadata
     resume_or_start_pipeline!(metadata, roll_results_text)
 
-    result = pipeline.run_rolls(roll_results_text, metadata)
+    result = run_timed_pipeline { pipeline.run_rolls(roll_results_text, metadata) }
     messages_for(result)
   rescue AiError => e
+    @log.error_pipeline_run!
     [persist_message(
       role: "system",
       content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
@@ -158,9 +165,10 @@ class DungeonMasterService
     metadata = latest_initiative_metadata
     resume_or_start_pipeline!(metadata, "Initiative: #{player_initiative}")
 
-    result = pipeline.run_initiative(player_initiative.to_i, metadata)
+    result = run_timed_pipeline { pipeline.run_initiative(player_initiative.to_i, metadata) }
     messages_for(result)
   rescue AiError => e
+    @log.error_pipeline_run!
     [persist_message(
       role: "system",
       content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
@@ -184,6 +192,25 @@ class DungeonMasterService
   end
 
   private
+
+  # ----------------------------------------------------------------
+  # Pipeline timing
+  # ----------------------------------------------------------------
+
+  def run_timed_pipeline
+    t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    result = yield
+    segment_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
+    @log.finish_pipeline_segment!(segment_ms)
+
+    if result[:action].in?(%i[awaiting_rolls awaiting_initiative])
+      @log.pause_pipeline_run!
+    else
+      @log.complete_pipeline_run!
+    end
+
+    result
+  end
 
   # ----------------------------------------------------------------
   # Pipeline

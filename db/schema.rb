@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_05_145324) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_05_160340) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -136,6 +136,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_05_145324) do
     t.bigint "player_message_id"
     t.string "pipeline_run_id"
     t.text "player_message_content"
+    t.integer "duration_ms"
     t.index ["adventure_id"], name: "index_ai_logs_on_adventure_id"
     t.index ["created_at"], name: "index_ai_logs_on_created_at"
     t.index ["dm_service"], name: "index_ai_logs_on_dm_service"
@@ -342,6 +343,22 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_05_145324) do
     t.index ["from_location_id", "to_location_id"], name: "idx_location_connections_pair", unique: true
     t.index ["from_location_id"], name: "index_location_connections_on_from_location_id"
     t.index ["to_location_id"], name: "index_location_connections_on_to_location_id"
+  end
+
+  create_table "pipeline_runs", force: :cascade do |t|
+    t.string "pipeline_run_id", null: false
+    t.bigint "adventure_id", null: false
+    t.bigint "player_message_id"
+    t.string "status", default: "running", null: false
+    t.integer "active_duration_ms", default: 0, null: false
+    t.integer "step_count", default: 0, null: false
+    t.datetime "started_at", null: false
+    t.datetime "finished_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_id"], name: "index_pipeline_runs_on_adventure_id"
+    t.index ["pipeline_run_id"], name: "index_pipeline_runs_on_pipeline_run_id", unique: true
+    t.index ["started_at"], name: "index_pipeline_runs_on_started_at"
   end
 
   create_table "sheet_feats", force: :cascade do |t|

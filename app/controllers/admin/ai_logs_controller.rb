@@ -44,6 +44,8 @@ module Admin
                          .order(:created_at)
                          .group_by(&:pipeline_run_id)
 
+      pipeline_run_records = PipelineRun.where(pipeline_run_id: run_ids).index_by(&:pipeline_run_id)
+
       msg_ids = logs_by_run.values.flatten.filter_map(&:player_message_id).uniq
       messages = AdventureMessage.where(id: msg_ids).index_by(&:id)
 
@@ -51,14 +53,19 @@ module Admin
         logs = logs_by_run[run.pipeline_run_id] || []
         first_log = logs.first
         msg = first_log && messages[first_log.player_message_id]
-        step_types = logs.map(&:call_type)
-        has_error = logs.any? { |l| l.status.in?(ERROR_STATUSES) }
-        has_terminal = step_types.any? { |t| TERMINAL_STEPS.include?(t) }
+        pr = pipeline_run_records[run.pipeline_run_id]
 
-        status = if has_error && !has_terminal then "errored"
-                 elsif has_error                then "partial"
-                 elsif has_terminal             then "complete"
-                 else                                "incomplete"
+        status = if pr
+                   pr.status
+                 else
+                   step_types = logs.map(&:call_type)
+                   has_error = logs.any? { |l| l.status.in?(ERROR_STATUSES) }
+                   has_terminal = step_types.any? { |t| TERMINAL_STEPS.include?(t) }
+                   if has_error && !has_terminal then "errored"
+                   elsif has_error                then "partial"
+                   elsif has_terminal             then "complete"
+                   else                                "incomplete"
+                   end
                  end
 
         {
@@ -69,7 +76,8 @@ module Admin
           step_count: run.step_count,
           message_content: msg&.content || first_log&.player_message_content,
           logs: logs,
-          status: status
+          status: status,
+          pipeline_run: pr
         }
       end
 
@@ -91,6 +99,7 @@ module Admin
       @player_message = first_log.player_message
       @player_message_content = @player_message&.content || first_log.player_message_content
       @pipeline_run_id = params[:pipeline_run_id]
+      @pipeline_run = PipelineRun.find_by(pipeline_run_id: @pipeline_run_id)
 
       render layout: 'application'
     end
