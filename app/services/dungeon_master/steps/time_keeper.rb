@@ -37,7 +37,10 @@ module DungeonMaster
                          estimated[:hours]
                        end
 
-        time_ctx = Utilities::GameClock.advance_clock!(@adventure, actual_hours, intent: intent)
+        harbinger_consulted = harbinger_result[:stop_reason] != :skipped
+        time_ctx = Utilities::GameClock.advance_clock!(@adventure, actual_hours,
+                                                       intent: intent,
+                                                       reset_encounter_check: harbinger_consulted)
         thresholds = Utilities::GameClock.check_thresholds(time_ctx)
 
         encounter = harbinger_result if harbinger_result[:stop_reason] == :encounter

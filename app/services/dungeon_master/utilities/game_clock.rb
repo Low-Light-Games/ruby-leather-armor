@@ -19,7 +19,7 @@ module DungeonMaster
 
       module_function
 
-      def advance_clock!(adventure, hours, intent: nil)
+      def advance_clock!(adventure, hours, intent: nil, reset_encounter_check: false)
         ctx = (adventure.time_context || {}).deep_dup
         old_hour = (ctx["current_hour"] || 8).to_f
         old_day  = (ctx["adventure_day"] || 1).to_i
@@ -33,7 +33,12 @@ module DungeonMaster
         ctx["light_conditions"] = light_for_hour(new_hour.floor)
 
         ctx["hours_since_last_rest"] = (ctx["hours_since_last_rest"] || 0).to_f + hours
-        ctx["hours_since_last_encounter_check"] = (ctx["hours_since_last_encounter_check"] || 0).to_f + hours
+
+        if reset_encounter_check
+          ctx["hours_since_last_encounter_check"] = 0
+        else
+          ctx["hours_since_last_encounter_check"] = (ctx["hours_since_last_encounter_check"] || 0).to_f + hours
+        end
 
         if rest_action?(intent)
           ctx["hours_since_last_rest"] = 0

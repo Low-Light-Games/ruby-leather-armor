@@ -16,6 +16,8 @@ Combat is ACTIVE. Combat rounds last 6 seconds each.
 - Full-round action: 6 seconds
 - Dialogue or brief conversation: 1-5 minutes (0.02-0.08 hours)
 - Short search of a room: 10-30 minutes (0.17-0.5 hours)
+- Hunting or foraging for food: 1-4 hours (Survival activity)
+- Tracking a creature: 1-4 hours depending on trail and terrain
 - Crafting a simple item: 1-4 hours
 - Take 20 on a skill check: 20x the normal check time (usually 2 minutes per attempt = 40 minutes)
 - Resting (full night): 8 hours
@@ -29,6 +31,12 @@ Combat is ACTIVE. Combat rounds last 6 seconds each.
   "rest then travel", "craft a potion and then head out"), estimate time for the
   FIRST time-consuming action only. Remaining actions will be processed in
   subsequent turns. Return only the hours for that first action.
+- SUSTAINED ACTIONS: When the player says "until", "keep doing", "continue until",
+  or otherwise indicates they will persist at an activity until a result is achieved,
+  estimate the TOTAL expected duration of the sustained effort — not a single brief
+  attempt. For example, "hunt until I catch something" means hours of hunting (1-4h),
+  not a 10-minute search. "Search until I find it" means a thorough extended search.
+  Use the time reference above for the activity type and lean toward the higher end.
 <% if @has_destination -%>
 - FREEFORM TRAVEL: The player is moving toward a destination but no pre-computed
   route is available. Estimate both hours_elapsed AND distance_miles based on a
