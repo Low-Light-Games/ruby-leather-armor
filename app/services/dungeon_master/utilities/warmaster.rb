@@ -174,7 +174,7 @@ module DungeonMaster
       def create_creature_from_bestiary_static(ctx, entry, display_name)
         hp = roll_hp_static(entry.hp_formula)
         attrs = entry.to_creature_sheet_attrs(display_name: display_name)
-        ctx.adventure.creature_sheets.create!(attrs.merge(hp: hp, max_hp: hp))
+        ctx.adventure.creature_sheets.create!(attrs.merge(hp: hp, max_hp: hp, origin: "bestiary"))
       end
 
       def dynamic_creature_sheet_static(ctx, name, party_level:)
@@ -204,7 +204,7 @@ module DungeonMaster
         hp = roll_hp_static(stats[:hp])
 
         ctx.adventure.creature_sheets.create!(
-          name: name, creature_type: "monster",
+          name: name, creature_type: "monster", origin: "template",
           strength: stats[:str], dexterity: stats[:dex], constitution: stats[:con],
           intelligence: stats[:int], wisdom: stats[:wis], charisma: stats[:cha],
           level: [party_level, 1].max, hp: hp, max_hp: hp,
@@ -237,7 +237,7 @@ module DungeonMaster
 
         hp = roll_hp_static(parsed["hp_formula"])
         ctx.adventure.creature_sheets.create!(
-          name: name, creature_type: parsed["creature_type"] || "monster",
+          name: name, creature_type: parsed["creature_type"] || "monster", origin: "ai",
           strength: parsed["strength"].to_i.clamp(1, 40),
           dexterity: parsed["dexterity"].to_i.clamp(1, 40),
           constitution: parsed["constitution"].to_i.clamp(1, 40),

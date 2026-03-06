@@ -44,6 +44,12 @@ Rails.application.routes.draw do
       get :models, on: :member
     end
     resource :billing, only: [:show], controller: "billing"
+    resources :bestiary_entries, only: [:index] do
+      collection do
+        get :import_candidates
+        post :import
+      end
+    end
   end
 
   resources :feature_flags, only: [:index]

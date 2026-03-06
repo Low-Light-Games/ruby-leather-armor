@@ -1,0 +1,112 @@
+<%= render 'admin/shared/navbar', active_nav: :bestiary %>
+
+<div class="bestiary-index">
+  <div class="bestiary-header">
+    <h1>Bestiary (<%= @total %>)</h1>
+    <div class="header-actions">
+      <a href="<%= import_candidates_admin_bestiary_entries_path %>" class="btn btn-import">
+        Import from AI Creatures
+        <% if @ai_candidates.any? %>
+          <span class="badge"><%= @ai_candidates.size %></span>
+        <% end %>
+      </a>
+    </div>
+  </div>
+
+  <% if flash[:notice] %>
+    <div class="flash-notice"><%= flash[:notice] %></div>
+  <% end %>
+  <% if flash[:alert] %>
+    <div class="flash-alert"><%= flash[:alert] %></div>
+  <% end %>
+
+  <form method="get" action="<%= admin_bestiary_entries_path %>" class="bestiary-search">
+    <input type="text" name="q" value="<%= params[:q] %>" placeholder="Search by name…" class="search-input" />
+    <button type="submit" class="btn btn-search">Search</button>
+    <% if params[:q].present? %>
+      <a href="<%= admin_bestiary_entries_path %>" class="btn btn-clear">Clear</a>
+    <% end %>
+  </form>
+
+  <table class="bestiary-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Source</th>
+        <th>CR</th>
+        <th>Type</th>
+        <th>Size</th>
+        <th>HP Formula</th>
+        <th>AC</th>
+        <th>STR</th>
+        <th>DEX</th>
+        <th>CON</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @entries.each do |entry| %>
+        <tr class="<%= 'ai-imported' if entry.source == 'ai_import' %>">
+          <td class="cell-id"><%= entry.id %></td>
+          <td class="cell-name"><%= entry.name %></td>
+          <td>
+            <span class="source-badge source-<%= entry.source == 'ai_import' ? 'ai' : 'ogl' %>">
+              <%= entry.source == 'ai_import' ? 'AI Import' : entry.source %>
+            </span>
+          </td>
+          <td><%= entry.cr %></td>
+          <td><%= entry.creature_type %></td>
+          <td><%= entry.size %></td>
+          <td class="cell-mono"><%= entry.hp_formula %></td>
+          <td><%= entry.ac %></td>
+          <td><%= entry.strength %></td>
+          <td><%= entry.dexterity %></td>
+          <td><%= entry.constitution %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <% if @entries.empty? %>
+    <p class="empty-state">No bestiary entries found<%= " matching '#{params[:q]}'" if params[:q].present? %>.</p>
+  <% end %>
+</div>
+
+<style>
+  .bestiary-index { max-width: 1200px; margin: 20px auto; padding: 0 20px; font-family: system-ui, -apple-system, sans-serif; }
+  .bestiary-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .bestiary-header h1 { margin: 0; font-size: 1.5rem; color: #e0e0e0; }
+
+  .header-actions { display: flex; gap: 10px; }
+
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; text-decoration: none; transition: background 0.15s; }
+  .btn-import { background: #2563eb; color: #fff; }
+  .btn-import:hover { background: #1d4ed8; }
+  .btn-import .badge { background: rgba(255,255,255,0.25); padding: 1px 7px; border-radius: 10px; font-size: 0.75rem; }
+  .btn-search { background: #374151; color: #e0e0e0; }
+  .btn-search:hover { background: #4b5563; }
+  .btn-clear { background: #6b7280; color: #fff; }
+  .btn-clear:hover { background: #9ca3af; }
+
+  .bestiary-search { display: flex; gap: 8px; margin-bottom: 16px; }
+  .search-input { flex: 1; max-width: 350px; padding: 8px 12px; background: #1e1e2e; border: 1px solid #374151; border-radius: 6px; color: #e0e0e0; font-size: 0.9rem; }
+  .search-input::placeholder { color: #6b7280; }
+  .search-input:focus { outline: none; border-color: #2563eb; }
+
+  .bestiary-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .bestiary-table th { text-align: left; padding: 8px 10px; background: #1a1a2e; color: #9ca3af; font-weight: 600; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.5px; border-bottom: 2px solid #2d2d44; }
+  .bestiary-table td { padding: 7px 10px; border-bottom: 1px solid #1e1e2e; color: #d1d5db; }
+  .bestiary-table tr:hover { background: rgba(37, 99, 235, 0.06); }
+  .bestiary-table tr.ai-imported { background: rgba(234, 179, 8, 0.04); }
+  .cell-id { font-family: monospace; font-size: 0.75rem; color: #6b7280; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+  .cell-name { font-weight: 600; color: #e0e0e0; }
+  .cell-mono { font-family: monospace; font-size: 0.8rem; }
+
+  .source-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
+  .source-badge.source-ogl { background: #1e3a2f; color: #34d399; }
+  .source-badge.source-ai { background: #3b2f1e; color: #fbbf24; }
+
+  .flash-notice { background: #064e3b; color: #6ee7b7; padding: 10px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 0.9rem; }
+  .flash-alert { background: #7f1d1d; color: #fca5a5; padding: 10px 16px; border-radius: 6px; margin-bottom: 16px; font-size: 0.9rem; }
+  .empty-state { text-align: center; padding: 40px; color: #6b7280; font-style: italic; }
+</style>

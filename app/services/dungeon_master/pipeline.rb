@@ -455,9 +455,20 @@ module DungeonMaster
     def filter_auto_success_rolls!(merged)
       skills_lookup = build_skills_lookup
       removed = []
+      warned = []
 
       merged[:player_rolls] = merged[:player_rolls].reject do |roll|
-        dc = roll[:dc].to_i
+        if roll[:type].to_s == "attack_roll"
+          next false
+        end
+
+        raw_dc = roll[:dc]
+        unless numeric_dc?(raw_dc)
+          warned << "#{roll[:skill] || roll[:type]} has non-numeric DC '#{raw_dc}' — keeping roll"
+          next false
+        end
+
+        dc = raw_dc.to_i
         reason = auto_success_reason(roll, dc, skills_lookup)
         if reason
           removed << "#{roll[:skill] || roll[:type]} DC #{dc}: #{reason}"
@@ -465,9 +476,8 @@ module DungeonMaster
         end
       end
 
-      if removed.any?
-        @log.dm_log!("Auto-success filter removed #{removed.size} roll(s): #{removed.join('; ')}")
-      end
+      @log.dm_log!("Auto-success filter warning: #{warned.join('; ')}") if warned.any?
+      @log.dm_log!("Auto-success filter removed #{removed.size} roll(s): #{removed.join('; ')}") if removed.any?
     end
 
     def auto_success_reason(roll, dc, skills_lookup)
@@ -485,6 +495,10 @@ module DungeonMaster
       end
 
       nil
+    end
+
+    def numeric_dc?(value)
+      value.is_a?(Integer) || (value.is_a?(String) && value.match?(/\A\d+\z/))
     end
 
     def build_skills_lookup

@@ -12,10 +12,12 @@ class CreatureSheet < ApplicationRecord
 
   CREATURE_TYPES = %w[npc monster beast animal].freeze
   ATTITUDES = %w[hostile unfriendly indifferent friendly helpful].freeze
+  ORIGINS = %w[bestiary ai template unknown].freeze
 
   validates :name, presence: true
   validates :creature_type, presence: true, inclusion: { in: CREATURE_TYPES }
   validates :attitude, inclusion: { in: ATTITUDES }, allow_nil: true
+  validates :origin, inclusion: { in: ORIGINS }, allow_nil: true
   validates :strength, :dexterity, :constitution, :intelligence, :wisdom, :charisma, presence: true
   validates :level, numericality: { only_integer: true, greater_than: 0 }
 

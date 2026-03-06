@@ -55,7 +55,8 @@ module DungeonMaster
           relevant_fields: relevant,
           affected_fields: affected,
           what_happened: what_happened,
-          mutations_json: mutations.present? ? mutations.to_json : "(no mechanical mutations)")
+          mutations_json: mutations.present? ? mutations.to_json : "(no mechanical mutations)",
+          canonical_hp: build_canonical_hp)
 
         user_msg = "Update contexts based on the above."
         request_body = { system_prompt: system_prompt, user_message: user_msg }
@@ -146,6 +147,17 @@ module DungeonMaster
         history = history.last(max_history)
 
         @adventure.update!(scene_summary: summary, scene_history: history)
+      end
+
+      def build_canonical_hp
+        lines = []
+        lines << "Player: #{@sheet.hp}/#{@sheet.max_hp}" if @sheet
+
+        @adventure.creature_sheets.each do |c|
+          lines << "#{c.name}: #{c.hp}/#{c.max_hp}"
+        end
+
+        lines.any? ? lines.join("\n") : nil
       end
     end
   end

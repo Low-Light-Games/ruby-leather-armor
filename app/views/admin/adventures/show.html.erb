@@ -432,13 +432,14 @@
       <summary class="section-title">Active Creatures (<%= @creatures.size %>)</summary>
       <table class="elements-table">
         <thead>
-          <tr><th>Name</th><th>Type</th><th>Attitude</th><th>HP</th><th>AC</th><th>Level</th></tr>
+          <tr><th>Name</th><th>Type</th><th>Origin</th><th>Attitude</th><th>HP</th><th>AC</th><th>Level</th></tr>
         </thead>
         <tbody>
           <% @creatures.each do |c| %>
             <tr>
               <td class="el-name"><%= c.name %></td>
               <td><%= c.creature_type %></td>
+              <td><span class="origin-badge origin-<%= c.origin %>"><%= c.origin %></span></td>
               <td><span class="attitude-badge attitude-<%= c.attitude %>"><%= c.attitude %></span></td>
               <td><%= c.hp %>/<%= c.max_hp %></td>
               <td><%= c.derived_stats&.dig("ac") || '—' %></td>

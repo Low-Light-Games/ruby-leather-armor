@@ -78,19 +78,33 @@ module DungeonMaster
       end
 
       def maybe_initialize_combat(intent)
-        combat_beacon = intent.dig(:beacon_results, :combat) || intent.dig(:beacon_results, "combat")
-        return nil unless combat_beacon.is_a?(Hash)
-
-        transition = combat_beacon["transition"] || combat_beacon[:transition]
-        return nil unless transition == "combat_started"
         return nil if stagehand_combat_active?
 
-        combatants = Array(combat_beacon["combatants"] || combat_beacon[:combatants])
+        beacon_results = intent[:beacon_results]
+        return nil unless beacon_results.is_a?(Hash)
+
+        combatants = []
+        beacon_results.each_value do |beacon|
+          next unless beacon.is_a?(Hash)
+
+          transition = beacon[:transition] || beacon["transition"]
+          next unless combat_transition?(transition)
+
+          combatants.concat(Array(beacon[:combatants] || beacon["combatants"]))
+        end
+
+        combatants = combatants.map(&:to_s).reject(&:blank?).uniq
         return nil if combatants.empty?
 
         Utilities::Warmaster.initialize_from_names!(
           adventure: @adventure, combatant_names: combatants,
           sheet: @sheet, log: @log, config: @config, ai: @ai)
+      end
+
+      def combat_transition?(transition)
+        return false if transition.blank?
+
+        transition == "combat_started" || transition.to_s.end_with?("_to_combat")
       end
 
       def stagehand_combat_active?

@@ -68,7 +68,8 @@ module DungeonMaster
           rules_needed: Array(parsed["rules_needed"]).map(&:to_s),
           domain_interpretation: parsed["domain_interpretation"],
           transition: parsed["transition"],
-          destination: parsed["destination"]
+          destination: parsed["destination"],
+          combatants: Array(parsed["combatants"])
         }
       rescue TokenBudgetExceededError => e
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
@@ -77,7 +78,8 @@ module DungeonMaster
                            request_body: request_body, status: "token_budget_exceeded",
                            model_used: @ai.last_model_used, duration_ms: duration_ms, usage: @ai.last_usage)
         { domain: domain, affected: false, needs_mechanics: false, macro_significant: false,
-          rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil, destination: nil }
+          rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil, destination: nil,
+          combatants: [] }
       rescue AiError => e
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log_error!("beacon", prompt_summary, e,
@@ -85,7 +87,8 @@ module DungeonMaster
                            request_body: request_body, model_used: @ai.last_model_used,
                            duration_ms: duration_ms, usage: @ai.last_usage)
         { domain: domain, affected: false, needs_mechanics: false, macro_significant: false,
-          rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil, destination: nil }
+          rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil, destination: nil,
+          combatants: [] }
       end
 
       # Merge parallel beacon results into a unified intent-compatible hash.
