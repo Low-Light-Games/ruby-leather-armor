@@ -27,6 +27,10 @@ module DungeonMaster
         enriched_world = @adventure.enriched_world || {}
         npc_enrichments = enriched_world["npcs"] || {}
 
+        social_ctx = @adventure.social_context
+        traversal_ctx = @adventure.traversal_context
+        exploration_ctx = @adventure.exploration_context
+
         system_prompt = PromptRenderer.render("chronicler",
           enriched_premise: enriched_premise,
           discovered_clues: all_clues.select { |c| discovered_ids.include?(c.id) }.map { |c| { id: c.id, title: c.title } },
@@ -39,6 +43,9 @@ module DungeonMaster
           verdict_outcome: verdict_outcome,
           undiscovered_clues: build_undiscovered_clues(all_clues, discovered_ids),
           available_npcs: build_available_npcs(all_npcs, npc_enrichments),
+          social_context: social_ctx,
+          traversal_context: traversal_ctx,
+          exploration_context: exploration_ctx,
         )
 
         request_body = { system_prompt: system_prompt, user_message: "Evaluate plot state for this action." }

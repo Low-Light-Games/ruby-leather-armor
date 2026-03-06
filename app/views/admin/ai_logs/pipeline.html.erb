@@ -101,6 +101,9 @@
             <span class="card-title"><%= pipeline_step_title(log) %></span>
             <a href="<%= admin_ai_log_path(log) %>" class="card-log-link">#<%= log.id %></a>
           </div>
+          <% if log.prompt_summary.present? %>
+            <p class="card-context" title="<%= log.prompt_summary %>"><%= truncate(log.prompt_summary, length: 140) %></p>
+          <% end %>
           <div class="card-meta-row">
             <span class="type-badge <%= ai_log_type_badge_class(log.call_type) %>"><%= log.call_type.humanize %></span>
             <span class="status-badge <%= log.status %>"><%= log.status.humanize %></span>
@@ -206,6 +209,10 @@
   }
   .card-title {
     font-size: 15px; font-weight: 600; color: #333;
+  }
+  .card-context {
+    font-size: 12px; color: #555; line-height: 1.35; margin: 0;
+    font-style: italic;
   }
   .card-meta-row {
     display: flex; align-items: center; gap: 8px;

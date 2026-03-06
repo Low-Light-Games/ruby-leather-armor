@@ -58,6 +58,19 @@
     </div>
   <% end %>
 
+  <% if @log.call_type.in?(%w[mechanical_evaluation roll_qualifier]) && @log.request_body.present? %>
+    <% begin %>
+      <% body = JSON.parse(@log.request_body) %>
+      <% if body["user_message"].present? %>
+        <div class="log-section context-section">
+          <h2>Context (what prompted this step)</h2>
+          <p class="context-intention"><%= body["user_message"] %></p>
+        </div>
+      <% end %>
+    <% rescue %>
+    <% end %>
+  <% end %>
+
   <div class="log-section">
     <h2>Prompt Summary</h2>
     <pre class="log-pre"><%= @log.prompt_summary %></pre>
@@ -164,6 +177,14 @@
   }
   .pm-content {
     margin: 8px 0 0; font-size: 14px; color: #333; font-style: italic;
+  }
+
+  .context-section {
+    margin-bottom: 20px;
+  }
+  .context-intention {
+    margin: 8px 0 0; padding: 10px 14px; border-left: 3px solid #1565c0;
+    background: #f5f9ff; font-size: 14px; color: #333; font-style: italic;
   }
 
   .parsed-fields-grid {

@@ -9,6 +9,13 @@ Attempted clues (failed): <%= @attempted_clues.any? ? @attempted_clues.map { |c|
 Reached milestones: <%= @reached_milestones.any? ? @reached_milestones.map { |m| m[:title] }.join(", ") : "(none)" %>
 NPCs met: <%= @npcs_met.any? ? @npcs_met.map { |n| n[:name] }.join(", ") : "(none)" %>
 
+=== SCENE CONTEXT (who and what is present right now) ===
+Social: <%= @social_context.present? ? @social_context.to_json : "(none)" %>
+Traversal: <%= @traversal_context.present? ? @traversal_context.to_json : "(none)" %>
+Exploration: <%= @exploration_context.present? ? @exploration_context.to_json : "(none)" %>
+
+Use these to know who is in the scene (e.g. npcs_present in Social, nearby_npcs in Traversal).
+
 === PLAYER'S ACTION ===
 Intent: <%= @intention %>
 Primary context: <%= @primary_context %>

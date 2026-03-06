@@ -41,8 +41,8 @@ module ApplicationHelper
 
   def pipeline_step_title(log)
     title = log.call_type.humanize
-    if log.call_type == "beacon" && log.prompt_summary =~ /\[(\w+)\]/
-      title = "#{title} — #{$1}"
+    if log.prompt_summary =~ /\[(\w+)\]/
+      title = "#{title} — #{$1}" if log.call_type.in?(%w[beacon mechanical_evaluation roll_qualifier])
     end
     title
   end

@@ -106,6 +106,8 @@
           Configure the model and token budget for each pipeline step.
           Steps with no model override use the default model above.
           Reasoning models (⚙️) need higher budgets. Leave budget blank to use the model's suggested default.
+          Steps marked with ➡️ may benefit from a capable model.
+          Steps marked with ⚠️ have baseline high context or reasoning needs — choose a capable model and consider a higher token budget.
         </p>
 
         <% current_budgets = @config.get("token_budgets") || {} %>
@@ -118,7 +120,7 @@
             <span class="psh-actions"></span>
           </div>
           <% DmConfig::TOKEN_BUDGET_STEPS.each do |step| %>
-            <div class="pipeline-step-row">
+            <div class="pipeline-step-row<%= ' pipeline-step-row-warning' if DmConfig::STEP_MODEL_HINTS[step].to_s.start_with?('⚠️') %>">
               <div class="psr-label-block">
                 <label class="psr-label"><%= step.titleize %></label>
                 <span class="psr-hint"><%= DmConfig::STEP_MODEL_HINTS[step] %></span>
@@ -717,6 +719,13 @@
     gap: 10px;
     align-items: center;
     padding: 6px 0;
+  }
+
+  .pipeline-step-row-warning {
+    background: rgba(255, 193, 7, 0.08);
+    border-left: 3px solid #ffc107;
+    margin: 0 -4px;
+    padding-left: 4px;
   }
 
   .psr-label-block {

@@ -39,7 +39,7 @@ module DungeonMaster
         context_block = build_qualifier_context_block(context_names)
 
         raw = nil
-        prompt_summary = "RollQualifier [#{evaluation[:domain]}]: " \
+        prompt_summary = "RollQualifier [#{evaluation[:domain]}]: \"#{@log.truncate(intent[:intention])}\" — " \
                          "#{rolls.size} roll(s), scope=#{scope}"
 
         system_prompt = PromptRenderer.render("roll_qualifier",
@@ -101,21 +101,28 @@ module DungeonMaster
 
       def apply_qualifier_results(evaluation, parsed)
         qualifications = Array(parsed["qualifications"])
-        return evaluation if qualifications.empty?
+        skills_lookup = build_skills_lookup
 
         qual_by_skill = qualifications.index_by { |q| q["skill"] }
 
         qualified_rolls = evaluation[:player_rolls].map do |roll|
           qual = qual_by_skill[roll[:skill].to_s]
-          next roll unless qual
+          base = roll.dup
 
-          roll.merge(
-            take_10_eligible: qual["take_10_eligible"] == true,
-            take_20_eligible: qual["take_20_eligible"] == true,
-            take_10_value: qual["take_10_value"],
-            take_20_value: qual["take_20_value"],
-            situational_modifiers: Array(qual["situational_modifiers"]).map(&:deep_symbolize_keys)
-          )
+          if qual
+            base[:take_10_eligible] = qual["take_10_eligible"] == true
+            base[:take_20_eligible] = qual["take_20_eligible"] == true
+            base[:situational_modifiers] = Array(qual["situational_modifiers"]).map(&:deep_symbolize_keys)
+          end
+
+          # Take 10/20 values come from the character sheet (skill modifier + 10 or 20), not from the AI.
+          if roll[:type].to_s == "skill_check" && roll[:skill].present?
+            mod = skills_lookup[roll[:skill].to_s].to_i
+            base[:take_10_value] = 10 + mod
+            base[:take_20_value] = 20 + mod
+          end
+
+          base
         end
 
         evaluation.merge(player_rolls: qualified_rolls)

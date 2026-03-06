@@ -37,12 +37,12 @@ Your job is to evaluate the player's circumstances and determine:
   advantages not present in the context.
 
 === INSTRUCTIONS ===
-For each roll, determine:
+For each roll, determine ONLY:
 - take_10_eligible: true/false based on whether the character is free from danger and distraction.
 - take_20_eligible: true/false based on Take 10 eligibility PLUS no failure consequences PLUS time available.
-- take_10_value / take_20_value: the character's skill modifier + 10 or + 20. Use the modifier
-  from the roll's skill if available, or estimate from the character's abilities.
 - situational_modifiers: array of applicable bonuses/penalties from the situation.
+
+Do NOT provide take_10_value or take_20_value; the app computes those from the character sheet.
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
@@ -51,8 +51,6 @@ Respond ONLY with valid JSON (no markdown, no code fences):
       "skill": "Perception",
       "take_10_eligible": true,
       "take_20_eligible": false,
-      "take_10_value": 15,
-      "take_20_value": null,
       "situational_modifiers": [
         { "source": "well-lit campfire", "bonus": 2, "type": "circumstance" }
       ],
