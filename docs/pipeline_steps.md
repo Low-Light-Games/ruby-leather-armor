@@ -3,6 +3,8 @@
 Design document describing the AI Dungeon Master pipeline: what each step
 does, what it receives, what it produces, and how the steps connect.
 
+**Flow diagram:** [Pipeline diagram](pipeline_diagram.md) (Mermaid flowcharts).
+
 For the guiding principles behind these decisions, see
 [Design Philosophy](design_philosophy.md).
 
