@@ -261,7 +261,7 @@ class AdventuresController < ApplicationController
   end
 
   def run_embellisher(adventure)
-    DungeonMaster::Embellisher.new(adventure).run
+    DungeonMaster::Embellisher.new(adventure, user: current_user).run
   rescue DungeonMaster::AiError, DungeonMaster::TokenBudgetExceededError => e
     Rails.logger.error("[AdventuresController] Embellisher failed: #{e.message}")
   end

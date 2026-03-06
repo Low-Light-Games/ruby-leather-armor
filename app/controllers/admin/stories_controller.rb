@@ -50,7 +50,7 @@ module Admin
 
     # POST /admin/stories/:id/enrich
     def enrich
-      enricher = DungeonMaster::Enricher.new(@story)
+      enricher = DungeonMaster::Enricher.new(@story, user: current_user)
       result = enricher.enrich
       render json: result
     rescue DungeonMaster::AiError => e

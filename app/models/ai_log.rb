@@ -1,6 +1,7 @@
 class AiLog < ApplicationRecord
   belongs_to :adventure, optional: true
   belongs_to :player_message, class_name: "AdventureMessage", optional: true
+  belongs_to :ai_usage_record, optional: true
 
   CALL_TYPES = %w[
     sanitize classify dm_query sequencer player_interpreter beacon
@@ -8,6 +9,7 @@ class AiLog < ApplicationRecord
     verdict time_keeper chronicler narrate
     micro_context_update macro_narrative_update
     edge_pipeline encounter_expand creature_generation
+    enricher embellisher
   ].freeze
 
   # Legacy types kept for backward compatibility with existing log rows

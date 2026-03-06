@@ -8,7 +8,7 @@ module DungeonMaster
     MAX_RETRIES = 2
     RETRY_BASE_DELAY = 1.0 # seconds; doubles each retry
 
-    attr_reader :last_failed_raw_response, :last_parse_status, :last_model_used
+    attr_reader :last_failed_raw_response, :last_parse_status, :last_model_used, :last_usage
 
     def initialize(config)
       @client = OpenAI::Client.new
@@ -17,6 +17,7 @@ module DungeonMaster
       @last_failed_raw_response = nil
       @last_parse_status = nil
       @last_model_used = nil
+      @last_usage = nil
     end
 
     # Send a chat completion request and return the raw content string.
@@ -31,6 +32,7 @@ module DungeonMaster
     # @return [String] raw content from the AI
     # @raise [DungeonMaster::AiError]
     def chat(system_prompt:, user_message: nil, messages: nil, max_tokens: 500, step_name: nil, model: nil)
+      @last_usage = nil
       effective_model = model || @default_model
       @last_model_used = effective_model
       supports_temp = OpenaiModelCatalog.supports_temperature?(effective_model)
@@ -85,6 +87,17 @@ module DungeonMaster
 
       content       = response.dig("choices", 0, "message", "content")
       finish_reason = response.dig("choices", 0, "finish_reason")
+
+      usage_hash = response["usage"]
+      if usage_hash
+        reasoning = usage_hash.dig("completion_tokens_details", "reasoning_tokens") || 0
+        @last_usage = {
+          input_tokens: usage_hash["prompt_tokens"] || 0,
+          output_tokens: usage_hash["completion_tokens"] || 0,
+          reasoning_tokens: reasoning,
+          total_tokens: usage_hash["total_tokens"] || 0
+        }
+      end
 
       if finish_reason == "length"
         label = step_name || "unknown"

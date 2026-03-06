@@ -232,7 +232,8 @@ module DungeonMaster
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         ctx.log.ai_log!("creature_generation", prompt_summary, raw, parsed,
                         parse_status: ctx.ai.last_parse_status, request_body: request_body,
-                        model_used: ctx.ai.last_model_used, duration_ms: duration_ms)
+                        model_used: ctx.ai.last_model_used, duration_ms: duration_ms,
+                        usage: ctx.ai.last_usage)
 
         hp = roll_hp_static(parsed["hp_formula"])
         ctx.adventure.creature_sheets.create!(

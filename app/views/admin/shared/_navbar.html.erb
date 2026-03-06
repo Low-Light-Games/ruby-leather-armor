@@ -11,6 +11,7 @@
     <a href="<%= admin_ai_logs_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :ai_logs %>">AI Logs</a>
     <a href="<%= pipelines_admin_ai_logs_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :pipelines %>">Pipeline Logs</a>
     <a href="<%= admin_dm_config_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :dm_config %>">DM Config</a>
+    <a href="<%= admin_billing_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :billing %>">Billing</a>
     <a href="<%= admin_feature_flags_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :feature_flags %>">Feature Flags</a>
     <%= button_to "Logout", logout_path, method: :delete, class: "logout-link" %>
   </div>

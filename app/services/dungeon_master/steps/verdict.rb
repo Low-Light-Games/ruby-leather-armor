@@ -34,7 +34,8 @@ module DungeonMaster
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log!("verdict", prompt_summary, raw, parsed,
                      parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used, duration_ms: duration_ms)
+                     model_used: @ai.last_model_used, duration_ms: duration_ms,
+                     usage: @ai.last_usage)
 
         raise AiError, "Verdict step returned no outcome — model produced: #{raw.to_s.truncate(200)}" unless parsed["outcome"].present?
 
@@ -47,14 +48,16 @@ module DungeonMaster
         @log.ai_log_error!("verdict", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used, duration_ms: duration_ms)
+                           model_used: @ai.last_model_used, duration_ms: duration_ms,
+                           usage: @ai.last_usage)
         raise
       rescue AiError => e
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log_error!("verdict", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, model_used: @ai.last_model_used,
-                           duration_ms: duration_ms)
+                           duration_ms: duration_ms,
+                           usage: @ai.last_usage)
         raise
       end
     end

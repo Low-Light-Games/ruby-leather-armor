@@ -12,11 +12,12 @@ module DungeonMaster
   class Embellisher
     MODES = %w[off embellish expand].freeze
 
-    def initialize(adventure)
+    def initialize(adventure, user: nil)
       @adventure = adventure
       @story = adventure.story
       @config = DmConfig.instance
       @mode = @config.get("embellisher_mode").presence || "embellish"
+      @user = user
     end
 
     def run
@@ -24,6 +25,7 @@ module DungeonMaster
 
       client = AiClient.new(@config)
       model = @config.get("embellisher_model").presence || @config.model
+      log = Logging.new(adventure: @adventure, user: @user, dm_service: "standard")
 
       prompt = PromptRenderer.render("embellisher",
         premise: @story.premise,
@@ -33,16 +35,44 @@ module DungeonMaster
         mode: @mode,
       )
 
-      raw = client.chat(
-        system_prompt: prompt,
-        user_message: "Create a unique, vivid version of this story for a new adventure.",
-        max_tokens: 2500,
-        step_name: "embellisher",
-        model: model,
-      )
+      t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      begin
+        raw = client.chat(
+          system_prompt: prompt,
+          user_message: "Create a unique, vivid version of this story for a new adventure.",
+          max_tokens: 2500,
+          step_name: "embellisher",
+          model: model,
+        )
 
-      parsed = client.parse_json(raw)
-      apply_results(parsed)
+        parsed = client.parse_json(raw)
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
+
+        log.ai_log!(
+          "embellisher",
+          "Adventure ##{@adventure.id} (#{@mode}): #{@story.premise&.truncate(80)}",
+          raw, parsed,
+          parse_status: client.last_parse_status,
+          model_used: client.last_model_used,
+          duration_ms: duration_ms,
+          usage: client.last_usage
+        )
+
+        apply_results(parsed)
+      rescue DungeonMaster::AiError, DungeonMaster::TokenBudgetExceededError => e
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
+        status = e.is_a?(DungeonMaster::TokenBudgetExceededError) ? "token_budget_exceeded" : "api_error"
+        log.ai_log_error!(
+          "embellisher",
+          "Adventure ##{@adventure.id} (#{@mode}): #{@story.premise&.truncate(80)}",
+          e,
+          model_used: client.last_model_used,
+          status: status,
+          duration_ms: duration_ms,
+          usage: client.last_usage
+        )
+        raise
+      end
     end
 
     private

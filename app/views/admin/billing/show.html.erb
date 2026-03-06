@@ -1,0 +1,285 @@
+<%= render 'admin/shared/navbar', active_nav: :billing %>
+
+<div class="billing-dashboard">
+  <h1>Billing Dashboard</h1>
+
+  <form class="billing-filters" method="get" action="<%= admin_billing_path %>">
+    <div class="filter-group">
+      <label>From</label>
+      <input type="date" name="start_date" value="<%= @start_date %>" />
+    </div>
+    <div class="filter-group">
+      <label>To</label>
+      <input type="date" name="end_date" value="<%= @end_date %>" />
+    </div>
+    <div class="filter-group">
+      <label>Model</label>
+      <select name="model">
+        <option value="">All models</option>
+        <% @available_models.each do |m| %>
+          <option value="<%= m %>" <%= 'selected' if params[:model] == m %>><%= m %></option>
+        <% end %>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>User</label>
+      <select name="user_id">
+        <option value="">All users</option>
+        <% @available_users.each do |u| %>
+          <option value="<%= u.id %>" <%= 'selected' if params[:user_id] == u.id.to_s %>><%= u.email %></option>
+        <% end %>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Adventure</label>
+      <input type="number" name="adventure_id" value="<%= params[:adventure_id] %>" placeholder="ID" class="adv-input" />
+    </div>
+    <button type="submit" class="filter-btn">Apply</button>
+  </form>
+
+  <div class="summary-cards">
+    <div class="summary-card">
+      <span class="sc-label">Total Cost</span>
+      <span class="sc-value sc-cost"><%= format_cost(@totals[5]) %></span>
+    </div>
+    <div class="summary-card">
+      <span class="sc-label">API Calls</span>
+      <span class="sc-value"><%= number_with_delimiter(@totals[0]) %></span>
+    </div>
+    <div class="summary-card">
+      <span class="sc-label">Total Tokens</span>
+      <span class="sc-value"><%= format_tokens(@totals[4]) %></span>
+    </div>
+    <div class="summary-card">
+      <span class="sc-label">Input Tokens</span>
+      <span class="sc-value"><%= format_tokens(@totals[1]) %></span>
+    </div>
+    <div class="summary-card">
+      <span class="sc-label">Output Tokens</span>
+      <span class="sc-value"><%= format_tokens(@totals[2]) %></span>
+    </div>
+    <div class="summary-card">
+      <span class="sc-label">Reasoning Tokens</span>
+      <span class="sc-value"><%= format_tokens(@totals[3]) %></span>
+    </div>
+  </div>
+
+  <div class="summary-cards">
+    <div class="summary-card">
+      <span class="sc-label">Avg Cost / Pipeline Run</span>
+      <span class="sc-value sc-cost"><%= format_cost(@avg_per_pipeline) %></span>
+      <span class="sc-detail"><%= number_with_delimiter(@pipeline_count) %> runs</span>
+    </div>
+    <div class="summary-card">
+      <span class="sc-label">Avg Cost / API Call</span>
+      <span class="sc-value sc-cost"><%= format_cost(@avg_per_call) %></span>
+      <span class="sc-detail"><%= number_with_delimiter(@totals[0]) %> calls</span>
+    </div>
+  </div>
+
+  <h2>By Model</h2>
+  <table class="billing-table">
+    <thead>
+      <tr>
+        <th>Model</th>
+        <th class="num">Calls</th>
+        <th class="num">Input</th>
+        <th class="num">Output</th>
+        <th class="num">Reasoning</th>
+        <th class="num">Total Tokens</th>
+        <th class="num">Cost</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @by_model.each do |row| %>
+        <tr>
+          <td><%= row.model_id %></td>
+          <td class="num"><%= number_with_delimiter(row.call_count) %></td>
+          <td class="num"><%= format_tokens(row.sum_input) %></td>
+          <td class="num"><%= format_tokens(row.sum_output) %></td>
+          <td class="num"><%= format_tokens(row.sum_reasoning) %></td>
+          <td class="num"><%= format_tokens(row.sum_total) %></td>
+          <td class="num cost-cell"><%= format_cost(row.sum_cost) %></td>
+        </tr>
+      <% end %>
+      <% if @by_model.empty? %>
+        <tr><td colspan="7" class="empty-msg">No usage data in this period.</td></tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <details class="step-breakdown">
+    <summary><h2 class="inline-h2">By Pipeline Step (Averages)</h2></summary>
+    <table class="billing-table">
+      <thead>
+        <tr>
+          <th>Step</th>
+          <th class="num">Calls</th>
+          <th class="num">Total Tokens</th>
+          <th class="num">Total Cost</th>
+          <th class="num">Avg Cost / Call</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @by_step.each do |row| %>
+          <tr>
+            <td><%= row.step_name&.humanize %></td>
+            <td class="num"><%= number_with_delimiter(row.call_count) %></td>
+            <td class="num"><%= format_tokens(row.sum_total) %></td>
+            <td class="num cost-cell"><%= format_cost(row.sum_cost) %></td>
+            <td class="num cost-cell"><%= format_cost(row.avg_cost.to_i) %></td>
+          </tr>
+        <% end %>
+        <% if @by_step.empty? %>
+          <tr><td colspan="5" class="empty-msg">No step data in this period.</td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </details>
+
+  <h2>By User</h2>
+  <table class="billing-table">
+    <thead>
+      <tr>
+        <th>User</th>
+        <th class="num">Calls</th>
+        <th class="num">Total Tokens</th>
+        <th class="num">Cost</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @by_user.each do |row| %>
+        <tr>
+          <td><%= @users_by_id[row.user_id]&.email || "##{row.user_id}" %></td>
+          <td class="num"><%= number_with_delimiter(row.call_count) %></td>
+          <td class="num"><%= format_tokens(row.sum_total) %></td>
+          <td class="num cost-cell"><%= format_cost(row.sum_cost) %></td>
+        </tr>
+      <% end %>
+      <% if @by_user.empty? %>
+        <tr><td colspan="4" class="empty-msg">No user data in this period.</td></tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <h2>By Adventure</h2>
+  <table class="billing-table">
+    <thead>
+      <tr>
+        <th>Adventure</th>
+        <th class="num">Calls</th>
+        <th class="num">Total Tokens</th>
+        <th class="num">Cost</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @by_adventure.each do |row| %>
+        <tr>
+          <td><a href="<%= admin_ai_logs_path(adventure_id: row.adventure_id) %>" class="table-link">#<%= row.adventure_id %></a></td>
+          <td class="num"><%= number_with_delimiter(row.call_count) %></td>
+          <td class="num"><%= format_tokens(row.sum_total) %></td>
+          <td class="num cost-cell"><%= format_cost(row.sum_cost) %></td>
+        </tr>
+      <% end %>
+      <% if @by_adventure.empty? %>
+        <tr><td colspan="4" class="empty-msg">No adventure data in this period.</td></tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <h2>Daily Breakdown</h2>
+  <table class="billing-table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th class="num">Calls</th>
+        <th class="num">Total Tokens</th>
+        <th class="num">Cost</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @by_day.each do |row| %>
+        <tr>
+          <td><%= row.day %></td>
+          <td class="num"><%= number_with_delimiter(row.call_count) %></td>
+          <td class="num"><%= format_tokens(row.sum_total) %></td>
+          <td class="num cost-cell"><%= format_cost(row.sum_cost) %></td>
+        </tr>
+      <% end %>
+      <% if @by_day.empty? %>
+        <tr><td colspan="4" class="empty-msg">No data in this period.</td></tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
+
+<%= render 'admin/shared/navbar_styles' %>
+
+<style>
+  .billing-dashboard {
+    padding: 20px 30px; font-family: 'Arial', sans-serif; max-width: 1200px; margin: 0 auto;
+    h1 { font-size: 24px; color: #333; margin-bottom: 20px; }
+    h2 { font-size: 18px; color: #333; margin: 28px 0 12px; border-bottom: 2px solid #e9ecef; padding-bottom: 6px; }
+  }
+
+  .billing-filters {
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
+    padding: 16px; background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; margin-bottom: 24px;
+  }
+  .filter-group {
+    display: flex; flex-direction: column; gap: 4px;
+    label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; font-weight: 600; }
+    input, select {
+      padding: 6px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 13px;
+      background: white; color: #333;
+    }
+    .adv-input { width: 80px; }
+  }
+  .filter-btn {
+    padding: 7px 20px; background: #1565c0; color: white; border: none; border-radius: 4px;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+    &:hover { background: #0d47a1; }
+  }
+
+  .summary-cards {
+    display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 8px;
+  }
+  .summary-card {
+    flex: 1; min-width: 140px; padding: 16px; background: white;
+    border: 1px solid #e9ecef; border-radius: 6px; display: flex; flex-direction: column; gap: 6px;
+  }
+  .sc-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; font-weight: 600; }
+  .sc-value { font-size: 20px; font-weight: 700; color: #333; font-family: monospace; }
+  .sc-detail { font-size: 11px; color: #999; font-family: monospace; }
+  .sc-cost { color: #2e7d32; }
+
+  .billing-table {
+    width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 8px;
+    th {
+      text-align: left; padding: 8px 10px; background: #343a40; color: white;
+      font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;
+      &.num { text-align: right; }
+    }
+    td {
+      padding: 8px 10px; border-bottom: 1px solid #e9ecef; vertical-align: middle;
+      &.num { text-align: right; font-family: monospace; }
+    }
+    tr:hover { background: #f5f5f5; }
+    .cost-cell { color: #2e7d32; font-weight: 600; }
+    .empty-msg { color: #888; font-style: italic; text-align: center; padding: 16px; }
+    .table-link { color: #1565c0; text-decoration: none; &:hover { text-decoration: underline; } }
+  }
+
+  .step-breakdown {
+    margin: 24px 0 8px;
+    summary {
+      cursor: pointer; user-select: none; list-style: none;
+      &::-webkit-details-marker { display: none; }
+      &::before { content: "▶ "; font-size: 12px; color: #888; }
+    }
+    &[open] summary::before { content: "▼ "; }
+    .inline-h2 {
+      display: inline; font-size: 18px; color: #333; border-bottom: none; margin: 0; padding: 0;
+    }
+  }
+</style>

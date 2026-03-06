@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_05_160340) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_06_135937) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -137,12 +137,40 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_05_160340) do
     t.string "pipeline_run_id"
     t.text "player_message_content"
     t.integer "duration_ms"
+    t.bigint "ai_usage_record_id"
     t.index ["adventure_id"], name: "index_ai_logs_on_adventure_id"
+    t.index ["ai_usage_record_id"], name: "index_ai_logs_on_ai_usage_record_id"
     t.index ["created_at"], name: "index_ai_logs_on_created_at"
     t.index ["dm_service"], name: "index_ai_logs_on_dm_service"
     t.index ["pipeline_run_id"], name: "index_ai_logs_on_pipeline_run_id"
     t.index ["player_message_id"], name: "index_ai_logs_on_player_message_id"
     t.index ["status"], name: "index_ai_logs_on_status"
+  end
+
+  create_table "ai_usage_records", force: :cascade do |t|
+    t.bigint "adventure_id"
+    t.bigint "user_id"
+    t.string "pipeline_run_id"
+    t.bigint "ai_log_id"
+    t.string "model_id", null: false
+    t.integer "input_tokens", default: 0, null: false
+    t.integer "output_tokens", default: 0, null: false
+    t.integer "reasoning_tokens", default: 0, null: false
+    t.integer "total_tokens", default: 0, null: false
+    t.bigint "input_cost_microdollars", default: 0, null: false
+    t.bigint "output_cost_microdollars", default: 0, null: false
+    t.bigint "total_cost_microdollars", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "call_type"
+    t.index ["adventure_id"], name: "index_ai_usage_records_on_adventure_id"
+    t.index ["ai_log_id"], name: "index_ai_usage_records_on_ai_log_id"
+    t.index ["call_type"], name: "index_ai_usage_records_on_call_type"
+    t.index ["created_at"], name: "index_ai_usage_records_on_created_at"
+    t.index ["model_id", "created_at"], name: "index_ai_usage_records_on_model_id_and_created_at"
+    t.index ["model_id"], name: "index_ai_usage_records_on_model_id"
+    t.index ["pipeline_run_id"], name: "index_ai_usage_records_on_pipeline_run_id"
+    t.index ["user_id"], name: "index_ai_usage_records_on_user_id"
   end
 
   create_table "bestiary_entries", id: :string, force: :cascade do |t|
@@ -540,6 +568,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_05_160340) do
   add_foreign_key "adventures", "users"
   add_foreign_key "ai_logs", "adventure_messages", column: "player_message_id", on_delete: :nullify
   add_foreign_key "ai_logs", "adventures", on_delete: :nullify
+  add_foreign_key "ai_logs", "ai_usage_records", on_delete: :nullify
   add_foreign_key "creature_sheet_feats", "creature_sheets"
   add_foreign_key "creature_sheet_feats", "feat_definitions", column: "feat_id"
   add_foreign_key "creature_sheet_items", "creature_sheets"

@@ -58,7 +58,7 @@ module DungeonMaster
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log!("beacon", prompt_summary, raw, parsed,
                      parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used, duration_ms: duration_ms)
+                     model_used: @ai.last_model_used, duration_ms: duration_ms, usage: @ai.last_usage)
 
         {
           domain: domain,
@@ -75,7 +75,7 @@ module DungeonMaster
         @log.ai_log_error!("beacon", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used, duration_ms: duration_ms)
+                           model_used: @ai.last_model_used, duration_ms: duration_ms, usage: @ai.last_usage)
         { domain: domain, affected: false, needs_mechanics: false, macro_significant: false,
           rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil, destination: nil }
       rescue AiError => e
@@ -83,7 +83,7 @@ module DungeonMaster
         @log.ai_log_error!("beacon", prompt_summary, e,
                            raw_response: raw || @ai.last_failed_raw_response,
                            request_body: request_body, model_used: @ai.last_model_used,
-                           duration_ms: duration_ms)
+                           duration_ms: duration_ms, usage: @ai.last_usage)
         { domain: domain, affected: false, needs_mechanics: false, macro_significant: false,
           rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil, destination: nil }
       end

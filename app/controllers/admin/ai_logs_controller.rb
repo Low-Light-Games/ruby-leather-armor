@@ -8,8 +8,11 @@ module Admin
     RETRY_WINDOW = 5.minutes
 
     def index
-      @logs = AiLog.includes(:adventure, :player_message)
-                    .recent_first
+      @show_usage = params[:show_usage] == "1"
+      includes = [:adventure, :player_message]
+      includes << :ai_usage_record if @show_usage
+
+      @logs = AiLog.includes(*includes).recent_first
 
       @logs = @logs.where(adventure_id: params[:adventure_id]) if params[:adventure_id].present?
       @logs = @logs.where(status: params[:status]) if params[:status].present?
@@ -87,9 +90,13 @@ module Admin
     end
 
     def pipeline
+      @show_usage = params[:show_usage] == "1"
+      includes = [:adventure]
+      includes << :ai_usage_record if @show_usage
+
       @logs = AiLog.where(pipeline_run_id: params[:pipeline_run_id])
                    .order(:created_at)
-                   .includes(:adventure)
+                   .includes(*includes)
       if @logs.empty?
         redirect_to pipelines_admin_ai_logs_path, alert: "Pipeline run not found"
         return

@@ -52,6 +52,21 @@ module ApplicationHelper
     ms > 1000 ? "#{(ms / 1000.0).round(1)}s" : "#{ms}ms"
   end
 
+  def format_cost(microdollars)
+    return "—" unless microdollars && microdollars > 0
+    dollars = microdollars / 1_000_000.0
+    if dollars >= 0.01
+      "$#{'%.2f' % dollars}"
+    else
+      "$#{'%.4f' % dollars}"
+    end
+  end
+
+  def format_tokens(count)
+    return "—" unless count && count > 0
+    number_with_delimiter(count)
+  end
+
   def pagination_link(path_helper, page, current_page, label: nil, params: {})
     text = label || page.to_s
     if page == current_page

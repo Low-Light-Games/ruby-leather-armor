@@ -75,9 +75,9 @@ module DungeonMaster
     end
 
     # Write a full AI exchange record (visible in Admin -> AI Logs).
-    def ai_log!(call_type, prompt_summary, raw_response, parsed_response, parse_status:, request_body: nil, model_used: nil, duration_ms: nil)
+    def ai_log!(call_type, prompt_summary, raw_response, parsed_response, parse_status:, request_body: nil, model_used: nil, duration_ms: nil, usage: nil)
       summary = @action_label ? "#{@action_label} #{prompt_summary}" : prompt_summary
-      AiLog.create!(
+      log = AiLog.create!(
         adventure: @adventure,
         call_type: call_type,
         prompt_summary: summary,
@@ -93,15 +93,16 @@ module DungeonMaster
         player_message_content: @player_message_content,
         duration_ms: duration_ms
       )
+      attach_usage_record!(log, model_used, usage)
     rescue => e
       report_error(e, context: { method: "ai_log!", call_type: call_type })
       try_fallback_log(call_type, e)
     end
 
     # Write an AI error record when a call fails.
-    def ai_log_error!(call_type, prompt_summary, error, raw_response: nil, request_body: nil, status: "api_error", model_used: nil, duration_ms: nil)
+    def ai_log_error!(call_type, prompt_summary, error, raw_response: nil, request_body: nil, status: "api_error", model_used: nil, duration_ms: nil, usage: nil)
       summary = @action_label ? "#{@action_label} #{prompt_summary}" : prompt_summary
-      AiLog.create!(
+      log = AiLog.create!(
         adventure: @adventure,
         call_type: call_type,
         prompt_summary: summary,
@@ -117,6 +118,7 @@ module DungeonMaster
         player_message_content: @player_message_content,
         duration_ms: duration_ms
       )
+      attach_usage_record!(log, model_used, usage)
     rescue => e
       report_error(e, context: { method: "ai_log_error!", call_type: call_type, original_error: error.message })
       try_fallback_log(call_type, e)
@@ -127,6 +129,35 @@ module DungeonMaster
     end
 
     private
+
+    def attach_usage_record!(ai_log, model_used, usage)
+      return unless usage.is_a?(Hash) && model_used.present?
+
+      costs = AiUsageRecord.compute_cost(
+        model_used,
+        usage[:input_tokens] || 0,
+        usage[:output_tokens] || 0,
+        usage[:reasoning_tokens] || 0
+      )
+
+      record = AiUsageRecord.create!(
+        ai_log_id: ai_log.id,
+        adventure_id: @adventure&.id,
+        user_id: @user&.id,
+        pipeline_run_id: @pipeline_run_id,
+        model_id: model_used,
+        call_type: ai_log.call_type,
+        input_tokens: usage[:input_tokens] || 0,
+        output_tokens: usage[:output_tokens] || 0,
+        reasoning_tokens: usage[:reasoning_tokens] || 0,
+        total_tokens: usage[:total_tokens] || 0,
+        **costs
+      )
+
+      ai_log.update_column(:ai_usage_record_id, record.id)
+    rescue => e
+      report_error(e, context: { method: "attach_usage_record!", ai_log_id: ai_log&.id })
+    end
 
     def pipeline_run_record
       return nil unless @pipeline_run_id

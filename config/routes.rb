@@ -43,6 +43,7 @@ Rails.application.routes.draw do
     resource :dm_config, only: [:show, :update] do
       get :models, on: :member
     end
+    resource :billing, only: [:show], controller: "billing"
   end
 
   resources :feature_flags, only: [:index]

@@ -5,9 +5,10 @@ module DungeonMaster
   # and StoryMilestone records. Returns proposed records as hashes —
   # the admin reviews and saves them through the normal story editor flow.
   class Enricher
-    def initialize(story)
+    def initialize(story, user: nil)
       @story = story
       @config = DmConfig.instance
+      @user = user
     end
 
     # Returns a hash of proposed records: { npcs: [...], clues: [...], milestones: [...] }
@@ -15,6 +16,7 @@ module DungeonMaster
     def enrich
       client = AiClient.new(@config)
       model = @config.get("enricher_model").presence || @config.model
+      log = Logging.new(adventure: nil, user: @user, dm_service: "standard")
 
       prompt = PromptRenderer.render("enricher",
         premise: @story.premise,
@@ -27,16 +29,44 @@ module DungeonMaster
         has_encounter_tables: @story.encounter_tables.exists?,
       )
 
-      raw = client.chat(
-        system_prompt: prompt,
-        user_message: "Analyze the premise and extract structured story data.",
-        max_tokens: 2000,
-        step_name: "enricher",
-        model: model,
-      )
+      t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      begin
+        raw = client.chat(
+          system_prompt: prompt,
+          user_message: "Analyze the premise and extract structured story data.",
+          max_tokens: 2000,
+          step_name: "enricher",
+          model: model,
+        )
 
-      parsed = client.parse_json(raw)
-      build_proposed_records(parsed)
+        parsed = client.parse_json(raw)
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
+
+        log.ai_log!(
+          "enricher",
+          "Story ##{@story.id}: #{@story.premise&.truncate(80)}",
+          raw, parsed,
+          parse_status: client.last_parse_status,
+          model_used: client.last_model_used,
+          duration_ms: duration_ms,
+          usage: client.last_usage
+        )
+
+        build_proposed_records(parsed)
+      rescue DungeonMaster::AiError, DungeonMaster::TokenBudgetExceededError => e
+        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
+        status = e.is_a?(DungeonMaster::TokenBudgetExceededError) ? "token_budget_exceeded" : "api_error"
+        log.ai_log_error!(
+          "enricher",
+          "Story ##{@story.id}: #{@story.premise&.truncate(80)}",
+          e,
+          model_used: client.last_model_used,
+          status: status,
+          duration_ms: duration_ms,
+          usage: client.last_usage
+        )
+        raise
+      end
     end
 
     private

@@ -61,6 +61,24 @@
         <span class="ps-label">Models</span>
         <span class="ps-value"><%= @logs.filter_map(&:model_used).uniq.join(', ') %></span>
       </div>
+      <% if @show_usage %>
+        <% usage_records = @logs.filter_map(&:ai_usage_record) %>
+        <div class="ps-item">
+          <span class="ps-label">Total Tokens</span>
+          <span class="ps-value"><%= format_tokens(usage_records.sum(&:total_tokens)) %></span>
+        </div>
+        <div class="ps-item">
+          <span class="ps-label">Total Cost</span>
+          <span class="ps-value"><%= format_cost(usage_records.sum(&:total_cost_microdollars)) %></span>
+        </div>
+      <% end %>
+      <div class="ps-item ps-toggle">
+        <% if @show_usage %>
+          <a href="<%= pipeline_admin_ai_logs_path(@pipeline_run_id, request.query_parameters.except(:show_usage)) %>" class="usage-toggle">Hide usage</a>
+        <% else %>
+          <a href="<%= pipeline_admin_ai_logs_path(@pipeline_run_id, request.query_parameters.merge(show_usage: "1")) %>" class="usage-toggle">Show usage</a>
+        <% end %>
+      </div>
     </div>
   <% end %>
 
@@ -90,6 +108,11 @@
               <span class="card-model"><%= log.model_used %></span>
             <% end %>
             <span class="card-duration"><%= format_duration_ms(log.duration_ms) %></span>
+            <% if @show_usage && log.ai_usage_record %>
+              <% ur = log.ai_usage_record %>
+              <span class="card-usage"><%= format_tokens(ur.input_tokens) %> in / <%= format_tokens(ur.output_tokens) %> out</span>
+              <span class="card-cost"><%= format_cost(ur.total_cost_microdollars) %></span>
+            <% end %>
           </div>
         </div>
 
@@ -189,7 +212,11 @@
   }
   .card-model { font-size: 12px; color: #666; font-family: monospace; }
   .card-duration { font-size: 12px; color: #555; font-family: monospace; font-weight: 600; margin-left: auto; }
+  .card-usage { font-size: 11px; color: #777; font-family: monospace; }
+  .card-cost { font-size: 11px; color: #2e7d32; font-family: monospace; font-weight: 600; }
   .card-log-link { font-size: 12px; color: #999; text-decoration: none; &:hover { color: #1565c0; } }
+  .usage-toggle { font-size: 12px; color: #1565c0; text-decoration: none; &:hover { text-decoration: underline; } }
+  .ps-toggle { justify-content: center; }
   .card-error-msg {
     background: #ffebee; border: 1px solid #ffcdd2; border-radius: 4px;
     padding: 8px 12px; margin-bottom: 12px; font-size: 13px; color: #c62828;
