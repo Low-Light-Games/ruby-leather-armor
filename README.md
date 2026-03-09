@@ -1,277 +1,116 @@
-> **Disclaimer:** This README was 100% AI generated.
+# AI Dungeon Master
 
-# Character Sheet Application
+A full-stack web application that pairs D&D-style character sheet management with an AI-powered Dungeon Master running Pathfinder 1e text adventures. Players interact through natural language; the system interprets intent, enforces game mechanics, and narrates outcomes through a multi-step pipeline that blends LLM calls with deterministic game logic.
 
-A full-stack web application for creating and managing character sheets with D&D-style attribute point allocation. Built with Rails 7, React, TypeScript, and Docker.
+Built with Rails 7, React/TypeScript, PostgreSQL, and the OpenAI API.
+
+## How It Works
+
+A player types something like *"I try to pick the lock on the chest"*. That input travels through a pipeline of ~15 steps — some powered by AI, some by plain code — before the player sees a narrated result. The pipeline can pause mid-flow to request dice rolls or initiative from the player, then resume where it left off.
+
+### Pipeline Overview
+
+```
+Player input
+  │
+  ├─ Triage ──────────── Sanitize (AI) ║ Classify (AI)   ← parallel
+  │
+  ├─ DM Query? ──────── fast-path for out-of-character questions
+  │
+  ├─ Sequencer (AI) ──── splits compound actions into a queue
+  │
+  └─ Per action:
+       │
+       ├─ Player Interpreter (AI) ── extracts pure mechanical intent
+       │
+       ├─ Beacon (AI) ───────────── per-domain interpretation (combat, social, etc.)
+       │
+       ├─ Mechanics gate (parallel):
+       │    ├─ Mechanical Evaluation (AI) ── determines rolls, DCs, NPC actions
+       │    └─ Sanity Checker (AI/code) ──── capability + world consistency
+       │
+       ├─ ⏸ awaiting player rolls (if needed)
+       │
+       ├─ Roll Qualifier (AI) ───── situational modifiers, Take 10/20
+       ├─ Verdict (AI) ─────────── post-roll arbitration, structured mutations
+       ├─ Mutations (code) ──────── applies HP, conditions, inventory changes
+       ├─ Time Keeper (AI/code) ── time estimation → GameClock advancement
+       ├─ Harbinger (code) ──────── random encounter checks
+       │    └─ Warmaster (code) ── combat setup if encounter triggers
+       │         └─ ⏸ awaiting initiative
+       │
+       └─ Output phase (parallel):
+            ├─ Chronicler (AI) ──────── plot state, clue discovery, DM notes
+            ├─ Narrate (AI) ─────────── prose response to the player
+            └─ Context Update (AI) ──── refreshes micro/macro world state
+```
+
+### AI Steps
+
+| Step | What it does |
+|---|---|
+| **Sanitize** | Scores input danger (0–100) and produces a cleaned version |
+| **Classify** | Tags the action domain: combat, traversal, social, exploration, rest, inventory, or dm_query |
+| **DM Query** | Answers out-of-character questions without running the full pipeline |
+| **Sequencer** | Breaks compound actions (*"I search the room and then open the door"*) into ordered sub-actions |
+| **Player Interpreter** | Strips flavor to extract pure mechanical intent |
+| **Beacon** | Interprets the action within each relevant domain context, run in parallel per domain |
+| **Mechanical Evaluation** | Determines required rolls, DCs, NPC reactions, and consequences |
+| **Roll Qualifier** | Adds situational modifiers, decides Take 10/20 eligibility |
+| **Sanity Checker** | Validates the action is physically/narratively possible |
+| **Verdict** | Arbitrates roll outcomes and produces structured mutation instructions |
+| **Time Keeper** | Estimates how much in-game time the action took |
+| **Chronicler** | Tracks plot progression, discovered clues, and DM-facing notes |
+| **Narrate** | Generates the narrative prose the player actually reads |
+| **Context Update** | Refreshes six micro-contexts (combat, traversal, social, exploration, rest, inventory) and the macro story summary |
+
+### Deterministic Steps
+
+| Step | What it does |
+|---|---|
+| **Mutations** | Applies HP changes, conditions, inventory updates, and other state changes to the database |
+| **GameClock** | Advances the in-game clock, recalculates light conditions and fatigue thresholds |
+| **Harbinger** | Checks encounter tables for random encounters based on time, location, and noise |
+| **Warmaster** | Initializes combat: creates creature sheets, rolls NPC initiative, sets turn order |
+| **Stagehand** | Orchestrates the final output shape — decides what gets sent back to the player |
+| **NPC Roll Resolution** | Rolls dice on behalf of NPCs during mechanical evaluation |
+| **CoreResolver** | Inner loop that sequences Beacon → Mechanics → Verdict → TimeKeeper for a single action |
+
+## Architecture
+
+The system separates concerns into three layers:
+
+- **DungeonMasterService** — thin entry point that persists messages, handles errors, and delegates to the pipeline.
+- **DungeonMaster::Pipeline** — pure orchestration logic: step sequencing, branching, parallelism, and pause/resume for dice rolls.
+- **Step modules** (`DungeonMaster::Steps::*`) — each step is an isolated module with its own ERB prompt template and structured output contract.
+
+Each AI step can be configured independently (model, token budget, on/off toggle) through `DmConfig`, an admin-editable settings object.
+
+Prompts live as ERB templates in `app/services/dungeon_master/templates/`, keeping prompt engineering separate from pipeline logic.
+
+Six **micro-contexts** (JSONB columns on `Adventure`) give each step a focused, domain-specific window into game state rather than dumping the full history into every prompt.
 
 ## Tech Stack
 
-### Backend
-- **Ruby 3.3.1** - Programming language
-- **Rails 7.1.6** - Web framework
-- **PostgreSQL 16** - Database
-- **Puma** - Web server
-
-### Frontend
-- **React 18** - UI library
-- **TypeScript** - Type-safe JavaScript
-- **esbuild** - JavaScript bundler
-- **Sass** - CSS preprocessor
-
-### Infrastructure
-- **Docker** - Containerization
-- **Docker Compose** - Multi-container orchestration
-- **Traefik** - Reverse proxy and load balancer
-
-## Prerequisites
-
-- Docker and Docker Compose installed
-- (Optional) Ruby 3.3.1 and Node.js for local development
+| Layer | Technologies |
+|---|---|
+| Backend | Ruby 3.3.1, Rails 7.1.6, PostgreSQL 16, Puma |
+| Frontend | React 18, TypeScript, esbuild, Sass |
+| AI | OpenAI API with per-step model selection |
+| Async | Sidekiq, Redis, ActionCable |
+| Infrastructure | Docker, Docker Compose, Traefik |
 
 ## Getting Started
 
-### Using Docker (Recommended)
-
-1. **Clone the repository** (if applicable) or navigate to the project directory
-
-2. **Start the services:**
-   ```bash
-   docker compose up
-   ```
-
-   This will:
-   - Build the Rails application container
-   - Start PostgreSQL database
-   - Start Redis (if needed)
-   - Start Traefik reverse proxy
-   - Run the Rails server and JavaScript watcher
-
-3. **Set up the database:**
-   ```bash
-   docker compose exec app bin/rails db:create db:migrate
-   ```
-
-4. **Access the application:**
-   - Application: http://exercises.localhost
-   - Traefik Dashboard: http://localhost:8080
-
-### Local Development (Without Docker)
-
-1. **Install dependencies:**
-   ```bash
-   bundle install
-   yarn install
-   ```
-
-2. **Set up the database:**
-   ```bash
-   bin/rails db:create db:migrate
-   ```
-
-3. **Start the development servers:**
-   ```bash
-   bin/dev
-   ```
-   
-   This uses `Procfile.dev` to run:
-   - Rails server on port 3000
-   - JavaScript/CSS watcher (esbuild)
-
-4. **Access the application:**
-   - http://localhost:3000
-
-## Project Structure
-
-```
-app/
-├── app/
-│   ├── controllers/
-│   │   ├── home_controller.rb      # Home page controller
-│   │   └── sheets_controller.rb    # CRUD operations for character sheets
-│   ├── models/
-│   │   └── sheet.rb                # Character sheet model with validations
-│   ├── views/
-│   │   ├── layouts/
-│   │   │   └── application.html.erb
-│   │   └── home/
-│   │       └── index.html.erb      # React root container
-│   └── javascript/
-│       ├── application.tsx         # React entry point
-│       └── components/
-│           ├── App.tsx             # Main character sheet component
-│           ├── App.scss            # Component styles
-│           ├── AttributeRow.tsx    # Attribute input component
-│           └── NameField.tsx       # Character name input
-├── config/
-│   ├── routes.rb                   # Rails routes
-│   └── application.rb
-├── db/
-│   ├── schema.rb                   # Database schema
-│   └── migrate/                    # Database migrations
-├── Dockerfile                       # Docker image definition
-├── compose.yml                      # Docker Compose configuration
-├── esbuild.config.js               # JavaScript bundler configuration
-├── package.json                     # Node.js dependencies
-├── Gemfile                          # Ruby dependencies
-├── Procfile.dev                     # Development process configuration
-└── tsconfig.json                    # TypeScript configuration
-```
-
-## Features
-
-### Character Sheet Management
-- Create character sheets with a name and six attributes:
-  - Strength
-  - Intelligence
-  - Dexterity
-  - Constitution
-  - Wisdom
-  - Charisma
-
-### Point Allocation System
-- Point-based attribute system with cost mapping:
-  - Attributes 7-9: Negative point costs
-  - Attribute 10: Base (0 cost)
-  - Attributes 11-18: Increasing positive costs
-- Real-time point calculation as attributes change
-- Visual feedback for successful saves and errors
-
-### API Endpoints
-
-- `GET /` - Home page with React application
-- `GET /sheets` - List all character sheets
-- `POST /sheets` - Create a new character sheet
-- `GET /sheets/:id` - Show a specific sheet
-- `PATCH/PUT /sheets/:id` - Update a sheet
-- `DELETE /sheets/:id` - Delete a sheet
-
-## Development Workflow
-
-### JavaScript/TypeScript Development
-
-The frontend uses esbuild for bundling with watch mode:
-
 ```bash
-# Build once
-yarn build
-
-# Watch mode (auto-rebuild on changes)
-yarn build:watch
-
-# Type checking
-yarn typecheck
+docker compose up
+docker compose exec app bin/rails db:create db:migrate db:seed
 ```
 
-The `Procfile.dev` automatically runs the watcher in development.
+The app is accessible at `http://exercises.localhost`. Traefik dashboard at `http://localhost:8080`.
 
-### Database Migrations
+For local development without Docker: `bundle install && yarn install && bin/dev`.
 
-```bash
-# Create a new migration
-docker compose exec app bin/rails generate migration MigrationName
+## Documentation
 
-# Run migrations
-docker compose exec app bin/rails db:migrate
-
-# Rollback last migration
-docker compose exec app bin/rails db:rollback
-```
-
-### Rails Console
-
-```bash
-docker compose exec app bin/rails console
-```
-
-### Running Tests
-
-```bash
-docker compose exec app bin/rails test
-```
-
-## Docker Services
-
-### App Service
-- Rails application server
-- JavaScript/CSS asset compilation
-- Port: 3000 (internal)
-- Accessible via Traefik at `exercises.localhost`
-
-### PostgreSQL Service
-- Database server
-- Port: 5432 (internal)
-- Database: `exercises_development`
-- User: `exercises`
-- Password: `sekret`
-
-### Redis Service
-- Caching and background jobs (if needed)
-- Port: 6379 (internal)
-
-### Traefik Service
-- Reverse proxy and load balancer
-- Ports: 80 (HTTP), 8080 (Dashboard)
-- Routes traffic to the app service
-
-## Configuration
-
-### Environment Variables
-
-The application uses the following environment variables (set in `compose.yml`):
-
-- `DATABASE_URL` - PostgreSQL connection string
-- `RAILS_ENV` - Rails environment (development/production)
-- `NODE_ENV` - Node environment
-- `BIND` - Server bind address
-
-### CSRF Protection
-
-The React application automatically retrieves and includes the CSRF token from the meta tag in the HTML layout for all POST requests.
-
-## Troubleshooting
-
-### Database Connection Issues
-
-If you encounter database connection errors:
-
-```bash
-# Check if PostgreSQL is running
-docker compose ps
-
-# Restart services
-docker compose restart postgres app
-
-# Recreate database
-docker compose exec app bin/rails db:drop db:create db:migrate
-```
-
-### Asset Compilation Issues
-
-If JavaScript/CSS changes aren't appearing:
-
-```bash
-# Rebuild assets
-docker compose exec app yarn build
-
-# Or restart the app service to restart the watcher
-docker compose restart app
-```
-
-### Port Conflicts
-
-If port 80 or 8080 are already in use, modify the port mappings in `compose.yml`:
-
-```yaml
-proxy:
-  ports:
-    - "8081:80"      # Change 80 to another port
-    - "8082:8080"    # Change 8080 to another port
-```
-
-## License
-
-[Add your license here]
-
-## Contributing
-
-[Add contribution guidelines here]
+The `docs/` folder contains detailed design documents for the pipeline, individual steps, utilities, and architectural decisions. This README is an abridged overview — refer to the docs for implementation specifics.
