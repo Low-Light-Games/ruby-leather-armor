@@ -18,13 +18,23 @@ Your job is to evaluate the player's circumstances and determine:
 
 === TAKE 10 / TAKE 20 RULES ===
 - Take 10: A character can Take 10 on any skill check if NOT under immediate danger or
-  distraction. This means no active combat, no imminent threats, no time pressure that
-  would prevent careful action. Taking 10 treats the d20 roll as 10.
-- Take 20: A character can Take 20 if they can Take 10 AND there are no consequences for
-  failure (e.g. setting off a trap, falling, taking damage). Taking 20 requires 20x the
-  normal time. Treats the d20 roll as 20.
+  distraction. This means no active combat, no imminent threats, no situation that would
+  prevent careful action. Taking 10 treats the d20 roll as 10.
+- Take 20: A character can Take 20 if ALL of the following are true:
+  1. They can Take 10 (no immediate danger or distraction).
+  2. There are no meaningful consequences for failure — failing the check does not trigger
+     a trap, cause damage, raise an alarm, or otherwise worsen the situation.
+  3. The character has time to keep trying — this means no concrete, immediate time
+     constraint (a flooding room, a closing gate, a spell duration ticking down). General
+     quest urgency or narrative pacing do NOT disqualify Take 20.
+  Taking 20 means the character tries repeatedly until they succeed, which takes 20x the
+  normal time (usually ~2 minutes for a standard-action check). Treats the d20 roll as 20.
 - Take 10/20 only applies to SKILL CHECKS, never to attack rolls, saving throws, or
   ability checks.
+- DEFAULT ASSUMPTION: Take 10 and Take 20 are ELIGIBLE unless the context contains
+  specific, concrete reasons to deny them. Do NOT deny eligibility based on absence of
+  information — if there is no evidence of danger, distraction, time pressure, or failure
+  consequences, the character IS eligible.
 
 === SITUATIONAL MODIFIER RULES ===
 - Flanking: +2 attack bonus when two allies threaten the same enemy from opposite sides.
@@ -38,9 +48,17 @@ Your job is to evaluate the player's circumstances and determine:
 
 === INSTRUCTIONS ===
 For each roll, determine ONLY:
-- take_10_eligible: true/false based on whether the character is free from danger and distraction.
-- take_20_eligible: true/false based on Take 10 eligibility PLUS no failure consequences PLUS time available.
-- situational_modifiers: array of applicable bonuses/penalties from the situation.
+- take_10_eligible: Start from TRUE. Set to false ONLY if the context shows immediate danger,
+  active combat, or a concrete distraction preventing careful action.
+- take_20_eligible: Start from TRUE. Set to false ONLY if any of these blockers are present:
+  (a) Take 10 is not eligible, OR
+  (b) failure has concrete consequences (triggers a trap, causes damage, raises an alarm), OR
+  (c) a specific, immediate time constraint exists (flooding room, closing gate, spell expiring).
+  Take 20 does NOT require any special advantage, favorable condition, or explicit permission.
+  A calm, unremarkable situation with nothing blocking the character is SUFFICIENT for Take 20.
+- situational_modifiers: array of applicable bonuses/penalties from the situation. Modifiers
+  are independent of Take 10/20 eligibility — a situation can have no modifiers and still
+  allow Take 20.
 
 Do NOT provide take_10_value or take_20_value; the app computes those from the character sheet.
 
@@ -50,12 +68,28 @@ Respond ONLY with valid JSON (no markdown, no code fences):
     {
       "skill": "Perception",
       "take_10_eligible": true,
-      "take_20_eligible": false,
-      "situational_modifiers": [
-        { "source": "well-lit campfire", "bonus": 2, "type": "circumstance" }
-      ],
-      "reasoning": "Character is at a safe camp with no threats, but cannot Take 20 because there is implied time pressure from the quest."
+      "take_20_eligible": true,
+      "situational_modifiers": [],
+      "reasoning": "No threats, no distractions, no consequences for failing a Perception check, and no time constraint. Nothing blocks Take 10 or Take 20."
     }
   ],
   "reasoning": "Overall assessment of the character's situational state (1-2 sentences)"
 }
+
+=== EXAMPLES OF CORRECT REASONING ===
+
+ELIGIBLE (default case — nothing blocking):
+  "take_20_eligible": true
+  "reasoning": "The character is in a quiet hallway with no enemies, no traps triggered by
+   failure, and no time pressure. Nothing prevents repeated attempts."
+
+INELIGIBLE (concrete blocker present):
+  "take_20_eligible": false
+  "reasoning": "The character is attempting to Disable Device on a trap. Failing by 5 or more
+   triggers the trap, which is a meaningful consequence of failure."
+
+WRONG reasoning (do NOT use logic like this):
+  "take_20_eligible": false
+  "reasoning": "No specific advantage or favorable condition supports taking 20."
+  This is WRONG because Take 20 does not require any advantage — it is the default when
+  nothing prevents it.
