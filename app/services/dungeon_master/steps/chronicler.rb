@@ -8,7 +8,7 @@ module DungeonMaster
     module Chronicler
       private
 
-      def run_chronicler(intent, verdict_outcome: nil)
+      def run_chronicler(intent, verdict_outcome: nil, encounter_triggered: false)
         t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         raw = nil
         prompt_summary = "Chronicler: plot_relevant action at #{@adventure.current_location&.name || 'unknown'}"
@@ -46,6 +46,7 @@ module DungeonMaster
           social_context: social_ctx,
           traversal_context: traversal_ctx,
           exploration_context: exploration_ctx,
+          encounter_triggered: encounter_triggered,
         )
 
         request_body = { system_prompt: system_prompt, user_message: "Evaluate plot state for this action." }

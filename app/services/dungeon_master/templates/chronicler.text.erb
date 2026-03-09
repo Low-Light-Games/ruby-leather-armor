@@ -27,6 +27,14 @@ Location: <%= @current_location || "(unknown)" %>
 <% if @verdict_outcome -%>
 Outcome: <%= @verdict_outcome %>
 <% end -%>
+<% if @encounter_triggered -%>
+
+=== ENCOUNTER TRIGGERED ===
+An encounter has been triggered by the Harbinger system. The creatures described in the
+Outcome above are PRESENT and VISIBLE to the player — this is a direct confrontation, not
+background ambiance. Your narration_guidance MUST acknowledge the encounter as real and
+immediate. Do NOT downplay the creatures' presence or describe them as vague hints.
+<% end -%>
 
 === UNDISCOVERED CLUES ===
 <% @undiscovered_clues.each do |clue| -%>

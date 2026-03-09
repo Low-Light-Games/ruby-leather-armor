@@ -29,15 +29,18 @@ module DungeonMaster
         end
 
         narration_mode = @config.get("narration_mode") || "parallel"
+        enc_triggered = extra[:encounter_triggered] == true
 
         what_happened = narrate_seed || player_action || intent[:intention]
 
         if narration_mode == "subjugated"
           run_subjugated_output(intent, narrate_seed: narrate_seed, what_happened: what_happened,
-                                mutations: mutations, dm_brief: dm_brief, player_action: player_action)
+                                mutations: mutations, dm_brief: dm_brief, player_action: player_action,
+                                encounter_triggered: enc_triggered)
         else
           run_parallel_output(intent, narrate_seed: narrate_seed, what_happened: what_happened,
-                              mutations: mutations, dm_brief: dm_brief, player_action: player_action)
+                              mutations: mutations, dm_brief: dm_brief, player_action: player_action,
+                              encounter_triggered: enc_triggered)
         end => narration
 
         { action: :narrated, narrative: narration[:narrative],
@@ -45,13 +48,14 @@ module DungeonMaster
       end
 
       def run_parallel_output(intent, narrate_seed:, what_happened:, mutations:,
-                              dm_brief:, player_action:)
+                              dm_brief:, player_action:, encounter_triggered: false)
         narration = nil
 
         narrate_thread = Thread.new do
           ActiveRecord::Base.connection_pool.with_connection do
             narration = run_narrate(narrate_seed, player_action: player_action,
-                                    intent: intent, dm_brief: dm_brief)
+                                    intent: intent, dm_brief: dm_brief,
+                                    encounter_triggered: encounter_triggered)
           end
         end
         ctx_thread = Thread.new do
@@ -68,13 +72,14 @@ module DungeonMaster
       end
 
       def run_subjugated_output(intent, narrate_seed:, what_happened:, mutations:,
-                                dm_brief:, player_action:)
+                                dm_brief:, player_action:, encounter_triggered: false)
         run_context_updates(what_happened, mutations,
                             affected_contexts: intent[:affected_contexts],
                             macro_significant: intent[:macro_significant])
 
         run_narrate(narrate_seed, player_action: player_action,
-                    intent: intent, dm_brief: dm_brief)
+                    intent: intent, dm_brief: dm_brief,
+                    encounter_triggered: encounter_triggered)
       end
 
       def maybe_initialize_combat(intent)

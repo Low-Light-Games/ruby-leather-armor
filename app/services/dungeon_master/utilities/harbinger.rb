@@ -29,7 +29,7 @@ module DungeonMaster
       # @param config [DmConfig, nil] for token budgets (optional)
       # @param log [Object, nil] for logging (optional)
       def consult(hours_needed:, adventure:, terrain: nil, party_level: 1,
-                  speed_mph: nil, is_journey: false, ai: nil, config: nil, log: nil)
+                  speed_mph: nil, is_journey: false, ai: nil, config: nil, log: nil, loop: nil)
         table = EncounterTable.table_for(adventure.story)
 
         simulate_passage(
@@ -40,12 +40,13 @@ module DungeonMaster
           is_journey: is_journey,
           speed_mph: speed_mph || 0.0,
           adventure: adventure,
-          ai: ai, config: config, log: log
+          ai: ai, config: config, log: log,
+          loop: loop
         )
       end
 
       def simulate_passage(hours:, table:, terrain:, party_level:, is_journey:,
-                           speed_mph:, adventure:, ai:, config:, log:)
+                           speed_mph:, adventure:, ai:, config:, log:, loop: nil)
         return build_result(:completed, hours, 0, nil) if hours <= 0
 
         freq = table&.check_frequency_hours&.to_f || 4.0
@@ -62,7 +63,15 @@ module DungeonMaster
             if entry
               enc_hours = elapsed - (segment * rand(0.2..0.8))
               enc_distance = is_journey ? (speed_mph * enc_hours) : distance
-              narrative = expand_encounter(entry, adventure: adventure, ai: ai, config: config, log: log)
+              narrative = expand_encounter(entry, adventure: adventure, ai: ai, config: config, log: log, loop: loop)
+
+              if loop
+                loop.batch_update!(
+                  new_tags: { "encounter_triggered" => true },
+                  new_data: { "encounter_entry_id" => entry.id, "encounter_entry_title" => entry.title },
+                  timeline_entry: { "step" => "harbinger", "summary" => "Encounter: #{entry.title}", "at" => Time.current.iso8601 })
+              end
+
               return build_result(:encounter, enc_hours, enc_distance, narrative, encounter_entry: entry)
             end
           end
@@ -90,7 +99,7 @@ module DungeonMaster
         }
       end
 
-      def expand_encounter(entry, adventure:, ai:, config:, log:)
+      def expand_encounter(entry, adventure:, ai:, config:, log:, loop: nil)
         return entry.description if entry.fixed?
         return entry.description unless ai && config && log
 
@@ -114,7 +123,17 @@ module DungeonMaster
                     model_used: ai.last_model_used, duration_ms: duration_ms,
                     usage: ai.last_usage)
 
-        parsed["scene"] || parsed["narrative"] || parsed["description"] || entry.description
+        scene = parsed["scene"] || parsed["narrative"] || parsed["description"] || entry.description
+        creatures = Array(parsed["creatures"]).select { |c| c.is_a?(Hash) && c["name"].present? }
+
+        if loop && creatures.any?
+          creature_summary = creatures.map { |c| "#{c['count'] || 1}x #{c['name']}" }.join(", ")
+          loop.batch_update!(
+            new_data: { "encounter_scene" => scene.to_s.truncate(1000), "encounter_creatures" => creatures },
+            timeline_entry: { "step" => "encounter_expand", "summary" => "Scene + #{creature_summary}", "at" => Time.current.iso8601 })
+        end
+
+        scene
       rescue => e
         log&.dm_log!("Encounter expansion failed: #{e.message} — using raw description")
         entry.description

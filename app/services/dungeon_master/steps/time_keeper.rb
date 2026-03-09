@@ -28,6 +28,9 @@ module DungeonMaster
       def run_time_keeper(intent, verdict_result)
         estimated = estimate_time(intent, verdict_result)
         @log.dm_log!("TimeKeeper: estimated=#{estimated[:hours].round(4)}h, source=#{estimated[:source]}")
+        @loop&.batch_update!(
+          new_data: { "hours_elapsed" => estimated[:hours].round(4), "time_source" => estimated[:source].to_s },
+          timeline_entry: { "step" => "time_keeper", "summary" => "#{estimated[:hours].round(4)}h (#{estimated[:source]})", "at" => Time.current.iso8601 })
 
         harbinger_result = consult_harbinger_if_needed(estimated, intent)
 
@@ -137,12 +140,8 @@ module DungeonMaster
           speed_mph: nil, journey_data: nil }
       end
 
-      def try_take20_estimate(intent, verdict_result)
-        return nil unless verdict_result.is_a?(Hash)
-
-        outcome = (verdict_result[:outcome] || "").downcase
-        intention = (intent[:intention] || "").downcase
-        return nil unless outcome.include?("take 20") || intention.include?("take 20")
+      def try_take20_estimate(_intent, _verdict_result)
+        return nil unless @loop&.tagged?("took_20")
 
         { hours: 0.67, source: :take20_code, terrain: nil, is_journey: false,
           speed_mph: nil, journey_data: nil }
@@ -242,7 +241,8 @@ module DungeonMaster
           party_level: @sheet&.level || 1,
           speed_mph: estimated[:speed_mph],
           is_journey: estimated[:is_journey],
-          ai: @ai, config: @config, log: @log
+          ai: @ai, config: @config, log: @log,
+          loop: @loop
         )
       end
 

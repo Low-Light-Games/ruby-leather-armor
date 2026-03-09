@@ -390,3 +390,72 @@ problems that were already solved.
   with cost analysis
 - `docs/async_pipeline_design.md` — the specific problem and solution
   for async execution
+
+---
+
+## 15. No text-parsing fallbacks
+
+When a code path relies on structured data — a tag on the `AdventureLoop`,
+a parsed JSON field from an AI step, a column in the database — do **not**
+add a regex or string-match fallback that attempts the same thing on raw
+text "just in case."
+
+**Why:**
+- A fallback that shadows the primary path **diminishes the value of the
+  better check.** If the regex fires 20% of the time, the structured path
+  was only 80% worth building. The investment in a clean data flow only
+  pays off when the system actually relies on it.
+- Fallbacks **mask bugs.** If the structured data is missing because a
+  step forgot to write it, the fallback silently produces a degraded
+  result. The bug surfaces as a subtle quality regression weeks later
+  instead of an immediate, diagnosable failure.
+- Fallbacks **make code harder to reason about.** A reader seeing two
+  paths — one clean, one heuristic — cannot easily tell which one
+  actually fires in production, what conditions trigger the fallback,
+  or whether the fallback's behavior even matches the primary path's
+  contract.
+
+**The rule:** if the structured data is absent, log the gap and fail
+visibly. Return an empty result, skip the step, or raise — whatever
+makes the failure observable. Do not silently degrade into a broken
+heuristic.
+
+**Example:** Warmaster needs creature names and counts to spawn
+enemies. The `encounter_expand` AI step produces a structured
+`creatures` array stored on the `AdventureLoop`. If that data is
+missing, Warmaster logs "no creatures_data" and returns zero creatures
+— it does *not* fall back to regex-parsing the encounter description.
+This ensures that if `encounter_expand` ever stops producing the
+`creatures` field, the failure is immediately visible in logs and in
+gameplay, rather than silently spawning one creature instead of four.
+
+---
+
+## 16. AdventureLoop: semantic layer over the pipeline
+
+`PipelineRun` is the mechanical/operational record — it tracks timing,
+status transitions, and AI call logs. `AdventureLoop` is the semantic
+record — it captures what happened from the player's perspective for a
+single sequenced action.
+
+**Key design:**
+- `PipelineRun` 1:N `AdventureLoop` — one loop per sequenced action
+  within a pipeline run
+- Each loop carries `tags` (boolean flags like `took_20`,
+  `encounter_triggered`), `data` (structured key-value pairs like
+  `encounter_entry_id`, `hours_elapsed`), and a `timeline` (ordered
+  step summaries)
+- Pipeline steps write to `@loop` at their natural point; downstream
+  steps read from it. This replaces fragile method-argument threading
+  with explicit, persistent writes.
+- The loop is the **single source of truth** for cross-step data. When
+  TimeKeeper needs to know if the player chose Take 20, it checks
+  `@loop.tagged?("took_20")` — it does not parse text from verdict
+  outcomes. When Warmaster needs creature data, it reads
+  `@loop.get("encounter_creatures")` — it does not regex-parse
+  encounter descriptions.
+
+**Consequence:** adding a new piece of cross-step data is a one-line
+`@loop.set(...)` in the producing step and a one-line `@loop.get(...)`
+in the consuming step. No method signatures change, no hashes need new
+keys threaded through five layers of calls.

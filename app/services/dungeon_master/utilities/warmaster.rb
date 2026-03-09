@@ -21,13 +21,23 @@ module DungeonMaster
       module_function
 
       # Path A: from Harbinger encounter table roll
-      def initialize_from_encounter!(adventure:, encounter_entry:, sheet:, log:, config:, ai:)
+      # creatures_data: optional structured array from encounter_expand AI (via AdventureLoop)
+      #   e.g. [{ "name" => "goblin", "count" => 4 }]
+      def initialize_from_encounter!(adventure:, encounter_entry:, sheet:, log:, config:, ai:, creatures_data: nil)
         ctx = Context.new(adventure: adventure, sheet: sheet, log: log, config: config, ai: ai)
 
         creatures = if encounter_entry.has_manifest?
                       spawn_from_manifest(ctx, encounter_entry.creature_manifest)
+                    elsif creatures_data.is_a?(Array) && creatures_data.any?
+                      names = creatures_data.flat_map do |c|
+                        name = (c["name"] || c[:name] || "creature").to_s.singularize
+                        count = (c["count"] || c[:count] || 1).to_i.clamp(1, 20)
+                        Array.new(count, name)
+                      end
+                      spawn_from_names(ctx, names)
                     else
-                      spawn_from_names(ctx, extract_names_from_description(encounter_entry.description))
+                      log.dm_log!("Warmaster: no manifest or creatures_data for entry '#{encounter_entry.title}' — cannot spawn creatures")
+                      []
                     end
 
         build_initiative_result(ctx, creatures)
@@ -268,18 +278,11 @@ module DungeonMaster
         { name: display_name, creature_sheet_id: sheet.id }
       end
 
-      def extract_names_from_description(description)
-        words = description.to_s.downcase
-        return [words.scan(/\d+\s+(\w+)/).flatten.first || "creature"] if words.present?
-        ["creature"]
-      end
-
       private_class_method :spawn_from_manifest, :spawn_from_names, :resolve_creature,
                            :build_initiative_result, :roll_creature_initiative,
                            :fuzzy_bestiary_match_static, :create_creature_from_bestiary_static,
                            :dynamic_creature_sheet_static, :create_from_template_static,
-                           :create_from_ai_static, :roll_hp_static, :creature_record,
-                           :extract_names_from_description
+                           :create_from_ai_static, :roll_hp_static, :creature_record
     end
   end
 end

@@ -7,7 +7,7 @@ module DungeonMaster
     module Narrate
       private
 
-      def run_narrate(outcome, player_action: nil, intent: nil, dm_brief: nil)
+      def run_narrate(outcome, player_action: nil, intent: nil, dm_brief: nil, encounter_triggered: false)
         t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         raw = nil
         prompt_summary = "Narrate"
@@ -26,7 +26,8 @@ module DungeonMaster
           player_action: player_action,
           player_intent: intent&.dig(:intention),
           pacing_text: PromptHelpers.pacing_instructions(@config),
-          directed_play_text: PromptHelpers.directed_play_instructions(@adventure))
+          directed_play_text: PromptHelpers.directed_play_instructions(@adventure),
+          encounter_triggered: encounter_triggered)
 
         user_msg = outcome || player_action
         raise AiError, "Narrate step reached without an outcome or player action — nothing to narrate" unless user_msg

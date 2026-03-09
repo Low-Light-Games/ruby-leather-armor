@@ -38,6 +38,7 @@ module DungeonMaster
       @ai        = ai
       @log       = log
       @sheet     = sheet
+      @loop      = nil
     end
 
     # Main entry point: player typed something.
@@ -71,6 +72,10 @@ module DungeonMaster
 
     # Resumption entry point: player submitted initiative roll.
     def run_initiative(player_initiative, metadata)
+      restore_paused_loop!
+      @loop&.batch_update!(new_status: "resolved",
+        timeline_entry: tl("initiative_resolved", "Player initiative: #{player_initiative}"))
+
       creature_data = metadata["creature_data"] || []
       Utilities::Warmaster.finalize_combat!(
         adventure: @adventure, creature_data: creature_data.map(&:deep_symbolize_keys),
@@ -97,12 +102,19 @@ module DungeonMaster
 
     # Resumption entry point: player submitted roll results.
     def run_rolls(roll_results, metadata)
+      restore_paused_loop!
+      tag_roll_resolution!(roll_results)
+
       intent, merged = restore_from_metadata(metadata)
       result = finish_resolution(intent, merged, roll_results)
 
       remaining   = metadata["remaining_actions"] || []
       prior_seeds = metadata["prior_narrate_seeds"] || []
       category    = metadata["category"]
+
+      final_status = result[:status] == :encounter ? "encounter" : "resolved"
+      @loop&.batch_update!(new_status: final_status,
+        timeline_entry: tl("rolls_resolved", "Rolls submitted, status: #{final_status}"))
 
       if result[:status] == :resolved && remaining.any?
         prior_seeds << result[:narrate_seed]
@@ -139,15 +151,20 @@ module DungeonMaster
 
       actions.each_with_index do |action_text, idx|
         set_action_label(idx, total)
+        @loop = create_adventure_loop(action_text, idx)
 
         intention = run_player_interpreter(action_text)
         result = resolve(intention, category)
 
         case result[:status]
         when :rejected
+          @loop&.batch_update!(new_status: "errored",
+            timeline_entry: tl("rejected", result[:reason]))
           return { action: :rejected, reason: result[:reason] }
 
         when :awaiting_rolls
+          @loop&.batch_update!(new_status: "paused",
+            timeline_entry: tl("awaiting_rolls", "Paused for player rolls"))
           prior_seeds = accumulated.filter_map { |r| r[:narrate_seed] }
           remaining = actions[(idx + 1)..]
           log_queue_pause(idx, total, remaining)
@@ -158,6 +175,9 @@ module DungeonMaster
           }
 
         when :awaiting_initiative
+          @loop&.batch_update!(new_status: "paused",
+            new_tags: { "combat_started" => true },
+            timeline_entry: tl("awaiting_initiative", "Paused for player initiative"))
           prior_seeds = accumulated.filter_map { |r| r[:narrate_seed] }
           remaining = actions[(idx + 1)..]
           log_queue_pause(idx, total, remaining)
@@ -173,11 +193,15 @@ module DungeonMaster
           }
 
         when :encounter
+          @loop&.batch_update!(new_status: "encounter",
+            timeline_entry: tl("encounter", "Encounter triggered"))
           accumulated << result
           log_queue_interrupt(idx, total, actions[(idx + 1)..])
           break
 
         when :resolved
+          @loop&.batch_update!(new_status: "resolved",
+            timeline_entry: tl("resolved", "Action resolved"))
           accumulated << result
         end
       end
@@ -198,15 +222,20 @@ module DungeonMaster
       remaining.each_with_index do |action_text, idx|
         action_idx = base_idx + idx
         set_action_label(action_idx, total_original)
+        @loop = create_adventure_loop(action_text, action_idx)
 
         intention = run_player_interpreter(action_text)
         result = resolve(intention, category)
 
         case result[:status]
         when :rejected
+          @loop&.batch_update!(new_status: "errored",
+            timeline_entry: tl("rejected", result[:reason]))
           next
 
         when :awaiting_rolls
+          @loop&.batch_update!(new_status: "paused",
+            timeline_entry: tl("awaiting_rolls", "Paused for player rolls"))
           new_prior = prior_seeds + accumulated.filter_map { |r| r[:narrate_seed] }
           new_remaining = remaining[(idx + 1)..]
           log_queue_pause(action_idx, total_original, new_remaining)
@@ -217,6 +246,9 @@ module DungeonMaster
           }
 
         when :awaiting_initiative
+          @loop&.batch_update!(new_status: "paused",
+            new_tags: { "combat_started" => true },
+            timeline_entry: tl("awaiting_initiative", "Paused for player initiative"))
           new_prior = prior_seeds + accumulated.filter_map { |r| r[:narrate_seed] }
           new_remaining = remaining[(idx + 1)..]
           log_queue_pause(action_idx, total_original, new_remaining)
@@ -232,11 +264,15 @@ module DungeonMaster
           }
 
         when :encounter
+          @loop&.batch_update!(new_status: "encounter",
+            timeline_entry: tl("encounter", "Encounter triggered"))
           accumulated << result
           log_queue_interrupt(action_idx, total_original, remaining[(idx + 1)..])
           break
 
         when :resolved
+          @loop&.batch_update!(new_status: "resolved",
+            timeline_entry: tl("resolved", "Action resolved"))
           accumulated << result
         end
       end
@@ -261,7 +297,8 @@ module DungeonMaster
       last_resolved = results.last
       if merged_intent[:plot_relevant]
         verdict_outcome = last_resolved[:narrate_seed]
-        plot_result = resolve_plot(merged_intent, verdict_outcome: verdict_outcome)
+        plot_result = resolve_plot(merged_intent, verdict_outcome: verdict_outcome,
+                                   encounter_triggered: encounter_triggered)
         dm_brief = plot_result&.dig(:dm_brief)
       end
 
@@ -381,9 +418,9 @@ module DungeonMaster
     end
 
     # Runs the AI Chronicler if available, otherwise falls back to heuristic DC matching.
-    def resolve_plot(intent, verdict_outcome: nil)
+    def resolve_plot(intent, verdict_outcome: nil, encounter_triggered: false)
       if should_run_chronicler?
-        run_chronicler(intent, verdict_outcome: verdict_outcome)
+        run_chronicler(intent, verdict_outcome: verdict_outcome, encounter_triggered: encounter_triggered)
       elsif has_structured_story_data?
         heuristic_chronicler(intent, verdict_outcome: verdict_outcome)
       end
@@ -543,6 +580,51 @@ module DungeonMaster
 
     def log_queue_completed(total)
       @log.dm_log!("Action queue completed: #{total}/#{total} actions resolved")
+    end
+
+    # ----------------------------------------------------------------
+    # AdventureLoop lifecycle helpers
+    # ----------------------------------------------------------------
+
+    def create_adventure_loop(action_text, sequence_index)
+      AdventureLoop.create!(
+        adventure: @adventure,
+        pipeline_run_id: @log.pipeline_run_id,
+        sequence_index: sequence_index,
+        raw_action: action_text&.truncate(500),
+        status: "pending"
+      )
+    rescue => e
+      @log.dm_log!("AdventureLoop creation failed: #{e.message}")
+      nil
+    end
+
+    def restore_paused_loop!
+      return unless @log.pipeline_run_id
+      @loop = AdventureLoop.for_pipeline(@log.pipeline_run_id).paused.order(:created_at).last
+    end
+
+    def tag_roll_resolution!(roll_results)
+      return unless @loop
+
+      text = roll_results.to_s.downcase
+      if text.include?("take 20")
+        @loop.batch_update!(
+          new_tags: { "took_20" => true },
+          new_data: { "resolution_method" => "take_20", "roll_results" => roll_results.to_s.truncate(500) })
+      elsif text.include?("take 10")
+        @loop.batch_update!(
+          new_tags: { "took_10" => true },
+          new_data: { "resolution_method" => "take_10", "roll_results" => roll_results.to_s.truncate(500) })
+      else
+        @loop.batch_update!(
+          new_tags: { "rolled" => true },
+          new_data: { "resolution_method" => "roll", "roll_results" => roll_results.to_s.truncate(500) })
+      end
+    end
+
+    def tl(step, summary)
+      { "step" => step.to_s, "summary" => summary.to_s.truncate(200), "at" => Time.current.iso8601 }
     end
   end
 end

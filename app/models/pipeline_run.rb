@@ -5,6 +5,7 @@ class PipelineRun < ApplicationRecord
   belongs_to :player_message, class_name: "AdventureMessage", optional: true
 
   has_many :ai_logs, primary_key: :pipeline_run_id, foreign_key: :pipeline_run_id
+  has_many :adventure_loops, primary_key: :pipeline_run_id, foreign_key: :pipeline_run_id
 
   STATUSES = %w[running paused completed errored].freeze
 

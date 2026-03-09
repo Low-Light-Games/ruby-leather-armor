@@ -28,7 +28,22 @@ module DungeonMaster
         end
 
         threads.each(&:value)
-        converge_beacons(results, intention, category)
+        converged = converge_beacons(results, intention, category)
+
+        if @loop
+          affected = converged[:affected_contexts]
+          loop_tags = {}
+          loop_tags["needs_mechanics"] = true if converged[:needs_mechanics]
+          loop_data = { "affected_contexts" => affected, "primary_context" => converged[:primary_context] }
+          @loop.batch_update!(
+            new_tags: loop_tags.presence,
+            new_data: loop_data,
+            new_status: "resolving",
+            timeline_entry: { "step" => "beacon", "summary" => "Affected: #{affected.join(', ').presence || 'none'}", "at" => Time.current.iso8601 })
+          @loop.update_column(:category, converged[:primary_context]) if converged[:primary_context]
+        end
+
+        converged
       end
 
       def run_single_beacon(intention, domain)

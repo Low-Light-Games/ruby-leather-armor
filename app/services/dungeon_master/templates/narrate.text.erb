@@ -32,6 +32,14 @@ Intent: <%= @player_intent %>
 
 <%= @pacing_text %>
 <%= @directed_play_text %>
+<% if @encounter_triggered -%>
+=== ENCOUNTER ===
+An encounter has been triggered. The creatures described in WHAT HAPPENED are PRESENT and
+VISIBLE to the player right now. Narrate this as a direct, immediate confrontation — not as
+vague hints or distant ambiance. The player should feel the encounter is real and happening.
+End at the moment the player must decide how to react (fight, flee, negotiate, etc.).
+
+<% end -%>
 === INSTRUCTIONS ===
 - Write the narrative for what just happened. Be vivid, descriptive, and engaging.
 - LOCATION: The player's current location is defined by the Traversal context's

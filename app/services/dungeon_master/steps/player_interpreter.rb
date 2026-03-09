@@ -24,7 +24,12 @@ module DungeonMaster
                      parse_status: @ai.last_parse_status, request_body: request_body,
                      model_used: @ai.last_model_used, duration_ms: duration_ms, usage: @ai.last_usage)
 
-        parsed["intention"] || sanitized_input
+        intention = parsed["intention"] || sanitized_input
+        @loop&.batch_update!(
+          new_data: { "player_intent" => intention.to_s.truncate(500) },
+          timeline_entry: { "step" => "player_interpreter", "summary" => "Intent: #{intention.to_s.truncate(120)}", "at" => Time.current.iso8601 })
+        @loop&.update_column(:player_intent, intention.to_s.truncate(500)) if @loop
+        intention
       rescue TokenBudgetExceededError => e
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         @log.ai_log_error!("player_interpreter", prompt_summary, e,

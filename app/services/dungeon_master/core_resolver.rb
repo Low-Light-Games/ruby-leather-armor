@@ -25,15 +25,21 @@ module DungeonMaster
 
         unless world[:consistent]
           @log.dm_log!("SanityChecker world check failed: #{world[:reason]}")
+          @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
           return { status: :rejected, intent: intent, reason: world[:reason] }
         end
 
         unless capability[:allowed]
           @log.dm_log!("SanityChecker capability check failed: #{capability[:reason]}")
+          @loop&.log_step("sanity_checker", "Capability check FAILED: #{capability[:reason].to_s.truncate(100)}")
           return { status: :rejected, intent: intent, reason: capability[:reason] }
         end
 
+        @loop&.log_step("sanity_checker", "World: consistent")
+
         merged = merge_mechanical_evaluations(evaluations)
+        rolls_desc = merged[:player_rolls].map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]}" }.join(", ")
+        @loop&.log_step("mech_eval", rolls_desc.presence || "No rolls")
         filter_auto_success_rolls!(merged)
 
         if merged[:player_rolls].any?
@@ -46,8 +52,11 @@ module DungeonMaster
       world = run_world_consistency_check(intent)
       unless world[:consistent]
         @log.dm_log!("SanityChecker world check failed: #{world[:reason]}")
+        @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
         return { status: :rejected, intent: intent, reason: world[:reason] }
       end
+
+      @loop&.log_step("sanity_checker", "World: consistent (no mechanics)")
 
       time_result = run_time_keeper(intent, nil)
 
@@ -66,6 +75,9 @@ module DungeonMaster
     def finish_resolution(intent, merged, roll_results)
       npc_results = resolve_npc_actions(merged[:npc_actions])
       verdict_result = run_verdict(intent, merged, roll_results: roll_results, npc_results: npc_results)
+      @loop&.batch_update!(
+        new_data: { "verdict_outcome" => verdict_result[:outcome].to_s.truncate(500) },
+        timeline_entry: { "step" => "verdict", "summary" => verdict_result[:outcome].to_s.truncate(120), "at" => Time.current.iso8601 })
       apply_mutations(verdict_result[:mutations])
 
       time_result = run_time_keeper(intent, verdict_result)
@@ -82,16 +94,25 @@ module DungeonMaster
       }
     end
 
-    # Call Warmaster when Harbinger triggers an encounter (Path A)
+    # Call Warmaster when Harbinger triggers an encounter (Path A).
+    # Encounter data is read exclusively from @loop — set by Harbinger during TimeKeeper.
     def maybe_warmaster_for_encounter(intent, time_result, mutations:)
-      encounter_entry = time_result.dig(:encounter_entry)
+      entry_id = @loop&.get("encounter_entry_id")
+      encounter_entry = EncounterTableEntry.find_by(id: entry_id) if entry_id
 
       if encounter_entry
+        creatures_data = @loop&.get("encounter_creatures")
         warmaster_result = Utilities::Warmaster.initialize_from_encounter!(
           adventure: @adventure, encounter_entry: encounter_entry,
+          creatures_data: creatures_data,
           sheet: @sheet, log: @log, config: @config, ai: @ai)
 
         if warmaster_result[:status] == :awaiting_initiative
+          @loop&.batch_update!(
+            new_tags: { "combat_started" => true },
+            new_data: { "creature_count" => warmaster_result[:creature_data]&.size },
+            timeline_entry: { "step" => "warmaster", "summary" => "Combat: #{warmaster_result[:creature_data]&.size} creature(s)", "at" => Time.current.iso8601 })
+
           return {
             status: :awaiting_initiative, intent: intent,
             creature_data: warmaster_result[:creature_data],

@@ -10,9 +10,28 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_09_160008) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_09_174248) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "adventure_loops", force: :cascade do |t|
+    t.bigint "adventure_id", null: false
+    t.string "pipeline_run_id", null: false
+    t.integer "sequence_index", default: 0, null: false
+    t.text "raw_action"
+    t.text "player_intent"
+    t.string "category"
+    t.string "status", default: "pending", null: false
+    t.jsonb "tags", default: {}, null: false
+    t.jsonb "data", default: {}, null: false
+    t.jsonb "timeline", default: [], null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_id", "created_at"], name: "index_adventure_loops_on_adventure_id_and_created_at"
+    t.index ["adventure_id"], name: "index_adventure_loops_on_adventure_id"
+    t.index ["pipeline_run_id", "status"], name: "index_adventure_loops_on_pipeline_run_id_and_status"
+    t.index ["pipeline_run_id"], name: "index_adventure_loops_on_pipeline_run_id"
+  end
 
   create_table "adventure_messages", force: :cascade do |t|
     t.bigint "adventure_id", null: false
@@ -556,6 +575,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_09_160008) do
     t.index ["email"], name: "index_users_on_email", unique: true
   end
 
+  add_foreign_key "adventure_loops", "adventures"
   add_foreign_key "adventure_messages", "adventures"
   add_foreign_key "adventure_sheet_feats", "adventure_sheets"
   add_foreign_key "adventure_sheet_feats", "feat_definitions", column: "feat_id"

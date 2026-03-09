@@ -17,8 +17,13 @@ Near: <%= @location %>
 - Do NOT resolve the encounter. Do NOT determine whether the player fights, flees, or negotiates.
 - Include sensory details (sounds, smells, lighting).
 - If the hint mentions specific creatures, describe them but do not determine the outcome.
+- List each distinct creature type and how many appear. Use singular bestiary names
+  (e.g. "goblin" not "goblins", "wolf" not "wolves").
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
-  "scene": "The vivid scene description ending at the point of decision"
+  "scene": "The vivid scene description ending at the point of decision",
+  "creatures": [
+    { "name": "goblin", "count": 4 }
+  ]
 }
