@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_09_150521) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_09_160008) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -284,7 +284,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_09_150521) do
   create_table "encounter_table_entries", force: :cascade do |t|
     t.bigint "encounter_table_id", null: false
     t.string "title", null: false
-    t.text "description", null: false
+    t.text "description"
     t.string "entry_type", default: "fixed", null: false
     t.integer "weight", default: 1, null: false
     t.string "terrain_types"

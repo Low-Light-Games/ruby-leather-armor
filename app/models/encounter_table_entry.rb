@@ -6,7 +6,7 @@ class EncounterTableEntry < ApplicationRecord
   ENTRY_TYPES = %w[fixed ai_prompt].freeze
 
   validates :title, presence: true
-  validates :description, presence: true
+  # description is optional: entries can be minimal (e.g. title + manifest only); pipeline uses description when present
   validates :entry_type, presence: true, inclusion: { in: ENTRY_TYPES }
   validates :weight, presence: true, numericality: { only_integer: true, greater_than: 0 }
 

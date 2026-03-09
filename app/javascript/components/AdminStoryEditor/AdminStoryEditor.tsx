@@ -1197,11 +1197,14 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
                                     </label>
                                     <button className="btn-remove-sm" onClick={() => removeEntry(tableIdx, entryIdx)}>&#x2715;</button>
                                   </div>
+                                  <label className="entry-description-label" title="Optional. For Fixed: text shown when this entry is rolled. For AI: hint used to generate the scene. Can be left blank if the creature manifest is enough.">
+                                    Description (optional)
+                                  </label>
                                   <textarea value={entry.description} rows={2}
                                     onChange={e => updateEntry(tableIdx, entryIdx, { description: e.target.value })}
                                     placeholder={entry.entry_type === 'fixed'
-                                      ? 'Full encounter description...'
-                                      : 'AI prompt hint — the AI will expand this into a scene...'} />
+                                      ? 'Fixed: text shown when this entry is rolled. Leave blank if manifest is enough.'
+                                      : 'AI: hint for scene generation. Leave blank for generic encounter.'} />
 
                                   {/* Creature Manifest */}
                                   <div className="manifest-section">
