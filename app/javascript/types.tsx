@@ -285,6 +285,7 @@ export interface RollRequest {
   spell?: string
   dc?: number
   description: string
+  domain?: string
   take_10_eligible?: boolean
   take_20_eligible?: boolean
   take_10_value?: number | null

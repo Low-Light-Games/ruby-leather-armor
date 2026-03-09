@@ -55,6 +55,26 @@ steps into one call, gated by `pipeline_mode: "edge"`. This is available
 for low-traffic deployments or latency-sensitive scenarios where the
 trade-offs are acceptable.
 
+**Middle ground preserved:** the Unified Evaluation mode
+(`evaluation_mode: "unified"`) collapses only the evaluation phase
+(beacons + mechanical evaluations + roll qualifiers) into a single AI
+call while preserving the rest of the pipeline (sanity checks, verdict,
+time keeping, narration, context updates as separate steps). This
+targets top-end models that can handle cross-domain reasoning in one
+pass — delivering better coherence and zero roll duplication — without
+sacrificing the debugging granularity of the non-evaluation steps.
+
+| | Standard | Unified Evaluation | Edge Pipeline |
+|---|---|---|---|
+| Evaluation calls | 8-14 (6 beacons + N mecheval + N rollqualifier) | 1 | 1 (everything) |
+| Other steps | Separate | Separate | N/A (all-in-one) |
+| Per-domain model selection | Yes | No (one model for eval) | No |
+| Cross-domain coherence | Low (each domain isolated) | High (single context) | High |
+| Roll deduplication | Code-side post-merge | AI avoids duplicates natively | N/A |
+| Prompt size | Small per call | Large (all contexts + rules) | Largest |
+| Target models | Any (cheap models work well) | Top-end only (o3, gpt-5, claude-4) | Capable |
+| Toggle | default | `evaluation_mode: "unified"` | `pipeline_mode: "edge"` |
+
 ### 2. Six micro-contexts instead of a single context blob
 
 **Decision:** maintain six separate JSONB context fields on the Adventure:

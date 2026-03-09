@@ -6,8 +6,10 @@ class DmConfig < ApplicationRecord
     sanitize classify dm_query sequencer player_interpreter beacon mechanical_evaluation
     roll_qualifier sanity_checker sanity_checker_world verdict time_keeper chronicler narrate
     micro_context_update macro_narrative_update
-    edge_pipeline creature_generation
+    edge_pipeline creature_generation unified_evaluation
   ].freeze
+
+  EVALUATION_MODES = %w[standard unified].freeze
 
   ENRICHER_MODEL_HINT = "Capable model recommended. Structural extraction benefits from strong reasoning — e.g. o3-mini, o4-mini, gpt-4.1, gpt-5-mini."
   EMBELLISHER_MODEL_HINT = "Creative model. Flavor generation benefits from vivid writing — e.g. gpt-4.1, gpt-4o, gpt-5. Expand mode benefits from reasoning — e.g. o3-mini, gpt-5-mini."
@@ -31,7 +33,8 @@ class DmConfig < ApplicationRecord
     "micro_context_update"   => "Mid-tier model. Structured JSON with moderate judgment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
     "macro_narrative_update" => "Mid-tier model. Judges narrative significance — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
     "edge_pipeline"          => "Capable, creative model. Handles everything in one call — e.g. gpt-4.1, gpt-4o, gpt-5, o3-mini.",
-    "creature_generation"    => "Mid-tier model recommended. Must produce valid PF1e stat blocks — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini."
+    "creature_generation"    => "Mid-tier model recommended. Must produce valid PF1e stat blocks — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
+    "unified_evaluation"     => "⚠️ Top-end model REQUIRED. Single-call beacon+mecheval+rollqualifier across all domains. Requires strong cross-domain reasoning — e.g. o3, gpt-5, claude-4-opus."
   }.freeze
 
   CREATURE_CREATION_FALLBACKS = %w[ai template none].freeze
@@ -72,6 +75,7 @@ class DmConfig < ApplicationRecord
     "action_queue" => true,
     "async_pipeline" => false,
     "show_roll_dc" => true,
+    "evaluation_mode" => "standard",
     "roll_qualifier_scope" => "domain",
     "scene_history_depth" => 10,
     "creature_creation_fallback" => "ai",
@@ -99,7 +103,8 @@ class DmConfig < ApplicationRecord
       "micro_context_update" => 800,
       "macro_narrative_update" => 500,
       "edge_pipeline" => 2000,
-      "creature_generation" => 600
+      "creature_generation" => 600,
+      "unified_evaluation" => 1500
     }
   }.freeze
 

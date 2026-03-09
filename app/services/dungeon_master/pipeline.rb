@@ -23,6 +23,7 @@ module DungeonMaster
     include Steps::MechanicalEvaluation
     include Steps::RollQualifier
     include Steps::SanityChecker
+    include Steps::UnifiedEvaluation
     include Steps::Verdict
     include Steps::TimeKeeper
     include Steps::Stagehand
@@ -483,6 +484,26 @@ module DungeonMaster
         atmosphere_notes: "",
         milestones_reached: [],
       }
+    end
+
+    # ----------------------------------------------------------------
+    # Cross-domain roll deduplication
+    # ----------------------------------------------------------------
+
+    def deduplicate_rolls!(merged)
+      seen = {}
+      removed = []
+      merged[:player_rolls] = merged[:player_rolls].select do |roll|
+        key = [roll[:skill].to_s.downcase, roll[:type].to_s, roll[:dc].to_i]
+        if seen[key]
+          removed << "#{roll[:skill]} DC #{roll[:dc]} (#{roll[:domain]}) — duplicate of #{seen[key]}"
+          false
+        else
+          seen[key] = roll[:domain] || "unknown"
+          true
+        end
+      end
+      @log.dm_log!("Dedup removed #{removed.size} duplicate roll(s): #{removed.join('; ')}") if removed.any?
     end
 
     # ----------------------------------------------------------------

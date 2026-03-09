@@ -133,6 +133,12 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
     return []
   }
 
+  function rollLabel(req: RollRequest): string {
+    const name = req.skill || req.type?.replace(/_/g, ' ') || 'Roll'
+    if (req.domain) return `${name} (${req.domain.charAt(0).toUpperCase() + req.domain.slice(1)})`
+    return name
+  }
+
   function buildPendingRolls(requests: RollRequest[], showDc: boolean): PendingRolls {
     const entries: PendingRollEntry[] = requests.map(req => ({
       request: req,
@@ -411,7 +417,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
                   <div className="roll-request-badges">
                     {rollRequests.map((req, i) => (
                       <div key={i} className="roll-request-badge">
-                        <span className="roll-badge-label">🎲 {req.skill || req.type?.replace(/_/g, ' ') || 'Roll'}</span>
+                        <span className="roll-badge-label">🎲 {rollLabel(req)}</span>
                         {msgShowDc && req.dc != null && <span className="roll-dc">DC {req.dc}</span>}
                         <span className="roll-badge-desc">{req.description}</span>
                       </div>
@@ -439,7 +445,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
               <div key={i} className={`roll-entry ${isHallucination ? 'roll-unresolved' : ''}`}>
                 <div className="roll-prompt">
                   <span className="roll-prompt-type">
-                    {resolved ? resolved.label : (req.skill || req.type?.replace(/_/g, ' ') || 'Roll')}
+                    {resolved ? resolved.label : rollLabel(req)}
                   </span>
                   {pendingRolls.showDc && req.dc != null && <span className="roll-dc">DC {req.dc}</span>}
                   <span className="roll-prompt-desc">{req.description}</span>

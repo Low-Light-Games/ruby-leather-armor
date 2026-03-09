@@ -18,6 +18,10 @@ module DungeonMaster
 
     # Full resolution: beacon → full gate (mech eval + world check + cap check) → [verdict + mutations + time_keeper]
     def resolve(intention, category)
+      if @config.get("evaluation_mode") == "unified"
+        return resolve_unified(intention, category)
+      end
+
       intent = run_beacon(intention, category)
 
       if intent[:needs_mechanics]
@@ -38,7 +42,8 @@ module DungeonMaster
         @loop&.log_step("sanity_checker", "World: consistent")
 
         merged = merge_mechanical_evaluations(evaluations)
-        rolls_desc = merged[:player_rolls].map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]}" }.join(", ")
+        deduplicate_rolls!(merged)
+        rolls_desc = merged[:player_rolls].map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]} (#{r[:domain]})" }.join(", ")
         @loop&.log_step("mech_eval", rolls_desc.presence || "No rolls")
         filter_auto_success_rolls!(merged)
 
@@ -125,6 +130,81 @@ module DungeonMaster
       { status: :encounter, intent: intent,
         narrate_seed: time_result[:encounter_narrative],
         mutations: mutations, time_result: time_result }
+    end
+
+    # Unified evaluation path: single AI call replaces beacons + mech eval + roll qualifier.
+    # Sanity checks (world + capability) still run independently as guardrails.
+    def resolve_unified(intention, category)
+      intent, evaluations = run_unified_evaluation(intention, category)
+
+      if intent[:needs_mechanics]
+        world, capability = run_sanity_gate(intent)
+
+        unless world[:consistent]
+          @log.dm_log!("SanityChecker world check failed: #{world[:reason]}")
+          @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
+          return { status: :rejected, intent: intent, reason: world[:reason] }
+        end
+
+        unless capability[:allowed]
+          @log.dm_log!("SanityChecker capability check failed: #{capability[:reason]}")
+          @loop&.log_step("sanity_checker", "Capability check FAILED: #{capability[:reason].to_s.truncate(100)}")
+          return { status: :rejected, intent: intent, reason: capability[:reason] }
+        end
+
+        @loop&.log_step("sanity_checker", "World: consistent")
+
+        merged = merge_mechanical_evaluations(evaluations)
+        deduplicate_rolls!(merged)
+        rolls_desc = merged[:player_rolls].map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]} (#{r[:domain]})" }.join(", ")
+        @loop&.log_step("mech_eval", rolls_desc.presence || "No rolls")
+        filter_auto_success_rolls!(merged)
+
+        if merged[:player_rolls].any?
+          return { status: :awaiting_rolls, intent: intent, merged: merged }
+        end
+
+        return finish_resolution(intent, merged, "(no player rolls required)")
+      end
+
+      world = run_world_consistency_check(intent)
+      unless world[:consistent]
+        @log.dm_log!("SanityChecker world check failed: #{world[:reason]}")
+        @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
+        return { status: :rejected, intent: intent, reason: world[:reason] }
+      end
+
+      @loop&.log_step("sanity_checker", "World: consistent (no mechanics)")
+
+      time_result = run_time_keeper(intent, nil)
+
+      if time_result[:encounter]
+        return maybe_warmaster_for_encounter(intent, time_result, mutations: nil)
+      end
+
+      {
+        status: :resolved, intent: intent,
+        narrate_seed: nil, mutations: nil,
+        time_result: time_result
+      }
+    end
+
+    # Parallel world + capability checks without mech eval (used by unified path).
+    def run_sanity_gate(intent)
+      world = nil
+      capability = nil
+
+      world_thread = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection { world = run_world_consistency_check(intent) }
+      end
+      cap_thread = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection { capability = run_capability_check(intent) }
+      end
+
+      world_thread.value
+      cap_thread.value
+
+      [world, capability]
     end
   end
 end

@@ -35,6 +35,8 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
 - Write a mechanical_summary that describes what happens mechanically in this domain. This summary
   will be passed to subsequent evaluations for other domains.
 - Only adjudicate for the <%= @domain.upcase %> domain. Do not rule on other domains.
+- If PREVIOUS EVALUATION SUMMARIES already include a roll for this exact skill and DC,
+  do NOT request it again. Cross-domain duplication wastes the player's time.
 - If player_rolls are needed, include "qualifier_context_hints": an array of context names
   (combat, exploration, social, traversal, rest, inventory) that a follow-up step should
   examine to judge situational modifiers and Take 10/Take 20 eligibility. For example,
