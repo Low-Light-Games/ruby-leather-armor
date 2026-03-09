@@ -27,10 +27,13 @@ interface AdventureChatProps {
   onDmResponse?: () => void
 }
 
+type ResolutionMethod = 'roll' | 'take_10' | 'take_20' | 'manual'
+
 interface PendingRollEntry {
   request: RollRequest
   resolved: ResolvedRoll | null
   value: number | null
+  resolution_method: ResolutionMethod | null
 }
 
 interface PendingRolls {
@@ -135,6 +138,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
       request: req,
       resolved: derivedStats ? resolveRollRequest(req, derivedStats) : null,
       value: null,
+      resolution_method: null,
     }))
     return { requests, entries, showDc }
   }
@@ -211,11 +215,15 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
     }
   }
 
-  const sendRolls = async (rolls: Array<{ roll_value: number; roll_description: string }>) => {
+  const sendRolls = async (rolls: Array<{ roll_value: number; roll_description: string; resolution_method?: string }>) => {
     setSending(true)
     lastSentRef.current = { type: 'rolls', rolls }
 
-    const rollSummary = rolls.map(r => `🎲 Rolled ${r.roll_value} for: ${r.roll_description}`).join('\n')
+    const rollSummary = rolls.map(r => {
+      if (r.resolution_method === 'take_20') return `Take 20 (= ${r.roll_value}) for: ${r.roll_description}`
+      if (r.resolution_method === 'take_10') return `Take 10 (= ${r.roll_value}) for: ${r.roll_description}`
+      return `Rolled ${r.roll_value} for: ${r.roll_description}`
+    }).join('\n')
     const optimistic: AdventureMessage = {
       id: OPTIMISTIC_ID, role: 'player', content: rollSummary,
       message_type: 'roll_result', metadata: { rolls }, created_at: new Date().toISOString(),
@@ -281,16 +289,16 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
     sendMessage(text, mode)
   }
 
-  const setRollValue = (index: number, value: number) => {
+  const setRollValue = (index: number, value: number, method: ResolutionMethod = 'manual') => {
     if (!pendingRolls) return
     const updated = [...pendingRolls.entries]
-    updated[index] = { ...updated[index], value }
+    updated[index] = { ...updated[index], value, resolution_method: method }
     setPendingRolls({ ...pendingRolls, entries: updated })
   }
 
   const handleManualRollChange = (index: number, raw: string) => {
     const v = parseInt(raw, 10)
-    setRollValue(index, isNaN(v) ? 0 : v)
+    setRollValue(index, isNaN(v) ? 0 : v, 'manual')
   }
 
   const handleRollD20 = (index: number) => {
@@ -307,13 +315,13 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
     })
   }
 
-  const handleTake = (index: number, takeValue: number) => {
-    setRollValue(index, takeValue)
+  const handleTake = (index: number, takeValue: number, method: ResolutionMethod) => {
+    setRollValue(index, takeValue, method)
   }
 
   const handleRollModalClose = () => {
     if (rollModalDisplay && rollModalTargetIdx != null) {
-      setRollValue(rollModalTargetIdx, rollModalDisplay.result.total)
+      setRollValue(rollModalTargetIdx, rollModalDisplay.result.total, 'roll')
     }
     setRollModalDisplay(null)
     setRollModalTargetIdx(null)
@@ -327,6 +335,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
     const rolls = pendingRolls.entries.map(e => ({
       roll_value: e.value!,
       roll_description: e.request.description,
+      resolution_method: e.resolution_method || 'manual',
     }))
 
     setPendingRolls(null)
@@ -454,7 +463,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
                       {req.take_10_eligible && req.take_10_value != null && value == null && (
                         <button
                           className="roll-btn roll-take"
-                          onClick={() => handleTake(i, req.take_10_value!)}
+                          onClick={() => handleTake(i, req.take_10_value!, 'take_10')}
                         >
                           Take 10 (= {req.take_10_value})
                         </button>
@@ -462,7 +471,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
                       {req.take_20_eligible && req.take_20_value != null && value == null && (
                         <button
                           className="roll-btn roll-take"
-                          onClick={() => handleTake(i, req.take_20_value!)}
+                          onClick={() => handleTake(i, req.take_20_value!, 'take_20')}
                         >
                           Take 20 (= {req.take_20_value})
                         </button>

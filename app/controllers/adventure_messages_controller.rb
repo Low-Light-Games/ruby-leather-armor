@@ -56,10 +56,14 @@ class AdventureMessagesController < ApplicationController
   def roll
     rolls = if params[:rolls].present?
               Array(params[:rolls]).map do |r|
-                { roll_value: r[:roll_value].to_i, roll_description: r[:roll_description]&.strip || "unknown check" }
+                { roll_value: r[:roll_value].to_i,
+                  roll_description: r[:roll_description]&.strip || "unknown check",
+                  resolution_method: r[:resolution_method]&.strip }
               end
             else
-              [{ roll_value: params[:roll_value].to_i, roll_description: params[:roll_description]&.strip || "unknown check" }]
+              [{ roll_value: params[:roll_value].to_i,
+                 roll_description: params[:roll_description]&.strip || "unknown check",
+                 resolution_method: params[:resolution_method]&.strip }]
             end
 
     invalid = rolls.find { |r| !(1..100).include?(r[:roll_value]) }

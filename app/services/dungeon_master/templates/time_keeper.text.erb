@@ -6,7 +6,10 @@ Day <%= @adventure_day %>, Hour <%= @current_hour %> (<%= @light_conditions %>)
 Combat is ACTIVE. Combat rounds last 6 seconds each.
 <% end -%>
 
-=== WHAT HAPPENED ===
+=== PLAYER'S INTENT ===
+<%= @player_intent %>
+
+=== WHAT HAPPENED (mechanical outcome) ===
 <%= @outcome %>
 
 === PATHFINDER 1e TIME REFERENCE ===
@@ -27,16 +30,32 @@ Combat is ACTIVE. Combat rounds last 6 seconds each.
 - Preparing spells: 1 hour
 
 === RULES ===
+- READ BOTH SECTIONS: Use PLAYER'S INTENT to understand *what the player wanted to do*
+  and WHAT HAPPENED to understand *what mechanically occurred*. If the intent describes
+  a sustained effort but the outcome only describes the mechanical result, estimate time
+  for the sustained effort, not just the check.
 - COMPOUND ACTIONS: If the player describes multiple sequential actions (e.g.
   "rest then travel", "craft a potion and then head out"), estimate time for the
   FIRST time-consuming action only. Remaining actions will be processed in
   subsequent turns. Return only the hours for that first action.
-- SUSTAINED ACTIONS: When the player says "until", "keep doing", "continue until",
-  or otherwise indicates they will persist at an activity until a result is achieved,
-  estimate the TOTAL expected duration of the sustained effort — not a single brief
-  attempt. For example, "hunt until I catch something" means hours of hunting (1-4h),
-  not a 10-minute search. "Search until I find it" means a thorough extended search.
-  Use the time reference above for the activity type and lean toward the higher end.
+- SUSTAINED ACTIONS: When the player's intent uses "until", "keep doing", "wait for",
+  "continue until", "watch for", "stand guard", or otherwise indicates they will persist
+  at an activity until a result or event, estimate the TOTAL expected duration — not a
+  single brief attempt. The mechanical outcome may say "nothing happened" or "no
+  disturbances" but the TIME still passes. Examples:
+    "wait until something happens" → 1-4 hours (standing guard)
+    "hunt until I catch something" → 1-4 hours (Survival activity)
+    "search until I find it" → 0.5-2 hours (extended search)
+    "sit and observe, waiting for something to disturb me" → 1-4 hours (guard duty)
+  Use the time reference above for the activity type. When in doubt, lean toward the
+  higher end. An uneventful wait is still a wait.
+- TAKE 20 ACTIONS: If the outcome mentions "Take 20" or "auto-resolved via Take 20",
+  the character spent ~40 minutes (0.67 hours) carefully repeating the check.
+- PASSIVE OBSERVATION IS NOT INSTANT: Carefully observing surroundings, scanning for
+  threats, or paying close attention to the environment takes at least 10-30 minutes
+  (0.17-0.5 hours), not seconds. Only use 1-5 minute estimates for single glances or
+  quick checks. "Looking around carefully" or "paying close attention" implies a
+  thorough survey.
 <% if @has_destination -%>
 - FREEFORM TRAVEL: The player is moving toward a destination but no pre-computed
   route is available. Estimate both hours_elapsed AND distance_miles based on a

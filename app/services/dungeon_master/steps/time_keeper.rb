@@ -158,6 +158,7 @@ module DungeonMaster
         system_prompt = PromptRenderer.render("time_keeper",
           outcome: outcome,
           intention: intent[:intention],
+          player_intent: intent[:intention],
           current_hour: time_ctx["current_hour"] || 8,
           adventure_day: time_ctx["adventure_day"] || 1,
           light_conditions: time_ctx["light_conditions"] || "day",
