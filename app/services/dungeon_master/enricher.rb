@@ -27,6 +27,8 @@ module DungeonMaster
         encounter_entries: encounter_entry_data,
         bestiary_catalog: bestiary_catalog,
         has_encounter_tables: @story.encounter_tables.exists?,
+        initial_context: @story.initial_context,
+        initial_summary: @story.initial_summary,
       )
 
       t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -192,12 +194,26 @@ module DungeonMaster
         milestones: milestones,
         encounter_manifests: encounter_manifests,
         proposed_encounter_tables: proposed_encounter_tables,
+        initial_contexts: sanitize_initial_contexts(parsed["initial_contexts"]),
         reasoning: parsed["reasoning"].to_s.strip,
       }
     end
 
     def validated_enum(value, allowed, fallback)
       allowed.include?(value.to_s) ? value.to_s : fallback
+    end
+
+    CONTEXT_KEYS = %w[
+      traversal_context combat_context social_context
+      exploration_context rest_context inventory_context
+    ].freeze
+
+    def sanitize_initial_contexts(raw)
+      return {} unless raw.is_a?(Hash)
+
+      raw.slice(*CONTEXT_KEYS).transform_values do |v|
+        v.is_a?(Hash) ? v : nil
+      end.compact
     end
   end
 end

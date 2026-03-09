@@ -47,6 +47,15 @@ You are a story analyst for a tabletop RPG system. Your job is to read a story p
 <% end -%>
 <% end -%>
 
+<% if @initial_context.present? -%>
+=== OPENING SCENE (admin's description of where the story begins) ===
+<%= @initial_context %>
+<% end -%>
+<% if @initial_summary.present? -%>
+=== INITIAL SUMMARY ===
+<%= @initial_summary %>
+<% end -%>
+
 === YOUR TASK ===
 
 1. **NPCs**: Extract every named or implied character from the premise. For each:
@@ -92,6 +101,27 @@ You are a story analyst for a tabletop RPG system. Your job is to read a story p
      - `creatures`: Same format as encounter manifests above
 <% end -%>
 
+<%= @has_encounter_tables ? "5" : "6" %>. **Initial Contexts**: Propose the starting game state for when a player begins this adventure.
+   Based on the premise, opening scene, locations, and starting location, generate structured initial
+   context data for each relevant domain. Only include domains that have meaningful starting data.
+   - `traversal_context`: Where the player starts. Include:
+     - `current_location`: Name of the starting place (e.g. "Village Inn, bedroom")
+     - `terrain`: Type of terrain (e.g. "indoor", "forest trail", "cobblestone road")
+     - `weather`: Weather conditions if mentioned or implied (e.g. "clear", "rainy"), or null
+     - `time_of_day`: If mentioned (e.g. "morning", "dusk"), or null
+     - `exits`: Array of obvious ways out of the starting location (e.g. ["door to hallway", "window"])
+     - `nearby_npcs`: Array of NPC names present at the start (must match NPC names from your output)
+     - `points_of_interest`: Array of notable features in the starting area
+   - `social_context`: Only if the story begins with NPCs present. Include:
+     - `scene`: Brief description of the social situation
+     - `npcs_present`: Array of { "name", "role", "attitude", "notes" } for NPCs in the opening scene
+   - `combat_context`: Only if the story begins in combat. Include:
+     - `active`: true
+     - `terrain_notes`: Description of the combat terrain
+   - `exploration_context`: Only if there are pre-existing discoveries. Usually empty.
+   - `rest_context`: Only if the player starts while resting. Usually empty.
+   - `inventory_context`: Usually empty.
+
 **EXPOSITION GAPS**: If a location has no NPC for the player to interact with, suggest one. If clues form no logical chain, create connecting clues. A good story needs at least one informant NPC and a discovery chain from easy surface-level clues to harder deeper secrets.
 
 Return JSON with this exact structure (no markdown, no code fences):
@@ -101,5 +131,13 @@ Return JSON with this exact structure (no markdown, no code fences):
   "milestones": [ ... ],
   "encounter_manifests": [ { "encounter_entry_title": "...", "creatures": [ { "bestiary_entry_id": "goblin", "count": 3, "display_name": "Goblin" } ] } ],
   "proposed_encounter_tables": [ ... ],
+  "initial_contexts": {
+    "traversal_context": { "current_location": "...", "terrain": "...", "exits": ["..."], ... },
+    "social_context": null,
+    "combat_context": null,
+    "exploration_context": null,
+    "rest_context": null,
+    "inventory_context": null
+  },
   "reasoning": "Brief explanation of your extraction logic and any gaps you filled"
 }

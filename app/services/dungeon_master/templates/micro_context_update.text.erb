@@ -46,6 +46,16 @@ Update each context to reflect what just happened. Return all contexts below.
 - OUTCOME CONSISTENCY: The outcome describes what mechanically happened. If the outcome
   describes the player arriving at, approaching, or leaving a location, the traversal context MUST
   reflect that change. Never carry forward a stale current_location that contradicts the outcome.
+- CROSS-FIELD CONSISTENCY: When ANY field in a context changes, ALL other fields in that context
+  must be checked for consistency. In particular for traversal_context: when current_location
+  changes, you MUST also update terrain, exits, weather, time_of_day, nearby_npcs, and
+  points_of_interest to match the NEW location. Do NOT leave stale values from the previous
+  location. If a field's value for the new location is unknown, set it to null rather than
+  carrying forward an outdated value that contradicts current_location.
+- EXITS: When the player arrives at a new location, populate exits based on obvious egress points
+  described in the outcome (doors, windows, paths, openings, the way they came). If the outcome
+  does not describe specific egress points, include at least "the way you came" or an equivalent.
+  Do NOT leave exits as an empty array unless the location is explicitly sealed or inescapable.
 - SCENE SUMMARY: Write a single concise sentence (under 15 words) describing the player's current
   situation. This is displayed to the player as a status line. Examples: "Traveling by horseback
   toward the village.", "Engaged in melee combat with two goblins.", "Resting at camp, preparing

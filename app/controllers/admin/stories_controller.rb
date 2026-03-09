@@ -75,6 +75,7 @@ module Admin
     def story_params
       params.require(:story).permit(
         :title, :preview, :premise, :hook, :initial_context, :initial_summary,
+        initial_contexts: {},
         story_locations_attributes: [
           :id, :name, :description, :starting, :_destroy,
           connections_from_attributes: [:id, :to_location_id, :distance_miles, :terrain_type, :description, :_destroy]
@@ -104,7 +105,7 @@ module Admin
     end
 
     def story_json(story)
-      base = story.as_json(only: [:id, :title, :preview, :premise, :hook, :initial_context, :initial_summary, :created_at, :updated_at])
+      base = story.as_json(only: [:id, :title, :preview, :premise, :hook, :initial_context, :initial_summary, :initial_contexts, :created_at, :updated_at])
       base["story_locations"] = story.story_locations.order(:id).map { |loc|
         loc.as_json(only: [:id, :name, :description, :starting]).merge(
           "connections_from" => loc.connections_from.map { |c|

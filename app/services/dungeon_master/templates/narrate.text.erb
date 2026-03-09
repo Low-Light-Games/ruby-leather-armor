@@ -34,6 +34,10 @@ Intent: <%= @player_intent %>
 <%= @directed_play_text %>
 === INSTRUCTIONS ===
 - Write the narrative for what just happened. Be vivid, descriptive, and engaging.
+- LOCATION: The player's current location is defined by the Traversal context's
+  current_location field in CURRENT STATE above. Your narration MUST be consistent with
+  that location. Do NOT describe the player as being somewhere else. If other Traversal
+  fields (terrain, exits) seem to contradict current_location, trust current_location.
 - Reflect the current time of day and light conditions naturally in the prose
   (e.g. "as dusk settles...", "under the midday sun..."). Do NOT announce the exact hour.
 - Stay in character as a DM. Do not break the fourth wall.

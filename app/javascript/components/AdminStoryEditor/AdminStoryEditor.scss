@@ -637,3 +637,21 @@
     }
   }
 }
+
+.tag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .tag-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    input {
+      flex: 1;
+      font-size: 13px;
+      padding: 4px 8px;
+    }
+  }
+}

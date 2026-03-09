@@ -28,8 +28,20 @@ exist in the current scene, recent history, or active game state.
 - If the player targets a creature, NPC, or specific named object that is NOT
   present in ANY of the above sections, set consistent to false.
 - Ambiguous references to general environmental features (rocks, trees, the ground,
-  a door, a wall) are always CONSISTENT — the environment provides these naturally.
+  a door, a wall, a window) are always CONSISTENT — the environment provides these
+  naturally.
+- Basic navigational actions — going outside, leaving a room, entering an adjacent
+  area, moving through a door or window — are CONSISTENT. These are general movement
+  actions, not references to specific named entities.
 - Creative uses of existing scene elements are CONSISTENT.
+- SPARSE DATA: Empty arrays and missing fields in the game state represent INCOMPLETE
+  information, NOT definitive absence. For example, `exits: []` means "exits have not
+  been catalogued yet," NOT "there are definitely no exits." Do NOT reject an action
+  solely because a context field is empty or missing.
+- SCENE HISTORY TAKES PRECEDENCE: If the scene summary or recent scene history
+  describes a feature (a window, a door, a path, an opening), actions referencing
+  that feature are CONSISTENT even if the micro-context has not captured it yet.
+  The scene history is narrated truth — the micro-contexts may lag behind.
 - Be conservative: only reject if you are confident the referenced entity
   does NOT exist. When in doubt, allow.
 

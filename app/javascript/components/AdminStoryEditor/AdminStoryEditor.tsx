@@ -96,11 +96,76 @@ interface StoryData {
   hook: string | null
   initial_context: string | null
   initial_summary: string | null
+  initial_contexts?: InitialContexts
   story_locations?: StoryLocationData[]
   encounter_tables?: EncounterTableData[]
   story_npcs?: StoryNpcData[]
   story_clues?: StoryClueData[]
   story_milestones?: StoryMilestoneData[]
+}
+
+// ---- Initial Contexts types ----
+
+interface TraversalCtx {
+  current_location: string
+  destination: string
+  terrain: string
+  weather: string
+  time_of_day: string
+  exits: string[]
+  nearby_npcs: string[]
+  points_of_interest: string[]
+}
+
+interface CombatCtx {
+  active: boolean
+  round: number | null
+  terrain_notes: string
+}
+
+interface SocialNpcPresent {
+  name: string
+  role: string
+  attitude: 'friendly' | 'indifferent' | 'unfriendly'
+  notes: string
+}
+
+interface SocialCtx {
+  scene: string
+  conversation_state: string
+  stakes: string
+  npcs_present: SocialNpcPresent[]
+}
+
+interface ExplorationCtx {
+  searched_areas: string[]
+  discovered_items: string[]
+  discovered_secrets: string[]
+  active_detection: string
+  pending_investigations: string[]
+}
+
+interface RestCtx {
+  resting: boolean
+  hours_completed: number | null
+  total_hours_needed: number | null
+  rest_complete: boolean
+  hp_recovered: number | null
+}
+
+interface InventoryCtx {
+  recently_acquired: string[]
+  notable_consumables_remaining: string[]
+  equipped_changes: string[]
+}
+
+interface InitialContexts {
+  traversal_context?: Partial<TraversalCtx>
+  combat_context?: Partial<CombatCtx>
+  social_context?: Partial<SocialCtx>
+  exploration_context?: Partial<ExplorationCtx>
+  rest_context?: Partial<RestCtx>
+  inventory_context?: Partial<InventoryCtx>
 }
 
 // ---- Constants ----
@@ -147,6 +212,37 @@ const emptyMilestone = (): StoryMilestoneData => ({
   trigger_clue_ids: [], consequence: '',
 })
 
+const emptyTraversalCtx = (): TraversalCtx => ({
+  current_location: '', destination: '', terrain: '', weather: '', time_of_day: '',
+  exits: [], nearby_npcs: [], points_of_interest: [],
+})
+
+const emptyCombatCtx = (): CombatCtx => ({
+  active: false, round: null, terrain_notes: '',
+})
+
+const emptySocialNpc = (): SocialNpcPresent => ({
+  name: '', role: '', attitude: 'indifferent', notes: '',
+})
+
+const emptySocialCtx = (): SocialCtx => ({
+  scene: '', conversation_state: '', stakes: '', npcs_present: [],
+})
+
+const emptyExplorationCtx = (): ExplorationCtx => ({
+  searched_areas: [], discovered_items: [], discovered_secrets: [],
+  active_detection: '', pending_investigations: [],
+})
+
+const emptyRestCtx = (): RestCtx => ({
+  resting: false, hours_completed: null, total_hours_needed: null,
+  rest_complete: false, hp_recovered: null,
+})
+
+const emptyInventoryCtx = (): InventoryCtx => ({
+  recently_acquired: [], notable_consumables_remaining: [], equipped_changes: [],
+})
+
 // ---- Component ----
 
 export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
@@ -171,11 +267,20 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   const [clues, setClues] = useState<StoryClueData[]>([])
   const [milestones, setMilestones] = useState<StoryMilestoneData[]>([])
 
+  const [icTraversal, setIcTraversal] = useState<TraversalCtx>(emptyTraversalCtx())
+  const [icCombat, setIcCombat] = useState<CombatCtx>(emptyCombatCtx())
+  const [icSocial, setIcSocial] = useState<SocialCtx>(emptySocialCtx())
+  const [icExploration, setIcExploration] = useState<ExplorationCtx>(emptyExplorationCtx())
+  const [icRest, setIcRest] = useState<RestCtx>(emptyRestCtx())
+  const [icInventory, setIcInventory] = useState<InventoryCtx>(emptyInventoryCtx())
+
   const [locationsOpen, setLocationsOpen] = useState(false)
   const [encounterTablesOpen, setEncounterTablesOpen] = useState(false)
   const [npcsOpen, setNpcsOpen] = useState(false)
   const [cluesOpen, setCluesOpen] = useState(false)
   const [milestonesOpen, setMilestonesOpen] = useState(false)
+  const [initialContextsOpen, setInitialContextsOpen] = useState(false)
+  const [icSubOpen, setIcSubOpen] = useState<Record<string, boolean>>({})
   const [expandedLocIdx, setExpandedLocIdx] = useState<number | null>(null)
   const [expandedTableIdx, setExpandedTableIdx] = useState<number | null>(null)
 
@@ -220,6 +325,43 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
     setNpcs(data.story_npcs || [])
     setClues(data.story_clues || [])
     setMilestones(data.story_milestones || [])
+    hydrateInitialContexts(data.initial_contexts || {})
+  }
+
+  const hydrateInitialContexts = (ic: InitialContexts) => {
+    const t = ic.traversal_context || {}
+    setIcTraversal({
+      ...emptyTraversalCtx(),
+      ...t,
+      exits: Array.isArray(t.exits) ? t.exits : [],
+      nearby_npcs: Array.isArray(t.nearby_npcs) ? t.nearby_npcs : [],
+      points_of_interest: Array.isArray(t.points_of_interest) ? t.points_of_interest : [],
+    })
+    setIcCombat({ ...emptyCombatCtx(), ...(ic.combat_context || {}) })
+    const s = ic.social_context || {}
+    setIcSocial({
+      ...emptySocialCtx(),
+      ...s,
+      npcs_present: Array.isArray(s.npcs_present) ? s.npcs_present : [],
+    })
+    const e = ic.exploration_context || {}
+    setIcExploration({
+      ...emptyExplorationCtx(),
+      ...e,
+      searched_areas: Array.isArray(e.searched_areas) ? e.searched_areas : [],
+      discovered_items: Array.isArray(e.discovered_items) ? e.discovered_items : [],
+      discovered_secrets: Array.isArray(e.discovered_secrets) ? e.discovered_secrets : [],
+      pending_investigations: Array.isArray(e.pending_investigations) ? e.pending_investigations : [],
+    })
+    setIcRest({ ...emptyRestCtx(), ...(ic.rest_context || {}) })
+    const inv = ic.inventory_context || {}
+    setIcInventory({
+      ...emptyInventoryCtx(),
+      ...inv,
+      recently_acquired: Array.isArray(inv.recently_acquired) ? inv.recently_acquired : [],
+      notable_consumables_remaining: Array.isArray(inv.notable_consumables_remaining) ? inv.notable_consumables_remaining : [],
+      equipped_changes: Array.isArray(inv.equipped_changes) ? inv.equipped_changes : [],
+    })
   }
 
   // ---- Duplicate name detection ----
@@ -278,11 +420,40 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
     })
   }
 
+  const buildInitialContextsPayload = (): InitialContexts => {
+    const strip = (obj: Record<string, unknown>): Record<string, unknown> | null => {
+      const clean: Record<string, unknown> = {}
+      for (const [k, v] of Object.entries(obj)) {
+        if (v === '' || v === null || v === undefined) continue
+        if (Array.isArray(v) && v.length === 0) continue
+        if (typeof v === 'boolean' && !v) continue
+        clean[k] = v
+      }
+      return Object.keys(clean).length > 0 ? clean : null
+    }
+
+    const ic: Record<string, unknown> = {}
+    const t = strip(icTraversal as unknown as Record<string, unknown>)
+    if (t) ic.traversal_context = t
+    const c = strip(icCombat as unknown as Record<string, unknown>)
+    if (c) ic.combat_context = c
+    const s = strip({ ...icSocial, npcs_present: icSocial.npcs_present.length > 0 ? icSocial.npcs_present : undefined } as unknown as Record<string, unknown>)
+    if (s) ic.social_context = s
+    const e = strip(icExploration as unknown as Record<string, unknown>)
+    if (e) ic.exploration_context = e
+    const r = strip(icRest as unknown as Record<string, unknown>)
+    if (r) ic.rest_context = r
+    const inv = strip(icInventory as unknown as Record<string, unknown>)
+    if (inv) ic.inventory_context = inv
+    return ic as InitialContexts
+  }
+
   const buildPayload = (skipUnresolvedConns = false) => {
     const story: Record<string, unknown> = {
       title, preview, premise, hook,
       initial_context: initialContext,
       initial_summary: initialSummary,
+      initial_contexts: buildInitialContextsPayload(),
     }
 
     if (currentStoryId) {
@@ -709,12 +880,19 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
         setEncounterTablesOpen(true)
       }
 
+      const enrichedContexts = result.initial_contexts
+      if (enrichedContexts && typeof enrichedContexts === 'object' && Object.keys(enrichedContexts).length > 0) {
+        hydrateInitialContexts(enrichedContexts)
+        setInitialContextsOpen(true)
+      }
+
       setNpcsOpen(true)
       setCluesOpen(true)
       setMilestonesOpen(true)
       const extras: string[] = []
       if (manifests.length > 0) extras.push(`${manifests.length} encounter manifest(s)`)
       if (proposedTables.length > 0) extras.push(`${proposedTables.length} proposed encounter table(s)`)
+      if (enrichedContexts && Object.keys(enrichedContexts).length > 0) extras.push('initial contexts')
       const extraMsg = extras.length > 0 ? ` Also applied: ${extras.join(', ')}.` : ''
       showFeedback('success', `Enrichment complete — review the proposed records below and Save to persist.${extraMsg}`)
     } catch (err: any) {
@@ -774,50 +952,51 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
 
         {/* Story fields */}
         <div className="form-field">
-          <label htmlFor="story-title">Title</label>
+          <label htmlFor="story-title" title="The story's display name, shown in the adventure picker and admin list.">Title</label>
           <input type="text" id="story-title" value={title}
-            onChange={e => setTitle(e.target.value)} placeholder="Story title" />
+            onChange={e => setTitle(e.target.value)} placeholder="The Goblin Caves, Shadow over Millhaven, ..." />
         </div>
 
         <div className="form-field">
-          <label htmlFor="story-preview">Preview (shown to players)</label>
+          <label htmlFor="story-preview" title="A short teaser the player sees before starting the adventure. No spoilers.">Preview (shown to players)</label>
           <textarea id="story-preview" value={preview}
             onChange={e => setPreview(e.target.value)} rows={3}
-            placeholder="A brief teaser for the player..." />
+            placeholder="1-2 sentences the player reads before choosing this story. Set the tone without revealing the plot." />
         </div>
 
         <div className="form-field">
-          <label htmlFor="story-premise">Premise (full story, admin only)</label>
+          <label htmlFor="story-premise" title="The full plot, secrets, and villain motivations. Only the AI sees this — never shown to the player. The Enricher uses this to generate NPCs, clues, and milestones.">Premise (full story, admin only)</label>
           <textarea id="story-premise" value={premise}
             onChange={e => setPremise(e.target.value)} rows={6}
-            placeholder="The full premise and plot details..." />
+            placeholder="The complete plot with all secrets and twists. Who is the villain? What's really going on? Include NPC motivations, hidden connections, and the intended resolution. The AI DM reads this to run the story — the player never sees it." />
         </div>
 
         <div className="form-field">
-          <label htmlFor="story-hook">Hook (spoiler-free player-facing intro)</label>
+          <label htmlFor="story-hook" title="A spoiler-free introduction the narrator can reference. Sets the scene without revealing secrets. Used by the Narrate step as story context.">Hook (spoiler-free narrator intro)</label>
           <textarea id="story-hook" value={hook}
             onChange={e => setHook(e.target.value)} rows={4}
-            placeholder="A spoiler-free description of the starting situation..." />
+            placeholder="A narrator-safe description of the setting and situation. The narrator sees this instead of the premise to avoid spoiling secrets. E.g. 'Rumors of goblin raids have reached the village. The mayor is looking for adventurers.'" />
         </div>
 
         <div className="form-field">
-          <label htmlFor="story-initial-context">Initial Context (opening scene)</label>
+          <label htmlFor="story-initial-context" title="The first DM message the player sees. This is sent as a narrative message when the adventure starts. Describe where the player wakes up or arrives.">Initial Context (opening DM message)</label>
           <textarea id="story-initial-context" value={initialContext}
             onChange={e => setInitialContext(e.target.value)} rows={4}
-            placeholder="Where is the player? What's happening?..." />
+            placeholder="The opening narration. E.g. 'You wake in a small bedroom at the Village Inn. Sunlight streams through a window. Downstairs, you hear the murmur of the morning crowd.' This is the first thing the player reads." />
         </div>
 
         <div className="form-field">
-          <label htmlFor="story-initial-summary">Initial Summary (story-so-far seed)</label>
+          <label htmlFor="story-initial-summary" title="Seeds the 'story so far' field that the narrator and other steps use for context. Should reflect the starting state, not the plot.">Initial Summary (story-so-far seed)</label>
           <textarea id="story-initial-summary" value={initialSummary}
             onChange={e => setInitialSummary(e.target.value)} rows={4}
-            placeholder="A brief narrative summary of where the story begins..." />
+            placeholder="A brief status line from the player's perspective. E.g. 'Just arrived at the village after hearing rumors of goblin trouble. No leads yet.' This seeds the macro narrative tracker." />
         </div>
 
         {/* ---- Enrich Story button ---- */}
         {isEditMode && (
           <div className="enrich-section">
-            <button className="btn-enrich" onClick={enrichStory} disabled={enriching || !premise.trim()}>
+            <button className="btn-enrich" onClick={enrichStory} disabled={enriching || !premise.trim()}
+              title="Uses AI to extract NPCs, clues, milestones, encounter data, and initial contexts from the premise. Results appear below for review — nothing is saved until you click Save.">
               {enriching ? 'Enriching...' : 'Enrich Story'}
             </button>
             <span className="enrich-hint">
@@ -1304,6 +1483,378 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
                 <button className="btn-add" onClick={() => setMilestones(prev => [...prev, emptyMilestone()])}>
                   + Add Milestone
                 </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ---- Initial Contexts ---- */}
+        {isEditMode && (
+          <div className="collapsible-section">
+            <button className="section-toggle" onClick={() => setInitialContextsOpen(!initialContextsOpen)}>
+              <span className="toggle-icon">{initialContextsOpen ? '▾' : '▸'}</span>
+              Initial Contexts
+            </button>
+
+            {initialContextsOpen && (
+              <div className="section-body">
+                <p className="section-hint">
+                  Structured starting game state seeded into every new adventure. Without these, contexts start empty and the AI may misinterpret missing data as negative facts (e.g. no exits = trapped). Fill at least Traversal for any story. Use "Enrich Story" to auto-generate these from the premise.
+                </p>
+
+                {/* -- Traversal -- */}
+                <div className="nested-card">
+                  <div className="nested-card-header">
+                    <button className="expand-btn" onClick={() => setIcSubOpen(p => ({ ...p, traversal: !p.traversal }))}>
+                      {icSubOpen.traversal ? '▾' : '▸'}
+                    </button>
+                    <span className="inline-name" style={{ cursor: 'default', fontWeight: 600 }}
+                      title="Where the player physically is when the adventure begins. This is the most important context to fill — it prevents the sanity checker from blocking basic movement.">Traversal</span>
+                  </div>
+                  {icSubOpen.traversal && (
+                    <div className="nested-card-body">
+                      <div className="form-field compact">
+                        <label title="The specific place the player starts in. This becomes traversal_context.current_location — every AI step reads it to know where the player is.">Starting location</label>
+                        <input type="text" value={icTraversal.current_location}
+                          onChange={e => setIcTraversal(p => ({ ...p, current_location: e.target.value }))}
+                          placeholder="Be specific: 'upstairs bedroom at the Village Inn', not just 'Village Inn'" />
+                      </div>
+                      <div className="form-field compact">
+                        <label title="Only set this if the story begins mid-journey. Leave empty if the player starts stationary.">Destination (if mid-travel)</label>
+                        <input type="text" value={icTraversal.destination}
+                          onChange={e => setIcTraversal(p => ({ ...p, destination: e.target.value }))}
+                          placeholder="Leave empty unless the player starts already traveling somewhere" />
+                      </div>
+                      <div className="form-field compact">
+                        <label title="The type of ground/environment. Used by the narrator for descriptions and by mechanics for terrain-dependent checks.">Terrain type</label>
+                        <input type="text" value={icTraversal.terrain}
+                          onChange={e => setIcTraversal(p => ({ ...p, terrain: e.target.value }))}
+                          placeholder="indoor wooden floor, outdoor dirt road, forest undergrowth, cave stone, ..." />
+                      </div>
+                      <div className="form-field compact">
+                        <label title="Current weather at the start. Affects narrator prose and some mechanics (e.g. perception penalties in rain).">Weather</label>
+                        <input type="text" value={icTraversal.weather}
+                          onChange={e => setIcTraversal(p => ({ ...p, weather: e.target.value }))}
+                          placeholder="clear skies, light rain, heavy fog, snowfall, ..." />
+                      </div>
+                      <div className="form-field compact">
+                        <label title="General time description. The exact hour comes from the time_context system, but this helps the narrator set the mood.">Time of day</label>
+                        <input type="text" value={icTraversal.time_of_day}
+                          onChange={e => setIcTraversal(p => ({ ...p, time_of_day: e.target.value }))}
+                          placeholder="early morning, midday, late afternoon, dusk, midnight, ..." />
+                      </div>
+                      <div className="form-field compact">
+                        <label title="Ways out of the starting location. CRITICAL: if left empty, the sanity checker may block the player from leaving. List every obvious exit — doors, windows, paths, staircases.">Known exits</label>
+                        <div className="tag-list">
+                          {icTraversal.exits.map((ex, i) => (
+                            <div key={i} className="tag-item">
+                              <input type="text" value={ex}
+                                onChange={e => setIcTraversal(p => ({ ...p, exits: p.exits.map((v, j) => j === i ? e.target.value : v) }))}
+                                placeholder="door to hallway, window overlooking the street, staircase down, ..." />
+                              <button className="btn-remove-sm" onClick={() => setIcTraversal(p => ({ ...p, exits: p.exits.filter((_, j) => j !== i) }))}>&#x2715;</button>
+                            </div>
+                          ))}
+                          <button className="btn-add-sm" onClick={() => setIcTraversal(p => ({ ...p, exits: [...p.exits, ''] }))}>+ Add exit</button>
+                        </div>
+                      </div>
+                      <div className="form-field compact">
+                        <label title="NPCs visibly present at the starting location. Must match NPC names from the NPCs section.">Nearby NPCs</label>
+                        <div className="tag-list">
+                          {icTraversal.nearby_npcs.map((npc, i) => (
+                            <div key={i} className="tag-item">
+                              <input type="text" value={npc}
+                                onChange={e => setIcTraversal(p => ({ ...p, nearby_npcs: p.nearby_npcs.map((v, j) => j === i ? e.target.value : v) }))}
+                                placeholder="Must match an NPC name from the NPCs section" />
+                              <button className="btn-remove-sm" onClick={() => setIcTraversal(p => ({ ...p, nearby_npcs: p.nearby_npcs.filter((_, j) => j !== i) }))}>&#x2715;</button>
+                            </div>
+                          ))}
+                          <button className="btn-add-sm" onClick={() => setIcTraversal(p => ({ ...p, nearby_npcs: [...p.nearby_npcs, ''] }))}>+ Add NPC</button>
+                        </div>
+                      </div>
+                      <div className="form-field compact">
+                        <label title="Notable objects or features the player can see or interact with at the starting location.">Points of interest</label>
+                        <div className="tag-list">
+                          {icTraversal.points_of_interest.map((poi, i) => (
+                            <div key={i} className="tag-item">
+                              <input type="text" value={poi}
+                                onChange={e => setIcTraversal(p => ({ ...p, points_of_interest: p.points_of_interest.map((v, j) => j === i ? e.target.value : v) }))}
+                                placeholder="a notice board, a locked chest, a campfire, an old well, ..." />
+                              <button className="btn-remove-sm" onClick={() => setIcTraversal(p => ({ ...p, points_of_interest: p.points_of_interest.filter((_, j) => j !== i) }))}>&#x2715;</button>
+                            </div>
+                          ))}
+                          <button className="btn-add-sm" onClick={() => setIcTraversal(p => ({ ...p, points_of_interest: [...p.points_of_interest, ''] }))}>+ Add point</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* -- Combat -- */}
+                <div className="nested-card">
+                  <div className="nested-card-header">
+                    <button className="expand-btn" onClick={() => setIcSubOpen(p => ({ ...p, combat: !p.combat }))}>
+                      {icSubOpen.combat ? '▾' : '▸'}
+                    </button>
+                    <span className="inline-name" style={{ cursor: 'default', fontWeight: 600 }}
+                      title="Only fill this if the story begins mid-combat (e.g. an ambush as the opening scene). Most stories leave this empty.">Combat</span>
+                  </div>
+                  {icSubOpen.combat && (
+                    <div className="nested-card-body">
+                      <label className="checkbox-group" title="When checked, the pipeline treats the first player input as a combat action.">
+                        <input type="checkbox" checked={icCombat.active}
+                          onChange={e => setIcCombat(p => ({ ...p, active: e.target.checked }))} />
+                        Combat active at start
+                      </label>
+                      {icCombat.active && (
+                        <p className="section-hint">The player will be in initiative order from turn one. Encounter participants come from the story's encounter tables — make sure those are set up.</p>
+                      )}
+                      <div className="form-field compact">
+                        <label title="Which round of combat the fight starts in. Usually 1 unless you're dropping the player into an already ongoing battle.">Starting round</label>
+                        <input type="number" value={icCombat.round ?? ''} min={1}
+                          onChange={e => setIcCombat(p => ({ ...p, round: e.target.value ? Number(e.target.value) : null }))}
+                          placeholder="1" />
+                      </div>
+                      <div className="form-field compact">
+                        <label title="Describes the battlefield. The narrator uses this for combat descriptions. Pathfinder terrain keywords (difficult terrain, cover, elevation) are most useful.">Terrain / battlefield notes</label>
+                        <input type="text" value={icCombat.terrain_notes}
+                          onChange={e => setIcCombat(p => ({ ...p, terrain_notes: e.target.value }))}
+                          placeholder="narrow corridor with difficult terrain, open field with scattered boulders for cover, ..." />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* -- Social -- */}
+                <div className="nested-card">
+                  <div className="nested-card-header">
+                    <button className="expand-btn" onClick={() => setIcSubOpen(p => ({ ...p, social: !p.social }))}>
+                      {icSubOpen.social ? '▾' : '▸'}
+                    </button>
+                    <span className="inline-name" style={{ cursor: 'default', fontWeight: 600 }}
+                      title="Fill this if the adventure opens with an ongoing conversation or social encounter. Otherwise leave empty — it will populate naturally during play.">Social</span>
+                  </div>
+                  {icSubOpen.social && (
+                    <div className="nested-card-body">
+                      <div className="form-field compact">
+                        <label title="Brief summary of what's happening socially when the adventure starts. The chronicler uses this to track conversation progression.">Scene description</label>
+                        <input type="text" value={icSocial.scene}
+                          onChange={e => setIcSocial(p => ({ ...p, scene: e.target.value }))}
+                          placeholder="The innkeeper is chatting with a hooded stranger at the bar; a merchant argues with a guard at the door" />
+                      </div>
+                      <div className="form-field compact">
+                        <label title="Where in the conversation things stand. Helps the AI know whether to have NPCs introduce themselves or continue an ongoing exchange.">Conversation state</label>
+                        <input type="text" value={icSocial.conversation_state}
+                          onChange={e => setIcSocial(p => ({ ...p, conversation_state: e.target.value }))}
+                          placeholder="not yet started, introductions, mid-negotiation, heated argument, ..." />
+                      </div>
+                      <div className="form-field compact">
+                        <label title="What's at risk in this social encounter. Guides the AI in setting DCs and consequences for Diplomacy/Intimidate/Bluff checks.">Stakes</label>
+                        <input type="text" value={icSocial.stakes}
+                          onChange={e => setIcSocial(p => ({ ...p, stakes: e.target.value }))}
+                          placeholder="Gaining the elder's trust, buying supplies at a fair price, getting directions to the ruins, ..." />
+                      </div>
+                      <div className="form-field compact">
+                        <label title="NPCs the player can interact with right now. Names should match the NPC records you defined above. Attitude influences initial Diplomacy DCs.">NPCs in the social scene</label>
+                        {icSocial.npcs_present.map((npc, i) => (
+                          <div key={i} className="connection-row">
+                            <input type="text" value={npc.name} placeholder="NPC name (match NPCs section)"
+                              onChange={e => setIcSocial(p => ({ ...p, npcs_present: p.npcs_present.map((n, j) => j === i ? { ...n, name: e.target.value } : n) }))} />
+                            <input type="text" value={npc.role} placeholder="Role: innkeeper, guard, merchant, ..."
+                              onChange={e => setIcSocial(p => ({ ...p, npcs_present: p.npcs_present.map((n, j) => j === i ? { ...n, role: e.target.value } : n) }))} />
+                            <select value={npc.attitude} title="Starting attitude toward the player (Pathfinder Diplomacy scale)"
+                              onChange={e => setIcSocial(p => ({ ...p, npcs_present: p.npcs_present.map((n, j) => j === i ? { ...n, attitude: e.target.value as SocialNpcPresent['attitude'] } : n) }))}>
+                              <option value="friendly">friendly</option>
+                              <option value="indifferent">indifferent</option>
+                              <option value="unfriendly">unfriendly</option>
+                            </select>
+                            <input type="text" value={npc.notes} placeholder="Extra detail: nervous, hiding something, will offer a quest, ..."
+                              onChange={e => setIcSocial(p => ({ ...p, npcs_present: p.npcs_present.map((n, j) => j === i ? { ...n, notes: e.target.value } : n) }))} />
+                            <button className="btn-remove-sm" onClick={() => setIcSocial(p => ({ ...p, npcs_present: p.npcs_present.filter((_, j) => j !== i) }))}>&#x2715;</button>
+                          </div>
+                        ))}
+                        <button className="btn-add-sm" onClick={() => setIcSocial(p => ({ ...p, npcs_present: [...p.npcs_present, emptySocialNpc()] }))}>+ Add NPC</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* -- Exploration -- */}
+                <div className="nested-card">
+                  <div className="nested-card-header">
+                    <button className="expand-btn" onClick={() => setIcSubOpen(p => ({ ...p, exploration: !p.exploration }))}>
+                      {icSubOpen.exploration ? '▾' : '▸'}
+                    </button>
+                    <span className="inline-name" style={{ cursor: 'default', fontWeight: 600 }}
+                      title="Pre-seeded exploration state. Usually empty for new stories. Fill if the player should already know about certain items, secrets, or searched areas before play begins.">Exploration</span>
+                  </div>
+                  {icSubOpen.exploration && (
+                    <div className="nested-card-body">
+                      <div className="form-field compact">
+                        <label title="A detection spell or ability already active when the adventure starts (e.g. Detect Magic). Leave empty if none.">Active detection</label>
+                        <input type="text" value={icExploration.active_detection}
+                          onChange={e => setIcExploration(p => ({ ...p, active_detection: e.target.value }))}
+                          placeholder="Detect Magic, Detect Evil, ... (usually empty)" />
+                      </div>
+                      <div className="form-field compact">
+                        <label title="Areas the player has already searched before the adventure begins. Items here won't trigger new Perception checks.">Already searched areas</label>
+                        <div className="tag-list">
+                          {icExploration.searched_areas.map((a, i) => (
+                            <div key={i} className="tag-item">
+                              <input type="text" value={a}
+                                onChange={e => setIcExploration(p => ({ ...p, searched_areas: p.searched_areas.map((v, j) => j === i ? e.target.value : v) }))}
+                                placeholder="the bedroom nightstand, the front porch, ..." />
+                              <button className="btn-remove-sm" onClick={() => setIcExploration(p => ({ ...p, searched_areas: p.searched_areas.filter((_, j) => j !== i) }))}>&#x2715;</button>
+                            </div>
+                          ))}
+                          <button className="btn-add-sm" onClick={() => setIcExploration(p => ({ ...p, searched_areas: [...p.searched_areas, ''] }))}>+ Add area</button>
+                        </div>
+                      </div>
+                      <div className="form-field compact">
+                        <label title="Items the player already found or has knowledge of. These show up as known in the exploration tracker.">Already discovered items</label>
+                        <div className="tag-list">
+                          {icExploration.discovered_items.map((item, i) => (
+                            <div key={i} className="tag-item">
+                              <input type="text" value={item}
+                                onChange={e => setIcExploration(p => ({ ...p, discovered_items: p.discovered_items.map((v, j) => j === i ? e.target.value : v) }))}
+                                placeholder="a tattered journal, a rusted key, ..." />
+                              <button className="btn-remove-sm" onClick={() => setIcExploration(p => ({ ...p, discovered_items: p.discovered_items.filter((_, j) => j !== i) }))}>&#x2715;</button>
+                            </div>
+                          ))}
+                          <button className="btn-add-sm" onClick={() => setIcExploration(p => ({ ...p, discovered_items: [...p.discovered_items, ''] }))}>+ Add item</button>
+                        </div>
+                      </div>
+                      <div className="form-field compact">
+                        <label title="Hidden information the player already knows going in. Rare — only use for stories that pick up after a prior event.">Already discovered secrets</label>
+                        <div className="tag-list">
+                          {icExploration.discovered_secrets.map((s, i) => (
+                            <div key={i} className="tag-item">
+                              <input type="text" value={s}
+                                onChange={e => setIcExploration(p => ({ ...p, discovered_secrets: p.discovered_secrets.map((v, j) => j === i ? e.target.value : v) }))}
+                                placeholder="the innkeeper works for the bandits, the well leads to underground tunnels, ..." />
+                              <button className="btn-remove-sm" onClick={() => setIcExploration(p => ({ ...p, discovered_secrets: p.discovered_secrets.filter((_, j) => j !== i) }))}>&#x2715;</button>
+                            </div>
+                          ))}
+                          <button className="btn-add-sm" onClick={() => setIcExploration(p => ({ ...p, discovered_secrets: [...p.discovered_secrets, ''] }))}>+ Add secret</button>
+                        </div>
+                      </div>
+                      <div className="form-field compact">
+                        <label title="Open threads the player is aware of but hasn't resolved yet. These appear in the exploration tracker as active leads.">Pending investigations</label>
+                        <div className="tag-list">
+                          {icExploration.pending_investigations.map((inv, i) => (
+                            <div key={i} className="tag-item">
+                              <input type="text" value={inv}
+                                onChange={e => setIcExploration(p => ({ ...p, pending_investigations: p.pending_investigations.map((v, j) => j === i ? e.target.value : v) }))}
+                                placeholder="strange noises from the cellar, the missing merchant's last known route, ..." />
+                              <button className="btn-remove-sm" onClick={() => setIcExploration(p => ({ ...p, pending_investigations: p.pending_investigations.filter((_, j) => j !== i) }))}>&#x2715;</button>
+                            </div>
+                          ))}
+                          <button className="btn-add-sm" onClick={() => setIcExploration(p => ({ ...p, pending_investigations: [...p.pending_investigations, ''] }))}>+ Add investigation</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* -- Rest -- */}
+                <div className="nested-card">
+                  <div className="nested-card-header">
+                    <button className="expand-btn" onClick={() => setIcSubOpen(p => ({ ...p, rest: !p.rest }))}>
+                      {icSubOpen.rest ? '▾' : '▸'}
+                    </button>
+                    <span className="inline-name" style={{ cursor: 'default', fontWeight: 600 }}
+                      title="Only fill this if the story opens while the player is mid-rest (e.g. woken by an ambush during a long rest). Almost always left empty.">Rest</span>
+                  </div>
+                  {icSubOpen.rest && (
+                    <div className="nested-card-body">
+                      <label className="checkbox-group" title="Check if the player is currently in a long rest when the adventure begins. This blocks spell recovery and affects how interruptions are handled.">
+                        <input type="checkbox" checked={icRest.resting}
+                          onChange={e => setIcRest(p => ({ ...p, resting: e.target.checked }))} />
+                        Currently resting
+                      </label>
+                      <label className="checkbox-group" title="Check if the rest has already finished and the player simply hasn't acted yet. Enables spell/HP recovery processing on the first turn.">
+                        <input type="checkbox" checked={icRest.rest_complete}
+                          onChange={e => setIcRest(p => ({ ...p, rest_complete: e.target.checked }))} />
+                        Rest complete
+                      </label>
+                      <div className="form-field compact">
+                        <label title="How many hours of the rest have elapsed so far. E.g. if woken 4 hours into an 8-hour rest, set to 4.">Hours completed</label>
+                        <input type="number" value={icRest.hours_completed ?? ''} min={0}
+                          onChange={e => setIcRest(p => ({ ...p, hours_completed: e.target.value ? Number(e.target.value) : null }))}
+                          placeholder="0" />
+                      </div>
+                      <div className="form-field compact">
+                        <label title="Total hours needed for a full rest. Standard Pathfinder long rest is 8 hours.">Total hours needed</label>
+                        <input type="number" value={icRest.total_hours_needed ?? ''} min={0}
+                          onChange={e => setIcRest(p => ({ ...p, total_hours_needed: e.target.value ? Number(e.target.value) : null }))}
+                          placeholder="8" />
+                      </div>
+                      <div className="form-field compact">
+                        <label title="HP already recovered before the adventure starts. Usually 0 unless the story picks up after a partial rest.">HP recovered so far</label>
+                        <input type="number" value={icRest.hp_recovered ?? ''} min={0}
+                          onChange={e => setIcRest(p => ({ ...p, hp_recovered: e.target.value ? Number(e.target.value) : null }))}
+                          placeholder="0" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* -- Inventory -- */}
+                <div className="nested-card">
+                  <div className="nested-card-header">
+                    <button className="expand-btn" onClick={() => setIcSubOpen(p => ({ ...p, inventory: !p.inventory }))}>
+                      {icSubOpen.inventory ? '▾' : '▸'}
+                    </button>
+                    <span className="inline-name" style={{ cursor: 'default', fontWeight: 600 }}
+                      title="Tracks notable inventory changes between turns. Almost always empty at story start — the character sheet holds the full inventory. Only fill if the story gives the player a special item right away.">Inventory</span>
+                  </div>
+                  {icSubOpen.inventory && (
+                    <div className="nested-card-body">
+                      <div className="form-field compact">
+                        <label title="Items the player has just received or found. These are highlighted in the inventory tracker as new acquisitions.">Recently acquired items</label>
+                        <div className="tag-list">
+                          {icInventory.recently_acquired.map((item, i) => (
+                            <div key={i} className="tag-item">
+                              <input type="text" value={item}
+                                onChange={e => setIcInventory(p => ({ ...p, recently_acquired: p.recently_acquired.map((v, j) => j === i ? e.target.value : v) }))}
+                                placeholder="a sealed letter from the mayor, a healing potion, ..." />
+                              <button className="btn-remove-sm" onClick={() => setIcInventory(p => ({ ...p, recently_acquired: p.recently_acquired.filter((_, j) => j !== i) }))}>&#x2715;</button>
+                            </div>
+                          ))}
+                          <button className="btn-add-sm" onClick={() => setIcInventory(p => ({ ...p, recently_acquired: [...p.recently_acquired, ''] }))}>+ Add item</button>
+                        </div>
+                      </div>
+                      <div className="form-field compact">
+                        <label title="Limited-use items the player has on hand (potions, scrolls, wands with charges). The pipeline uses this to validate consumable usage.">Notable consumables on hand</label>
+                        <div className="tag-list">
+                          {icInventory.notable_consumables_remaining.map((c, i) => (
+                            <div key={i} className="tag-item">
+                              <input type="text" value={c}
+                                onChange={e => setIcInventory(p => ({ ...p, notable_consumables_remaining: p.notable_consumables_remaining.map((v, j) => j === i ? e.target.value : v) }))}
+                                placeholder="Potion of Cure Light Wounds, Scroll of Identify, 3 torches, ..." />
+                              <button className="btn-remove-sm" onClick={() => setIcInventory(p => ({ ...p, notable_consumables_remaining: p.notable_consumables_remaining.filter((_, j) => j !== i) }))}>&#x2715;</button>
+                            </div>
+                          ))}
+                          <button className="btn-add-sm" onClick={() => setIcInventory(p => ({ ...p, notable_consumables_remaining: [...p.notable_consumables_remaining, ''] }))}>+ Add consumable</button>
+                        </div>
+                      </div>
+                      <div className="form-field compact">
+                        <label title="Equipment the player has equipped differently from their character sheet defaults. E.g. if the story starts with armor removed.">Equipment overrides</label>
+                        <div className="tag-list">
+                          {icInventory.equipped_changes.map((eq, i) => (
+                            <div key={i} className="tag-item">
+                              <input type="text" value={eq}
+                                onChange={e => setIcInventory(p => ({ ...p, equipped_changes: p.equipped_changes.map((v, j) => j === i ? e.target.value : v) }))}
+                                placeholder="armor removed (sleeping), wearing a disguise, borrowed longsword, ..." />
+                              <button className="btn-remove-sm" onClick={() => setIcInventory(p => ({ ...p, equipped_changes: p.equipped_changes.filter((_, j) => j !== i) }))}>&#x2715;</button>
+                            </div>
+                          ))}
+                          <button className="btn-add-sm" onClick={() => setIcInventory(p => ({ ...p, equipped_changes: [...p.equipped_changes, ''] }))}>+ Add change</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
               </div>
             )}
           </div>

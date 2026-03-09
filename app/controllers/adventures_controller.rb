@@ -40,6 +40,7 @@ class AdventuresController < ApplicationController
     directed_dm = ActiveModel::Type::Boolean.new.cast(params[:directed_dm]) && FeatureFlag.enabled?(:directed_dm)
 
     start_loc = story.starting_location
+    seed = story.initial_contexts || {}
 
     @adventure = Adventure.new(
       user: current_user,
@@ -47,9 +48,12 @@ class AdventuresController < ApplicationController
       dm_mode: "standard",
       directed_dm: directed_dm,
       current_location: start_loc,
-      traversal_context: build_initial_traversal(start_loc),
-      combat_context: {},
-      social_context: {},
+      traversal_context: (seed["traversal_context"] || {}).deep_merge(build_initial_traversal(start_loc)),
+      combat_context: seed["combat_context"] || {},
+      social_context: seed["social_context"] || {},
+      exploration_context: seed["exploration_context"] || {},
+      rest_context: seed["rest_context"] || {},
+      inventory_context: seed["inventory_context"] || {},
       time_context: build_initial_time_context(story),
       story_summary: story.initial_summary
     )

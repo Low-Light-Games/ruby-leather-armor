@@ -15,6 +15,10 @@ Traversal: <%= @traversal_context.present? ? @traversal_context.to_json : "(none
 Exploration: <%= @exploration_context.present? ? @exploration_context.to_json : "(none)" %>
 
 Use these to know who is in the scene (e.g. npcs_present in Social, nearby_npcs in Traversal).
+LOCATION: The player's current location is defined by traversal_context.current_location. If
+current_location conflicts with other traversal fields (terrain, exits), trust current_location
+as the most recently updated field. Do NOT infer the player is somewhere else based on stale
+secondary fields. Do NOT fabricate location details not supported by the contexts above.
 
 === PLAYER'S ACTION ===
 Intent: <%= @intention %>
