@@ -12,10 +12,35 @@ class BestiaryEntry < ApplicationRecord
     ((score - 10).to_f / 2).floor
   end
 
+  CREATURE_TYPE_MAP = {
+    "humanoid"          => "npc",
+    "monstrous humanoid"=> "npc",
+    "npc"               => "npc",
+    "animal"            => "animal",
+    "beast"             => "beast",
+    "magical beast"     => "beast",
+    "dragon"            => "beast",
+    "monster"           => "monster",
+    "undead"            => "monster",
+    "construct"         => "monster",
+    "aberration"        => "monster",
+    "outsider"          => "monster",
+    "elemental"         => "monster",
+    "fey"               => "monster",
+    "ooze"              => "monster",
+    "plant"             => "monster",
+    "vermin"            => "monster",
+  }.freeze
+
+  def normalized_creature_type
+    raw = creature_type.to_s.downcase.strip
+    CREATURE_TYPE_MAP[raw] || (CreatureSheet::CREATURE_TYPES.include?(raw) ? raw : "monster")
+  end
+
   def to_creature_sheet_attrs(display_name: nil)
     {
       name: display_name || name,
-      creature_type: creature_type || "npc",
+      creature_type: normalized_creature_type,
       strength: strength, dexterity: dexterity, constitution: constitution,
       intelligence: intelligence, wisdom: wisdom, charisma: charisma,
       level: [cr.to_i, 1].max,
