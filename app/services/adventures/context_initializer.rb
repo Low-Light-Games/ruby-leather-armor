@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Adventure
+module Adventures
   # Builds the initial traversal and time contexts when starting a new adventure.
   class ContextInitializer
     TIME_CUE_PATTERNS = {

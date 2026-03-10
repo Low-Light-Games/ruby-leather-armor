@@ -37,9 +37,9 @@ class AdventuresController < ApplicationController
     story = Story.kept.find(params[:story_id])
     sheet = policy_scope(Sheet).find(params[:sheet_id])
 
-    stats   = Adventure::StartingStats.new(sheet)
+    stats   = Adventures::StartingStats.new(sheet)
     max_hp  = stats.starting_hp
-    ctx     = Adventure::ContextInitializer.new(story)
+    ctx     = Adventures::ContextInitializer.new(story)
 
     directed_dm = ActiveModel::Type::Boolean.new.cast(params[:directed_dm]) && FeatureFlag.enabled?(:directed_dm)
 
@@ -70,7 +70,7 @@ class AdventuresController < ApplicationController
         message_type: "narrative"
       )
 
-      Adventure::SheetCopier.new(
+      Adventures::SheetCopier.new(
         @adventure, sheet, max_hp: max_hp, currency: stats.remaining_currency
       ).call
 

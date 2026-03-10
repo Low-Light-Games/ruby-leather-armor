@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Adventure
+module Adventures
   # Copies a player Sheet into an AdventureSheet for a given adventure,
   # including all feat, spell, and item pivot records.
   class SheetCopier

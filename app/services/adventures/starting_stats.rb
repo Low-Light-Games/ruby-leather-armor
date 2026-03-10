@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Adventure
+module Adventures
   # Computes starting HP and remaining currency for a sheet entering an adventure.
   class StartingStats
     HIT_DIE_MAP = {
