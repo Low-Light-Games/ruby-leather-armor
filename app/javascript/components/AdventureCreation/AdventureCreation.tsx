@@ -1,157 +1,35 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../Navbar'
 import Login from '../Login'
-import { Story, Sheet, AdventureSummary } from '../../types'
-import { csrfToken } from '../../utils/api'
-import { formatCurrency } from '../../rules/pathfinder_items'
-import type { Currency } from '../../rules/pathfinder_items_types'
+import { useAdventureCreationData } from './hooks/useAdventureCreationData'
+import AdventureList from './AdventureList'
 import './AdventureCreation.scss'
-
-const WAIT_MESSAGES = [
-  "Sculpting nightmarish creatures from clay...",
-  "Convincing the universe to exist...",
-  "Teaching goblins to read...",
-  "Populating taverns with suspicious characters...",
-  "Rolling for initiative on your behalf...",
-  "Brewing mysterious potions...",
-  "Arguing with a dragon about property taxes...",
-  "Consulting ancient tomes of forbidden knowledge...",
-  "Hiring bards to compose your theme song...",
-  "Placing traps in convenient locations...",
-  "Negotiating with the dungeon's landlord...",
-  "Convincing mimics to hold still...",
-  "Calibrating the alignment of the stars...",
-  "Sharpening every sword in the kingdom...",
-  "Asking the oracle for directions...",
-]
 
 export const AdventureCreation = () => {
   const { user, loading: authLoading } = useAuth()
 
-  const [stories, setStories] = useState<Story[]>([])
-  const [sheets, setSheets] = useState<Sheet[]>([])
-  const [adventures, setAdventures] = useState<AdventureSummary[]>([])
+  const {
+    stories, sheets, adventures,
+    directedDmEnabled, loadingData, submitting, error, waitMessage,
+    submitAdventure, deleteAdventure,
+  } = useAdventureCreationData(user)
+
   const [selectedStoryId, setSelectedStoryId] = useState<number | ''>('')
   const [selectedSheetId, setSelectedSheetId] = useState<number | ''>('')
   const [directedDm, setDirectedDm] = useState(false)
-  const [directedDmEnabled, setDirectedDmEnabled] = useState(false)
-  const [loadingData, setLoadingData] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [waitMessage, setWaitMessage] = useState('')
-  const waitIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  const startWaitMessages = useCallback(() => {
-    const shuffled = [...WAIT_MESSAGES].sort(() => Math.random() - 0.5)
-    let idx = 0
-    setWaitMessage(shuffled[0])
-    waitIntervalRef.current = setInterval(() => {
-      idx = (idx + 1) % shuffled.length
-      setWaitMessage(shuffled[idx])
-    }, 3500)
-  }, [])
-
-  const stopWaitMessages = useCallback(() => {
-    if (waitIntervalRef.current) {
-      clearInterval(waitIntervalRef.current)
-      waitIntervalRef.current = null
-    }
-    setWaitMessage('')
-  }, [])
-
-  useEffect(() => {
-    if (!user) return
-
-    Promise.all([
-      fetch('/stories').then(r => r.json()),
-      fetch('/sheets.json').then(r => r.json()),
-      fetch('/adventures.json').then(r => r.json()),
-      fetch('/feature_flags.json').then(r => r.json()),
-    ])
-      .then(([storiesData, sheetsData, adventuresData, flagsData]) => {
-        setStories(storiesData)
-        setSheets(sheetsData)
-        setAdventures(adventuresData)
-        setDirectedDmEnabled(flagsData.enabled?.includes('directed_dm') ?? false)
-        setLoadingData(false)
-      })
-      .catch(err => {
-        console.error('Failed to load data:', err)
-        setError('Failed to load data.')
-        setLoadingData(false)
-      })
-  }, [user])
 
   const selectedStory = stories.find(s => s.id === selectedStoryId) || null
   const selectedSheet = sheets.find(s => s.id === selectedSheetId) || null
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedStoryId || !selectedSheetId) return
-
-    setSubmitting(true)
-    setError(null)
-    startWaitMessages()
-
-    try {
-      const response = await fetch('/adventures', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken(),
-        },
-        body: JSON.stringify({
-          story_id: selectedStoryId,
-          sheet_id: selectedSheetId,
-          directed_dm: directedDm,
-        }),
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || data.errors?.join(', ') || 'Failed to create adventure')
-      }
-
-      const adventure = await response.json()
-      window.location.href = `/adventures/${adventure.id}`
-    } catch (err) {
-      stopWaitMessages()
-      setError(err instanceof Error ? err.message : 'Something went wrong')
-      setSubmitting(false)
-    }
+    submitAdventure(selectedStoryId as number, selectedSheetId as number, directedDm)
   }
 
-  const handleDelete = async (adventureId: number) => {
-    if (!window.confirm('Are you sure you want to delete this adventure? This cannot be undone.')) return
-
-    try {
-      const response = await fetch(`/adventures/${adventureId}`, {
-        method: 'DELETE',
-        headers: { 'X-CSRF-Token': csrfToken() },
-      })
-
-      if (!response.ok) throw new Error('Failed to delete adventure')
-
-      setAdventures(prev => prev.filter(a => a.id !== adventureId))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete adventure')
-    }
-  }
-
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-      + ' ' + date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-  }
-
-  if (authLoading) {
-    return <div className="app">Loading...</div>
-  }
-
-  if (!user) {
-    return <Login />
-  }
+  if (authLoading) return <div className="app">Loading...</div>
+  if (!user) return <Login />
 
   return (
     <div className="app">
@@ -251,37 +129,11 @@ export const AdventureCreation = () => {
           )}
         </div>
 
-        <div className="ongoing-adventures">
-          <h1>Your Adventures</h1>
-          {loadingData ? (
-            <p>Loading...</p>
-          ) : adventures.length === 0 ? (
-            <p className="no-adventures">No adventures yet. Start one!</p>
-          ) : (
-            <ul className="adventure-list">
-              {adventures.map(adv => (
-                <li key={adv.id} className="adventure-list-item">
-                  <a href={`/adventures/${adv.id}`} className="adventure-link">
-                    <span className="adventure-character">{adv.character_name}</span>
-                    <span className="adventure-story">{adv.story_title}</span>
-                    <span className="adventure-meta">
-                      <span className="adventure-gold">{formatCurrency(adv.character_currency as Currency)}</span>
-                      <span className="adventure-date">Last played: {formatDate(adv.updated_at)}</span>
-                    </span>
-                  </a>
-                  <button
-                    className="adventure-delete"
-                    type="button"
-                    onClick={() => handleDelete(adv.id)}
-                    title="Delete adventure"
-                  >
-                    &times;
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <AdventureList
+          adventures={adventures}
+          loading={loadingData}
+          onDelete={deleteAdventure}
+        />
       </div>
     </div>
   )
