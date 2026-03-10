@@ -9,8 +9,6 @@ module DungeonMaster
       private
 
       def run_chronicler(intent, verdict_outcome: nil, encounter_triggered: false)
-        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        raw = nil
         prompt_summary = "Chronicler: plot_relevant action at #{@adventure.current_location&.name || 'unknown'}"
 
         enriched_premise = @adventure.enriched_premise.presence || @adventure.story.premise
@@ -51,20 +49,16 @@ module DungeonMaster
 
         request_body = { system_prompt: system_prompt, user_message: "Evaluate plot state for this action." }
 
-        raw = @ai.chat(
-          system_prompt: system_prompt,
-          user_message: "Evaluate plot state for this action.",
-          max_tokens: @config.token_budget_for("chronicler"),
-          step_name: "chronicler",
-          model: @config.model_for("chronicler"),
-        )
-
-        parsed = @ai.parse_json(raw)
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log!("chronicler", prompt_summary, raw, parsed,
-                     parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used, duration_ms: duration_ms,
-                     usage: @ai.last_usage)
+        parsed = timed_ai_call("chronicler", prompt_summary, request_body) do
+          raw = @ai.chat(
+            system_prompt: system_prompt,
+            user_message: "Evaluate plot state for this action.",
+            max_tokens: @config.token_budget_for("chronicler"),
+            step_name: "chronicler",
+            model: @config.model_for("chronicler"),
+          )
+          [raw, @ai.parse_json(raw)]
+        end
 
         apply_plot_state_updates(parsed["plot_state_updates"] || {})
 
@@ -75,22 +69,6 @@ module DungeonMaster
           atmosphere_notes: parsed["atmosphere_notes"].to_s,
           milestones_reached: parsed["milestones_reached"] || [],
         }
-      rescue TokenBudgetExceededError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log_error!("chronicler", prompt_summary, e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used, duration_ms: duration_ms,
-                           usage: @ai.last_usage)
-        raise
-      rescue AiError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log_error!("chronicler", prompt_summary, e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, model_used: @ai.last_model_used,
-                           duration_ms: duration_ms,
-                           usage: @ai.last_usage)
-        raise
       end
 
       def build_undiscovered_clues(all_clues, discovered_ids)

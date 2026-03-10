@@ -31,14 +31,12 @@ module DungeonMaster
         rolls = evaluation[:player_rolls]
         return evaluation if rolls.empty?
 
-        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         scope = @config.get("roll_qualifier_scope") || "domain"
         scope = "domain" unless VALID_SCOPES.include?(scope)
 
         context_names = resolve_qualifier_contexts(scope, evaluation)
         context_block = build_qualifier_context_block(context_names)
 
-        raw = nil
         prompt_summary = "RollQualifier [#{evaluation[:domain]}]: \"#{@log.truncate(intent[:intention])}\" — " \
                          "#{rolls.size} roll(s), scope=#{scope}"
 
@@ -50,30 +48,17 @@ module DungeonMaster
           scene_summary: @adventure.scene_summary.presence || "(no scene summary)")
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
-        raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
-                        max_tokens: @config.token_budget_for("roll_qualifier"),
-                        step_name: "roll_qualifier",
-                        model: @config.model_for("roll_qualifier"))
-        parsed = @ai.parse_json(raw)
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log!("roll_qualifier", prompt_summary, raw, parsed,
-                     parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used, duration_ms: duration_ms, usage: @ai.last_usage)
+
+        parsed = timed_ai_call("roll_qualifier", prompt_summary, request_body) do
+          raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
+                          max_tokens: @config.token_budget_for("roll_qualifier"),
+                          step_name: "roll_qualifier",
+                          model: @config.model_for("roll_qualifier"))
+          [raw, @ai.parse_json(raw)]
+        end
 
         apply_qualifier_results(evaluation, parsed)
-      rescue TokenBudgetExceededError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log_error!("roll_qualifier", prompt_summary || "RollQualifier failed", e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used, duration_ms: duration_ms, usage: @ai.last_usage)
-        evaluation
-      rescue AiError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log_error!("roll_qualifier", prompt_summary || "RollQualifier failed", e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body,
-                           model_used: @ai.last_model_used, duration_ms: duration_ms, usage: @ai.last_usage)
+      rescue TokenBudgetExceededError, AiError
         evaluation
       end
 

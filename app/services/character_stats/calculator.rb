@@ -453,7 +453,7 @@ module CharacterStats
 
         result[:armor_bonus]  += item.armor_bonus
         result[:shield_bonus] += item.shield_bonus
-        result[:armor_check_penalty] += item.armor_check_penalty  # already negative
+        result[:armor_check_penalty] += item.armor_check_penalty if item.armor_check_penalty.present? # already negative
         result[:arcane_spell_failure] += item.arcane_spell_failure
 
         # Max DEX bonus: take the most restrictive (lowest non-nil)

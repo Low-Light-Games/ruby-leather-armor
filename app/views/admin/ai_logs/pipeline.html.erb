@@ -54,7 +54,7 @@
       </div>
       <div class="ps-item">
         <span class="ps-label">Total AI Time</span>
-        <% total_ai = @logs.sum(&:duration_ms) %>
+        <% total_ai = @logs.sum { |l| l.duration_ms.to_i } %>
         <span class="ps-value"><%= total_ai && total_ai > 0 ? format_duration_ms(total_ai) : "—" %></span>
       </div>
       <div class="ps-item">

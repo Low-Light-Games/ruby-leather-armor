@@ -15,8 +15,6 @@ module DungeonMaster
       private
 
       def run_unified_evaluation(intention, category)
-        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        raw = nil
         prompt_summary = "UnifiedEval: \"#{@log.truncate(intention)}\""
 
         char_block      = CharacterBlock.full(@sheet)
@@ -40,38 +38,21 @@ module DungeonMaster
           domain_mecheval_hints: domain_mecheval_hints)
 
         request_body = { system_prompt: system_prompt, user_message: intention }
-        raw = @ai.chat(
-          system_prompt: system_prompt, user_message: intention,
-          max_tokens: @config.token_budget_for("unified_evaluation"),
-          step_name: "unified_evaluation",
-          model: @config.model_for("unified_evaluation"))
-        parsed = @ai.parse_json(raw)
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log!("unified_evaluation", prompt_summary, raw, parsed,
-                     parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used, duration_ms: duration_ms, usage: @ai.last_usage)
+
+        parsed = timed_ai_call("unified_evaluation", prompt_summary, request_body) do
+          raw = @ai.chat(
+            system_prompt: system_prompt, user_message: intention,
+            max_tokens: @config.token_budget_for("unified_evaluation"),
+            step_name: "unified_evaluation",
+            model: @config.model_for("unified_evaluation"))
+          [raw, @ai.parse_json(raw)]
+        end
 
         intent, evaluations = parse_unified_response(parsed, intention, category)
-
         evaluations = evaluations.map { |eval| apply_qualifier_results(eval, intent) }
-
         log_unified_to_loop(intent, evaluations)
 
         [intent, evaluations]
-      rescue TokenBudgetExceededError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round if t0
-        @log.ai_log_error!("unified_evaluation", prompt_summary || "UnifiedEvaluation failed", e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used, duration_ms: duration_ms, usage: @ai.last_usage)
-        raise
-      rescue AiError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round if t0
-        @log.ai_log_error!("unified_evaluation", prompt_summary || "UnifiedEvaluation failed", e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body,
-                           model_used: @ai.last_model_used, duration_ms: duration_ms, usage: @ai.last_usage)
-        raise
       end
 
       # -------------------------------------------------------------------

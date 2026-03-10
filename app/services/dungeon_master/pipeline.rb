@@ -15,6 +15,7 @@ module DungeonMaster
   class Pipeline
     PROMPT_CATEGORIES = %w[combat traversal social exploration rest inventory dm_query].freeze
 
+    include Steps::Helpers
     include Steps::Triage
     include Steps::DmQuery
     include Steps::PlayerInterpreter

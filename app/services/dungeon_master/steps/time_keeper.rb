@@ -148,8 +148,6 @@ module DungeonMaster
       end
 
       def estimate_via_ai(intent, verdict_result)
-        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        raw = nil
         time_ctx = @adventure.time_context || {}
         outcome  = verdict_result&.dig(:outcome) || intent[:intention]
         prompt_summary = "TimeKeeper: \"#{@log.truncate(outcome)}\""
@@ -165,16 +163,14 @@ module DungeonMaster
           has_destination: intent[:destination].present?)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
-        raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
-                       max_tokens: @config.token_budget_for("time_keeper"),
-                       step_name: "time_keeper",
-                       model: @config.model_for("time_keeper"))
-        parsed = @ai.parse_json(raw)
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log!("time_keeper", prompt_summary, raw, parsed,
-                     parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used, duration_ms: duration_ms,
-                     usage: @ai.last_usage)
+
+        parsed = timed_ai_call("time_keeper", prompt_summary, request_body) do
+          raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
+                         max_tokens: @config.token_budget_for("time_keeper"),
+                         step_name: "time_keeper",
+                         model: @config.model_for("time_keeper"))
+          [raw, @ai.parse_json(raw)]
+        end
 
         hours = (parsed["hours_elapsed"] || 0.0017).to_f.clamp(0, 720)
         distance = parsed["distance_miles"]&.to_f
@@ -196,22 +192,7 @@ module DungeonMaster
             speed_factors: { source: "ai_estimate" }
           } : nil
         }
-      rescue TokenBudgetExceededError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log_error!("time_keeper", prompt_summary || "TimeKeeper failed", e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used, duration_ms: duration_ms,
-                           usage: @ai.last_usage)
-        { hours: 0.0017, source: :ai_fallback, terrain: nil, is_journey: false,
-          speed_mph: nil, journey_data: nil }
-      rescue AiError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log_error!("time_keeper", prompt_summary || "TimeKeeper failed", e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, model_used: @ai.last_model_used,
-                           duration_ms: duration_ms,
-                           usage: @ai.last_usage)
+      rescue TokenBudgetExceededError, AiError
         { hours: 0.0017, source: :ai_fallback, terrain: nil, is_journey: false,
           speed_mph: nil, journey_data: nil }
       end

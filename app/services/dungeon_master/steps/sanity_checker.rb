@@ -119,46 +119,24 @@ module DungeonMaster
       end
 
       def run_ai_capability_check(intent)
-        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        raw = nil
         prompt_summary = "SanityChecker/capability: \"#{@log.truncate(intent[:intention])}\""
-
         char_block = CharacterBlock.full(@sheet)
 
         system_prompt = PromptRenderer.render("sanity_checker",
           character_block: char_block)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
-        raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
-                        max_tokens: @config.token_budget_for("sanity_checker"),
-                        step_name: "sanity_checker",
-                        model: @config.model_for("sanity_checker"))
-        parsed = @ai.parse_json(raw)
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log!("sanity_checker", prompt_summary, raw, parsed,
-                     parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used, duration_ms: duration_ms,
-                     usage: @ai.last_usage)
 
-        {
-          allowed: parsed["allowed"] != false,
-          reason: parsed["reason"]
-        }
-      rescue TokenBudgetExceededError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log_error!("sanity_checker", prompt_summary, e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used, duration_ms: duration_ms,
-                           usage: @ai.last_usage)
-        { allowed: true, reason: nil }
-      rescue AiError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log_error!("sanity_checker", prompt_summary, e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, model_used: @ai.last_model_used,
-                           duration_ms: duration_ms,
-                           usage: @ai.last_usage)
+        parsed = timed_ai_call("sanity_checker", prompt_summary, request_body) do
+          raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
+                          max_tokens: @config.token_budget_for("sanity_checker"),
+                          step_name: "sanity_checker",
+                          model: @config.model_for("sanity_checker"))
+          [raw, @ai.parse_json(raw)]
+        end
+
+        { allowed: parsed["allowed"] != false, reason: parsed["reason"] }
+      rescue TokenBudgetExceededError, AiError
         { allowed: true, reason: nil }
       end
 
@@ -167,8 +145,6 @@ module DungeonMaster
       # ------------------------------------------------------------------
 
       def run_world_consistency_check(intent)
-        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        raw = nil
         prompt_summary = "SanityChecker/world: \"#{@log.truncate(intent[:intention])}\""
 
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
@@ -192,37 +168,21 @@ module DungeonMaster
           npc_names: npc_names)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
-        raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
-                        max_tokens: @config.token_budget_for("sanity_checker_world"),
-                        step_name: "sanity_checker_world",
-                        model: @config.model_for("sanity_checker_world"))
-        parsed = @ai.parse_json(raw)
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log!("sanity_checker_world", prompt_summary, raw, parsed,
-                     parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used, duration_ms: duration_ms,
-                     usage: @ai.last_usage)
+
+        parsed = timed_ai_call("sanity_checker_world", prompt_summary, request_body) do
+          raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
+                          max_tokens: @config.token_budget_for("sanity_checker_world"),
+                          step_name: "sanity_checker_world",
+                          model: @config.model_for("sanity_checker_world"))
+          [raw, @ai.parse_json(raw)]
+        end
 
         {
           consistent: parsed["consistent"] != false,
           reason: parsed["reason"],
           referenced_entities: Array(parsed["referenced_entities"])
         }
-      rescue TokenBudgetExceededError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log_error!("sanity_checker_world", prompt_summary, e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used, duration_ms: duration_ms,
-                           usage: @ai.last_usage)
-        { consistent: true, reason: nil, referenced_entities: [] }
-      rescue AiError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log_error!("sanity_checker_world", prompt_summary, e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, model_used: @ai.last_model_used,
-                           duration_ms: duration_ms,
-                           usage: @ai.last_usage)
+      rescue TokenBudgetExceededError, AiError
         { consistent: true, reason: nil, referenced_entities: [] }
       end
     end

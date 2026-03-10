@@ -25,17 +25,10 @@ module DungeonMaster
 
         previous_summaries = []
         evaluations = []
-        current_raw = nil
-        current_request_body = nil
-        current_prompt_summary = nil
-        t0 = nil
 
         contexts.each_with_index do |domain, idx|
-          current_raw = nil
-          current_request_body = nil
-          t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-          current_prompt_summary = "MechEval [#{domain}] iteration #{idx + 1}/#{contexts.size}: " \
-                                   "\"#{@log.truncate(intent[:intention])}\""
+          prompt_summary = "MechEval [#{domain}] iteration #{idx + 1}/#{contexts.size}: " \
+                           "\"#{@log.truncate(intent[:intention])}\""
 
           rules_text = Rules.fetch(*intent[:rules_needed])
           char_block = CharacterBlock.for(@sheet, category: domain)
@@ -53,16 +46,15 @@ module DungeonMaster
             rules_text: rules_text,
             domain_instructions: domain_instructions)
 
-          current_request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
-          current_raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
-                                  max_tokens: @config.token_budget_for("mechanical_evaluation"),
-                                  step_name: "mechanical_evaluation",
-                                  model: @config.model_for("mechanical_evaluation"))
-          parsed = @ai.parse_json(current_raw)
-          duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-          @log.ai_log!("mechanical_evaluation", current_prompt_summary, current_raw, parsed,
-                       parse_status: @ai.last_parse_status, request_body: current_request_body,
-                       model_used: @ai.last_model_used, duration_ms: duration_ms, usage: @ai.last_usage)
+          request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
+
+          parsed = timed_ai_call("mechanical_evaluation", prompt_summary, request_body) do
+            raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
+                            max_tokens: @config.token_budget_for("mechanical_evaluation"),
+                            step_name: "mechanical_evaluation",
+                            model: @config.model_for("mechanical_evaluation"))
+            [raw, @ai.parse_json(raw)]
+          end
 
           evaluation = {
             domain: domain,
@@ -80,21 +72,6 @@ module DungeonMaster
         end
 
         evaluations
-      rescue TokenBudgetExceededError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round if t0
-        @log.ai_log_error!("mechanical_evaluation", current_prompt_summary || "MechanicalEvaluation loop failed", e,
-                           raw_response: current_raw || @ai.last_failed_raw_response,
-                           request_body: current_request_body,
-                           status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used, duration_ms: duration_ms, usage: @ai.last_usage)
-        raise
-      rescue AiError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round if t0
-        @log.ai_log_error!("mechanical_evaluation", current_prompt_summary || "MechanicalEvaluation loop failed", e,
-                           raw_response: current_raw || @ai.last_failed_raw_response,
-                           request_body: current_request_body,
-                           model_used: @ai.last_model_used, duration_ms: duration_ms, usage: @ai.last_usage)
-        raise
       end
 
       def merge_mechanical_evaluations(evaluations)

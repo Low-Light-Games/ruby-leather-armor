@@ -33,8 +33,6 @@ module DungeonMaster
       end
 
       def run_micro_context_update(what_happened, mutations, affected_contexts)
-        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        raw = nil
         prompt_summary = "Micro context update"
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
 
@@ -60,38 +58,17 @@ module DungeonMaster
 
         user_msg = "Update contexts based on the above."
         request_body = { system_prompt: system_prompt, user_message: user_msg }
-        raw = @ai.chat(system_prompt: system_prompt, user_message: user_msg,
-                        max_tokens: @config.token_budget_for("micro_context_update"),
-                        step_name: "micro_context_update",
-                        model: @config.model_for("micro_context_update"))
-        parsed = @ai.parse_json(raw)
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log!("micro_context_update", prompt_summary, raw, parsed,
-                     parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used, duration_ms: duration_ms,
-                     usage: @ai.last_usage)
-        parsed
-      rescue TokenBudgetExceededError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log_error!("micro_context_update", prompt_summary, e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used, duration_ms: duration_ms,
-                           usage: @ai.last_usage)
-        {}
-      rescue AiError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log_error!("micro_context_update", prompt_summary, e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, model_used: @ai.last_model_used,
-                           duration_ms: duration_ms,
-                           usage: @ai.last_usage)
-        {}
+
+        timed_ai_call("micro_context_update", prompt_summary, request_body, on_error: {}) do
+          raw = @ai.chat(system_prompt: system_prompt, user_message: user_msg,
+                          max_tokens: @config.token_budget_for("micro_context_update"),
+                          step_name: "micro_context_update",
+                          model: @config.model_for("micro_context_update"))
+          [raw, @ai.parse_json(raw)]
+        end
       end
 
       def run_macro_narrative_update(what_happened)
-        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        raw = nil
         prompt_summary = "Macro narrative update"
 
         system_prompt = PromptRenderer.render("macro_narrative_update",
@@ -101,33 +78,14 @@ module DungeonMaster
 
         user_msg = "Update the story summary."
         request_body = { system_prompt: system_prompt, user_message: user_msg }
-        raw = @ai.chat(system_prompt: system_prompt, user_message: user_msg,
-                        max_tokens: @config.token_budget_for("macro_narrative_update"),
-                        step_name: "macro_narrative_update",
-                        model: @config.model_for("macro_narrative_update"))
-        parsed = @ai.parse_json(raw)
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log!("macro_narrative_update", prompt_summary, raw, parsed,
-                     parse_status: @ai.last_parse_status, request_body: request_body,
-                     model_used: @ai.last_model_used, duration_ms: duration_ms,
-                     usage: @ai.last_usage)
-        parsed
-      rescue TokenBudgetExceededError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log_error!("macro_narrative_update", prompt_summary, e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, status: "token_budget_exceeded",
-                           model_used: @ai.last_model_used, duration_ms: duration_ms,
-                           usage: @ai.last_usage)
-        {}
-      rescue AiError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log_error!("macro_narrative_update", prompt_summary, e,
-                           raw_response: raw || @ai.last_failed_raw_response,
-                           request_body: request_body, model_used: @ai.last_model_used,
-                           duration_ms: duration_ms,
-                           usage: @ai.last_usage)
-        {}
+
+        timed_ai_call("macro_narrative_update", prompt_summary, request_body, on_error: {}) do
+          raw = @ai.chat(system_prompt: system_prompt, user_message: user_msg,
+                          max_tokens: @config.token_budget_for("macro_narrative_update"),
+                          step_name: "macro_narrative_update",
+                          model: @config.model_for("macro_narrative_update"))
+          [raw, @ai.parse_json(raw)]
+        end
       end
 
       def persist_micro_contexts(parsed)
