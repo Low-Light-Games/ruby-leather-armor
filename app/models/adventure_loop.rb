@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class AdventureLoop < ApplicationRecord
-  belongs_to :adventure
+  belongs_to :adventure, optional: true
 
   STATUSES = %w[pending resolving paused resolved encounter errored].freeze
 

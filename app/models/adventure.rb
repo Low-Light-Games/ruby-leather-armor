@@ -9,6 +9,7 @@ class Adventure < ApplicationRecord
   has_many :adventure_messages, dependent: :destroy
   has_many :dm_logs, dependent: :nullify
   has_many :ai_logs, dependent: :nullify
+  has_many :adventure_loops, dependent: :nullify
   has_many :pipeline_runs, dependent: :destroy
   has_many :creature_sheets, dependent: :destroy
   has_many :story_npcs, dependent: :destroy
