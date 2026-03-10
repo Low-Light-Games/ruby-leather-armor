@@ -92,17 +92,17 @@ class AdventuresController < ApplicationController
     end
   end
 
-  # DELETE /adventures/:id
+  # DELETE /adventures/:id - soft-deletes the adventure
   def destroy
     authorize(@adventure)
-    @adventure.destroy!
+    @adventure.discard!
     render json: { message: "Adventure deleted" }, status: :ok
   end
 
   private
 
   def set_adventure
-    @adventure = Adventure.find(params[:id])
+    @adventure = Adventure.kept.find(params[:id])
   end
 
   def adventure_summary(adventure)

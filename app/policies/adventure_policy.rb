@@ -20,7 +20,7 @@ class AdventurePolicy < ApplicationPolicy
       if user.admin?
         scope.all
       else
-        scope.where(user_id: user.id)
+        scope.kept.where(user_id: user.id)
       end
     end
   end

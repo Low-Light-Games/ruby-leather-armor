@@ -3,11 +3,17 @@
 <div class="adventures-index">
   <div class="adventures-header">
     <h1>Adventures</h1>
-    <span class="total-count"><%= @adventures.size %> adventures</span>
+    <span class="total-count"><%= @adventures.size %> <%= @show_discarded ? "deleted" : "active" %> adventures</span>
+    <div class="filter-tabs">
+      <%= link_to "Active", admin_adventures_path(story_id: params[:story_id]),
+            class: "filter-tab #{"active" unless @show_discarded}" %>
+      <%= link_to "Deleted", admin_adventures_path(discarded: "1", story_id: params[:story_id]),
+            class: "filter-tab #{"active" if @show_discarded}" %>
+    </div>
   </div>
 
   <% if @adventures.empty? %>
-    <p class="empty-msg">No adventures found.</p>
+    <p class="empty-msg">No <%= @show_discarded ? "deleted" : "active" %> adventures found.</p>
   <% else %>
     <table class="adventures-table">
       <thead>
@@ -18,13 +24,16 @@
           <th class="col-char">Character</th>
           <th class="col-location">Location</th>
           <th class="col-scene">Scene</th>
-          <th class="col-time">Last Active</th>
+          <th class="col-time"><%= @show_discarded ? "Deleted At" : "Last Active" %></th>
+          <% if @show_discarded %>
+            <th class="col-actions"></th>
+          <% end %>
         </tr>
       </thead>
       <tbody>
         <% @adventures.each do |adventure| %>
           <% sheet = adventure.adventure_sheets.first %>
-          <tr>
+          <tr class="<%= "discarded-row" if adventure.discarded? %>">
             <td class="col-id">
               <a href="<%= admin_adventure_path(adventure) %>" class="adv-link">#<%= adventure.id %></a>
             </td>
@@ -42,7 +51,17 @@
             </td>
             <td class="col-location"><%= adventure.current_location&.name || '—' %></td>
             <td class="col-scene"><%= truncate(adventure.scene_summary || '—', length: 50) %></td>
-            <td class="col-time"><%= adventure.updated_at.strftime('%b %d %H:%M') %></td>
+            <td class="col-time">
+              <% ts = @show_discarded ? adventure.discarded_at : adventure.updated_at %>
+              <%= ts&.strftime('%b %d %H:%M') || '—' %>
+            </td>
+            <% if @show_discarded %>
+              <td class="col-actions">
+                <%= button_to "Delete forever", admin_adventure_path(adventure), method: :delete,
+                      data: { confirm: "Permanently delete adventure ##{adventure.id}? This cannot be undone." },
+                      class: "btn-danger" %>
+              </td>
+            <% end %>
           </tr>
         <% end %>
       </tbody>
@@ -63,6 +82,16 @@
   .total-count { color: #888; font-size: 14px; }
   .empty-msg { color: #888; font-style: italic; }
 
+  .filter-tabs {
+    display: flex; gap: 4px; margin-left: auto;
+  }
+  .filter-tab {
+    padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: 600;
+    text-decoration: none; color: #555; background: #f0f0f0; border: 1px solid #ddd;
+    &:hover { background: #e0e0e0; }
+    &.active { background: #343a40; color: white; border-color: #343a40; }
+  }
+
   .adventures-table {
     width: 100%; border-collapse: collapse; font-size: 13px;
     th {
@@ -71,6 +100,7 @@
     }
     td { padding: 10px 10px; border-bottom: 1px solid #e9ecef; vertical-align: middle; }
     tr:hover { background-color: #f5f5f5; }
+    tr.discarded-row { opacity: 0.75; }
     .col-id { width: 50px; }
     .col-user { width: 120px; }
     .col-story { max-width: 200px; }
@@ -78,10 +108,16 @@
     .col-location { max-width: 150px; }
     .col-scene { max-width: 250px; color: #555; font-style: italic; }
     .col-time { width: 110px; white-space: nowrap; font-family: monospace; font-size: 12px; color: #666; }
+    .col-actions { width: 130px; text-align: right; }
   }
   .adv-link { color: #1565c0; text-decoration: none; font-weight: 600; &:hover { text-decoration: underline; } }
   .story-link { color: #1565c0; text-decoration: none; &:hover { text-decoration: underline; } }
   .char-name { font-weight: 600; color: #333; }
   .char-level { font-size: 11px; color: #888; margin-left: 4px; }
   .empty-cell { color: #bbb; }
+  .btn-danger {
+    background: #c62828; color: white; border: none; padding: 5px 10px;
+    border-radius: 4px; font-size: 12px; cursor: pointer; white-space: nowrap;
+    &:hover { background: #b71c1c; }
+  }
 </style>

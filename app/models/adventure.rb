@@ -15,9 +15,20 @@ class Adventure < ApplicationRecord
   has_many :story_npcs, dependent: :destroy
   has_many :story_clues, dependent: :destroy
 
+  scope :kept,      -> { where(discarded_at: nil) }
+  scope :discarded, -> { where.not(discarded_at: nil) }
+
   DM_MODES = %w[standard].freeze
 
   validates :dm_mode, inclusion: { in: DM_MODES }, allow_nil: true
+
+  def discard!
+    update!(discarded_at: Time.current)
+  end
+
+  def discarded?
+    discarded_at.present?
+  end
 
   def directed_dm?
     directed_dm == true

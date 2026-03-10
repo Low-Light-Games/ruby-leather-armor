@@ -3,16 +3,21 @@
 module Admin
   class AdventuresController < ApplicationController
     before_action :require_admin
-    before_action :set_adventure, only: [:show, :update, :reset_context, :update_sheet, :update_story_element]
+    before_action :set_adventure, only: [:show, :update, :reset_context, :update_sheet, :update_story_element, :destroy]
 
     CONTEXT_FIELDS = %w[traversal combat social exploration rest inventory].freeze
 
     def index
+      @show_discarded = params[:discarded] == "1"
       @adventures = Adventure.includes(:user, :story, :current_location, :adventure_sheets)
                              .order(updated_at: :desc)
-      if params[:story_id].present?
-        @adventures = @adventures.where(story_id: params[:story_id])
-      end
+      @adventures = @show_discarded ? @adventures.discarded : @adventures.kept
+      @adventures = @adventures.where(story_id: params[:story_id]) if params[:story_id].present?
+    end
+
+    def destroy
+      @adventure.destroy!
+      redirect_to admin_adventures_path, notice: "Adventure ##{@adventure.id} permanently deleted."
     end
 
     def show

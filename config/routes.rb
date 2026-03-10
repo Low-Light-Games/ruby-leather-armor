@@ -20,7 +20,7 @@ Rails.application.routes.draw do
   get "admin/all_sheets" => "admin#all_sheets"
 
   namespace :admin do
-    resources :adventures, only: [:index, :show, :update] do
+    resources :adventures, only: [:index, :show, :update, :destroy] do
       member do
         patch :reset_context
         patch :update_sheet
