@@ -25,7 +25,8 @@ module DungeonMaster
     include Steps::RollQualifier
     include Steps::SanityChecker
     include Steps::UnifiedEvaluation
-    include Steps::Verdict
+    include Steps::Mechanic
+    include Steps::Momentum
     include Steps::TimeKeeper
     include Steps::Stagehand
     include Steps::Chronicler
@@ -97,8 +98,7 @@ module DungeonMaster
                             accumulated_mutations: [mutations].compact)
       else
         run_accumulated_output_phase(
-          [{ status: :encounter, intent: intent, narrate_seed: narrate_seed, mutations: mutations }],
-          player_action: metadata["player_message_content"])
+          [{ status: :encounter, intent: intent, narrate_seed: narrate_seed, mutations: mutations }])
       end
     end
 
@@ -125,8 +125,7 @@ module DungeonMaster
                             accumulated_mutations: [result[:mutations]])
       else
         run_accumulated_output_phase(
-          [result], prior_seeds: prior_seeds,
-          player_action: metadata["player_message_content"])
+          [result], prior_seeds: prior_seeds)
       end
     end
 
@@ -211,7 +210,7 @@ module DungeonMaster
       clear_action_label
       log_queue_completed(total) if total > 1
 
-      run_accumulated_output_phase(accumulated, player_action: clean_input)
+      run_accumulated_output_phase(accumulated)
     end
 
     # Continue the action queue after a roll pause or from a mid-queue resume.
@@ -287,7 +286,7 @@ module DungeonMaster
     # Accumulated output phase
     # ----------------------------------------------------------------
 
-    def run_accumulated_output_phase(results, prior_seeds: [], player_action: nil)
+    def run_accumulated_output_phase(results, prior_seeds: [])
       return { action: :narrated, narrative: "", adventure_complete: false } if results.empty?
 
       merged_intent = merge_result_intents(results)
@@ -298,7 +297,7 @@ module DungeonMaster
       dm_brief = nil
       last_resolved = results.last
       if merged_intent[:plot_relevant]
-        verdict_outcome = last_resolved[:narrate_seed]
+        verdict_outcome = @loop&.get("verdict_outcome") || last_resolved[:narrate_seed]
         plot_result = resolve_plot(merged_intent, verdict_outcome: verdict_outcome,
                                    encounter_triggered: encounter_triggered)
         dm_brief = plot_result&.dig(:dm_brief)
@@ -314,7 +313,6 @@ module DungeonMaster
         narrate_seed: combined_seed,
         mutations: combined_mutations.presence,
         dm_brief: dm_brief,
-        player_action: combined_seed.blank? ? player_action : nil,
         extra: extra)
 
       if output_result[:action] == :awaiting_initiative

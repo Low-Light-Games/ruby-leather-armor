@@ -45,6 +45,7 @@ module DungeonMaster
           traversal_context: traversal_ctx,
           exploration_context: exploration_ctx,
           encounter_triggered: encounter_triggered,
+          chronicler_tone_direction: @config.get("chronicler_tone_direction") == true,
         )
 
         request_body = { system_prompt: system_prompt, user_message: "Evaluate plot state for this action." }
@@ -61,6 +62,11 @@ module DungeonMaster
         end
 
         apply_plot_state_updates(parsed["plot_state_updates"] || {})
+
+        adventure_complete = parsed["adventure_complete"] == true
+        @loop&.batch_update!(
+          new_data: { "adventure_complete" => adventure_complete },
+          timeline_entry: { "step" => "chronicler", "summary" => "adventure_complete=#{adventure_complete}", "at" => Time.current.iso8601 })
 
         {
           dm_brief: parsed["narration_guidance"].to_s,

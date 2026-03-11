@@ -16,6 +16,7 @@ module Admin
 
       # Boolean toggles
       new_settings["verbose"] = params[:verbose] == "1"
+      new_settings["chronicler_tone_direction"] = params[:chronicler_tone_direction] == "1"
 
       # Numeric settings
       if params[:temperature].present?
@@ -24,11 +25,11 @@ module Admin
       end
 
       if params[:pacing_words_min].present?
-        new_settings["pacing_words_min"] = params[:pacing_words_min].to_i.clamp(30, 500)
+        new_settings["pacing_words_min"] = params[:pacing_words_min].to_i.clamp(10, 500)
       end
 
       if params[:pacing_words_max].present?
-        new_settings["pacing_words_max"] = params[:pacing_words_max].to_i.clamp(50, 1000)
+        new_settings["pacing_words_max"] = params[:pacing_words_max].to_i.clamp(20, 1000)
       end
 
       if params[:sanitization_threshold].present?

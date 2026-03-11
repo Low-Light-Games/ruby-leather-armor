@@ -17,7 +17,7 @@ class OpenaiModelCatalog
   FALLBACK_TOKEN_BUDGETS = {
     "sanitize" => 400, "classify" => 300, "dm_query" => 400, "sequencer" => 300, "player_interpreter" => 300,
     "beacon" => 500, "mechanical_evaluation" => 600, "roll_qualifier" => 500, "sanity_checker" => 400, "sanity_checker_world" => 600,
-    "verdict" => 700, "time_keeper" => 400, "narrate" => 900,
+    "mechanic" => 700, "momentum" => 600, "time_keeper" => 400, "narrate" => 900,
     "micro_context_update" => 900, "macro_narrative_update" => 600,
     "edge_pipeline" => 2500
   }.freeze

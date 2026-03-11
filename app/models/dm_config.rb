@@ -4,7 +4,7 @@ class DmConfig < ApplicationRecord
   # without migrations.
   TOKEN_BUDGET_STEPS = %w[
     sanitize classify dm_query sequencer player_interpreter beacon mechanical_evaluation
-    roll_qualifier sanity_checker sanity_checker_world verdict time_keeper chronicler narrate
+    roll_qualifier sanity_checker sanity_checker_world mechanic momentum time_keeper chronicler narrate
     micro_context_update macro_narrative_update
     edge_pipeline creature_generation unified_evaluation
   ].freeze
@@ -26,7 +26,8 @@ class DmConfig < ApplicationRecord
     "roll_qualifier"         => "Fast, cheap model with broader context. Situational modifiers and Take 10/20 — e.g. gpt-4.1-nano, gpt-4o-mini.",
     "sanity_checker"         => "Fast, cheap model. Sheet validation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini. Only used in AI mode.",
     "sanity_checker_world"   => "⚠️ Capable model REQUIRED. Cross-references player actions against full game state. Unlikely to perform well with budget models. Recommended: gpt-4o-mini or better (gpt-4.1-mini, o3-mini, gpt-5-mini).",
-    "verdict"                => "➡️ Capable model suggested. Post-roll arbitration and mutation generation — e.g. o3-mini, o4-mini, gpt-5-mini.",
+    "mechanic"               => "➡️ Capable model suggested. Post-roll arbitration and mutation generation — e.g. o3-mini, o4-mini, gpt-5-mini.",
+    "momentum"               => "Mid-tier model. Non-mechanical outcome determination and context-domain assessment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
     "time_keeper"            => "Fast, cheap model. Estimates in-game time for an action — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "chronicler"             => "➡️ Capable model suggested. Receives social, traversal, and exploration context; condition matching and scene-aware NPC reactions. Use a capable model and sufficient token budget — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
     "narrate"                => "Creative model. Narrative quality scales with capability — e.g. gpt-4.1, gpt-4o, gpt-5.",
@@ -62,8 +63,8 @@ class DmConfig < ApplicationRecord
   DEFAULTS = {
     "verbose" => false,
     "temperature" => 0.8,
-    "pacing_words_min" => 80,
-    "pacing_words_max" => 150,
+    "pacing_words_min" => 40,
+    "pacing_words_max" => 120,
     "sanitization_threshold" => 30,
     "model" => "gpt-4o-mini",
     "step_models" => {},
@@ -78,6 +79,7 @@ class DmConfig < ApplicationRecord
     "evaluation_mode" => "standard",
     "roll_qualifier_scope" => "domain",
     "scene_history_depth" => 10,
+    "chronicler_tone_direction" => false,
     "creature_creation_fallback" => "ai",
     "terrain_speed_modifiers" => {
       "road" => 1.0, "trail" => 0.75, "urban" => 1.0, "coast" => 0.75,
@@ -96,7 +98,8 @@ class DmConfig < ApplicationRecord
       "roll_qualifier" => 400,
       "sanity_checker" => 300,
       "sanity_checker_world" => 500,
-      "verdict" => 600,
+      "mechanic" => 600,
+      "momentum" => 500,
       "time_keeper" => 300,
       "chronicler" => 500,
       "narrate" => 800,

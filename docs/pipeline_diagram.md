@@ -47,7 +47,11 @@ flowchart TB
     O -->|no| Q[World consistency check]
     Q --> Q1{Consistent?}
     Q1 -->|no| REJECT
-    Q1 -->|yes| R[TimeKeeper]
+    Q1 -->|yes| R_NM[TimeKeeper]
+    R_NM --> R_NM1{Encounter?}
+    R_NM1 -->|yes| ENC
+    R_NM1 -->|no| MOMENTUM[Momentum]
+    MOMENTUM --> RES
 
     subgraph full_gate["Full gate (parallel)"]
         P --> P1[Mechanical evaluation loop]
@@ -65,7 +69,7 @@ flowchart TB
     T -->|yes| PAUSE_ROLLS[Return :awaiting_rolls]
     T -->|no| U[finish_resolution]
     U --> V[Resolve NPC actions]
-    V --> W[Verdict]
+    V --> W[Mechanic]
     W --> X[Apply mutations]
     X --> R
 
@@ -122,7 +126,7 @@ flowchart LR
     subgraph roll_resume["Roll result submitted"]
         RR[run_rolls] --> RR1[Restore intent + merged]
         RR1 --> RR2[finish_resolution]
-        RR2 --> RR3[Verdict → Mutations → TimeKeeper]
+        RR2 --> RR3[Mechanic → Mutations → TimeKeeper]
         RR3 --> RR4{More in queue?}
         RR4 -->|yes| RR5[run_remaining_queue]
         RR4 -->|no| RR6[run_accumulated_output_phase]
@@ -151,10 +155,11 @@ flowchart LR
 | **Beacon** | Per domain (parallel): affected?, needs_mechanics?, rules_needed, transition, destination. |
 | **Mechanical evaluation** | Per affected context: rolls, NPC actions, consequences, summary. |
 | **Sanity checker** | World consistency + capability guardrail (parallel with mech eval). |
-| **Verdict** | Factual outcome + structured mutations from rolls + NPC results. |
-| **TimeKeeper** | Estimate time → Harbinger (encounters) → GameClock advance. |
-| **Chronicler** | Plot/clue/NPC reaction brief for Narrate (if story data exists). |
-| **Narrate** | Prose from outcome + contexts + dm_brief. |
+| **Mechanic** | Factual outcome + structured mutations from rolls + NPC results (mechanical path). |
+| **Momentum** | Factual outcome + affected contexts for non-mechanical actions. |
+| **TimeKeeper** | Estimate time → Harbinger (encounters) → GameClock advance. Stores journey_data on loop. |
+| **Chronicler** | Plot/clue/NPC reaction brief for Narrate (if story data exists). Determines adventure_complete. |
+| **Narrate** | Prose from outcome + contexts + dm_brief. Reads what_happened from loop. |
 | **Micro context update** | Update affected + active context JSONBs. |
 | **Macro narrative update** | Update story summary (if macro_significant). |
 

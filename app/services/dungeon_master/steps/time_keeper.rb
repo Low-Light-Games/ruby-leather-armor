@@ -28,8 +28,10 @@ module DungeonMaster
       def run_time_keeper(intent, verdict_result)
         estimated = estimate_time(intent, verdict_result)
         @log.dm_log!("TimeKeeper: estimated=#{estimated[:hours].round(4)}h, source=#{estimated[:source]}")
+        time_loop_data = { "hours_elapsed" => estimated[:hours].round(4), "time_source" => estimated[:source].to_s }
+        time_loop_data["journey_data"] = estimated[:journey_data] if estimated[:journey_data]
         @loop&.batch_update!(
-          new_data: { "hours_elapsed" => estimated[:hours].round(4), "time_source" => estimated[:source].to_s },
+          new_data: time_loop_data,
           timeline_entry: { "step" => "time_keeper", "summary" => "#{estimated[:hours].round(4)}h (#{estimated[:source]})", "at" => Time.current.iso8601 })
 
         harbinger_result = consult_harbinger_if_needed(estimated, intent)

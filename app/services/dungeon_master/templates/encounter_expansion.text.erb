@@ -19,11 +19,15 @@ Near: <%= @location %>
 - If the hint mentions specific creatures, describe them but do not determine the outcome.
 - List each distinct creature type and how many appear. Use singular bestiary names
   (e.g. "goblin" not "goblins", "wolf" not "wolves").
+- List any NEW world elements introduced by this encounter (shrines, ruins, landmarks,
+  NPCs, objects) that did not exist in the traversal context above. If the encounter
+  only involves creatures and no new environmental elements, return an empty array.
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
   "scene": "The vivid scene description ending at the point of decision",
   "creatures": [
     { "name": "goblin", "count": 4 }
-  ]
+  ],
+  "new_elements": ["ancient shrine", "collapsed bridge"]
 }

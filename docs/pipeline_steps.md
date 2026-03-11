@@ -134,9 +134,9 @@ data), we guarantee that NPC combat is mechanically honest. The
 MechanicalEvaluation step decides *what* the NPC does and *what modifier*
 applies; the app decides *what the die shows*.
 
-**Trade-off accepted:** the Verdict step receives NPC results as text
+**Trade-off accepted:** the Mechanic step receives NPC results as text
 ("Goblin A rolled 14 + 3 = 17 vs AC 15: HIT") rather than structured
-data. This is slightly more work to parse but keeps the verdict prompt
+data. This is slightly more work to parse but keeps the mechanic prompt
 human-readable.
 
 **Player rolls are different:** the player submits their own roll results
@@ -172,20 +172,22 @@ considered but would have duplicated verdict, narration, and context
 updates — far more expensive and harder to merge into a coherent
 narrative.
 
-### 5. Verdict before narration (mechanics-first ordering)
+### 5. Mechanic/Momentum before narration (facts-first ordering)
 
-**Decision:** determine the factual mechanical outcome before writing
-any narrative.
+**Decision:** determine the factual outcome before writing any narrative,
+on both the mechanical path (Mechanic) and the non-mechanical path
+(Momentum).
 
 **Why:** if the model narrates and evaluates simultaneously, narrative
-bias corrupts mechanical accuracy. The model might write a dramatic
-"the goblin collapses!" moment and then produce mutations showing the
-goblin at 3 HP — or vice versa, produce correct mutations but a
-narrative that contradicts them.
+bias corrupts accuracy. The model might write a dramatic "the goblin
+collapses!" moment and then produce mutations showing the goblin at 3 HP
+— or vice versa, produce correct mutations but a narrative that
+contradicts them.
 
-By running Verdict first, the Narrate step receives a factual outcome it
-must faithfully narrate. It cannot contradict the mechanics because it
-didn't determine them.
+By running Mechanic (post-roll arbitration) or Momentum (non-mechanical
+outcome determination) first, the Narrate step receives a factual outcome
+it must faithfully narrate. Both steps write `verdict_outcome` to the
+adventure loop, giving Narrate a single read location regardless of path.
 
 **Trade-off accepted:** two AI calls where one might suffice. The cost
 is justified by correctness — mechanical errors in a Pathfinder game
@@ -194,7 +196,7 @@ player's trust in the DM.
 
 ### 6. Structured mutations instead of natural language
 
-**Decision:** the Verdict step outputs explicit structured mutations
+**Decision:** the Mechanic step outputs explicit structured mutations
 (`{ "hp_change": -8 }`) rather than prose ("the goblin takes 8 damage").
 
 **Why:** the app must apply these changes to the database. If the AI
@@ -203,7 +205,7 @@ produces natural language, the app must parse it — "takes 8 damage",
 thing but require NLP to extract. Structured JSON is unambiguous and
 directly actionable.
 
-This also makes mutations auditable. Every `AiLog` entry for a `verdict`
+This also makes mutations auditable. Every `AiLog` entry for a `mechanic`
 step contains the exact mutations that were applied, traceable back to
 the rolls and evaluations that produced them.
 
@@ -655,11 +657,11 @@ effectively decomposed for budget models.
 ### 27. Stagehand as code-only synthesis step
 
 **Decision:** make the Stagehand step a pure code step with no AI call.
-It sits between Verdict and the output phase (Narrate + ContextUpdate),
-packaging results and dispatching the output steps.
+It sits between Mechanic/Momentum and the output phase (Narrate +
+ContextUpdate), packaging results and dispatching the output steps.
 
 **Why:** the original step was an AI call that duplicated work already
-done by the Verdict step. Both received roll results and produced
+done by the Mechanic step. Both received roll results and produced
 outcomes — the only difference was one was "factual" and one was
 "mechanical." In practice, the model often contradicted itself. By
 making Stagehand a code-only routing layer, we eliminate the redundancy
@@ -739,7 +741,8 @@ The pipeline has **two entry points**:
 **Action queuing:** when `action_queue` is enabled, the Sequencer step
 detects compound player inputs ("I rest, then head to the village") and
 splits them into an ordered queue. Each action is resolved sequentially
-by the CoreResolver (beacon → mechanics → verdict → time_keeper).
+by the CoreResolver (beacon → mechanics → mechanic → time_keeper, or
+beacon → world check → time_keeper → momentum).
 Encounters break the loop; roll requests pause it with remaining actions
 stored in metadata for resumption.
 
@@ -794,7 +797,7 @@ run_prompt(player_input)
 +--------------+---------------------+
                |
                |  needs_mechanics == false
-               +---------------------------> EVALUATE (code) --> OUTPUT PHASE
+               +--> WORLD CHECK --> TIME KEEPER --> MOMENTUM --> OUTPUT PHASE
                |
                |  needs_mechanics == true
                v
@@ -834,13 +837,13 @@ run_prompt(player_input)
 +------------------------------------------+
 |            RESOLUTION FLOW               |
 |  1. Resolve NPC actions (app-side rolls) |
-|  2. RULING (AI -- post-roll arbitration) |
+|  2. MECHANIC (AI -- post-roll arbiter)   |
 |  3. Apply mutations (app-side)           |
 |  4. TIME KEEPER (code-first + AI fallback)|
 |     -> Harbinger util (encounter check)  |
 |     -> GameClock util (clock advance)    |
 |  5. CHRONICLER (plot state, optional)    |
-|  6. EVALUATE (code -- synthesis/routing) |
+|  6. STAGEHAND (code -- routing)          |
 |  7. OUTPUT PHASE                         |
 |     +-------------------------------+    |
 |     | narration_mode == "parallel": |    |
@@ -876,7 +879,8 @@ Each step is documented in detail in its own file.
 | 4c | **RollQualifier** | AI (per domain, after 4a when rolls exist) | [steps/roll_qualifier.md](steps/roll_qualifier.md) |
 | 4b | **SanityChecker** (capability + world) | Code/AI + AI (parallel with 4a) | [steps/sanity_checker.md](steps/sanity_checker.md) |
 | -- | **NPC Roll Resolution** | App-side | [steps/npc_rolls.md](steps/npc_rolls.md) |
-| 5 | **Verdict** | AI | [steps/verdict.md](steps/verdict.md) |
+| 5 | **Mechanic** | AI (mechanical path) | [steps/mechanic.md](steps/mechanic.md) |
+| 5a | **Momentum** | AI (non-mechanical path) | [steps/momentum.md](steps/momentum.md) |
 | 5b | **TimeKeeper** | Code-first, AI fallback | [steps/time_keeper.md](steps/time_keeper.md) |
 | -- | **Harbinger** (utility) | Code-only (called by TimeKeeper) | [steps/harbinger.md](steps/harbinger.md) |
 | -- | **Warmaster** (utility) | Code + opt. AI (creature_generation) | [steps/warmaster.md](steps/warmaster.md) |
@@ -899,7 +903,7 @@ All AI steps follow the same error handling pattern:
    returns `finish_reason: length`. This is a hard error for critical
    steps -- even truncated non-empty responses are rejected. The error is
    logged with `status: "token_budget_exceeded"` and re-raised (for
-   sanitize, classify, player_interpreter, mechanical evaluation, verdict, narrate) or
+   sanitize, classify, player_interpreter, mechanical evaluation, mechanic, momentum, narrate) or
    swallowed with an empty result (for context updates and capability
    guardrail, which are non-critical).
 
@@ -930,7 +934,7 @@ Every AI call produces an `AiLog` record containing:
 
 | Field | Description |
 |---|---|
-| `step` | Pipeline step name (sanitize, classify, player_interpreter, beacon, mechanical_evaluation, sanity_checker, sanity_checker_world, verdict, chronicler, narrate, micro_context_update, macro_narrative_update, edge_pipeline) |
+| `step` | Pipeline step name (sanitize, classify, player_interpreter, beacon, mechanical_evaluation, sanity_checker, sanity_checker_world, mechanic, momentum, chronicler, narrate, micro_context_update, macro_narrative_update, edge_pipeline) |
 | `prompt_summary` | Truncated description of what was asked |
 | `raw_response` | The complete API response |
 | `parsed_response` | The parsed JSON |
@@ -1024,8 +1028,9 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 |---|---|---|
 | `sanitization_threshold` | `30` | Sanitize: danger score cutoff (0-100) |
 | `verbose` | `false` | Narrate: enables unconstrained response length |
-| `pacing_words_min` | `80` | Narrate: minimum word count target when verbose is off |
-| `pacing_words_max` | `150` | Narrate: maximum word count target when verbose is off |
+| `pacing_words_min` | `40` | Narrate: minimum word count target when verbose is off |
+| `pacing_words_max` | `120` | Narrate: maximum word count target when verbose is off |
+| `chronicler_tone_direction` | `false` | Chronicler: when true, includes atmosphere/tone guidance in DM Brief |
 | `temperature` | `0.8` | All steps: creativity/randomness (non-reasoning models only) |
 | `model` | `gpt-4o-mini` | Default model for all steps |
 | `step_models[step]` | `{}` | Per-step model override |
@@ -1050,7 +1055,8 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `mechanical_evaluation` | 500 |
 | `sanity_checker` | 300 |
 | `sanity_checker_world` | 500 |
-| `verdict` | 600 |
+| `mechanic` | 600 |
+| `momentum` | 500 |
 | `time_keeper` | 300 |
 | `chronicler` | 500 |
 | `narrate` | 800 |

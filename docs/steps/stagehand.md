@@ -5,14 +5,24 @@
 
 ## Purpose
 
-Code-only routing step. Sits between the Verdict step and
+Code-only routing step. Sits between the Mechanic/Momentum step and
 the output phase (Narrate + ContextUpdate). No AI call.
 
 Responsibilities:
-1. Package the verdict outcome and DM brief into a `narrate_seed`
-2. Package the factual outcome and mutations into directives for
-   ContextUpdate
-3. Dispatch the output phase based on `narration_mode` config
+1. Check if combat beacon signaled combat_started (Path B Warmaster gate)
+2. Package outcome + DM brief into a narrative seed for Narrate
+3. Package factual outcome + mutations into directives for ContextUpdate
+4. Read `affected_contexts` from the loop (set by Momentum or Beacon),
+   falling back to `intent[:affected_contexts]` when unavailable
+5. Read `adventure_complete` from the loop (set by Chronicler)
+6. Dispatch the output phase based on `narration_mode` config
+
+## Loop data read
+
+| Key | Purpose |
+|---|---|
+| `affected_contexts` | Merged context domains from Momentum/Beacon — passed to ContextUpdate |
+| `adventure_complete` | Boolean set by Chronicler — signals adventure conclusion |
 
 ## narration_mode
 

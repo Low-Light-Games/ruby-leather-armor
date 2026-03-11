@@ -1,8 +1,8 @@
-# Verdict (post-roll arbitration)
+# Mechanic (post-roll arbitration)
 
-**File:** `app/services/dungeon_master/steps/verdict.rb`
-**Template:** `app/services/dungeon_master/templates/verdict.text.erb`
-**Pipeline step name:** `verdict`
+**File:** `app/services/dungeon_master/steps/mechanic.rb`
+**Template:** `app/services/dungeon_master/templates/mechanic.text.erb`
+**Pipeline step name:** `mechanic`
 
 ## Purpose
 
@@ -12,13 +12,14 @@ the factual mechanical outcome. Did the attack hit? How much damage? Did
 the save succeed? What conditions apply?
 
 The output is factual, not narrative. It produces structured **mutations**
-that the app applies to the database.
+that the app applies to the database. Writes `verdict_outcome` to the
+adventure loop so downstream steps (Narrate, Stagehand) can read it.
 
 ## Input
 
 | Field | Source |
 |---|---|
-| System prompt | `verdict.text.erb` bound with: full player character block, mechanical evaluation summaries text, combined roll results (player + NPC), pending consequences, formatted micro-contexts |
+| System prompt | `mechanic.text.erb` bound with: full player character block, mechanical evaluation summaries text, combined roll results (player + NPC), pending consequences, formatted micro-contexts |
 | User message | The player's intention (from PlayerInterpreter step) |
 
 ## Output (JSON)
@@ -45,18 +46,16 @@ that the app applies to the database.
       }
     ],
     "items_consumed": ["Potion of Cure Light Wounds"],
-    "spells_used": ["Magic Missile"],
-    "travel": {
-      "hours_traveled": 10,
-      "distance_covered": "approximately 40 miles on horseback along road",
-      "new_location": "approaching the village outskirts"
-    }
+    "spells_used": ["Magic Missile"]
   }
 }
 ```
 
-The `travel` field is present when the action involves movement or travel.
-It is `null` when no meaningful movement occurs.
+## Loop data written
+
+| Key | Value |
+|---|---|
+| `verdict_outcome` | The `outcome` string (truncated to 500 chars) |
 
 ## App-side post-processing
 
@@ -67,20 +66,22 @@ The `mutations` hash is applied by `DungeonMaster::Mutations#apply_mutations`:
 - **NPC HP**: clamped between 0 and `max_hp`
 - **NPC attitude changes**: validated against `CreatureSheet::ATTITUDES`
   before persisting
-- **Travel**: flows through to the Context Update step where it drives
-  `traversal_context.current_location` updates
 - **Conditions, items, spells**: logged but not yet mechanically enforced
   (future enhancement)
 
-The `outcome` text is forwarded as the `narrate_seed` to the Stagehand
-(output orchestration) step.
+The `outcome` text is stored on the loop as `verdict_outcome` and read
+by the Narrate step via the loop (not passed as a parameter).
 
 ## Design rationale
 
-Separating verdict from narration ensures the mechanical outcome is
+Separating mechanical arbitration from narration ensures the outcome is
 determined objectively before the narrative is written. The mutations
 structure is intentionally explicit (HP changes, not "takes damage") so
 the app can apply them without interpreting natural language.
 
+Previously named "Verdict" — renamed to "Mechanic" to better reflect its
+role as mechanical-only arbitration, distinct from the new Momentum step
+which handles non-mechanical outcomes.
+
 See [Design Philosophy](../design_philosophy.md) (Correctness over speed)
-and [Decision 5: Verdict before narration](../pipeline_steps.md).
+and [Decision 5: Mechanic before narration](../pipeline_steps.md).

@@ -30,14 +30,30 @@
         <div class="range-pair">
           <div class="range-input">
             <label for="pacing_words_min">Min words</label>
-            <%= number_field_tag :pacing_words_min, @config.pacing_words_min, min: 30, max: 500, class: "config-input" %>
+            <%= number_field_tag :pacing_words_min, @config.pacing_words_min, min: 10, max: 500, class: "config-input" %>
           </div>
           <div class="range-input">
             <label for="pacing_words_max">Max words</label>
-            <%= number_field_tag :pacing_words_max, @config.pacing_words_max, min: 50, max: 1000, class: "config-input" %>
+            <%= number_field_tag :pacing_words_max, @config.pacing_words_max, min: 20, max: 1000, class: "config-input" %>
           </div>
         </div>
         <p class="field-hint">Word target range given to the DM for each response (only when Verbose DM is off).</p>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <h2>Chronicler</h2>
+
+      <div class="config-field toggle-field">
+        <label class="toggle-label" for="chronicler_tone_direction">
+          <%= check_box_tag :chronicler_tone_direction, "1", @config.get("chronicler_tone_direction") == true, id: "chronicler_tone_direction", class: "toggle-checkbox" %>
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">Tone Direction</span>
+        </label>
+        <p class="field-hint">
+          When <strong>off</strong> (default), the Chronicler acts only as a spoiler gate — it decides what to reveal or hide, but does NOT direct tone, atmosphere, or prose style.
+          When <strong>on</strong>, the Chronicler also provides atmospheric and tonal guidance to the narrator.
+        </p>
       </div>
     </div>
 

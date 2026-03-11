@@ -69,9 +69,12 @@ module DungeonMaster
         return maybe_warmaster_for_encounter(intent, time_result, mutations: nil)
       end
 
+      momentum_result = run_momentum(intent)
+
       {
         status: :resolved, intent: intent,
-        narrate_seed: nil, mutations: nil,
+        narrate_seed: momentum_result[:outcome],
+        mutations: momentum_result[:mutations].presence,
         time_result: time_result
       }
     end
@@ -79,10 +82,10 @@ module DungeonMaster
     # Post-roll completion: verdict → mutations → time_keeper
     def finish_resolution(intent, merged, roll_results)
       npc_results = resolve_npc_actions(merged[:npc_actions])
-      verdict_result = run_verdict(intent, merged, roll_results: roll_results, npc_results: npc_results)
+      verdict_result = run_mechanic(intent, merged, roll_results: roll_results, npc_results: npc_results)
       @loop&.batch_update!(
         new_data: { "verdict_outcome" => verdict_result[:outcome].to_s.truncate(500) },
-        timeline_entry: { "step" => "verdict", "summary" => verdict_result[:outcome].to_s.truncate(120), "at" => Time.current.iso8601 })
+        timeline_entry: { "step" => "mechanic", "summary" => verdict_result[:outcome].to_s.truncate(120), "at" => Time.current.iso8601 })
       apply_mutations(verdict_result[:mutations])
 
       time_result = run_time_keeper(intent, verdict_result)
@@ -121,14 +124,14 @@ module DungeonMaster
           return {
             status: :awaiting_initiative, intent: intent,
             creature_data: warmaster_result[:creature_data],
-            narrate_seed: time_result[:encounter_narrative],
+            narrate_seed: @loop&.get("verdict_outcome"),
             mutations: mutations, time_result: time_result
           }
         end
       end
 
       { status: :encounter, intent: intent,
-        narrate_seed: time_result[:encounter_narrative],
+        narrate_seed: @loop&.get("verdict_outcome"),
         mutations: mutations, time_result: time_result }
     end
 
@@ -182,9 +185,12 @@ module DungeonMaster
         return maybe_warmaster_for_encounter(intent, time_result, mutations: nil)
       end
 
+      momentum_result = run_momentum(intent)
+
       {
         status: :resolved, intent: intent,
-        narrate_seed: nil, mutations: nil,
+        narrate_seed: momentum_result[:outcome],
+        mutations: momentum_result[:mutations].presence,
         time_result: time_result
       }
     end

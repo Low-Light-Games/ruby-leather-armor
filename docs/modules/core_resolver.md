@@ -10,35 +10,55 @@ through time_keeper. Extracted from `Pipeline` so the outer orchestrator
 resolution logic.
 
 CoreResolver is a module included by `Pipeline`. It calls step methods
-(beacon, mechanics gate, verdict, time_keeper) that are already mixed
-into Pipeline via their own step modules.
+(beacon, mechanics gate, mechanic, momentum, time_keeper) that are
+already mixed into Pipeline via their own step modules.
 
 ## Interface
 
 ### `resolve(intention, category)`
 
-Full resolution: beacon → full gate (mech eval + world check + cap check)
-→ [verdict + mutations + time_keeper]. On the non-mechanics path: beacon
-→ world check → time_keeper. Returns a result hash with `:status`:
+Full resolution with two paths:
+
+**Mechanical path:** beacon → full gate (mech eval + world check + cap check)
+→ mechanic + mutations → time_keeper. Returns `:resolved` with
+`narrate_seed` from the mechanic outcome.
+
+**Non-mechanical path:** beacon → world check → time_keeper → momentum.
+Returns `:resolved` with `narrate_seed` from the momentum outcome.
+`verdict_outcome` is always written to the loop by either Mechanic or
+Momentum, so downstream steps have a single read location.
 
 | Status | Meaning |
 |---|---|
 | `:resolved` | Action fully resolved. `narrate_seed` and `mutations` available. |
 | `:awaiting_rolls` | Rolls needed. `intent` and `merged` available for roll pause. |
-| `:encounter` | Harbinger triggered an encounter. `narrate_seed` has the encounter narrative. |
+| `:awaiting_initiative` | Combat starting, waiting for player initiative roll. |
+| `:encounter` | Harbinger triggered an encounter. `narrate_seed` from loop's `verdict_outcome`. |
 | `:rejected` | SanityChecker rejected the action (capability or world consistency). `reason` available. |
 
 ### `finish_resolution(intent, merged, roll_results)`
 
-Post-roll completion: verdict → mutations → time_keeper. Called when the
+Post-roll completion: mechanic → mutations → time_keeper. Called when the
 player submits roll results. Returns the same result hash structure as
 `resolve`.
+
+### `maybe_warmaster_for_encounter(intent, time_result, mutations:)`
+
+Called when Harbinger triggers an encounter (Path A). Encounter data is
+read exclusively from the loop (set by Harbinger during TimeKeeper).
+Returns `:awaiting_initiative` or `:encounter`.
+
+### `resolve_unified(intention, category)`
+
+Unified evaluation path: single AI call replaces beacons + mech eval +
+roll qualifier. Sanity checks still run independently. Same two-path
+structure (mechanical/non-mechanical) as `resolve`.
 
 ## Result hash shape
 
 ```ruby
 {
-  status:       :resolved | :awaiting_rolls | :encounter | :rejected,
+  status:       :resolved | :awaiting_rolls | :encounter | :rejected | :awaiting_initiative,
   intent:       { intention:, affected_contexts:, ... },
   narrate_seed: "Factual outcome text" | nil,
   mutations:    { player: ..., npcs: ... } | nil,
@@ -67,7 +87,7 @@ Roll resumption calls `finish_resolution` then continues the queue if
 ## Design rationale
 
 **Why a module, not a class?** CoreResolver calls step methods
-(`run_beacon`, `run_full_gate`, `run_verdict`, etc.) that are
+(`run_beacon`, `run_full_gate`, `run_mechanic`, etc.) that are
 mixed into Pipeline. A separate class would need all those dependencies
 injected. A module shares Pipeline's instance variables naturally.
 

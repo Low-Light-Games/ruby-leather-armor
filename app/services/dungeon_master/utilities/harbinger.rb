@@ -125,12 +125,17 @@ module DungeonMaster
 
         scene = parsed["scene"] || parsed["narrative"] || parsed["description"] || entry.description
         creatures = Array(parsed["creatures"]).select { |c| c.is_a?(Hash) && c["name"].present? }
+        new_elements = Array(parsed["new_elements"]).select(&:present?)
 
-        if loop && creatures.any?
+        if loop
+          loop_data = { "encounter_scene" => scene.to_s.truncate(1000) }
+          loop_data["encounter_creatures"] = creatures if creatures.any?
+          loop_data["encounter_new_elements"] = new_elements if new_elements.any?
           creature_summary = creatures.map { |c| "#{c['count'] || 1}x #{c['name']}" }.join(", ")
+          summary = creatures.any? ? "Scene + #{creature_summary}" : "Scene (no creatures)"
           loop.batch_update!(
-            new_data: { "encounter_scene" => scene.to_s.truncate(1000), "encounter_creatures" => creatures },
-            timeline_entry: { "step" => "encounter_expand", "summary" => "Scene + #{creature_summary}", "at" => Time.current.iso8601 })
+            new_data: loop_data,
+            timeline_entry: { "step" => "encounter_expand", "summary" => summary, "at" => Time.current.iso8601 })
         end
 
         scene

@@ -30,9 +30,10 @@ skipped.
   "clues_to_reveal": [{ "id": 1, "title": "..." }],
   "clues_attempted": [{ "id": 2, "title": "...", "reason": "why it failed" }],
   "npc_reactions": { "NPC Name": "brief reaction instruction" },
-  "atmosphere_notes": "optional atmospheric detail",
+  "atmosphere_notes": "optional atmospheric detail (only when chronicler_tone_direction is enabled)",
   "milestones_reached": [{ "title": "...", "consequence": "..." }],
   "narration_guidance": "DM Brief for the narrator",
+  "adventure_complete": false,
   "plot_state_updates": {
     "discovered_clues_add": [1],
     "attempted_clues_add": [2],
@@ -43,11 +44,31 @@ skipped.
 }
 ```
 
+## Key fields
+
+- **`adventure_complete`**: boolean. When `true`, signals that all key
+  milestones have been reached and the story has naturally concluded.
+  Written to the loop; read by Stagehand to set the adventure-complete
+  flag on the response. (Moved here from Narrate — Chronicler has full
+  plot context and is better positioned to make this determination.)
+- **`atmosphere_notes`**: only present when `chronicler_tone_direction`
+  is enabled in DmConfig. When disabled, the Chronicler focuses purely on
+  what to reveal, hint, or hide — no tone/atmosphere guidance.
+
 ## App-side post-processing
 
 - `plot_state_updates` are merged into the adventure's `plot_state` JSONB
+- `adventure_complete` is written to the loop via `batch_update!`
 - The `narration_guidance` string becomes the `dm_brief` parameter passed
   to the Narrate step
+
+## Tone toggle (`chronicler_tone_direction`)
+
+When `DmConfig.chronicler_tone_direction` is `false` (default), the
+Chronicler template omits `atmosphere_notes` and tone-related instructions
+from `narration_guidance`. The DM's natural voice is preserved. When
+enabled, the Chronicler provides atmosphere/mood direction alongside
+plot guidance.
 
 ## Design rationale
 

@@ -2,7 +2,7 @@
 
 Pipeline step that estimates in-game time for any player action and orchestrates
 time-related utilities (Harbinger encounter checks, GameClock advancement).
-Runs after Verdict, before the output phase.
+Runs after Mechanic (mechanical path) or before Momentum (non-mechanical path).
 
 ---
 
@@ -38,6 +38,19 @@ TimeKeeper follows a strict protocol for every time-consuming task:
      encounter rolls      clock advance        freeform estimation
      code-only            code-only            cheap model
 ```
+
+---
+
+## Loop data written
+
+After estimation, TimeKeeper stores structured time data on the adventure
+loop via `batch_update!`:
+
+| Key | Value |
+|---|---|
+| `hours_elapsed` | Estimated hours (rounded to 4 decimal places) |
+| `time_source` | How the estimate was derived (e.g. `"journey"`, `"ai"`, `"rest"`) |
+| `journey_data` | (conditional) Structured travel data when the action is a journey: `origin`, `destination`, `distance_miles`, `terrain_type`, `speed_mph`, `estimated_hours`. Read by Narrate for the JOURNEY template section. |
 
 ---
 
