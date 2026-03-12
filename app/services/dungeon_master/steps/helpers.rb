@@ -9,26 +9,9 @@ module DungeonMaster
       private
 
       # Executes an AI call with automatic timing, success logging, and error logging.
-      #
       # The block must return [raw_response, parsed_response].
-      #
-      # on_error controls behaviour when TokenBudgetExceededError or AiError is raised:
-      #   :raise        — re-raises the exception after logging (default)
-      #   Proc/lambda   — called with the exception; its return value is returned
-      #   anything else — returned as the fallback value directly
-      #
-      # Example (re-raise on error):
-      #   parsed = timed_ai_call("narrate", prompt_summary, request_body) do
-      #     raw = @ai.chat(system_prompt: sp, user_message: um, ...)
-      #     [raw, @ai.parse_json(raw, fallback_as: :dm_response)]
-      #   end
-      #
-      # Example (return fallback on error):
-      #   parsed = timed_ai_call("micro_context_update", prompt_summary, request_body, on_error: {}) do
-      #     raw = @ai.chat(...)
-      #     [raw, @ai.parse_json(raw)]
-      #   end
-      def timed_ai_call(step_name, prompt_summary, request_body, on_error: :raise)
+      # Always re-raises on error after logging — no silent fallbacks.
+      def timed_ai_call(step_name, prompt_summary, request_body)
         t0  = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         raw = nil
 
@@ -49,8 +32,16 @@ module DungeonMaster
                            model_used:   @ai.last_model_used,
                            duration_ms:  elapsed_ms(t0),
                            usage:        @ai.last_usage)
-        raise if on_error == :raise
-        on_error.respond_to?(:call) ? on_error.call(e) : on_error
+        raise
+      end
+
+      # Environment-aware error handler for non-AI rescue blocks.
+      # In development/test: always re-raises after logging.
+      # In production: logs and returns the fallback value.
+      def pipeline_error!(step_name, error, fallback: nil)
+        @log.dm_log!("[#{step_name}] ERROR: #{error.class} — #{error.message}")
+        raise if Rails.env.local?
+        fallback
       end
 
       def elapsed_ms(t0)

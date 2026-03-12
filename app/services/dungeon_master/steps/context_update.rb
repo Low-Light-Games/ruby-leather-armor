@@ -29,7 +29,7 @@ module DungeonMaster
           @adventure.update!(story_summary: macro_result["story_summary"]) if macro_result["story_summary"].present?
         end
       rescue => e
-        @log.dm_log!("Context update error: #{e.message}")
+        pipeline_error!("context_updates", e)
       end
 
       def run_micro_context_update(what_happened, mutations, affected_contexts)
@@ -59,7 +59,7 @@ module DungeonMaster
         user_msg = "Update contexts based on the above."
         request_body = { system_prompt: system_prompt, user_message: user_msg }
 
-        timed_ai_call("micro_context_update", prompt_summary, request_body, on_error: {}) do
+        timed_ai_call("micro_context_update", prompt_summary, request_body) do
           raw = @ai.chat(system_prompt: system_prompt, user_message: user_msg,
                           max_tokens: @config.token_budget_for("micro_context_update"),
                           step_name: "micro_context_update",
@@ -79,7 +79,7 @@ module DungeonMaster
         user_msg = "Update the story summary."
         request_body = { system_prompt: system_prompt, user_message: user_msg }
 
-        timed_ai_call("macro_narrative_update", prompt_summary, request_body, on_error: {}) do
+        timed_ai_call("macro_narrative_update", prompt_summary, request_body) do
           raw = @ai.chat(system_prompt: system_prompt, user_message: user_msg,
                           max_tokens: @config.token_budget_for("macro_narrative_update"),
                           step_name: "macro_narrative_update",

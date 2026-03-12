@@ -43,6 +43,9 @@ module DungeonMaster
           raw = @ai.chat(system_prompt: system_prompt, user_message: outcome,
                           max_tokens: @config.token_budget_for("narrate"), step_name: "narrate",
                           model: @config.model_for("narrate"))
+          # fallback_as: :dm_response is the only surviving parse fallback.
+          # Unlike other steps, Narrate's output IS prose — if the model
+          # returns raw text instead of JSON, the text itself is the narrative.
           [raw, @ai.parse_json(raw, fallback_as: :dm_response)]
         end
 

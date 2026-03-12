@@ -13,7 +13,7 @@ module DungeonMaster
       apply_player_mutations(mutations["player"] || mutations[:player])
       apply_npc_mutations(mutations["npcs"] || mutations[:npcs])
     rescue => e
-      @log.dm_log!("Mutation application error: #{e.message}")
+      pipeline_error!("apply_mutations", e)
     end
 
     def resolve_npc_actions(npc_actions)
@@ -45,7 +45,7 @@ module DungeonMaster
         end
       end
     rescue => e
-      @log.dm_log!("Creature creation error: #{e.message}")
+      pipeline_error!("new_creatures", e)
     end
 
     def fuzzy_bestiary_match(name)
@@ -65,8 +65,7 @@ module DungeonMaster
       else nil
       end
     rescue => e
-      @log.dm_log!("Dynamic creature creation failed for '#{name}': #{e.message}")
-      nil
+      pipeline_error!("dynamic_creature", e)
     end
 
     # -- private helpers ------------------------------------------------

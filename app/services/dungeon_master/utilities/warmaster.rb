@@ -195,7 +195,8 @@ module DungeonMaster
         else nil
         end
       rescue => e
-        ctx.log.dm_log!("Warmaster dynamic creature creation failed for '#{name}': #{e.message}")
+        ctx.log.dm_log!("[warmaster_creature] ERROR: #{e.class} — #{e.message}")
+        raise if Rails.env.local?
         nil
       end
 

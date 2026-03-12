@@ -140,7 +140,8 @@ module DungeonMaster
 
         scene
       rescue => e
-        log&.dm_log!("Encounter expansion failed: #{e.message} — using raw description")
+        log&.dm_log!("[harbinger_expand] ERROR: #{e.class} — #{e.message}")
+        raise if Rails.env.local?
         entry.description
       end
 

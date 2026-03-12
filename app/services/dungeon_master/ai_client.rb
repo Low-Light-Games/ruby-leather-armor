@@ -66,7 +66,7 @@ module DungeonMaster
         end
         raise AiError, "Rate limited by OpenAI after #{attempt} attempts"
       rescue Faraday::BadRequestError => e
-        body = e.response&.dig(:body) rescue nil
+        body = begin; e.response&.dig(:body); rescue StandardError; nil; end
         msg = body.is_a?(Hash) ? body.dig("error", "message") : e.message
         Rails.logger.error("[DungeonMaster::AiClient] Bad request: #{msg}")
         raise AiError, "AI request rejected: #{msg}"
@@ -120,7 +120,7 @@ module DungeonMaster
     # for when the model returns plain text instead of JSON.
     #
     # @param raw         [String]
-    # @param fallback_as [Symbol, nil]  :dm_response or :sanitization
+    # @param fallback_as [Symbol, nil]  :dm_response to treat raw text as narrative on parse failure
     # @return [Hash]
     # @raise [DungeonMaster::AiError]
     def parse_json(raw, fallback_as: nil)
@@ -134,21 +134,20 @@ module DungeonMaster
       JSON.parse(cleaned)
     rescue JSON::ParserError
       Rails.logger.warn(
-        "[DungeonMaster::AiClient] JSON parse failed, attempting fallback. " \
+        "[DungeonMaster::AiClient] JSON parse failed. " \
         "Raw (first 500 chars): #{raw&.first(500)}"
       )
 
+      # The Narrate step produces prose that may not be valid JSON.
+      # Treating raw text as narrative is a valid degradation — the
+      # content is still usable. All other steps must parse or fail.
       if fallback_as == :dm_response && cleaned.present?
         Rails.logger.info("[DungeonMaster::AiClient] Falling back: treating raw response as narrative text")
         @last_parse_status = "parse_fallback"
         { "narrative" => cleaned }
-      elsif fallback_as == :sanitization && cleaned.present?
-        Rails.logger.info("[DungeonMaster::AiClient] Falling back: treating sanitization as pass-through")
-        @last_parse_status = "parse_fallback"
-        { "danger_score" => 0, "sanitized_input" => nil, "reason" => nil }
       else
         @last_parse_status = "parse_error"
-        raise AiError, "Failed to parse AI response"
+        raise AiError, "Failed to parse AI response as JSON"
       end
     end
   end

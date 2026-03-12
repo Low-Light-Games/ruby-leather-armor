@@ -339,7 +339,7 @@ module DungeonMaster
       @loop&.batch_update!(
         timeline_entry: tl("inter_action_ctx", "Micro contexts updated between actions"))
     rescue => e
-      @log.dm_log!("Inter-action context update error: #{e.message}")
+      pipeline_error!("inter_action_ctx", e)
     end
 
     # ----------------------------------------------------------------
@@ -590,8 +590,7 @@ module DungeonMaster
         status: "pending"
       )
     rescue => e
-      @log.dm_log!("AdventureLoop creation failed: #{e.message}")
-      nil
+      pipeline_error!("adventure_loop", e)
     end
 
     def restore_paused_loop!

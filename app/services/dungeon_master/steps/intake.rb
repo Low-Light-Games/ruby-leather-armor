@@ -19,7 +19,7 @@ module DungeonMaster
           raw = @ai.chat(system_prompt: system_prompt, user_message: player_input,
                           max_tokens: @config.token_budget_for("intake"), step_name: "intake",
                           model: @config.model_for("intake"))
-          [raw, @ai.parse_json(raw, fallback_as: :sanitization)]
+          [raw, @ai.parse_json(raw)]
         end
 
         log_context_suggestion(parsed, player_input)
@@ -47,7 +47,7 @@ module DungeonMaster
           }
         )
       rescue => e
-        @log.dm_log!("ExperienceSuggestion creation failed: #{e.message}")
+        pipeline_error!("experience_suggestion", e)
       end
     end
   end

@@ -136,8 +136,8 @@ module DungeonMaster
         end
 
         { allowed: parsed["allowed"] != false, reason: parsed["reason"] }
-      rescue TokenBudgetExceededError, AiError
-        { allowed: true, reason: nil }
+      rescue TokenBudgetExceededError, AiError => e
+        pipeline_error!("capability_check", e, fallback: { allowed: true, reason: nil })
       end
 
       # ------------------------------------------------------------------
@@ -157,8 +157,8 @@ module DungeonMaster
 
         npc_names = begin
           @adventure.story.story_npcs.pluck(:name)
-        rescue
-          []
+        rescue => e
+          pipeline_error!("world_check_npcs", e, fallback: [])
         end
 
         system_prompt = PromptRenderer.render("sanity_checker_world",
@@ -182,8 +182,8 @@ module DungeonMaster
           reason: parsed["reason"],
           referenced_entities: Array(parsed["referenced_entities"])
         }
-      rescue TokenBudgetExceededError, AiError
-        { consistent: true, reason: nil, referenced_entities: [] }
+      rescue TokenBudgetExceededError, AiError => e
+        pipeline_error!("world_check", e, fallback: { consistent: true, reason: nil, referenced_entities: [] })
       end
     end
   end

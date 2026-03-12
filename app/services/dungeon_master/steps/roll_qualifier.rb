@@ -78,7 +78,11 @@ module DungeonMaster
 
       def build_qualifier_context_block(context_names)
         parts = context_names.filter_map do |field|
-          ctx = @adventure.send("#{field}_context") rescue nil
+          ctx = begin
+            @adventure.send("#{field}_context")
+          rescue => e
+            pipeline_error!("roll_qualifier_ctx", e)
+          end
           "=== #{field.upcase} CONTEXT ===\n#{ctx.to_json}" if ctx.present?
         end
         parts.any? ? parts.join("\n\n") : "(no relevant context data available)"

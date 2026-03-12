@@ -16,6 +16,7 @@ module DungeonMaster
   #   - Harder to debug (single opaque call)
   #
   class EdgePipeline
+    include Steps::Helpers
     include Mutations
 
     def initialize(adventure:, config:, ai:, log:, sheet:)
@@ -126,7 +127,7 @@ module DungeonMaster
     def apply_edge_mutations(mutations)
       apply_mutations(mutations.deep_symbolize_keys)
     rescue => e
-      @log.dm_log!("Edge mutation error: #{e.message}")
+      pipeline_error!("edge_mutations", e)
     end
 
     def apply_edge_time_update(time_update)
@@ -135,7 +136,7 @@ module DungeonMaster
 
       Utilities::GameClock.advance_clock!(@adventure, hours)
     rescue => e
-      @log.dm_log!("Edge time update error: #{e.message}")
+      pipeline_error!("edge_time", e)
     end
 
     def persist_context_updates(updates)
@@ -146,7 +147,7 @@ module DungeonMaster
       end
       @adventure.update!(attrs) if attrs.any?
     rescue => e
-      @log.dm_log!("Edge context update error: #{e.message}")
+      pipeline_error!("edge_context", e)
     end
 
     def persist_scene_summary(summary)
@@ -156,7 +157,7 @@ module DungeonMaster
     def update_story_summary(summary)
       @adventure.update!(story_summary: summary)
     rescue => e
-      @log.dm_log!("Edge story summary error: #{e.message}")
+      pipeline_error!("edge_summary", e)
     end
   end
 end

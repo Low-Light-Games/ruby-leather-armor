@@ -69,7 +69,6 @@ class DmConfig < ApplicationRecord
     "step_models" => {},
     "embellisher_mode" => "embellish",
     "pipeline_mode" => "budget",
-    "interpreter_scope" => "all",
     "guardrail_mode" => "code",
     "narration_mode" => "parallel",
     "action_queue" => true,
