@@ -21,7 +21,7 @@ This is the text the player actually reads.
 
 | Key | Used as |
 |---|---|
-| `verdict_outcome` | `@what_happened` in template — factual outcome from Mechanic or Momentum |
+| `verdict_outcome` | `@what_happened` in template — factual outcome from Mechanic or Momentum. When `run_accumulated_output_phase` runs (after roll/initiative resumption with multiple queued actions), this is built from `combined_seed` rather than the loop's per-action verdict. |
 | `journey_data` | `@journey_data` — structured travel info (origin, destination, distance, terrain) |
 | `encounter_scene` | `@encounter_scene` — Harbinger's encounter narrative |
 | `encounter_new_elements` | `@encounter_new_elements` — world elements introduced by encounter |

@@ -13,9 +13,11 @@ module DungeonMaster
 
       private
 
-      # Run beacons for all domains (or filtered set) and merge results.
-      def run_beacon(intention, category)
-        domains = beacon_domains(category)
+      DOMAIN_PRIORITY = %w[combat social traversal exploration rest inventory].freeze
+
+      # Run beacons for all domains and merge results.
+      def run_beacon(intention)
+        domains = DOMAINS.dup
         results = {}
 
         threads = domains.map do |domain|
@@ -28,7 +30,7 @@ module DungeonMaster
         end
 
         threads.each(&:value)
-        converged = converge_beacons(results, intention, category)
+        converged = converge_beacons(results, intention)
 
         if @loop
           affected = converged[:affected_contexts]
@@ -90,7 +92,7 @@ module DungeonMaster
       end
 
       # Merge parallel beacon results into a unified intent-compatible hash.
-      def converge_beacons(results, intention, category)
+      def converge_beacons(results, intention)
         affected = results.select { |_, r| r[:affected] }
         needs_mechanics = affected.any? { |_, r| r[:needs_mechanics] }
         macro_significant = results.any? { |_, r| r[:macro_significant] }
@@ -98,18 +100,18 @@ module DungeonMaster
         transition = affected.filter_map { |_, r| r[:transition] }.first
 
         affected_contexts = affected.keys
-        primary_context = affected_contexts.include?(category) ? category : affected_contexts.first
+        primary_context = determine_primary(affected_contexts)
 
         destination = results.dig("traversal", :destination)
 
-        plot_relevant = determine_plot_relevance(primary_context)
+        plot_relevant = determine_plot_relevance(affected_contexts)
 
         {
           intention: intention,
           needs_mechanics: needs_mechanics,
           destination: destination,
           affected_contexts: affected_contexts,
-          primary_context: primary_context || category,
+          primary_context: primary_context || "exploration",
           rules_needed: rules_needed,
           transition: transition,
           macro_significant: macro_significant,
@@ -118,17 +120,8 @@ module DungeonMaster
         }
       end
 
-      # Determine which domains to beacon based on config.
-      def beacon_domains(category)
-        scope = @config.get("interpreter_scope") || "all"
-
-        if scope == "filtered"
-          domains = [category].compact & DOMAINS
-          active = DOMAINS.select { |d| @adventure.send("#{d}_context").present? }
-          (domains + active).uniq
-        else
-          DOMAINS.dup
-        end
+      def determine_primary(affected_contexts)
+        DOMAIN_PRIORITY.find { |d| affected_contexts.include?(d) } || affected_contexts.first
       end
 
       def domain_rules_manifest(domain)
@@ -161,7 +154,7 @@ module DungeonMaster
         "=== STORY LOCATIONS ===\n#{lines.join("\n")}"
       end
 
-      def determine_plot_relevance(primary_context)
+      def determine_plot_relevance(affected_contexts)
         story = @adventure.story
         npcs = StoryNpc.where(story_id: story.id).where(secret: false)
         clues = StoryClue.where(story_id: story.id)
@@ -172,8 +165,10 @@ module DungeonMaster
 
         current_loc_id = @adventure.current_location_id
         loc_has_clues = undiscovered.any? { |c| c.location_id.nil? || c.location_id == current_loc_id }
+        ctx_set = Array(affected_contexts)
         method_match = undiscovered.any? do |c|
-          Pipeline::METHOD_CONTEXT_MAP[c.discovery_method] == primary_context
+          expected = Pipeline::METHOD_CONTEXT_MAP[c.discovery_method]
+          expected.nil? || ctx_set.include?(expected)
         end
 
         loc_has_clues || method_match || npcs.any?

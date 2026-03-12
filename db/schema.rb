@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_10_200001) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_12_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -328,6 +328,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_10_200001) do
     t.index ["story_id"], name: "index_encounter_tables_on_story_id"
   end
 
+  create_table "experience_suggestions", force: :cascade do |t|
+    t.bigint "adventure_id", null: false
+    t.uuid "pipeline_run_id"
+    t.string "category", null: false
+    t.string "source_step", null: false
+    t.jsonb "details", default: {}, null: false
+    t.boolean "reviewed", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_id"], name: "index_experience_suggestions_on_adventure_id"
+    t.index ["category"], name: "index_experience_suggestions_on_category"
+    t.index ["reviewed"], name: "index_experience_suggestions_on_reviewed"
+  end
+
   create_table "feat_definitions", id: :string, force: :cascade do |t|
     t.string "name", null: false
     t.string "category", null: false
@@ -604,6 +618,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_10_200001) do
   add_foreign_key "dm_logs", "users"
   add_foreign_key "encounter_table_entries", "encounter_tables"
   add_foreign_key "encounter_tables", "stories"
+  add_foreign_key "experience_suggestions", "adventures"
   add_foreign_key "location_connections", "story_locations", column: "from_location_id"
   add_foreign_key "location_connections", "story_locations", column: "to_location_id"
   add_foreign_key "sheet_feats", "feat_definitions", column: "feat_id"

@@ -250,8 +250,7 @@ class DungeonMasterService
         intent: result[:intent],
         show_dc: @adventure.effective_dm_setting("show_roll_dc"),
         remaining_actions: result[:remaining_actions],
-        prior_narrate_seeds: result[:prior_narrate_seeds],
-        category: result[:category]
+        prior_narrate_seeds: result[:prior_narrate_seeds]
       }
       [persist_message(
         role: "dm",
@@ -266,8 +265,7 @@ class DungeonMasterService
         narrate_seed: result[:narrate_seed],
         mutations: result[:mutations],
         remaining_actions: result[:remaining_actions],
-        prior_narrate_seeds: result[:prior_narrate_seeds],
-        category: result[:category]
+        prior_narrate_seeds: result[:prior_narrate_seeds]
       }
       [persist_message(
         role: "dm",

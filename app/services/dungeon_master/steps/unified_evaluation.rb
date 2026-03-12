@@ -14,7 +14,7 @@ module DungeonMaster
     module UnifiedEvaluation
       private
 
-      def run_unified_evaluation(intention, category)
+      def run_unified_evaluation(intention)
         prompt_summary = "UnifiedEval: \"#{@log.truncate(intention)}\""
 
         char_block      = CharacterBlock.full(@sheet)
@@ -48,7 +48,7 @@ module DungeonMaster
           [raw, @ai.parse_json(raw)]
         end
 
-        intent, evaluations = parse_unified_response(parsed, intention, category)
+        intent, evaluations = parse_unified_response(parsed, intention)
         evaluations = evaluations.map { |eval| apply_qualifier_results(eval, intent) }
         log_unified_to_loop(intent, evaluations)
 
@@ -60,7 +60,7 @@ module DungeonMaster
       # as converge_beacons + run_mechanical_evaluation_loop
       # -------------------------------------------------------------------
 
-      def parse_unified_response(parsed, intention, category)
+      def parse_unified_response(parsed, intention)
         domains = parsed["domains"] || {}
 
         beacon_results = {}
@@ -114,15 +114,15 @@ module DungeonMaster
           end
         end
 
-        primary_context = affected_contexts.include?(category) ? category : affected_contexts.first
-        plot_relevant = determine_plot_relevance(primary_context)
+        primary_context = determine_primary(affected_contexts)
+        plot_relevant = determine_plot_relevance(affected_contexts)
 
         intent = {
           intention: intention,
           needs_mechanics: needs_mechanics,
           destination: destination,
           affected_contexts: affected_contexts,
-          primary_context: primary_context || category,
+          primary_context: primary_context || "exploration",
           rules_needed: rules_needed.uniq,
           transition: transition,
           macro_significant: macro_significant,

@@ -8,15 +8,13 @@ module DungeonMaster
   # (DungeonMasterService) is responsible for those side effects.
   #
   # Flow:
-  #   run_prompt          -> sanitize + classify (parallel) -> dm_query_flow | orchestrate_actions
+  #   run_prompt          -> intake -> dm_query_flow | orchestrate_actions
   #   orchestrate_actions -> sequencer -> [ for each action: player_interpreter -> CoreResolver.resolve ] -> output_phase
   #   run_rolls           -> CoreResolver.finish_resolution -> continue queue if remaining -> output_phase
   #
   class Pipeline
-    PROMPT_CATEGORIES = %w[combat traversal social exploration rest inventory dm_query].freeze
-
     include Steps::Helpers
-    include Steps::Triage
+    include Steps::Intake
     include Steps::DmQuery
     include Steps::PlayerInterpreter
     include Steps::Sequencer
@@ -48,29 +46,20 @@ module DungeonMaster
     # Returns a hash with :action key describing the outcome.
     # @param mode [String, nil] "dm_query" when the player explicitly toggled Ask DM mode
     def run_prompt(player_input, mode: nil)
-      if mode == "dm_query"
-        sanitize_result = run_sanitize(player_input)
-        if sanitize_result[:danger_score] >= @config.sanitization_threshold
-          @log.dm_log!("Rejected (danger: #{sanitize_result[:danger_score]}): #{sanitize_result[:reason]}")
-          return { action: :rejected, reason: sanitize_result[:reason], danger: sanitize_result[:danger_score] }
-        end
-        return run_dm_query_flow(sanitize_result[:sanitized_input])
+      intake_result = run_intake(player_input)
+
+      if intake_result[:danger_score] >= @config.danger_threshold
+        @log.dm_log!("Rejected (danger: #{intake_result[:danger_score]}): #{intake_result[:reason]}")
+        return { action: :rejected, reason: intake_result[:reason], danger: intake_result[:danger_score] }
       end
 
-      sanitize_result, classify_result = run_gate(player_input)
+      clean_input = intake_result[:sanitized_input]
 
-      if sanitize_result[:danger_score] >= @config.sanitization_threshold
-        @log.dm_log!("Rejected (danger: #{sanitize_result[:danger_score]}): #{sanitize_result[:reason]}")
-        return { action: :rejected, reason: sanitize_result[:reason], danger: sanitize_result[:danger_score] }
-      end
-
-      clean_input = sanitize_result[:sanitized_input]
-
-      if classify_result[:category] == "dm_query"
+      if mode == "dm_query" || intake_result[:is_dm_query]
         return run_dm_query_flow(clean_input)
       end
 
-      orchestrate_actions(clean_input, classify_result[:category])
+      orchestrate_actions(clean_input)
     end
 
     # Resumption entry point: player submitted initiative roll.
@@ -89,11 +78,10 @@ module DungeonMaster
       mutations = metadata["mutations"]
       remaining = metadata["remaining_actions"] || []
       prior_seeds = metadata["prior_narrate_seeds"] || []
-      category = metadata["category"]
 
       if remaining.any?
         prior_seeds << narrate_seed if narrate_seed.present?
-        run_remaining_queue(remaining, prior_seeds, category,
+        run_remaining_queue(remaining, prior_seeds,
                             accumulated_intents: [intent],
                             accumulated_mutations: [mutations].compact)
       else
@@ -112,7 +100,6 @@ module DungeonMaster
 
       remaining   = metadata["remaining_actions"] || []
       prior_seeds = metadata["prior_narrate_seeds"] || []
-      category    = metadata["category"]
 
       final_status = result[:status] == :encounter ? "encounter" : "resolved"
       @loop&.batch_update!(new_status: final_status,
@@ -120,7 +107,7 @@ module DungeonMaster
 
       if result[:status] == :resolved && remaining.any?
         prior_seeds << result[:narrate_seed]
-        run_remaining_queue(remaining, prior_seeds, category,
+        run_remaining_queue(remaining, prior_seeds,
                             accumulated_intents: [result[:intent]],
                             accumulated_mutations: [result[:mutations]])
       else
@@ -145,7 +132,7 @@ module DungeonMaster
     end
 
     # Outer orchestrator: sequencer → action queue loop → output phase.
-    def orchestrate_actions(clean_input, category = nil)
+    def orchestrate_actions(clean_input)
       actions = run_sequencer(clean_input)
       total = actions.size
       accumulated = []
@@ -155,7 +142,7 @@ module DungeonMaster
         @loop = create_adventure_loop(action_text, idx)
 
         intention = run_player_interpreter(action_text)
-        result = resolve(intention, category)
+        result = resolve(intention)
 
         case result[:status]
         when :rejected
@@ -171,8 +158,7 @@ module DungeonMaster
           log_queue_pause(idx, total, remaining)
           return {
             action: :awaiting_rolls, intent: result[:intent], merged: result[:merged],
-            remaining_actions: remaining, prior_narrate_seeds: prior_seeds,
-            category: category
+            remaining_actions: remaining, prior_narrate_seeds: prior_seeds
           }
 
         when :awaiting_initiative
@@ -189,8 +175,7 @@ module DungeonMaster
             narrate_seed: result[:narrate_seed],
             mutations: result[:mutations],
             remaining_actions: remaining,
-            prior_narrate_seeds: prior_seeds,
-            category: category
+            prior_narrate_seeds: prior_seeds
           }
 
         when :encounter
@@ -204,6 +189,7 @@ module DungeonMaster
           @loop&.batch_update!(new_status: "resolved",
             timeline_entry: tl("resolved", "Action resolved"))
           accumulated << result
+          run_inter_action_context_update(result) if idx < actions.size - 1
         end
       end
 
@@ -214,7 +200,7 @@ module DungeonMaster
     end
 
     # Continue the action queue after a roll pause or from a mid-queue resume.
-    def run_remaining_queue(remaining, prior_seeds, category,
+    def run_remaining_queue(remaining, prior_seeds,
                             accumulated_intents: [], accumulated_mutations: [])
       total_original = prior_seeds.size + remaining.size + 1
       base_idx = total_original - remaining.size
@@ -226,7 +212,7 @@ module DungeonMaster
         @loop = create_adventure_loop(action_text, action_idx)
 
         intention = run_player_interpreter(action_text)
-        result = resolve(intention, category)
+        result = resolve(intention)
 
         case result[:status]
         when :rejected
@@ -242,8 +228,7 @@ module DungeonMaster
           log_queue_pause(action_idx, total_original, new_remaining)
           return {
             action: :awaiting_rolls, intent: result[:intent], merged: result[:merged],
-            remaining_actions: new_remaining, prior_narrate_seeds: new_prior,
-            category: category
+            remaining_actions: new_remaining, prior_narrate_seeds: new_prior
           }
 
         when :awaiting_initiative
@@ -260,8 +245,7 @@ module DungeonMaster
             narrate_seed: result[:narrate_seed],
             mutations: result[:mutations],
             remaining_actions: new_remaining,
-            prior_narrate_seeds: new_prior,
-            category: category
+            prior_narrate_seeds: new_prior
           }
 
         when :encounter
@@ -275,6 +259,7 @@ module DungeonMaster
           @loop&.batch_update!(new_status: "resolved",
             timeline_entry: tl("resolved", "Action resolved"))
           accumulated << result
+          run_inter_action_context_update(result) if idx < remaining.size - 1
         end
       end
 
@@ -294,17 +279,17 @@ module DungeonMaster
       all_mutations = results.filter_map { |r| r[:mutations] }
       encounter_triggered = results.any? { |r| r[:status] == :encounter }
 
+      combined_seed = all_seeds.compact.join("\n\nThen: ") if all_seeds.any?
+      combined_mutations = all_mutations.compact.reduce({}) { |acc, m| deep_merge_mutations(acc, m) }
+
       dm_brief = nil
       last_resolved = results.last
       if merged_intent[:plot_relevant]
-        verdict_outcome = @loop&.get("verdict_outcome") || last_resolved[:narrate_seed]
+        verdict_outcome = combined_seed || last_resolved[:narrate_seed]
         plot_result = resolve_plot(merged_intent, verdict_outcome: verdict_outcome,
                                    encounter_triggered: encounter_triggered)
         dm_brief = plot_result&.dig(:dm_brief)
       end
-
-      combined_seed = all_seeds.compact.join("\n\nThen: ") if all_seeds.any?
-      combined_mutations = all_mutations.compact.reduce({}) { |acc, m| deep_merge_mutations(acc, m) }
 
       extra = {}
       extra[:encounter_triggered] = true if encounter_triggered
@@ -343,23 +328,18 @@ module DungeonMaster
     end
 
     # ----------------------------------------------------------------
-    # Gate: parallel sanitize + classify
+    # Inter-action micro context update (between queued actions)
     # ----------------------------------------------------------------
 
-    def run_gate(player_input)
-      sanitize_result = classify_result = nil
-
-      sanitize_thread = Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection { sanitize_result = run_sanitize(player_input) }
-      end
-      classify_thread = Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection { classify_result = run_classify(player_input) }
-      end
-
-      sanitize_thread.value
-      classify_thread.value
-
-      [sanitize_result, classify_result]
+    def run_inter_action_context_update(result)
+      affected = Array(result.dig(:intent, :affected_contexts))
+      parsed = run_micro_context_update(result[:narrate_seed], result[:mutations], affected)
+      persist_micro_contexts(parsed)
+      @adventure.reload
+      @loop&.batch_update!(
+        timeline_entry: tl("inter_action_ctx", "Micro contexts updated between actions"))
+    rescue => e
+      @log.dm_log!("Inter-action context update error: #{e.message}")
     end
 
     # ----------------------------------------------------------------
@@ -450,7 +430,7 @@ module DungeonMaster
         next if clue.location_id && clue.location_id != current_loc_id
 
         expected_context = METHOD_CONTEXT_MAP[clue.discovery_method]
-        next if expected_context && intent[:primary_context] != expected_context
+        next if expected_context && !Array(intent[:affected_contexts]).include?(expected_context)
 
         next if (clue.prerequisite_clue_ids || []).any? { |pid| !discovered_ids.include?(pid) }
 
@@ -566,11 +546,6 @@ module DungeonMaster
       end
     end
 
-    def normalize_category(category)
-      normalized = category.to_s.downcase.strip
-      raise AiError, "Triage returned unrecognized category '#{category}' — expected one of: #{PROMPT_CATEGORIES.join(', ')}" unless PROMPT_CATEGORIES.include?(normalized)
-      normalized
-    end
 
     # ----------------------------------------------------------------
     # Action label helpers (for queue index annotation in logs)

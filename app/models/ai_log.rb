@@ -4,7 +4,7 @@ class AiLog < ApplicationRecord
   belongs_to :ai_usage_record, optional: true
 
   CALL_TYPES = %w[
-    sanitize classify dm_query sequencer player_interpreter beacon
+    intake dm_query sequencer player_interpreter beacon
     mechanical_evaluation roll_qualifier sanity_checker sanity_checker_world
     mechanic momentum time_keeper chronicler narrate
     micro_context_update macro_narrative_update
@@ -12,8 +12,8 @@ class AiLog < ApplicationRecord
     enricher embellisher
   ].freeze
 
-  # Legacy types kept for backward compatibility with existing log rows
   LEGACY_CALL_TYPES = %w[
+    sanitize classify
     triage evaluate ruling verdict intent dispatcher capability_guardrail
     sanitization dm_response roll_response
     triage_merged classification

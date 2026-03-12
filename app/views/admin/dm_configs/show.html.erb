@@ -58,13 +58,13 @@
     </div>
 
     <div class="config-section">
-      <h2>Sanitization</h2>
+      <h2>Intake</h2>
 
       <div class="config-field">
-        <label for="sanitization_threshold">Danger Threshold</label>
+        <label for="danger_threshold">Danger Threshold</label>
         <div class="temp-row">
-          <%= range_field_tag :sanitization_threshold, @config.sanitization_threshold, in: 0..100, step: 5, class: "temp-slider threshold-slider", id: "threshold-slider" %>
-          <span class="temp-value" id="threshold-display"><%= @config.sanitization_threshold %></span>
+          <%= range_field_tag :danger_threshold, @config.danger_threshold, in: 0..100, step: 5, class: "temp-slider threshold-slider", id: "threshold-slider" %>
+          <span class="temp-value" id="threshold-display"><%= @config.danger_threshold %></span>
         </div>
         <p class="field-hint">
           Player inputs are scored for danger from <strong>0</strong> (completely safe) to <strong>100</strong> (overtly malicious).

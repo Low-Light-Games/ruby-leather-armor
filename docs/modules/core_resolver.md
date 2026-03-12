@@ -15,9 +15,10 @@ already mixed into Pipeline via their own step modules.
 
 ## Interface
 
-### `resolve(intention, category)`
+### `resolve(intention)`
 
-Full resolution with two paths:
+Full resolution with two paths. No `category` parameter — `primary_context`
+is derived from beacon results using a DOMAIN_PRIORITY heuristic.
 
 **Mechanical path:** beacon → full gate (mech eval + world check + cap check)
 → mechanic + mutations → time_keeper. Returns `:resolved` with
@@ -48,11 +49,14 @@ Called when Harbinger triggers an encounter (Path A). Encounter data is
 read exclusively from the loop (set by Harbinger during TimeKeeper).
 Returns `:awaiting_initiative` or `:encounter`.
 
-### `resolve_unified(intention, category)`
+### `resolve_unified(intention)`
 
 Unified evaluation path: single AI call replaces beacons + mech eval +
 roll qualifier. Sanity checks still run independently. Same two-path
-structure (mechanical/non-mechanical) as `resolve`.
+structure (mechanical/non-mechanical) as `resolve`. No `category` parameter.
+
+**Internal steps:** `run_beacon`, `orchestrate_actions`, `run_remaining_queue`,
+`run_initiative`, and `run_rolls` no longer accept a `category` parameter.
 
 ## Result hash shape
 
@@ -76,7 +80,7 @@ action in the Sequencer's queue:
 ```ruby
 actions.each do |action_text|
   intention = run_player_interpreter(action_text)
-  result = resolve(intention, category)
+  result = resolve(intention)
   # handle :awaiting_rolls, :encounter, :resolved, :rejected
 end
 ```

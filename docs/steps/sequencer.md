@@ -15,7 +15,7 @@ pipeline loop body executes once — identical to the pre-Sequencer flow.
 
 ## When it runs
 
-- After the gate (sanitize + classify) and before PlayerInterpreter
+- After the gate (intake) and before PlayerInterpreter
 - Skipped entirely when `DmConfig.action_queue` is `false`
 - Errors fall back gracefully to `[original_input]` (single action)
 
@@ -45,9 +45,25 @@ one action happening after another in time. It explicitly excludes:
 - Cautious single tasks ("search for traps before opening")
 - Maximum 3 actions per split
 
+## Ordering rules
+
+When splitting compound actions, the Sequencer applies **ordering rules**
+to determine execution order:
+
+1. **Immediate decisions** — actions that require an immediate response
+   (e.g., combat reactions, time-sensitive choices) come first.
+2. **Preparatory actions** — setup, buffs, or preparation (e.g., "I cast
+   Mage Armor before entering") come before the main action they enable.
+3. **Travel / consequential** — movement and travel actions follow
+   preparatory ones; consequential actions (e.g., "then I search the room")
+   come last.
+
+This ordering ensures the pipeline resolves actions in a narratively
+coherent sequence rather than arbitrary list order.
+
 ## Model selection
 
-Fast, cheap model — same tier as PlayerInterpreter and Classify. The task is
+Fast, cheap model — same tier as PlayerInterpreter and Intake. The task is
 classification + extraction, not reasoning. Budget: 200 tokens.
 
 ## Design rationale

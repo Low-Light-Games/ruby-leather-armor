@@ -8,11 +8,9 @@ flowchart TB
         A[Player Input] --> B[run_prompt]
     end
 
-    subgraph gate["Gate (parallel)"]
-        B --> C[Sanitize]
-        B --> D[Classify]
+    subgraph gate["Gate"]
+        B --> C[Intake]
         C --> E{Reject?}
-        D --> E
         E -->|danger high| REJECT[Return :rejected]
         E -->|no| F{dm_query?}
     end
@@ -98,7 +96,8 @@ flowchart TB
     RESOLVED --> K
 
     K --> DONE{More actions?}
-    DONE -->|yes| K
+    DONE -->|yes| INTER_CTX[Inter-action context update]
+    INTER_CTX --> K
     DONE -->|no| PHASE[Output phase]
 
     subgraph output_phase["Output phase"]
@@ -148,9 +147,8 @@ flowchart LR
 
 | Step | Purpose |
 |------|--------|
-| **Sanitize** | Score input safety; produce sanitized text. |
-| **Classify** | Category: combat, traversal, social, exploration, rest, inventory, dm_query. |
-| **Sequencer** | Split player message into discrete actions. |
+| **Intake** | Score input safety, detect dm_query, suggest context gaps. |
+| **Sequencer** | Split player message into discrete actions (with ordering rules). |
 | **Player Interpreter** | Per action: intent + context tags. |
 | **Beacon** | Per domain (parallel): affected?, needs_mechanics?, rules_needed, transition, destination. |
 | **Mechanical evaluation** | Per affected context: rolls, NPC actions, consequences, summary. |
@@ -160,7 +158,7 @@ flowchart LR
 | **TimeKeeper** | Estimate time → Harbinger (encounters) → GameClock advance. Stores journey_data on loop. |
 | **Chronicler** | Plot/clue/NPC reaction brief for Narrate (if story data exists). Determines adventure_complete. |
 | **Narrate** | Prose from outcome + contexts + dm_brief. Reads what_happened from loop. |
-| **Micro context update** | Update affected + active context JSONBs. |
+| **Micro context update** | Update affected + active context JSONBs. Runs between queued actions (inter-action) and in output phase. |
 | **Macro narrative update** | Update story summary (if macro_significant). |
 
 ## Edge pipeline (alternative)

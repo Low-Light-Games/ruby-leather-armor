@@ -3,7 +3,7 @@ class DmConfig < ApplicationRecord
   # Settings are stored as a JSON hash, making it easy to add new knobs
   # without migrations.
   TOKEN_BUDGET_STEPS = %w[
-    sanitize classify dm_query sequencer player_interpreter beacon mechanical_evaluation
+    intake dm_query sequencer player_interpreter beacon mechanical_evaluation
     roll_qualifier sanity_checker sanity_checker_world mechanic momentum time_keeper chronicler narrate
     micro_context_update macro_narrative_update
     edge_pipeline creature_generation unified_evaluation
@@ -16,8 +16,7 @@ class DmConfig < ApplicationRecord
   EMBELLISHER_MODES = %w[off embellish expand].freeze
 
   STEP_MODEL_HINTS = {
-    "sanitize"               => "Fast, cheap model. Security scoring — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
-    "classify"               => "Fast, cheap model. Simple classification — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
+    "intake"                 => "Fast, cheap model. Security + dm_query detection + context suggestion — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "dm_query"               => "Fast, cheap model. Straightforward Q&A — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "sequencer"              => "Fast, cheap model. Compound action detection — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "player_interpreter"     => "Fast, cheap model. Simple restatement — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
@@ -65,7 +64,7 @@ class DmConfig < ApplicationRecord
     "temperature" => 0.8,
     "pacing_words_min" => 40,
     "pacing_words_max" => 120,
-    "sanitization_threshold" => 30,
+    "danger_threshold" => 30,
     "model" => "gpt-4o-mini",
     "step_models" => {},
     "embellisher_mode" => "embellish",
@@ -88,8 +87,7 @@ class DmConfig < ApplicationRecord
     },
     "wait_messages" => WAIT_MESSAGES_DEFAULT,
     "token_budgets" => {
-      "sanitize" => 300,
-      "classify" => 200,
+      "intake" => 400,
       "dm_query" => 300,
       "sequencer" => 200,
       "player_interpreter" => 200,
@@ -140,8 +138,8 @@ class DmConfig < ApplicationRecord
     (get("pacing_words_max") || 150).to_i
   end
 
-  def sanitization_threshold
-    (get("sanitization_threshold") || 30).to_i
+  def danger_threshold
+    (get("danger_threshold") || get("sanitization_threshold") || 30).to_i
   end
 
   def model

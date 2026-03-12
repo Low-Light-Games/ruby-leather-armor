@@ -252,7 +252,7 @@ stats. This prevents the AI from inventing creatures with arbitrary
 
 ### 9. DM Query fast path
 
-**Decision:** when Classify categorizes the input as `dm_query`, skip the
+**Decision:** when Intake detects `is_dm_query`, skip the
 entire action pipeline and route to a dedicated DM Query step.
 
 **Why:** many player messages are questions ("How does grappling work?",
@@ -307,7 +307,7 @@ implementations. Reading it required holding the entire flow in your head
 to understand any single part.
 
 The separation means:
-- `Pipeline#run_prompt` reads like a linear script: sanitize + classify,
+- `Pipeline#run_prompt` reads like a linear script: intake,
   then branch, then player_interpreter, then beacon, then mechanics gate, etc.
   A developer can read the full flow in ~40 lines.
 - The service's `process_player_prompt` is equally clear: persist the
@@ -325,8 +325,7 @@ via `DmConfig#model_for(step)` with a global default fallback.
 
 **Why:** steps have fundamentally different cognitive demands:
 
-- Sanitize and Classify are simple classification — a nano model handles
-  them perfectly
+- Intake is a simple assessment — a nano model handles it perfectly
 - MechanicalEvaluation requires precise rule interpretation — benefits
   from reasoning models
 - Narrate requires creative prose — benefits from large, temperature-
@@ -338,7 +337,7 @@ cheap steps or under-serving expensive ones. Per-step selection lets you
 put the budget where it matters.
 
 This also future-proofs for fine-tuning: steps with consistent schemas
-(sanitize, classify, player_interpreter, beacon, context updates) are strong
+(intake, player_interpreter, beacon, context updates) are strong
 fine-tuning candidates. You can fine-tune a cheap model on logged examples
 and slot it in for one step without affecting others.
 
@@ -424,7 +423,6 @@ failing and can investigate.
 ### 17. Parallel execution of independent steps
 
 **Decision:** several step pairs run concurrently in Ruby threads:
-- Sanitize + Classify (the gate)
 - MechanicalEvaluation + SanityChecker (capability check + world consistency check) — the full gate
 - Narrate + ContextUpdate (the output phase, in parallel mode)
 - Micro Context Update + Macro Narrative Update (within context updates)
@@ -432,6 +430,9 @@ failing and can investigate.
 **Why:** these pairs write to different data and have no dependencies on
 each other's outputs. Running them in parallel saves one or more full AI
 round-trips of latency per turn.
+
+Intake runs as a single call (no parallel gate). The former Sanitize +
+Classify parallel pair has been merged into Intake.
 
 **Trade-off accepted:** Ruby thread complexity and database connection
 pool pressure. Mitigated by wrapping all `Thread.new` blocks with
@@ -584,24 +585,20 @@ context (e.g., two identical-looking Constitution checks without
 explanation). The evaluation summaries already contain the "why" — they
 just weren't being shown.
 
-### 24. Sanitize/Classify split (parallel gate)
+### 24. Sanitize/Classify merged into Intake
 
-**Decision:** split the original Triage step into two parallel steps:
-Sanitize (security filter) and Classify (domain categorization).
+**Decision (superseded):** The original design split Triage into two parallel
+steps: Sanitize (security filter) and Classify (domain categorization). This
+decision has been superseded.
 
-**Why:** combining security scoring and action classification in a single
-prompt caused both tasks to degrade. When the model was thinking about
-danger scores, it sometimes misclassified actions. When it was classifying,
-it sometimes under-scored genuinely dangerous inputs. The tasks are
-independent — security analysis doesn't need domain knowledge, and domain
-classification doesn't need security awareness.
+**Current design:** Sanitize and Classify have been merged into a single
+**Intake** step that handles:
+- Security scoring (danger on 0-100 scale)
+- dm_query detection (`is_dm_query` field)
+- Context gap suggestion (`suggested_context`, `context_suggestion_reason`)
 
-By running them in parallel, neither task is degraded, and total latency
-is unchanged (wall-clock time equals the slower of the two calls).
-
-Sanitize can kill the pipeline if `danger_score >= sanitization_threshold`
-(configurable in DmConfig). This gate fires before any expensive
-downstream calls.
+Intake runs as one call. The pipeline rejects if `danger_score >= danger_threshold`
+(configurable in DmConfig). This gate fires before any expensive downstream calls.
 
 ### 25. Beacon (parallel per-domain interpretation)
 
@@ -616,11 +613,8 @@ when it was also trying to determine mechanics. By separating "what does
 the player want?" (PlayerInterpreter) from "how does that affect combat/traversal/
 social?" (beacon), each task gets focused attention.
 
-The beacon model is configurable via `interpreter_scope`:
-- `"all"` (default): every domain gets a beacon call, erring on the
-  side of caution
-- `"filtered"`: only the classified domain + active contexts get calls,
-  reducing cost at the risk of missing cross-domain effects
+All beacons always run (all six domains). The `interpreter_scope` config
+is deprecated — `beacon_domains` always returns all domains.
 
 ### 26. SanityChecker (capability + world consistency validation)
 
@@ -755,16 +749,16 @@ run_prompt(player_input)
     |
     v
 +----------------------------+
-|   GATE (parallel)          |
-|   +----------+ +--------+ |
-|   | SANITIZE | |CLASSIFY| |    danger >= threshold
-|   +----+-----+ +---+----+ |---------------------------> { action: :rejected }
-+--------+-----------+-------+
-         |           |
-         |  category == "dm_query"
-         +-----------+--------------> CHRONICLER --> DM QUERY --> { action: :dm_query }
-         |           |
-         v           v
+|   GATE                    |
+|   +--------+              |
+|   | INTAKE |              |    danger >= threshold
+|   +---+----+              |---------------------------> { action: :rejected }
++--------+------------------+
+         |
+         |  is_dm_query?
+         +-------------------> CHRONICLER --> DM QUERY --> { action: :dm_query }
+         |
+         v
 +---------------------------------+
 | orchestrate_actions             |
 +---------------------------------+
@@ -868,8 +862,7 @@ Each step is documented in detail in its own file.
 
 | # | Step | Type | File |
 |---|------|------|------|
-| 1a | **Sanitize** | AI (parallel with 1b) | [steps/sanitize.md](steps/sanitize.md) |
-| 1b | **Classify** | AI (parallel with 1a) | [steps/classify.md](steps/classify.md) |
+| 1 | **Intake** | AI | [steps/intake.md](steps/intake.md) |
 | 1c | **DM Query** | AI (fast path) | [steps/dm_query.md](steps/dm_query.md) |
 | 1d | **Sequencer** | AI (before PlayerInterpreter, toggled) | [steps/sequencer.md](steps/sequencer.md) |
 | -- | **CoreResolver** (module) | Code orchestration | [modules/core_resolver.md](modules/core_resolver.md) |
@@ -903,7 +896,7 @@ All AI steps follow the same error handling pattern:
    returns `finish_reason: length`. This is a hard error for critical
    steps -- even truncated non-empty responses are rejected. The error is
    logged with `status: "token_budget_exceeded"` and re-raised (for
-   sanitize, classify, player_interpreter, mechanical evaluation, mechanic, momentum, narrate) or
+   intake, player_interpreter, mechanical evaluation, mechanic, momentum, narrate) or
    swallowed with an empty result (for context updates and capability
    guardrail, which are non-critical).
 
@@ -934,7 +927,7 @@ Every AI call produces an `AiLog` record containing:
 
 | Field | Description |
 |---|---|
-| `step` | Pipeline step name (sanitize, classify, player_interpreter, beacon, mechanical_evaluation, sanity_checker, sanity_checker_world, mechanic, momentum, chronicler, narrate, micro_context_update, macro_narrative_update, edge_pipeline) |
+| `step` | Pipeline step name (intake, player_interpreter, beacon, mechanical_evaluation, sanity_checker, sanity_checker_world, mechanic, momentum, chronicler, narrate, micro_context_update, macro_narrative_update, edge_pipeline) |
 | `prompt_summary` | Truncated description of what was asked |
 | `raw_response` | The complete API response |
 | `parsed_response` | The parsed JSON |
@@ -1026,7 +1019,7 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 
 | Setting | Default | Affects |
 |---|---|---|
-| `sanitization_threshold` | `30` | Sanitize: danger score cutoff (0-100) |
+| `danger_threshold` | `30` | Intake: danger score cutoff (0-100) |
 | `verbose` | `false` | Narrate: enables unconstrained response length |
 | `pacing_words_min` | `40` | Narrate: minimum word count target when verbose is off |
 | `pacing_words_max` | `120` | Narrate: maximum word count target when verbose is off |
@@ -1036,7 +1029,7 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `step_models[step]` | `{}` | Per-step model override |
 | `token_budgets[step]` | (see below) | Per-step max completion tokens |
 | `pipeline_mode` | `"budget"` | `"budget"` (multi-step) or `"edge"` (single-call) |
-| `interpreter_scope` | `"all"` | `"all"` (every domain) or `"filtered"` (classify + active) |
+| `interpreter_scope` | *(deprecated)* | All beacons always run; this setting has no effect |
 | `guardrail_mode` | `"code"` | `"code"` (deterministic) or `"ai"` (prompt-based) |
 | `narration_mode` | `"parallel"` | `"parallel"` (concurrent) or `"subjugated"` (sequential) |
 | `async_pipeline` | `false` | When true, pipeline runs in Sidekiq with ActionCable delivery |
@@ -1047,8 +1040,7 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 
 | Step | Budget |
 |---|---|
-| `sanitize` | 300 |
-| `classify` | 200 |
+| `intake` | 400 |
 | `dm_query` | 300 |
 | `player_interpreter` | 200 |
 | `beacon` | 400 |

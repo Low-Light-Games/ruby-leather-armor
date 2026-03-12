@@ -13,9 +13,8 @@ inventory). Results are merged by a code-based convergence step.
 
 ## Domain selection
 
-Controlled by `DmConfig` `interpreter_scope`:
-- `"all"` (default): all six domains are dispatched
-- `"filtered"`: only the Classify category + active contexts are dispatched
+All six domains are always dispatched. The `interpreter_scope` config is
+deprecated — `beacon_domains` always returns all domains.
 
 ## Input (per domain)
 
@@ -47,9 +46,12 @@ Controlled by `DmConfig` `interpreter_scope`:
 - `needs_mechanics`: any affected domain needs mechanics
 - `macro_significant`: any domain flagged it
 - `rules_needed`: union of all affected domains' rules
-- `primary_context`: the Classify category if it's affected, otherwise the first affected domain
+- `primary_context`: derived from beacons using a DOMAIN_PRIORITY heuristic
+  (combat > social > traversal > exploration > rest > inventory), not from
+  Classify's category
 - `destination`: from traversal beacon (used by TimeKeeper for journey distance)
-- `plot_relevant`: determined by `determine_plot_relevance` (checks for undiscovered clues and story NPCs)
+- `plot_relevant`: determined by `determine_plot_relevance`, which now
+  accepts `affected_contexts` (the full set) instead of `primary_context` only
 
 ## Error handling
 

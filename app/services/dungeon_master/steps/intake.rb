@@ -1,0 +1,54 @@
+# frozen_string_literal: true
+
+module DungeonMaster
+  module Steps
+    # Pipeline Gate: Intake.
+    #
+    # Scores danger (prompt injection / meta-gaming), detects DM queries,
+    # and flags potential context domain gaps. Can kill the pipeline on
+    # high danger scores.
+    module Intake
+      private
+
+      def run_intake(player_input)
+        prompt_summary = "Intake: \"#{@log.truncate(player_input)}\""
+        system_prompt = PromptRenderer.render("intake")
+        request_body = { system_prompt: system_prompt, user_message: player_input }
+
+        parsed = timed_ai_call("intake", prompt_summary, request_body) do
+          raw = @ai.chat(system_prompt: system_prompt, user_message: player_input,
+                          max_tokens: @config.token_budget_for("intake"), step_name: "intake",
+                          model: @config.model_for("intake"))
+          [raw, @ai.parse_json(raw, fallback_as: :sanitization)]
+        end
+
+        log_context_suggestion(parsed, player_input)
+
+        {
+          danger_score: parsed["danger_score"].to_i,
+          sanitized_input: parsed["sanitized_input"] || player_input,
+          reason: parsed["reason"],
+          is_dm_query: parsed["is_dm_query"] == true
+        }
+      end
+
+      def log_context_suggestion(parsed, player_input)
+        return unless parsed["suggested_context"].present?
+
+        ExperienceSuggestion.create!(
+          adventure: @adventure,
+          pipeline_run_id: @log.pipeline_run_id,
+          category: "new_context",
+          source_step: "intake",
+          details: {
+            "context_name" => parsed["suggested_context"],
+            "reason" => parsed["context_suggestion_reason"],
+            "player_input" => player_input.truncate(500)
+          }
+        )
+      rescue => e
+        @log.dm_log!("ExperienceSuggestion creation failed: #{e.message}")
+      end
+    end
+  end
+end

@@ -32,8 +32,8 @@ module Admin
         new_settings["pacing_words_max"] = params[:pacing_words_max].to_i.clamp(20, 1000)
       end
 
-      if params[:sanitization_threshold].present?
-        new_settings["sanitization_threshold"] = params[:sanitization_threshold].to_i.clamp(0, 100)
+      if params[:danger_threshold].present?
+        new_settings["danger_threshold"] = params[:danger_threshold].to_i.clamp(0, 100)
       end
 
       if params[:model].present?

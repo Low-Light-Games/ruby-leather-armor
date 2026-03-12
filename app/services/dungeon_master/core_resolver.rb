@@ -17,12 +17,12 @@ module DungeonMaster
     private
 
     # Full resolution: beacon → full gate (mech eval + world check + cap check) → [verdict + mutations + time_keeper]
-    def resolve(intention, category)
+    def resolve(intention)
       if @config.get("evaluation_mode") == "unified"
-        return resolve_unified(intention, category)
+        return resolve_unified(intention)
       end
 
-      intent = run_beacon(intention, category)
+      intent = run_beacon(intention)
 
       if intent[:needs_mechanics]
         evaluations, world, capability = run_full_gate(intent)
@@ -137,8 +137,8 @@ module DungeonMaster
 
     # Unified evaluation path: single AI call replaces beacons + mech eval + roll qualifier.
     # Sanity checks (world + capability) still run independently as guardrails.
-    def resolve_unified(intention, category)
-      intent, evaluations = run_unified_evaluation(intention, category)
+    def resolve_unified(intention)
+      intent, evaluations = run_unified_evaluation(intention)
 
       if intent[:needs_mechanics]
         world, capability = run_sanity_gate(intent)
