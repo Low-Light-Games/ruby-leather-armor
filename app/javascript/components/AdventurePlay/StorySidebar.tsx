@@ -19,6 +19,7 @@ interface StorySidebarProps {
   explorationContext: Record<string, unknown> | null;
   restContext: Record<string, unknown> | null;
   inventoryContext: Record<string, unknown> | null;
+  timeContext: Record<string, unknown> | null;
   storySummary: string | null;
   sceneSummary: string | null;
   currentCategory: string | null;
@@ -67,6 +68,21 @@ function formatContextValue(value: unknown): string {
   return String(value);
 }
 
+function formatGameHour(timeContext: Record<string, unknown> | null): string {
+  if (!timeContext) return '—';
+  const raw = timeContext['current_hour'];
+  if (raw === null || raw === undefined) return '—';
+  const hour = typeof raw === 'number' ? raw : Number(raw);
+  if (isNaN(hour)) return '—';
+  const day = typeof timeContext['adventure_day'] === 'number' ? timeContext['adventure_day'] : Number(timeContext['adventure_day'] ?? 1);
+  const h = Math.floor(hour) % 24;
+  const m = Math.round((hour % 1) * 60);
+  const period = h < 12 ? 'AM' : 'PM';
+  const displayH = h % 12 === 0 ? 12 : h % 12;
+  const displayM = m > 0 ? `:${String(m).padStart(2, '0')}` : '';
+  return `Day ${isNaN(day) ? 1 : day} — ${displayH}${displayM} ${period}`;
+}
+
 export const StorySidebar: React.FC<StorySidebarProps> = ({
   story,
   traversalContext,
@@ -75,6 +91,7 @@ export const StorySidebar: React.FC<StorySidebarProps> = ({
   explorationContext,
   restContext,
   inventoryContext,
+  timeContext,
   storySummary,
   sceneSummary,
   currentCategory,
@@ -122,6 +139,13 @@ export const StorySidebar: React.FC<StorySidebarProps> = ({
             ? <span className="scene-summary">{sceneSummary}</span>
             : <span className="context-placeholder">No scene details yet.</span>
           }
+        </div>
+      </div>
+
+      <div className="context-section">
+        <h3>In-Game Time</h3>
+        <div className="context-body">
+          <span className="game-time">{formatGameHour(timeContext)}</span>
         </div>
       </div>
 

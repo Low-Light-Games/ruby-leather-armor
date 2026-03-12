@@ -105,6 +105,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           explorationContext={adventure.exploration_context}
           restContext={adventure.rest_context}
           inventoryContext={adventure.inventory_context}
+          timeContext={adventure.time_context}
           storySummary={adventure.story_summary}
           sceneSummary={adventure.scene_summary}
           currentCategory={adventure.current_category}
