@@ -24,7 +24,8 @@ is derived from beacon results using a DOMAIN_PRIORITY heuristic.
 → mechanic + mutations → time_keeper. Returns `:resolved` with
 `narrate_seed` from the mechanic outcome.
 
-**Non-mechanical path:** beacon → world check → time_keeper → momentum.
+**Non-mechanical path:** beacon → world check → [social expansion | time_keeper → momentum].
+If `expand_scene` is true, calls `resolve_social_scene` instead of TimeKeeper + Momentum.
 Returns `:resolved` with `narrate_seed` from the momentum outcome.
 `verdict_outcome` is always written to the loop by either Mechanic or
 Momentum, so downstream steps have a single read location.
@@ -35,6 +36,7 @@ Momentum, so downstream steps have a single read location.
 | `:awaiting_rolls` | Rolls needed. `intent` and `merged` available for roll pause. |
 | `:awaiting_initiative` | Combat starting, waiting for player initiative roll. |
 | `:encounter` | Harbinger triggered an encounter. `narrate_seed` from loop's `verdict_outcome`. |
+| `:social_scene` | Social scene expanded. `narrate_seed` from scene text. |
 | `:rejected` | SanityChecker rejected the action (capability or world consistency). `reason` available. |
 
 ### `finish_resolution(intent, merged, roll_results)`
@@ -49,6 +51,20 @@ Called when Harbinger triggers an encounter (Path A). Encounter data is
 read exclusively from the loop (set by Harbinger during TimeKeeper).
 Returns `:awaiting_initiative` or `:encounter`.
 
+### `resolve_social_scene(intent)`
+
+Social scene expansion for significant NPC interactions. Called when
+`intent[:expand_scene]` is true on the non-mechanical path (after world
+consistency check, replacing TimeKeeper + Momentum).
+
+Gathers social context, character block, NPC names, and the social beacon's
+domain interpretation. Calls the `social_expansion` AI template via
+`timed_ai_call`. Writes scene data to `@loop`. Returns `:social_scene`
+with `narrate_seed` from the expanded scene.
+
+TimeKeeper is intentionally skipped — no time passes until the interaction
+resolves in a subsequent pipeline run.
+
 ### `resolve_unified(intention)`
 
 Unified evaluation path: single AI call replaces beacons + mech eval +
@@ -62,7 +78,7 @@ structure (mechanical/non-mechanical) as `resolve`. No `category` parameter.
 
 ```ruby
 {
-  status:       :resolved | :awaiting_rolls | :encounter | :rejected | :awaiting_initiative,
+  status:       :resolved | :awaiting_rolls | :encounter | :social_scene | :rejected | :awaiting_initiative,
   intent:       { intention:, affected_contexts:, ... },
   narrate_seed: "Factual outcome text" | nil,
   mutations:    { player: ..., npcs: ... } | nil,

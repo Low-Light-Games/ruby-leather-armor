@@ -8,7 +8,7 @@ class AiLog < ApplicationRecord
     mechanical_evaluation roll_qualifier sanity_checker sanity_checker_world
     mechanic momentum time_keeper chronicler narrate
     micro_context_update macro_narrative_update
-    edge_pipeline encounter_expand creature_generation
+    edge_pipeline encounter_expand social_expansion creature_generation
     enricher embellisher
   ].freeze
 

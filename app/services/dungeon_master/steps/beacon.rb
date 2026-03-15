@@ -84,6 +84,7 @@ module DungeonMaster
           affected: parsed["affected"] == true,
           needs_mechanics: parsed["needs_mechanics"] == true,
           macro_significant: parsed["macro_significant"] == true,
+          expand_scene: parsed["expand_scene"] == true,
           rules_needed: Array(parsed["rules_needed"]).map(&:to_s),
           domain_interpretation: parsed["domain_interpretation"],
           transition: parsed["transition"],
@@ -93,6 +94,7 @@ module DungeonMaster
       rescue TokenBudgetExceededError, AiError => e
         pipeline_error!("beacon_#{domain}", e, fallback: {
           domain: domain, affected: false, needs_mechanics: false, macro_significant: false,
+          expand_scene: false,
           rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil,
           destination: nil, combatants: []
         })
@@ -113,9 +115,12 @@ module DungeonMaster
 
         plot_relevant = determine_plot_relevance(affected_contexts)
 
+        expand_scene = results.dig("social", :expand_scene) == true
+
         {
           intention: intention,
           needs_mechanics: needs_mechanics,
+          expand_scene: expand_scene,
           destination: destination,
           affected_contexts: affected_contexts,
           primary_context: primary_context || "exploration",

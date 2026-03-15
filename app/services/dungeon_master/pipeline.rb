@@ -182,7 +182,14 @@ module DungeonMaster
           @loop&.batch_update!(new_status: "encounter",
             timeline_entry: tl("encounter", "Encounter triggered"))
           accumulated << result
-          log_queue_interrupt(idx, total, actions[(idx + 1)..])
+          log_queue_interrupt(idx, total, actions[(idx + 1)..], reason: "encounter")
+          break
+
+        when :social_scene
+          @loop&.batch_update!(new_status: "social_scene",
+            timeline_entry: tl("social_scene", "Social scene triggered"))
+          accumulated << result
+          log_queue_interrupt(idx, total, actions[(idx + 1)..], reason: "social_scene")
           break
 
         when :resolved
@@ -252,7 +259,14 @@ module DungeonMaster
           @loop&.batch_update!(new_status: "encounter",
             timeline_entry: tl("encounter", "Encounter triggered"))
           accumulated << result
-          log_queue_interrupt(action_idx, total_original, remaining[(idx + 1)..])
+          log_queue_interrupt(action_idx, total_original, remaining[(idx + 1)..], reason: "encounter")
+          break
+
+        when :social_scene
+          @loop&.batch_update!(new_status: "social_scene",
+            timeline_entry: tl("social_scene", "Social scene triggered"))
+          accumulated << result
+          log_queue_interrupt(action_idx, total_original, remaining[(idx + 1)..], reason: "social_scene")
           break
 
         when :resolved
@@ -278,6 +292,7 @@ module DungeonMaster
       all_seeds = prior_seeds + results.filter_map { |r| r[:narrate_seed] }
       all_mutations = results.filter_map { |r| r[:mutations] }
       encounter_triggered = results.any? { |r| r[:status] == :encounter }
+      social_scene_triggered = results.any? { |r| r[:status] == :social_scene }
 
       combined_seed = all_seeds.compact.join("\n\nThen: ") if all_seeds.any?
       combined_mutations = all_mutations.compact.reduce({}) { |acc, m| deep_merge_mutations(acc, m) }
@@ -293,6 +308,7 @@ module DungeonMaster
 
       extra = {}
       extra[:encounter_triggered] = true if encounter_triggered
+      extra[:social_scene_triggered] = true if social_scene_triggered
 
       output_result = run_output_phase(merged_intent,
         narrate_seed: combined_seed,
@@ -501,9 +517,9 @@ module DungeonMaster
       @log.dm_log!("Action queue paused at action #{idx + 1}/#{total} (awaiting rolls). Remaining: #{remaining.inspect}")
     end
 
-    def log_queue_interrupt(idx, total, remaining)
+    def log_queue_interrupt(idx, total, remaining, reason: "encounter")
       return unless total > 1
-      @log.dm_log!("Action queue interrupted at action #{idx + 1}/#{total} (encounter). Aborted: #{remaining.inspect}")
+      @log.dm_log!("Action queue interrupted at action #{idx + 1}/#{total} (#{reason}). Aborted: #{remaining.inspect}")
     end
 
     def log_queue_completed(total)

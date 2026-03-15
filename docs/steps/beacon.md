@@ -30,6 +30,7 @@ deprecated — `beacon_domains` always returns all domains.
   "affected": false,
   "needs_mechanics": false,
   "macro_significant": false,
+  "expand_scene": false,
   "rules_needed": [],
   "domain_interpretation": "How this action relates to this domain",
   "transition": null,
@@ -50,6 +51,9 @@ deprecated — `beacon_domains` always returns all domains.
   (combat > social > traversal > exploration > rest > inventory), not from
   Classify's category
 - `destination`: from traversal beacon (used by TimeKeeper for journey distance)
+- `expand_scene`: sourced exclusively from the social beacon — `true` when
+  the social beacon flags a significant NPC interaction that deserves scene
+  expansion rather than auto-resolution via Momentum
 - `plot_relevant`: determined by `determine_plot_relevance`, which now
   accepts `affected_contexts` (the full set) instead of `primary_context` only
 

@@ -4,7 +4,8 @@ class DmConfig < ApplicationRecord
   # without migrations.
   TOKEN_BUDGET_STEPS = %w[
     intake dm_query sequencer player_interpreter beacon mechanical_evaluation
-    roll_qualifier sanity_checker sanity_checker_world mechanic momentum time_keeper chronicler narrate
+    roll_qualifier sanity_checker sanity_checker_world mechanic momentum time_keeper
+    social_expansion chronicler narrate
     micro_context_update macro_narrative_update
     edge_pipeline creature_generation unified_evaluation
   ].freeze
@@ -27,6 +28,7 @@ class DmConfig < ApplicationRecord
     "sanity_checker_world"   => "⚠️ Capable model REQUIRED. Cross-references player actions against full game state. Unlikely to perform well with budget models. Recommended: gpt-4o-mini or better (gpt-4.1-mini, o3-mini, gpt-5-mini).",
     "mechanic"               => "➡️ Capable model suggested. Post-roll arbitration and mutation generation — e.g. o3-mini, o4-mini, gpt-5-mini.",
     "momentum"               => "Mid-tier model. Non-mechanical outcome determination and context-domain assessment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
+    "social_expansion"       => "Mid-tier model. Scene creation with NPC personality and attitude — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
     "time_keeper"            => "Fast, cheap model. Estimates in-game time for an action — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
     "chronicler"             => "➡️ Capable model suggested. Receives social, traversal, and exploration context; condition matching and scene-aware NPC reactions. Use a capable model and sufficient token budget — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
     "narrate"                => "Creative model. Narrative quality scales with capability — e.g. gpt-4.1, gpt-4o, gpt-5.",
@@ -97,6 +99,7 @@ class DmConfig < ApplicationRecord
       "sanity_checker_world" => 500,
       "mechanic" => 600,
       "momentum" => 500,
+      "social_expansion" => 500,
       "time_keeper" => 300,
       "chronicler" => 500,
       "narrate" => 800,

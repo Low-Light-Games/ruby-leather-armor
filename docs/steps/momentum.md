@@ -25,6 +25,11 @@ no rolls, no saves, no checks. Examples:
 - Setting up camp
 - Examining an object
 
+**Exception:** Momentum is skipped when `intent[:expand_scene]` is true. In
+that case, the Social Expansion step replaces Momentum for significant NPC
+interactions (transactions, negotiations, confrontations), creating an
+immersive scene that pauses for player input instead of auto-resolving.
+
 ## Input
 
 | Field | Source |

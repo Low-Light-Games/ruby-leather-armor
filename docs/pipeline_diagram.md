@@ -45,7 +45,11 @@ flowchart TB
     O -->|no| Q[World consistency check]
     Q --> Q1{Consistent?}
     Q1 -->|no| REJECT
-    Q1 -->|yes| R_NM[TimeKeeper]
+    Q1 -->|yes| Q2{expand_scene?}
+    Q2 -->|yes| SOCIAL[Social Expansion]
+    SOCIAL --> SOC_RES[Accumulate :social_scene]
+    SOC_RES --> K
+    Q2 -->|no| R_NM[TimeKeeper]
     R_NM --> R_NM1{Encounter?}
     R_NM1 -->|yes| ENC
     R_NM1 -->|no| MOMENTUM[Momentum]
@@ -90,6 +94,7 @@ flowchart TB
     M --> PAUSE_ROLLS
     M --> PAUSE_INIT
     M --> ENC_RES[encounter]
+    M --> SOC_SCENE[social_scene]
 
     RES --> K
     ENC_RES --> K
@@ -155,6 +160,7 @@ flowchart LR
 | **Sanity checker** | World consistency + capability guardrail (parallel with mech eval). |
 | **Mechanic** | Factual outcome + structured mutations from rolls + NPC results (mechanical path). |
 | **Momentum** | Factual outcome + affected contexts for non-mechanical actions. |
+| **Social Expansion** | Expand significant social interactions into immersive NPC scenes (conditional, non-mechanical path). |
 | **TimeKeeper** | Estimate time → Harbinger (encounters) → GameClock advance. Stores journey_data on loop. |
 | **Chronicler** | Plot/clue/NPC reaction brief for Narrate (if story data exists). Determines adventure_complete. |
 | **Narrate** | Prose from outcome + contexts + dm_brief. Reads what_happened from loop. |

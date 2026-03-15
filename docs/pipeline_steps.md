@@ -692,6 +692,30 @@ unambiguous data.
 This also decouples context updates from narration — in parallel mode,
 context updates don't need to wait for narration to complete.
 
+### 30. Social Scene Expansion
+
+**Decision:** add a third resolution mode alongside mechanical (rolls/checks)
+and auto-resolve (Momentum) for significant social interactions.
+
+**Why:** Momentum auto-resolves social interactions ("you rented the room")
+without player agency. Transactions, negotiations, information-gathering,
+and confrontations deserve an immersive NPC scene where the player chooses
+how to respond — the same way encounters get expanded into scenes before
+combat.
+
+**How:** the Social Beacon flags `expand_scene: true`, CoreResolver calls a
+Social Expander AI step instead of TimeKeeper+Momentum, the scene is
+returned as `:social_scene` status which breaks the queue like encounters.
+The player's response enters a normal new pipeline run.
+
+**Re-expansion guard:** the Social Beacon is instructed not to re-expand if
+the `social_context` already has an active interaction. This prevents
+infinite scene loops.
+
+**Trade-off accepted:** one extra AI call for actions flagged as significant
+social interactions. Justified by player agency — the same tradeoff as
+encounter expansion.
+
 ---
 
 ## Architecture Overview
@@ -739,6 +763,9 @@ by the CoreResolver (beacon → mechanics → mechanic → time_keeper, or
 beacon → world check → time_keeper → momentum).
 Encounters break the loop; roll requests pause it with remaining actions
 stored in metadata for resumption.
+Social scenes also break the loop — significant NPC interactions
+(transactions, negotiations) are expanded into immersive scenes that pause
+for the player to respond.
 
 ---
 
@@ -791,7 +818,9 @@ run_prompt(player_input)
 +--------------+---------------------+
                |
                |  needs_mechanics == false
-               +--> WORLD CHECK --> TIME KEEPER --> MOMENTUM --> OUTPUT PHASE
+               +--> WORLD CHECK --+--> expand_scene? --+--> SOCIAL EXPANSION --> OUTPUT PHASE
+                                  |                    |
+                                  |                    +--> TIME KEEPER --> MOMENTUM --> OUTPUT PHASE
                |
                |  needs_mechanics == true
                v
@@ -875,6 +904,7 @@ Each step is documented in detail in its own file.
 | 5 | **Mechanic** | AI (mechanical path) | [steps/mechanic.md](steps/mechanic.md) |
 | 5a | **Momentum** | AI (non-mechanical path) | [steps/momentum.md](steps/momentum.md) |
 | 5b | **TimeKeeper** | Code-first, AI fallback | [steps/time_keeper.md](steps/time_keeper.md) |
+| 5c | **Social Expansion** | AI (conditional, non-mechanical path) | [steps/social_expansion.md](steps/social_expansion.md) |
 | -- | **Harbinger** (utility) | Code-only (called by TimeKeeper) | [steps/harbinger.md](steps/harbinger.md) |
 | -- | **Warmaster** (utility) | Code + opt. AI (creature_generation) | [steps/warmaster.md](steps/warmaster.md) |
 | -- | **GameClock** (utility) | Code-only (called by TimeKeeper) | [utilities/game_clock.md](utilities/game_clock.md) |
@@ -927,7 +957,7 @@ Every AI call produces an `AiLog` record containing:
 
 | Field | Description |
 |---|---|
-| `step` | Pipeline step name (intake, player_interpreter, beacon, mechanical_evaluation, sanity_checker, sanity_checker_world, mechanic, momentum, chronicler, narrate, micro_context_update, macro_narrative_update, edge_pipeline) |
+| `step` | Pipeline step name (intake, player_interpreter, beacon, mechanical_evaluation, sanity_checker, sanity_checker_world, mechanic, momentum, social_expansion, chronicler, narrate, micro_context_update, macro_narrative_update, edge_pipeline) |
 | `prompt_summary` | Truncated description of what was asked |
 | `raw_response` | The complete API response |
 | `parsed_response` | The parsed JSON |
@@ -998,6 +1028,35 @@ See [steps/warmaster.md](steps/warmaster.md) for detailed documentation.
 
 ---
 
+## Social Scene Lifecycle
+
+When a significant social interaction is detected, the pipeline expands it
+into an immersive NPC scene rather than auto-resolving via Momentum.
+
+### Flow
+
+```
+Beacon (social domain) → expand_scene: true
+  → CoreResolver#resolve_social_scene
+    → Social Expander AI call (social_expansion template)
+    → Scene data written to @loop
+    → return :social_scene
+  → Pipeline breaks queue (like encounter)
+  → Output phase: narrate + context update
+  → Player sees scene, responds freely
+  → New pipeline run (normal flow — may go mechanical or Momentum)
+```
+
+### Re-expansion Guard
+
+The Social Beacon is instructed to NOT flag `expand_scene: true` when the
+`social_context` already contains an active NPC interaction. This prevents
+infinite scene loops. The player's response resolves through Momentum
+(auto-resolve) or the mechanical path (if they attempt something requiring
+a skill check), ensuring natural conclusion.
+
+---
+
 ## Abandoned Pipeline Detection
 
 When a player sends a new message while a previous pipeline is waiting for
@@ -1049,6 +1108,7 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `sanity_checker_world` | 500 |
 | `mechanic` | 600 |
 | `momentum` | 500 |
+| `social_expansion` | 500 |
 | `time_keeper` | 300 |
 | `chronicler` | 500 |
 | `narrate` | 800 |

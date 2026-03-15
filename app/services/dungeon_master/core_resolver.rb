@@ -12,6 +12,7 @@ module DungeonMaster
   #   :awaiting_rolls       — rolls needed, intent and merged available for resumption
   #   :awaiting_initiative  — combat starting, waiting for player initiative roll
   #   :encounter            — Harbinger triggered an encounter mid-action
+  #   :social_scene         — social scene expanded, narrate_seed from scene text
   #   :rejected             — SanityChecker rejected the action
   module CoreResolver
     private
@@ -62,6 +63,10 @@ module DungeonMaster
       end
 
       @loop&.log_step("sanity_checker", "World: consistent (no mechanics)")
+
+      if intent[:expand_scene]
+        return resolve_social_scene(intent)
+      end
 
       time_result = run_time_keeper(intent, nil)
 
@@ -179,6 +184,10 @@ module DungeonMaster
 
       @loop&.log_step("sanity_checker", "World: consistent (no mechanics)")
 
+      if intent[:expand_scene]
+        return resolve_social_scene(intent)
+      end
+
       time_result = run_time_keeper(intent, nil)
 
       if time_result[:encounter]
@@ -192,6 +201,62 @@ module DungeonMaster
         narrate_seed: momentum_result[:outcome],
         mutations: momentum_result[:mutations].presence,
         time_result: time_result
+      }
+    end
+
+    # Social scene expansion: creates an immersive NPC interaction scene that
+    # pauses the pipeline for player input. Analogous to encounter expansion
+    # but for significant social interactions (transactions, negotiations, etc.).
+    # TimeKeeper is skipped — no time passes until the interaction resolves.
+    def resolve_social_scene(intent)
+      prompt_summary = "SocialExpansion: \"#{@log.truncate(intent[:intention])}\""
+
+      social_beacon = intent.dig(:beacon_results, "social") || {}
+      npc_names = begin
+        @adventure.story.story_npcs.pluck(:name)
+      rescue => e
+        pipeline_error!("social_expansion_npcs", e, fallback: [])
+      end
+
+      system_prompt = PromptRenderer.render("social_expansion",
+        intention: intent[:intention],
+        location: @adventure.current_location&.name || "the area",
+        social_context: @adventure.social_context,
+        character_block: CharacterBlock.full(@sheet),
+        npc_names: npc_names,
+        domain_interpretation: social_beacon[:domain_interpretation] || intent[:intention])
+
+      request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
+
+      parsed = timed_ai_call("social_expansion", prompt_summary, request_body) do
+        raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
+                        max_tokens: @config.token_budget_for("social_expansion"),
+                        step_name: "social_expansion",
+                        model: @config.model_for("social_expansion"))
+        [raw, @ai.parse_json(raw)]
+      end
+
+      scene = parsed["scene"] || parsed["narrative"] || intent[:intention]
+      npc_name = parsed["npc_name"]
+      npc_attitude = parsed["npc_attitude"]
+      new_elements = Array(parsed["new_elements"]).select(&:present?)
+
+      if @loop
+        loop_data = {
+          "social_scene" => scene.to_s.truncate(1000),
+          "verdict_outcome" => scene.to_s.truncate(500)
+        }
+        loop_data["social_npc_name"] = npc_name if npc_name.present?
+        loop_data["social_npc_attitude"] = npc_attitude if npc_attitude.present?
+        loop_data["social_new_elements"] = new_elements if new_elements.any?
+        @loop.batch_update!(
+          new_data: loop_data,
+          timeline_entry: { "step" => "social_expansion", "summary" => "Scene: #{npc_name || 'NPC'} (#{npc_attitude || 'unknown'})", "at" => Time.current.iso8601 })
+      end
+
+      {
+        status: :social_scene, intent: intent,
+        narrate_seed: scene
       }
     end
 
