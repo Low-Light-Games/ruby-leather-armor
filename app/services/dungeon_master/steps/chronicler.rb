@@ -45,7 +45,6 @@ module DungeonMaster
           traversal_context: traversal_ctx,
           exploration_context: exploration_ctx,
           encounter_triggered: encounter_triggered,
-          chronicler_tone_direction: @config.get("chronicler_tone_direction") == true,
         )
 
         request_body = { system_prompt: system_prompt, user_message: "Evaluate plot state for this action." }
@@ -68,11 +67,15 @@ module DungeonMaster
           new_data: { "adventure_complete" => adventure_complete },
           timeline_entry: { "step" => "chronicler", "summary" => "adventure_complete=#{adventure_complete}", "at" => Time.current.iso8601 })
 
+        guidance = parsed["narration_guidance"].to_s
+        forbidden = Array(parsed["forbidden_elements"])
+        brief = guidance
+        brief += "\nFORBIDDEN — do NOT mention or allude to: #{forbidden.join(', ')}" if forbidden.any?
+
         {
-          dm_brief: parsed["narration_guidance"].to_s,
+          dm_brief: brief,
           clues_revealed: parsed["clues_to_reveal"] || [],
           npc_reactions: parsed["npc_reactions"] || {},
-          atmosphere_notes: parsed["atmosphere_notes"].to_s,
           milestones_reached: parsed["milestones_reached"] || [],
         }
       end

@@ -387,82 +387,15 @@ module DungeonMaster
       [intent, merged]
     end
 
-    def should_run_chronicler?
-      return false if @config.get("skip_chronicler") == true
-      has_structured_story_data?
-    end
-
-    def has_structured_story_data?
+    def story_has_plot_data?
       StoryNpc.where(story_id: @adventure.story_id).exists? ||
         StoryClue.where(story_id: @adventure.story_id).exists?
     end
 
-    # Runs the AI Chronicler if available, otherwise falls back to heuristic DC matching.
     def resolve_plot(intent, verdict_outcome: nil, encounter_triggered: false)
-      if should_run_chronicler?
-        run_chronicler(intent, verdict_outcome: verdict_outcome, encounter_triggered: encounter_triggered)
-      elsif has_structured_story_data?
-        heuristic_chronicler(intent, verdict_outcome: verdict_outcome)
-      end
-    end
+      return unless story_has_plot_data?
 
-    # Deterministic DC-based clue matching fallback when the Chronicler AI is not available.
-    # Checks each undiscovered clue against location, method, prerequisites, and difficulty.
-    # Returns a hash shaped like Chronicler output (dm_brief, etc.).
-    DC_MAP = { "automatic" => 0, "easy" => 10, "moderate" => 15, "hard" => 25 }.freeze
-    METHOD_CONTEXT_MAP = {
-      "social" => "social", "exploration" => "exploration",
-      "magic" => "exploration", "combat" => "combat", "automatic" => nil,
-    }.freeze
-
-    def heuristic_chronicler(intent, verdict_outcome: nil)
-      plot_state = @adventure.plot_state || {}
-      discovered_ids = plot_state["discovered_clues"] || []
-      current_loc_id = @adventure.current_location_id
-
-      all_clues = StoryClue.for_adventure(@adventure)
-      undiscovered = all_clues.reject { |c| discovered_ids.include?(c.id) }
-
-      revealed = []
-      attempted = []
-
-      undiscovered.each do |clue|
-        next if clue.location_id && clue.location_id != current_loc_id
-
-        expected_context = METHOD_CONTEXT_MAP[clue.discovery_method]
-        next if expected_context && !Array(intent[:affected_contexts]).include?(expected_context)
-
-        next if (clue.prerequisite_clue_ids || []).any? { |pid| !discovered_ids.include?(pid) }
-
-        dc = DC_MAP[clue.difficulty] || 15
-        if dc == 0
-          revealed << clue
-        else
-          attempted << clue
-        end
-      end
-
-      new_discovered = revealed.map(&:id)
-      new_attempted  = attempted.map(&:id)
-
-      if new_discovered.any? || new_attempted.any?
-        ps = plot_state.deep_dup
-        ps["discovered_clues"] = ((ps["discovered_clues"] || []) + new_discovered).uniq
-        ps["attempted_clues"]  = ((ps["attempted_clues"] || []) + new_attempted).uniq
-        @adventure.update!(plot_state: ps)
-      end
-
-      guidance_parts = []
-      revealed.each { |c| guidance_parts << "The player discovers: #{c.title}" }
-      guidance_parts << "Do NOT reveal any plot secrets beyond what was just discovered." if revealed.any?
-
-      {
-        dm_brief: guidance_parts.any? ? guidance_parts.join(". ") : nil,
-        clues_revealed: revealed.map { |c| { "id" => c.id, "title" => c.title } },
-        npc_reactions: {},
-        atmosphere_notes: "",
-        milestones_reached: [],
-      }
+      run_chronicler(intent, verdict_outcome: verdict_outcome, encounter_triggered: encounter_triggered)
     end
 
     # ----------------------------------------------------------------

@@ -15,6 +15,11 @@ module DungeonMaster
 
       DOMAIN_PRIORITY = %w[combat social traversal exploration rest inventory].freeze
 
+      DISCOVERY_METHOD_CONTEXT_MAP = {
+        "social" => "social", "exploration" => "exploration",
+        "magic" => "exploration", "combat" => "combat", "automatic" => nil,
+      }.freeze
+
       # Run beacons for all domains and merge results.
       def run_beacon(intention)
         domains = DOMAINS.dup
@@ -169,7 +174,7 @@ module DungeonMaster
         loc_has_clues = undiscovered.any? { |c| c.location_id.nil? || c.location_id == current_loc_id }
         ctx_set = Array(affected_contexts)
         method_match = undiscovered.any? do |c|
-          expected = Pipeline::METHOD_CONTEXT_MAP[c.discovery_method]
+          expected = DISCOVERY_METHOD_CONTEXT_MAP[c.discovery_method]
           expected.nil? || ctx_set.include?(expected)
         end
 

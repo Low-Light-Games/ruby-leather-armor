@@ -56,12 +56,9 @@ module DungeonMaster
 
       def narrate_story_context(dm_brief)
         hook = @adventure.story.hook.presence || @adventure.story.preview
-        enriched_world = @adventure.enriched_world || {}
-        atmosphere = enriched_world["atmosphere"]
 
         parts = []
         parts << "Hook: #{hook}"
-        parts << "Atmosphere: #{atmosphere}" if atmosphere.present?
         parts << "DM Brief (follow these instructions carefully): #{dm_brief}" if dm_brief.present?
 
         parts.join("\n")
