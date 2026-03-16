@@ -70,7 +70,7 @@ sacrificing the debugging granularity of the non-evaluation steps.
 | Other steps | Separate | Separate | N/A (all-in-one) |
 | Per-domain model selection | Yes | No (one model for eval) | No |
 | Cross-domain coherence | Low (each domain isolated) | High (single context) | High |
-| Roll deduplication | Code-side post-merge | AI avoids duplicates natively | N/A |
+| Roll deduplication | Prompt-level (warn-only, see DD 31) | AI avoids duplicates natively | N/A |
 | Prompt size | Small per call | Large (all contexts + rules) | Largest |
 | Target models | Any (cheap models work well) | Top-end only (o3, gpt-5, claude-4) | Capable |
 | Toggle | default | `evaluation_mode: "unified"` | `pipeline_mode: "edge"` |
@@ -715,6 +715,32 @@ infinite scene loops.
 **Trade-off accepted:** one extra AI call for actions flagged as significant
 social interactions. Justified by player agency — the same tradeoff as
 encounter expansion.
+
+### 31. Roll deduplication removed (Principle 17)
+
+**Decision:** remove `deduplicate_rolls!` — the code-side post-merge
+deduplication that pattern-matched `[skill, type, dc]` on AI-generated
+output to remove duplicate rolls.
+
+**Why:** the dedup was a heuristic fix for an AI-generated problem. When
+MechEval produced duplicate Diplomacy DC 10 checks from two different
+domain evaluations, code silently removed one. This violated what is now
+Design Philosophy Principle 17: code must not heuristically fix AI
+problems. The code could only match exact duplicates (same skill, same
+DC) — it failed on the harder case of same skill, different DCs, which
+required a deeper string-matching heuristic that would compound the
+anti-pattern.
+
+**Fix:** the MechEval template now instructs later domain evaluations not
+to re-request checks already covered by a previous domain — even at a
+different DC. If duplicates still appear, they are logged as warnings
+for observability (`warn_duplicate_rolls`) but the rolls array is not
+altered. This makes the problem visible rather than silently masking it.
+
+**What stays:** `filter_auto_success_rolls!` is deterministic — it uses
+real character sheet modifiers to identify rolls that are mathematically
+impossible to fail. This is Principle 1 (code for certainty), not
+Principle 17's anti-pattern.
 
 ---
 

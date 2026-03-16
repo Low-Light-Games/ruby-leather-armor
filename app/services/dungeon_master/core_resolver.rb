@@ -43,7 +43,7 @@ module DungeonMaster
         @loop&.log_step("sanity_checker", "World: consistent")
 
         merged = merge_mechanical_evaluations(evaluations)
-        deduplicate_rolls!(merged)
+        warn_duplicate_rolls(merged)
         rolls_desc = merged[:player_rolls].map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]} (#{r[:domain]})" }.join(", ")
         @loop&.log_step("mech_eval", rolls_desc.presence || "No rolls")
         filter_auto_success_rolls!(merged)
@@ -52,7 +52,7 @@ module DungeonMaster
           return { status: :awaiting_rolls, intent: intent, merged: merged }
         end
 
-        return finish_resolution(intent, merged, "(no player rolls required)")
+        return finish_resolution(intent, merged, auto_success_roll_message(merged))
       end
 
       world = run_world_consistency_check(intent)
@@ -163,7 +163,7 @@ module DungeonMaster
         @loop&.log_step("sanity_checker", "World: consistent")
 
         merged = merge_mechanical_evaluations(evaluations)
-        deduplicate_rolls!(merged)
+        warn_duplicate_rolls(merged)
         rolls_desc = merged[:player_rolls].map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]} (#{r[:domain]})" }.join(", ")
         @loop&.log_step("mech_eval", rolls_desc.presence || "No rolls")
         filter_auto_success_rolls!(merged)
@@ -172,7 +172,7 @@ module DungeonMaster
           return { status: :awaiting_rolls, intent: intent, merged: merged }
         end
 
-        return finish_resolution(intent, merged, "(no player rolls required)")
+        return finish_resolution(intent, merged, auto_success_roll_message(merged))
       end
 
       world = run_world_consistency_check(intent)
@@ -202,6 +202,11 @@ module DungeonMaster
         mutations: momentum_result[:mutations].presence,
         time_result: time_result
       }
+    end
+
+    def auto_success_roll_message(merged)
+      descs = (merged[:auto_successes] || []).map { |s| "AUTO-SUCCESS: #{s}" }
+      descs.any? ? descs.join("\n") : "(no rolls required — action succeeds without checks)"
     end
 
     # Social scene expansion: creates an immersive NPC interaction scene that

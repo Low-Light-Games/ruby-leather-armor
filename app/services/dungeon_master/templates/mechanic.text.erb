@@ -19,6 +19,9 @@ determine the factual outcome and produce structured mutations.
 
 === INSTRUCTIONS ===
 - Determine the factual outcome of each roll (hit/miss, success/failure, damage dealt).
+- If roll results show AUTO-SUCCESS, the check passed — rule the outcome as a success.
+  Do NOT invent different DCs or roll results. Auto-success means the character's skill
+  is high enough that failure is impossible under the circumstances.
 - Produce a structured mutations object that the app will use to update the database.
 - For player HP changes: negative numbers mean damage taken, positive means healing.
 - For NPC HP changes: negative means damage dealt to them.

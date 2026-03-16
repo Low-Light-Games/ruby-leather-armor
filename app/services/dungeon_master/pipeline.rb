@@ -418,20 +418,22 @@ module DungeonMaster
     # Cross-domain roll deduplication
     # ----------------------------------------------------------------
 
-    def deduplicate_rolls!(merged)
+    # Observability-only: detects duplicate rolls across domain evaluations and
+    # logs a warning. Does NOT alter the rolls array — per Principle 17, code
+    # must not heuristically fix AI-generated inconsistencies. If duplicates
+    # appear, the MechEval prompt needs improvement.
+    def warn_duplicate_rolls(merged)
       seen = {}
-      removed = []
-      merged[:player_rolls] = merged[:player_rolls].select do |roll|
+      duplicates = []
+      merged[:player_rolls].each do |roll|
         key = [roll[:skill].to_s.downcase, roll[:type].to_s, roll[:dc].to_i]
         if seen[key]
-          removed << "#{roll[:skill]} DC #{roll[:dc]} (#{roll[:domain]}) — duplicate of #{seen[key]}"
-          false
+          duplicates << "#{roll[:skill]} DC #{roll[:dc]} (#{roll[:domain]}) — duplicate of #{seen[key]}"
         else
           seen[key] = roll[:domain] || "unknown"
-          true
         end
       end
-      @log.dm_log!("Dedup removed #{removed.size} duplicate roll(s): #{removed.join('; ')}") if removed.any?
+      @log.dm_log!("WARNING: #{duplicates.size} duplicate roll(s) from MechEval (not removed — fix prompt): #{duplicates.join('; ')}") if duplicates.any?
     end
 
     # ----------------------------------------------------------------
@@ -464,6 +466,7 @@ module DungeonMaster
 
       @log.dm_log!("Auto-success filter warning: #{warned.join('; ')}") if warned.any?
       @log.dm_log!("Auto-success filter removed #{removed.size} roll(s): #{removed.join('; ')}") if removed.any?
+      merged[:auto_successes] = removed if removed.any?
     end
 
     def auto_success_reason(roll, dc, skills_lookup)

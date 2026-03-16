@@ -35,8 +35,12 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
 - Write a mechanical_summary that describes what happens mechanically in this domain. This summary
   will be passed to subsequent evaluations for other domains.
 - Only adjudicate for the <%= @domain.upcase %> domain. Do not rule on other domains.
-- If PREVIOUS EVALUATION SUMMARIES already include a roll for this exact skill and DC,
-  do NOT request it again. Cross-domain duplication wastes the player's time.
+- If a PREVIOUS EVALUATION SUMMARY already requested a check for the same skill
+  (e.g. Diplomacy, Perception, Intimidate) targeting the same NPC or situation,
+  do NOT request that skill check again — even at a different DC.
+  The domain that evaluated first has authority over the DC and the NPC's state.
+  Adding a conflicting DC from another domain creates contradictory results.
+  Only add NEW, DIFFERENT skill checks that the previous domain did not cover.
 - If player_rolls are needed, include "qualifier_context_hints": an array of context names
   (combat, exploration, social, traversal, rest, inventory) that a follow-up step should
   examine to judge situational modifiers and Take 10/Take 20 eligibility. For example,

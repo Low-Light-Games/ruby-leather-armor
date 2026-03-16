@@ -472,3 +472,53 @@ single sequenced action.
 `@loop.set(...)` in the producing step and a one-line `@loop.get(...)`
 in the consuming step. No method signatures change, no hashes need new
 keys threaded through five layers of calls.
+
+---
+
+## 17. Don't code-fix AI problems
+
+When AI output contains errors, inconsistencies, or duplications, the fix
+belongs in the prompt — not in post-hoc code that pattern-matches the
+output.
+
+**The anti-pattern:** AI step X produces duplicated or contradictory data.
+A downstream code step string-matches the output, detects the problem, and
+silently removes or rewrites it. The code is now a heuristic parser of AI
+output — exactly the brittleness Principle 1 warns against.
+
+**Why this fails:**
+
+- The code can only match patterns it anticipates. The AI will find new
+  ways to be inconsistent that the code doesn't handle.
+- Silent correction masks the upstream problem. The AI keeps producing bad
+  output, but nobody notices because the code "fixes" it.
+- The code becomes load-bearing in ways that are hard to reason about.
+  Removing or changing the heuristic breaks things in non-obvious ways
+  because production silently depends on it.
+
+**The rule:** code may only intervene in AI output when it is **100%
+authoritative** — when the intervention is based on deterministic data
+(character sheet stats, database records, game rules with no ambiguity)
+rather than on matching text or numbers the AI generated.
+
+**Examples:**
+
+- **Correct (deterministic):** `filter_auto_success_rolls!` removes rolls
+  where the character's real skill modifier guarantees success. The
+  character sheet is ground truth; this is arithmetic, not heuristics.
+- **Correct (deterministic):** `apply_mutations` clamps HP between `-CON`
+  and `max_hp`. HP bounds are game rules with no ambiguity.
+- **Wrong (heuristic):** `deduplicate_rolls!` pattern-matched
+  `[skill, type, dc]` on AI output to remove duplicates the AI created.
+  The code was guessing which rolls are "the same" based on string
+  comparison of AI-generated skill names. Removed in favor of a stronger
+  MechEval prompt instruction.
+- **Wrong (heuristic):** domain-authority dedup that resolves conflicting
+  DCs by checking which domain "owns" a skill name. This is still
+  string-matching AI output; the right fix is a prompt that prevents the
+  conflict.
+
+**When you see duplicate or contradictory AI output:** improve the prompt,
+add examples, or restructure the step inputs so the AI doesn't produce the
+problem. If the problem persists, log it as a warning for observability —
+but do not silently alter the output.
