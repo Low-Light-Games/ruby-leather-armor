@@ -87,7 +87,7 @@ class AdventureMessagesController < ApplicationController
   private
 
   def set_adventure
-    @adventure = Adventure.kept.find!(params[:adventure_id])
+    @adventure = Adventure.kept.find(params[:adventure_id])
   end
 
   def dm_service

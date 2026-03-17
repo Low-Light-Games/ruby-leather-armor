@@ -62,7 +62,7 @@ class AdventureSheetsController < ApplicationController
   private
 
   def set_adventure
-    @adventure = Adventure.kept.find!(params[:adventure_id])
+    @adventure = Adventure.kept.find(params[:adventure_id])
   end
 
   def set_adventure_sheet
