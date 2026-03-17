@@ -742,6 +742,29 @@ real character sheet modifiers to identify rolls that are mathematically
 impossible to fail. This is Principle 1 (code for certainty), not
 Principle 17's anti-pattern.
 
+### 32. StepRegistry as single registration point
+
+**Decision:** consolidate the four separate constants that every new AI
+step required updating (`AiLog::CALL_TYPES`, `DmConfig::TOKEN_BUDGET_STEPS`,
+`DmConfig::STEP_MODEL_HINTS`, `DmConfig::DEFAULTS["token_budgets"]`) into
+a single `DungeonMaster::StepRegistry` module.
+
+**Why:** every new AI step (social expansion, creature generation, etc.)
+required editing 4 constants across 2 files. Missing one caused silent
+billing gaps, broken admin UI, or validation errors. The registry defines
+each step once with its token budget, model hint, and pipeline flag. The
+four constants now derive from it automatically.
+
+**How to add a new step:** add one entry to `StepRegistry::STEPS` in
+`app/services/dungeon_master/step_registry.rb`. Set `pipeline: true` for
+DM pipeline steps (appears in admin config UI) or `pipeline: false` for
+support services (enricher, embellisher — logged but not configurable).
+
+**AiLog validation:** changed from strict rejection to warn-and-save.
+Unknown `call_type` values are logged with a warning but the record is
+always saved. This ensures AI costs are never lost due to a typo or
+unregistered step — the warning makes the gap visible for correction.
+
 ---
 
 ## Architecture Overview
