@@ -3,7 +3,7 @@ class HomeController < ApplicationController
 
   def index
     if current_user&.admin?
-      redirect_to admin_dm_logs_path
+      redirect_to admin_play_logs_path
     else
       redirect_to sheets_path
     end
