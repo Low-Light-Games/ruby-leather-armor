@@ -33,7 +33,7 @@ const ChatMessage = ({ msg, isAdmin, onRetry }: ChatMessageProps) => {
         </span>
         {isAdmin && msg.pipeline_run_id && (
           <a
-            href={`/admin/ai_logs/pipelines/${msg.pipeline_run_id}`}
+            href={`/admin/play_logs/pipelines/${msg.pipeline_run_id}`}
             className="pipeline-id-link"
             target="_blank"
             rel="noopener noreferrer"

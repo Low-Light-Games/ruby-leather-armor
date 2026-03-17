@@ -185,7 +185,7 @@ class DungeonMasterService
       metadata: message.metadata,
       created_at: message.created_at
     }
-    if admin && message.role == "dm"
+    if admin && message.role != "player"
       json[:pipeline_run_id] = message.metadata&.dig("pipeline_run_id")
     end
     json
@@ -233,10 +233,14 @@ class DungeonMasterService
   def messages_for(result)
     case result[:action]
     when :rejected
-      [persist_message(
-        role: "system",
-        content: result[:reason] || "Your input was rejected. Please try a valid in-character action.",
-        message_type: "sanitization_fail")]
+      if result[:dm_message].present?
+        [persist_message(role: "dm", content: result[:dm_message], message_type: "narrative")]
+      else
+        [persist_message(
+          role: "system",
+          content: result[:reason] || "Your input was rejected. Please try a valid in-character action.",
+          message_type: "sanitization_fail")]
+      end
 
     when :dm_query
       [persist_message(role: "dm", content: result[:answer], message_type: "dm_query")]
@@ -370,7 +374,7 @@ class DungeonMasterService
   end
 
   def persist_message(role:, content:, message_type:, metadata: {})
-    if role == "dm" && @log.pipeline_run_id
+    if role != "player" && @log.pipeline_run_id
       metadata = metadata.merge("pipeline_run_id" => @log.pipeline_run_id)
     end
     @adventure.adventure_messages.create!(

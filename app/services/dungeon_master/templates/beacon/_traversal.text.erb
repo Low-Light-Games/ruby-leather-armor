@@ -7,6 +7,12 @@
   tree, the goblins). "I approach the goblins", "I move toward the lake", "I get
   closer to the altar" all affect traversal because they change the character's
   position relative to those elements.
-- destination: the name of the target location from the STORY LOCATIONS above, if any.
-  Match the player's words to the closest location name. Set to null if the target
-  is an entity or landmark rather than a named story location.
+- destination: the name of a STORY LOCATION the player is actively traveling toward,
+  only when they have not yet arrived. Set to null if:
+  - the player is already at or inside the destination (e.g. "I enter the tavern" when
+    the player is already in the village — the tavern is not a new story-level destination)
+  - the action is a short movement within the current location (crossing a room, approaching
+    an NPC, climbing a wall)
+  - the target is an entity or landmark rather than a named story location
+  Only set destination when the player is undertaking meaningful travel to reach a
+  new story location they have not yet reached.

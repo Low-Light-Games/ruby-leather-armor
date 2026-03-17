@@ -37,6 +37,14 @@ module DungeonMaster
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
 
         affected = Array(affected_contexts).map(&:to_s)
+
+        # When traversal is being updated, social must also be actively re-evaluated.
+        # A location change may or may not end the current social scene — that is AI judgment —
+        # but the AI must evaluate it rather than silently carrying the old scene forward.
+        if affected.include?("traversal") && micro_contexts[:social].present?
+          affected = (affected | ["social"]).uniq
+        end
+
         active = PromptHelpers::CONTEXT_FIELDS.select { |f| micro_contexts[f.to_sym].present? }
         relevant = (affected | active).uniq & PromptHelpers::CONTEXT_FIELDS
 

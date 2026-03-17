@@ -18,11 +18,14 @@ Your job is to update the micro-context objects based on what just happened.
 <% if @affected_fields.any? -%>
 Contexts marked [UPDATE] were directly affected by this action — update them thoroughly.
 Contexts marked [maintain] were not directly affected — carry them forward unchanged unless the outcome clearly implies a change.
-CRITICAL: An [UPDATE] context MUST NEVER be returned as an empty object `{}`. If it was empty
-before, this action just CREATED that context — populate it with structured data extracted from
-the outcome, mutations, and your knowledge of what happened. For example, a social interaction
-must produce npcs_present, conversation_state, etc. A traversal action must produce current_location,
-terrain, etc. Returning `{}` for an [UPDATE] context is always wrong.
+CRITICAL: An [UPDATE] context that was previously EMPTY must never be returned as `{}`. If it
+was empty before, this action just CREATED that context — populate it with structured data
+extracted from the outcome, mutations, and your knowledge of what happened. For example, a social
+interaction must produce npcs_present, conversation_state, etc. A traversal action must produce
+current_location, terrain, etc.
+EXCEPTION: A previously populated [UPDATE] context MAY be returned as `{}` to explicitly CLEAR it
+when the situation that created it is definitively over (e.g. a social scene whose NPCs did not
+travel with the player to the new location). Clearing is intentional; do not re-populate stale data.
 <% else -%>
 Update each context to reflect what just happened. Return all contexts below.
 <% end -%>
@@ -32,12 +35,19 @@ Update each context to reflect what just happened. Return all contexts below.
 - For combat context: track active/inactive, round, current_turn, turn_order, participants (name, hp, conditions, position), terrain_notes, active_effects.
 - For traversal context: track current_location, destination, terrain, weather, time_of_day, nearby_npcs, points_of_interest, exits.
 - For social context: track scene, npcs_present (name, role, attitude, notes), conversation_state, stakes, persuasion_progress.
+- SOCIAL SCENE CONTINUITY: If the player moved to a different location AND an active social context exists,
+  evaluate whether that social scene is still relevant. If the social context describes a scene at the
+  previous location and the NPCs involved did NOT travel with the player, clear the social context entirely
+  (return social_context as {}). If the NPCs are walking with the player or the conversation continues
+  across locations, preserve and update it.
 - For exploration context: track searched_areas, discovered_items, discovered_secrets, knowledge_checks_attempted, active_detection (e.g. Detect Magic running), pending_investigations.
 - For rest context: track resting (boolean), hours_completed, total_hours_needed, watch_order, interruptions, spells_prepared, hp_recovered, rest_complete.
 - For inventory context: track recently_acquired, recently_used, pending_identifications, equipped_changes, notable_consumables_remaining.
 - If combat has ended (all enemies defeated/fled), set combat_context.active to false.
 - If rest is complete, set rest_context.resting to false and rest_context.rest_complete to true.
 - If new creatures or NPCs appeared in the outcome, include their names in new_creatures so the app can create their stat records.
+- ARRIVAL: When the outcome describes the player arriving at a destination, set traversal_context.destination to null.
+  A player who has reached their destination is no longer traveling toward it.
 - TRAVEL: If the outcome describes the player traveling, arriving at, or approaching a location,
   update traversal_context to reflect the new position. Set current_location to where the player
   is now. If the journey is still in progress, set destination to where the player is heading and

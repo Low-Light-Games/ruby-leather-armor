@@ -149,7 +149,7 @@ module DungeonMaster
         when :rejected
           @loop&.batch_update!(new_status: "errored",
             timeline_entry: tl("rejected", result[:reason]))
-          return { action: :rejected, reason: result[:reason] }
+          return { action: :rejected, reason: result[:reason], dm_message: result[:dm_message] }
 
         when :awaiting_rolls
           @loop&.batch_update!(new_status: "paused",

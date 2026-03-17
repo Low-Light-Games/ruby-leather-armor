@@ -174,6 +174,7 @@ module DungeonMaster
         {
           consistent: parsed["consistent"] != false,
           reason: parsed["reason"],
+          dm_message: parsed["dm_message"],
           referenced_entities: Array(parsed["referenced_entities"])
         }
       end

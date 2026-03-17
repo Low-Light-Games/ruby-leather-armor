@@ -31,13 +31,13 @@ module DungeonMaster
         unless world[:consistent]
           @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
           @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
-          return { status: :rejected, intent: intent, reason: world[:reason] }
+          return { status: :rejected, intent: intent, reason: world[:reason], dm_message: world[:dm_message] }
         end
 
         unless capability[:allowed]
           @log.play_log!("capability_rejection", "SanityChecker capability check failed: #{capability[:reason]}")
           @loop&.log_step("sanity_checker", "Capability check FAILED: #{capability[:reason].to_s.truncate(100)}")
-          return { status: :rejected, intent: intent, reason: capability[:reason] }
+          return { status: :rejected, intent: intent, reason: capability[:reason], dm_message: capability[:dm_message] }
         end
 
         @loop&.log_step("sanity_checker", "World: consistent")
@@ -59,7 +59,7 @@ module DungeonMaster
       unless world[:consistent]
         @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
         @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
-        return { status: :rejected, intent: intent, reason: world[:reason] }
+        return { status: :rejected, intent: intent, reason: world[:reason], dm_message: world[:dm_message] }
       end
 
       @loop&.log_step("sanity_checker", "World: consistent (no mechanics)")
@@ -151,7 +151,7 @@ module DungeonMaster
         unless world[:consistent]
           @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
           @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
-          return { status: :rejected, intent: intent, reason: world[:reason] }
+          return { status: :rejected, intent: intent, reason: world[:reason], dm_message: world[:dm_message] }
         end
 
         unless capability[:allowed]
@@ -179,7 +179,7 @@ module DungeonMaster
       unless world[:consistent]
         @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
         @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
-        return { status: :rejected, intent: intent, reason: world[:reason] }
+        return { status: :rejected, intent: intent, reason: world[:reason], dm_message: world[:dm_message] }
       end
 
       @loop&.log_step("sanity_checker", "World: consistent (no mechanics)")
