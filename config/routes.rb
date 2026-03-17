@@ -8,16 +8,12 @@ Rails.application.routes.draw do
   # Public legal / OGL page (no authentication required)
   get "legal" => "legal#index"
 
-  # Root redirects based on role: admin → DM Logs, user → Sheets
   root "home#index"
 
   # Authentication routes
   post "login" => "sessions#create"
   delete "logout" => "sessions#destroy"
   get "current_user" => "sessions#show"
-
-  # Admin routes
-  get "admin/all_sheets" => "admin#all_sheets"
 
   namespace :admin do
     resources :adventures, only: [:index, :show, :update, :destroy] do
@@ -30,8 +26,7 @@ Rails.application.routes.draw do
     resources :stories, only: [:index, :new, :show, :create, :update, :destroy] do
       member { post :enrich }
     end
-    resources :dm_logs, only: [:index, :show]
-    resources :ai_logs, only: [:index, :show] do
+    resources :play_logs, only: [:index, :show] do
       collection do
         get :pipelines
         get "pipelines/:pipeline_run_id", action: :pipeline, as: :pipeline
@@ -53,8 +48,6 @@ Rails.application.routes.draw do
   end
 
   resources :feature_flags, only: [:index]
-
-  get "sheets/create" => "stimulus#stimulus_version_sheet_creator"
 
   # Read-only game-rule definition endpoints
   resources :feat_definitions,  only: [:index, :show]

@@ -2,7 +2,7 @@
 
 <div class="pipeline-show">
   <div class="pipeline-show-header">
-    <a href="<%= pipelines_admin_ai_logs_path %>" class="back-link">← Back to Pipeline Logs</a>
+    <a href="<%= pipelines_admin_play_logs_path %>" class="back-link">← Back to Pipeline Logs</a>
     <h1>Pipeline Run</h1>
   </div>
 
@@ -13,7 +13,7 @@
       <span class="pm-label">Pipeline Run</span>
     <% end %>
     <% if @adventure %>
-      <a href="<%= admin_ai_logs_path(adventure_id: @adventure.id) %>" class="pm-adventure-link">Adventure #<%= @adventure.id %></a>
+      <a href="<%= admin_play_logs_path(adventure_id: @adventure.id) %>" class="pm-adventure-link">Adventure #<%= @adventure.id %></a>
     <% end %>
     <% if @player_message_content.present? %>
       <blockquote class="pm-quote"><%= @player_message_content %></blockquote>
@@ -32,7 +32,7 @@
         <% if pr %>
           <span class="pipeline-status-badge pipeline-<%= pr.status %>"><%= pr.status.capitalize %></span>
         <% else %>
-          <% step_types = @logs.map(&:call_type) %>
+          <% step_types = @logs.map(&:event_type) %>
           <% has_error = @logs.any? { |l| l.status.in?(%w[api_error parse_error token_budget_exceeded logging_error]) } %>
           <% has_terminal = step_types.any? { |t| t.in?(%w[narrate dm_query edge_pipeline]) } %>
           <% overall = if has_error && !has_terminal then "errored"
@@ -74,16 +74,16 @@
       <% end %>
       <div class="ps-item ps-toggle">
         <% if @show_usage %>
-          <a href="<%= pipeline_admin_ai_logs_path(@pipeline_run_id, request.query_parameters.except(:show_usage)) %>" class="usage-toggle">Hide usage</a>
+          <a href="<%= pipeline_admin_play_logs_path(@pipeline_run_id, request.query_parameters.except(:show_usage)) %>" class="usage-toggle">Hide usage</a>
         <% else %>
-          <a href="<%= pipeline_admin_ai_logs_path(@pipeline_run_id, request.query_parameters.merge(show_usage: "1")) %>" class="usage-toggle">Show usage</a>
+          <a href="<%= pipeline_admin_play_logs_path(@pipeline_run_id, request.query_parameters.merge(show_usage: "1")) %>" class="usage-toggle">Show usage</a>
         <% end %>
       </div>
     </div>
   <% end %>
 
   <div class="pipeline-timeline">
-    <% previous_at = @player_message.created_at %>
+    <% previous_at = @player_message&.created_at || @logs.first.created_at %>
     <% @logs.each_with_index do |log, idx| %>
       <% step_ms = ((log.created_at - previous_at) * 1000).round %>
       <% is_error = log.status.in?(%w[api_error parse_error token_budget_exceeded logging_error]) %>
@@ -99,13 +99,13 @@
         <div class="card-header">
           <div class="card-title-row">
             <span class="card-title"><%= pipeline_step_title(log) %></span>
-            <a href="<%= admin_ai_log_path(log) %>" class="card-log-link">#<%= log.id %></a>
+            <a href="<%= admin_play_log_path(log) %>" class="card-log-link">#<%= log.id %></a>
           </div>
           <% if log.prompt_summary.present? %>
             <p class="card-context" title="<%= log.prompt_summary %>"><%= truncate(log.prompt_summary, length: 140) %></p>
           <% end %>
           <div class="card-meta-row">
-            <span class="type-badge <%= ai_log_type_badge_class(log.call_type) %>"><%= log.call_type.humanize %></span>
+            <span class="type-badge <%= ai_log_type_badge_class(log.event_type) %>"><%= log.event_type.humanize %></span>
             <span class="status-badge <%= log.status %>"><%= log.status.humanize %></span>
             <% if log.model_used.present? %>
               <span class="card-model"><%= log.model_used %></span>
@@ -127,7 +127,7 @@
           <div class="card-fields">
             <% begin %>
               <% parsed = JSON.parse(log.parsed_response) %>
-              <%= render partial: 'admin/ai_logs/parsed_fields', locals: { parsed: parsed } %>
+              <%= render partial: 'admin/play_logs/parsed_fields', locals: { parsed: parsed } %>
             <% rescue %>
               <pre class="card-raw"><%= log.parsed_response %></pre>
             <% end %>

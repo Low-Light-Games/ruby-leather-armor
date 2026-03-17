@@ -44,7 +44,7 @@ class AdventureMessagesController < ApplicationController
 
     if async_pipeline?
       init_msg = service.prepare_initiative(player_initiative)
-      InitiativePipelineJob.perform_later(@adventure.id, init_msg.id, player_initiative, current_user.id) if defined?(InitiativePipelineJob)
+      InitiativePipelineJob.perform_later(@adventure.id, init_msg.id, player_initiative, current_user.id)
       render json: { async: true, messages: [message_json(init_msg)] }, status: :accepted
     else
       result = service.process_initiative_result(player_initiative)
@@ -87,7 +87,7 @@ class AdventureMessagesController < ApplicationController
   private
 
   def set_adventure
-    @adventure = Adventure.find(params[:adventure_id])
+    @adventure = Adventure.kept.find!(params[:adventure_id])
   end
 
   def dm_service

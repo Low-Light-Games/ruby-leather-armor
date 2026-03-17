@@ -29,13 +29,13 @@ module DungeonMaster
         evaluations, world, capability = run_full_gate(intent)
 
         unless world[:consistent]
-          @log.dm_log!("SanityChecker world check failed: #{world[:reason]}")
+          @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
           @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
           return { status: :rejected, intent: intent, reason: world[:reason] }
         end
 
         unless capability[:allowed]
-          @log.dm_log!("SanityChecker capability check failed: #{capability[:reason]}")
+          @log.play_log!("capability_rejection", "SanityChecker capability check failed: #{capability[:reason]}")
           @loop&.log_step("sanity_checker", "Capability check FAILED: #{capability[:reason].to_s.truncate(100)}")
           return { status: :rejected, intent: intent, reason: capability[:reason] }
         end
@@ -57,7 +57,7 @@ module DungeonMaster
 
       world = run_world_consistency_check(intent)
       unless world[:consistent]
-        @log.dm_log!("SanityChecker world check failed: #{world[:reason]}")
+        @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
         @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
         return { status: :rejected, intent: intent, reason: world[:reason] }
       end
@@ -149,13 +149,13 @@ module DungeonMaster
         world, capability = run_sanity_gate(intent)
 
         unless world[:consistent]
-          @log.dm_log!("SanityChecker world check failed: #{world[:reason]}")
+          @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
           @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
           return { status: :rejected, intent: intent, reason: world[:reason] }
         end
 
         unless capability[:allowed]
-          @log.dm_log!("SanityChecker capability check failed: #{capability[:reason]}")
+          @log.play_log!("capability_rejection", "SanityChecker capability check failed: #{capability[:reason]}")
           @loop&.log_step("sanity_checker", "Capability check FAILED: #{capability[:reason].to_s.truncate(100)}")
           return { status: :rejected, intent: intent, reason: capability[:reason] }
         end
@@ -177,7 +177,7 @@ module DungeonMaster
 
       world = run_world_consistency_check(intent)
       unless world[:consistent]
-        @log.dm_log!("SanityChecker world check failed: #{world[:reason]}")
+        @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
         @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
         return { status: :rejected, intent: intent, reason: world[:reason] }
       end
@@ -220,7 +220,7 @@ module DungeonMaster
       npc_names = begin
         @adventure.story.story_npcs.pluck(:name)
       rescue => e
-        pipeline_error!("social_expansion_npcs", e, fallback: [])
+        pipeline_error!("social_expansion_npcs", e)
       end
 
       system_prompt = PromptRenderer.render("social_expansion",

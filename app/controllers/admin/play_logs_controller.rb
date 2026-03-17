@@ -1,5 +1,5 @@
 module Admin
-  class AiLogsController < ApplicationController
+  class PlayLogsController < ApplicationController
     before_action :require_admin
 
     PER_PAGE = 50
@@ -12,11 +12,11 @@ module Admin
       includes = [:adventure, :player_message]
       includes << :ai_usage_record if @show_usage
 
-      @logs = AiLog.includes(*includes).recent_first
+      @logs = PlayLog.includes(*includes).recent_first
 
       @logs = @logs.where(adventure_id: params[:adventure_id]) if params[:adventure_id].present?
       @logs = @logs.where(status: params[:status]) if params[:status].present?
-      @logs = @logs.where(call_type: params[:call_type]) if params[:call_type].present?
+      @logs = @logs.where(event_type: params[:event_type]) if params[:event_type].present?
 
       @page = [params[:page].to_i, 1].max
       @total_count = @logs.count
@@ -27,25 +27,25 @@ module Admin
     end
 
     def show
-      @log = AiLog.includes(:player_message).find(params[:id])
+      @log = PlayLog.includes(:player_message).find(params[:id])
       render layout: 'application'
     end
 
     def pipelines
-      runs = AiLog.where.not(pipeline_run_id: [nil, ""])
-                  .select("pipeline_run_id, MIN(created_at) AS first_at, MAX(created_at) AS last_at, COUNT(*) AS step_count, MIN(adventure_id) AS adventure_id")
-                  .group(:pipeline_run_id)
-                  .order("first_at DESC")
+      runs = PlayLog.where.not(pipeline_run_id: [nil, ""])
+                    .select("pipeline_run_id, MIN(created_at) AS first_at, MAX(created_at) AS last_at, COUNT(*) AS step_count, MIN(adventure_id) AS adventure_id")
+                    .group(:pipeline_run_id)
+                    .order("first_at DESC")
 
       @page = [params[:page].to_i, 1].max
-      @total_count = AiLog.where.not(pipeline_run_id: [nil, ""]).distinct.count(:pipeline_run_id)
+      @total_count = PlayLog.where.not(pipeline_run_id: [nil, ""]).distinct.count(:pipeline_run_id)
       @total_pages = (@total_count.to_f / PER_PAGE).ceil
       runs = runs.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
 
       run_ids = runs.map(&:pipeline_run_id)
-      logs_by_run = AiLog.where(pipeline_run_id: run_ids)
-                         .order(:created_at)
-                         .group_by(&:pipeline_run_id)
+      logs_by_run = PlayLog.where(pipeline_run_id: run_ids)
+                           .order(:created_at)
+                           .group_by(&:pipeline_run_id)
 
       pipeline_run_records = PipelineRun.where(pipeline_run_id: run_ids).index_by(&:pipeline_run_id)
 
@@ -61,7 +61,7 @@ module Admin
         status = if pr
                    pr.status
                  else
-                   step_types = logs.map(&:call_type)
+                   step_types = logs.map(&:event_type)
                    has_error = logs.any? { |l| l.status.in?(ERROR_STATUSES) }
                    has_terminal = step_types.any? { |t| TERMINAL_STEPS.include?(t) }
                    if has_error && !has_terminal then "errored"
@@ -94,11 +94,11 @@ module Admin
       includes = [:adventure]
       includes << :ai_usage_record if @show_usage
 
-      @logs = AiLog.where(pipeline_run_id: params[:pipeline_run_id])
-                   .order(:created_at)
-                   .includes(*includes)
+      @logs = PlayLog.where(pipeline_run_id: params[:pipeline_run_id])
+                     .order(:created_at)
+                     .includes(*includes)
       if @logs.empty?
-        redirect_to pipelines_admin_ai_logs_path, alert: "Pipeline run not found"
+        redirect_to pipelines_admin_play_logs_path, alert: "Pipeline run not found"
         return
       end
       @adventure = @logs.first&.adventure
@@ -119,8 +119,6 @@ module Admin
       end
     end
 
-    # Groups consecutive pipelines that share adventure + similar player message
-    # within a time window, marking later entries as retries.
     def detect_retries!(pipeline_runs)
       sorted = pipeline_runs.sort_by { |r| r[:first_at] }
       sorted.each_with_index do |run, idx|

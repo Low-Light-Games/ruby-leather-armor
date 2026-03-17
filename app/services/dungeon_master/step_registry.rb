@@ -3,7 +3,7 @@
 module DungeonMaster
   # Single source of truth for all AI step metadata.
   #
-  # To add a new AI step: add one entry to STEPS. AiLog::CALL_TYPES,
+  # To add a new AI step: add one entry to STEPS. PlayLog::EVENT_TYPES,
   # DmConfig::TOKEN_BUDGET_STEPS, STEP_MODEL_HINTS, and default token
   # budgets all derive from this registry automatically.
   #

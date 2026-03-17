@@ -49,7 +49,7 @@ module DungeonMaster
       intake_result = run_intake(player_input)
 
       if intake_result[:danger_score] >= @config.danger_threshold
-        @log.dm_log!("Rejected (danger: #{intake_result[:danger_score]}): #{intake_result[:reason]}")
+        @log.play_log!("intake_rejection", "Rejected (danger: #{intake_result[:danger_score]}): #{intake_result[:reason]}")
         return { action: :rejected, reason: intake_result[:reason], danger: intake_result[:danger_score] }
       end
 
@@ -73,7 +73,8 @@ module DungeonMaster
         adventure: @adventure, creature_data: creature_data.map(&:deep_symbolize_keys),
         player_initiative: player_initiative)
 
-      intent = metadata["intent"]&.deep_symbolize_keys || { intention: "combat", affected_contexts: ["combat"], macro_significant: false }
+      intent = metadata["intent"]&.deep_symbolize_keys
+      raise AiError, "Initiative metadata missing intent — state integrity failure" unless intent
       narrate_seed = metadata["narrate_seed"]
       mutations = metadata["mutations"]
       remaining = metadata["remaining_actions"] || []
@@ -354,8 +355,6 @@ module DungeonMaster
       @adventure.reload
       @loop&.batch_update!(
         timeline_entry: tl("inter_action_ctx", "Micro contexts updated between actions"))
-    rescue => e
-      pipeline_error!("inter_action_ctx", e)
     end
 
     # ----------------------------------------------------------------
@@ -389,9 +388,9 @@ module DungeonMaster
     # ----------------------------------------------------------------
 
     def restore_from_metadata(metadata)
-      intent = metadata["intent"]&.deep_symbolize_keys ||
-               { intention: "continue", affected_contexts: [], macro_significant: false }
-      mechanical_summaries = metadata["mechanical_summaries"] || metadata["ruling_summaries"] || []
+      intent = metadata["intent"]&.deep_symbolize_keys
+      raise AiError, "Roll metadata missing intent — state integrity failure" unless intent
+      mechanical_summaries = metadata["mechanical_summaries"] || []
       npc_actions  = (metadata["pending_npc_actions"]  || []).map(&:deep_symbolize_keys)
       consequences = (metadata["pending_consequences"] || []).map(&:deep_symbolize_keys)
 
@@ -433,7 +432,7 @@ module DungeonMaster
           seen[key] = roll[:domain] || "unknown"
         end
       end
-      @log.dm_log!("WARNING: #{duplicates.size} duplicate roll(s) from MechEval (not removed — fix prompt): #{duplicates.join('; ')}") if duplicates.any?
+      @log.play_log!("duplicate_roll_warning", "#{duplicates.size} duplicate roll(s) from MechEval (not removed — fix prompt): #{duplicates.join('; ')}") if duplicates.any?
     end
 
     # ----------------------------------------------------------------
@@ -464,8 +463,8 @@ module DungeonMaster
         end
       end
 
-      @log.dm_log!("Auto-success filter warning: #{warned.join('; ')}") if warned.any?
-      @log.dm_log!("Auto-success filter removed #{removed.size} roll(s): #{removed.join('; ')}") if removed.any?
+      @log.play_log!("auto_success_filter", "Warning: non-numeric DC on #{warned.join('; ')}") if warned.any?
+      @log.play_log!("auto_success_filter", "Removed #{removed.size} roll(s): #{removed.join('; ')}") if removed.any?
       merged[:auto_successes] = removed if removed.any?
     end
 
@@ -517,16 +516,16 @@ module DungeonMaster
 
     def log_queue_pause(idx, total, remaining)
       return unless total > 1
-      @log.dm_log!("Action queue paused at action #{idx + 1}/#{total} (awaiting rolls). Remaining: #{remaining.inspect}")
+      @log.play_log!("queue_paused", "Action queue paused at action #{idx + 1}/#{total} (awaiting rolls). Remaining: #{remaining.inspect}")
     end
 
     def log_queue_interrupt(idx, total, remaining, reason: "encounter")
       return unless total > 1
-      @log.dm_log!("Action queue interrupted at action #{idx + 1}/#{total} (#{reason}). Aborted: #{remaining.inspect}")
+      @log.play_log!("queue_interrupted", "Action queue interrupted at action #{idx + 1}/#{total} (#{reason}). Aborted: #{remaining.inspect}")
     end
 
     def log_queue_completed(total)
-      @log.dm_log!("Action queue completed: #{total}/#{total} actions resolved")
+      @log.play_log!("queue_completed", "Action queue completed: #{total}/#{total} actions resolved")
     end
 
     # ----------------------------------------------------------------
@@ -541,8 +540,6 @@ module DungeonMaster
         raw_action: action_text&.truncate(500),
         status: "pending"
       )
-    rescue => e
-      pipeline_error!("adventure_loop", e)
     end
 
     def restore_paused_loop!

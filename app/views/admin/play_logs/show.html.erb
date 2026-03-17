@@ -1,10 +1,10 @@
-<%= render 'admin/shared/navbar', active_nav: :ai_logs %>
+<%= render 'admin/shared/navbar', active_nav: :play_logs %>
 
 <div class="log-show">
   <div class="log-show-header">
-    <a href="<%= admin_ai_logs_path %>" class="back-link">← Back to AI Logs</a>
-    <h1>AI Log #<%= @log.id %></h1>
-    <span class="type-badge type-hero <%= ai_log_type_badge_class(@log.call_type) %>"><%= @log.call_type.humanize %></span>
+    <a href="<%= admin_play_logs_path %>" class="back-link">← Back to Play Logs</a>
+    <h1>Play Log #<%= @log.id %></h1>
+    <span class="type-badge type-hero <%= ai_log_type_badge_class(@log.event_type) %>"><%= @log.event_type.humanize %></span>
   </div>
 
   <% if @log.pipeline_run_id.present? || @log.player_message.present? %>
@@ -15,7 +15,7 @@
         <span class="pm-label">Pipeline Run</span>
       <% end %>
       <% if @log.pipeline_run_id.present? %>
-        <a href="<%= pipeline_admin_ai_logs_path(@log.pipeline_run_id) %>" class="pm-pipeline-link">View Pipeline</a>
+        <a href="<%= pipeline_admin_play_logs_path(@log.pipeline_run_id) %>" class="pm-pipeline-link">View Pipeline</a>
       <% end %>
       <% content = @log.player_message&.content || @log.player_message_content %>
       <% if content.present? %>
@@ -33,7 +33,7 @@
       <span class="meta-label">Adventure</span>
       <span class="meta-value">
         <% if @log.adventure_id %>
-          <a href="<%= admin_ai_logs_path(adventure_id: @log.adventure_id) %>">#<%= @log.adventure_id %></a>
+          <a href="<%= admin_play_logs_path(adventure_id: @log.adventure_id) %>">#<%= @log.adventure_id %></a>
         <% else %>
           <span class="empty-cell">deleted</span>
         <% end %>
@@ -58,7 +58,7 @@
     </div>
   <% end %>
 
-  <% if @log.call_type.in?(%w[mechanical_evaluation roll_qualifier]) && @log.request_body.present? %>
+  <% if @log.event_type.in?(%w[mechanical_evaluation roll_qualifier]) && @log.request_body.present? %>
     <% begin %>
       <% body = JSON.parse(@log.request_body) %>
       <% if body["user_message"].present? %>
@@ -82,7 +82,7 @@
       <% begin %>
         <% parsed = JSON.parse(@log.parsed_response) %>
         <div class="parsed-fields-grid">
-          <%= render partial: 'admin/ai_logs/parsed_fields', locals: { parsed: parsed } %>
+          <%= render partial: 'admin/play_logs/parsed_fields', locals: { parsed: parsed } %>
         </div>
         <details class="full-json-details">
           <summary>Full JSON</summary>

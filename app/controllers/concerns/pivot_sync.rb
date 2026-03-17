@@ -25,7 +25,7 @@ module PivotSync
   end
 
   # Replace all spells on the given relation.
-  # spell_data is a hash with optional :known, :spellbook, and :legacy arrays.
+  # spell_data is a hash with optional :known and :spellbook arrays.
   def sync_spells!(spell_relation, spell_data)
     return unless spell_data
 
@@ -39,13 +39,6 @@ module PivotSync
     (spell_data[:spellbook] || []).each do |spell_id|
       next unless SpellDefinition.exists?(spell_id)
       spell_relation.create!(spell_id: spell_id, storage_type: "spellbook")
-    end
-
-    if spell_data[:legacy] && !spell_data[:known] && !spell_data[:spellbook]
-      (spell_data[:legacy] || []).each do |spell_id|
-        next unless SpellDefinition.exists?(spell_id)
-        spell_relation.create!(spell_id: spell_id, storage_type: "known")
-      end
     end
   end
 

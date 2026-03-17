@@ -10,16 +10,15 @@ module DungeonMaster
     def apply_mutations(mutations)
       return unless mutations.is_a?(Hash)
 
-      apply_player_mutations(mutations["player"] || mutations[:player])
-      apply_npc_mutations(mutations["npcs"] || mutations[:npcs])
-    rescue => e
-      pipeline_error!("apply_mutations", e)
+      mutations = mutations.deep_symbolize_keys
+      apply_player_mutations(mutations[:player])
+      apply_npc_mutations(mutations[:npcs])
     end
 
     def resolve_npc_actions(npc_actions)
       return "(no NPC actions)" if npc_actions.blank?
 
-      player_ac = @sheet&.derived_stats&.dig("ac") || 10
+      player_ac = @sheet.derived_stats.fetch("ac")
       results = npc_actions.map do |action|
         roll = rand(1..20)
         modifier = (action[:modifier] || 0).to_i
@@ -41,7 +40,7 @@ module DungeonMaster
           create_creature_from_bestiary(bestiary, name)
         else
           sheet = dynamic_creature_sheet(name, party_level: @sheet&.level || 1)
-          @log.dm_log!("No bestiary match for '#{name}' — #{sheet ? 'created via fallback' : 'fallback disabled or failed'}")
+          @log.log!(:warn, "No bestiary match for '#{name}' — #{sheet ? 'created via fallback' : 'fallback disabled or failed'}")
         end
       end
     rescue => e
@@ -73,7 +72,7 @@ module DungeonMaster
     def apply_player_mutations(player_muts)
       return unless player_muts && @sheet
 
-      hp_change = player_muts["hp_change"] || player_muts[:hp_change]
+      hp_change = player_muts[:hp_change]
       if hp_change.to_i != 0
         new_hp = (@sheet.hp + hp_change.to_i).clamp(-@sheet.constitution, @sheet.max_hp)
         @sheet.update!(hp: new_hp)
@@ -82,19 +81,20 @@ module DungeonMaster
 
     def apply_npc_mutations(npc_muts)
       Array(npc_muts).each do |npc_mut|
-        name = npc_mut["name"] || npc_mut[:name]
+        npc_mut = npc_mut.deep_symbolize_keys if npc_mut.is_a?(Hash)
+        name = npc_mut[:name]
         creature = @adventure.creature_sheets.find_by(name: name)
         next unless creature
 
-        hp_change = npc_mut["hp_change"] || npc_mut[:hp_change]
+        hp_change = npc_mut[:hp_change]
         if hp_change.to_i != 0
           new_hp = (creature.hp + hp_change.to_i).clamp(0, creature.max_hp)
           creature.update!(hp: new_hp)
         end
 
-        attitude = npc_mut["attitude_change"] || npc_mut[:attitude_change]
+        attitude = npc_mut[:attitude_change]
         if attitude.is_a?(Hash)
-          new_attitude = attitude["to"] || attitude[:to]
+          new_attitude = attitude[:to]
           creature.update!(attitude: new_attitude) if new_attitude && CreatureSheet::ATTITUDES.include?(new_attitude)
         end
       end

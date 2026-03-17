@@ -29,7 +29,7 @@ module DungeonMaster
         actions = [sanitized_input] if actions.empty?
 
         if actions.size > 1
-          @log.dm_log!("Sequencer detected #{actions.size} sequential actions: #{actions.inspect}")
+          @log.log!(:info, "Sequencer detected #{actions.size} sequential actions: #{actions.inspect}")
         end
 
         actions

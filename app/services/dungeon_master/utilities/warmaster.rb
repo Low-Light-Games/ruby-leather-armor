@@ -36,7 +36,7 @@ module DungeonMaster
                       end
                       spawn_from_names(ctx, names)
                     else
-                      log.dm_log!("Warmaster: no manifest or creatures_data for entry '#{encounter_entry.title}' — cannot spawn creatures")
+                      log.log!(:warn, "Warmaster: no manifest or creatures_data for entry '#{encounter_entry.title}' — cannot spawn creatures")
                       []
                     end
 
@@ -147,7 +147,7 @@ module DungeonMaster
 
       def build_initiative_result(ctx, creatures)
         if creatures.empty?
-          ctx.log.dm_log!("Warmaster: no creatures could be created — combat initialization aborted")
+          ctx.log.log!(:warn, "Warmaster: no creatures could be created — combat initialization aborted")
           return { status: :no_creatures }
         end
 
@@ -156,7 +156,7 @@ module DungeonMaster
           c.merge(initiative: initiative)
         end
 
-        ctx.log.dm_log!("Warmaster: #{creature_data.size} creature(s) ready, awaiting player initiative")
+        ctx.log.log!(:info, "Warmaster: #{creature_data.size} creature(s) ready, awaiting player initiative")
 
         { status: :awaiting_initiative, creature_data: creature_data }
       end
@@ -195,9 +195,8 @@ module DungeonMaster
         else nil
         end
       rescue => e
-        ctx.log.dm_log!("[warmaster_creature] ERROR: #{e.class} — #{e.message}")
-        raise if Rails.env.local?
-        nil
+        ctx.log.log!(:error, "[warmaster_creature] #{e.class}: #{e.message}")
+        raise
       end
 
       CREATURE_TEMPLATE = {

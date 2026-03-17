@@ -45,7 +45,7 @@ class DungeonMasterService
     @log.error_pipeline_run!
     rejection = persist_message(role: "system", content: e.message, message_type: "sanitization_fail")
     { messages: [player_msg, rejection] }
-  rescue AiError => e
+  rescue AiError, StandardError => e
     @log.error_pipeline_run!
     error_msg = persist_message(
       role: "system",
@@ -66,7 +66,7 @@ class DungeonMasterService
 
     result = run_timed_pipeline { pipeline.run_rolls(format_roll_results(roll_results_from_player), metadata) }
     { messages: [roll_msg] + messages_for(result) }
-  rescue AiError => e
+  rescue AiError, StandardError => e
     @log.error_pipeline_run!
     error_msg = persist_message(
       role: "system",
@@ -87,7 +87,7 @@ class DungeonMasterService
 
     result = run_timed_pipeline { pipeline.run_initiative(player_initiative.to_i, metadata) }
     { messages: [init_msg] + messages_for(result) }
-  rescue AiError => e
+  rescue AiError, StandardError => e
     @log.error_pipeline_run!
     error_msg = persist_message(
       role: "system",
@@ -137,7 +137,7 @@ class DungeonMasterService
   rescue SanitizationRejected => e
     @log.error_pipeline_run!
     [persist_message(role: "system", content: e.message, message_type: "sanitization_fail")]
-  rescue AiError => e
+  rescue AiError, StandardError => e
     @log.error_pipeline_run!
     [persist_message(
       role: "system",
@@ -152,7 +152,7 @@ class DungeonMasterService
 
     result = run_timed_pipeline { pipeline.run_rolls(roll_results_text, metadata) }
     messages_for(result)
-  rescue AiError => e
+  rescue AiError, StandardError => e
     @log.error_pipeline_run!
     [persist_message(
       role: "system",
@@ -167,7 +167,7 @@ class DungeonMasterService
 
     result = run_timed_pipeline { pipeline.run_initiative(player_initiative.to_i, metadata) }
     messages_for(result)
-  rescue AiError => e
+  rescue AiError, StandardError => e
     @log.error_pipeline_run!
     [persist_message(
       role: "system",
@@ -324,8 +324,8 @@ class DungeonMasterService
     return if last_player_msg&.message_type.in?(%w[roll_result initiative_result])
 
     intent_summary = last_request.metadata.dig("intent", "intention").to_s.truncate(80)
-    @log.dm_log!("Previous pipeline abandoned (#{last_request.message_type}): player sent new input. " \
-                 "Original intent: #{intent_summary}")
+    @log.play_log!("pipeline_abandoned", "Previous pipeline abandoned (#{last_request.message_type}): player sent new input. " \
+                   "Original intent: #{intent_summary}")
   end
 
   def auto_finalize_pending_initiative!
@@ -348,7 +348,7 @@ class DungeonMasterService
       adventure: @adventure, creature_data: creature_data,
       player_initiative: player_init)
 
-    @log.dm_log!("Auto-rolled player initiative (#{player_init}) — player ignored initiative prompt")
+    @log.log!(:info, "Auto-rolled player initiative (#{player_init}) — player ignored initiative prompt")
   end
 
   def player_facing_error(error)

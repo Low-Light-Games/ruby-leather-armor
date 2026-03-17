@@ -175,7 +175,7 @@
     <tbody>
       <% @by_adventure.each do |row| %>
         <tr>
-          <td><a href="<%= admin_ai_logs_path(adventure_id: row.adventure_id) %>" class="table-link">#<%= row.adventure_id %></a></td>
+          <td><a href="<%= admin_play_logs_path(adventure_id: row.adventure_id) %>" class="table-link">#<%= row.adventure_id %></a></td>
           <td class="num"><%= number_with_delimiter(row.call_count) %></td>
           <td class="num"><%= format_tokens(row.sum_total) %></td>
           <td class="num cost-cell"><%= format_cost(row.sum_cost) %></td>

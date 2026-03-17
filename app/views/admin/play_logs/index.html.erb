@@ -1,26 +1,26 @@
-<%= render 'admin/shared/navbar', active_nav: :ai_logs %>
+<%= render 'admin/shared/navbar', active_nav: :play_logs %>
 
 <div class="admin-ai-logs-index">
   <div class="admin-logs-header">
-    <h1>AI Logs</h1>
+    <h1>Play Logs</h1>
     <span class="total-count"><%= @total_count %> total</span>
     <div class="log-filters">
       <% if params[:adventure_id].present? %>
         <span class="filter-badge">
           Adventure #<%= params[:adventure_id] %>
-          <a href="<%= admin_ai_logs_path %>" class="clear-filter">✕</a>
+          <a href="<%= admin_play_logs_path %>" class="clear-filter">✕</a>
         </span>
       <% end %>
       <% if params[:status].present? %>
         <span class="filter-badge">
           Status: <%= params[:status] %>
-          <a href="<%= admin_ai_logs_path(request.query_parameters.except(:status)) %>" class="clear-filter">✕</a>
+          <a href="<%= admin_play_logs_path(request.query_parameters.except(:status)) %>" class="clear-filter">✕</a>
         </span>
       <% end %>
-      <% if params[:call_type].present? %>
+      <% if params[:event_type].present? %>
         <span class="filter-badge">
-          Type: <%= params[:call_type] %>
-          <a href="<%= admin_ai_logs_path(request.query_parameters.except(:call_type)) %>" class="clear-filter">✕</a>
+          Type: <%= params[:event_type] %>
+          <a href="<%= admin_play_logs_path(request.query_parameters.except(:event_type)) %>" class="clear-filter">✕</a>
         </span>
       <% end %>
     </div>
@@ -28,21 +28,21 @@
 
   <div class="quick-filters">
     <strong>Status:</strong>
-    <a href="<%= admin_ai_logs_path(request.query_parameters.merge(status: 'success')) %>" class="qf <%= 'active' if params[:status] == 'success' %>">Success</a>
-    <a href="<%= admin_ai_logs_path(request.query_parameters.merge(status: 'parse_fallback')) %>" class="qf <%= 'active' if params[:status] == 'parse_fallback' %>">Fallback</a>
-    <a href="<%= admin_ai_logs_path(request.query_parameters.merge(status: 'parse_error')) %>" class="qf <%= 'active' if params[:status] == 'parse_error' %>">Parse Error</a>
-    <a href="<%= admin_ai_logs_path(request.query_parameters.merge(status: 'api_error')) %>" class="qf <%= 'active' if params[:status] == 'api_error' %>">API Error</a>
-    <a href="<%= admin_ai_logs_path(request.query_parameters.merge(status: 'token_budget_exceeded')) %>" class="qf <%= 'active' if params[:status] == 'token_budget_exceeded' %>">Budget Exceeded</a>
+    <a href="<%= admin_play_logs_path(request.query_parameters.merge(status: 'success')) %>" class="qf <%= 'active' if params[:status] == 'success' %>">Success</a>
+    <a href="<%= admin_play_logs_path(request.query_parameters.merge(status: 'parse_fallback')) %>" class="qf <%= 'active' if params[:status] == 'parse_fallback' %>">Fallback</a>
+    <a href="<%= admin_play_logs_path(request.query_parameters.merge(status: 'parse_error')) %>" class="qf <%= 'active' if params[:status] == 'parse_error' %>">Parse Error</a>
+    <a href="<%= admin_play_logs_path(request.query_parameters.merge(status: 'api_error')) %>" class="qf <%= 'active' if params[:status] == 'api_error' %>">API Error</a>
+    <a href="<%= admin_play_logs_path(request.query_parameters.merge(status: 'token_budget_exceeded')) %>" class="qf <%= 'active' if params[:status] == 'token_budget_exceeded' %>">Budget Exceeded</a>
     &nbsp;|&nbsp;
     <strong>Type:</strong>
-    <% AiLog::CALL_TYPES.each do |ct| %>
-      <a href="<%= admin_ai_logs_path(request.query_parameters.merge(call_type: ct)) %>" class="qf <%= 'active' if params[:call_type] == ct %>"><%= ct.humanize %></a>
+    <% PlayLog::EVENT_TYPES.each do |ct| %>
+      <a href="<%= admin_play_logs_path(request.query_parameters.merge(event_type: ct)) %>" class="qf <%= 'active' if params[:event_type] == ct %>"><%= ct.humanize %></a>
     <% end %>
     &nbsp;|&nbsp;
     <% if @show_usage %>
-      <a href="<%= admin_ai_logs_path(request.query_parameters.except(:show_usage)) %>" class="qf active">Hide Usage</a>
+      <a href="<%= admin_play_logs_path(request.query_parameters.except(:show_usage)) %>" class="qf active">Hide Usage</a>
     <% else %>
-      <a href="<%= admin_ai_logs_path(request.query_parameters.merge(show_usage: "1")) %>" class="qf">Show Usage</a>
+      <a href="<%= admin_play_logs_path(request.query_parameters.merge(show_usage: "1")) %>" class="qf">Show Usage</a>
     <% end %>
   </div>
 
@@ -70,11 +70,11 @@
         <% @logs.each do |log| %>
           <tr class="<%= ai_log_status_class(log.status) %>">
             <td class="col-time">
-              <a href="<%= admin_ai_log_path(log) %>" class="filter-link"><%= log.created_at.strftime('%b %d %H:%M:%S') %></a>
+              <a href="<%= admin_play_log_path(log) %>" class="filter-link"><%= log.created_at.strftime('%b %d %H:%M:%S') %></a>
             </td>
             <td class="col-adventure">
               <% if log.adventure_id %>
-                <a href="<%= admin_ai_logs_path(adventure_id: log.adventure_id) %>" class="filter-link">
+                <a href="<%= admin_play_logs_path(adventure_id: log.adventure_id) %>" class="filter-link">
                   #<%= log.adventure_id %>
                 </a>
               <% else %>
@@ -84,7 +84,7 @@
             <td class="col-message">
               <% if log.pipeline_run_id.present? %>
                 <% tooltip = log.player_message&.content&.truncate(200) || log.player_message_content&.truncate(200) %>
-                <a href="<%= pipeline_admin_ai_logs_path(log.pipeline_run_id) %>" class="msg-link" title="<%= tooltip %>">
+                <a href="<%= pipeline_admin_play_logs_path(log.pipeline_run_id) %>" class="msg-link" title="<%= tooltip %>">
                   pipeline
                 </a>
               <% else %>
@@ -92,8 +92,8 @@
               <% end %>
             </td>
             <td class="col-type">
-              <a href="<%= admin_ai_logs_path(call_type: log.call_type) %>" class="filter-link">
-                <span class="type-badge <%= ai_log_type_badge_class(log.call_type) %>"><%= log.call_type.humanize %></span>
+              <a href="<%= admin_play_logs_path(event_type: log.event_type) %>" class="filter-link">
+                <span class="type-badge <%= ai_log_type_badge_class(log.event_type) %>"><%= log.event_type.humanize %></span>
               </a>
             </td>
             <td class="col-status">
@@ -104,12 +104,12 @@
               <% if log.parsed_response.present? %>
                 <button type="button" class="view-response-btn"
                         data-log-id="<%= log.id %>"
-                        data-call-type="<%= log.call_type %>"
+                        data-event-type="<%= log.event_type %>"
                         data-parsed='<%= log.parsed_response.gsub("'", "&#39;") %>'>View</button>
               <% elsif log.raw_response.present? %>
                 <button type="button" class="view-response-btn"
                         data-log-id="<%= log.id %>"
-                        data-call-type="<%= log.call_type %>"
+                        data-event-type="<%= log.event_type %>"
                         data-raw='<%= log.raw_response.truncate(2000).gsub("'", "&#39;") %>'>View (raw)</button>
               <% else %>
                 <span class="empty-cell">—</span>
@@ -146,19 +146,19 @@
     <% if @total_pages > 1 %>
       <div class="pagination">
         <% if @page > 1 %>
-          <a href="<%= admin_ai_logs_path(request.query_parameters.merge(page: @page - 1)) %>" class="page-link">← Prev</a>
+          <a href="<%= admin_play_logs_path(request.query_parameters.merge(page: @page - 1)) %>" class="page-link">← Prev</a>
         <% end %>
         <% (1..@total_pages).each do |p| %>
           <% if p == @page %>
             <span class="page-link current"><%= p %></span>
           <% elsif (p - @page).abs <= 3 || p == 1 || p == @total_pages %>
-            <a href="<%= admin_ai_logs_path(request.query_parameters.merge(page: p)) %>" class="page-link"><%= p %></a>
+            <a href="<%= admin_play_logs_path(request.query_parameters.merge(page: p)) %>" class="page-link"><%= p %></a>
           <% elsif (p - @page).abs == 4 %>
             <span class="page-link ellipsis">…</span>
           <% end %>
         <% end %>
         <% if @page < @total_pages %>
-          <a href="<%= admin_ai_logs_path(request.query_parameters.merge(page: @page + 1)) %>" class="page-link">Next →</a>
+          <a href="<%= admin_play_logs_path(request.query_parameters.merge(page: @page + 1)) %>" class="page-link">Next →</a>
         <% end %>
       </div>
     <% end %>
@@ -349,7 +349,7 @@
     var btn = e.target.closest('.view-response-btn');
     if (!btn) return;
     var logId = btn.dataset.logId;
-    var callType = btn.dataset.callType;
+    var eventType = btn.dataset.eventType;
     var parsedStr = btn.dataset.parsed;
     var rawStr = btn.dataset.raw;
     var title = document.getElementById('modalTitle');
@@ -362,8 +362,8 @@
       'narrate': 'type-narrate', 'dm_query': 'type-dm-query',
       'micro_context_update': 'type-ctx', 'macro_narrative_update': 'type-ctx',
       'edge_pipeline': 'type-narrate'
-    }[callType] || 'type-default';
-    title.innerHTML = 'AI Log #' + logId + ' <span class="type-badge ' + typeBadgeClass + '">' + callType.replace(/_/g, ' ') + '</span>';
+    }[eventType] || 'type-default';
+    title.innerHTML = 'Play Log #' + logId + ' <span class="type-badge ' + typeBadgeClass + '">' + eventType.replace(/_/g, ' ') + '</span>';
     var html = '';
     if (parsedStr) {
       try {

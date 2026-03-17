@@ -1,19 +1,4 @@
 module ApplicationHelper
-  def log_row_class(log)
-    content = log.content.downcase
-    if content.include?("was malicious")
-      "log-malicious"
-    elsif content.include?("had to be sanitized")
-      "log-sanitized"
-    elsif content.include?("passed the sanitization")
-      "log-passed"
-    elsif content.include?("dm responded") || content.include?("dm reasoning")
-      "log-dm-response"
-    else
-      ""
-    end
-  end
-
   def ai_log_status_class(status)
     case status
     when "success" then "status-success"
@@ -23,27 +8,31 @@ module ApplicationHelper
     end
   end
 
-  def ai_log_type_badge_class(call_type)
-    case call_type
+  def ai_log_type_badge_class(event_type)
+    case event_type
     when "triage", "sanitize", "classify", "intake", "dispatcher", "beacon", "capability_guardrail", "sanity_checker", "sanity_checker_world", "chronicler" then "type-triage"
+    when "capability_rejection", "world_check_failure", "intake_rejection" then "type-rejection"
     when "sequencer", "intent", "player_interpreter" then "type-intent"
     when "mechanical_evaluation", "roll_qualifier" then "type-ruling"
     when "ruling", "verdict", "mechanic" then "type-evaluate"
-    when "momentum"              then "type-evaluate"
-    when "time_keeper"           then "type-ctx"
-    when "narrate"               then "type-narrate"
-    when "dm_query"              then "type-dm-query"
-    when "micro_context_update"  then "type-ctx"
-    when "macro_narrative_update" then "type-ctx"
-    when "edge_pipeline"         then "type-narrate"
+    when "momentum"                      then "type-evaluate"
+    when "social_expansion"              then "type-evaluate"
+    when "time_keeper"                   then "type-ctx"
+    when "queue_paused", "queue_interrupted", "queue_completed",
+         "auto_success_filter", "duplicate_roll_warning", "pipeline_abandoned" then "type-ctx"
+    when "narrate"                       then "type-narrate"
+    when "dm_query"                      then "type-dm-query"
+    when "micro_context_update"          then "type-ctx"
+    when "macro_narrative_update"        then "type-ctx"
+    when "edge_pipeline"                 then "type-narrate"
     else "type-default"
     end
   end
 
   def pipeline_step_title(log)
-    title = log.call_type.humanize
+    title = log.event_type.humanize
     if log.prompt_summary =~ /\[(\w+)\]/
-      title = "#{title} — #{$1}" if log.call_type.in?(%w[beacon mechanical_evaluation roll_qualifier])
+      title = "#{title} — #{$1}" if log.event_type.in?(%w[beacon mechanical_evaluation roll_qualifier])
     end
     title
   end

@@ -24,9 +24,11 @@ module DungeonMaster
 
         log_context_suggestion(parsed, player_input)
 
+        raise AiError, "Intake returned no sanitized_input — blocking pipeline" if parsed["sanitized_input"].blank?
+
         {
           danger_score: parsed["danger_score"].to_i,
-          sanitized_input: parsed["sanitized_input"] || player_input,
+          sanitized_input: parsed["sanitized_input"],
           reason: parsed["reason"],
           is_dm_query: parsed["is_dm_query"] == true
         }

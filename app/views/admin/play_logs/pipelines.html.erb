@@ -27,7 +27,7 @@
           <% is_retry = run[:retry_of].present? %>
           <tr class="pipeline-row pipeline-<%= status %><%= ' pipeline-retry' if is_retry %>">
             <td class="col-time">
-              <a href="<%= pipeline_admin_ai_logs_path(run[:pipeline_run_id]) %>" class="filter-link">
+              <a href="<%= pipeline_admin_play_logs_path(run[:pipeline_run_id]) %>" class="filter-link">
                 <%= run[:first_at].strftime('%b %d %H:%M:%S') %>
               </a>
               <% if is_retry %>
@@ -36,7 +36,7 @@
             </td>
             <td class="col-adv">
               <% if run[:adventure_id] %>
-                <a href="<%= admin_ai_logs_path(adventure_id: run[:adventure_id]) %>" class="filter-link">#<%= run[:adventure_id] %></a>
+                <a href="<%= admin_play_logs_path(adventure_id: run[:adventure_id]) %>" class="filter-link">#<%= run[:adventure_id] %></a>
               <% else %>
                 <span class="empty-cell">—</span>
               <% end %>
@@ -51,7 +51,7 @@
             <td class="col-steps">
               <div class="step-badges">
                 <% run[:logs].each do |log| %>
-                  <span class="type-badge type-mini <%= ai_log_type_badge_class(log.call_type) %> <%= 'step-error' if log.status.in?(AiLog::STATUSES.reject { |s| s.in?(%w[success parse_fallback]) }) %>"><%= log.call_type.gsub('_', ' ').split.map { |w| w[0..2] }.join(' ') %></span>
+                  <span class="type-badge type-mini <%= ai_log_type_badge_class(log.event_type) %> <%= 'step-error' if log.status.in?(PlayLog::STATUSES.reject { |s| s.in?(%w[success parse_fallback]) }) %>"><%= log.event_type.gsub('_', ' ').split.map { |w| w[0..2] }.join(' ') %></span>
                 <% end %>
               </div>
             </td>
@@ -78,19 +78,19 @@
     <% if @total_pages > 1 %>
       <div class="pagination">
         <% if @page > 1 %>
-          <a href="<%= pipelines_admin_ai_logs_path(page: @page - 1) %>" class="page-link">← Prev</a>
+          <a href="<%= pipelines_admin_play_logs_path(page: @page - 1) %>" class="page-link">← Prev</a>
         <% end %>
         <% (1..@total_pages).each do |p| %>
           <% if p == @page %>
             <span class="page-link current"><%= p %></span>
           <% elsif (p - @page).abs <= 3 || p == 1 || p == @total_pages %>
-            <a href="<%= pipelines_admin_ai_logs_path(page: p) %>" class="page-link"><%= p %></a>
+            <a href="<%= pipelines_admin_play_logs_path(page: p) %>" class="page-link"><%= p %></a>
           <% elsif (p - @page).abs == 4 %>
             <span class="page-link ellipsis">…</span>
           <% end %>
         <% end %>
         <% if @page < @total_pages %>
-          <a href="<%= pipelines_admin_ai_logs_path(page: @page + 1) %>" class="page-link">Next →</a>
+          <a href="<%= pipelines_admin_play_logs_path(page: @page + 1) %>" class="page-link">Next →</a>
         <% end %>
       </div>
     <% end %>

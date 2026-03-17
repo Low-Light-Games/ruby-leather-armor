@@ -4,7 +4,7 @@ class PipelineRun < ApplicationRecord
   belongs_to :adventure
   belongs_to :player_message, class_name: "AdventureMessage", optional: true
 
-  has_many :ai_logs, primary_key: :pipeline_run_id, foreign_key: :pipeline_run_id
+  has_many :play_logs, primary_key: :pipeline_run_id, foreign_key: :pipeline_run_id
   has_many :adventure_loops, primary_key: :pipeline_run_id, foreign_key: :pipeline_run_id
 
   STATUSES = %w[running paused completed errored].freeze
@@ -15,7 +15,5 @@ class PipelineRun < ApplicationRecord
 
   scope :recent_first, -> { order(started_at: :desc) }
 
-  def total_ai_ms
-    ai_logs.sum(:duration_ms)
-  end
+
 end

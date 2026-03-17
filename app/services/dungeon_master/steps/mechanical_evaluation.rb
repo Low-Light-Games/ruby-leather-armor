@@ -61,7 +61,7 @@ module DungeonMaster
             player_rolls: Array(parsed["player_rolls"]).map { |r| r.deep_symbolize_keys.merge(domain: domain) },
             npc_actions: Array(parsed["npc_actions"]).map(&:deep_symbolize_keys),
             consequences: Array(parsed["consequences"]).map(&:deep_symbolize_keys),
-            mechanical_summary: parsed["mechanical_summary"] || parsed["ruling_summary"] || "",
+            mechanical_summary: parsed["mechanical_summary"] || "",
             qualifier_context_hints: Array(parsed["qualifier_context_hints"])
           }
 

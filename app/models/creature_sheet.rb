@@ -42,17 +42,4 @@ class CreatureSheet < ApplicationRecord
     update_column(:derived_stats, stats)
   end
 
-  def shift_attitude!(direction, steps: 1)
-    return unless attitude
-    idx = ATTITUDES.index(attitude)
-    return unless idx
-
-    new_idx = if direction == :better
-                [idx + steps, ATTITUDES.length - 1].min
-              else
-                [idx - steps, 0].max
-              end
-
-    update!(attitude: ATTITUDES[new_idx])
-  end
 end

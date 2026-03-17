@@ -18,14 +18,6 @@ class StoryLocation < ApplicationRecord
     LocationConnection.where("from_location_id = ? OR to_location_id = ?", id, id)
   end
 
-  def distance_to(other)
-    conn = LocationConnection.find_by(
-      "from_location_id = ? AND to_location_id = ? OR from_location_id = ? AND to_location_id = ?",
-      id, other.id, other.id, id
-    )
-    conn&.distance_miles
-  end
-
   def connection_to(other)
     LocationConnection.find_by(
       "from_location_id = ? AND to_location_id = ? OR from_location_id = ? AND to_location_id = ?",

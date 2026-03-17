@@ -103,7 +103,7 @@ module DungeonMaster
 
     def handle_result(parsed)
       if parsed["rejected"] == true
-        @log.dm_log!("Edge rejected: #{parsed['rejection_reason']}")
+        @log.log!(:info, "Edge rejected: #{parsed['rejection_reason']}")
         return { action: :rejected, reason: parsed["rejection_reason"] || "Input rejected." }
       end
 

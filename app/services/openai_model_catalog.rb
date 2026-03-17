@@ -14,14 +14,6 @@ class OpenaiModelCatalog
     embedding moderation whisper dall-e diarize babbage davinci
   ].freeze
 
-  FALLBACK_TOKEN_BUDGETS = {
-    "intake" => 400, "dm_query" => 400, "sequencer" => 300, "player_interpreter" => 300,
-    "beacon" => 500, "mechanical_evaluation" => 600, "roll_qualifier" => 500, "sanity_checker" => 400, "sanity_checker_world" => 600,
-    "mechanic" => 700, "momentum" => 600, "time_keeper" => 400, "narrate" => 900,
-    "micro_context_update" => 900, "macro_narrative_update" => 600,
-    "edge_pipeline" => 2500
-  }.freeze
-
   def self.catalog
     @catalog ||= JSON.parse(CATALOG_PATH.read)
   rescue Errno::ENOENT, JSON::ParserError => e
@@ -51,7 +43,7 @@ class OpenaiModelCatalog
   end
 
   def self.default_token_budgets(model_id)
-    catalog.dig(model_id, "default_token_budgets") || FALLBACK_TOKEN_BUDGETS
+    catalog.dig(model_id, "default_token_budgets") || DungeonMaster::StepRegistry.default_token_budgets
   end
 
   def self.for_model(model_id)

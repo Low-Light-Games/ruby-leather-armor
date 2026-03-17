@@ -3,7 +3,7 @@
 class AdventureLoop < ApplicationRecord
   belongs_to :adventure, optional: true
 
-  STATUSES = %w[pending resolving paused resolved encounter errored].freeze
+  STATUSES = %w[pending resolving paused resolved encounter social_scene errored].freeze
 
   validates :pipeline_run_id, presence: true
   validates :status, presence: true, inclusion: { in: STATUSES }
@@ -13,26 +13,11 @@ class AdventureLoop < ApplicationRecord
 
   # ---- Tag helpers (boolean flags) ----
 
-  def tag!(name)
-    self.tags = tags.merge(name.to_s => true)
-    save!
-  end
-
-  def untag!(name)
-    self.tags = tags.except(name.to_s)
-    save!
-  end
-
   def tagged?(name)
     tags[name.to_s] == true
   end
 
   # ---- Data helpers (key-value store) ----
-
-  def set(key, value)
-    self.data = data.merge(key.to_s => value)
-    save!
-  end
 
   def get(key)
     data[key.to_s]

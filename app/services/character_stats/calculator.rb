@@ -179,7 +179,7 @@ module CharacterStats
       size = race_info[:size]
       all_items = @items  # all owned items (equipped or not)
       # Both Sheet and AdventureSheet now have `currency` JSONB + `total_coins`.
-      coin_count = @src.respond_to?(:total_coins) ? @src.total_coins : 0
+      coin_count = @src.total_coins
       total_weight = compute_total_weight(all_items, coin_count)
       carry_caps   = carry_capacity(final_scores["strength"], size)
       encumbrance  = compute_encumbrance_tier(total_weight, carry_caps)
@@ -339,6 +339,8 @@ module CharacterStats
         source.sheet_feats.includes(:feat_definition)
       elsif source.respond_to?(:adventure_sheet_feats)
         source.adventure_sheet_feats.includes(:feat_definition)
+      elsif source.respond_to?(:creature_sheet_feats)
+        source.creature_sheet_feats.includes(:feat_definition)
       else
         []
       end
@@ -426,6 +428,8 @@ module CharacterStats
         source.sheet_items.includes(:item_definition)
       elsif source.respond_to?(:adventure_sheet_items)
         source.adventure_sheet_items.includes(:item_definition)
+      elsif source.respond_to?(:creature_sheet_items)
+        source.creature_sheet_items.includes(:item_definition)
       else
         []
       end

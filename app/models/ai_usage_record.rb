@@ -3,7 +3,7 @@
 class AiUsageRecord < ApplicationRecord
   belongs_to :adventure, optional: true
   belongs_to :user, optional: true
-  belongs_to :ai_log, optional: true
+  belongs_to :play_log, foreign_key: :ai_log_id, optional: true
 
   validates :model_id, presence: true
   validates :input_tokens, numericality: { greater_than_or_equal_to: 0 }

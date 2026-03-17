@@ -25,7 +25,7 @@ module DungeonMaster
     end
 
     def self.for(sheet, category: nil)
-      return "Unknown character" unless sheet
+      raise ArgumentError, "CharacterBlock requires a sheet" unless sheet
 
       case category
       when "combat"    then combat(sheet)
@@ -36,12 +36,12 @@ module DungeonMaster
     end
 
     def self.identity(sheet)
-      return "Unknown character" unless sheet
+      raise ArgumentError, "CharacterBlock requires a sheet" unless sheet
       "#{sheet.name} — #{sheet.race} #{sheet.character_class} #{sheet.level}"
     end
 
     def self.full(sheet)
-      ds = sheet.derived_stats || {}
+      ds = sheet.derived_stats
       parts = []
       parts << identity_line(sheet)
       parts << ability_scores_line(sheet)
@@ -55,7 +55,7 @@ module DungeonMaster
     end
 
     def self.combat(sheet)
-      ds = sheet.derived_stats || {}
+      ds = sheet.derived_stats
       parts = []
       parts << identity_line(sheet)
       parts << ability_scores_line(sheet)
@@ -78,7 +78,7 @@ module DungeonMaster
     end
 
     def self.traversal(sheet)
-      ds = sheet.derived_stats || {}
+      ds = sheet.derived_stats
       parts = []
       parts << identity_line(sheet)
       parts << "STR: #{sheet.strength}, DEX: #{sheet.dexterity}, CON: #{sheet.constitution}, WIS: #{sheet.wisdom}  |  Level: #{sheet.level}"
@@ -95,8 +95,8 @@ module DungeonMaster
 
       creatures.map do |c|
         ds = c.derived_stats || {}
-        "#{c.name} (#{c.creature_type}): HP #{c.hp}/#{c.max_hp}, AC #{ds['ac'] || 10}, " \
-          "BAB +#{ds['bab'] || 0}, Attitude: #{c.attitude || 'hostile'}"
+        "#{c.name} (#{c.creature_type}): HP #{c.hp}/#{c.max_hp}, AC #{ds['ac']}, " \
+          "BAB +#{ds['bab']}, Attitude: #{c.attitude || 'hostile'}"
       end.join("\n")
     end
 

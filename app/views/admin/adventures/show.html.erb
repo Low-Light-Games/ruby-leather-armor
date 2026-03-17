@@ -472,9 +472,9 @@
       <summary class="section-title">Recent Pipeline Runs</summary>
       <div class="pipeline-links">
         <% @pipeline_run_ids.each do |run_id| %>
-          <a href="<%= pipeline_admin_ai_logs_path(run_id) %>" class="pipeline-link"><%= run_id[0..7] %>…</a>
+          <a href="<%= pipeline_admin_play_logs_path(run_id) %>" class="pipeline-link"><%= run_id[0..7] %>…</a>
         <% end %>
-        <a href="<%= admin_ai_logs_path(adventure_id: @adventure.id) %>" class="pipeline-link all-link">All AI Logs →</a>
+        <a href="<%= admin_play_logs_path(adventure_id: @adventure.id) %>" class="pipeline-link all-link">All AI Logs →</a>
       </div>
     </details>
   <% end %>

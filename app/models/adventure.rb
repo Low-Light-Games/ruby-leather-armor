@@ -8,7 +8,7 @@ class Adventure < ApplicationRecord
   has_many :adventure_sheets, dependent: :destroy
   has_many :adventure_messages, dependent: :destroy
   has_many :dm_logs, dependent: :nullify
-  has_many :ai_logs, dependent: :nullify
+  has_many :play_logs, dependent: :nullify
   has_many :adventure_loops, dependent: :nullify
   has_many :pipeline_runs, dependent: :destroy
   has_many :creature_sheets, dependent: :destroy
@@ -17,10 +17,6 @@ class Adventure < ApplicationRecord
 
   scope :kept,      -> { where(discarded_at: nil) }
   scope :discarded, -> { where.not(discarded_at: nil) }
-
-  DM_MODES = %w[standard].freeze
-
-  validates :dm_mode, inclusion: { in: DM_MODES }, allow_nil: true
 
   def discard!
     update!(discarded_at: Time.current)

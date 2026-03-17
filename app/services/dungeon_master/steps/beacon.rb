@@ -92,12 +92,7 @@ module DungeonMaster
           combatants: Array(parsed["combatants"])
         }
       rescue TokenBudgetExceededError, AiError => e
-        pipeline_error!("beacon_#{domain}", e, fallback: {
-          domain: domain, affected: false, needs_mechanics: false, macro_significant: false,
-          expand_scene: false,
-          rules_needed: [], domain_interpretation: "Error: #{e.message}", transition: nil,
-          destination: nil, combatants: []
-        })
+        pipeline_error!("beacon_#{domain}", e)
       end
 
       # Merge parallel beacon results into a unified intent-compatible hash.

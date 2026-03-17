@@ -5,15 +5,9 @@ class DmConfig < ApplicationRecord
   TOKEN_BUDGET_STEPS = DungeonMaster::StepRegistry.pipeline_steps.freeze
   STEP_MODEL_HINTS   = DungeonMaster::StepRegistry.model_hints.freeze
 
-  EVALUATION_MODES = %w[standard unified].freeze
-
   ENRICHER_MODEL_HINT = "Capable model recommended. Structural extraction benefits from strong reasoning — e.g. o3-mini, o4-mini, gpt-4.1, gpt-5-mini."
   EMBELLISHER_MODEL_HINT = "Creative model. Flavor generation benefits from vivid writing — e.g. gpt-4.1, gpt-4o, gpt-5. Expand mode benefits from reasoning — e.g. o3-mini, gpt-5-mini."
   EMBELLISHER_MODES = %w[off embellish expand].freeze
-
-  CREATURE_CREATION_FALLBACKS = %w[ai template none].freeze
-
-  ROLL_QUALIFIER_SCOPES = %w[all domain dynamic social_traversal traversal_combat scene].freeze
 
   WAIT_MESSAGES_DEFAULT = [
     "Sculpting nightmarish creatures from clay...",
@@ -80,23 +74,23 @@ class DmConfig < ApplicationRecord
   end
 
   def temperature
-    (get("temperature") || 0.8).to_f
+    get("temperature").to_f
   end
 
   def pacing_words_min
-    (get("pacing_words_min") || 80).to_i
+    get("pacing_words_min").to_i
   end
 
   def pacing_words_max
-    (get("pacing_words_max") || 150).to_i
+    get("pacing_words_max").to_i
   end
 
   def danger_threshold
-    (get("danger_threshold") || get("sanitization_threshold") || 30).to_i
+    get("danger_threshold").to_i
   end
 
   def model
-    get("model") || "gpt-4o-mini"
+    get("model")
   end
 
   def model_for(step)
@@ -105,7 +99,7 @@ class DmConfig < ApplicationRecord
   end
 
   def token_budget_for(step)
-    budgets = get("token_budgets") || DEFAULTS["token_budgets"]
+    budgets = get("token_budgets")
     (budgets[step.to_s] || 500).to_i
   end
 end

@@ -35,13 +35,11 @@ module DungeonMaster
         raise
       end
 
-      # Environment-aware error handler for non-AI rescue blocks.
-      # In development/test: always re-raises after logging.
-      # In production: logs and returns the fallback value.
-      def pipeline_error!(step_name, error, fallback: nil)
-        @log.dm_log!("[#{step_name}] ERROR: #{error.class} — #{error.message}")
-        raise if Rails.env.local?
-        fallback
+      # Error handler for non-AI rescue blocks.
+      # Always logs and re-raises — no silent fallbacks, no env gating.
+      def pipeline_error!(step_name, error)
+        @log.log!(:error, "[#{step_name}] #{error.class}: #{error.message}")
+        raise
       end
 
       def elapsed_ms(t0)

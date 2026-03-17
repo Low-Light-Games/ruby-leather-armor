@@ -74,10 +74,10 @@ module Admin
       @pipeline_count = pipeline_count
       @avg_per_call = @totals[0] > 0 ? (total_cost.to_f / @totals[0]).round : 0
 
-      @by_step = scope.where.not(call_type: [nil, ""])
-                      .group(:call_type)
+      @by_step = scope.where.not(event_type: [nil, ""])
+                      .group(:event_type)
                       .select(
-                        "call_type AS step_name",
+                        "event_type AS step_name",
                         "COUNT(*) AS call_count",
                         "SUM(total_tokens) AS sum_total",
                         "SUM(total_cost_microdollars) AS sum_cost",

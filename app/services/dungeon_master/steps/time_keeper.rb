@@ -27,7 +27,7 @@ module DungeonMaster
 
       def run_time_keeper(intent, verdict_result)
         estimated = estimate_time(intent, verdict_result)
-        @log.dm_log!("TimeKeeper: estimated=#{estimated[:hours].round(4)}h, source=#{estimated[:source]}")
+        @log.log!(:info, "TimeKeeper: estimated=#{estimated[:hours].round(4)}h, source=#{estimated[:source]}")
         time_loop_data = { "hours_elapsed" => estimated[:hours].round(4), "time_source" => estimated[:source].to_s }
         time_loop_data["journey_data"] = estimated[:journey_data] if estimated[:journey_data]
         @loop&.batch_update!(
@@ -93,8 +93,9 @@ module DungeonMaster
         connection = origin.connection_to(destination_loc)
         return nil unless connection
 
-        base_speed_ft = @sheet&.derived_stats&.dig("speed") || 30
-        encumbrance   = @sheet&.derived_stats&.dig("encumbrance") || "light"
+        raise ArgumentError, "Character sheet or derived_stats missing for journey calculation" unless @sheet&.derived_stats
+        base_speed_ft = @sheet.derived_stats["speed"] || 30
+        encumbrance   = @sheet.derived_stats["encumbrance"] || "light"
         terrain       = connection.terrain_type
         distance      = connection.distance_miles.to_f
 

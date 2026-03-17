@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  # Encapsulates all DM-related logging: debug DmLogs and raw AiLogs.
+  # Encapsulates all DM-related logging: PlayLogs (AI calls and pipeline events)
+  # and structured Rails.logger output for errors.
   # Every write is rescue'd so a logging failure never breaks gameplay.
   class Logging
     attr_accessor :player_message_id, :pipeline_run_id, :player_message_content, :action_label
@@ -63,23 +64,36 @@ module DungeonMaster
       report_error(e, context: { method: "error_pipeline_run!" })
     end
 
-    # Write a human-readable debug entry (visible in Admin -> DM Logs).
-    def dm_log!(content)
-      DmLog.create!(
+    # Write a structured pipeline event (sanity rejections, queue state, etc.)
+    # visible in Admin -> Play Logs. No AI columns are populated.
+    def play_log!(event_type, summary)
+      PlayLog.create!(
         adventure: @adventure,
-        user: @user,
-        content: content
+        event_type: event_type,
+        prompt_summary: summary,
+        status: "pipeline_event",
+        dm_service: @dm_service,
+        player_message_id: @player_message_id,
+        pipeline_run_id: @pipeline_run_id,
+        player_message_content: @player_message_content
       )
     rescue => e
-      report_error(e, context: { method: "dm_log!", content: content&.truncate(200) })
+      report_error(e, context: { method: "play_log!", event_type: event_type })
     end
 
-    # Write a full AI exchange record (visible in Admin -> AI Logs).
+    # Emit a tagged Rails.logger message for errors and warnings.
+    # Vendor SDKs (Sentry, Datadog, etc.) absorb this automatically.
+    def log!(level, message)
+      Rails.logger.public_send(level,
+        "[DM adventure=#{@adventure&.id} run=#{@pipeline_run_id}] #{message}")
+    end
+
+    # Write a full AI exchange record (visible in Admin -> Play Logs).
     def ai_log!(call_type, prompt_summary, raw_response, parsed_response, parse_status:, request_body: nil, model_used: nil, duration_ms: nil, usage: nil)
       summary = @action_label ? "#{@action_label} #{prompt_summary}" : prompt_summary
-      log = AiLog.create!(
+      log = PlayLog.create!(
         adventure: @adventure,
-        call_type: call_type,
+        event_type: call_type,
         prompt_summary: summary,
         request_body: request_body&.to_json,
         raw_response: raw_response,
@@ -102,9 +116,9 @@ module DungeonMaster
     # Write an AI error record when a call fails.
     def ai_log_error!(call_type, prompt_summary, error, raw_response: nil, request_body: nil, status: "api_error", model_used: nil, duration_ms: nil, usage: nil)
       summary = @action_label ? "#{@action_label} #{prompt_summary}" : prompt_summary
-      log = AiLog.create!(
+      log = PlayLog.create!(
         adventure: @adventure,
-        call_type: call_type,
+        event_type: call_type,
         prompt_summary: summary,
         request_body: request_body&.to_json,
         raw_response: raw_response,
@@ -130,7 +144,7 @@ module DungeonMaster
 
     private
 
-    def attach_usage_record!(ai_log, model_used, usage)
+    def attach_usage_record!(play_log, model_used, usage)
       return unless usage.is_a?(Hash) && model_used.present?
 
       costs = AiUsageRecord.compute_cost(
@@ -141,12 +155,12 @@ module DungeonMaster
       )
 
       record = AiUsageRecord.create!(
-        ai_log_id: ai_log.id,
+        ai_log_id: play_log.id,
         adventure_id: @adventure&.id,
         user_id: @user&.id,
         pipeline_run_id: @pipeline_run_id,
         model_id: model_used,
-        call_type: ai_log.call_type,
+        event_type: play_log.event_type,
         input_tokens: usage[:input_tokens] || 0,
         output_tokens: usage[:output_tokens] || 0,
         reasoning_tokens: usage[:reasoning_tokens] || 0,
@@ -154,9 +168,9 @@ module DungeonMaster
         **costs
       )
 
-      ai_log.update_column(:ai_usage_record_id, record.id)
+      play_log.update_column(:ai_usage_record_id, record.id)
     rescue => e
-      report_error(e, context: { method: "attach_usage_record!", ai_log_id: ai_log&.id })
+      report_error(e, context: { method: "attach_usage_record!", play_log_id: play_log&.id })
     end
 
     def pipeline_run_record
@@ -177,9 +191,9 @@ module DungeonMaster
     # Last-resort write when the primary ai_log! or ai_log_error! fails.
     # Uses minimal fields to maximize the chance of passing validation.
     def try_fallback_log(call_type, original_error)
-      AiLog.create!(
+      PlayLog.create!(
         adventure: @adventure,
-        call_type: call_type,
+        event_type: call_type,
         prompt_summary: "LOGGING FAILURE: #{original_error.message.truncate(400)}",
         raw_response: nil,
         parsed_response: nil,

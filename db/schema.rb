@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_12_000001) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_13_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -141,33 +141,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_12_000001) do
     t.index ["user_id"], name: "index_adventures_on_user_id"
   end
 
-  create_table "ai_logs", force: :cascade do |t|
-    t.bigint "adventure_id"
-    t.string "call_type", null: false
-    t.text "prompt_summary", null: false
-    t.text "raw_response"
-    t.text "parsed_response"
-    t.string "status", null: false
-    t.text "error_message"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.text "request_body"
-    t.string "dm_service", default: "standard", null: false
-    t.string "model_used"
-    t.bigint "player_message_id"
-    t.string "pipeline_run_id"
-    t.text "player_message_content"
-    t.integer "duration_ms"
-    t.bigint "ai_usage_record_id"
-    t.index ["adventure_id"], name: "index_ai_logs_on_adventure_id"
-    t.index ["ai_usage_record_id"], name: "index_ai_logs_on_ai_usage_record_id"
-    t.index ["created_at"], name: "index_ai_logs_on_created_at"
-    t.index ["dm_service"], name: "index_ai_logs_on_dm_service"
-    t.index ["pipeline_run_id"], name: "index_ai_logs_on_pipeline_run_id"
-    t.index ["player_message_id"], name: "index_ai_logs_on_player_message_id"
-    t.index ["status"], name: "index_ai_logs_on_status"
-  end
-
   create_table "ai_usage_records", force: :cascade do |t|
     t.bigint "adventure_id"
     t.bigint "user_id"
@@ -183,11 +156,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_12_000001) do
     t.bigint "total_cost_microdollars", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "call_type"
+    t.string "event_type"
     t.index ["adventure_id"], name: "index_ai_usage_records_on_adventure_id"
     t.index ["ai_log_id"], name: "index_ai_usage_records_on_ai_log_id"
-    t.index ["call_type"], name: "index_ai_usage_records_on_call_type"
     t.index ["created_at"], name: "index_ai_usage_records_on_created_at"
+    t.index ["event_type"], name: "index_ai_usage_records_on_event_type"
     t.index ["model_id", "created_at"], name: "index_ai_usage_records_on_model_id_and_created_at"
     t.index ["model_id"], name: "index_ai_usage_records_on_model_id"
     t.index ["pipeline_run_id"], name: "index_ai_usage_records_on_pipeline_run_id"
@@ -289,17 +262,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_12_000001) do
     t.json "settings", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-  end
-
-  create_table "dm_logs", force: :cascade do |t|
-    t.bigint "adventure_id"
-    t.bigint "user_id", null: false
-    t.text "content", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["adventure_id"], name: "index_dm_logs_on_adventure_id"
-    t.index ["created_at"], name: "index_dm_logs_on_created_at"
-    t.index ["user_id"], name: "index_dm_logs_on_user_id"
   end
 
   create_table "encounter_table_entries", force: :cascade do |t|
@@ -423,6 +385,33 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_12_000001) do
     t.index ["adventure_id"], name: "index_pipeline_runs_on_adventure_id"
     t.index ["pipeline_run_id"], name: "index_pipeline_runs_on_pipeline_run_id", unique: true
     t.index ["started_at"], name: "index_pipeline_runs_on_started_at"
+  end
+
+  create_table "play_logs", force: :cascade do |t|
+    t.bigint "adventure_id"
+    t.string "event_type", null: false
+    t.text "prompt_summary", null: false
+    t.text "raw_response"
+    t.text "parsed_response"
+    t.string "status", null: false
+    t.text "error_message"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.text "request_body"
+    t.string "dm_service", default: "standard", null: false
+    t.string "model_used"
+    t.bigint "player_message_id"
+    t.string "pipeline_run_id"
+    t.text "player_message_content"
+    t.integer "duration_ms"
+    t.bigint "ai_usage_record_id"
+    t.index ["adventure_id"], name: "index_play_logs_on_adventure_id"
+    t.index ["ai_usage_record_id"], name: "index_play_logs_on_ai_usage_record_id"
+    t.index ["created_at"], name: "index_play_logs_on_created_at"
+    t.index ["dm_service"], name: "index_play_logs_on_dm_service"
+    t.index ["pipeline_run_id"], name: "index_play_logs_on_pipeline_run_id"
+    t.index ["player_message_id"], name: "index_play_logs_on_player_message_id"
+    t.index ["status"], name: "index_play_logs_on_status"
   end
 
   create_table "sheet_feats", force: :cascade do |t|
@@ -604,9 +593,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_12_000001) do
   add_foreign_key "adventures", "stories"
   add_foreign_key "adventures", "story_locations", column: "current_location_id"
   add_foreign_key "adventures", "users"
-  add_foreign_key "ai_logs", "adventure_messages", column: "player_message_id", on_delete: :nullify
-  add_foreign_key "ai_logs", "adventures", on_delete: :nullify
-  add_foreign_key "ai_logs", "ai_usage_records", on_delete: :nullify
   add_foreign_key "creature_sheet_feats", "creature_sheets"
   add_foreign_key "creature_sheet_feats", "feat_definitions", column: "feat_id"
   add_foreign_key "creature_sheet_items", "creature_sheets"
@@ -614,13 +600,14 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_12_000001) do
   add_foreign_key "creature_sheet_spells", "creature_sheets"
   add_foreign_key "creature_sheet_spells", "spell_definitions", column: "spell_id"
   add_foreign_key "creature_sheets", "adventures"
-  add_foreign_key "dm_logs", "adventures", on_delete: :nullify
-  add_foreign_key "dm_logs", "users"
   add_foreign_key "encounter_table_entries", "encounter_tables"
   add_foreign_key "encounter_tables", "stories"
   add_foreign_key "experience_suggestions", "adventures"
   add_foreign_key "location_connections", "story_locations", column: "from_location_id"
   add_foreign_key "location_connections", "story_locations", column: "to_location_id"
+  add_foreign_key "play_logs", "adventure_messages", column: "player_message_id", on_delete: :nullify
+  add_foreign_key "play_logs", "adventures", on_delete: :nullify
+  add_foreign_key "play_logs", "ai_usage_records", on_delete: :nullify
   add_foreign_key "sheet_feats", "feat_definitions", column: "feat_id"
   add_foreign_key "sheet_feats", "sheets"
   add_foreign_key "sheet_items", "item_definitions"
