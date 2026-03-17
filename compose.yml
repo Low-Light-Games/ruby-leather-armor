@@ -11,8 +11,6 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgres://exercises:sekret@postgres:5432/exercises_development
-      REDIS_URL: redis://redis:6379/0
       BIND: tcp://0.0.0.0:3000
       RAILS_MAX_THREADS: "12"
     labels:
@@ -35,8 +33,6 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgres://exercises:sekret@postgres:5432/exercises_development
-      REDIS_URL: redis://redis:6379/0
       RAILS_MAX_THREADS: "12"
     command: bundle exec sidekiq -C config/sidekiq.yml
 
@@ -58,7 +54,7 @@ services:
     environment:
       POSTGRES_DB: exercises_development
       POSTGRES_USER: exercises
-      POSTGRES_PASSWORD: sekret
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
