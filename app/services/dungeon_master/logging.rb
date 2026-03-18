@@ -24,7 +24,8 @@ module DungeonMaster
         adventure: @adventure,
         player_message_id: @player_message_id,
         status: "running",
-        started_at: Time.current
+        started_at: Time.current,
+        app_version: APP_VERSION
       )
     rescue => e
       report_error(e, context: { method: "start_pipeline_run!" })
@@ -75,7 +76,8 @@ module DungeonMaster
         dm_service: @dm_service,
         player_message_id: @player_message_id,
         pipeline_run_id: @pipeline_run_id,
-        player_message_content: @player_message_content
+        player_message_content: @player_message_content,
+        app_version: APP_VERSION
       )
     rescue => e
       report_error(e, context: { method: "play_log!", event_type: event_type })
@@ -105,7 +107,8 @@ module DungeonMaster
         player_message_id: @player_message_id,
         pipeline_run_id: @pipeline_run_id,
         player_message_content: @player_message_content,
-        duration_ms: duration_ms
+        duration_ms: duration_ms,
+        app_version: APP_VERSION
       )
       attach_usage_record!(log, model_used, usage)
     rescue => e
@@ -130,7 +133,8 @@ module DungeonMaster
         player_message_id: @player_message_id,
         pipeline_run_id: @pipeline_run_id,
         player_message_content: @player_message_content,
-        duration_ms: duration_ms
+        duration_ms: duration_ms,
+        app_version: APP_VERSION
       )
       attach_usage_record!(log, model_used, usage)
     rescue => e

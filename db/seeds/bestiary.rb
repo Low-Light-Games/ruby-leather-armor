@@ -4,9 +4,9 @@
 # All entries are from the Pathfinder Reference Document (Open Game Content).
 # Mechanical data only — no copyrighted prose or Golarion-specific lore.
 
-SOURCE_PRD = "Pathfinder Roleplaying Game Reference Document (OGL)"
+SOURCE_PRD ||= "Pathfinder Roleplaying Game Reference Document (OGL)"
 
-BESTIARY_ENTRIES = [
+BESTIARY_ENTRIES ||= [
   {
     id: "goblin", name: "Goblin", source: SOURCE_PRD,
     cr: 0.33, creature_type: "humanoid", alignment: "NE", size: "Small",
