@@ -2,6 +2,8 @@ require_relative "boot"
 
 require "rails/all"
 
+APP_VERSION = File.read(File.expand_path("../VERSION", __dir__)).strip
+
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
 Bundler.require(*Rails.groups)
