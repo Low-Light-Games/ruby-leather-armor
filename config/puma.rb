@@ -31,11 +31,9 @@ end
 # terminating a worker in development environments.
 worker_timeout 3600 if ENV.fetch("RAILS_ENV", "development") == "development"
 
-# Specifies the `port` that Puma will listen on to receive requests; default is 3000.
+# Bind to all interfaces so the app is accessible from other containers.
+# Using bind instead of port to avoid double-binding the same address.
 puma_port = ENV.fetch("PORT") { 3000 }
-port puma_port
-
-# Bind to all interfaces so the app is accessible from other containers (e.g., Traefik)
 bind ENV.fetch("BIND") { "tcp://0.0.0.0:#{puma_port}" }
 
 # Specifies the `environment` that Puma will run in.

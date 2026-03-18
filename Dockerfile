@@ -1,5 +1,5 @@
 ARG RUBY_VERSION=3.3.1
-FROM registry.docker.com/library/ruby:$RUBY_VERSION-slim as base
+FROM registry.docker.com/library/ruby:$RUBY_VERSION-slim
 
 # Install OS deps, Node & Yarn
 RUN apt-get update -y && \
@@ -32,16 +32,30 @@ RUN apt-get update -y && \
 
 WORKDIR /app
 
-# Common env for production image
-ENV RAILS_ENV=development \
-    NODE_ENV=development \
-    BUNDLE_PATH=/bundle
+ENV BUNDLE_PATH=/bundle
 
-# Install Ruby & JS deps first for better caching
+# Install Ruby & JS deps first (good layer caching — only re-runs on lockfile changes)
 COPY Gemfile Gemfile.lock package.json yarn.lock ./
 RUN bundle install
 RUN yarn install
-RUN bundle exec rails assets:precompile
 
-# Default command: Use bin/dev to run Rails server + JS/CSS watchers
-CMD ["./bin/dev"]
+# Copy full app source before anything that needs it
+COPY . .
+
+# RAILS_ENV=production triggers asset precompilation; set to development in
+# dev compose (via build.args) to skip it entirely — the bind mount and
+# bin/dev watcher handle assets locally.
+ARG RAILS_ENV=production
+# RAILS_MASTER_KEY is only used during this RUN step and is never written to
+# ENV, so it won't appear in `docker inspect` or image layers.
+ARG RAILS_MASTER_KEY
+
+RUN if [ "$RAILS_ENV" = "production" ]; then \
+      SECRET_KEY_BASE_DUMMY=1 \
+      RAILS_MASTER_KEY=${RAILS_MASTER_KEY} \
+      RAILS_ENV=production \
+      bundle exec rails assets:precompile; \
+    fi
+
+# Production default — dev compose overrides this with `command: ./bin/dev`
+CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]

@@ -2,6 +2,9 @@ services:
   app:
     build:
       context: ./
+      args:
+        RAILS_ENV: development
+    command: ./bin/dev
     volumes:
       - .:/app # bind mount source code
       - bundle_cache:/bundle
@@ -24,6 +27,8 @@ services:
   worker:
     build:
       context: ./
+      args:
+        RAILS_ENV: development
     volumes:
       - .:/app
       - bundle_cache:/bundle

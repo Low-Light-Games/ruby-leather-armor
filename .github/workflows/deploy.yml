@@ -1,0 +1,46 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ vars.EC2_HOST }}
+          username: ${{ vars.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/app
+
+            echo "--- Pulling latest code ---"
+            git pull origin main
+
+            echo "--- Writing .env ---"
+            printf 'RAILS_MASTER_KEY=%s\nOPENAI_API_KEY=%s\nPOSTGRES_PASSWORD=%s\nDATABASE_URL=%s\nREDIS_URL=%s\n' \
+              '${{ secrets.RAILS_MASTER_KEY }}' \
+              '${{ secrets.OPENAI_API_KEY }}' \
+              '${{ secrets.POSTGRES_PASSWORD }}' \
+              'postgres://exercises:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/exercises_production' \
+              'redis://redis:6379/0' \
+              > .env
+
+            echo "--- Building images ---"
+            docker compose -f docker-compose.prod.yml build
+
+            echo "--- Starting services ---"
+            docker compose -f docker-compose.prod.yml up -d
+
+            echo "--- Running migrations ---"
+            docker compose -f docker-compose.prod.yml exec -T app \
+              bundle exec rails db:prepare RAILS_ENV=production
+
+            echo "--- Deploy complete ---"

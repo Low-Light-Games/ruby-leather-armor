@@ -1,0 +1,53 @@
+services:
+  app:
+    build:
+      context: ./
+      args:
+        RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env
+    environment:
+      RAILS_ENV: production
+      NODE_ENV: production
+      BIND: tcp://0.0.0.0:3000
+      RAILS_MAX_THREADS: "12"
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./
+      args:
+        RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env
+    environment:
+      RAILS_ENV: production
+      NODE_ENV: production
+      RAILS_MAX_THREADS: "12"
+    command: bundle exec sidekiq -C config/sidekiq.yml
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: exercises_production
+      POSTGRES_USER: exercises
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
