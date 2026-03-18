@@ -39,8 +39,5 @@ bind ENV.fetch("BIND") { "tcp://0.0.0.0:#{puma_port}" }
 # Specifies the `environment` that Puma will run in.
 environment rails_env
 
-# Specifies the `pidfile` that Puma will use.
-pidfile ENV.fetch("PIDFILE") { "tmp/pids/server.pid" }
-
-# Allow puma to be restarted by `bin/rails restart` command.
-plugin :tmp_restart
+# pidfile and tmp_restart plugin are omitted intentionally:
+# Docker manages process lifecycle, so these cause double-bind issues on restart.

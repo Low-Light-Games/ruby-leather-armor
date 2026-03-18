@@ -42,6 +42,9 @@ RUN yarn install
 # Copy full app source before anything that needs it
 COPY . .
 
+# Ensure no stale Puma restart/pid files are baked into the image
+RUN rm -f tmp/pids/server.pid tmp/restart.txt
+
 # RAILS_ENV=production triggers asset precompilation; set to development in
 # dev compose (via build.args) to skip it entirely — the bind mount and
 # bin/dev watcher handle assets locally.
