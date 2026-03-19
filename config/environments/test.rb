@@ -61,4 +61,8 @@ Rails.application.configure do
 
   # Raise error when a before_action's only/except options reference missing actions
   config.action_controller.raise_on_missing_callback_actions = true
+
+  # Don't raise on missing compiled assets in test — CI runs without a build step
+  # and request specs are not testing the asset pipeline.
+  config.assets.raise_runtime_errors = false
 end
