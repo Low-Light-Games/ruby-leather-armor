@@ -5,8 +5,9 @@ Rails.application.routes.draw do
   # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
 
-  # Public legal / OGL page (no authentication required)
-  get "legal" => "legal#index"
+  # Public pages (no authentication required)
+  get "legal"   => "legal#index"
+  get "privacy" => "privacy#index"
 
   root "home#index"
 
@@ -14,6 +15,11 @@ Rails.application.routes.draw do
   post "login" => "sessions#create"
   delete "logout" => "sessions#destroy"
   get "current_user" => "sessions#show"
+
+  # OmniAuth callbacks
+  get  "auth/:provider/callback", to: "omniauth_callbacks#google_oauth2", as: :omniauth_callback
+  get  "auth/failure",            to: "omniauth_callbacks#failure"
+  post "auth/:provider/callback", to: "omniauth_callbacks#google_oauth2"
 
   namespace :admin do
     resources :adventures, only: [:index, :show, :update, :destroy] do

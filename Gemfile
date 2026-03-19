@@ -44,6 +44,10 @@ gem "aws-sdk-ses"
 # Load environment variables from .env
 gem "dotenv-rails"
 
+# Google OAuth via OmniAuth
+gem "omniauth-google-oauth2"
+gem "omniauth-rails_csrf_protection"
+
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
 
@@ -67,6 +71,11 @@ group :development do
 
   # Speed up commands on slow machines / big apps [https://github.com/rails/spring]
   # gem "spring"
+end
+
+group :production do
+  gem "sentry-ruby"
+  gem "sentry-rails"
 end
 
 group :test do

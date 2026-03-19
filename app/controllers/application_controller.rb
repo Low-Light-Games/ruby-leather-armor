@@ -1,7 +1,14 @@
 class ApplicationController < ActionController::Base
   before_action :require_login
+  before_action :set_sentry_user
 
   private
+
+  def set_sentry_user
+    return unless defined?(Sentry) && current_user
+
+    Sentry.set_user(id: current_user.id, email: current_user.email)
+  end
 
   def current_user
     @current_user ||= User.find_by(id: session[:user_id]) if session[:user_id]
