@@ -1,13 +1,22 @@
 class User < ApplicationRecord
   has_secure_password validations: false
 
+  TIERS = %w[free paid].freeze
+
+  # Monthly cost cap in microdollars ($1 = 1,000,000 microdollars).
+  TIER_LIMITS = {
+    "free" => 500_000,
+    "paid" => 10_000_000
+  }.freeze
+
   has_many :sheets, dependent: :destroy
   has_many :adventures, dependent: :destroy
-  has_many :dm_logs, dependent: :destroy
+  has_many :ai_usage_records, dependent: :nullify
 
   validates :email, presence: true, uniqueness: { case_sensitive: false }
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :password, presence: true, on: :create, unless: :oauth_user?
+  validates :tier, inclusion: { in: TIERS }
 
   def self.from_omniauth(auth)
     where(provider: auth.provider, uid: auth.uid).first_or_initialize.tap do |user|
@@ -20,5 +29,37 @@ class User < ApplicationRecord
 
   def oauth_user?
     provider.present?
+  end
+
+  def free?
+    tier == "free"
+  end
+
+  def paid?
+    tier == "paid"
+  end
+
+  def monthly_usage_limit
+    TIER_LIMITS[tier]
+  end
+
+  def monthly_usage_microdollars
+    ai_usage_records
+      .where("created_at >= ?", Time.current.beginning_of_month)
+      .sum(:total_cost_microdollars)
+  end
+
+  def usage_limit_reached?
+    limit = monthly_usage_limit
+    return false if limit.nil?
+
+    monthly_usage_microdollars >= limit
+  end
+
+  def usage_percentage
+    limit = monthly_usage_limit
+    return 0.0 if limit.nil? || limit.zero?
+
+    [(monthly_usage_microdollars.to_f / limit * 100).round(1), 100.0].min
   end
 end

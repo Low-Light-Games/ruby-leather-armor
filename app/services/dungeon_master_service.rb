@@ -17,6 +17,7 @@ class DungeonMasterService
   SanitizationRejected     = DungeonMaster::SanitizationRejected
   AiError                  = DungeonMaster::AiError
   TokenBudgetExceededError = DungeonMaster::TokenBudgetExceededError
+  UsageLimitExceeded       = DungeonMaster::UsageLimitExceeded
 
   def initialize(adventure, user:)
     @adventure = adventure
@@ -32,6 +33,7 @@ class DungeonMasterService
   # ----------------------------------------------------------------
 
   def process_player_prompt(player_input, mode: nil)
+    enforce_usage_limit!
     maybe_log_abandoned_pipeline
     auto_finalize_pending_initiative!
 
@@ -41,6 +43,10 @@ class DungeonMasterService
 
     result = run_timed_pipeline { pipeline.run_prompt(player_input, mode: mode) }
     { messages: [player_msg] + messages_for(result) }
+  rescue UsageLimitExceeded => e
+    player_msg ||= persist_message(role: "player", content: player_input, message_type: "narrative")
+    limit_msg = persist_message(role: "system", content: e.message, message_type: "usage_limit")
+    { messages: [player_msg, limit_msg] }
   rescue SanitizationRejected => e
     @log.error_pipeline_run!
     rejection = persist_message(role: "system", content: e.message, message_type: "sanitization_fail")
@@ -55,6 +61,8 @@ class DungeonMasterService
   end
 
   def process_roll_result(roll_results_from_player)
+    enforce_usage_limit!
+
     metadata = latest_roll_metadata
     roll_msg = persist_message(
       role: "player",
@@ -66,6 +74,9 @@ class DungeonMasterService
 
     result = run_timed_pipeline { pipeline.run_rolls(format_roll_results(roll_results_from_player), metadata) }
     { messages: [roll_msg] + messages_for(result) }
+  rescue UsageLimitExceeded => e
+    limit_msg = persist_message(role: "system", content: e.message, message_type: "usage_limit")
+    { messages: [limit_msg] }
   rescue AiError, StandardError => e
     @log.error_pipeline_run!
     error_msg = persist_message(
@@ -76,6 +87,8 @@ class DungeonMasterService
   end
 
   def process_initiative_result(player_initiative)
+    enforce_usage_limit!
+
     metadata = latest_initiative_metadata
     init_msg = persist_message(
       role: "player",
@@ -87,6 +100,9 @@ class DungeonMasterService
 
     result = run_timed_pipeline { pipeline.run_initiative(player_initiative.to_i, metadata) }
     { messages: [init_msg] + messages_for(result) }
+  rescue UsageLimitExceeded => e
+    limit_msg = persist_message(role: "system", content: e.message, message_type: "usage_limit")
+    { messages: [limit_msg] }
   rescue AiError, StandardError => e
     @log.error_pipeline_run!
     error_msg = persist_message(
@@ -126,6 +142,7 @@ class DungeonMasterService
   # ----------------------------------------------------------------
 
   def execute_prompt(player_input, player_message_id:, mode: nil)
+    enforce_usage_limit!
     maybe_log_abandoned_pipeline
     auto_finalize_pending_initiative!
 
@@ -134,6 +151,8 @@ class DungeonMasterService
 
     result = run_timed_pipeline { pipeline.run_prompt(player_input, mode: mode) }
     messages_for(result)
+  rescue UsageLimitExceeded => e
+    [persist_message(role: "system", content: e.message, message_type: "usage_limit")]
   rescue SanitizationRejected => e
     @log.error_pipeline_run!
     [persist_message(role: "system", content: e.message, message_type: "sanitization_fail")]
@@ -146,12 +165,16 @@ class DungeonMasterService
   end
 
   def execute_rolls(roll_results_text, player_message_id:)
+    enforce_usage_limit!
+
     @log.player_message_id = player_message_id
     metadata = latest_roll_metadata
     resume_or_start_pipeline!(metadata, roll_results_text)
 
     result = run_timed_pipeline { pipeline.run_rolls(roll_results_text, metadata) }
     messages_for(result)
+  rescue UsageLimitExceeded => e
+    [persist_message(role: "system", content: e.message, message_type: "usage_limit")]
   rescue AiError, StandardError => e
     @log.error_pipeline_run!
     [persist_message(
@@ -161,12 +184,16 @@ class DungeonMasterService
   end
 
   def execute_initiative(player_initiative, player_message_id:)
+    enforce_usage_limit!
+
     @log.player_message_id = player_message_id
     metadata = latest_initiative_metadata
     resume_or_start_pipeline!(metadata, "Initiative: #{player_initiative}")
 
     result = run_timed_pipeline { pipeline.run_initiative(player_initiative.to_i, metadata) }
     messages_for(result)
+  rescue UsageLimitExceeded => e
+    [persist_message(role: "system", content: e.message, message_type: "usage_limit")]
   rescue AiError, StandardError => e
     @log.error_pipeline_run!
     [persist_message(
@@ -353,6 +380,10 @@ class DungeonMasterService
       player_initiative: player_init)
 
     @log.log!(:info, "Auto-rolled player initiative (#{player_init}) — player ignored initiative prompt")
+  end
+
+  def enforce_usage_limit!
+    raise UsageLimitExceeded if @user&.usage_limit_reached?
   end
 
   def player_facing_error(error)
