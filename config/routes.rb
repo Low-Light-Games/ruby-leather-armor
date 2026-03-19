@@ -16,6 +16,11 @@ Rails.application.routes.draw do
   delete "logout" => "sessions#destroy"
   get "current_user" => "sessions#show"
 
+  # OmniAuth callbacks
+  get  "auth/:provider/callback", to: "omniauth_callbacks#google_oauth2", as: :omniauth_callback
+  get  "auth/failure",            to: "omniauth_callbacks#failure"
+  post "auth/:provider/callback", to: "omniauth_callbacks#google_oauth2"
+
   namespace :admin do
     resources :adventures, only: [:index, :show, :update, :destroy] do
       member do
