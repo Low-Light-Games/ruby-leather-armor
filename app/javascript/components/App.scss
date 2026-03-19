@@ -1,8 +1,12 @@
+@use 'tokens' as *;
+
 .app {
-  font-family: 'Arial', sans-serif;
+  font-family: $font-body;
   margin: 0 auto;
   padding: 50px;
   max-width: 1400px;
+  background: $parchment;
+  color: $ink;
 
   .app-content {
     align-items: flex-start;
@@ -30,7 +34,7 @@
   .admin-section {
     margin-top: 50px;
     padding-top: 30px;
-    border-top: 2px solid #ddd;
+    border-top: 2px solid $border;
   }
 }
 
@@ -42,30 +46,32 @@
 
   label {
     font-size: 14px;
-    font-weight: 500;
-    color: #444;
+    font-weight: normal;
+    font-family: $font-display;
+    letter-spacing: 0.03em;
+    color: $ink-mid;
   }
 }
 
 input[type="text"],
 textarea {
   padding: 8px 12px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-family: inherit;
+  border: 1px solid $border;
+  border-radius: 0;
+  font-family: $font-body;
   font-size: 14px;
-  color: #333;
-  background-color: #fff;
+  color: $ink;
+  background-color: $parchment;
   transition: border-color 0.2s, box-shadow 0.2s;
 
   &::placeholder {
-    color: #aaa;
+    color: $ink-faint;
   }
 
   &:focus {
     outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+    border-color: $red-ink;
+    box-shadow: 0 0 0 2px rgba(114, 38, 38, 0.15);
   }
 }
 
@@ -80,30 +86,29 @@ textarea {
 }
 
 .feedback-error {
-  color: #721c24;
-  background-color: #f8d7da;
-  border: 1px solid #f5c6cb;
-  border-radius: 4px;
+  color: $red-ink;
+  background-color: $red-ink-lt;
+  border: 1px solid $border;
+  border-left: 3px solid $red-ink;
   padding: 10px 16px;
   font-size: 14px;
-  font-weight: 500;
 }
 
 select {
   padding: 8px 12px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-family: inherit;
+  border: 1px solid $border;
+  border-radius: 0;
+  font-family: $font-body;
   font-size: 14px;
-  color: #333;
-  background-color: #fff;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  color: $ink;
+  background-color: $parchment;
+  transition: border-color 0.2s;
   max-width: 280px;
 
   &:focus {
     outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
+    border-color: $red-ink;
+    box-shadow: 0 0 0 2px rgba(114, 38, 38, 0.15);
   }
 }
 
@@ -113,11 +118,10 @@ select {
   gap: 4px;
   padding: 8px 12px;
   margin-bottom: 16px;
-  background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 4px;
+  background-color: $parchment-dk;
+  border: 1px solid $border-light;
   font-size: 13px;
-  color: #555;
+  color: $ink-mid;
 }
 
 .attribute-row {
@@ -127,7 +131,7 @@ select {
   align-items: center;
   margin-bottom: 10px;
   text-transform: capitalize;
-  
+
   > span {
     width: 280px;
     display: flex;
@@ -142,10 +146,11 @@ select {
     width: auto;
     justify-content: flex-end;
     font-variant-numeric: tabular-nums;
+    font-family: $font-mono;
 
     .base-value {
       width: auto;
-      color: #555;
+      color: $ink-mid;
     }
 
     .racial-mod {
@@ -153,25 +158,20 @@ select {
       font-size: 12px;
       font-weight: 600;
 
-      &.positive {
-        color: #28a745;
-      }
-
-      &.negative {
-        color: #dc3545;
-      }
+      &.positive { color: $green-ink; }
+      &.negative { color: $red-ink; }
     }
 
     .equals {
       width: auto;
-      color: #999;
+      color: $ink-faint;
       font-size: 12px;
     }
 
     .final-value {
       width: auto;
       font-weight: 700;
-      color: #333;
+      color: $ink;
     }
   }
 
@@ -181,26 +181,29 @@ select {
     display: flex;
     justify-content: center;
     align-items: center;
-    border: none;
-    border-radius: 100%;
-    background-color: #007bff;
-    color: white;
+    border: 1px solid $border;
+    border-radius: 50%;
+    background-color: $parchment-dk;
+    color: $ink;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s;
 
     &:disabled {
-      background-color: #cccccc;
-      color: #666666;
+      background-color: $parchment;
+      color: $ink-faint;
+      border-color: $border-light;
       cursor: not-allowed;
       opacity: 0.6;
     }
 
     &:hover:not(:disabled) {
-      background-color: #0056b3;
+      background-color: $ink;
+      color: $parchment;
+      border-color: $ink;
     }
 
     &:focus-visible {
-      outline: 2px solid #007bff;
+      outline: 2px solid $red-ink;
       outline-offset: 2px;
     }
   }
@@ -213,54 +216,58 @@ select {
 
   button {
     padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
+    border: 1px solid $border;
+    border-radius: 0;
     cursor: pointer;
     font-size: 14px;
-    font-weight: 500;
-    transition: background-color 0.2s;
+    font-family: $font-display;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: background-color 0.2s, color 0.2s;
 
     &:first-child {
-      background-color: #28a745;
-      color: white;
+      background-color: $green-ink;
+      color: $parchment;
+      border-color: $green-ink;
 
       &:hover:not(:disabled) {
-        background-color: #218838;
+        background-color: darken($green-ink, 8%);
       }
 
       &:disabled {
-        background-color: #ccc;
+        background-color: $parchment-mid;
+        border-color: $border;
+        color: $ink-faint;
         cursor: not-allowed;
         opacity: 0.6;
       }
 
       &:focus-visible {
-        outline: 2px solid #28a745;
+        outline: 2px solid $green-ink;
         outline-offset: 2px;
       }
     }
 
     &:not(:first-child) {
-      background-color: #6c757d;
-      color: white;
+      background-color: $parchment-dk;
+      color: $ink-mid;
+      border-color: $border;
 
       &:hover:not(:disabled) {
-        background-color: #5a6268;
+        background-color: $parchment-mid;
       }
 
       &:disabled {
-        background-color: #e9ecef;
-        color: #6c757d;
+        background-color: $parchment;
+        color: $ink-faint;
         cursor: not-allowed;
         opacity: 0.6;
       }
 
       &:focus-visible {
-        outline: 2px solid #6c757d;
+        outline: 2px solid $border;
         outline-offset: 2px;
       }
     }
   }
 }
-/* Test change */
-

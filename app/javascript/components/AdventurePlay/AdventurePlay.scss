@@ -1,3 +1,5 @@
+@use '../tokens' as *;
+
 .adventure-play {
   display: flex;
   gap: 16px;
@@ -6,9 +8,8 @@
   .adventure-column {
     min-width: 0;
     padding: 16px;
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
+    background: $parchment-dk;
+    border: 1px solid $border-light;
   }
 
   /* ===== LEFT: Character column ===== */
@@ -20,7 +21,6 @@
     overflow-y: auto;
     max-height: calc(100vh - 120px);
 
-    /* Prevent fixed sections from shrinking when column overflows */
     > h2,
     > .char-subtitle,
     > .combat-stats,
@@ -33,17 +33,19 @@
 
     h2 {
       margin: 0 0 4px 0;
-      color: #333;
+      color: $ink;
+      font-family: $font-display;
+      font-weight: normal;
+      letter-spacing: 0.04em;
     }
 
     .char-subtitle {
       margin: 0 0 12px 0;
       font-size: 13px;
-      color: #777;
+      color: $ink-light;
       font-style: italic;
     }
 
-    /* Always-visible combat stats */
     .combat-stats {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr 1fr;
@@ -55,24 +57,23 @@
         flex-direction: column;
         align-items: center;
         padding: 4px 2px;
-        background: white;
-        border-radius: 4px;
-        border: 1px solid #e9ecef;
+        background: $parchment;
+        border: 1px solid $border-light;
 
         .stat-label {
           font-size: 9px;
-          font-weight: 700;
+          font-family: $font-mono;
           text-transform: uppercase;
-          color: #666;
+          color: $ink-light;
           letter-spacing: 0.3px;
           white-space: nowrap;
         }
 
         .stat-value {
-          font-family: monospace;
+          font-family: $font-mono;
           font-weight: 700;
           font-size: 14px;
-          color: #333;
+          color: $ink;
         }
       }
     }
@@ -88,23 +89,23 @@
         flex-direction: column;
         align-items: center;
         padding: 6px 4px;
-        background: #f4f7fb;
-        border-radius: 4px;
-        border: 1px solid #c5d0e6;
+        background: $parchment;
+        border: 1px solid $border-light;
+        border-left: 3px solid $red-ink;
         cursor: pointer;
         position: relative;
         transition: background 0.15s, border-color 0.15s;
 
         &:hover {
-          background: #e3ecf7;
-          border-color: #94abe0;
+          background: $red-ink-lt;
+          border-color: $red-ink;
         }
 
         .damage-tile-label {
           font-size: 9px;
-          font-weight: 700;
+          font-family: $font-mono;
           text-transform: uppercase;
-          color: #666;
+          color: $ink-light;
           letter-spacing: 0.3px;
           white-space: nowrap;
           overflow: hidden;
@@ -113,10 +114,10 @@
         }
 
         .damage-tile-dice {
-          font-family: monospace;
+          font-family: $font-mono;
           font-weight: 700;
           font-size: 14px;
-          color: #333;
+          color: $ink;
         }
 
         .roll-dice-hint {
@@ -128,9 +129,7 @@
           pointer-events: none;
         }
 
-        &:hover .roll-dice-hint {
-          opacity: 0.85;
-        }
+        &:hover .roll-dice-hint { opacity: 0.85; }
       }
     }
 
@@ -145,24 +144,23 @@
         flex-direction: column;
         align-items: center;
         padding: 6px 4px;
-        background: white;
-        border-radius: 4px;
-        border: 1px solid #e9ecef;
+        background: $parchment;
+        border: 1px solid $border-light;
         position: relative;
 
         .save-label {
           font-size: 10px;
-          font-weight: 700;
+          font-family: $font-mono;
           text-transform: uppercase;
-          color: #666;
+          color: $ink-light;
           letter-spacing: 0.5px;
         }
 
         .save-value {
-          font-family: monospace;
+          font-family: $font-mono;
           font-weight: 700;
           font-size: 15px;
-          color: #007bff;
+          color: $red-ink;
         }
 
         .roll-dice-hint {
@@ -177,17 +175,13 @@
           transition: background-color 0.15s, border-color 0.15s;
 
           &:hover {
-            background-color: #e9ecef;
-            border-color: #adb5bd;
+            background-color: $parchment-dk;
+            border-color: $border;
 
-            .roll-dice-hint {
-              opacity: 1;
-            }
+            .roll-dice-hint { opacity: 1; }
           }
 
-          &:active {
-            background-color: #dee2e6;
-          }
+          &:active { background-color: $parchment-mid; }
         }
       }
     }
@@ -197,27 +191,25 @@
       justify-content: space-between;
       align-items: center;
       padding: 6px 10px;
-      background: white;
-      border-radius: 4px;
-      border: 1px solid #e9ecef;
+      background: $parchment;
+      border: 1px solid $border-light;
       margin-bottom: 12px;
 
       .stat-label {
         font-size: 11px;
-        font-weight: 700;
+        font-family: $font-mono;
         text-transform: uppercase;
-        color: #666;
+        color: $ink-light;
       }
 
       .gold {
-        font-family: monospace;
+        font-family: $font-mono;
         font-weight: 700;
         font-size: 15px;
-        color: #d4a017;
+        color: $amber;
       }
     }
 
-    /* Collapsible stacked sections */
     .collapsible-sections {
       display: flex;
       flex-direction: column;
@@ -226,10 +218,9 @@
     }
 
     .accordion-section {
-      border: 1px solid #dee2e6;
-      border-radius: 5px;
+      border: 1px solid $border-light;
       overflow: hidden;
-      background: white;
+      background: $parchment;
     }
 
     .accordion-header {
@@ -239,41 +230,36 @@
       width: 100%;
       padding: 7px 10px;
       border: none;
-      background: #f8f9fa;
+      background: $parchment-dk;
       font-size: 13px;
-      font-weight: 600;
-      color: #444;
+      font-family: $font-display;
+      font-weight: normal;
+      letter-spacing: 0.03em;
+      color: $ink-mid;
       cursor: pointer;
       text-align: left;
       transition: background-color 0.15s;
 
-      &:hover {
-        background-color: #e9ecef;
-      }
+      &:hover { background-color: $parchment-mid; }
 
       &.open {
-        border-bottom: 1px solid #dee2e6;
-        background-color: #007bff;
-        color: white;
+        border-bottom: 1px solid $border-light;
+        background-color: $ink;
+        color: $parchment;
 
-        .accordion-icon {
-          color: white;
-        }
+        .accordion-icon { color: $parchment; }
       }
 
       .accordion-icon {
         font-size: 9px;
-        color: #888;
+        color: $ink-faint;
         width: 10px;
         text-align: center;
       }
     }
 
-    .accordion-body {
-      /* No extra padding — inner content has its own */
-    }
+    .accordion-body { /* inner content has own padding */ }
 
-    /* Inline dice button shared style */
     .roll-dice-btn {
       background: none;
       border: none;
@@ -285,17 +271,10 @@
       transition: opacity 0.15s, transform 0.15s;
       flex-shrink: 0;
 
-      &:hover {
-        opacity: 1;
-        transform: scale(1.25);
-      }
-
-      &:active {
-        transform: scale(1.1);
-      }
+      &:hover { opacity: 1; transform: scale(1.25); }
+      &:active { transform: scale(1.1); }
     }
 
-    /* Attributes list */
     .attributes-list {
       display: flex;
       flex-direction: column;
@@ -307,55 +286,46 @@
         justify-content: space-between;
         align-items: center;
         padding: 5px 10px;
-        background: white;
-        border-radius: 4px;
+        background: $parchment;
         font-size: 13px;
 
-        &:hover .roll-dice-btn {
-          opacity: 0.7;
-        }
+        &:hover .roll-dice-btn { opacity: 0.7; }
 
         .attr-label {
+          font-family: $font-mono;
           font-weight: 700;
-          color: #555;
+          color: $ink-mid;
           width: 36px;
         }
 
         .attr-score {
           flex: 1;
           text-align: center;
-          color: #333;
+          color: $ink;
           font-variant-numeric: tabular-nums;
 
           .racial {
             font-size: 11px;
+            font-family: $font-mono;
             font-weight: 600;
 
-            &.pos {
-              color: #28a745;
-            }
-
-            &.neg {
-              color: #dc3545;
-            }
+            &.pos { color: $green-ink; }
+            &.neg { color: $red-ink; }
           }
 
-          strong {
-            color: #222;
-          }
+          strong { color: $ink; }
         }
 
         .attr-mod {
-          font-family: monospace;
+          font-family: $font-mono;
           font-weight: 700;
-          color: #007bff;
+          color: $red-ink;
           width: 32px;
           text-align: right;
         }
       }
     }
 
-    /* Skills list */
     .skills-list-adventure {
       display: flex;
       flex-direction: column;
@@ -369,27 +339,21 @@
         justify-content: space-between;
         align-items: center;
         padding: 3px 10px;
-        background: white;
-        border-radius: 3px;
+        background: $parchment;
         font-size: 12px;
 
-        &.trained-only {
-          opacity: 0.6;
-        }
+        &.trained-only { opacity: 0.6; }
 
         &:hover {
-          background: #f0f4ff;
-
-          .roll-dice-btn {
-            opacity: 0.7;
-          }
+          background: $parchment-dk;
+          .roll-dice-btn { opacity: 0.7; }
         }
 
         .skill-name {
           display: flex;
           align-items: center;
           gap: 4px;
-          color: #333;
+          color: $ink;
           flex: 1;
           min-width: 0;
 
@@ -399,35 +363,29 @@
             justify-content: center;
             width: 14px;
             height: 14px;
-            border-radius: 2px;
-            background-color: #6c757d;
-            color: white;
+            background-color: $ink-mid;
+            color: $parchment;
             font-size: 9px;
+            font-family: $font-mono;
             font-weight: 700;
             flex-shrink: 0;
           }
         }
 
         .skill-mod {
-          font-family: monospace;
+          font-family: $font-mono;
           font-weight: 700;
           font-size: 12px;
           width: 28px;
           text-align: right;
           flex-shrink: 0;
 
-          &.positive {
-            color: #28a745;
-          }
-
-          &.negative {
-            color: #dc3545;
-          }
+          &.positive { color: $green-ink; }
+          &.negative  { color: $red-ink; }
         }
       }
     }
 
-    /* Feats & Spells display */
     .feats-spells-list {
       padding: 8px 10px;
       display: flex;
@@ -439,7 +397,7 @@
       .empty-hint {
         margin: 0;
         font-size: 12px;
-        color: #888;
+        color: $ink-faint;
         font-style: italic;
       }
 
@@ -448,15 +406,14 @@
         align-items: center;
         gap: 6px;
         padding: 4px 8px;
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
-        border-radius: 4px;
+        background: $parchment;
+        border: 1px solid $border-light;
         font-size: 12px;
 
         .fs-name {
           flex: 1;
-          font-weight: 500;
-          color: #333;
+          font-family: $font-body;
+          color: $ink;
           min-width: 0;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -465,37 +422,18 @@
 
         .fs-tag {
           font-size: 10px;
+          font-family: $font-mono;
           padding: 1px 5px;
-          border-radius: 3px;
           flex-shrink: 0;
           text-transform: capitalize;
-          background: #e9ecef;
-          color: #555;
+          background: $parchment-mid;
+          color: $ink-mid;
 
-          &.cat-combat {
-            background: #fce4ec;
-            color: #c62828;
-          }
-
-          &.cat-general {
-            background: #e8f5e9;
-            color: #2e7d32;
-          }
-
-          &.cat-metamagic {
-            background: #ede7f6;
-            color: #4527a0;
-          }
-
-          &.cat-item_creation {
-            background: #fff3e0;
-            color: #e65100;
-          }
-
-          &.school-tag {
-            background: #e3f2fd;
-            color: #1565c0;
-          }
+          &.cat-combat      { background: $red-ink-lt;    color: $red-ink; }
+          &.cat-general     { background: $green-ink-lt;  color: $green-ink; }
+          &.cat-metamagic   { background: $purple-ink-lt; color: $purple-ink; }
+          &.cat-item_creation { background: $amber-lt;    color: $amber; }
+          &.school-tag      { background: $blue-ink-lt;   color: $blue-ink; }
         }
 
         .spell-lvl-badge {
@@ -504,33 +442,29 @@
           justify-content: center;
           width: 18px;
           height: 18px;
-          background: #007bff;
-          color: white;
+          background: $red-ink;
+          color: $parchment;
           border-radius: 50%;
           font-size: 10px;
+          font-family: $font-mono;
           font-weight: 700;
           flex-shrink: 0;
 
-          &.small {
-            width: 16px;
-            height: 16px;
-            font-size: 9px;
-          }
+          &.small { width: 16px; height: 16px; font-size: 9px; }
         }
       }
     }
 
-    /* Spellbook add section (wizard in adventure) */
     .spellbook-add-section {
       margin-top: 8px;
       padding-top: 8px;
-      border-top: 1px dashed #dee2e6;
+      border-top: 1px dashed $border-light;
       position: relative;
 
       .spellbook-add-label {
         font-size: 11px;
-        font-weight: 600;
-        color: #555;
+        font-family: $font-mono;
+        color: $ink-light;
         margin: 0 0 4px;
         text-transform: uppercase;
         letter-spacing: 0.3px;
@@ -539,36 +473,34 @@
       .spellbook-search-input {
         width: 100%;
         padding: 5px 8px;
-        border: 1px solid #dee2e6;
-        border-radius: 4px;
+        border: 1px solid $border-light;
         font-size: 12px;
+        font-family: $font-body;
+        background: $parchment;
+        color: $ink;
         box-sizing: border-box;
 
         &:focus {
           outline: none;
-          border-color: #007bff;
-          box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+          border-color: $red-ink;
+          box-shadow: 0 0 0 2px rgba(114, 38, 38, 0.15);
         }
 
-        &:disabled {
-          opacity: 0.6;
-        }
+        &:disabled { opacity: 0.6; }
       }
 
       .spellbook-dropdown {
         position: absolute;
-        left: 0;
-        right: 0;
+        left: 0; right: 0;
         max-height: 200px;
         overflow-y: auto;
-        background: #fff;
-        border: 1px solid #dee2e6;
-        border-radius: 0 0 4px 4px;
+        background: $parchment;
+        border: 1px solid $border;
         list-style: none;
         padding: 0;
         margin: 0;
         z-index: 10;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
       }
 
       .spellbook-option {
@@ -577,24 +509,17 @@
         gap: 6px;
         padding: 6px 8px;
         font-size: 12px;
+        font-family: $font-body;
         cursor: pointer;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid $border-light;
 
-        &:last-child {
-          border-bottom: none;
-        }
-
-        &:hover {
-          background: #e9ecef;
-        }
+        &:last-child { border-bottom: none; }
+        &:hover { background: $parchment-dk; }
 
         &.slot-full {
           opacity: 0.5;
           cursor: not-allowed;
-
-          &:hover {
-            background: transparent;
-          }
+          &:hover { background: transparent; }
         }
 
         .option-name {
@@ -603,21 +528,19 @@
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
-          font-weight: 500;
         }
 
         .slot-full-hint {
           font-size: 10px;
-          color: #856404;
-          background: #fff3cd;
+          font-family: $font-mono;
+          color: $amber;
+          background: $amber-lt;
           padding: 1px 5px;
-          border-radius: 3px;
           flex-shrink: 0;
         }
       }
     }
 
-    /* Weapons list */
     .weapons-list {
       padding: 8px 10px;
       display: flex;
@@ -629,7 +552,7 @@
       .empty-hint {
         margin: 0;
         font-size: 12px;
-        color: #888;
+        color: $ink-faint;
         font-style: italic;
       }
 
@@ -638,10 +561,9 @@
         align-items: center;
         gap: 6px;
         padding: 5px 8px;
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
-        border-radius: 4px;
-        border-left: 3px solid #dc3545;
+        background: $parchment;
+        border: 1px solid $border-light;
+        border-left: 3px solid $red-ink;
 
         .weapon-info {
           flex: 1;
@@ -653,8 +575,8 @@
 
         .weapon-name {
           font-size: 12px;
-          font-weight: 600;
-          color: #333;
+          font-family: $font-body;
+          color: $ink;
           overflow: hidden;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -662,17 +584,14 @@
 
         .weapon-stats {
           font-size: 10px;
-          color: #777;
-          font-family: monospace;
+          color: $ink-light;
+          font-family: $font-mono;
         }
 
-        .roll-dice-btn {
-          flex-shrink: 0;
-        }
+        .roll-dice-btn { flex-shrink: 0; }
       }
     }
 
-    /* Inventory list */
     .inventory-list {
       padding: 8px 10px;
       display: flex;
@@ -684,7 +603,7 @@
       .empty-hint {
         margin: 0;
         font-size: 12px;
-        color: #888;
+        color: $ink-faint;
         font-style: italic;
       }
 
@@ -694,15 +613,14 @@
         justify-content: space-between;
         gap: 6px;
         padding: 5px 8px;
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
-        border-radius: 4px;
+        background: $parchment;
+        border: 1px solid $border-light;
       }
 
       .inventory-name {
         font-size: 12px;
-        font-weight: 600;
-        color: #333;
+        font-family: $font-body;
+        color: $ink;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -711,8 +629,8 @@
       }
 
       .inventory-qty {
-        font-weight: 400;
-        color: #666;
+        font-family: $font-mono;
+        color: $ink-mid;
       }
 
       .inventory-meta {
@@ -724,60 +642,57 @@
 
       .inventory-type {
         font-size: 9px;
+        font-family: $font-mono;
         padding: 1px 5px;
-        border-radius: 3px;
-        background: #e9ecef;
-        color: #555;
+        background: $parchment-mid;
+        color: $ink-mid;
         text-transform: capitalize;
 
-        &.type-weapon { background: #fde8e8; color: #c0392b; }
-        &.type-armor { background: #e8f0fe; color: #2c5282; }
-        &.type-shield { background: #e8f0fe; color: #2c5282; }
-        &.type-gear { background: #e9ecef; color: #555; }
-        &.type-potion { background: #f0e8fe; color: #6b21a8; }
-        &.type-wondrous { background: #fef3c7; color: #92400e; }
-        &.type-ammunition { background: #fde8e8; color: #c0392b; }
+        &.type-weapon     { background: $red-ink-lt;    color: $red-ink; }
+        &.type-armor      { background: $blue-ink-lt;   color: $blue-ink; }
+        &.type-shield     { background: $blue-ink-lt;   color: $blue-ink; }
+        &.type-gear       { background: $parchment-mid; color: $ink-mid; }
+        &.type-potion     { background: $purple-ink-lt; color: $purple-ink; }
+        &.type-wondrous   { background: $amber-lt;      color: $amber; }
+        &.type-ammunition { background: $red-ink-lt;    color: $red-ink; }
       }
 
       .equip-error {
         margin: 0 0 4px;
         font-size: 11px;
-        color: #dc3545;
+        color: $red-ink;
       }
 
       .inventory-row.is-equipped {
-        border-left: 3px solid #28a745;
+        border-left: 3px solid $green-ink;
       }
 
       .equip-toggle {
         font-size: 9px;
+        font-family: $font-mono;
         padding: 1px 6px;
-        border-radius: 3px;
-        border: 1px solid #ccc;
+        border: 1px solid $border;
         cursor: pointer;
-        background: #f8f9fa;
-        color: #555;
+        background: $parchment;
+        color: $ink-mid;
         transition: background-color 0.15s, border-color 0.15s;
 
         &:hover:not(:disabled) {
-          border-color: #007bff;
-          color: #007bff;
+          border-color: $green-ink;
+          color: $green-ink;
         }
 
-        &:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
+        &:disabled { opacity: 0.5; cursor: not-allowed; }
 
         &.equipped {
-          background: #d4edda;
-          border-color: #28a745;
-          color: #155724;
+          background: $green-ink-lt;
+          border-color: $green-ink;
+          color: $green-ink;
 
           &:hover:not(:disabled) {
-            background: #f8d7da;
-            border-color: #dc3545;
-            color: #721c24;
+            background: $red-ink-lt;
+            border-color: $red-ink;
+            color: $red-ink;
           }
         }
       }
@@ -788,59 +703,40 @@
       margin-left: auto;
     }
 
-    /* Roll buttons */
     .roll-buttons {
-      border-top: 1px solid #dee2e6;
+      border-top: 1px solid $border-light;
       padding-top: 12px;
-
-      h3 {
-        margin: 0 0 8px 0;
-        font-size: 13px;
-        text-transform: uppercase;
-        color: #666;
-        letter-spacing: 0.5px;
-      }
-
       display: flex;
       flex-direction: column;
       gap: 6px;
 
+      h3 {
+        margin: 0 0 8px 0;
+        font-size: 11px;
+        font-family: $font-mono;
+        text-transform: uppercase;
+        color: $ink-faint;
+        letter-spacing: 0.5px;
+      }
+
       .roll-btn {
         padding: 8px 12px;
-        border: 1px solid #dee2e6;
-        border-radius: 4px;
-        background: white;
+        border: 1px solid $border-light;
+        background: $parchment;
         font-size: 13px;
-        font-weight: 500;
-        color: #333;
+        font-family: $font-body;
+        color: $ink;
         cursor: pointer;
         text-align: left;
         transition: background-color 0.15s, border-color 0.15s;
 
-        &:hover {
-          background-color: #e9ecef;
-          border-color: #adb5bd;
-        }
+        &:hover { background-color: $parchment-dk; border-color: $border; }
+        &:active { background-color: $parchment-mid; }
 
-        &:active {
-          background-color: #dee2e6;
-        }
-
-        &.attack {
-          border-left: 3px solid #dc3545;
-        }
-
-        &.ranged {
-          border-left: 3px solid #fd7e14;
-        }
-
-        &.initiative {
-          border-left: 3px solid #17a2b8;
-        }
-
-        &.concentration {
-          border-left: 3px solid #6f42c1;
-        }
+        &.attack      { border-left: 3px solid $red-ink; }
+        &.ranged      { border-left: 3px solid $amber; }
+        &.initiative  { border-left: 3px solid $blue-ink; }
+        &.concentration { border-left: 3px solid $purple-ink; }
       }
     }
   }
@@ -852,7 +748,7 @@
     flex-direction: column;
     min-height: 0;
     max-height: calc(100vh - 120px);
-    background: #fff;
+    background: $parchment;
   }
 
   /* ===== RIGHT: Story column ===== */
@@ -863,12 +759,15 @@
 
     h2 {
       margin: 0 0 8px 0;
-      color: #333;
+      color: $ink;
+      font-family: $font-display;
+      font-weight: normal;
+      letter-spacing: 0.04em;
     }
 
     .story-premise {
       margin: 0 0 16px 0;
-      color: #555;
+      color: $ink-mid;
       line-height: 1.7;
       white-space: pre-wrap;
       font-size: 13px;
@@ -877,9 +776,8 @@
     .context-section {
       margin-bottom: 16px;
       padding: 12px;
-      background: white;
-      border: 1px solid #e9ecef;
-      border-radius: 6px;
+      background: $parchment;
+      border: 1px solid $border-light;
 
       .context-header {
         display: flex;
@@ -887,75 +785,48 @@
         justify-content: space-between;
         margin-bottom: 8px;
 
-        h3 {
-          margin: 0;
-        }
+        h3 { margin: 0; }
       }
 
       h3 {
         margin: 0 0 8px 0;
-        font-size: 13px;
+        font-size: 11px;
+        font-family: $font-mono;
         text-transform: uppercase;
-        color: #666;
+        color: $ink-light;
         letter-spacing: 0.5px;
-        font-weight: 600;
       }
 
       .category-badge {
         font-size: 10px;
-        font-weight: 700;
+        font-family: $font-mono;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         padding: 2px 8px;
-        border-radius: 3px;
         flex-shrink: 0;
 
-        &.cat-combat {
-          background: #fce4ec;
-          color: #c62828;
-        }
-
-        &.cat-social {
-          background: #e8f5e9;
-          color: #2e7d32;
-        }
-
-        &.cat-traversal {
-          background: #e3f2fd;
-          color: #1565c0;
-        }
-
-        &.cat-exploration {
-          background: #fff3e0;
-          color: #e65100;
-        }
-
-        &.cat-rest {
-          background: #f3e5f5;
-          color: #6a1b9a;
-        }
-
-        &.cat-inventory {
-          background: #efebe9;
-          color: #4e342e;
-        }
+        &.cat-combat      { background: $red-ink-lt;    color: $red-ink; }
+        &.cat-social      { background: $green-ink-lt;  color: $green-ink; }
+        &.cat-traversal   { background: $blue-ink-lt;   color: $blue-ink; }
+        &.cat-exploration { background: $amber-lt;      color: $amber; }
+        &.cat-rest        { background: $purple-ink-lt; color: $purple-ink; }
+        &.cat-inventory   { background: $parchment-mid; color: $ink-mid; }
       }
 
       .context-body {
         font-size: 13px;
-        color: #333;
+        color: $ink;
         line-height: 1.6;
         white-space: pre-wrap;
       }
 
       .context-placeholder {
-        color: #aaa;
+        color: $ink-faint;
         font-style: italic;
       }
 
       .scene-summary {
-        font-weight: 500;
-        color: #444;
+        color: $ink-mid;
       }
     }
 
@@ -964,36 +835,31 @@
 
       .context-debug-toggle {
         background: none;
-        border: 1px solid #ddd;
-        border-radius: 4px;
+        border: 1px solid $border-light;
         padding: 6px 10px;
         font-size: 11px;
-        color: #888;
+        font-family: $font-mono;
+        color: $ink-faint;
         cursor: pointer;
         width: 100%;
         text-align: left;
-        font-family: inherit;
 
-        &:hover {
-          background: #f8f9fa;
-          color: #555;
-        }
+        &:hover { background: $parchment-dk; color: $ink-light; }
       }
 
       .context-debug-section {
         margin-top: 8px;
         padding: 8px;
-        background: #fafafa;
-        border: 1px dashed #ddd;
-        border-radius: 4px;
+        background: $parchment-dk;
+        border: 1px dashed $border-light;
 
         h4 {
           margin: 0;
           font-size: 11px;
+          font-family: $font-mono;
           text-transform: uppercase;
-          color: #888;
+          color: $ink-faint;
           letter-spacing: 0.5px;
-          font-weight: 600;
         }
 
         .context-detail-list {
@@ -1002,16 +868,17 @@
             gap: 8px;
             padding: 2px 0;
             font-size: 11px;
+            font-family: $font-mono;
 
             .context-key {
-              color: #999;
+              color: $ink-faint;
               text-transform: capitalize;
               flex-shrink: 0;
               min-width: 80px;
             }
 
             .context-value {
-              color: #555;
+              color: $ink-mid;
               word-break: break-word;
             }
           }

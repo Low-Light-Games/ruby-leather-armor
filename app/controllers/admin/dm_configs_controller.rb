@@ -1,12 +1,11 @@
 module Admin
-  class DmConfigsController < ApplicationController
-    before_action :require_admin
+  class DmConfigsController < BaseController
 
     def show
       @config = DmConfig.instance
       available_ids = fetch_available_model_ids
       @models_with_metadata = OpenaiModelCatalog.for_models(available_ids)
-      render layout: 'application'
+      render layout: 'admin'
     end
 
     def update

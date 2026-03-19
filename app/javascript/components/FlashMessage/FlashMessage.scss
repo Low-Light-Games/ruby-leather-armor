@@ -1,3 +1,5 @@
+@use '../tokens' as *;
+
 .flash-toast {
   position: fixed;
   top: 20px;
@@ -8,11 +10,9 @@
   align-items: center;
   gap: 10px;
   padding: 12px 24px;
-  border-radius: 8px;
   font-size: 14px;
-  font-weight: 500;
-  font-family: 'Arial', sans-serif;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  font-family: $font-body;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
   cursor: pointer;
   animation: flashSlideIn 0.3s ease;
   transition: opacity 0.3s ease, transform 0.3s ease;
@@ -20,15 +20,17 @@
   min-width: 200px;
 
   &--success {
-    background-color: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
+    background-color: $green-ink-lt;
+    color: $green-ink;
+    border: 1px solid $green-ink;
+    border-left: 4px solid $green-ink;
   }
 
   &--error {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
+    background-color: $red-ink-lt;
+    color: $red-ink;
+    border: 1px solid $red-ink;
+    border-left: 4px solid $red-ink;
   }
 
   &--fading {
@@ -38,13 +40,10 @@
 
   &__icon {
     font-size: 16px;
-    font-weight: 700;
     flex-shrink: 0;
   }
 
-  &__message {
-    line-height: 1.4;
-  }
+  &__message { line-height: 1.4; }
 }
 
 @keyframes flashSlideIn {

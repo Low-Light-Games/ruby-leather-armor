@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 module Admin
-  class BillingController < ApplicationController
-    before_action :require_admin
+  class BillingController < BaseController
 
     def show
       @start_date = params[:start_date].present? ? Date.parse(params[:start_date]) : Date.current.beginning_of_month
@@ -93,7 +92,7 @@ module Admin
                      .distinct.pluck(:user_id)
       ).order(:email)
 
-      render layout: "application"
+      render layout: 'admin'
     end
 
     private

@@ -1,3 +1,5 @@
+@use '../tokens' as *;
+
 .adventure-chat {
   display: flex;
   flex-direction: column;
@@ -6,8 +8,11 @@
 
   h2 {
     margin: 0 0 8px 0;
-    color: #333;
+    color: $ink;
     font-size: 16px;
+    font-family: $font-display;
+    font-weight: normal;
+    letter-spacing: 0.04em;
     flex-shrink: 0;
   }
 
@@ -24,17 +29,16 @@
 
   .chat-loading,
   .chat-empty {
-    color: #888;
+    color: $ink-faint;
     font-size: 13px;
     font-style: italic;
     text-align: center;
     padding: 20px 8px;
   }
 
-  /* ===== Individual messages ===== */
+  /* ===== Messages ===== */
   .chat-message {
     padding: 8px 12px;
-    border-radius: 8px;
     font-size: 13px;
     line-height: 1.5;
     max-width: 95%;
@@ -48,69 +52,67 @@
 
       .msg-role {
         font-size: 11px;
-        font-weight: 700;
+        font-family: $font-mono;
         text-transform: uppercase;
         letter-spacing: 0.5px;
       }
 
       .pipeline-id-link {
         font-size: 10px;
-        font-family: 'Consolas', 'Monaco', monospace;
-        color: #90a4ae;
+        font-family: $font-mono;
+        color: $ink-faint;
         text-decoration: none;
         background: rgba(0, 0, 0, 0.05);
         padding: 1px 6px;
-        border-radius: 4px;
-        transition: color 0.15s, background 0.15s;
+        transition: color 0.15s;
 
         &:hover {
-          color: #1565c0;
-          background: rgba(21, 101, 192, 0.1);
+          color: $blue-ink;
           text-decoration: underline;
         }
       }
     }
 
-    .msg-content {
-      white-space: pre-wrap;
-    }
+    .msg-content { white-space: pre-wrap; }
 
     &.msg-player {
       align-self: flex-end;
-      background-color: #d4edff;
-      border: 1px solid #b3d7ff;
+      background-color: $blue-ink-lt;
+      border: 1px solid $border-light;
+      border-left: 3px solid $blue-ink;
 
-      .msg-role { color: #0056b3; }
+      .msg-role { color: $blue-ink; }
     }
 
     &.msg-dm {
       align-self: flex-start;
-      background-color: #fff3e0;
-      border: 1px solid #ffe0b2;
+      background-color: $parchment-dk;
+      border: 1px solid $border-light;
+      border-left: 3px solid $red-ink;
 
-      .msg-role { color: #e65100; }
+      .msg-role { color: $red-ink; }
     }
 
     &.msg-system {
       align-self: center;
-      background-color: #f3e5f5;
-      border: 1px solid #e1bee7;
+      background-color: $parchment-mid;
+      border: 1px solid $border-light;
       text-align: center;
       font-style: italic;
       max-width: 80%;
 
-      .msg-role { color: #6a1b9a; }
+      .msg-role { color: $ink-mid; }
 
       &.msg-type-sanitization_fail {
-        background-color: #fce4ec;
-        border-color: #f8bbd0;
-        .msg-role { color: #c62828; }
+        background-color: $red-ink-lt;
+        border-color: $red-ink;
+        .msg-role { color: $red-ink; }
       }
 
       &.msg-type-adventure_complete {
-        background-color: #e8f5e9;
-        border-color: #c8e6c9;
-        .msg-role { color: #2e7d32; }
+        background-color: $green-ink-lt;
+        border-color: $green-ink;
+        .msg-role { color: $green-ink; }
       }
     }
 
@@ -125,7 +127,7 @@
           width: 7px;
           height: 7px;
           border-radius: 50%;
-          background-color: #e65100;
+          background-color: $ink-mid;
           opacity: 0.4;
           animation: thinkingPulse 1.4s infinite ease-in-out;
 
@@ -140,18 +142,17 @@
       display: inline-block;
       margin-top: 8px;
       padding: 4px 14px;
-      background-color: #6a1b9a;
-      color: white;
+      background-color: $ink;
+      color: $parchment;
       border: none;
-      border-radius: 4px;
       cursor: pointer;
       font-size: 12px;
-      font-weight: 600;
+      font-family: $font-display;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
       transition: background-color 0.15s;
 
-      &:hover {
-        background-color: #4a148c;
-      }
+      &:hover { background-color: $ink-mid; }
     }
   }
 
@@ -165,34 +166,33 @@
 
   .roll-request-badge {
     padding: 6px 10px;
-    background-color: #fff8e1;
-    border: 1px dashed #ffca28;
-    border-radius: 4px;
+    background-color: $amber-lt;
+    border: 1px dashed $amber;
     font-size: 12px;
-    color: #333;
+    color: $ink;
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 6px;
 
     .roll-badge-label {
+      font-family: $font-mono;
       font-weight: 700;
-      color: #f57f17;
+      color: $amber;
       text-transform: capitalize;
     }
 
     .roll-dc {
+      font-family: $font-mono;
       font-weight: 600;
       font-size: 11px;
-      color: #fff;
-      background: #f57f17;
+      color: $parchment;
+      background: $amber;
       padding: 1px 6px;
-      border-radius: 8px;
     }
 
     .roll-badge-desc {
-      font-weight: 400;
-      color: #555;
+      color: $ink-mid;
       font-size: 12px;
     }
   }
@@ -201,9 +201,8 @@
   .roll-submit-area {
     flex-shrink: 0;
     padding: 10px;
-    background-color: #fff8e1;
-    border: 1px solid #ffe082;
-    border-radius: 6px;
+    background-color: $amber-lt;
+    border: 1px solid $amber;
     margin-bottom: 8px;
 
     .roll-prompt {
@@ -212,27 +211,27 @@
       align-items: baseline;
       gap: 6px;
       font-size: 13px;
-      color: #333;
+      color: $ink;
       margin-bottom: 8px;
 
       .roll-prompt-type {
+        font-family: $font-mono;
         font-weight: 700;
-        color: #e65100;
+        color: $amber;
         text-transform: capitalize;
       }
 
       .roll-dc {
+        font-family: $font-mono;
         font-weight: 600;
         font-size: 11px;
-        color: #fff;
-        background: #e65100;
+        color: $parchment;
+        background: $amber;
         padding: 1px 6px;
-        border-radius: 8px;
       }
 
       .roll-prompt-desc {
-        font-weight: 400;
-        color: #555;
+        color: $ink-mid;
         font-size: 12px;
         flex-basis: 100%;
       }
@@ -241,29 +240,29 @@
     .roll-entry {
       margin-bottom: 10px;
       padding: 8px;
-      background: rgba(255, 255, 255, 0.6);
-      border-radius: 4px;
-      border: 1px solid #ffe0b2;
+      background: rgba(255, 255, 255, 0.4);
+      border: 1px solid $border-light;
 
       &.roll-unresolved {
         opacity: 0.7;
-        border-color: #e0e0e0;
-        background: #fafafa;
+        border-color: $border-light;
+        background: $parchment-dk;
       }
     }
 
     .roll-modifier {
+      font-family: $font-mono;
       font-weight: 700;
       font-size: 12px;
-      color: #2e7d32;
-      background: #e8f5e9;
+      color: $green-ink;
+      background: $green-ink-lt;
       padding: 1px 5px;
-      border-radius: 6px;
     }
 
     .roll-warning {
       font-size: 11px;
-      color: #c62828;
+      font-family: $font-mono;
+      color: $red-ink;
       font-style: italic;
     }
 
@@ -276,80 +275,74 @@
 
     .roll-btn {
       padding: 5px 12px;
-      border: 1px solid #e65100;
-      border-radius: 4px;
+      border: 1px solid $amber;
       cursor: pointer;
       font-size: 12px;
+      font-family: $font-mono;
       font-weight: 600;
-      font-family: inherit;
-      transition: background-color 0.15s, border-color 0.15s;
+      transition: background-color 0.15s;
 
       &.roll-d20 {
-        background-color: #fff3e0;
-        color: #e65100;
+        background-color: $parchment;
+        color: $amber;
 
-        &:hover:not(:disabled) {
-          background-color: #ffe0b2;
-        }
+        &:hover:not(:disabled) { background-color: $amber-lt; }
 
         &.roll-done {
-          background-color: #e8f5e9;
-          border-color: #4caf50;
-          color: #2e7d32;
+          background-color: $green-ink-lt;
+          border-color: $green-ink;
+          color: $green-ink;
           cursor: default;
         }
 
-        &:disabled {
-          cursor: default;
-        }
+        &:disabled { cursor: default; }
       }
 
       &.roll-take {
-        background-color: #e3f2fd;
-        border-color: #1565c0;
-        color: #1565c0;
+        background-color: $blue-ink-lt;
+        border-color: $blue-ink;
+        color: $blue-ink;
 
-        &:hover {
-          background-color: #bbdefb;
-        }
+        &:hover { background-color: darken($blue-ink-lt, 5%); }
       }
     }
 
     .roll-input {
       flex: 1;
       padding: 6px 10px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      border: 1px solid $border;
       font-size: 14px;
-      font-family: inherit;
+      font-family: $font-mono;
+      background: $parchment;
+      color: $ink;
       min-width: 80px;
       max-width: 120px;
 
       &:focus {
         outline: none;
-        border-color: #f57f17;
-        box-shadow: 0 0 0 2px rgba(245, 127, 23, 0.15);
+        border-color: $amber;
+        box-shadow: 0 0 0 2px rgba(168, 112, 35, 0.2);
       }
     }
 
     .roll-submit-btn {
       padding: 6px 14px;
-      background-color: #f57f17;
-      color: white;
+      background-color: $amber;
+      color: $parchment;
       border: none;
-      border-radius: 4px;
       cursor: pointer;
       font-size: 13px;
-      font-weight: 600;
+      font-family: $font-display;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
       white-space: nowrap;
       transition: background-color 0.15s;
 
-      &:hover:not(:disabled) {
-        background-color: #e65100;
-      }
+      &:hover:not(:disabled) { background-color: darken($amber, 8%); }
 
       &:disabled {
-        background-color: #ccc;
+        background-color: $parchment-mid;
+        color: $ink-faint;
         cursor: not-allowed;
       }
     }
@@ -363,35 +356,33 @@
     gap: 8px;
     align-items: flex-end;
     padding-top: 8px;
-    border-top: 1px solid #e9ecef;
+    border-top: 1px solid $border-light;
 
     .ask-dm-toggle {
       padding: 3px 10px;
-      border: 1px solid #dee2e6;
-      border-radius: 14px;
-      background: #f8f9fa;
-      color: #888;
+      border: 1px solid $border-light;
+      background: $parchment-dk;
+      color: $ink-light;
       font-size: 11px;
-      font-weight: 600;
+      font-family: $font-mono;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
       cursor: pointer;
       transition: all 0.15s;
       align-self: flex-start;
 
       &:hover:not(:disabled):not(.active) {
-        background: #e9ecef;
-        color: #666;
+        background: $parchment-mid;
+        color: $ink-mid;
       }
 
       &.active {
-        background: #6a1b9a;
-        border-color: #6a1b9a;
-        color: white;
+        background: $ink;
+        border-color: $ink;
+        color: $parchment;
       }
 
-      &:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
     }
 
     .chat-input-wrapper {
@@ -404,56 +395,50 @@
     .chat-input {
       width: 100%;
       padding: 8px 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-family: inherit;
+      border: 1px solid $border;
+      font-family: $font-body;
       font-size: 13px;
+      background: $parchment;
+      color: $ink;
       resize: none;
       min-height: 36px;
       max-height: 80px;
       box-sizing: border-box;
-      transition: border-color 0.15s, box-shadow 0.15s;
+      transition: border-color 0.15s;
 
       &:focus {
         outline: none;
-        border-color: #007bff;
-        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+        border-color: $red-ink;
+        box-shadow: 0 0 0 2px rgba(114, 38, 38, 0.15);
       }
 
       &.ask-dm-mode {
-        border-color: #ce93d8;
+        border-color: $ink-mid;
 
         &:focus {
-          border-color: #6a1b9a;
-          box-shadow: 0 0 0 2px rgba(106, 27, 154, 0.15);
+          border-color: $ink;
+          box-shadow: 0 0 0 2px rgba(44, 37, 32, 0.15);
         }
       }
 
-      &:disabled {
-        background-color: #f5f5f5;
-      }
+      &:disabled { background-color: $parchment-mid; }
 
       &::placeholder {
-        color: #aaa;
+        color: $ink-faint;
         font-size: 12px;
       }
     }
 
     .char-counter {
       font-size: 11px;
-      color: #aaa;
+      font-family: $font-mono;
+      color: $ink-faint;
       text-align: right;
       margin-top: 2px;
       user-select: none;
 
-      &.near-limit {
-        color: #e67e22;
-      }
-
-      &.at-limit {
-        color: #e74c3c;
-        font-weight: 600;
-      }
+      &.near-limit { color: $amber; }
+      &.at-limit   { color: $red-ink; font-weight: 600; }
     }
 
     .chat-send-btn {
@@ -462,8 +447,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background-color: #007bff;
-      color: white;
+      background-color: $red-ink;
+      color: $parchment;
       border: none;
       border-radius: 50%;
       cursor: pointer;
@@ -471,12 +456,10 @@
       transition: background-color 0.15s;
       flex-shrink: 0;
 
-      &:hover:not(:disabled) {
-        background-color: #0056b3;
-      }
+      &:hover:not(:disabled) { background-color: $red-ink-dk; }
 
       &:disabled {
-        background-color: #ccc;
+        background-color: $parchment-mid;
         cursor: not-allowed;
       }
     }
@@ -485,5 +468,5 @@
 
 @keyframes thinkingPulse {
   0%, 80%, 100% { opacity: 0.3; transform: scale(1); }
-  40% { opacity: 1; transform: scale(1.15); }
+  40%           { opacity: 1;   transform: scale(1.15); }
 }
