@@ -5,7 +5,10 @@ const isProduction = process.env.RAILS_ENV === "production";
 const isWatch = process.argv.includes("--watch");
 
 const buildOptions = {
-  entryPoints: ["app/javascript/application.tsx"],
+  entryPoints: [
+    "app/javascript/application.tsx",
+    "app/javascript/frontpage.tsx",
+  ],
   bundle: true,
   outdir: "app/assets/builds",
   format: "iife",
