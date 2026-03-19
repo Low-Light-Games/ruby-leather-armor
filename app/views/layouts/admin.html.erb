@@ -7,9 +7,11 @@
     <%= csp_meta_tag %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
+    <%= render 'admin/shared/navbar_styles' %>
   </head>
 
   <body style="margin:0; background:#ffffff; font-family:Arial,sans-serif;">
+    <%= render 'admin/shared/navbar' %>
     <%= yield %>
   </body>
 </html>

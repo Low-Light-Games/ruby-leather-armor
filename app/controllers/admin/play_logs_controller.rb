@@ -31,6 +31,7 @@ module Admin
     end
 
     def pipelines
+      @active_nav = :pipelines
       runs = PlayLog.where.not(pipeline_run_id: [nil, ""])
                     .select("pipeline_run_id, MIN(created_at) AS first_at, MAX(created_at) AS last_at, COUNT(*) AS step_count, MIN(adventure_id) AS adventure_id")
                     .group(:pipeline_run_id)
@@ -89,6 +90,7 @@ module Admin
     end
 
     def pipeline
+      @active_nav = :pipelines
       @show_usage = params[:show_usage] == "1"
       includes = [:adventure]
       includes << :ai_usage_record if @show_usage

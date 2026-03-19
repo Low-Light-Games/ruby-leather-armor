@@ -1,3 +1,18 @@
+.admin-page {
+  font-family: Arial, sans-serif;
+  background: #ffffff;
+  color: #333;
+}
+
+.admin-page .feedback-error {
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  padding: 10px 16px;
+  font-size: 14px;
+}
+
 .admin-story-editor {
   max-width: 800px;
   margin: 20px auto;

@@ -1,4 +1,3 @@
-import AdminNavbar from '../AdminNavbar/AdminNavbar'
 import Login from '../Login'
 import FlashMessage from '../FlashMessage'
 import { useStoryEditorState } from './useStoryEditorState'
@@ -36,12 +35,11 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
     saveStory, enrichStory,
   } = state
 
-  if (authLoading) return <div className="app">Loading...</div>
+  if (authLoading) return <div className="admin-page">Loading...</div>
   if (!user) return <Login />
   if (!user.admin) {
     return (
-      <div className="app">
-        <AdminNavbar active="stories" />
+      <div className="admin-page">
         <p className="feedback-error">Admin access required.</p>
       </div>
     )
@@ -49,8 +47,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
 
   if (loading) {
     return (
-      <div className="app">
-        <AdminNavbar active="stories" />
+      <div className="admin-page">
         <p style={{ padding: '20px' }}>Loading story...</p>
       </div>
     )
@@ -64,9 +61,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   const savedClues = clues.filter(c => c.id && !c._destroy)
 
   return (
-    <div className="app">
-      <AdminNavbar active="stories" />
-
+    <div className="admin-page">
       <div className="admin-story-editor">
         <div className="editor-top">
           <a href="/admin/stories" className="back-link">&larr; Back to Stories</a>
