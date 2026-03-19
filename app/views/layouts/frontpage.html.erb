@@ -3,14 +3,17 @@
   <head>
     <title>Leather Armor — Tabletop RPG Character Sheets &amp; Adventures</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="description" content="Build characters, forge stories, and play epic tabletop campaigns — all in one place.">
+    <meta name="description" content="A d20-system tabletop companion for experienced players. Build your character, enter an AI-driven adventure, and face the consequences. We're honest about the AI's limitations — we're still working on it.">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <%= stylesheet_link_tag "frontpage", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "frontpage", "data-turbo-track": "reload", defer: true %>
   </head>
 
-  <body style="margin:0; background:#0f0f14;">
+  <body style="margin:0; background:hsl(40,30%,88%);">
     <%= yield %>
   </body>
 </html>
