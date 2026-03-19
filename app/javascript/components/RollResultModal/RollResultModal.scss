@@ -1,10 +1,10 @@
+@use '../tokens' as *;
+@use 'sass:color';
+
 .roll-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.35);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -14,46 +14,39 @@
 
 @keyframes fadeIn {
   from { opacity: 0; }
-  to { opacity: 1; }
+  to   { opacity: 1; }
 }
 
 @keyframes popIn {
-  from {
-    transform: scale(0.85);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+  from { transform: scale(0.85); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
 }
 
 @keyframes critShake {
   0%, 100% { transform: rotate(0deg); }
-  20% { transform: rotate(-4deg); }
-  40% { transform: rotate(4deg); }
-  60% { transform: rotate(-2deg); }
-  80% { transform: rotate(2deg); }
+  20%      { transform: rotate(-4deg); }
+  40%      { transform: rotate(4deg); }
+  60%      { transform: rotate(-2deg); }
+  80%      { transform: rotate(2deg); }
 }
 
 .roll-modal {
-  background: white;
-  border-radius: 12px;
-  padding: 0;
+  background: $parchment;
+  border: 1px solid $border;
   min-width: 260px;
   max-width: 320px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
   animation: popIn 0.2s ease;
   overflow: hidden;
 
   &.crit {
-    border: 2px solid #28a745;
-    box-shadow: 0 0 20px rgba(40, 167, 69, 0.3), 0 8px 32px rgba(0, 0, 0, 0.25);
+    border: 2px solid $green-ink;
+    box-shadow: 0 0 20px rgba(50, 96, 63, 0.25), 0 8px 32px rgba(0, 0, 0, 0.35);
   }
 
   &.fumble {
-    border: 2px solid #dc3545;
-    box-shadow: 0 0 20px rgba(220, 53, 69, 0.3), 0 8px 32px rgba(0, 0, 0, 0.25);
+    border: 2px solid $red-ink;
+    box-shadow: 0 0 20px rgba(114, 38, 38, 0.25), 0 8px 32px rgba(0, 0, 0, 0.35);
   }
 }
 
@@ -62,29 +55,28 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: #343a40;
-  color: white;
+  background: $ink;
+  color: $parchment;
 
   .roll-label {
     font-size: 14px;
-    font-weight: 700;
+    font-family: $font-display;
+    font-weight: normal;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.08em;
   }
 
   .roll-close {
     background: none;
     border: none;
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(235, 221, 199, 0.6);
     font-size: 16px;
     cursor: pointer;
     padding: 0 4px;
     line-height: 1;
     transition: color 0.15s;
 
-    &:hover {
-      color: white;
-    }
+    &:hover { color: $parchment; }
   }
 }
 
@@ -101,25 +93,20 @@
   align-items: center;
   gap: 10px;
 
-  .dice-icon {
-    font-size: 32px;
-  }
+  .dice-icon { font-size: 32px; }
 
   .dice-natural {
     font-size: 48px;
-    font-weight: 900;
-    font-family: 'Georgia', serif;
-    color: #333;
+    font-family: $font-display;
+    color: $ink;
     line-height: 1;
 
     &.crit {
-      color: #28a745;
+      color: $green-ink;
       animation: critShake 0.4s ease;
     }
 
-    &.fumble {
-      color: #dc3545;
-    }
+    &.fumble { color: $red-ink; }
   }
 }
 
@@ -127,11 +114,10 @@
   display: flex;
   gap: 16px;
   font-size: 13px;
-  color: #777;
+  font-family: $font-mono;
+  color: $ink-light;
 
-  .breakdown-part {
-    font-family: monospace;
-  }
+  .breakdown-part { font-family: $font-mono; }
 }
 
 .roll-total {
@@ -139,79 +125,62 @@
   flex-direction: column;
   align-items: center;
   padding: 10px 28px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
+  background: $parchment-dk;
+  border: 1px solid $border-light;
 
   .total-label {
     font-size: 11px;
-    font-weight: 700;
+    font-family: $font-mono;
     text-transform: uppercase;
-    color: #888;
+    color: $ink-faint;
     letter-spacing: 0.5px;
   }
 
   .total-value {
     font-size: 36px;
-    font-weight: 900;
-    font-family: 'Georgia', serif;
-    color: #333;
+    font-family: $font-display;
+    color: $ink;
     line-height: 1.1;
   }
 
   &.crit {
-    background: #d4edda;
-    border-color: #c3e6cb;
+    background: $green-ink-lt;
+    border-color: $green-ink;
 
-    .total-value {
-      color: #155724;
-    }
+    .total-value { color: $green-ink; }
   }
 
   &.fumble {
-    background: #f8d7da;
-    border-color: #f5c6cb;
+    background: $red-ink-lt;
+    border-color: $red-ink;
 
-    .total-value {
-      color: #721c24;
-    }
+    .total-value { color: $red-ink; }
   }
 }
 
 .roll-note {
   font-size: 14px;
-  font-weight: 700;
+  font-family: $font-display;
+  letter-spacing: 0.04em;
   text-align: center;
   padding: 4px 12px;
-  border-radius: 4px;
 
-  &.crit {
-    color: #155724;
-    background: #d4edda;
-  }
-
-  &.fumble {
-    color: #721c24;
-    background: #f8d7da;
-  }
+  &.crit   { color: $green-ink; background: $green-ink-lt; }
+  &.fumble { color: $red-ink;   background: $red-ink-lt; }
 }
 
-// ── Damage roll variant ──────────────────────────────────────
-
+/* ── Damage roll variant ── */
 .roll-modal.damage {
-  border: 2px solid #e67e22;
-  box-shadow: 0 0 16px rgba(230, 126, 34, 0.2), 0 8px 32px rgba(0, 0, 0, 0.25);
+  border: 2px solid $amber;
+  box-shadow: 0 0 16px rgba(168, 112, 35, 0.2), 0 8px 32px rgba(0, 0, 0, 0.35);
 
-  .roll-modal-header {
-    background: #d35400;
-  }
+  .roll-modal-header { background: color.adjust($amber, $lightness: -10%); }
 }
 
 .dice-notation {
   font-size: 22px;
-  font-weight: 700;
-  font-family: monospace;
-  color: #555;
+  font-family: $font-mono;
+  color: $ink-mid;
 }
 
 .damage-dice-pills {
@@ -227,18 +196,16 @@
     min-width: 32px;
     height: 32px;
     padding: 0 6px;
-    background: #fff3e0;
-    border: 1px solid #e0c89a;
-    border-radius: 6px;
+    background: $amber-lt;
+    border: 1px solid $amber;
     font-size: 16px;
-    font-weight: 700;
-    font-family: 'Georgia', serif;
-    color: #b35900;
+    font-family: $font-display;
+    color: $amber;
 
     &.flat {
-      background: #e9ecef;
-      border-color: #ced4da;
-      color: #555;
+      background: $parchment-mid;
+      border-color: $border;
+      color: $ink-mid;
       font-size: 14px;
     }
   }
@@ -250,34 +217,29 @@
   gap: 6px 12px;
   justify-content: center;
   font-size: 12px;
-  color: #777;
+  font-family: $font-mono;
+  color: $ink-light;
 
-  .breakdown-part {
-    font-family: monospace;
-    white-space: nowrap;
-  }
+  .breakdown-part { white-space: nowrap; }
 }
 
 .roll-total.damage {
   flex-direction: row;
   gap: 10px;
   align-items: baseline;
-  background: #fef5e7;
-  border-color: #f0d9b5;
+  background: $amber-lt;
+  border-color: $amber;
 
-  .total-value {
-    color: #b35900;
-  }
+  .total-value { color: $amber; }
 }
 
 .damage-type-badge {
   font-size: 12px;
-  font-weight: 600;
+  font-family: $font-mono;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #888;
+  color: $ink-light;
   padding: 2px 8px;
-  background: #f8f9fa;
-  border-radius: 4px;
-  border: 1px solid #dee2e6;
+  background: $parchment-dk;
+  border: 1px solid $border-light;
 }

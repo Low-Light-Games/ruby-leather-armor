@@ -1,0 +1,32 @@
+// ── Parchment palette ──────────────────────────────────────────
+$parchment:      hsl(40, 30%, 88%);   // page background
+$parchment-dk:   hsl(40, 25%, 82%);   // panels, cards
+$parchment-mid:  hsl(40, 20%, 75%);   // deeper surfaces, hover
+$ink:            hsl(20, 15%, 15%);   // primary text
+$ink-mid:        hsl(20, 12%, 30%);   // secondary text
+$ink-light:      hsl(20, 10%, 40%);   // muted text
+$ink-faint:      hsl(20,  8%, 60%);   // placeholders, very muted
+$border:         hsl(20, 12%, 55%);   // standard border
+$border-light:   hsl(20, 10%, 72%);   // light / inner borders
+
+// ── Accent colours ─────────────────────────────────────────────
+$red-ink:        hsl(0, 50%, 30%);    // primary action, danger, penalty
+$red-ink-dk:     hsl(0, 45%, 22%);    // hover / active state of red-ink
+$red-ink-lt:     hsl(0, 35%, 88%);    // danger background tint
+
+$amber:          hsl(35, 65%, 40%);   // warning, gold, roll prompts
+$amber-lt:       hsl(38, 55%, 86%);   // warning background tint
+
+$green-ink:      hsl(140, 30%, 28%);  // success, positive modifiers, equipped
+$green-ink-lt:   hsl(140, 25%, 84%);  // success background tint
+
+$blue-ink:       hsl(220, 25%, 30%);  // info, secondary accent (saves, mods)
+$blue-ink-lt:    hsl(220, 25%, 88%);  // info background tint
+
+$purple-ink:     hsl(270, 25%, 30%);  // magic, arcane
+$purple-ink-lt:  hsl(270, 25%, 88%);  // arcane background tint
+
+// ── Typography ─────────────────────────────────────────────────
+$font-display:    'IM Fell English SC', serif;
+$font-body:       'IM Fell English', 'Georgia', serif;
+$font-mono:       'Courier Prime', 'Courier New', monospace;

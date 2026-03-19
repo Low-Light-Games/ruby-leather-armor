@@ -1,25 +1,29 @@
+@use '../tokens' as *;
+
 .login-container {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
   padding: 50px;
-  font-family: 'Arial', sans-serif;
+  font-family: $font-body;
+  background: $parchment;
 }
 
 .login-box {
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  background: $parchment-dk;
+  border: 1px solid $border;
   padding: 40px;
   max-width: 400px;
   width: 100%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 
   h1 {
     margin: 0 0 30px 0;
     text-align: center;
-    color: #333;
+    color: $ink;
+    font-family: $font-display;
+    font-weight: normal;
+    letter-spacing: 0.04em;
   }
 
   .form-group {
@@ -28,22 +32,26 @@
     label {
       display: block;
       margin-bottom: 8px;
-      color: #333;
-      font-weight: 500;
+      color: $ink-mid;
+      font-family: $font-display;
+      letter-spacing: 0.03em;
     }
 
     input {
       width: 100%;
       padding: 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
+      border: 1px solid $border;
+      border-radius: 0;
       font-size: 16px;
+      font-family: $font-body;
+      background: $parchment;
+      color: $ink;
       box-sizing: border-box;
 
       &:focus {
-        outline: 2px solid #007bff;
-        outline-offset: 2px;
-        border-color: #007bff;
+        outline: none;
+        border-color: $red-ink;
+        box-shadow: 0 0 0 2px rgba(114, 38, 38, 0.15);
       }
     }
   }
@@ -59,22 +67,22 @@
     justify-content: center;
     gap: 10px;
     padding: 12px;
-    background-color: #fff;
-    color: #3c4043;
-    border: 1px solid #dadce0;
-    border-radius: 4px;
+    background-color: $parchment;
+    color: $ink;
+    border: 1px solid $border;
+    border-radius: 0;
     font-size: 15px;
-    font-weight: 500;
+    font-family: $font-display;
+    letter-spacing: 0.03em;
     cursor: pointer;
-    transition: background-color 0.2s, box-shadow 0.2s;
+    transition: background-color 0.2s;
 
     &:hover {
-      background-color: #f7f8f8;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+      background-color: $parchment-mid;
     }
 
     &:focus-visible {
-      outline: 2px solid #4285f4;
+      outline: 2px solid $red-ink;
       outline-offset: 2px;
     }
 
@@ -87,14 +95,15 @@
     display: flex;
     align-items: center;
     margin: 24px 0;
-    color: #999;
+    color: $ink-faint;
     font-size: 13px;
+    font-family: $font-mono;
 
     &::before,
     &::after {
       content: '';
       flex: 1;
-      border-bottom: 1px solid #ddd;
+      border-bottom: 1px solid $border-light;
     }
 
     span {
@@ -105,26 +114,30 @@
   button[type="submit"]:not(.google-btn) {
     width: 100%;
     padding: 12px;
-    background-color: #007bff;
-    color: white;
+    background-color: $red-ink;
+    color: $parchment;
     border: none;
-    border-radius: 4px;
+    border-radius: 0;
     font-size: 16px;
+    font-family: $font-display;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
     cursor: pointer;
     transition: background-color 0.2s;
 
     &:hover:not(:disabled) {
-      background-color: #0056b3;
+      background-color: $red-ink-dk;
     }
 
     &:disabled {
-      background-color: #cccccc;
+      background-color: $parchment-mid;
+      color: $ink-faint;
       cursor: not-allowed;
       opacity: 0.6;
     }
 
     &:focus-visible {
-      outline: 2px solid #007bff;
+      outline: 2px solid $red-ink;
       outline-offset: 2px;
     }
   }

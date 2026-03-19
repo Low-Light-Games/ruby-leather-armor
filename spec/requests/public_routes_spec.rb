@@ -23,9 +23,12 @@ RSpec.describe "Public routes", type: :request do
   end
 
   describe "GET /" do
-    it "redirects (to sheets or admin)" do
+    it "renders the frontpage shell" do
       get "/"
-      expect(response).to have_http_status(:redirect)
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("AI Game Master for Solo d20 Adventures")
+      expect(response.body).to include("AI Game Master for solo d20 adventures")
+      expect(response.body).to include('id="frontpage-root"')
     end
   end
 

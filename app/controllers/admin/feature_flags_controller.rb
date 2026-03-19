@@ -1,12 +1,11 @@
 # frozen_string_literal: true
 
 module Admin
-  class FeatureFlagsController < ApplicationController
-    before_action :require_admin
+  class FeatureFlagsController < BaseController
 
     def index
       @flags = FeatureFlag.order(:key)
-      render layout: "application"
+      render layout: 'admin'
     end
 
     def toggle

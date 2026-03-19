@@ -1,3 +1,5 @@
+@use '../tokens' as *;
+
 .adventure-page-layout {
   display: flex;
   gap: 40px;
@@ -10,7 +12,10 @@
 
   h1 {
     margin-bottom: 24px;
-    color: #333;
+    color: $ink;
+    font-family: $font-display;
+    font-weight: normal;
+    letter-spacing: 0.04em;
   }
 
   .adventure-form {
@@ -25,48 +30,53 @@
     gap: 8px;
 
     label {
-      font-weight: 600;
-      color: #333;
+      font-family: $font-display;
+      font-weight: normal;
+      letter-spacing: 0.03em;
+      color: $ink-mid;
       font-size: 14px;
     }
 
     select {
       padding: 10px 12px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      border: 1px solid $border;
       font-size: 14px;
-      background-color: white;
+      font-family: $font-body;
+      background-color: $parchment;
+      color: $ink;
 
       &:focus {
         outline: none;
-        border-color: #007bff;
-        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        border-color: $red-ink;
+        box-shadow: 0 0 0 2px rgba(114, 38, 38, 0.2);
       }
     }
   }
 
   .character-preview,
   .story-preview {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
+    background: $parchment-dk;
+    border: 1px solid $border-light;
     padding: 20px;
 
     h2 {
       margin: 0 0 12px 0;
-      color: #333;
+      color: $ink;
       font-size: 18px;
+      font-family: $font-display;
+      font-weight: normal;
+      letter-spacing: 0.04em;
     }
 
     p {
       margin: 0;
-      color: #555;
+      color: $ink-mid;
       line-height: 1.6;
       white-space: pre-wrap;
     }
 
     .no-description {
-      color: #999;
+      color: $ink-faint;
       font-style: italic;
     }
   }
@@ -78,13 +88,10 @@
     gap: 16px;
     cursor: pointer;
     padding: 12px 16px;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
+    border: 1px solid $border-light;
     transition: border-color 0.2s;
 
-    &:hover {
-      border-color: #adb5bd;
-    }
+    &:hover { border-color: $border; }
   }
 
   .toggle-text {
@@ -94,44 +101,42 @@
   }
 
   .toggle-label {
-    font-weight: 600;
+    font-family: $font-display;
     font-size: 14px;
-    color: #333;
+    color: $ink;
+    letter-spacing: 0.03em;
   }
 
   .toggle-desc {
     font-size: 12px;
-    color: #888;
-    font-weight: 400;
+    color: $ink-light;
   }
 
   .toggle-switch {
     flex-shrink: 0;
 
-    input[type="checkbox"] {
-      display: none;
-    }
+    input[type="checkbox"] { display: none; }
   }
 
   .toggle-track {
     display: block;
     width: 44px;
     height: 24px;
-    background-color: #ccc;
+    background-color: $parchment-mid;
     border-radius: 12px;
     position: relative;
     transition: background-color 0.2s;
   }
 
   .toggle-switch.active .toggle-track {
-    background-color: #007bff;
+    background-color: $green-ink;
   }
 
   .toggle-knob {
     display: block;
     width: 20px;
     height: 20px;
-    background-color: white;
+    background-color: $parchment;
     border-radius: 50%;
     position: absolute;
     top: 2px;
@@ -146,27 +151,27 @@
 
   .submit-button {
     padding: 12px 24px;
-    background-color: #28a745;
-    color: white;
+    background-color: $red-ink;
+    color: $parchment;
     border: none;
-    border-radius: 4px;
     font-size: 16px;
-    font-weight: bold;
+    font-family: $font-display;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
     cursor: pointer;
     transition: background-color 0.2s;
     align-self: flex-start;
 
-    &:hover:not(:disabled) {
-      background-color: #218838;
-    }
+    &:hover:not(:disabled) { background-color: $red-ink-dk; }
 
     &:disabled {
-      background-color: #ccc;
+      background-color: $parchment-mid;
+      color: $ink-faint;
       cursor: not-allowed;
     }
 
     &:focus-visible {
-      outline: 2px solid #28a745;
+      outline: 2px solid $red-ink;
       outline-offset: 2px;
     }
   }
@@ -178,11 +183,14 @@
 
   h1 {
     margin-bottom: 24px;
-    color: #333;
+    color: $ink;
+    font-family: $font-display;
+    font-weight: normal;
+    letter-spacing: 0.04em;
   }
 
   .no-adventures {
-    color: #999;
+    color: $ink-faint;
     font-style: italic;
   }
 
@@ -197,13 +205,12 @@
 
   .adventure-list-item {
     position: relative;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    border: 1px solid $border-light;
+    transition: border-color 0.2s;
 
     &:hover {
-      border-color: #007bff;
-      box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+      border-color: $border;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
   }
 
@@ -218,14 +225,15 @@
   }
 
   .adventure-character {
-    font-weight: 600;
     font-size: 15px;
-    color: #333;
+    font-family: $font-display;
+    color: $ink;
+    letter-spacing: 0.03em;
   }
 
   .adventure-story {
     font-size: 13px;
-    color: #666;
+    color: $ink-mid;
   }
 
   .adventure-meta {
@@ -237,32 +245,28 @@
 
   .adventure-gold {
     font-size: 12px;
-    color: #999;
+    font-family: $font-mono;
+    color: $amber;
   }
 
   .adventure-date {
     font-size: 11px;
-    color: #aaa;
+    font-family: $font-mono;
+    color: $ink-faint;
   }
 
   .wait-message {
     text-align: center;
     font-size: 14px;
     font-style: italic;
-    color: #6f42c1;
+    color: $ink-mid;
     margin: 12px 0 0;
     animation: fadeInUp 0.3s ease-out;
   }
 
   @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(6px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 
   .adventure-delete {
@@ -276,16 +280,15 @@
     justify-content: center;
     background: none;
     border: 1px solid transparent;
-    border-radius: 4px;
-    color: #ccc;
+    color: $border-light;
     font-size: 18px;
     line-height: 1;
     cursor: pointer;
     transition: color 0.2s, border-color 0.2s;
 
     &:hover {
-      color: #dc3545;
-      border-color: #dc3545;
+      color: $red-ink;
+      border-color: $red-ink;
     }
   }
 }

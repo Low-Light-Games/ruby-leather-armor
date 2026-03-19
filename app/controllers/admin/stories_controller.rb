@@ -1,6 +1,5 @@
 module Admin
-  class StoriesController < ApplicationController
-    before_action :require_admin
+  class StoriesController < BaseController
     before_action :set_story, only: [:show, :update, :destroy, :enrich]
 
     # GET /admin/stories — server-rendered story list
@@ -10,7 +9,7 @@ module Admin
 
     # GET /admin/stories/new — SPA mount for creating a new story
     def new
-      render layout: 'application'
+      render layout: 'admin'
     end
 
     # GET /admin/stories/:id — SPA mount for editing a story
@@ -18,7 +17,7 @@ module Admin
     #   JSON: returns story data for the React editor
     def show
       respond_to do |format|
-        format.html { render layout: 'application' }
+        format.html { render layout: 'admin' }
         format.json do
           render json: story_json(@story)
         end

@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 module Admin
-  class AdventuresController < ApplicationController
-    before_action :require_admin
+  class AdventuresController < BaseController
     before_action :set_adventure, only: [:show, :update, :reset_context, :update_sheet, :update_story_element, :destroy]
 
     CONTEXT_FIELDS = %w[traversal combat social exploration rest inventory].freeze

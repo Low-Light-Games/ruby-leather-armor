@@ -1,6 +1,5 @@
 module Admin
-  class PlayLogsController < ApplicationController
-    before_action :require_admin
+  class PlayLogsController < BaseController
 
     PER_PAGE = 50
     TERMINAL_STEPS = %w[narrate dm_query edge_pipeline].freeze
@@ -23,15 +22,16 @@ module Admin
       @total_pages = (@total_count.to_f / PER_PAGE).ceil
       @logs = @logs.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
 
-      render layout: 'application'
+      render layout: 'admin'
     end
 
     def show
       @log = PlayLog.includes(:player_message).find(params[:id])
-      render layout: 'application'
+      render layout: 'admin'
     end
 
     def pipelines
+      @active_nav = :pipelines
       runs = PlayLog.where.not(pipeline_run_id: [nil, ""])
                     .select("pipeline_run_id, MIN(created_at) AS first_at, MAX(created_at) AS last_at, COUNT(*) AS step_count, MIN(adventure_id) AS adventure_id")
                     .group(:pipeline_run_id)
@@ -86,10 +86,11 @@ module Admin
 
       detect_retries!(@pipeline_runs)
 
-      render layout: 'application'
+      render layout: 'admin'
     end
 
     def pipeline
+      @active_nav = :pipelines
       @show_usage = params[:show_usage] == "1"
       includes = [:adventure]
       includes << :ai_usage_record if @show_usage
@@ -108,7 +109,7 @@ module Admin
       @pipeline_run_id = params[:pipeline_run_id]
       @pipeline_run = PipelineRun.find_by(pipeline_run_id: @pipeline_run_id)
 
-      render layout: 'application'
+      render layout: 'admin'
     end
 
     private

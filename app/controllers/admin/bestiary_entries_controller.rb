@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
 module Admin
-  class BestiaryEntriesController < ApplicationController
-    before_action :require_admin
+  class BestiaryEntriesController < BaseController
 
     def index
       @entries = BestiaryEntry.order(:name)

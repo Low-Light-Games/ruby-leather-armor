@@ -1,3 +1,4 @@
+<% _active = local_assigns.fetch(:active_nav, @active_nav) %>
 <nav class="admin-navbar">
   <div class="navbar-left">
     <span class="user-info">Logged in as: <%= current_user.email %></span>
@@ -5,14 +6,14 @@
   </div>
   <div class="navbar-right">
     <a href="/adventures/new" class="nav-link player-view-link">Player View</a>
-    <a href="<%= admin_adventures_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :adventures %>">Adventures</a>
-    <a href="<%= admin_stories_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :stories %>">Stories</a>
-    <a href="<%= admin_play_logs_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :play_logs %>">Play Logs</a>
-    <a href="<%= pipelines_admin_play_logs_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :pipelines %>">Pipeline Logs</a>
-    <a href="<%= admin_dm_config_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :dm_config %>">DM Config</a>
-    <a href="<%= admin_billing_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :billing %>">Billing</a>
-    <a href="<%= admin_bestiary_entries_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :bestiary %>">Bestiary</a>
-    <a href="<%= admin_feature_flags_path %>" class="nav-link<%= ' active-link' if defined?(active_nav) && active_nav == :feature_flags %>">Feature Flags</a>
+    <a href="<%= admin_adventures_path %>" class="nav-link<%= ' active-link' if _active == :adventures %>">Adventures</a>
+    <a href="<%= admin_stories_path %>" class="nav-link<%= ' active-link' if _active == :stories %>">Stories</a>
+    <a href="<%= admin_play_logs_path %>" class="nav-link<%= ' active-link' if _active == :play_logs %>">Play Logs</a>
+    <a href="<%= pipelines_admin_play_logs_path %>" class="nav-link<%= ' active-link' if _active == :pipelines %>">Pipeline Logs</a>
+    <a href="<%= admin_dm_config_path %>" class="nav-link<%= ' active-link' if _active == :dm_config %>">DM Config</a>
+    <a href="<%= admin_billing_path %>" class="nav-link<%= ' active-link' if _active == :billing %>">Billing</a>
+    <a href="<%= admin_bestiary_entries_path %>" class="nav-link<%= ' active-link' if _active == :bestiary %>">Bestiary</a>
+    <a href="<%= admin_feature_flags_path %>" class="nav-link<%= ' active-link' if _active == :feature_flags %>">Feature Flags</a>
     <%= button_to "Logout", logout_path, method: :delete, class: "logout-link" %>
   </div>
 </nav>

@@ -79,7 +79,7 @@ export const AdventureCreation = () => {
                   <label className="toggle-row" htmlFor="directed-dm-toggle">
                     <span className="toggle-text">
                       <span className="toggle-label">Directed Play</span>
-                      <span className="toggle-desc">The DM actively guides you with clear choices and direction</span>
+                      <span className="toggle-desc">The GM actively guides you with clear choices and direction</span>
                     </span>
                     <span className={`toggle-switch ${directedDm ? 'active' : ''}`} role="switch" aria-checked={directedDm}>
                       <input

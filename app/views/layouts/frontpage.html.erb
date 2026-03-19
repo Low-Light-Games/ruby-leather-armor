@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Leather Armor — AI Game Master for Solo d20 Adventures · Pathfinder Compatible</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="An AI Game Master for solo d20 adventures. Build a character, enter the dungeon, face the consequences. Pathfinder compatible — no group required, no hand-holding offered.">
+
+    <link rel="canonical" href="https://leatherarmor.io">
+
+    <meta property="og:type"        content="website">
+    <meta property="og:url"         content="https://leatherarmor.io">
+    <meta property="og:title"       content="Leather Armor — AI Game Master for Solo d20 Adventures · Pathfinder Compatible">
+    <meta property="og:description" content="An AI Game Master for solo d20 adventures. Build a character, enter the dungeon, face the consequences. Pathfinder compatible — no group required, no hand-holding offered.">
+    <meta property="og:image"       content="https://leatherarmor.io/images/og-card.jpg">
+
+    <meta name="twitter:card"        content="summary_large_image">
+    <meta name="twitter:title"       content="Leather Armor — AI Game Master for Solo d20 Adventures · Pathfinder Compatible">
+    <meta name="twitter:description" content="An AI Game Master for solo d20 adventures. Build a character, enter the dungeon, face the consequences. Pathfinder compatible — no group required, no hand-holding offered.">
+    <meta name="twitter:image"       content="https://leatherarmor.io/images/og-card.jpg">
+    <link rel="icon" href="/favicon.ico" sizes="48x48">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="/favicon-96x96.png" type="image/png" sizes="96x96">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <meta name="theme-color" content="#e6d9c2">
+
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Leather Armor",
+      "url": "https://leatherarmor.io",
+      "description": "An AI-refereed solo adventure system for the Pathfinder Roleplaying Game. Build a character sheet and enter a dungeon — the AI acts as your Game Master.",
+      "applicationCategory": "GameApplication",
+      "operatingSystem": "Web"
+    }
+    </script>
+
+    <%= stylesheet_link_tag "frontpage", "data-turbo-track": "reload" %>
+    <%= javascript_include_tag "frontpage", "data-turbo-track": "reload", defer: true %>
+  </head>
+
+  <body style="margin:0; background:hsl(40,30%,88%);">
+    <%= yield %>
+  </body>
+</html>

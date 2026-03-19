@@ -13,7 +13,7 @@ const ChatMessage = ({ msg, isAdmin, onRetry }: ChatMessageProps) => {
     return (
       <div className="chat-message msg-dm msg-thinking">
         <div className="msg-header">
-          <span className="msg-role">🐉 DM</span>
+          <span className="msg-role">🐉 GM</span>
         </div>
         <div className="thinking-dots">
           <span /><span /><span />
@@ -29,7 +29,7 @@ const ChatMessage = ({ msg, isAdmin, onRetry }: ChatMessageProps) => {
     <div className={`chat-message msg-${msg.role} msg-type-${msg.message_type}`}>
       <div className="msg-header">
         <span className="msg-role">
-          {msg.role === 'player' ? '🗡️ You' : msg.role === 'dm' ? '🐉 DM' : '📜 System'}
+          {msg.role === 'player' ? '🗡️ You' : msg.role === 'dm' ? '🐉 GM' : '📜 System'}
         </span>
         {isAdmin && msg.pipeline_run_id && (
           <a
