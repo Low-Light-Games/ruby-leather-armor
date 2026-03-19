@@ -1,4 +1,5 @@
 @use 'tokens' as *;
+@use 'sass:color';
 
 .app {
   font-family: $font-body;
@@ -208,7 +209,7 @@
         color: $parchment;
         border-color: $green-ink;
 
-        &:hover:not(:disabled) { background-color: darken($green-ink, 8%); }
+        &:hover:not(:disabled) { background-color: color.adjust($green-ink, $lightness: -8%); }
 
         &:disabled {
           background-color: $parchment-mid;

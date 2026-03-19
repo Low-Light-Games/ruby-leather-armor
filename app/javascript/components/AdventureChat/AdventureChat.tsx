@@ -89,7 +89,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
 
   return (
     <div className="adventure-chat">
-      <h2>Dungeon Master</h2>
+      <h2>Game Master</h2>
 
       <div className="chat-messages">
         {loadingHistory ? (
@@ -133,16 +133,16 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
           className={`ask-dm-toggle ${askDm ? 'active' : ''}`}
           onClick={() => setAskDm(prev => !prev)}
           disabled={sending}
-          title="Toggle to ask the Dungeon Master for help, rules clarifications, or information about the game world — without taking an action."
+          title="Toggle to ask the Game Master for help, rules clarifications, or information about the game world — without taking an action."
         >
-          ❓ Ask DM
+          ❓ Ask GM
         </button>
         <div className="chat-input-wrapper">
           <textarea
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={askDm ? 'Ask the DM a question...' : (pendingRolls ? 'Submit your rolls above, or describe another action...' : 'What does your character do?')}
+            placeholder={askDm ? 'Ask the GM a question...' : (pendingRolls ? 'Submit your rolls above, or describe another action...' : 'What does your character do?')}
             disabled={sending}
             rows={2}
             maxLength={500}

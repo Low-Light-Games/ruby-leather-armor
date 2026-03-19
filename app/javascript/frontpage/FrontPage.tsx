@@ -5,16 +5,13 @@ const FrontPage: React.FC = () => (
   <div className="fp">
     <header className="fp-header">
       <div className="fp-header__inner">
-        <h1 className="fp-header__title">
-          The Dungeon
-          <br />
-          Does Not Care
-        </h1>
+        <h1 className="fp-header__title">Leather Armor</h1>
+        <p className="fp-header__tagline">The Dungeon Does Not Care</p>
         <hr className="fp-header__rule" />
         <p className="fp-typewriter fp-header__subtitle">
           An AI-Refereed Solo Adventure System
           <br />
-          for the Pathfinder Roleplaying Game
+          for the Pathfinder<sup><a href="#paizo-note" className="fp-header__footnote-ref">*</a></sup> Roleplaying Game
         </p>
       </div>
     </header>
@@ -44,7 +41,7 @@ const FrontPage: React.FC = () => (
           adventures through procedurally-generated dungeons and wildernesses.
         </p>
         <p>
-          The AI operates within the Pathfinder rules system. It rolls dice. It
+          The AI operates within the Pathfinder<sup><a href="#paizo-note" className="fp-header__footnote-ref">*</a></sup> rules system. It rolls dice. It
           tracks your hit points, your rations, your torches. It does not fudge
           results. When you fail a save against poison, you are poisoned. When you
           fall in combat, you may die. This is the intended experience.
@@ -159,6 +156,11 @@ const FrontPage: React.FC = () => (
         <a href="/privacy" className="fp-typewriter fp-footer__link">Privacy</a>
       </nav>
       <p className="fp-typewriter fp-footer__copy">&copy; {new Date().getFullYear()} leatherarmor.io</p>
+      <p id="paizo-note" className="fp-typewriter fp-footer__disclaimer">
+        * Not affiliated with, endorsed by, or connected to{" "}
+        <a href="https://paizo.com" target="_blank" rel="noopener noreferrer" className="fp-footer__disclaimer-link">Paizo Inc.</a>
+        {" "}Pathfinder is a registered trademark of Paizo Inc.
+      </p>
     </footer>
   </div>
 );

@@ -1,4 +1,5 @@
 @use '../tokens' as *;
+@use 'sass:color';
 
 .roll-modal-overlay {
   position: fixed;
@@ -173,7 +174,7 @@
   border: 2px solid $amber;
   box-shadow: 0 0 16px rgba(168, 112, 35, 0.2), 0 8px 32px rgba(0, 0, 0, 0.35);
 
-  .roll-modal-header { background: darken($amber, 10%); }
+  .roll-modal-header { background: color.adjust($amber, $lightness: -10%); }
 }
 
 .dice-notation {

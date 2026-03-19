@@ -3,6 +3,7 @@ $fp-parchment:    hsl(40, 30%, 88%);
 $fp-parchment-dk: hsl(40, 22%, 78%);
 $fp-ink:          hsl(20, 15%, 15%);
 $fp-ink-light:    hsl(20, 10%, 40%);
+$fp-ink-faint:    hsl(20,  8%, 60%);
 $fp-border:       hsl(20, 12%, 55%);
 $fp-red-ink:      hsl(0, 50%, 30%);
 
@@ -44,9 +45,26 @@ $fp-font-typewriter: 'Courier Prime', 'Courier New', monospace;
   }
 
   &__title {
-    font-size: clamp(2rem, 6vw, 3rem);
-    line-height: 1.2;
-    margin: 0 0 8px;
+    font-size: clamp(2.4rem, 7vw, 3.6rem);
+    line-height: 1.1;
+    margin: 0 0 4px;
+  }
+
+  &__tagline {
+    font-family: $fp-font-body;
+    font-style: italic;
+    font-size: clamp(1rem, 3vw, 1.25rem);
+    color: $fp-ink-light;
+    margin: 0;
+    letter-spacing: 0.02em;
+  }
+
+  &__footnote-ref {
+    color: $fp-ink-light;
+    text-decoration: none;
+    font-size: 0.7em;
+    vertical-align: super;
+    &:hover { color: $fp-ink; }
   }
 
   &__rule {
@@ -166,6 +184,7 @@ $fp-font-typewriter: 'Courier Prime', 'Courier New', monospace;
   padding: 32px 24px;
   border-top: 1px solid $fp-border;
   text-align: center;
+  font-size: 12px;
 
   &__links {
     display: flex;
@@ -179,6 +198,19 @@ $fp-font-typewriter: 'Courier Prime', 'Courier New', monospace;
     text-decoration: none;
 
     &:hover { color: $fp-ink; }
+  }
+
+  &__disclaimer {
+    font-size: 12px;
+    color: $fp-ink-faint;
+    margin: 8px auto 0;
+    max-width: 400px;
+    line-height: 1.5;
+  }
+
+  &__disclaimer-link {
+    color: inherit;
+    text-decoration: underline;
   }
 
   &__copy {
