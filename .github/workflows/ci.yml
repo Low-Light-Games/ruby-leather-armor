@@ -32,10 +32,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: yarn
+
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
+
+      - name: Install JS dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build assets
+        run: yarn build
 
       - name: Load schema
         run: bundle exec rails db:schema:load
