@@ -166,4 +166,22 @@ $fp-font-typewriter: 'Courier Prime', 'Courier New', monospace;
   padding: 32px 24px;
   border-top: 1px solid $fp-border;
   text-align: center;
+
+  &__links {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    margin-bottom: 16px;
+  }
+
+  &__link {
+    color: $fp-ink-light;
+    text-decoration: none;
+
+    &:hover { color: $fp-ink; }
+  }
+
+  &__copy {
+    margin: 0;
+  }
 }

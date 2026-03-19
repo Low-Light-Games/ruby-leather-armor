@@ -140,7 +140,7 @@ const FrontPage: React.FC = () => (
           surprising thing — then you are welcome at the table.
         </p>
         <div className="fp-cta-wrap">
-          <a href="/auth/google_oauth2" className="fp-cta-btn">
+          <a href="/sheets" className="fp-cta-btn">
             Begin
           </a>
         </div>
@@ -154,7 +154,11 @@ const FrontPage: React.FC = () => (
     </main>
 
     <footer className="fp-footer">
-      <p className="fp-typewriter">&copy; {new Date().getFullYear()} leatherarmor.io</p>
+      <nav className="fp-footer__links">
+        <a href="/legal" className="fp-typewriter fp-footer__link">Open Game License</a>
+        <a href="/privacy" className="fp-typewriter fp-footer__link">Privacy</a>
+      </nav>
+      <p className="fp-typewriter fp-footer__copy">&copy; {new Date().getFullYear()} leatherarmor.io</p>
     </footer>
   </div>
 );
