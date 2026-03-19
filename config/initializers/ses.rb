@@ -6,6 +6,7 @@ if ENV["SES_ACCESS_KEY_ID"].present?
       ENV["SES_SECRET_ACCESS_KEY"]
     )
   )
-end
 
-ActionMailer::Base.add_delivery_method :ses, SesDeliveryMethod
+  require Rails.root.join("lib/ses_delivery_method")
+  ActionMailer::Base.add_delivery_method :ses, SesDeliveryMethod
+end
