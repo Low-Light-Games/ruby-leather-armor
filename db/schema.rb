@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_13_000002) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_18_000007) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -382,6 +382,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_13_000002) do
     t.datetime "finished_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "app_version"
     t.index ["adventure_id"], name: "index_pipeline_runs_on_adventure_id"
     t.index ["pipeline_run_id"], name: "index_pipeline_runs_on_pipeline_run_id", unique: true
     t.index ["started_at"], name: "index_pipeline_runs_on_started_at"
@@ -405,6 +406,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_13_000002) do
     t.text "player_message_content"
     t.integer "duration_ms"
     t.bigint "ai_usage_record_id"
+    t.string "app_version"
     t.index ["adventure_id"], name: "index_play_logs_on_adventure_id"
     t.index ["ai_usage_record_id"], name: "index_play_logs_on_ai_usage_record_id"
     t.index ["created_at"], name: "index_play_logs_on_created_at"
