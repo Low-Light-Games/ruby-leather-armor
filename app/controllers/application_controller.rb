@@ -2,6 +2,8 @@ class ApplicationController < ActionController::Base
   before_action :require_login
   before_action :set_sentry_user
 
+  rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
+
   private
 
   def set_sentry_user
@@ -20,6 +22,10 @@ class ApplicationController < ActionController::Base
     end
   end
 
+  def user_not_authorized
+    render json: { error: 'Access denied' }, status: :forbidden
+  end
+
   def authorize(record, query = nil)
     # Handle symbol records (like :admin)
     if record.is_a?(Symbol)
@@ -33,8 +39,7 @@ class ApplicationController < ActionController::Base
     query ||= action_name.to_s + '?'
     
     unless policy.public_send(query)
-      render json: { error: 'Access denied' }, status: :forbidden
-      return
+      raise Pundit::NotAuthorizedError
     end
   end
 
