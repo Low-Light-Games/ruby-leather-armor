@@ -127,8 +127,9 @@ module DungeonMaster
       intent_stub = { intention: clean_input, primary_context: "dm_query", affected_contexts: [], macro_significant: false, plot_relevant: true }
       plot_result = resolve_plot(intent_stub)
       dm_brief = plot_result&.dig(:dm_brief)
+      forbidden_elements = plot_result&.dig(:forbidden_elements) || []
 
-      result = run_dm_query(clean_input, dm_brief: dm_brief)
+      result = run_dm_query(clean_input, dm_brief: dm_brief, forbidden_elements: forbidden_elements)
       { action: :dm_query, answer: result[:answer] }
     end
 
@@ -299,12 +300,14 @@ module DungeonMaster
       combined_mutations = all_mutations.compact.reduce({}) { |acc, m| deep_merge_mutations(acc, m) }
 
       dm_brief = nil
+      forbidden_elements = []
       last_resolved = results.last
       if merged_intent[:plot_relevant]
         verdict_outcome = combined_seed || last_resolved[:narrate_seed]
         plot_result = resolve_plot(merged_intent, verdict_outcome: verdict_outcome,
                                    encounter_triggered: encounter_triggered)
         dm_brief = plot_result&.dig(:dm_brief)
+        forbidden_elements = plot_result&.dig(:forbidden_elements) || []
       end
 
       extra = {}
@@ -315,6 +318,7 @@ module DungeonMaster
         narrate_seed: combined_seed,
         mutations: combined_mutations.presence,
         dm_brief: dm_brief,
+        forbidden_elements: forbidden_elements,
         extra: extra)
 
       if output_result[:action] == :awaiting_initiative

@@ -22,7 +22,7 @@ module DungeonMaster
         creature_stats  = CharacterBlock.creature_stats_for(@adventure)
         rules_manifest  = build_unified_rules_manifest
         extra_context   = traversal_extra_context
-        scene_summary   = @adventure.scene_summary.presence || "(no scene summary)"
+        scene_summary   = @adventure.scene_summary
 
         domain_beacon_hints = build_all_beacon_hints
         domain_mecheval_hints = build_all_mecheval_hints

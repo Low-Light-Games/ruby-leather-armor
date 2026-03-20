@@ -5,14 +5,23 @@ Your job is to update the micro-context objects based on what just happened.
 <%= @what_happened %>
 
 === MUTATIONS APPLIED ===
-<%= @mutations_json %>
+<%= @mutations_json.present? ? @mutations_json : "(no mechanical mutations)" %>
 <% if @canonical_hp.present? -%>
 
 === CANONICAL HP (authoritative — use these exact values) ===
 <%= @canonical_hp %>
 <% end -%>
 
-<%= @context_sections %>
+<% @relevant_fields.each do |field| -%>
+<% ctx = @micro_contexts[field.to_sym] -%>
+<% if @affected_fields.include?(field) -%>
+=== <%= field.upcase %> CONTEXT [UPDATE] ===
+<% else -%>
+=== <%= field.upcase %> CONTEXT [maintain] ===
+<% end -%>
+<%= ctx.present? ? ctx.to_json : '{}' %>
+
+<% end -%>
 
 === INSTRUCTIONS ===
 <% if @affected_fields.any? -%>
@@ -81,3 +90,5 @@ Respond ONLY with valid JSON (no markdown, no code fences):
   "scene_summary": "Single concise sentence describing the player's current situation",
   "reasoning": "Brief explanation of context changes (1-2 sentences)"
 }
+---USER_MESSAGE---
+Update contexts based on the above.

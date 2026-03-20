@@ -14,7 +14,11 @@ Title: <%= @story_title %>
 <%= @guidance %>
 
 === SPOILER CONTROL ===
-<%= @spoiler_guidance %>
+<% if @dm_brief.present? -%>
+DM Brief: <%= @dm_brief %>
+<% else -%>
+Do NOT reveal hidden information the player's character has not yet discovered.
+<% end -%>
 
 === INSTRUCTIONS ===
 - Answer the player's question clearly, accurately, and concisely.
@@ -23,6 +27,11 @@ Title: <%= @story_title %>
 - Do NOT advance the scene, trigger any mechanical effects, or request dice rolls.
 - If the question is about a Pathfinder 1e rule, give an accurate answer. If you are uncertain, say so rather than inventing mechanics.
 - Follow the SPOILER CONTROL instructions above carefully. Only reveal what the player has earned the right to know.
+
+<% if @forbidden_elements.present? -%>
+- FORBIDDEN ELEMENTS — do NOT mention or allude to any of the following:
+  <%= @forbidden_elements.join(", ") %>
+<% end -%>
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {

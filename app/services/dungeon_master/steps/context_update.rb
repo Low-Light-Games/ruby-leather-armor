@@ -50,21 +50,14 @@ module DungeonMaster
 
         relevant = PromptHelpers::CONTEXT_FIELDS if relevant.empty?
 
-        context_sections = relevant.map do |field|
-          ctx = micro_contexts[field.to_sym]
-          label = affected.include?(field) ? "#{field.upcase} CONTEXT [UPDATE]" : "#{field.upcase} CONTEXT [maintain]"
-          "=== #{label} ===\n#{ctx.present? ? ctx.to_json : '{}'}"
-        end
-
-        system_prompt = PromptRenderer.render("micro_context_update",
-          context_sections: context_sections.join("\n\n"),
+        system_prompt, user_msg = PromptRenderer.render_with_user_message("micro_context_update",
+          micro_contexts: micro_contexts,
           relevant_fields: relevant,
           affected_fields: affected,
           what_happened: what_happened,
-          mutations_json: mutations.present? ? mutations.to_json : "(no mechanical mutations)",
+          mutations_json: mutations.present? ? mutations.to_json : nil,
           canonical_hp: build_canonical_hp)
 
-        user_msg = "Update contexts based on the above."
         request_body = { system_prompt: system_prompt, user_message: user_msg }
 
         timed_ai_call("micro_context_update", prompt_summary, request_body) do
@@ -79,12 +72,11 @@ module DungeonMaster
       def run_macro_narrative_update(what_happened)
         prompt_summary = "Macro narrative update"
 
-        system_prompt = PromptRenderer.render("macro_narrative_update",
+        system_prompt, user_msg = PromptRenderer.render_with_user_message("macro_narrative_update",
           story_intro: @adventure.story.hook.presence || @adventure.story.title,
           story_summary: @adventure.story_summary,
           what_happened: what_happened)
 
-        user_msg = "Update the story summary."
         request_body = { system_prompt: system_prompt, user_message: user_msg }
 
         timed_ai_call("macro_narrative_update", prompt_summary, request_body) do

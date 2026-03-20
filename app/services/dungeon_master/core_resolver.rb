@@ -206,7 +206,7 @@ module DungeonMaster
 
     def auto_success_roll_message(merged)
       descs = (merged[:auto_successes] || []).map { |s| "AUTO-SUCCESS: #{s}" }
-      descs.any? ? descs.join("\n") : "(no rolls required — action succeeds without checks)"
+      descs.any? ? descs.join("\n") : nil
     end
 
     # Social scene expansion: creates an immersive NPC interaction scene that

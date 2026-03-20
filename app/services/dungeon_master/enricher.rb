@@ -18,7 +18,7 @@ module DungeonMaster
       model = @config.get("enricher_model").presence || @config.model
       log = Logging.new(adventure: nil, user: @user, dm_service: "standard")
 
-      prompt = PromptRenderer.render("enricher",
+      system_prompt, user_msg = PromptRenderer.render_with_user_message("enricher",
         premise: @story.premise,
         locations: location_data,
         existing_npcs: existing_npc_data,
@@ -34,8 +34,8 @@ module DungeonMaster
       t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       begin
         raw = client.chat(
-          system_prompt: prompt,
-          user_message: "Analyze the premise and extract structured story data.",
+          system_prompt: system_prompt,
+          user_message: user_msg,
           max_tokens: 2000,
           step_name: "enricher",
           model: model,

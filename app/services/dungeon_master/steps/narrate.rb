@@ -7,11 +7,10 @@ module DungeonMaster
     module Narrate
       private
 
-      def run_narrate(outcome, intent: nil, dm_brief: nil, encounter_triggered: false)
+      def run_narrate(outcome, intent: nil, dm_brief: nil, forbidden_elements: [], encounter_triggered: false)
         prompt_summary = "Narrate"
 
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
-        story_context = narrate_story_context(dm_brief)
         time_ctx = @adventure.time_context || {}
 
         what_happened = @loop&.get("verdict_outcome")
@@ -22,7 +21,9 @@ module DungeonMaster
 
         system_prompt = PromptRenderer.render("narrate",
           story_title: @adventure.story.title,
-          story_context: story_context,
+          story_hook: @adventure.story.hook.presence || @adventure.story.preview,
+          dm_brief: dm_brief,
+          forbidden_elements: Array(forbidden_elements),
           story_summary: @adventure.story_summary,
           contexts_text: PromptHelpers.format_contexts(micro_contexts),
           time_context: time_ctx,
@@ -52,16 +53,6 @@ module DungeonMaster
         raise AiError, "Narrate step returned no narrative — model produced: #{parsed.inspect.truncate(200)}" unless parsed["narrative"].present?
 
         { narrative: parsed["narrative"] }
-      end
-
-      def narrate_story_context(dm_brief)
-        hook = @adventure.story.hook.presence || @adventure.story.preview
-
-        parts = []
-        parts << "Hook: #{hook}"
-        parts << "DM Brief (follow these instructions carefully): #{dm_brief}" if dm_brief.present?
-
-        parts.join("\n")
       end
     end
   end

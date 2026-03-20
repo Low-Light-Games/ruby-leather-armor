@@ -20,7 +20,7 @@ Day <%= @time_context["adventure_day"] || 1 %>, Hour <%= @time_context["current_
 <% end -%>
 
 === CURRENT STATE ===
-<%= @micro_contexts %>
+<%= @micro_contexts.present? ? @micro_contexts : "(no active contexts — adventure just started)" %>
 
 <%= @pacing_text %>
 <%= @directed_play_text %>

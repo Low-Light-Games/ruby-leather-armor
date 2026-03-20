@@ -27,7 +27,7 @@ module DungeonMaster
       model = @config.get("embellisher_model").presence || @config.model
       log = Logging.new(adventure: @adventure, user: @user, dm_service: "standard")
 
-      prompt = PromptRenderer.render("embellisher",
+      system_prompt, user_msg = PromptRenderer.render_with_user_message("embellisher",
         premise: @story.premise,
         locations: location_data,
         npcs: npc_data,
@@ -38,8 +38,8 @@ module DungeonMaster
       t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       begin
         raw = client.chat(
-          system_prompt: prompt,
-          user_message: "Create a unique, vivid version of this story for a new adventure.",
+          system_prompt: system_prompt,
+          user_message: user_msg,
           max_tokens: 2500,
           step_name: "embellisher",
           model: model,

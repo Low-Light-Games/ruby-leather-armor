@@ -227,13 +227,13 @@ module DungeonMaster
         raw = nil
         prompt_summary = "Warmaster/CreatureGeneration: #{name} (party level #{party_level})"
 
-        system_prompt = PromptRenderer.render("creature_generation",
+        system_prompt, user_msg = PromptRenderer.render_with_user_message("creature_generation",
           creature_name: name, party_level: party_level)
 
-        request_body = { system_prompt: system_prompt, user_message: "Generate this creature." }
+        request_body = { system_prompt: system_prompt, user_message: user_msg }
         raw = ctx.ai.chat(
           system_prompt: system_prompt,
-          user_message: "Generate this creature.",
+          user_message: user_msg,
           max_tokens: ctx.config.token_budget_for("creature_generation"),
           step_name: "creature_generation",
           model: ctx.config.model_for("creature_generation"))

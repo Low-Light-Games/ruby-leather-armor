@@ -158,7 +158,7 @@ module DungeonMaster
           "- #{loc.name}#{marker}: #{loc.description&.truncate(80) || '(no description)'}#{conns.any? ? "\n  Connects to: #{conns.join(', ')}" : ''}"
         end
 
-        "=== STORY LOCATIONS ===\n#{lines.join("\n")}"
+        lines.join("\n")
       end
 
       def determine_plot_relevance(affected_contexts)
