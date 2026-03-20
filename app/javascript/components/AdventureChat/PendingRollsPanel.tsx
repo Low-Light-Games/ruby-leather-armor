@@ -43,7 +43,11 @@ const PendingRollsPanel = ({
 
   return (
     <div className="roll-submit-area">
-      <div className="roll-prompt-header">🎲 Rolls Needed</div>
+      <div className="roll-prompt-header">
+        {pendingRolls.iterativeProgress
+          ? `🎲 Roll ${pendingRolls.iterativeProgress.current} of ${pendingRolls.iterativeProgress.total}`
+          : '🎲 Rolls Needed'}
+      </div>
       {pendingRolls.entries.map((entry, i) => {
         const { request: req, resolved, value } = entry
         const isHallucination = derivedStats && !resolved

@@ -46,6 +46,10 @@ exist in the current scene, recent history, or active game state.
   describes a feature (a window, a door, a path, an opening), actions referencing
   that feature are CONSISTENT even if the micro-context has not captured it yet.
   The scene history is narrated truth — the micro-contexts may lag behind.
+- REST STATE: If the rest context shows "resting": true, this means the player
+  WAS resting during a previous turn. The player submitting a NEW action implicitly
+  cancels any ongoing rest. Do NOT reject an action because the player was previously
+  resting — a new action always takes precedence over an idle/rest state.
 - Be conservative: only reject if you are confident the referenced entity
   does NOT exist. When in doubt, allow.
 

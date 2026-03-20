@@ -45,7 +45,7 @@ module DungeonMaster
         pipeline: true,
       ),
       "roll_qualifier" => Entry.new(
-        token_budget: 400,
+        token_budget: 800,
         model_hint: "Fast, cheap model with broader context. Situational modifiers and Take 10/20 — e.g. gpt-4.1-nano, gpt-4o-mini.",
         pipeline: true,
       ),

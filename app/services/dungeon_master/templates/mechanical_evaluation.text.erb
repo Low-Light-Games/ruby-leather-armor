@@ -47,13 +47,40 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
   if flanking or threat awareness matters, include "combat". If terrain or environmental
   conditions matter, include "traversal". If social pressure applies, include "social".
   Empty array if the domain's own context is sufficient.
+- ITERATIVE ROLLS: When an action requires multiple rolls that must be resolved
+  SEQUENTIALLY (each result affects the next), set "iterative": true on each roll
+  and assign ascending "sequence" numbers starting from 1. Include a "phase"
+  description for each (e.g. "Forced march, hour 9 — DC 10").
+  Also include a top-level "iterative_time_hours" field: the in-game time that passes
+  per roll phase. This drives time advancement, fatigue, and encounter checks between rolls.
+  ITERATIVE scenarios (use iterative: true):
+    - Forced march: one Fort save per hour past 8 hours (iterative_time_hours: 1.0)
+    - Extended climbing: one Climb check per segment of a long ascent (iterative_time_hours: 0.1)
+    - Swimming a significant distance: one Swim check per meaningful segment (iterative_time_hours: 0.05)
+    - Tracking over distance: one Survival check per tracking period (iterative_time_hours: 1.0)
+    - Stealth infiltration: one Stealth check per zone or phase of approach (iterative_time_hours: 0.1)
+    - Chases: one skill check per obstacle in the pursuit (iterative_time_hours: 0.01)
+    - Crafting: one Craft check per day of work on the item (iterative_time_hours: 8.0)
+    - Research: one Knowledge/Linguistics check per day of study (iterative_time_hours: 8.0)
+    - Profession / Perform: one check per day of work (iterative_time_hours: 8.0)
+    - Spell research: one Spellcraft check per day of research (iterative_time_hours: 8.0)
+  NON-iterative (resolve together): a Perception check + a Stealth check for the same
+  moment, or multiple attack rolls in a single combat round.
+  Only use iterative when results are CAUSALLY CHAINED — each outcome affects the next.
+  GRANULARITY: Prefer meaningful segments over per-round resolution for non-combat
+  iterative scenarios. "3 Swim checks to cross the river" is better than "20 per-round
+  Swim checks." Group rounds into natural phases when the per-round granularity adds
+  no meaningful decision point for the player.
 <%= @domain_instructions %>
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
   "player_rolls": [
-    { "type": "skill_check", "skill": "Swim", "dc": 10, "description": "Swim check to stay afloat" }
+    { "type": "skill_check", "skill": "Swim", "dc": 10, "description": "Swim check to stay afloat" },
+    { "type": "fortitude_save", "dc": 10, "description": "Fort save, forced march hour 9",
+      "iterative": true, "sequence": 1, "phase": "Forced march, hour 9" }
   ],
+  "iterative_time_hours": 1.0,
   "npc_actions": [
     { "actor": "Goblin A", "action": "attack", "target": "player", "modifier": 3 }
   ],

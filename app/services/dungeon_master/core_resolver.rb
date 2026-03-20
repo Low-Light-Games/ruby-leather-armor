@@ -49,7 +49,7 @@ module DungeonMaster
         filter_auto_success_rolls!(merged)
 
         if merged[:player_rolls].any?
-          return { status: :awaiting_rolls, intent: intent, merged: merged }
+          return chunk_iterative_or_return_rolls(intent, merged)
         end
 
         return finish_resolution(intent, merged, auto_success_roll_message(merged))
@@ -85,7 +85,8 @@ module DungeonMaster
     end
 
     # Post-roll completion: verdict → mutations → time_keeper
-    def finish_resolution(intent, merged, roll_results)
+    def finish_resolution(intent, merged, roll_results, iterative_time_hours: nil)
+      intent = intent.merge(iterative_time_hours: iterative_time_hours) if iterative_time_hours
       npc_results = resolve_npc_actions(merged[:npc_actions])
       verdict_result = run_mechanic(intent, merged, roll_results: roll_results, npc_results: npc_results)
       @loop&.batch_update!(
@@ -169,7 +170,7 @@ module DungeonMaster
         filter_auto_success_rolls!(merged)
 
         if merged[:player_rolls].any?
-          return { status: :awaiting_rolls, intent: intent, merged: merged }
+          return chunk_iterative_or_return_rolls(intent, merged)
         end
 
         return finish_resolution(intent, merged, auto_success_roll_message(merged))
@@ -202,6 +203,30 @@ module DungeonMaster
         mutations: momentum_result[:mutations].presence,
         time_result: time_result
       }
+    end
+
+    def chunk_iterative_or_return_rolls(intent, merged)
+      iterative_rolls, normal_rolls = merged[:player_rolls].partition { |r| r[:iterative] }
+
+      if iterative_rolls.any?
+        sorted = iterative_rolls.sort_by { |r| r[:sequence].to_i }
+        first_roll = sorted.first
+        remaining = sorted[1..] || []
+        iterative_time = merged[:iterative_time_hours]
+        total = sorted.size
+
+        presented_rolls = [first_roll] + normal_rolls
+
+        return {
+          status: :awaiting_rolls, intent: intent,
+          merged: merged.merge(player_rolls: presented_rolls),
+          remaining_iterative_rolls: remaining,
+          iterative_time_hours: iterative_time,
+          iterative_total: total
+        }
+      end
+
+      { status: :awaiting_rolls, intent: intent, merged: merged }
     end
 
     def auto_success_roll_message(merged)

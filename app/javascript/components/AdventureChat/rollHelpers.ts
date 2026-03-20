@@ -10,10 +10,16 @@ export interface PendingRollEntry {
   resolution_method: ResolutionMethod | null
 }
 
+export interface IterativeProgress {
+  current: number
+  total: number
+}
+
 export interface PendingRolls {
   requests: RollRequest[]
   entries: PendingRollEntry[]
   showDc: boolean
+  iterativeProgress?: IterativeProgress | null
 }
 
 export function extractRollRequests(msg: AdventureMessage): RollRequest[] {
@@ -36,6 +42,7 @@ export function buildPendingRolls(
   requests: RollRequest[],
   showDc: boolean,
   derivedStats?: DerivedStats | null,
+  iterativeProgress?: IterativeProgress | null,
 ): PendingRolls {
   const entries: PendingRollEntry[] = requests.map(req => ({
     request: req,
@@ -43,7 +50,7 @@ export function buildPendingRolls(
     value: null,
     resolution_method: null,
   }))
-  return { requests, entries, showDc }
+  return { requests, entries, showDc, iterativeProgress }
 }
 
 export function buildPendingRollsFromMessage(
@@ -53,5 +60,6 @@ export function buildPendingRollsFromMessage(
   const requests = extractRollRequests(msg)
   if (requests.length === 0) return null
   const showDc = msg.metadata?.show_dc !== false
-  return buildPendingRolls(requests, showDc, derivedStats)
+  const iterativeProgress = msg.metadata?.iterative_progress as IterativeProgress | undefined
+  return buildPendingRolls(requests, showDc, derivedStats, iterativeProgress || null)
 }

@@ -62,7 +62,8 @@ module DungeonMaster
             npc_actions: Array(parsed["npc_actions"]).map(&:deep_symbolize_keys),
             consequences: Array(parsed["consequences"]).map(&:deep_symbolize_keys),
             mechanical_summary: parsed["mechanical_summary"] || "",
-            qualifier_context_hints: Array(parsed["qualifier_context_hints"])
+            qualifier_context_hints: Array(parsed["qualifier_context_hints"]),
+            iterative_time_hours: parsed["iterative_time_hours"]
           }
 
           evaluation = run_roll_qualifier(evaluation, intent)
@@ -75,11 +76,13 @@ module DungeonMaster
       end
 
       def merge_mechanical_evaluations(evaluations)
+        iterative_time = evaluations.map { |e| e[:iterative_time_hours] }.compact.first
         {
           player_rolls: evaluations.flat_map { |e| e[:player_rolls] },
           npc_actions: evaluations.flat_map { |e| e[:npc_actions] },
           consequences: evaluations.flat_map { |e| e[:consequences] },
-          mechanical_summaries: evaluations.map { |e| "[#{e[:domain].upcase}] #{e[:mechanical_summary]}" }
+          mechanical_summaries: evaluations.map { |e| "[#{e[:domain].upcase}] #{e[:mechanical_summary]}" },
+          iterative_time_hours: iterative_time
         }
       end
     end

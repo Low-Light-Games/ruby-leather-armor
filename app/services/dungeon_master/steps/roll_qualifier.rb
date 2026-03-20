@@ -58,8 +58,6 @@ module DungeonMaster
         end
 
         apply_qualifier_results(evaluation, parsed)
-      rescue TokenBudgetExceededError, AiError
-        evaluation
       end
 
       def resolve_qualifier_contexts(scope, evaluation)
