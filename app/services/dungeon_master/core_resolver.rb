@@ -206,27 +206,40 @@ module DungeonMaster
     end
 
     def chunk_iterative_or_return_rolls(intent, merged)
-      iterative_rolls, normal_rolls = merged[:player_rolls].partition { |r| r[:iterative] }
+      seq = merged[:iterative_sequence]
+      return { status: :awaiting_rolls, intent: intent, merged: merged } unless seq
 
-      if iterative_rolls.any?
-        sorted = iterative_rolls.sort_by { |r| r[:sequence].to_i }
-        first_roll = sorted.first
-        remaining = sorted[1..] || []
-        iterative_time = merged[:iterative_time_hours]
-        total = sorted.size
+      rolls = expand_iterative_sequence(seq)
+      normal_rolls = merged[:player_rolls] || []
 
-        presented_rolls = [first_roll] + normal_rolls
+      {
+        status: :awaiting_rolls, intent: intent,
+        merged: merged.merge(player_rolls: [rolls.first] + normal_rolls),
+        remaining_iterative_rolls: rolls[1..],
+        iterative_time_hours: seq[:iterative_time_hours],
+        iterative_total: rolls.size
+      }
+    end
 
-        return {
-          status: :awaiting_rolls, intent: intent,
-          merged: merged.merge(player_rolls: presented_rolls),
-          remaining_iterative_rolls: remaining,
-          iterative_time_hours: iterative_time,
-          iterative_total: total
+    def expand_iterative_sequence(seq)
+      phases      = seq[:phases].to_i
+      starting_dc = seq[:starting_dc].to_i
+      increment   = seq[:dc_increment].to_i
+      hints       = Array(seq[:qualifier_context_hints])
+
+      phases.times.map do |i|
+        dc = starting_dc + (i * increment)
+        roll = {
+          type: seq[:type], dc: dc,
+          description: "#{seq[:description]} (phase #{i + 1})",
+          phase: "Phase #{i + 1} — DC #{dc}",
+          iterative: true, sequence: i + 1,
+          qualifier_context_hints: hints,
+          domain: seq[:domain]
         }
+        roll[:skill] = seq[:skill] if seq[:skill].present?
+        roll
       end
-
-      { status: :awaiting_rolls, intent: intent, merged: merged }
     end
 
     def auto_success_roll_message(merged)
