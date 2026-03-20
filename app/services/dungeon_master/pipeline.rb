@@ -353,12 +353,15 @@ module DungeonMaster
       extra[:encounter_triggered] = true if encounter_triggered
       extra[:social_scene_triggered] = true if social_scene_triggered
 
+      last_time_result = results.filter_map { |r| r[:time_result] }.last
+
       output_result = run_output_phase(merged_intent,
         narrate_seed: combined_seed,
         mutations: combined_mutations.presence,
         dm_brief: dm_brief,
         forbidden_elements: forbidden_elements,
-        extra: extra)
+        extra: extra,
+        time_result: last_time_result)
 
       if output_result[:action] == :awaiting_initiative
         return output_result
@@ -393,7 +396,8 @@ module DungeonMaster
 
     def run_inter_action_context_update(result)
       affected = Array(result.dig(:intent, :affected_contexts))
-      parsed = run_micro_context_update(result[:narrate_seed], result[:mutations], affected)
+      parsed = run_micro_context_update(result[:narrate_seed], result[:mutations], affected,
+                                        time_result: result[:time_result])
       persist_micro_contexts(parsed)
       @adventure.reload
       @loop&.batch_update!(

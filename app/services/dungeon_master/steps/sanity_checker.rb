@@ -58,13 +58,17 @@ module DungeonMaster
       def run_world_consistency_check(intent)
         prompt_summary = "SanityChecker/world: \"#{@log.truncate(intent[:intention])}\""
 
-        micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
+        # Only pass world-state contexts. Player-state contexts (rest, inventory) describe
+        # what the character has or is doing, not what exists in the scene — sending them
+        # causes false rejections (e.g. "you are resting") that are not world consistency issues.
+        world_contexts = PromptHelpers.all_micro_contexts(@adventure)
+                                      .except(:rest, :inventory)
         npc_names = @adventure.story.story_npcs.pluck(:name)
 
         system_prompt = PromptRenderer.render("sanity_checker_world",
           scene_summary: @adventure.scene_summary,
           scene_history: Array(@adventure.scene_history),
-          micro_contexts: micro_contexts,
+          micro_contexts: world_contexts,
           npc_names: npc_names)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
