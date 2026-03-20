@@ -3,6 +3,15 @@ Your job is to update the micro-context objects based on what just happened.
 
 === WHAT HAPPENED ===
 <%= @what_happened %>
+<% if @time_result.present? -%>
+
+=== TIME ADVANCEMENT ===
+Hours elapsed: <%= @time_result[:hours_elapsed]&.round(2) || @time_result[:estimated_hours]&.round(2) %>
+Source: <%= @time_result[:source] %>
+<% if @time_result[:encounter].present? -%>
+Encounter interrupted after <%= @time_result[:hours_elapsed]&.round(2) %> hours.
+<% end -%>
+<% end -%>
 
 === MUTATIONS APPLIED ===
 <%= @mutations_json.present? ? @mutations_json : "(no mechanical mutations)" %>
@@ -51,9 +60,14 @@ Update each context to reflect what just happened. Return all contexts below.
   across locations, preserve and update it.
 - For exploration context: track searched_areas, discovered_items, discovered_secrets, knowledge_checks_attempted, active_detection (e.g. Detect Magic running), pending_investigations.
 - For rest context: track resting (boolean), hours_completed, total_hours_needed, watch_order, interruptions, spells_prepared, hp_recovered, rest_complete.
+- REST RESOLUTION: When a "TIME ADVANCEMENT" section is present and source is "rest_code":
+  - If NO encounter interrupted: the rest completed fully. Set rest_complete to true,
+    hours_completed to the hours elapsed, and resting to false.
+  - If an encounter interrupted: the rest was cut short. Set rest_complete to false,
+    hours_completed to the hours elapsed, resting to false, and add a brief note to
+    interruptions describing what cut the rest short.
 - For inventory context: track recently_acquired, recently_used, pending_identifications, equipped_changes, notable_consumables_remaining.
 - If combat has ended (all enemies defeated/fled), set combat_context.active to false.
-- If rest is complete, set rest_context.resting to false and rest_context.rest_complete to true.
 - If new creatures or NPCs appeared in the outcome, include their names in new_creatures so the app can create their stat records.
 - ARRIVAL: When the outcome describes the player arriving at a destination, set traversal_context.destination to null.
   A player who has reached their destination is no longer traveling toward it.

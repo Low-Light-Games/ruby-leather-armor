@@ -9,9 +9,9 @@ module DungeonMaster
     module ContextUpdate
       private
 
-      def run_context_updates(what_happened, mutations, affected_contexts: [], macro_significant: false)
+      def run_context_updates(what_happened, mutations, affected_contexts: [], macro_significant: false, time_result: nil)
         micro_thread = Thread.new do
-          ActiveRecord::Base.connection_pool.with_connection { run_micro_context_update(what_happened, mutations, affected_contexts) }
+          ActiveRecord::Base.connection_pool.with_connection { run_micro_context_update(what_happened, mutations, affected_contexts, time_result: time_result) }
         end
         macro_thread = if macro_significant
                          Thread.new do
@@ -32,7 +32,7 @@ module DungeonMaster
         pipeline_error!("context_updates", e)
       end
 
-      def run_micro_context_update(what_happened, mutations, affected_contexts)
+      def run_micro_context_update(what_happened, mutations, affected_contexts, time_result: nil)
         prompt_summary = "Micro context update"
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
 
@@ -56,7 +56,8 @@ module DungeonMaster
           affected_fields: affected,
           what_happened: what_happened,
           mutations_json: mutations.present? ? mutations.to_json : nil,
-          canonical_hp: build_canonical_hp)
+          canonical_hp: build_canonical_hp,
+          time_result: time_result)
 
         request_body = { system_prompt: system_prompt, user_message: user_msg }
 
