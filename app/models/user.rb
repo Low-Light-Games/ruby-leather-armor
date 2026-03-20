@@ -4,10 +4,11 @@ class User < ApplicationRecord
   TIERS = %w[free paid].freeze
 
   # Monthly cost cap in microdollars ($1 = 1,000,000 microdollars).
-  TIER_LIMITS = {
-    "free" => 500_000,
-    "paid" => 10_000_000
-  }.freeze
+  # Defined in tier_limits.yml at the project root.
+  TIER_LIMITS = YAML.load_file(Rails.root.join("tier_limits.yml"))
+                    .dig("tiers")
+                    .transform_values { |v| v["monthly_limit_microdollars"] }
+                    .freeze
 
   has_many :sheets, dependent: :destroy
   has_many :adventures, dependent: :destroy

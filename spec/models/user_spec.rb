@@ -32,4 +32,26 @@ RSpec.describe User, type: :model do
       expect(build(:user, provider: nil).oauth_user?).to be false
     end
   end
+
+  describe "TIER_LIMITS" do
+    it "loads from tier_limits.yml with values for all tiers" do
+      expect(User::TIER_LIMITS.keys).to match_array(User::TIERS)
+    end
+
+    it "free tier has a lower limit than paid" do
+      expect(User::TIER_LIMITS["free"]).to be < User::TIER_LIMITS["paid"]
+    end
+
+    it "all limits are positive integers" do
+      User::TIER_LIMITS.each_value do |limit|
+        expect(limit).to be_a(Integer).and be_positive
+      end
+    end
+  end
+
+  describe "#usage_limit_reached?" do
+    it "returns false when no AI usage has been recorded" do
+      expect(create(:user).usage_limit_reached?).to be false
+    end
+  end
 end

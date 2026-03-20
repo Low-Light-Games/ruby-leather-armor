@@ -1,0 +1,7 @@
+# Monthly AI cost caps per user tier, in microdollars ($1 = 1,000,000).
+# Null means no cap.
+tiers:
+  free:
+    monthly_limit_microdollars: 500_000   # $0.50
+  paid:
+    monthly_limit_microdollars: 10_000_000 # $10.00
