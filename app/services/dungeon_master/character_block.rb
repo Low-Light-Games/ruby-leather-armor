@@ -44,6 +44,7 @@ module DungeonMaster
       ds = sheet.derived_stats
       parts = []
       parts << identity_line(sheet)
+      parts << conditions_line(sheet)
       parts << ability_scores_line(sheet)
       parts << "HP: #{sheet.hp}/#{sheet.max_hp}  |  Currency: #{format_currency(sheet.currency)}"
       parts << derived_combat_block(ds)
@@ -58,6 +59,7 @@ module DungeonMaster
       ds = sheet.derived_stats
       parts = []
       parts << identity_line(sheet)
+      parts << conditions_line(sheet)
       parts << ability_scores_line(sheet)
       parts << "HP: #{sheet.hp}/#{sheet.max_hp}  |  Currency: #{format_currency(sheet.currency)}"
       parts << derived_combat_block(ds)
@@ -70,6 +72,7 @@ module DungeonMaster
     def self.social(sheet)
       parts = []
       parts << identity_line(sheet)
+      parts << conditions_line(sheet)
       parts << "CHA: #{sheet.charisma}, WIS: #{sheet.wisdom}, INT: #{sheet.intelligence}  |  Level: #{sheet.level}"
       parts << skills_block(sheet, filter: SOCIAL_SKILLS)
       parts << feats_block(sheet)
@@ -81,6 +84,7 @@ module DungeonMaster
       ds = sheet.derived_stats
       parts = []
       parts << identity_line(sheet)
+      parts << conditions_line(sheet)
       parts << "STR: #{sheet.strength}, DEX: #{sheet.dexterity}, CON: #{sheet.constitution}, WIS: #{sheet.wisdom}  |  Level: #{sheet.level}"
       parts << "Speed: #{ds['speed'] || 30} ft  |  Encumbrance: #{ds['encumbrance'] || 'light'}  |  Carry: #{format_carry(ds)}"
       parts << skills_block(sheet, filter: TRAVERSAL_SKILLS)
@@ -104,6 +108,12 @@ module DungeonMaster
 
     def self.identity_line(sheet)
       "#{sheet.name} — #{sheet.race} #{sheet.character_class} #{sheet.level}"
+    end
+
+    def self.conditions_line(sheet)
+      conds = Array(sheet.try(:conditions))
+      return nil if conds.empty?
+      "Active Conditions: #{conds.join(', ')}"
     end
 
     def self.ability_scores_line(sheet)
@@ -196,8 +206,9 @@ module DungeonMaster
       parts.empty? ? "none" : parts.join(", ")
     end
 
-    private_class_method :identity_line, :ability_scores_line, :derived_combat_block,
-                         :skills_block, :feats_block, :spells_block, :items_block,
+    private_class_method :identity_line, :conditions_line, :ability_scores_line,
+                         :derived_combat_block, :skills_block, :feats_block,
+                         :spells_block, :items_block,
                          :format_carry, :format_mod, :format_currency
   end
 end

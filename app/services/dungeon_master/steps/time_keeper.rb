@@ -48,6 +48,8 @@ module DungeonMaster
                                                        reset_encounter_check: harbinger_consulted)
         thresholds = Utilities::GameClock.check_thresholds(time_ctx)
 
+        apply_fatigue_conditions(thresholds, time_ctx)
+
         encounter = harbinger_result if harbinger_result[:stop_reason] == :encounter
 
         {
@@ -198,6 +200,34 @@ module DungeonMaster
       rescue TokenBudgetExceededError, AiError
         { hours: 0.0017, source: :ai_fallback, terrain: nil, is_journey: false,
           speed_mph: nil, journey_data: nil }
+      end
+
+      # ── Fatigue condition management ─────────────────────────────
+
+      def apply_fatigue_conditions(thresholds, time_ctx)
+        return unless @sheet
+
+        if time_ctx["rest_clears_fatigue"]
+          current = Array(@sheet.conditions)
+          fatigue_conds = current & %w[fatigued exhausted]
+          if fatigue_conds.any?
+            @sheet.update!(conditions: current - fatigue_conds)
+            @sheet.recompute_derived_stats!
+            @log.log!(:info, "TimeKeeper: rest cleared conditions: #{fatigue_conds.join(', ')}")
+          end
+          return
+        end
+
+        thresholds.each do |t|
+          next unless t[:type] == :fatigue && t[:condition]
+          current = Array(@sheet.conditions)
+          next if current.include?(t[:condition])
+
+          upgraded = CharacterStats::Conditions.upgrade(current, t[:condition])
+          @sheet.update!(conditions: upgraded.uniq)
+          @sheet.recompute_derived_stats!
+          @log.log!(:info, "TimeKeeper: applied condition '#{t[:condition]}' (#{t[:hours_awake]}h awake)")
+        end
       end
 
       # ── Harbinger consultation ────────────────────────────────────

@@ -10,6 +10,7 @@ import { getFeatById, featDisplayName } from '../../rules/pathfinder_feats'
 import { getCastingStyle } from '../../rules/pathfinder_spells'
 import { getWeaponAttackMod } from '../../rules/damage'
 import CombatStatsGrid from './CharacterSidebar/CombatStatsGrid'
+import ConditionsBadges from './CharacterSidebar/ConditionsBadges'
 import SpellsSection from './CharacterSidebar/SpellsSection'
 import CharacterActions from './CharacterSidebar/CharacterActions'
 
@@ -95,6 +96,13 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
           {[sheet.race, sheet.character_class].filter(Boolean).join(' ')}
           {sheet.level > 1 && ` (Lv ${sheet.level})`}
         </p>
+      )}
+
+      {ds.active_conditions?.length > 0 && (
+        <ConditionsBadges
+          conditions={ds.active_conditions}
+          restrictions={ds.condition_restrictions ?? []}
+        />
       )}
 
       <CombatStatsGrid

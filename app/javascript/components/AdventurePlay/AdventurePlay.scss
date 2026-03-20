@@ -46,6 +46,81 @@
       font-style: italic;
     }
 
+    /* ── Conditions badge strip ── */
+    .conditions-strip {
+      margin-bottom: 10px;
+
+      .conditions-badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-bottom: 4px;
+
+        .condition-badge {
+          position: relative;
+          display: inline-block;
+          padding: 2px 8px;
+          font-size: 10px;
+          font-family: $font-mono;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          border-radius: 3px;
+          cursor: default;
+          white-space: nowrap;
+
+          &.badge-red    { background: $red-ink-lt; color: $red-ink; border: 1px solid $red-ink; }
+          &.badge-amber  { background: $amber-lt; color: $amber; border: 1px solid $amber; }
+          &.badge-orange { background: hsl(25, 60%, 88%); color: hsl(25, 55%, 32%); border: 1px solid hsl(25, 55%, 55%); }
+          &.badge-green  { background: $green-ink-lt; color: $green-ink; border: 1px solid $green-ink; }
+          &.badge-slate  { background: $parchment-mid; color: $ink-mid; border: 1px solid $border; }
+
+          .condition-tooltip {
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: $ink;
+            color: $parchment;
+            padding: 6px 10px;
+            font-size: 11px;
+            font-family: $font-body;
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: 0;
+            border-radius: 4px;
+            white-space: nowrap;
+            z-index: 100;
+            pointer-events: none;
+
+            &::after {
+              content: '';
+              position: absolute;
+              top: 100%;
+              left: 50%;
+              transform: translateX(-50%);
+              border: 5px solid transparent;
+              border-top-color: $ink;
+            }
+          }
+        }
+      }
+
+      .conditions-restrictions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+
+        .restriction-tag {
+          font-size: 9px;
+          font-family: $font-mono;
+          color: $red-ink;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+        }
+      }
+    }
+
     .combat-stats {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr 1fr;
@@ -74,6 +149,81 @@
           font-weight: 700;
           font-size: 14px;
           color: $ink;
+
+          &.condition-affected {
+            color: $red-ink;
+          }
+        }
+      }
+    }
+
+    /* ── StatTooltip popup ── */
+    .stat-tooltip-wrapper {
+      position: relative;
+      display: inline-block;
+      cursor: help;
+
+      .stat-tooltip-popup {
+        position: absolute;
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: $ink;
+        color: $parchment;
+        border-radius: 4px;
+        padding: 8px 10px;
+        min-width: 150px;
+        z-index: 200;
+        pointer-events: none;
+        font-family: $font-mono;
+        font-size: 11px;
+
+        &::after {
+          content: '';
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          transform: translateX(-50%);
+          border: 5px solid transparent;
+          border-top-color: $ink;
+        }
+
+        .stat-tooltip-header {
+          display: flex;
+          justify-content: space-between;
+          font-weight: 700;
+          margin-bottom: 6px;
+          padding-bottom: 4px;
+          border-bottom: 1px solid $border;
+          font-size: 12px;
+        }
+
+        .stat-tooltip-rows {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .stat-tooltip-row {
+          display: flex;
+          justify-content: space-between;
+          gap: 12px;
+
+          &.condition-entry {
+            .stat-tooltip-label { color: $red-ink-lt; font-style: italic; }
+            .stat-tooltip-value { color: $red-ink-lt; }
+          }
+        }
+
+        .stat-tooltip-label {
+          white-space: nowrap;
+        }
+
+        .stat-tooltip-value {
+          font-weight: 600;
+          text-align: right;
+
+          &.negative { color: $red-ink-lt; }
         }
       }
     }
@@ -161,6 +311,11 @@
           font-weight: 700;
           font-size: 15px;
           color: $red-ink;
+
+          &.condition-affected {
+            color: hsl(0, 65%, 40%);
+            text-decoration: underline wavy $red-ink;
+          }
         }
 
         .roll-dice-hint {

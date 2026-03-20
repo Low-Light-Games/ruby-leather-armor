@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_19_180031) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_20_145248) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -105,6 +105,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_19_180031) do
     t.string "equipped_shield_id"
     t.jsonb "equipped_weapons", default: [], null: false
     t.jsonb "currency", default: {"gold"=>0, "copper"=>0, "silver"=>0, "platinum"=>0}, null: false
+    t.jsonb "conditions", default: [], null: false
     t.index ["adventure_id"], name: "index_adventure_sheets_on_adventure_id"
     t.index ["equipped_armor_id"], name: "index_adventure_sheets_on_equipped_armor_id"
     t.index ["equipped_shield_id"], name: "index_adventure_sheets_on_equipped_shield_id"
@@ -254,6 +255,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_19_180031) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "origin", default: "unknown"
+    t.jsonb "conditions", default: [], null: false
     t.index ["adventure_id", "name"], name: "index_creature_sheets_on_adventure_id_and_name"
     t.index ["adventure_id"], name: "index_creature_sheets_on_adventure_id"
   end
