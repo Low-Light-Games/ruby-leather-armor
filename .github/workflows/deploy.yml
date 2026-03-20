@@ -22,7 +22,8 @@ jobs:
             cd ~/app
 
             echo "--- Pulling latest code ---"
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
 
             echo "--- Writing .env ---"
             printf 'RAILS_MASTER_KEY=%s\nOPENAI_API_KEY=%s\nPOSTGRES_PASSWORD=%s\nDATABASE_URL=%s\nREDIS_URL=%s\nSES_ACCESS_KEY_ID=%s\nSES_SECRET_ACCESS_KEY=%s\nSES_FROM_EMAIL=%s\nSENTRY_DSN=%s\nGOOGLE_CLIENT_ID=%s\nGOOGLE_CLIENT_SECRET=%s\nGOOGLE_OAUTH_REDIRECT_URI=%s\n' \
