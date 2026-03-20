@@ -1031,7 +1031,7 @@
         }
 
         .error-message {
-          color: $error;
+          color: $red-ink;
           font-size: 11px;
           margin-bottom: 4px;
         }
@@ -1049,15 +1049,18 @@
 
         .btn {
           padding: 4px 8px;
-          font-size: 11px;
+          font-size: 10px;
+          font-family: $font-mono;
           border: 1px solid $border-light;
-          background: $parchment-dk;
-          color: $ink-mid;
+          background: $parchment;
+          color: $ink;
           cursor: pointer;
           border-radius: 2px;
+          transition: all 0.2s;
 
-          &:hover {
-            background: $parchment;
+          &:hover:not(:disabled) {
+            background: $parchment-mid;
+            border-color: $border;
           }
 
           &:disabled {
@@ -1065,29 +1068,44 @@
             cursor: not-allowed;
           }
 
-          &.btn-primary {
-            background: $accent;
-            color: white;
-            border-color: $accent-dk;
+          &.btn-small {
+            padding: 3px 6px;
+            font-size: 9px;
+          }
 
-            &:hover {
-              background: $accent-dk;
+          &.btn-primary {
+            background: $green-ink-lt;
+            border-color: $green-ink;
+            color: $green-ink;
+
+            &:hover:not(:disabled) {
+              background: $green-ink;
+              color: $parchment;
             }
           }
 
           &.btn-secondary {
             background: $parchment;
-            color: $ink-mid;
+            border-color: $border-light;
+            color: $ink-light;
+
+            &:hover:not(:disabled) {
+              background: $parchment-mid;
+              border-color: $border;
+              color: $ink;
+            }
           }
 
           &.btn-outline {
             background: transparent;
-            border-style: dashed;
-          }
+            border-color: $border-light;
+            color: $ink-light;
 
-          &.btn-small {
-            padding: 2px 6px;
-            font-size: 10px;
+            &:hover:not(:disabled) {
+              background: $parchment-dk;
+              border-color: $border;
+              color: $ink;
+            }
           }
         }
 
