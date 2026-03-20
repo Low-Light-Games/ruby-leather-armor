@@ -522,3 +522,46 @@ rather than on matching text or numbers the AI generated.
 add examples, or restructure the step inputs so the AI doesn't produce the
 problem. If the problem persists, log it as a warning for observability —
 but do not silently alter the output.
+
+---
+
+## 18. Iterative resolution for long-duration actions
+
+Actions that span significant in-game time are resolved iteratively — one
+roll at a time with time advancement, condition checks, and encounter
+opportunities between each phase. The player sees each intermediate result
+and can change course at any point.
+
+**What this covers:**
+- Forced marches (hourly Fort saves)
+- Extended traversal (climbing, swimming, tracking)
+- Crafting, research, and profession (daily checks)
+- Chases and stealth infiltration (per-obstacle/zone checks)
+
+**Why iterative over abstracted:**
+Pathfinder 1e abstracts some long tasks to a single weekly roll (Craft,
+Profession). We deliberately choose the iterative model because:
+
+1. **Player agency:** a player whose character becomes fatigued on hour 10
+   of a march should be able to decide to camp — not discover the outcome
+   after 16 hours of rolls resolved behind the scenes.
+2. **Mundane enforcement:** long tasks consume time. Time passing means the
+   character needs food, water, and lodging. Encounters can occur even in
+   secure locations (thieves in town, a fire at the inn, a merchant
+   opportunity). Iterative resolution ensures these dynamics emerge naturally
+   from the existing TimeKeeper + Harbinger + fatigue systems.
+3. **Narrative richness:** each phase produces an interim narrative. A 5-day
+   crafting session becomes a story arc, not a single dice roll.
+
+**The mechanism:** MechanicalEvaluation tags causally-chained rolls as
+`iterative: true` with a `sequence` number and `iterative_time_hours` per
+phase. The pipeline presents one roll at a time, runs the full TimeKeeper
+chain (clock advancement, fatigue thresholds, Harbinger encounter checks)
+between phases, and stops early if the character is incapacitated or an
+encounter interrupts. The player can also abandon the sequence at any point
+by typing a different action.
+
+**Design principle:** this is an extension of #1 (AI for judgment, code for
+certainty) and #12 (time as a higher-order context). The iteration loop is
+code-driven and deterministic; the AI's role is identifying which rolls are
+iterative and what each phase means narratively.

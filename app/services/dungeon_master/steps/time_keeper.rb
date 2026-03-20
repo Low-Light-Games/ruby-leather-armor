@@ -68,6 +68,9 @@ module DungeonMaster
       # ── Estimation ────────────────────────────────────────────────
 
       def estimate_time(intent, verdict_result)
+        iterative = try_iterative_time_estimate(intent)
+        return iterative if iterative
+
         journey = try_journey_estimate(intent)
         return journey if journey
 
@@ -81,6 +84,13 @@ module DungeonMaster
         return take20 if take20
 
         estimate_via_ai(intent, verdict_result)
+      end
+
+      def try_iterative_time_estimate(intent)
+        hours = intent[:iterative_time_hours]
+        return nil unless hours.is_a?(Numeric) && hours > 0
+        { hours: hours.to_f, source: :iterative_code, terrain: nil, is_journey: false,
+          speed_mph: nil, journey_data: nil }
       end
 
       def try_journey_estimate(intent)
