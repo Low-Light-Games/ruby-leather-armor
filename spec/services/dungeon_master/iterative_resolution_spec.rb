@@ -10,28 +10,35 @@ RSpec.describe "DungeonMaster — iterative roll resolution", type: :service do
   let(:adventure) { create(:adventure, user: user, story: story) }
   let!(:sheet)    { create(:adventure_sheet, adventure: adventure).tap(&:recompute_derived_stats!) }
 
-  let(:iterative_rolls) do
-    [
-      { "skill" => "Fortitude", "type" => "fortitude_save", "dc" => 10,
-        "description" => "Fort save, forced march hour 9", "domain" => "traversal",
-        "iterative" => true, "sequence" => 1, "phase" => "Forced march, hour 9" },
-      { "skill" => "Fortitude", "type" => "fortitude_save", "dc" => 11,
-        "description" => "Fort save, forced march hour 10", "domain" => "traversal",
-        "iterative" => true, "sequence" => 2, "phase" => "Forced march, hour 10" },
-      { "skill" => "Fortitude", "type" => "fortitude_save", "dc" => 12,
-        "description" => "Fort save, forced march hour 11", "domain" => "traversal",
-        "iterative" => true, "sequence" => 3, "phase" => "Forced march, hour 11" }
-    ]
+  # Descriptor output from mechanical_evaluation AI (one object, not N roll objects).
+  let(:iterative_sequence) do
+    { "type" => "fortitude_save", "description" => "Forced march Fort save",
+      "starting_dc" => 10, "dc_increment" => 2, "phases" => 3,
+      "iterative_time_hours" => 1.0, "qualifier_context_hints" => [] }
   end
 
   let(:iterative_mech_eval_response) do
-    {
-      "player_rolls"       => iterative_rolls,
+    { "player_rolls"       => [],
       "npc_actions"        => [],
       "consequences"       => [],
-      "iterative_time_hours" => 1.0,
-      "mechanical_summary" => "Forced march: 3 hourly Fort saves."
-    }.to_json
+      "iterative_sequence" => iterative_sequence,
+      "mechanical_summary" => "Forced march: 3 hourly Fort saves." }.to_json
+  end
+
+  # Code-generated roll format produced by expand_iterative_sequence.
+  # Phase 1: DC 10, phase 2: DC 12, phase 3: DC 14 (starting_dc 10 + dc_increment 2).
+  let(:generated_rolls) do
+    [
+      { type: "fortitude_save", dc: 10,
+        description: "Forced march Fort save (phase 1)", phase: "Phase 1 — DC 10",
+        iterative: true, sequence: 1, qualifier_context_hints: [], domain: "traversal" },
+      { type: "fortitude_save", dc: 12,
+        description: "Forced march Fort save (phase 2)", phase: "Phase 2 — DC 12",
+        iterative: true, sequence: 2, qualifier_context_hints: [], domain: "traversal" },
+      { type: "fortitude_save", dc: 14,
+        description: "Forced march Fort save (phase 3)", phase: "Phase 3 — DC 14",
+        iterative: true, sequence: 3, qualifier_context_hints: [], domain: "traversal" }
+    ]
   end
 
   let(:iterative_ai_responses) do
@@ -79,11 +86,11 @@ RSpec.describe "DungeonMaster — iterative roll resolution", type: :service do
   describe "iterative roll chunking" do
     let(:merged) do
       {
-        player_rolls: iterative_rolls.map { |r| r.deep_symbolize_keys },
+        player_rolls: [],
         npc_actions: [],
         consequences: [],
         mechanical_summaries: ["Forced march: 3 hourly Fort saves."],
-        iterative_time_hours: 1.0
+        iterative_sequence: iterative_sequence.deep_symbolize_keys
       }
     end
 
@@ -116,10 +123,13 @@ RSpec.describe "DungeonMaster — iterative roll resolution", type: :service do
     end
 
     it "returns all rolls when none are iterative" do
-      non_iterative = merged.merge(player_rolls: [
-        { type: "skill_check", skill: "Perception", dc: 15 },
-        { type: "skill_check", skill: "Stealth", dc: 12 }
-      ])
+      non_iterative = merged.merge(
+        iterative_sequence: nil,
+        player_rolls: [
+          { type: "skill_check", skill: "Perception", dc: 15 },
+          { type: "skill_check", skill: "Stealth", dc: 12 }
+        ]
+      )
       result = build_pipeline(adventure).send(:chunk_iterative_or_return_rolls, intent, non_iterative)
       expect(result[:remaining_iterative_rolls]).to be_nil
       expect(result[:merged][:player_rolls].size).to eq(2)
@@ -147,12 +157,12 @@ RSpec.describe "DungeonMaster — iterative roll resolution", type: :service do
         "remaining_actions"     => [],
         "prior_narrate_seeds"   => [],
         "remaining_iterative_rolls" => [
-          { "skill" => "Fortitude", "type" => "fortitude_save", "dc" => 11,
-            "description" => "Fort save, forced march hour 10", "domain" => "traversal",
-            "iterative" => true, "sequence" => 2, "phase" => "Forced march, hour 10" },
-          { "skill" => "Fortitude", "type" => "fortitude_save", "dc" => 12,
-            "description" => "Fort save, forced march hour 11", "domain" => "traversal",
-            "iterative" => true, "sequence" => 3, "phase" => "Forced march, hour 11" }
+          { "type" => "fortitude_save", "dc" => 12,
+            "description" => "Forced march Fort save (phase 2)", "phase" => "Phase 2 — DC 12",
+            "iterative" => true, "sequence" => 2, "qualifier_context_hints" => [], "domain" => "traversal" },
+          { "type" => "fortitude_save", "dc" => 14,
+            "description" => "Forced march Fort save (phase 3)", "phase" => "Phase 3 — DC 14",
+            "iterative" => true, "sequence" => 3, "qualifier_context_hints" => [], "domain" => "traversal" }
         ],
         "iterative_time_hours" => 1.0,
         "iterative_total" => 3
@@ -165,7 +175,7 @@ RSpec.describe "DungeonMaster — iterative roll resolution", type: :service do
       result = build_pipeline(adventure).run_rolls(roll_results, metadata)
       expect(result[:action]).to eq(:awaiting_rolls)
       expect(result[:merged][:player_rolls].size).to eq(1)
-      expect(result[:merged][:player_rolls].first[:dc]).to eq(11)
+      expect(result[:merged][:player_rolls].first[:dc]).to eq(12)
     end
 
     it "decrements remaining_iterative_rolls by 1" do
@@ -205,8 +215,9 @@ RSpec.describe "DungeonMaster — iterative roll resolution", type: :service do
         "remaining_actions"     => [],
         "prior_narrate_seeds"   => [],
         "remaining_iterative_rolls" => [
-          { "skill" => "Fortitude", "type" => "fortitude_save", "dc" => 11,
-            "iterative" => true, "sequence" => 2 }
+          { "type" => "fortitude_save", "dc" => 12,
+            "description" => "Forced march Fort save (phase 2)", "phase" => "Phase 2 — DC 12",
+            "iterative" => true, "sequence" => 2, "qualifier_context_hints" => [], "domain" => "traversal" }
         ],
         "iterative_time_hours" => 1.0,
         "iterative_total" => 2
@@ -248,8 +259,9 @@ RSpec.describe "DungeonMaster — iterative roll resolution", type: :service do
         "remaining_actions"     => [],
         "prior_narrate_seeds"   => [],
         "remaining_iterative_rolls" => [
-          { "skill" => "Fortitude", "type" => "fortitude_save", "dc" => 11,
-            "iterative" => true, "sequence" => 2 }
+          { "type" => "fortitude_save", "dc" => 12,
+            "description" => "Forced march Fort save (phase 2)", "phase" => "Phase 2 — DC 12",
+            "iterative" => true, "sequence" => 2, "qualifier_context_hints" => [], "domain" => "traversal" }
         ],
         "iterative_time_hours" => 1.0,
         "iterative_total" => 2
@@ -300,8 +312,9 @@ RSpec.describe "DungeonMaster — iterative roll resolution", type: :service do
         "remaining_actions"     => [],
         "prior_narrate_seeds"   => [],
         "remaining_iterative_rolls" => [
-          { "skill" => "Fortitude", "type" => "fortitude_save", "dc" => 11,
-            "iterative" => true, "sequence" => 2 }
+          { "type" => "fortitude_save", "dc" => 12,
+            "description" => "Forced march Fort save (phase 2)", "phase" => "Phase 2 — DC 12",
+            "iterative" => true, "sequence" => 2, "qualifier_context_hints" => [], "domain" => "traversal" }
         ],
         "iterative_time_hours" => 1.0,
         "iterative_total" => 2
@@ -359,8 +372,9 @@ RSpec.describe "DungeonMaster — iterative roll resolution", type: :service do
         "remaining_actions"     => [],
         "prior_narrate_seeds"   => [],
         "remaining_iterative_rolls" => [
-          { "skill" => "Fortitude", "type" => "fortitude_save", "dc" => 11,
-            "iterative" => true, "sequence" => 2 }
+          { "type" => "fortitude_save", "dc" => 12,
+            "description" => "Forced march Fort save (phase 2)", "phase" => "Phase 2 — DC 12",
+            "iterative" => true, "sequence" => 2, "qualifier_context_hints" => [], "domain" => "traversal" }
         ],
         "iterative_time_hours" => 1.0,
         "iterative_total" => 2
@@ -396,8 +410,9 @@ RSpec.describe "DungeonMaster — iterative roll resolution", type: :service do
         "remaining_actions"     => [],
         "prior_narrate_seeds"   => [],
         "remaining_iterative_rolls" => [
-          { "skill" => "Fortitude", "type" => "fortitude_save", "dc" => 11,
-            "iterative" => true, "sequence" => 2 }
+          { "type" => "fortitude_save", "dc" => 12,
+            "description" => "Forced march Fort save (phase 2)", "phase" => "Phase 2 — DC 12",
+            "iterative" => true, "sequence" => 2, "qualifier_context_hints" => [], "domain" => "traversal" }
         ],
         "iterative_time_hours" => 1.0,
         "iterative_total" => 2
