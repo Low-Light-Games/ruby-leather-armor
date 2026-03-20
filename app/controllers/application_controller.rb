@@ -34,6 +34,7 @@ class ApplicationController < ActionController::Base
     
     unless policy.public_send(query)
       render json: { error: 'Access denied' }, status: :forbidden
+      return
     end
   end
 
