@@ -1,0 +1,60 @@
+name: Claude Create PR
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      instruction:
+        description: "What should Claude do?"
+        required: true
+        type: string
+      base_branch:
+        description: "Base branch for the PR"
+        required: false
+        default: "main"
+        type: string
+
+jobs:
+  claude-pr:
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && 
+       contains(github.event.comment.body, '@claude create pr') ||
+       contains(github.event.comment.body, '@claude open pr'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get instruction
+        id: instruction
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "text=${{ inputs.instruction }}" >> $GITHUB_OUTPUT
+            echo "base=${{ inputs.base_branch }}" >> $GITHUB_OUTPUT
+          else
+            COMMENT="${{ github.event.comment.body }}"
+            echo "text=${COMMENT}" >> $GITHUB_OUTPUT
+            echo "base=main" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          instruction: |
+            ${{ steps.instruction.outputs.text }}
+            
+            When done with your changes:
+            1. Create a new branch with a descriptive name
+            2. Commit your changes with a clear commit message
+            3. Open a pull request against ${{ steps.instruction.outputs.base }}
+            4. The PR description should explain what was changed and why
