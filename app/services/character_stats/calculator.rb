@@ -142,10 +142,11 @@ module CharacterStats
       race_info  = RACE_DATA[@src.race] || RACE_DATA["human"]
       class_info = CLASS_DATA[@src.character_class]
 
-      # 1. Racial modifiers → final scores → ability mods
-      racial_mods  = compute_racial_mods(race_info)
-      final_scores = compute_final_scores(racial_mods)
-      mods         = compute_ability_mods(final_scores)
+      # 1. Racial modifiers → final scores → condition penalties → ability mods
+      racial_mods   = compute_racial_mods(race_info)
+      pre_condition = compute_final_scores(racial_mods)
+      final_scores  = apply_condition_penalties(pre_condition)
+      mods          = compute_ability_mods(final_scores)
 
       # 2. BAB (scaled by level)
       bab = class_info ? compute_bab(class_info[:bab], @src.level) : 0
@@ -203,12 +204,13 @@ module CharacterStats
 
       armor_ac = equip[:armor_bonus]
       shield_ac = equip[:shield_bonus]
+      cond_ac_mod = ac_modifier_from_conditions(active_conditions)
 
       ac    = 10 + effective_dex_mod + ac_size + armor_ac + shield_ac +
-              feat_stat_bonuses[:ac] + equip_stat_bonuses[:ac]
+              feat_stat_bonuses[:ac] + equip_stat_bonuses[:ac] + cond_ac_mod
       t_ac  = 10 + effective_dex_mod + ac_size +
-              feat_stat_bonuses[:ac] + equip_stat_bonuses[:ac]  # touch: no armor/shield
-      ff_ac = 10 + ac_size + armor_ac + shield_ac  # flat-footed: no DEX, no dodge
+              feat_stat_bonuses[:ac] + equip_stat_bonuses[:ac] + cond_ac_mod
+      ff_ac = 10 + ac_size + armor_ac + shield_ac + cond_ac_mod
 
       cmb = bab + mods["strength"] + cmb_size
       cmd = 10 + bab + mods["strength"] + effective_dex_mod + cmb_size
@@ -227,15 +229,50 @@ module CharacterStats
       ranged_attack = bab + effective_dex_mod + ac_size +
                       feat_stat_bonuses[:ranged_attack] + equip_stat_bonuses[:ranged_attack]
 
-      # 12. Speed (armor may reduce speed)
+      # 12. Speed (armor may reduce speed, conditions may halve it)
       base_speed = race_info[:speed]
       speed = compute_effective_speed(base_speed, equip, encumbrance)
+      cond_speed_mult = Conditions.speed_multiplier(active_conditions)
+      speed = (speed * cond_speed_mult).floor if cond_speed_mult < 1.0
 
       # 13. Arcane spell failure (stacks from armor + shield)
       arcane_spell_failure = equip[:arcane_spell_failure]
 
       # 14. Skills (with ACP applied to relevant skills)
       skills = compute_skills(mods, race_info, feat_skill_bonuses, equip_skill_bonuses, total_acp)
+
+      # ── Stat breakdowns ──
+      ac_breakdown = build_breakdown(
+        { label: "Base", value: 10 },
+        { label: "Dex Mod", value: effective_dex_mod },
+        { label: "Size", value: ac_size },
+        { label: "Armor", value: armor_ac },
+        { label: "Shield", value: shield_ac },
+        { label: "Feat", value: feat_stat_bonuses[:ac] },
+        { label: "Equipment", value: equip_stat_bonuses[:ac] },
+        *condition_breakdown_entries(active_conditions, :ac_modifiers, "all"),
+      )
+
+      fort_breakdown = build_breakdown(
+        { label: "Base Save", value: compute_base_save(good_saves.include?("fort"), @src.level) },
+        { label: "CON Mod", value: mods["constitution"] },
+        { label: "Feat", value: feat_stat_bonuses[:fort_save] },
+        { label: "Equipment", value: equip_stat_bonuses[:fort_save] },
+      )
+
+      ref_breakdown = build_breakdown(
+        { label: "Base Save", value: compute_base_save(good_saves.include?("ref"), @src.level) },
+        { label: "DEX Mod", value: mods["dexterity"] },
+        { label: "Feat", value: feat_stat_bonuses[:ref_save] },
+        { label: "Equipment", value: equip_stat_bonuses[:ref_save] },
+      )
+
+      will_breakdown = build_breakdown(
+        { label: "Base Save", value: compute_base_save(good_saves.include?("will"), @src.level) },
+        { label: "WIS Mod", value: mods["wisdom"] },
+        { label: "Feat", value: feat_stat_bonuses[:will_save] },
+        { label: "Equipment", value: equip_stat_bonuses[:will_save] },
+      )
 
       {
         final_scores: final_scores,
@@ -271,10 +308,63 @@ module CharacterStats
           heavy: carry_caps[2],
         },
         encumbrance: encumbrance,
+        # ── Condition data ──
+        active_conditions: active_conditions,
+        condition_restrictions: Conditions.restrictions(active_conditions),
+        # ── Stat breakdowns ──
+        ac_breakdown: ac_breakdown,
+        fort_breakdown: fort_breakdown,
+        ref_breakdown: ref_breakdown,
+        will_breakdown: will_breakdown,
       }
     end
 
     private
+
+    # ── Conditions ──────────────────────────────────────────────
+
+    def active_conditions
+      @active_conditions ||= Array(@src.try(:conditions))
+    end
+
+    def apply_condition_penalties(scores)
+      conds = active_conditions
+      return scores if conds.empty?
+
+      adjusted = scores.dup
+      Conditions.effective_scores(conds).each do |ability, value|
+        adjusted[ability] = value
+      end
+      Conditions.ability_penalties(conds).each do |ability, penalty|
+        next if Conditions.effective_scores(conds).key?(ability)
+        adjusted[ability] = (adjusted[ability] + penalty).clamp(0, 99)
+      end
+      adjusted
+    end
+
+    def ac_modifier_from_conditions(conds)
+      total = 0
+      conds.each do |cond_name|
+        defn = Conditions::DEFINITIONS[cond_name]
+        next unless defn && defn[:ac_modifiers]
+        total += defn[:ac_modifiers]["all"].to_i
+      end
+      total
+    end
+
+    def build_breakdown(*entries)
+      entries.flatten.select { |e| e[:value].to_i != 0 || e[:label] == "Base" }
+    end
+
+    def condition_breakdown_entries(conds, effect_key, sub_key)
+      conds.filter_map do |cond_name|
+        defn = Conditions::DEFINITIONS[cond_name]
+        next unless defn && defn[effect_key]
+        value = defn[effect_key][sub_key].to_i
+        next if value == 0
+        { label: cond_name.capitalize, value: value, type: "condition" }
+      end
+    end
 
     # ── Ability score pipeline ────────────────────────────────────
 

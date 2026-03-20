@@ -18,6 +18,15 @@ Check the player's intended action against the character sheet above.
 
 Be conservative: only reject if you are confident the player is referencing a specific named
 ability they do not have. Ambiguous or creative descriptions of standard actions should be ALLOWED.
+<% if @condition_restrictions.present? %>
+
+=== ACTIVE RESTRICTIONS ===
+The character currently CANNOT perform the following due to active conditions:
+<% @condition_restrictions.each do |r| %>
+- <%= r.humanize %>
+<% end %>
+If the player's action requires any restricted activity, set allowed to false and explain which condition prevents it.
+<% end %>
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {

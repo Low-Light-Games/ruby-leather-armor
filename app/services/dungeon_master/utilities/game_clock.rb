@@ -42,6 +42,7 @@ module DungeonMaster
 
         if rest_action?(intent)
           ctx["hours_since_last_rest"] = 0
+          ctx["rest_clears_fatigue"] = true
         end
 
         adventure.update!(time_context: ctx)
@@ -59,7 +60,8 @@ module DungeonMaster
         since_rest = (time_context["hours_since_last_rest"] || 0).to_f
 
         if since_rest >= FATIGUE_THRESHOLD_HOURS
-          alerts << { type: :fatigue, hours_awake: since_rest.round(1) }
+          condition = since_rest >= 32 ? "exhausted" : "fatigued"
+          alerts << { type: :fatigue, hours_awake: since_rest.round(1), condition: condition }
         end
 
         alerts

@@ -77,6 +77,9 @@ module DungeonMaster
         new_hp = (@sheet.hp + hp_change.to_i).clamp(-@sheet.constitution, @sheet.max_hp)
         @sheet.update!(hp: new_hp)
       end
+
+      conditions_changed = apply_conditions(@sheet, player_muts[:conditions_add], player_muts[:conditions_remove])
+      @sheet.recompute_derived_stats! if conditions_changed
     end
 
     def apply_npc_mutations(npc_muts)
@@ -97,7 +100,29 @@ module DungeonMaster
           new_attitude = attitude[:to]
           creature.update!(attitude: new_attitude) if new_attitude && CreatureSheet::ATTITUDES.include?(new_attitude)
         end
+
+        conditions_changed = apply_conditions(creature, npc_mut[:conditions_add], npc_mut[:conditions_remove])
+        creature.recompute_derived_stats! if conditions_changed
       end
+    end
+
+    def apply_conditions(sheet, add, remove)
+      current = Array(sheet.conditions).dup
+      changed = false
+
+      Array(remove).each do |cond|
+        next unless CharacterStats::Conditions.valid?(cond)
+        changed = true if current.delete(cond)
+      end
+
+      Array(add).each do |cond|
+        next unless CharacterStats::Conditions.valid?(cond)
+        current = CharacterStats::Conditions.upgrade(current, cond)
+        changed = true
+      end
+
+      sheet.update!(conditions: current.uniq) if changed
+      changed
     end
 
     def create_creature_from_bestiary(entry, display_name)

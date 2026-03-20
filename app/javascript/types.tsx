@@ -61,6 +61,20 @@ export interface DerivedStats {
     heavy: number
   }
   encumbrance: string
+  // Condition data
+  active_conditions: string[]
+  condition_restrictions: string[]
+  // Stat breakdowns (for tooltip display)
+  ac_breakdown?: StatBreakdownLine[]
+  fort_breakdown?: StatBreakdownLine[]
+  ref_breakdown?: StatBreakdownLine[]
+  will_breakdown?: StatBreakdownLine[]
+}
+
+export interface StatBreakdownLine {
+  label: string
+  value: number | string
+  type?: 'bonus' | 'penalty' | 'base' | 'condition'
 }
 
 export interface DerivedSkill {

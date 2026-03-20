@@ -31,9 +31,12 @@ module DungeonMaster
 
         prompt_summary = "SanityChecker/capability: \"#{@log.truncate(intent[:intention])}\""
         char_block = CharacterBlock.full(@sheet)
+        ds = @sheet.derived_stats || {}
+        restrictions = Array(ds["condition_restrictions"])
 
         system_prompt = PromptRenderer.render("sanity_checker",
-          character_block: char_block)
+          character_block: char_block,
+          condition_restrictions: restrictions)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
 
