@@ -5,7 +5,7 @@ domains are affected, what mechanical checks are needed, and what NPC actions oc
 === PLAYER CHARACTER ===
 <%= @character_block %>
 
-<%= @micro_contexts %>
+<%= @micro_contexts.present? ? @micro_contexts : "(no active contexts — adventure just started)" %>
 <% if @creature_stats.present? -%>
 
 === NPC/CREATURE STATS ===
@@ -13,11 +13,12 @@ domains are affected, what mechanical checks are needed, and what NPC actions oc
 <% end -%>
 <% if @extra_context.present? -%>
 
+=== STORY LOCATIONS ===
 <%= @extra_context %>
 <% end -%>
 
 === SCENE SUMMARY ===
-<%= @scene_summary %>
+<%= @scene_summary.presence || "(no scene summary)" %>
 <% if @rules_manifest.present? -%>
 
 === RULES MANIFEST ===

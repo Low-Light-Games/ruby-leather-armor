@@ -107,13 +107,13 @@ module DungeonMaster
         raw = nil
         prompt_summary = "Encounter expansion: #{entry.title}"
 
-        system_prompt = PromptRenderer.render("encounter_expansion",
+        system_prompt, user_msg = PromptRenderer.render_with_user_message("encounter_expansion",
           hint: entry.description,
           location: adventure.current_location&.name || "the wilderness",
           traversal_context: adventure.traversal_context)
 
-        request_body = { system_prompt: system_prompt, user_message: "Expand this encounter." }
-        raw = ai.chat(system_prompt: system_prompt, user_message: "Expand this encounter.",
+        request_body = { system_prompt: system_prompt, user_message: user_msg }
+        raw = ai.chat(system_prompt: system_prompt, user_message: user_msg,
                       max_tokens: config.token_budget_for("narrate"), step_name: "encounter_expand",
                       model: config.model_for("narrate"))
         parsed = ai.parse_json(raw, fallback_as: :dm_response)

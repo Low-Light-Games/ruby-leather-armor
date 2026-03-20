@@ -4,10 +4,14 @@ the current game world state. Players cannot interact with things that
 do not exist in the scene.
 
 === CURRENT SCENE ===
-<%= @scene_summary %>
+<%= @scene_summary.presence || "(no scene established yet)" %>
 
 === RECENT SCENE HISTORY ===
-<%= @scene_history_block %>
+<% if @scene_history.any? -%>
+<%= @scene_history.map { |h| "- #{h['summary']}" }.join("\n") %>
+<% else -%>
+(no prior scene history)
+<% end -%>
 
 === ACTIVE GAME STATE ===
 <% @micro_contexts.each do |field, ctx| -%>

@@ -1,0 +1,11 @@
+=== PACING ===
+<% if @verbose -%>
+- You may write longer, more detailed responses when the scene calls for it.
+- Use rich descriptions, dialogue, and atmosphere.
+- Still end at a natural point where the player can act.
+<% else -%>
+- Keep each response SHORT: 1-2 paragraphs, roughly <%= @words_min %>-<%= @words_max %> words.
+- Be iterative: narrate one beat, then pause for the player to react.
+- Do NOT dump long exposition.
+- End each response at a natural decision point.
+<% end -%>

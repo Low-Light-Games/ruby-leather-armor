@@ -56,18 +56,11 @@ module DungeonMaster
         prompt_summary = "SanityChecker/world: \"#{@log.truncate(intent[:intention])}\""
 
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
-        scene_history = Array(@adventure.scene_history)
-        scene_history_block = if scene_history.any?
-                                scene_history.map { |h| "- #{h['summary']}" }.join("\n")
-                              else
-                                "(no prior scene history)"
-                              end
-
         npc_names = @adventure.story.story_npcs.pluck(:name)
 
         system_prompt = PromptRenderer.render("sanity_checker_world",
-          scene_summary: @adventure.scene_summary || "(no scene established yet)",
-          scene_history_block: scene_history_block,
+          scene_summary: @adventure.scene_summary,
+          scene_history: Array(@adventure.scene_history),
           micro_contexts: micro_contexts,
           npc_names: npc_names)
 

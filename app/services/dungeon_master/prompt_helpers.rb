@@ -19,7 +19,7 @@ module DungeonMaster
         ctx = adventure.send("#{field}_context")
         "=== #{field.upcase} CONTEXT ===\n#{ctx.to_json}" if ctx.present?
       end
-      parts.any? ? parts.join("\n\n") : "=== CONTEXT ===\n(no active contexts — adventure just started)"
+      parts.any? ? parts.join("\n\n") : nil
     end
 
     def format_contexts(micro_contexts)
@@ -41,38 +41,16 @@ module DungeonMaster
     end
 
     def pacing_instructions(config)
-      if config.verbose?
-        <<~PACING
-          === PACING ===
-          - You may write longer, more detailed responses when the scene calls for it.
-          - Use rich descriptions, dialogue, and atmosphere.
-          - Still end at a natural point where the player can act.
-        PACING
-      else
-        <<~PACING
-          === PACING ===
-          - Keep each response SHORT: 1-2 paragraphs, roughly #{config.pacing_words_min}-#{config.pacing_words_max} words.
-          - Be iterative: narrate one beat, then pause for the player to react.
-          - Do NOT dump long exposition.
-          - End each response at a natural decision point.
-        PACING
-      end
+      PromptRenderer.render_partial("narrate/_pacing",
+        verbose: config.verbose?,
+        words_min: config.pacing_words_min,
+        words_max: config.pacing_words_max)
     end
 
     def directed_play_instructions(adventure)
       return "" unless adventure.directed_dm?
 
-      <<~DIRECTED
-
-        === DIRECTED PLAY STYLE ===
-        The player has opted for a directed play style. You MUST:
-        - Actively drive the story forward. Do not leave the player in open-ended
-          situations without guidance.
-        - End EVERY response with 2-3 concrete choices or suggestions for what
-          the player can do next.
-        - Be imperative: nudge the player toward meaningful action.
-        - Keep the adventure moving. Avoid long pauses or scenes that drift.
-      DIRECTED
+      PromptRenderer.render_partial("narrate/_directed_play")
     end
   end
 end

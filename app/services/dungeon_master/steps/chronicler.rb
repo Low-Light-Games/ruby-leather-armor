@@ -29,7 +29,7 @@ module DungeonMaster
         traversal_ctx = @adventure.traversal_context
         exploration_ctx = @adventure.exploration_context
 
-        system_prompt = PromptRenderer.render("chronicler",
+        system_prompt, user_msg = PromptRenderer.render_with_user_message("chronicler",
           enriched_premise: enriched_premise,
           discovered_clues: all_clues.select { |c| discovered_ids.include?(c.id) }.map { |c| { id: c.id, title: c.title } },
           attempted_clues: all_clues.select { |c| attempted_ids.include?(c.id) }.map { |c| { id: c.id, title: c.title } },
@@ -44,15 +44,14 @@ module DungeonMaster
           social_context: social_ctx,
           traversal_context: traversal_ctx,
           exploration_context: exploration_ctx,
-          encounter_triggered: encounter_triggered,
-        )
+          encounter_triggered: encounter_triggered)
 
-        request_body = { system_prompt: system_prompt, user_message: "Evaluate plot state for this action." }
+        request_body = { system_prompt: system_prompt, user_message: user_msg }
 
         parsed = timed_ai_call("chronicler", prompt_summary, request_body) do
           raw = @ai.chat(
             system_prompt: system_prompt,
-            user_message: "Evaluate plot state for this action.",
+            user_message: user_msg,
             max_tokens: @config.token_budget_for("chronicler"),
             step_name: "chronicler",
             model: @config.model_for("chronicler"),
@@ -67,13 +66,9 @@ module DungeonMaster
           new_data: { "adventure_complete" => adventure_complete },
           timeline_entry: { "step" => "chronicler", "summary" => "adventure_complete=#{adventure_complete}", "at" => Time.current.iso8601 })
 
-        guidance = parsed["narration_guidance"].to_s
-        forbidden = Array(parsed["forbidden_elements"])
-        brief = guidance
-        brief += "\nFORBIDDEN — do NOT mention or allude to: #{forbidden.join(', ')}" if forbidden.any?
-
         {
-          dm_brief: brief,
+          dm_brief: parsed["narration_guidance"].to_s.presence,
+          forbidden_elements: Array(parsed["forbidden_elements"]),
           clues_revealed: parsed["clues_to_reveal"] || [],
           npc_reactions: parsed["npc_reactions"] || {},
           milestones_reached: parsed["milestones_reached"] || [],

@@ -7,10 +7,10 @@ Your job is to evaluate the player's circumstances and determine:
 <%= @mechanical_summary %>
 
 === SITUATIONAL CONTEXT ===
-<%= @context_block %>
+<%= @context_block.present? ? @context_block : "(no relevant context data available)" %>
 
 === SCENE SUMMARY ===
-<%= @scene_summary %>
+<%= @scene_summary.presence || "(no scene summary)" %>
 
 === ROLLS TO QUALIFY ===
 <%= @rolls_json %>

@@ -15,7 +15,7 @@ module DungeonMaster
     module Stagehand
       private
 
-      def run_output_phase(intent, narrate_seed:, mutations:, dm_brief: nil, extra: {})
+      def run_output_phase(intent, narrate_seed:, mutations:, dm_brief: nil, forbidden_elements: [], extra: {})
         warmaster_result = maybe_initialize_combat(intent)
         if warmaster_result && warmaster_result[:status] == :awaiting_initiative
           return {
@@ -37,10 +37,12 @@ module DungeonMaster
         if narration_mode == "subjugated"
           run_subjugated_output(intent, narrate_seed: narrate_seed, what_happened: what_happened,
                                 mutations: mutations, dm_brief: dm_brief,
+                                forbidden_elements: forbidden_elements,
                                 encounter_triggered: enc_triggered, affected_contexts: affected_contexts)
         else
           run_parallel_output(intent, narrate_seed: narrate_seed, what_happened: what_happened,
                               mutations: mutations, dm_brief: dm_brief,
+                              forbidden_elements: forbidden_elements,
                               encounter_triggered: enc_triggered, affected_contexts: affected_contexts)
         end => narration
 
@@ -51,13 +53,14 @@ module DungeonMaster
       end
 
       def run_parallel_output(intent, narrate_seed:, what_happened:, mutations:,
-                              dm_brief:, encounter_triggered: false,
+                              dm_brief:, forbidden_elements: [], encounter_triggered: false,
                               affected_contexts: nil)
         narration = nil
 
         narrate_thread = Thread.new do
           ActiveRecord::Base.connection_pool.with_connection do
             narration = run_narrate(narrate_seed, intent: intent, dm_brief: dm_brief,
+                                    forbidden_elements: forbidden_elements,
                                     encounter_triggered: encounter_triggered)
           end
         end
@@ -75,13 +78,14 @@ module DungeonMaster
       end
 
       def run_subjugated_output(intent, narrate_seed:, what_happened:, mutations:,
-                                dm_brief:, encounter_triggered: false,
+                                dm_brief:, forbidden_elements: [], encounter_triggered: false,
                                 affected_contexts: nil)
         run_context_updates(what_happened, mutations,
                             affected_contexts: affected_contexts,
                             macro_significant: intent[:macro_significant])
 
         run_narrate(narrate_seed, intent: intent, dm_brief: dm_brief,
+                    forbidden_elements: forbidden_elements,
                     encounter_triggered: encounter_triggered)
       end
 

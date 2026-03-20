@@ -8,18 +8,18 @@ module DungeonMaster
     module DmQuery
       private
 
-      def run_dm_query(sanitized_input, dm_brief: nil)
+      def run_dm_query(sanitized_input, dm_brief: nil, forbidden_elements: [])
         prompt_summary = "DM Query: \"#{@log.truncate(sanitized_input)}\""
 
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
-        spoiler_guidance = dm_brief.present? ? "DM Brief: #{dm_brief}" : "Do NOT reveal hidden information the player's character has not yet discovered."
 
         system_prompt = PromptRenderer.render("dm_query",
           story_title: @adventure.story.title,
           story_summary: @adventure.story_summary,
           contexts_text: PromptHelpers.format_contexts(micro_contexts),
           guidance: Rules.guidance_for("dm_query"),
-          spoiler_guidance: spoiler_guidance)
+          dm_brief: dm_brief,
+          forbidden_elements: Array(forbidden_elements))
 
         request_body = { system_prompt: system_prompt, user_message: sanitized_input }
 

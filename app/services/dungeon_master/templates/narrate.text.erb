@@ -4,7 +4,10 @@ You do NOT adjudicate rules, track state, or request rolls — that has already 
 
 === STORY ===
 Title: <%= @story_title %>
-<%= @story_context %>
+Hook: <%= @story_hook %>
+<% if @dm_brief.present? -%>
+DM Brief (follow these instructions carefully): <%= @dm_brief %>
+<% end -%>
 
 === STORY SO FAR ===
 <%= @story_summary.presence || "(adventure just started)" %>
@@ -60,8 +63,11 @@ End at the moment the player must decide how to react (fight, flee, negotiate, e
 - Narrate the outcome faithfully (do not contradict the mechanical or factual results).
 - SPOILER PREVENTION: Do NOT reference or allude to story elements, locations, entities,
   or plot points that are not mentioned in WHAT HAPPENED or the DM Brief above.
-  If the DM Brief includes a FORBIDDEN list, you must not mention any of those elements
-  under any circumstances — not even as vague hints, rumors, or atmospheric details.
+<% if @forbidden_elements.present? -%>
+- FORBIDDEN ELEMENTS — do NOT mention or allude to any of the following under any
+  circumstances, not even as vague hints, rumors, or atmospheric details:
+  <%= @forbidden_elements.join(", ") %>
+<% end -%>
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
   "narrative": "Your DM narration here"

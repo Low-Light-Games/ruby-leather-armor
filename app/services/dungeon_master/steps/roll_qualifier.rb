@@ -45,7 +45,7 @@ module DungeonMaster
           mechanical_summary: evaluation[:mechanical_summary],
           rolls_json: rolls.to_json,
           context_block: context_block,
-          scene_summary: @adventure.scene_summary.presence || "(no scene summary)")
+          scene_summary: @adventure.scene_summary)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
 
@@ -85,7 +85,7 @@ module DungeonMaster
           end
           "=== #{field.upcase} CONTEXT ===\n#{ctx.to_json}" if ctx.present?
         end
-        parts.any? ? parts.join("\n\n") : "(no relevant context data available)"
+        parts.any? ? parts.join("\n\n") : nil
       end
 
       def apply_qualifier_results(evaluation, parsed)

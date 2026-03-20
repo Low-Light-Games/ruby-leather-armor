@@ -9,7 +9,7 @@ determine the factual outcome and produce structured mutations.
 <%= @mechanical_summaries_text %>
 
 === ROLL RESULTS ===
-<%= @roll_results %>
+<%= @roll_results.present? ? @roll_results : "(no rolls required — action succeeds without checks)" %>
 
 === PENDING CONSEQUENCES ===
 <%= @consequences.presence || "(none)" %>
