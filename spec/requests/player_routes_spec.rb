@@ -75,10 +75,55 @@ RSpec.describe "Player routes", type: :request do
       end
     end
 
-    describe "GET /feature_flags" do
-      it "returns 200" do
-        get "/feature_flags", headers: { "Accept" => "application/json" }
-        expect(response).to have_http_status(:ok)
+    describe "PATCH /adventures/:id/update_micro_contexts" do
+      let(:adventure) { create(:adventure, user: user) }
+      let(:admin_user) { create(:user, :admin) }
+
+      context "when authenticated as admin" do
+        before { sign_in_via_session(admin_user) }
+
+        it "returns 200 and updates the contexts" do
+          new_context = { "current_location" => "Forest" }
+          patch "/adventures/#{adventure.id}/update_micro_contexts",
+                params: { traversal_context: new_context },
+                headers: { "Accept" => "application/json" }
+          expect(response).to have_http_status(:ok)
+          expect(JSON.parse(response.body)).to eq({ "success" => true })
+          adventure.reload
+          expect(adventure.traversal_context).to eq(new_context)
+        end
+
+        it "only updates provided contexts" do
+          original_combat = adventure.combat_context
+          patch "/adventures/#{adventure.id}/update_micro_contexts",
+                params: { traversal_context: { "test" => "value" } },
+                headers: { "Accept" => "application/json" }
+          expect(response).to have_http_status(:ok)
+          adventure.reload
+          expect(adventure.traversal_context).to eq({ "test" => "value" })
+          expect(adventure.combat_context).to eq(original_combat)
+        end
+      end
+
+      context "when authenticated as non-admin" do
+        it "returns 403" do
+          patch "/adventures/#{adventure.id}/update_micro_contexts",
+                params: { traversal_context: {} },
+                headers: { "Accept" => "application/json" }
+          expect(response).to have_http_status(:forbidden)
+          expect(JSON.parse(response.body)).to eq({ "error" => "Unauthorized" })
+        end
+      end
+
+      context "when not authenticated" do
+        before { sign_in_via_session(nil) }
+
+        it "returns 401" do
+          patch "/adventures/#{adventure.id}/update_micro_contexts",
+                params: { traversal_context: {} },
+                headers: { "Accept" => "application/json" }
+          expect(response).to have_http_status(:unauthorized)
+        end
       end
     end
   end

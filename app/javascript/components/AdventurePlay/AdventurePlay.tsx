@@ -24,6 +24,22 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const spellbook = useSpellbook(adventure, ds, setAdventure);
   const inventory = useInventory(adventure, setAdventure);
 
+  const updateMicroContexts = async (contexts: Record<string, any>) => {
+    const response = await fetch(`/adventures/${adventureId}/update_micro_contexts`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || ''
+      },
+      body: JSON.stringify(contexts)
+    });
+    if (response.ok) {
+      setAdventure(prev => prev ? { ...prev, ...contexts } : null);
+    } else {
+      throw new Error('Failed to update contexts');
+    }
+  };
+
   // ── Early returns (loading / auth / error) ─────────────────────
 
   if (authLoading) {
@@ -109,6 +125,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           storySummary={adventure.story_summary}
           sceneSummary={adventure.scene_summary}
           currentCategory={adventure.current_category}
+          onUpdateContexts={updateMicroContexts}
         />
       </div>
 

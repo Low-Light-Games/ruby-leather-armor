@@ -72,5 +72,8 @@ Rails.application.routes.draw do
     resource :adventure_sheet, only: [:update] do
       patch :toggle_equip
     end
+    member do
+      patch :update_micro_contexts
+    end
   end
 end

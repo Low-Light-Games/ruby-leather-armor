@@ -23,6 +23,7 @@ interface StorySidebarProps {
   storySummary: string | null;
   sceneSummary: string | null;
   currentCategory: string | null;
+  onUpdateContexts: (contexts: Record<string, any>) => Promise<void>;
 }
 
 const isContextActive = (ctx: Record<string, unknown> | null): boolean =>
@@ -32,23 +33,55 @@ const ContextSection: React.FC<{
   label: string;
   className: string;
   context: Record<string, unknown> | null;
-}> = ({ label, className, context }) => {
-  if (!isContextActive(context)) return null;
+  contextKey: string;
+  isEditing: boolean;
+  editedJson: string;
+  onEdit: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+  onJsonChange: (json: string) => void;
+  saving: boolean;
+  error: string | null;
+}> = ({ label, className, context, contextKey, isEditing, editedJson, onEdit, onSave, onCancel, onJsonChange, saving, error }) => {
+  if (!isContextActive(context) && !isEditing) return null;
 
   return (
     <div className="context-section context-debug-section">
       <div className="context-header">
         <h4>{label}</h4>
         <span className={`category-badge ${className}`}>{label}</span>
-      </div>
-      <div className="context-body context-detail-list">
-        {Object.entries(context!).map(([key, value]) => (
-          <div key={key} className="context-entry">
-            <span className="context-key">{key.replace(/_/g, ' ')}</span>
-            <span className="context-value">{formatContextValue(value)}</span>
+        {isEditing ? (
+          <div className="context-actions">
+            <button onClick={onSave} disabled={saving} className="btn btn-small btn-primary">
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+            <button onClick={onCancel} disabled={saving} className="btn btn-small btn-secondary">
+              Cancel
+            </button>
           </div>
-        ))}
+        ) : (
+          <button onClick={onEdit} className="btn btn-small btn-outline">Edit</button>
+        )}
       </div>
+      {error && <div className="error-message">{error}</div>}
+      {isEditing ? (
+        <textarea
+          value={editedJson}
+          onChange={(e) => onJsonChange(e.target.value)}
+          className="context-editor"
+          rows={10}
+          disabled={saving}
+        />
+      ) : (
+        <div className="context-body context-detail-list">
+          {Object.entries(context!).map(([key, value]) => (
+            <div key={key} className="context-entry">
+              <span className="context-key">{key.replace(/_/g, ' ')}</span>
+              <span className="context-value">{formatContextValue(value)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -95,12 +128,43 @@ export const StorySidebar: React.FC<StorySidebarProps> = ({
   storySummary,
   sceneSummary,
   currentCategory,
+  onUpdateContexts,
 }) => {
   const { user } = useAuth();
   const isAdmin = user?.admin ?? false;
   const [debugOpen, setDebugOpen] = useState(false);
+  const [editingContext, setEditingContext] = useState<string | null>(null);
+  const [editedJson, setEditedJson] = useState<string>('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const categoryInfo = currentCategory ? CATEGORY_LABELS[currentCategory] : null;
+  const handleEdit = (contextKey: string, context: Record<string, unknown> | null) => {
+    setEditingContext(contextKey);
+    setEditedJson(JSON.stringify(context || {}, null, 2));
+    setError(null);
+  };
+
+  const handleSave = async () => {
+    if (!editingContext) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const parsed = JSON.parse(editedJson);
+      await onUpdateContexts({ [editingContext]: parsed });
+      setEditingContext(null);
+      setEditedJson('');
+    } catch (err) {
+      setError('Invalid JSON');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditingContext(null);
+    setEditedJson('');
+    setError(null);
+  };
 
   const contexts: Array<{ key: string; label: string; className: string; ctx: Record<string, unknown> | null }> = [
     { key: 'traversal', label: 'Traversal', className: 'cat-traversal', ctx: traversalContext },
@@ -163,6 +227,15 @@ export const StorySidebar: React.FC<StorySidebarProps> = ({
               label={c.label}
               className={c.className}
               context={c.ctx}
+              contextKey={c.key}
+              isEditing={editingContext === c.key}
+              editedJson={editingContext === c.key ? editedJson : ''}
+              onEdit={() => handleEdit(c.key, c.ctx)}
+              onSave={handleSave}
+              onCancel={handleCancel}
+              onJsonChange={setEditedJson}
+              saving={saving}
+              error={editingContext === c.key ? error : null}
             />
           ))}
         </div>

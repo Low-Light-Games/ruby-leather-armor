@@ -99,6 +99,29 @@ class AdventuresController < ApplicationController
     render json: { message: "Adventure deleted" }, status: :ok
   end
 
+  # PATCH /adventures/:id/update_micro_contexts - admin-only endpoint to update micro contexts
+  def update_micro_contexts
+    @adventure = Adventure.kept.find(params[:id])
+    authorize(@adventure)
+
+    unless current_user.admin?
+      render json: { error: 'Unauthorized' }, status: :forbidden
+      return
+    end
+
+    update_params = params.permit(
+      traversal_context: {},
+      combat_context: {},
+      social_context: {},
+      exploration_context: {},
+      rest_context: {},
+      inventory_context: {}
+    )
+
+    @adventure.update!(update_params)
+    render json: { success: true }
+  end
+
   private
 
   def set_adventure
