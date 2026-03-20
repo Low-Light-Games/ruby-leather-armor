@@ -15,6 +15,10 @@ class AdventurePolicy < ApplicationPolicy
     admin? || owner?
   end
 
+  def update_micro_contexts?
+    admin?
+  end
+
   class Scope < ApplicationPolicy::Scope
     def resolve
       if user.admin?
