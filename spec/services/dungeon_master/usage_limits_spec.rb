@@ -1,0 +1,143 @@
+require "rails_helper"
+
+RSpec.describe "AI usage limit enforcement", type: :service do
+  include_context "with mocked ai"
+
+  let(:user)      { create(:user) }
+  let(:story)     { create(:story) }
+  let(:adventure) { create(:adventure, user: user, story: story) }
+  let!(:sheet)    { create(:adventure_sheet, adventure: adventure).tap(&:recompute_derived_stats!) }
+
+  describe "User#usage_limit_reached?" do
+    it "returns false for a fresh user" do
+      expect(user.usage_limit_reached?).to be false
+    end
+
+    it "returns true when monthly usage meets the free tier limit" do
+      limit = User::TIER_LIMITS["free"]
+      user.ai_usage_records.create!(
+        model_id: "gpt-4o-mini",
+        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
+        input_cost_microdollars: limit / 2,
+        output_cost_microdollars: limit / 2,
+        total_cost_microdollars: limit
+      )
+
+      expect(user.usage_limit_reached?).to be true
+    end
+
+    it "returns false when usage is below the limit" do
+      limit = User::TIER_LIMITS["free"]
+      user.ai_usage_records.create!(
+        model_id: "gpt-4o-mini",
+        input_tokens: 10, output_tokens: 5, reasoning_tokens: 0, total_tokens: 15,
+        input_cost_microdollars: 100,
+        output_cost_microdollars: 100,
+        total_cost_microdollars: 200
+      )
+
+      expect(user.usage_limit_reached?).to be false
+    end
+
+    it "only counts records from the current month" do
+      limit = User::TIER_LIMITS["free"]
+      user.ai_usage_records.create!(
+        model_id: "gpt-4o-mini",
+        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
+        input_cost_microdollars: limit / 2,
+        output_cost_microdollars: limit / 2,
+        total_cost_microdollars: limit,
+        created_at: 2.months.ago
+      )
+
+      expect(user.usage_limit_reached?).to be false
+    end
+
+    it "respects the paid tier limit" do
+      user.update!(tier: "paid")
+      free_limit = User::TIER_LIMITS["free"]
+
+      user.ai_usage_records.create!(
+        model_id: "gpt-4o-mini",
+        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
+        input_cost_microdollars: free_limit / 2,
+        output_cost_microdollars: free_limit / 2,
+        total_cost_microdollars: free_limit
+      )
+
+      expect(user.usage_limit_reached?).to be false
+    end
+  end
+
+  describe "User#usage_percentage" do
+    it "returns 0.0 for a fresh user" do
+      expect(user.usage_percentage).to eq(0.0)
+    end
+
+    it "returns 100.0 when at limit" do
+      limit = User::TIER_LIMITS["free"]
+      user.ai_usage_records.create!(
+        model_id: "gpt-4o-mini",
+        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
+        input_cost_microdollars: limit,
+        output_cost_microdollars: 0,
+        total_cost_microdollars: limit
+      )
+
+      expect(user.usage_percentage).to eq(100.0)
+    end
+
+    it "caps at 100.0 when over limit" do
+      limit = User::TIER_LIMITS["free"]
+      user.ai_usage_records.create!(
+        model_id: "gpt-4o-mini",
+        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
+        input_cost_microdollars: limit * 2,
+        output_cost_microdollars: 0,
+        total_cost_microdollars: limit * 2
+      )
+
+      expect(user.usage_percentage).to eq(100.0)
+    end
+  end
+
+  describe "DungeonMasterService#enforce_usage_limit!" do
+    it "raises UsageLimitExceeded when user has hit the limit" do
+      limit = User::TIER_LIMITS["free"]
+      user.ai_usage_records.create!(
+        model_id: "gpt-4o-mini",
+        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
+        input_cost_microdollars: limit,
+        output_cost_microdollars: 0,
+        total_cost_microdollars: limit
+      )
+
+      service = DungeonMasterService.new(adventure, user: user)
+      expect { service.send(:enforce_usage_limit!) }.to raise_error(DungeonMaster::UsageLimitExceeded)
+    end
+
+    it "does not raise when user is under the limit" do
+      service = DungeonMasterService.new(adventure, user: user)
+      expect { service.send(:enforce_usage_limit!) }.not_to raise_error
+    end
+
+    it "returns a player-friendly message in the exception" do
+      limit = User::TIER_LIMITS["free"]
+      user.ai_usage_records.create!(
+        model_id: "gpt-4o-mini",
+        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
+        input_cost_microdollars: limit,
+        output_cost_microdollars: 0,
+        total_cost_microdollars: limit
+      )
+
+      service = DungeonMasterService.new(adventure, user: user)
+      begin
+        service.send(:enforce_usage_limit!)
+        fail "Expected UsageLimitExceeded"
+      rescue DungeonMaster::UsageLimitExceeded => e
+        expect(e.message).to include("monthly usage limit")
+      end
+    end
+  end
+end
