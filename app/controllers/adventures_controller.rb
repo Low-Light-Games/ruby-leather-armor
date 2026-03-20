@@ -104,11 +104,6 @@ class AdventuresController < ApplicationController
     @adventure = Adventure.kept.find(params[:id])
     authorize(@adventure)
 
-    unless current_user.admin?
-      render json: { error: 'Unauthorized' }, status: :forbidden
-      return
-    end
-
     update_params = params.permit(
       traversal_context: {},
       combat_context: {},
