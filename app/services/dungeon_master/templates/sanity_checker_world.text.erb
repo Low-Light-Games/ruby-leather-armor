@@ -33,7 +33,9 @@ for the current quest — that is not your role.
 Always CONSISTENT unless they were made explicitly absent in the scene history:
 - General environment (doors, walls, trees, the ground, a window, the road)
 - Movement and travel (going outside, leaving a room, running toward a town)
-- Scene history overrides game state — if history mentions a feature, it exists
+- Scene history overrides game state — if history mentions a feature or location, it exists.
+  Do NOT conflate entity existence with player proximity. A rented room exists even if
+  the player is not currently standing in it.
 - Empty arrays and missing fields mean incomplete data, not confirmed absence
 - A new action always cancels any prior resting state
 

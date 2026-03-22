@@ -3,26 +3,58 @@
 module DungeonMaster
   module Steps
     # Pipeline Step 6a/6b: Context updates.
-    # 6a — Micro context update (affected + active contexts only)
-    # 6b — Macro narrative update (story summary)
-    # Run in parallel; 6b is conditional on macro_significant.
+    # 6a — Micro context update: one parallel AI call per affected context,
+    #      mirroring the beacon pattern. Each call is focused on a single domain.
+    # 6b — Macro narrative update (story summary), conditional on macro_significant.
     module ContextUpdate
       private
 
       def run_context_updates(what_happened, mutations, affected_contexts: [], macro_significant: false, time_result: nil)
-        micro_thread = Thread.new do
-          ActiveRecord::Base.connection_pool.with_connection { run_micro_context_update(what_happened, mutations, affected_contexts, time_result: time_result) }
+        affected = Array(affected_contexts).map(&:to_s)
+
+        # Social must re-evaluate whenever traversal changes — a location change
+        # may or may not end the current social scene, but the AI must decide.
+        if affected.include?("traversal") && @adventure.social_context.present?
+          affected = (affected | ["social"]).uniq
         end
+
+        affected = PromptHelpers::CONTEXT_FIELDS if affected.empty?
+
+        # Primary field drives scene_summary (highest-priority affected domain).
+        primary_field = PromptHelpers::CONTEXT_FIELDS.find { |f| affected.include?(f) } || affected.first
+
+        results = {}
+        mutex = Mutex.new
+
+        context_threads = affected.map do |field|
+          Thread.new do
+            ActiveRecord::Base.connection_pool.with_connection do
+              result = run_single_context_update(
+                field, what_happened, mutations,
+                time_result: time_result,
+                primary: field == primary_field
+              )
+              mutex.synchronize { results[field] = result }
+            end
+          end
+        end
+
         macro_thread = if macro_significant
                          Thread.new do
                            ActiveRecord::Base.connection_pool.with_connection { run_macro_narrative_update(what_happened) }
                          end
                        end
 
-        micro_result = micro_thread.value
-        persist_micro_contexts(micro_result)
-        persist_scene_summary(micro_result["scene_summary"])
-        handle_new_creatures(micro_result["new_creatures"]) if micro_result["new_creatures"].present?
+        context_threads.each(&:value)
+
+        merged = results.values.each_with_object({}) { |r, h| h.merge!(r) }
+        new_creatures = results.values.flat_map { |r| Array(r["new_creatures"]) }.uniq
+
+        persist_micro_contexts(merged)
+        handle_new_creatures(new_creatures) if new_creatures.present?
+
+        scene_summary = results[primary_field]&.dig("scene_summary")
+        persist_scene_summary(scene_summary) if scene_summary.present?
 
         if macro_thread
           macro_result = macro_thread.value
@@ -32,32 +64,18 @@ module DungeonMaster
         pipeline_error!("context_updates", e)
       end
 
-      def run_micro_context_update(what_happened, mutations, affected_contexts, time_result: nil)
-        prompt_summary = "Micro context update"
-        micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
-
-        affected = Array(affected_contexts).map(&:to_s)
-
-        # When traversal is being updated, social must also be actively re-evaluated.
-        # A location change may or may not end the current social scene — that is AI judgment —
-        # but the AI must evaluate it rather than silently carrying the old scene forward.
-        if affected.include?("traversal") && micro_contexts[:social].present?
-          affected = (affected | ["social"]).uniq
-        end
-
-        active = PromptHelpers::CONTEXT_FIELDS.select { |f| micro_contexts[f.to_sym].present? }
-        relevant = (affected | active).uniq & PromptHelpers::CONTEXT_FIELDS
-
-        relevant = PromptHelpers::CONTEXT_FIELDS if relevant.empty?
+      def run_single_context_update(field, what_happened, mutations, time_result: nil, primary: false)
+        prompt_summary = "Micro context update [#{field}]#{primary ? ' + scene' : ''}"
+        current_context = @adventure.send("#{field}_context")
 
         system_prompt, user_msg = PromptRenderer.render_with_user_message("micro_context_update",
-          micro_contexts: micro_contexts,
-          relevant_fields: relevant,
-          affected_fields: affected,
+          field: field,
+          current_context: current_context,
           what_happened: what_happened,
           mutations_json: mutations.present? ? mutations.to_json : nil,
           canonical_hp: build_canonical_hp,
-          time_result: time_result)
+          time_result: time_result,
+          primary: primary)
 
         request_body = { system_prompt: system_prompt, user_message: user_msg }
 
