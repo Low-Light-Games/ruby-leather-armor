@@ -312,7 +312,7 @@ export interface AdventureMessage {
   id: number
   role: 'player' | 'dm' | 'system'
   content: string
-  message_type: 'narrative' | 'sanitization_fail' | 'adventure_complete' | 'roll_request' | 'roll_result'
+  message_type: 'narrative' | 'sanitization_fail' | 'adventure_complete' | 'roll_request' | 'roll_result' | 'initiative_request' | 'initiative_result'
   metadata: {
     roll_request?: RollRequest
     roll_requests?: RollRequest[]

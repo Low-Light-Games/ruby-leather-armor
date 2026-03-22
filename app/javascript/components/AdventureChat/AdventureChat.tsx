@@ -27,7 +27,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
   const {
     messages, sending, loadingHistory,
     pendingRolls, setPendingRolls,
-    sendMessage, sendRolls, handleRetry,
+    sendMessage, sendRolls, sendInitiative, handleRetry,
   } = useAdventureMessages({ adventureId, derivedStats, onAdventureComplete, onDmResponse })
 
   const scrollToBottom = useCallback(() => {
@@ -69,6 +69,14 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
 
   const handleRollsSubmit = () => {
     if (!pendingRolls || !allRollsFilled) return
+
+    if (pendingRolls.isInitiative) {
+      const rollValue = pendingRolls.entries[0]?.value
+      if (rollValue == null) return
+      setPendingRolls(null)
+      sendInitiative(rollValue)
+      return
+    }
 
     const rolls = pendingRolls.entries.map(e => ({
       roll_value: e.value!,

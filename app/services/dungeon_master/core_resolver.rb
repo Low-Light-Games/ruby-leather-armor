@@ -114,6 +114,11 @@ module DungeonMaster
       entry_id = @loop&.get("encounter_entry_id")
       encounter_entry = EncounterTableEntry.find_by(id: entry_id) if entry_id
 
+      # On the mechanics path, verdict_outcome was written by the mechanic step and
+      # is the preferred seed. On the non-mechanics path (e.g. rest interrupted by an
+      # encounter), it is nil — fall back to Harbinger's encounter_narrative instead.
+      narrate_seed = @loop&.get("verdict_outcome").presence || time_result[:encounter_narrative]
+
       if encounter_entry
         creatures_data = @loop&.get("encounter_creatures")
         warmaster_result = Utilities::Warmaster.initialize_from_encounter!(
@@ -130,14 +135,14 @@ module DungeonMaster
           return {
             status: :awaiting_initiative, intent: intent,
             creature_data: warmaster_result[:creature_data],
-            narrate_seed: @loop&.get("verdict_outcome"),
+            narrate_seed: narrate_seed,
             mutations: mutations, time_result: time_result
           }
         end
       end
 
       { status: :encounter, intent: intent,
-        narrate_seed: @loop&.get("verdict_outcome"),
+        narrate_seed: narrate_seed,
         mutations: mutations, time_result: time_result }
     end
 
