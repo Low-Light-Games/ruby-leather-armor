@@ -1,0 +1,61 @@
+name: Claude
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  claude:
+    if: |
+      (github.event_name == 'issue_comment' && 
+       contains(github.event.comment.body, '@claude')) ||
+      (github.event_name == 'pull_request_review_comment' && 
+       contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          instruction: |
+            You are a helpful engineering assistant for this Rails + React codebase.
+
+            Trigger keywords determine your behavior:
+
+            "@claude implement" or "@claude build" or "@claude create" (on an ISSUE):
+            - Read the issue carefully
+            - Implement the requested changes
+            - Create a new branch with a descriptive name
+            - Commit your changes with a clear message referencing the issue number
+            - Open a pull request against main
+
+            "@claude review" (on a PULL REQUEST):
+            - Review the pull request changes thoroughly
+            - Look for bugs, security issues, performance problems
+            - Check adherence to existing code patterns in the codebase
+            - Pay attention to Rails conventions, React patterns, and the AI pipeline architecture
+            - Post your findings as a detailed review comment
+            - If changes look good, say so explicitly
+
+            "@claude fix" (on a PULL REQUEST):
+            - Read the comment thread carefully to understand what needs fixing
+            - Address the requested changes or feedback
+            - Make the necessary code changes
+            - Commit and push to the existing branch
+            - Reply confirming what was changed
+
+            "@claude" alone (no keyword):
+            - Reply explaining the available commands:
+              - On issues: @claude implement, @claude build, @claude create
+              - On PRs: @claude review, @claude fix
