@@ -49,6 +49,43 @@ RSpec.describe User, type: :model do
     end
   end
 
+  describe ".from_omniauth" do
+    let(:auth) do
+      OmniAuth::AuthHash.new(
+        provider: "google_oauth2",
+        uid: "google_uid_123",
+        info: OmniAuth::AuthHash::InfoHash.new(email: "user@example.com")
+      )
+    end
+
+    it "creates a new user on first login" do
+      expect { User.from_omniauth(auth) }.to change(User, :count).by(1)
+    end
+
+    it "returns the same user on subsequent logins" do
+      user = User.from_omniauth(auth)
+      expect(User.from_omniauth(auth)).to eq(user)
+    end
+
+    it "does not persist the record on subsequent logins with no changes" do
+      user = User.from_omniauth(auth)
+      expect(user).not_to receive(:save!)
+      User.from_omniauth(auth)
+    end
+
+    it "does not create a duplicate on subsequent logins" do
+      User.from_omniauth(auth)
+      expect { User.from_omniauth(auth) }.not_to change(User, :count)
+    end
+
+    it "links an existing email/password account instead of raising" do
+      existing = create(:user, :password_auth, email: "user@example.com")
+      expect { User.from_omniauth(auth) }.not_to change(User, :count)
+      expect(existing.reload.provider).to eq("google_oauth2")
+      expect(existing.reload.uid).to eq("google_uid_123")
+    end
+  end
+
   describe "#usage_limit_reached?" do
     it "returns false when no AI usage has been recorded" do
       expect(create(:user).usage_limit_reached?).to be false
