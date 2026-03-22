@@ -10,7 +10,7 @@ RUN apt-get update -y && \
       libpq-dev \
       nodejs \
       npm \
-      # Puppeteer/Chrome dependencies
+      # Playwright/Chromium dependencies
       libglib2.0-0 \
       libnss3 \
       libnspr4 \
@@ -26,7 +26,11 @@ RUN apt-get update -y && \
       libgbm1 \
       libasound2 \
       libpango-1.0-0 \
-      libcairo2 && \
+      libcairo2 \
+      libx11-6 \
+      libx11-xcb1 \
+      libxcb1 \
+      libxext6 && \
     npm install -g yarn && \
     rm -rf /var/lib/apt/lists/*
 
@@ -37,7 +41,7 @@ ENV BUNDLE_PATH=/bundle
 # Install Ruby & JS deps first (good layer caching — only re-runs on lockfile changes)
 COPY Gemfile Gemfile.lock package.json yarn.lock ./
 RUN bundle install
-RUN yarn install
+RUN yarn install && npx playwright install chromium
 
 # Copy full app source before anything that needs it
 COPY . .

@@ -1137,3 +1137,75 @@
     }
   }
 }
+
+// ── Micro context inline editor ──────────────────────────────────────────────
+
+.context-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.context-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.context-edit-btn {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: $parchment-dk;
+  border: 1px solid $border-light;
+  border-radius: 4px;
+  cursor: pointer;
+  &:hover { background: darken($parchment-dk, 5%); }
+}
+
+.context-edit-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.context-json-editor {
+  width: 100%;
+  font-family: monospace;
+  font-size: 12px;
+  padding: 6px;
+  border: 1px solid $border-light;
+  border-radius: 4px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.context-edit-error {
+  color: #c0392b;
+  font-size: 12px;
+}
+
+.context-edit-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.context-save-btn,
+.context-cancel-btn {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid $border-light;
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+.context-save-btn {
+  background: #2ecc71;
+  color: #fff;
+}
+
+.context-cancel-btn {
+  background: $parchment-dk;
+}
