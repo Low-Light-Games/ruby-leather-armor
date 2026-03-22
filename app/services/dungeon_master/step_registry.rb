@@ -45,7 +45,7 @@ module DungeonMaster
         pipeline: true,
       ),
       "roll_qualifier" => Entry.new(
-        token_budget: 400,
+        token_budget: 800,
         model_hint: "Fast, cheap model with broader context. Situational modifiers and Take 10/20 — e.g. gpt-4.1-nano, gpt-4o-mini.",
         pipeline: true,
       ),
@@ -56,7 +56,7 @@ module DungeonMaster
       ),
       "sanity_checker_world" => Entry.new(
         token_budget: 500,
-        model_hint: "⚠️ Capable model REQUIRED. Cross-references player actions against full game state. Unlikely to perform well with budget models. Recommended: gpt-4o-mini or better (gpt-4.1-mini, o3-mini, gpt-5-mini).",
+        model_hint: "⚠️ Capable model REQUIRED. Requires nuanced judgment about entity existence vs. travel direction vs. general scene context. gpt-4o-mini is proven insufficient for this step. Minimum: gpt-4o or gpt-4.1-mini. Recommended: gpt-4.1 or o3-mini.",
         pipeline: true,
       ),
       "mechanic" => Entry.new(

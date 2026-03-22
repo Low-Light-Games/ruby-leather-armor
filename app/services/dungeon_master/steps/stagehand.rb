@@ -15,7 +15,7 @@ module DungeonMaster
     module Stagehand
       private
 
-      def run_output_phase(intent, narrate_seed:, mutations:, dm_brief: nil, forbidden_elements: [], extra: {})
+      def run_output_phase(intent, narrate_seed:, mutations:, dm_brief: nil, forbidden_elements: [], extra: {}, time_result: nil)
         warmaster_result = maybe_initialize_combat(intent)
         if warmaster_result && warmaster_result[:status] == :awaiting_initiative
           return {
@@ -38,12 +38,14 @@ module DungeonMaster
           run_subjugated_output(intent, narrate_seed: narrate_seed, what_happened: what_happened,
                                 mutations: mutations, dm_brief: dm_brief,
                                 forbidden_elements: forbidden_elements,
-                                encounter_triggered: enc_triggered, affected_contexts: affected_contexts)
+                                encounter_triggered: enc_triggered, affected_contexts: affected_contexts,
+                                time_result: time_result)
         else
           run_parallel_output(intent, narrate_seed: narrate_seed, what_happened: what_happened,
                               mutations: mutations, dm_brief: dm_brief,
                               forbidden_elements: forbidden_elements,
-                              encounter_triggered: enc_triggered, affected_contexts: affected_contexts)
+                              encounter_triggered: enc_triggered, affected_contexts: affected_contexts,
+                              time_result: time_result)
         end => narration
 
         adventure_complete = @loop&.get("adventure_complete") == true
@@ -54,7 +56,7 @@ module DungeonMaster
 
       def run_parallel_output(intent, narrate_seed:, what_happened:, mutations:,
                               dm_brief:, forbidden_elements: [], encounter_triggered: false,
-                              affected_contexts: nil)
+                              affected_contexts: nil, time_result: nil)
         narration = nil
 
         narrate_thread = Thread.new do
@@ -68,7 +70,8 @@ module DungeonMaster
           ActiveRecord::Base.connection_pool.with_connection do
             run_context_updates(what_happened, mutations,
                                 affected_contexts: affected_contexts,
-                                macro_significant: intent[:macro_significant])
+                                macro_significant: intent[:macro_significant],
+                                time_result: time_result)
           end
         end
 
@@ -79,10 +82,11 @@ module DungeonMaster
 
       def run_subjugated_output(intent, narrate_seed:, what_happened:, mutations:,
                                 dm_brief:, forbidden_elements: [], encounter_triggered: false,
-                                affected_contexts: nil)
+                                affected_contexts: nil, time_result: nil)
         run_context_updates(what_happened, mutations,
                             affected_contexts: affected_contexts,
-                            macro_significant: intent[:macro_significant])
+                            macro_significant: intent[:macro_significant],
+                            time_result: time_result)
 
         run_narrate(narrate_seed, intent: intent, dm_brief: dm_brief,
                     forbidden_elements: forbidden_elements,

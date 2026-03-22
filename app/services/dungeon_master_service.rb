@@ -273,6 +273,13 @@ class DungeonMasterService
       [persist_message(role: "dm", content: result[:answer], message_type: "dm_query")]
 
     when :awaiting_rolls
+      msgs = []
+
+      if result[:interim_narrative].present?
+        msgs << persist_message(role: "dm", content: result[:interim_narrative],
+                                message_type: "narrative")
+      end
+
       meta = {
         roll_requests: result[:merged][:player_rolls],
         pending_npc_actions: result[:merged][:npc_actions],
@@ -281,13 +288,24 @@ class DungeonMasterService
         intent: result[:intent],
         show_dc: @adventure.effective_dm_setting("show_roll_dc"),
         remaining_actions: result[:remaining_actions],
-        prior_narrate_seeds: result[:prior_narrate_seeds]
+        prior_narrate_seeds: result[:prior_narrate_seeds],
+        remaining_iterative_rolls: result[:remaining_iterative_rolls],
+        iterative_time_hours: result[:iterative_time_hours],
+        iterative_total: result[:iterative_total]
       }
-      [persist_message(
+
+      if result[:remaining_iterative_rolls].present? || result[:iterative_total]
+        total = result[:iterative_total] || (result[:remaining_iterative_rolls].size + 1)
+        current = total - (result[:remaining_iterative_rolls]&.size || 0)
+        meta[:iterative_progress] = { current: current, total: total }
+      end
+
+      msgs << persist_message(
         role: "dm",
         content: roll_explanation(result[:merged][:mechanical_summaries]),
         message_type: "roll_request",
-        metadata: meta)]
+        metadata: meta)
+      msgs
 
     when :awaiting_initiative
       meta = {

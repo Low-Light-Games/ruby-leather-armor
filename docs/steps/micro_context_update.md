@@ -11,10 +11,14 @@ Updates the micro-context JSONB fields on the Adventure model
 `exploration_context`, `rest_context`, `inventory_context`) to reflect
 what just happened.
 
-Only **relevant** contexts are included in the prompt: those flagged as
-`affected_contexts` by the beacon plus any that already contain
-data (active contexts). This reduces output size and keeps the model
-focused on what actually changed.
+One AI call is made **per affected context**, all running in parallel
+(mirroring the beacon pattern). Each call receives only the single
+context it is responsible for updating, keeping the model focused and
+avoiding cross-context interference. Unaffected contexts are not sent
+at all — they are left unchanged in the DB.
+
+`scene_summary` is produced by the highest-priority affected domain
+(combat > social > traversal > exploration > rest > inventory).
 
 Receives the factual outcome summary (`what_happened`) and mutations,
 NOT the narrative text. This decouples context accuracy from narrative
@@ -24,8 +28,8 @@ style.
 
 | Field | Source |
 |---|---|
-| System prompt | `micro_context_update.text.erb` bound with: the factual outcome (`what_happened`), mutations JSON, context sections (only relevant contexts, labelled `[UPDATE]` or `[maintain]`), list of relevant and affected field names |
-| User message | "Update contexts based on the above." |
+| System prompt | `micro_context_update.text.erb` bound with: the target `field` name, the current context JSON for that field, the factual outcome (`what_happened`), mutations JSON, canonical HP (if any), time result (if any), and a `primary` flag indicating whether this call should also produce `scene_summary` |
+| User message | "Update the \<field\> context based on the above." |
 
 ## Output (JSON)
 

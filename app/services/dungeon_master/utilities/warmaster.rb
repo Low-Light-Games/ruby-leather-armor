@@ -61,7 +61,9 @@ module DungeonMaster
         turn_order = participants.sort_by { |p| -p["initiative"] }.map { |p| p["name"] }
 
         adventure.update!(combat_context: {
-          "active" => true, "round" => 1,
+          "active" => true,
+          "awaiting_player_initiative" => false,
+          "round" => 1,
           "participants" => participants,
           "turn_order" => turn_order,
           "active_effects" => []
@@ -155,6 +157,22 @@ module DungeonMaster
           initiative = roll_creature_initiative(ctx, c[:creature_sheet_id])
           c.merge(initiative: initiative)
         end
+
+        # Seed the combat context immediately so the sidebar shows encounter
+        # data while the player is deciding their initiative roll.
+        # finalize_combat! will add the player, set turn_order, and flip active.
+        partial_participants = creature_data.map do |c|
+          { "name" => c[:name], "creature_sheet_id" => c[:creature_sheet_id],
+            "initiative" => c[:initiative], "type" => "npc" }
+        end
+        ctx.adventure.update!(combat_context: {
+          "active" => false,
+          "awaiting_player_initiative" => true,
+          "round" => 0,
+          "participants" => partial_participants,
+          "turn_order" => [],
+          "active_effects" => []
+        })
 
         ctx.log.log!(:info, "Warmaster: #{creature_data.size} creature(s) ready, awaiting player initiative")
 

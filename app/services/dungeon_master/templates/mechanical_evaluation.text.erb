@@ -47,13 +47,44 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
   if flanking or threat awareness matters, include "combat". If terrain or environmental
   conditions matter, include "traversal". If social pressure applies, include "social".
   Empty array if the domain's own context is sufficient.
+- ITERATIVE ROLLS: Some actions require multiple rolls that must be resolved one at a time,
+  where each result can change what happens next — a failure early on may end the action,
+  impose conditions, or raise difficulty for the next phase. Examples: forced march Fort
+  saves, climbing a long ascent, swimming a significant distance, tracking over distance,
+  stealth infiltration, crafting, research, profession work, spell research.
+  For these, output a single "iterative_sequence" object describing the roll pattern.
+  The system resolves each phase individually and presents one roll to the player at a time.
+  "iterative_sequence" fields:
+    - type: the roll type ("fortitude_save", "reflex_save", "will_save", "skill_check", etc.)
+    - skill: skill name, only when type is "skill_check" (e.g. "Climb", "Swim", "Survival")
+    - description: short label for the sequence (e.g. "Forced march Fort save")
+    - starting_dc: the DC for the first phase
+    - dc_increment: how much the DC increases each phase (use 0 if the DC stays flat)
+    - phases: total number of phases required (your judgment based on the action and duration)
+    - iterative_time_hours: in-game time that passes per phase (drives fatigue and encounter checks)
+    - qualifier_context_hints: array of context names relevant for situational modifiers
+  Examples:
+    - Player runs 16h total (8h normal travel + 8 forced): one Fort save per extra hour,
+      DC starts at 10 and rises by 2 each hour:
+      type "fortitude_save", starting_dc 10, dc_increment 2, phases 8, iterative_time_hours 1.0
+    - Climbing a long cliff face with 3 meaningful segments, DC 15 wall throughout:
+      type "skill_check", skill "Climb", starting_dc 15, dc_increment 0, phases 3, iterative_time_hours 0.1
+    - Crafting a longsword (5-day project), Craft DC 15:
+      type "skill_check", skill "Craft", starting_dc 15, dc_increment 0, phases 5, iterative_time_hours 8.0
+  GRANULARITY: Choose phases that represent meaningful decision points, not mechanical rounds.
+  "3 Swim checks to cross the river" is correct. "48 round-by-round Swim checks" is not.
+  SIMULTANEOUS rolls — multiple checks triggered at the same instant with no causal chain
+  between them (e.g. a Perception check and a Reflex save from the same trap) — are NOT
+  iterative. Place those as separate objects in "player_rolls".
+  Set "iterative_sequence" to null when no sequentially-chained rolls are needed.
 <%= @domain_instructions %>
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
   "player_rolls": [
-    { "type": "skill_check", "skill": "Swim", "dc": 10, "description": "Swim check to stay afloat" }
+    { "type": "skill_check", "skill": "Perception", "dc": 15, "description": "Spot the hidden trap" }
   ],
+  "iterative_sequence": null,
   "npc_actions": [
     { "actor": "Goblin A", "action": "attack", "target": "player", "modifier": 3 }
   ],

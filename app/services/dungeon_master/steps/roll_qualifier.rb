@@ -29,6 +29,24 @@ module DungeonMaster
 
       def run_roll_qualifier(evaluation, intent)
         rolls = evaluation[:player_rolls]
+        seq   = evaluation[:iterative_sequence]
+
+        # For iterative sequences with no explicit player_rolls, synthesize a
+        # representative roll from the descriptor so situational modifiers
+        # (terrain, conditions, etc.) are still evaluated. The qualifier result
+        # is stored back on the sequence for use during phase expansion.
+        if rolls.empty? && seq.present?
+          synthetic = { type: seq[:type], dc: seq[:starting_dc],
+                        qualifier_context_hints: Array(seq[:qualifier_context_hints]) }
+          synthetic[:skill] = seq[:skill] if seq[:skill].present?
+          # Pass iterative_sequence: nil to prevent re-entering this branch.
+          synthetic_eval = evaluation.merge(player_rolls: [synthetic], iterative_sequence: nil)
+          qualified_eval = run_roll_qualifier(synthetic_eval, intent)
+          seq_mods = qualified_eval[:player_rolls].first&.slice(
+            :take_10_eligible, :take_20_eligible, :situational_modifiers) || {}
+          return evaluation.merge(iterative_sequence: seq.merge(seq_mods))
+        end
+
         return evaluation if rolls.empty?
 
         scope = @config.get("roll_qualifier_scope") || "domain"
@@ -58,8 +76,6 @@ module DungeonMaster
         end
 
         apply_qualifier_results(evaluation, parsed)
-      rescue TokenBudgetExceededError, AiError
-        evaluation
       end
 
       def resolve_qualifier_contexts(scope, evaluation)

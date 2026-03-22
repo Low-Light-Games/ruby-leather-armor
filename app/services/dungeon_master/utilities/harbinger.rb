@@ -100,7 +100,14 @@ module DungeonMaster
       end
 
       def expand_encounter(entry, adventure:, ai:, config:, log:, loop: nil)
-        return entry.description if entry.fixed?
+        if entry.fixed?
+          if loop
+            loop.batch_update!(
+              new_data: { "encounter_scene" => entry.description },
+              timeline_entry: { "step" => "encounter_expand", "summary" => "Fixed: #{entry.title}", "at" => Time.current.iso8601 })
+          end
+          return entry.description
+        end
         return entry.description unless ai && config && log
 
         t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)

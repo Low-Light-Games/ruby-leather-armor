@@ -32,7 +32,7 @@ module ApplicationHelper
   def pipeline_step_title(log)
     title = log.event_type.humanize
     if log.prompt_summary =~ /\[(\w+)\]/
-      title = "#{title} — #{$1}" if log.event_type.in?(%w[beacon mechanical_evaluation roll_qualifier])
+      title = "#{title} — #{$1}" if log.event_type.in?(%w[beacon mechanical_evaluation roll_qualifier micro_context_update])
     end
     title
   end

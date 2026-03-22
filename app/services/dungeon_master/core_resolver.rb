@@ -49,7 +49,7 @@ module DungeonMaster
         filter_auto_success_rolls!(merged)
 
         if merged[:player_rolls].any?
-          return { status: :awaiting_rolls, intent: intent, merged: merged }
+          return chunk_iterative_or_return_rolls(intent, merged)
         end
 
         return finish_resolution(intent, merged, auto_success_roll_message(merged))
@@ -85,7 +85,8 @@ module DungeonMaster
     end
 
     # Post-roll completion: verdict → mutations → time_keeper
-    def finish_resolution(intent, merged, roll_results)
+    def finish_resolution(intent, merged, roll_results, iterative_time_hours: nil)
+      intent = intent.merge(iterative_time_hours: iterative_time_hours) if iterative_time_hours
       npc_results = resolve_npc_actions(merged[:npc_actions])
       verdict_result = run_mechanic(intent, merged, roll_results: roll_results, npc_results: npc_results)
       @loop&.batch_update!(
@@ -113,6 +114,11 @@ module DungeonMaster
       entry_id = @loop&.get("encounter_entry_id")
       encounter_entry = EncounterTableEntry.find_by(id: entry_id) if entry_id
 
+      # On the mechanics path, verdict_outcome was written by the mechanic step and
+      # is the preferred seed. On the non-mechanics path (e.g. rest interrupted by an
+      # encounter), it is nil — fall back to Harbinger's encounter_narrative instead.
+      narrate_seed = @loop&.get("verdict_outcome").presence || time_result[:encounter_narrative]
+
       if encounter_entry
         creatures_data = @loop&.get("encounter_creatures")
         warmaster_result = Utilities::Warmaster.initialize_from_encounter!(
@@ -129,14 +135,14 @@ module DungeonMaster
           return {
             status: :awaiting_initiative, intent: intent,
             creature_data: warmaster_result[:creature_data],
-            narrate_seed: @loop&.get("verdict_outcome"),
+            narrate_seed: narrate_seed,
             mutations: mutations, time_result: time_result
           }
         end
       end
 
       { status: :encounter, intent: intent,
-        narrate_seed: @loop&.get("verdict_outcome"),
+        narrate_seed: narrate_seed,
         mutations: mutations, time_result: time_result }
     end
 
@@ -169,7 +175,7 @@ module DungeonMaster
         filter_auto_success_rolls!(merged)
 
         if merged[:player_rolls].any?
-          return { status: :awaiting_rolls, intent: intent, merged: merged }
+          return chunk_iterative_or_return_rolls(intent, merged)
         end
 
         return finish_resolution(intent, merged, auto_success_roll_message(merged))
@@ -202,6 +208,43 @@ module DungeonMaster
         mutations: momentum_result[:mutations].presence,
         time_result: time_result
       }
+    end
+
+    def chunk_iterative_or_return_rolls(intent, merged)
+      seq = merged[:iterative_sequence]
+      return { status: :awaiting_rolls, intent: intent, merged: merged } unless seq
+
+      rolls = expand_iterative_sequence(seq)
+      normal_rolls = merged[:player_rolls] || []
+
+      {
+        status: :awaiting_rolls, intent: intent,
+        merged: merged.merge(player_rolls: [rolls.first] + normal_rolls),
+        remaining_iterative_rolls: rolls[1..],
+        iterative_time_hours: seq[:iterative_time_hours],
+        iterative_total: rolls.size
+      }
+    end
+
+    def expand_iterative_sequence(seq)
+      phases      = seq[:phases].to_i
+      starting_dc = seq[:starting_dc].to_i
+      increment   = seq[:dc_increment].to_i
+      hints       = Array(seq[:qualifier_context_hints])
+
+      phases.times.map do |i|
+        dc = starting_dc + (i * increment)
+        roll = {
+          type: seq[:type], dc: dc,
+          description: "#{seq[:description]} (phase #{i + 1})",
+          phase: "Phase #{i + 1} — DC #{dc}",
+          iterative: true, sequence: i + 1,
+          qualifier_context_hints: hints,
+          domain: seq[:domain]
+        }
+        roll[:skill] = seq[:skill] if seq[:skill].present?
+        roll
+      end
     end
 
     def auto_success_roll_message(merged)

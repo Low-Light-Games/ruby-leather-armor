@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createConsumer } from '@rails/actioncable'
 import type { AdventureMessage, DerivedStats } from '../../../types'
 import { csrfToken } from '../../../utils/api'
-import { buildPendingRollsFromMessage, PendingRolls } from '../rollHelpers'
+import { buildPendingRollsFromMessage, buildInitiativePendingRolls, PendingRolls } from '../rollHelpers'
 
 const OPTIMISTIC_ID = -1
 const THINKING_ID = -2
@@ -38,6 +38,10 @@ export function useAdventureMessages({
   >(null)
 
   const activatePendingRolls = useCallback((msg: AdventureMessage) => {
+    if (msg.message_type === 'initiative_request') {
+      setPendingRolls(buildInitiativePendingRolls(derivedStats))
+      return
+    }
     const rolls = buildPendingRollsFromMessage(msg, derivedStats)
     if (rolls) setPendingRolls(rolls)
   }, [derivedStats])
@@ -47,7 +51,7 @@ export function useAdventureMessages({
     lastSentRef.current = null
     setSending(false)
 
-    const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
+    const dmMsg = data.messages.find(m => m.role === 'dm' && (m.message_type === 'roll_request' || m.message_type === 'initiative_request'))
     if (dmMsg) activatePendingRolls(dmMsg)
 
     if (onDmResponse) onDmResponse()
@@ -100,10 +104,12 @@ export function useAdventureMessages({
         setMessages(data)
 
         const lastDm = [...data].reverse().find(m => m.role === 'dm')
-        if (lastDm?.message_type === 'roll_request') {
+        if (lastDm?.message_type === 'roll_request' || lastDm?.message_type === 'initiative_request') {
           const lastDmIdx = data.findIndex(m => m.id === lastDm.id)
-          const hasRollResult = data.slice(lastDmIdx + 1).some(m => m.message_type === 'roll_result')
-          if (!hasRollResult) {
+          const hasResolution = data.slice(lastDmIdx + 1).some(
+            m => m.message_type === 'roll_result' || m.message_type === 'initiative_result'
+          )
+          if (!hasResolution) {
             activatePendingRolls(lastDm)
           }
         }
@@ -198,6 +204,34 @@ export function useAdventureMessages({
     }
   }
 
+  const sendInitiative = async (rollValue: number) => {
+    setSending(true)
+    setPendingRolls(null)
+
+    try {
+      const res = await fetch(`/adventures/${adventureId}/messages/initiative`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken(),
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ initiative: rollValue }),
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || `HTTP ${res.status}`)
+      }
+
+      const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()
+      if (data.async) handleAsyncResponse(data)
+      else handleSyncResponse(data)
+    } catch (err: any) {
+      handleError('Failed to submit initiative', err)
+    }
+  }
+
   const handleRetry = () => {
     const last = lastSentRef.current
     if (!last || sending) return
@@ -208,6 +242,6 @@ export function useAdventureMessages({
   return {
     messages, sending, loadingHistory,
     pendingRolls, setPendingRolls,
-    sendMessage, sendRolls, handleRetry,
+    sendMessage, sendRolls, sendInitiative, handleRetry,
   }
 }

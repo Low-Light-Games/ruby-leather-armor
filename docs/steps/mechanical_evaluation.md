@@ -44,8 +44,11 @@ Iteration 2: MechanicalEvaluation for TRAVERSAL
 ```json
 {
   "player_rolls": [
-    { "type": "skill_check", "skill": "Swim", "dc": 10, "description": "Swim check to stay afloat" }
+    { "type": "skill_check", "skill": "Swim", "dc": 10, "description": "Swim check to stay afloat" },
+    { "type": "fortitude_save", "dc": 10, "description": "Fort save, forced march hour 9",
+      "iterative": true, "sequence": 1, "phase": "Forced march, hour 9" }
   ],
+  "iterative_time_hours": 1.0,
   "npc_actions": [
     { "actor": "Goblin A", "action": "attack", "target": "player", "modifier": 3 }
   ],
@@ -56,6 +59,32 @@ Iteration 2: MechanicalEvaluation for TRAVERSAL
   "mechanical_summary": "Brief mechanical summary of what happens in this domain",
   "reasoning": "Brief explanation of rules applied"
 }
+```
+
+### Iterative rolls
+
+When an action requires multiple rolls that must be resolved **sequentially**
+(each result affects the next), MechanicalEvaluation tags each roll with:
+
+| Field | Type | Description |
+|---|---|---|
+| `iterative` | boolean | `true` for causally-chained sequential rolls |
+| `sequence` | integer | Ascending order starting from 1 |
+| `phase` | string | Human-readable phase description (e.g. "Forced march, hour 9") |
+
+A top-level `iterative_time_hours` field specifies the in-game time that
+passes per roll phase, driving time advancement, fatigue, and encounter
+checks between rolls.
+
+**Iterative scenarios:** forced march (hourly Fort saves), extended climbing,
+swimming, tracking, stealth infiltration, chases, crafting (daily checks),
+research, profession/perform, and spell research.
+
+**Non-iterative:** simultaneous checks (Perception + Stealth at the same
+moment) or multiple attack rolls in a single combat round.
+
+The pipeline presents iterative rolls **one at a time**, running the full
+TimeKeeper chain between phases. See [Design Philosophy #18](../design_philosophy.md).
 ```
 
 ### qualifier_context_hints

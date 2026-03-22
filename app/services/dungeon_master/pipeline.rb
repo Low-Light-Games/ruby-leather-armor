@@ -96,8 +96,12 @@ module DungeonMaster
       restore_paused_loop!
       tag_roll_resolution!(roll_results)
 
+      remaining_iter = metadata["remaining_iterative_rolls"] || []
+      iterative_time = metadata["iterative_time_hours"]
+
       intent, merged = restore_from_metadata(metadata)
-      result = finish_resolution(intent, merged, roll_results)
+      result = finish_resolution(intent, merged, roll_results,
+                                 iterative_time_hours: iterative_time)
 
       remaining   = metadata["remaining_actions"] || []
       prior_seeds = metadata["prior_narrate_seeds"] || []
@@ -105,6 +109,35 @@ module DungeonMaster
       final_status = result[:status] == :encounter ? "encounter" : "resolved"
       @loop&.batch_update!(new_status: final_status,
         timeline_entry: tl("rolls_resolved", "Rolls submitted, status: #{final_status}"))
+
+      if result[:status] == :resolved && remaining_iter.any?
+        if result[:time_result]&.dig(:encounter)
+          return run_accumulated_output_phase([result], prior_seeds: prior_seeds)
+        end
+
+        @sheet&.reload
+        if character_can_continue?
+          next_roll = remaining_iter.first.deep_symbolize_keys
+          new_remaining = remaining_iter[1..]
+          prior_seeds << result[:narrate_seed] if result[:narrate_seed].present?
+
+          @loop&.batch_update!(new_status: "paused",
+            timeline_entry: tl("iterative_continue", "Iterative roll #{remaining_iter.size} remaining"))
+
+          return {
+            action: :awaiting_rolls,
+            intent: result[:intent].merge(iterative_time_hours: iterative_time),
+            merged: { player_rolls: [next_roll], npc_actions: [], consequences: [],
+                      mechanical_summaries: result.dig(:merged, :mechanical_summaries) || merged[:mechanical_summaries] || [] },
+            remaining_iterative_rolls: new_remaining,
+            iterative_time_hours: iterative_time,
+            iterative_total: metadata["iterative_total"],
+            prior_narrate_seeds: prior_seeds,
+            remaining_actions: remaining,
+            interim_narrative: result[:narrate_seed]
+          }
+        end
+      end
 
       if result[:status] == :resolved && remaining.any?
         prior_seeds << result[:narrate_seed]
@@ -160,7 +193,10 @@ module DungeonMaster
           log_queue_pause(idx, total, remaining)
           return {
             action: :awaiting_rolls, intent: result[:intent], merged: result[:merged],
-            remaining_actions: remaining, prior_narrate_seeds: prior_seeds
+            remaining_actions: remaining, prior_narrate_seeds: prior_seeds,
+            remaining_iterative_rolls: result[:remaining_iterative_rolls],
+            iterative_time_hours: result[:iterative_time_hours],
+            iterative_total: result[:iterative_total]
           }
 
         when :awaiting_initiative
@@ -237,7 +273,10 @@ module DungeonMaster
           log_queue_pause(action_idx, total_original, new_remaining)
           return {
             action: :awaiting_rolls, intent: result[:intent], merged: result[:merged],
-            remaining_actions: new_remaining, prior_narrate_seeds: new_prior
+            remaining_actions: new_remaining, prior_narrate_seeds: new_prior,
+            remaining_iterative_rolls: result[:remaining_iterative_rolls],
+            iterative_time_hours: result[:iterative_time_hours],
+            iterative_total: result[:iterative_total]
           }
 
         when :awaiting_initiative
@@ -314,12 +353,15 @@ module DungeonMaster
       extra[:encounter_triggered] = true if encounter_triggered
       extra[:social_scene_triggered] = true if social_scene_triggered
 
+      last_time_result = results.filter_map { |r| r[:time_result] }.last
+
       output_result = run_output_phase(merged_intent,
         narrate_seed: combined_seed,
         mutations: combined_mutations.presence,
         dm_brief: dm_brief,
         forbidden_elements: forbidden_elements,
-        extra: extra)
+        extra: extra,
+        time_result: last_time_result)
 
       if output_result[:action] == :awaiting_initiative
         return output_result
@@ -354,7 +396,8 @@ module DungeonMaster
 
     def run_inter_action_context_update(result)
       affected = Array(result.dig(:intent, :affected_contexts))
-      parsed = run_micro_context_update(result[:narrate_seed], result[:mutations], affected)
+      parsed = run_micro_context_update(result[:narrate_seed], result[:mutations], affected,
+                                        time_result: result[:time_result])
       persist_micro_contexts(parsed)
       @adventure.reload
       @loop&.batch_update!(
@@ -390,6 +433,15 @@ module DungeonMaster
     # ----------------------------------------------------------------
     # Helpers
     # ----------------------------------------------------------------
+
+    def character_can_continue?
+      return true unless @sheet
+      ds = @sheet.derived_stats || {}
+      restrictions = Array(ds["condition_restrictions"])
+      return false if restrictions.include?("cannot_act")
+      return false if @sheet.hp.to_i <= 0
+      true
+    end
 
     def restore_from_metadata(metadata)
       intent = metadata["intent"]&.deep_symbolize_keys
