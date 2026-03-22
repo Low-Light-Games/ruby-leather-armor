@@ -1017,6 +1017,87 @@
           letter-spacing: 0.5px;
         }
 
+        .context-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 6px;
+
+          .context-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+        }
+
+        .context-edit-btn {
+          background: none;
+          border: 1px solid $border-light;
+          padding: 2px 7px;
+          font-size: 10px;
+          font-family: $font-mono;
+          color: $ink-faint;
+          cursor: pointer;
+          border-radius: 2px;
+
+          &:hover { background: $parchment; color: $ink-mid; }
+        }
+
+        .context-edit-panel {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+
+          .context-json-editor {
+            width: 100%;
+            box-sizing: border-box;
+            font-family: $font-mono;
+            font-size: 11px;
+            padding: 6px;
+            background: $parchment;
+            border: 1px solid $border-light;
+            color: $ink-mid;
+            resize: vertical;
+          }
+
+          .context-edit-error {
+            margin: 0;
+            font-size: 11px;
+            color: #c0392b;
+          }
+
+          .context-edit-actions {
+            display: flex;
+            gap: 6px;
+
+            .context-save-btn {
+              padding: 3px 10px;
+              font-size: 11px;
+              font-family: $font-mono;
+              background: #2c7a2c;
+              color: #fff;
+              border: none;
+              cursor: pointer;
+              border-radius: 2px;
+
+              &:disabled { opacity: 0.6; cursor: default; }
+            }
+
+            .context-cancel-btn {
+              padding: 3px 10px;
+              font-size: 11px;
+              font-family: $font-mono;
+              background: none;
+              border: 1px solid $border-light;
+              color: $ink-faint;
+              cursor: pointer;
+              border-radius: 2px;
+
+              &:disabled { opacity: 0.6; cursor: default; }
+            }
+          }
+        }
+
         .context-detail-list {
           .context-entry {
             display: flex;

@@ -98,6 +98,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
 
         {/* RIGHT COLUMN — Story */}
         <StorySidebar
+          adventureId={adventureId}
           story={story}
           traversalContext={adventure.traversal_context}
           combatContext={adventure.combat_context}
@@ -109,6 +110,9 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           storySummary={adventure.story_summary}
           sceneSummary={adventure.scene_summary}
           currentCategory={adventure.current_category}
+          onContextUpdate={(field, value) =>
+            setAdventure(prev => prev ? { ...prev, [`${field}_context`]: value } : prev)
+          }
         />
       </div>
 

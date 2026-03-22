@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiFetch } from '../../utils/api';
 import type { Story } from '../../types';
 
 const CATEGORY_LABELS: Record<string, { label: string; className: string }> = {
@@ -12,6 +13,7 @@ const CATEGORY_LABELS: Record<string, { label: string; className: string }> = {
 }
 
 interface StorySidebarProps {
+  adventureId: number;
   story: Story;
   traversalContext: Record<string, unknown> | null;
   combatContext: Record<string, unknown> | null;
@@ -23,32 +25,95 @@ interface StorySidebarProps {
   storySummary: string | null;
   sceneSummary: string | null;
   currentCategory: string | null;
+  onContextUpdate: (field: string, value: Record<string, unknown>) => void;
 }
 
 const isContextActive = (ctx: Record<string, unknown> | null): boolean =>
   ctx !== null && typeof ctx === 'object' && Object.keys(ctx).length > 0;
 
 const ContextSection: React.FC<{
+  contextKey: string;
   label: string;
   className: string;
   context: Record<string, unknown> | null;
-}> = ({ label, className, context }) => {
+  isAdmin: boolean;
+  adventureId: number;
+  onContextUpdate: (field: string, value: Record<string, unknown>) => void;
+}> = ({ contextKey, label, className, context, isAdmin, adventureId, onContextUpdate }) => {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
   if (!isContextActive(context)) return null;
+
+  const handleEdit = () => {
+    setDraft(JSON.stringify(context, null, 2));
+    setEditError(null);
+    setEditing(true);
+  };
+
+  const handleCancel = () => {
+    setEditing(false);
+    setEditError(null);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setEditError(null);
+    try {
+      const result = await apiFetch(`/admin/adventures/${adventureId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ context_field: contextKey, context_value: draft }),
+      });
+      onContextUpdate(contextKey, result.context_value);
+      setEditing(false);
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="context-section context-debug-section">
       <div className="context-header">
         <h4>{label}</h4>
-        <span className={`category-badge ${className}`}>{label}</span>
+        <div className="context-header-actions">
+          <span className={`category-badge ${className}`}>{label}</span>
+          {isAdmin && !editing && (
+            <button className="context-edit-btn" onClick={handleEdit}>Edit</button>
+          )}
+        </div>
       </div>
-      <div className="context-body context-detail-list">
-        {Object.entries(context!).map(([key, value]) => (
-          <div key={key} className="context-entry">
-            <span className="context-key">{key.replace(/_/g, ' ')}</span>
-            <span className="context-value">{formatContextValue(value)}</span>
+      {editing ? (
+        <div className="context-edit-panel">
+          <textarea
+            className="context-json-editor"
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            rows={10}
+          />
+          {editError && <p className="context-edit-error">{editError}</p>}
+          <div className="context-edit-actions">
+            <button className="context-save-btn" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button className="context-cancel-btn" onClick={handleCancel} disabled={saving}>
+              Cancel
+            </button>
           </div>
-        ))}
-      </div>
+        </div>
+      ) : (
+        <div className="context-body context-detail-list">
+          {Object.entries(context!).map(([key, value]) => (
+            <div key={key} className="context-entry">
+              <span className="context-key">{key.replace(/_/g, ' ')}</span>
+              <span className="context-value">{formatContextValue(value)}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -84,6 +149,7 @@ function formatGameHour(timeContext: Record<string, unknown> | null): string {
 }
 
 export const StorySidebar: React.FC<StorySidebarProps> = ({
+  adventureId,
   story,
   traversalContext,
   combatContext,
@@ -95,6 +161,7 @@ export const StorySidebar: React.FC<StorySidebarProps> = ({
   storySummary,
   sceneSummary,
   currentCategory,
+  onContextUpdate,
 }) => {
   const { user } = useAuth();
   const isAdmin = user?.admin ?? false;
@@ -160,9 +227,13 @@ export const StorySidebar: React.FC<StorySidebarProps> = ({
           {debugOpen && contexts.map(c => (
             <ContextSection
               key={c.key}
+              contextKey={c.key}
               label={c.label}
               className={c.className}
               context={c.ctx}
+              isAdmin={isAdmin}
+              adventureId={adventureId}
+              onContextUpdate={onContextUpdate}
             />
           ))}
         </div>

@@ -64,6 +64,10 @@ group :development, :test do
   gem "rspec-rails"
   gem "factory_bot_rails"
   gem "shoulda-matchers"
+
+  # HTTP stubbing — used by the STUB_OPENAI initializer to intercept vendor
+  # API calls during E2E tests (never loaded in production).
+  gem "webmock"
 end
 
 group :development do

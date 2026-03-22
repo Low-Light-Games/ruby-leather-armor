@@ -47,7 +47,10 @@ module Admin
         redirect_to admin_adventure_path(@adventure), alert: "Nothing to update."
       end
     rescue JSON::ParserError
-      redirect_to admin_adventure_path(@adventure), alert: "Invalid JSON format."
+      respond_to do |format|
+        format.html { redirect_to admin_adventure_path(@adventure), alert: "Invalid JSON format." }
+        format.json { render json: { error: "Invalid JSON format." }, status: :unprocessable_entity }
+      end
     end
 
     def reset_context
@@ -102,12 +105,19 @@ module Admin
     def update_context
       field = params[:context_field].to_s
       unless CONTEXT_FIELDS.include?(field)
-        return redirect_to admin_adventure_path(@adventure), alert: "Unknown context: #{field}"
+        respond_to do |format|
+          format.html { redirect_to admin_adventure_path(@adventure), alert: "Unknown context: #{field}" }
+          format.json { render json: { error: "Unknown context: #{field}" }, status: :unprocessable_entity }
+        end
+        return
       end
 
       value = params[:context_value].present? ? JSON.parse(params[:context_value]) : {}
       @adventure.update!("#{field}_context" => value)
-      redirect_to admin_adventure_path(@adventure), notice: "#{field.titleize} context updated."
+      respond_to do |format|
+        format.html { redirect_to admin_adventure_path(@adventure), notice: "#{field.titleize} context updated." }
+        format.json { render json: { context_field: field, context_value: value }, status: :ok }
+      end
     end
 
     def update_time_context

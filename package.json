@@ -6,11 +6,8 @@
     "build:watch": "node esbuild.config.js --watch",
     "typecheck": "tsc --noEmit",
     "typecheck:verbose": "tsc --noEmit --listFiles | head -20",
-    "test": "node test/puppeteer/run_all.js",
-    "test:auth": "node test/puppeteer/auth/login_test.js && node test/puppeteer/auth/logout_test.js && node test/puppeteer/auth/roles_test.js",
-    "test:sheets": "node test/puppeteer/sheets/editor_test.js && node test/puppeteer/sheets/create_test.js && node test/puppeteer/sheets/edit_test.js && node test/puppeteer/sheets/clear_and_new_test.js",
-    "test:navbar": "node test/puppeteer/navbar/navbar_test.js",
-    "test:adventures": "node test/puppeteer/adventures/creation_test.js && node test/puppeteer/adventures/play_test.js"
+    "test": "npx playwright test",
+    "test:e2e": "npx playwright test"
   },
   "dependencies": {
     "@hotwired/stimulus": "^3.2.2",
@@ -20,13 +17,12 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@types/puppeteer": "^7.0.4",
+    "@playwright/test": "^1.44.0",
     "@types/rails__actioncable": "^8.0.3",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "esbuild": "^0.19.0",
     "esbuild-sass-plugin": "^2.0.0",
-    "puppeteer": "^24.37.5",
     "sass": "^1.69.0",
     "typescript": "^5.3.0"
   }
