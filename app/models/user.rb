@@ -20,12 +20,16 @@ class User < ApplicationRecord
   validates :tier, inclusion: { in: TIERS }
 
   def self.from_omniauth(auth)
-    where(provider: auth.provider, uid: auth.uid).first_or_initialize.tap do |user|
+    user = where(provider: auth.provider, uid: auth.uid).first_or_initialize
+    
+    if user.new_record?
       user.email = auth.info.email
       user.provider = auth.provider
       user.uid = auth.uid
       user.save!
     end
+    
+    user
   end
 
   def oauth_user?
