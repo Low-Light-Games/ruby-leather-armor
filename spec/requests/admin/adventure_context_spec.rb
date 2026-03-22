@@ -3,18 +3,16 @@
 require "rails_helper"
 
 RSpec.describe "Admin::Adventures#update_context", type: :request do
-  let(:admin) { create(:user, :admin, :password_auth) }
-  let(:user)  { create(:user, :password_auth) }
-  let(:story) { create(:story) }
-  let(:adventure) { create(:adventure, user: admin, story: story, traversal_context: { location: "forest" }) }
-
-  let(:json_headers) { { "Accept" => "application/json", "Content-Type" => "application/json" } }
+  let!(:admin) { create(:user, :admin, :password_auth) }
+  let!(:user)  { create(:user, :password_auth) }
+  let!(:story) { create(:story) }
+  let!(:adventure) { create(:adventure, user: admin, story: story, traversal_context: { location: "forest" }) }
 
   def patch_context(field:, value:, as_user: admin)
-    sign_in_via_session(as_user)
+    sign_in(as_user)
     patch "/admin/adventures/#{adventure.id}",
-      params: { context_field: field, context_value: value.to_json }.to_json,
-      headers: json_headers
+      params: { context_field: field, context_value: value.to_json },
+      headers: { "Accept" => "application/json" }
   end
 
   describe "happy path" do
@@ -38,10 +36,10 @@ RSpec.describe "Admin::Adventures#update_context", type: :request do
 
   describe "invalid JSON" do
     it "returns 422" do
-      sign_in_via_session(admin)
+      sign_in(admin)
       patch "/admin/adventures/#{adventure.id}",
-        params: { context_field: "traversal", context_value: "not { valid json" }.to_json,
-        headers: json_headers
+        params: { context_field: "traversal", context_value: "not { valid json" },
+        headers: { "Accept" => "application/json" }
       expect(response).to have_http_status(:unprocessable_entity)
     end
   end

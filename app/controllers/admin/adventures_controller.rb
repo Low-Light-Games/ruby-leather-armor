@@ -2,7 +2,7 @@
 
 module Admin
   class AdventuresController < BaseController
-    before_action :set_adventure, only: [:show, :update, :reset_context, :update_sheet, :update_story_element, :update_context, :destroy]
+    before_action :set_adventure, only: [:show, :update, :reset_context, :update_sheet, :update_story_element, :destroy]
 
     CONTEXT_FIELDS = %w[traversal combat social exploration rest inventory].freeze
 
