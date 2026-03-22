@@ -187,6 +187,11 @@
     }
   }
 
+  /* ── Mobile: collapse outer padding so game fills the screen ── */
+  @media (max-width: 768px) {
+    padding: 8px 0 0;
+  }
+
   /* ── Sheet editor actions ── */
   .sheet-editor-actions {
     display: flex;

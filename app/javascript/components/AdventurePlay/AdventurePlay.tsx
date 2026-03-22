@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import Navbar from '../Navbar';
 import Login from '../Login';
@@ -11,6 +12,8 @@ import { useSpellbook } from './hooks/useSpellbook';
 import { useInventory } from './hooks/useInventory';
 import './AdventurePlay.scss';
 
+type MobileTab = 'character' | 'play' | 'story';
+
 interface AdventurePlayProps {
   adventureId: number;
 }
@@ -23,6 +26,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const rolls = useRolls(ds, advSheet);
   const spellbook = useSpellbook(adventure, ds, setAdventure);
   const inventory = useInventory(adventure, setAdventure);
+  const [mobileTab, setMobileTab] = useState<MobileTab>('play');
 
   // ── Early returns (loading / auth / error) ─────────────────────
 
@@ -57,7 +61,29 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   return (
     <div className="app">
       <Navbar />
-      <div className="adventure-play">
+      <div className="adventure-play" data-mobile-tab={mobileTab}>
+        {/* Mobile tab navigation — hidden on desktop */}
+        <nav className="mobile-tab-nav" aria-label="Panel navigation">
+          <button
+            className={`mobile-tab-btn${mobileTab === 'character' ? ' active' : ''}`}
+            onClick={() => setMobileTab('character')}
+          >
+            Character
+          </button>
+          <button
+            className={`mobile-tab-btn${mobileTab === 'play' ? ' active' : ''}`}
+            onClick={() => setMobileTab('play')}
+          >
+            Play
+          </button>
+          <button
+            className={`mobile-tab-btn${mobileTab === 'story' ? ' active' : ''}`}
+            onClick={() => setMobileTab('story')}
+          >
+            Story
+          </button>
+        </nav>
+
         {/* LEFT COLUMN — Character */}
         <CharacterSidebar
           sheet={sheet}

@@ -101,4 +101,23 @@
       outline-offset: 2px;
     }
   }
+
+  @media (max-width: 768px) {
+    margin-bottom: 0;
+    padding: 8px 12px 8px;
+
+    /* Hide nav links that aren't critical on mobile */
+    .nav-link:not(.adventure-cta) {
+      display: none;
+    }
+
+    .admin-badge {
+      display: none;
+    }
+
+    .user-info {
+      font-size: 13px;
+      gap: 8px;
+    }
+  }
 }

@@ -1,5 +1,10 @@
 @use '../tokens' as *;
 
+/* ── Mobile tab nav (hidden on desktop) ── */
+.mobile-tab-nav {
+  display: none;
+}
+
 .adventure-play {
   display: flex;
   gap: 16px;
@@ -1039,6 +1044,96 @@
           }
         }
       }
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MOBILE — single-panel tab layout (≤ 768px)
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Show the tab nav */
+  .mobile-tab-nav {
+    display: flex;
+    width: 100%;
+    background: $parchment-dk;
+    border-bottom: 2px solid $border;
+    flex-shrink: 0;
+  }
+
+  .mobile-tab-btn {
+    flex: 1;
+    padding: 11px 4px;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    background: transparent;
+    font-family: $font-display;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    color: $ink-light;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+
+    &.active {
+      color: $ink;
+      border-bottom-color: $red-ink;
+    }
+
+    &:hover:not(.active) {
+      color: $ink-mid;
+      background: $parchment-mid;
+    }
+  }
+
+  .adventure-play {
+    flex-direction: column;
+    gap: 0;
+    min-height: 0;
+
+    /* All columns go full-width, fixed height = remaining viewport */
+    .adventure-column {
+      width: 100%;
+      flex: none;
+      /* dvh accounts for iOS Safari's collapsing toolbar */
+      max-height: calc(100dvh - 116px);
+      height: calc(100dvh - 116px);
+      box-sizing: border-box;
+    }
+
+    /* Chat needs a reliable height for its inner flex layout */
+    .middle-column {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Character column — scrollable sheet */
+    .character-column {
+      overflow-y: auto;
+    }
+
+    /* Story column — scrollable context cards */
+    .story-column {
+      overflow-y: auto;
+    }
+
+    /* ── Show/hide panels based on active tab ── */
+    &[data-mobile-tab="character"] {
+      .character-column { display: flex; }
+      .middle-column,
+      .story-column     { display: none; }
+    }
+
+    &[data-mobile-tab="play"] {
+      .middle-column    { display: flex; }
+      .character-column,
+      .story-column     { display: none; }
+    }
+
+    &[data-mobile-tab="story"] {
+      .story-column     { display: block; }
+      .character-column,
+      .middle-column    { display: none; }
     }
   }
 }
