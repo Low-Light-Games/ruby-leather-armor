@@ -20,6 +20,7 @@ export interface PendingRolls {
   entries: PendingRollEntry[]
   showDc: boolean
   iterativeProgress?: IterativeProgress | null
+  isInitiative?: boolean
 }
 
 export function extractRollRequests(msg: AdventureMessage): RollRequest[] {
@@ -62,4 +63,11 @@ export function buildPendingRollsFromMessage(
   const showDc = msg.metadata?.show_dc !== false
   const iterativeProgress = msg.metadata?.iterative_progress as IterativeProgress | undefined
   return buildPendingRolls(requests, showDc, derivedStats, iterativeProgress || null)
+}
+
+export function buildInitiativePendingRolls(derivedStats?: DerivedStats | null): PendingRolls {
+  const req: RollRequest = { type: 'initiative', description: 'Roll initiative to determine who acts first in combat' }
+  const resolved = derivedStats ? resolveRollRequest(req, derivedStats) : null
+  const entries: PendingRollEntry[] = [{ request: req, resolved, value: null, resolution_method: null }]
+  return { requests: [req], entries, showDc: false, isInitiative: true }
 }
