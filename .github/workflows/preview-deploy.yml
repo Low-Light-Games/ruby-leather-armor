@@ -9,6 +9,8 @@ jobs:
     if: github.event.label.name == 'preview'
     runs-on: ubuntu-latest
     environment: Preview
+    permissions:
+      pull-requests: write
 
     steps:
       - name: Sanitize branch name
