@@ -43,8 +43,16 @@ module DungeonMaster
       template.result(ctx.send(:get_binding)).strip
     end
 
+    # Loads a JSON schema file from templates/schemas/<name>.json.
+    # Returns the raw string so callers can embed it in prompts or parse it.
+    def self.load_schema(name)
+      @schemas ||= {}
+      @schemas[name] ||= TEMPLATE_DIR.join("schemas", "#{name}.json").read
+    end
+
     def self.reload!
       @templates = nil
+      @schemas = nil
     end
 
     def self.load_template(name)

@@ -784,6 +784,52 @@ a semantically normalized restatement. In practice these are nearly identical;
 Intake's sanitization already handles the safety and formatting concerns that
 PlayerInterpreter was nominally addressing.
 
+### 34. JSON response schemas as separate files
+
+**Decision:** extract the expected JSON response format for each AI step into
+standalone `.json` files under `templates/schemas/<step_name>.json`. The schema
+file is loaded by `PromptRenderer.load_schema` and injected into the prompt
+template via a local variable (`<%= @response_schema %>`), replacing inline JSON
+examples that were previously hardcoded in the ERB template.
+
+**Why:** inline JSON schemas in prompt templates had several problems:
+
+- The schema was duplicated across the template (prompt instruction) and the Ruby
+  parser (response handling) with no shared source of truth.
+- Prompt templates became long and noisy — the JSON example often dwarfed the
+  actual instructional prose.
+- Schema changes required editing deeply nested ERB, increasing the risk of
+  introducing malformed JSON that only surfaces at runtime.
+
+Separate `.json` files are syntax-checked by editors and CI, are easy to diff,
+and serve as canonical documentation for each step's contract.
+
+**Convention:** schema files contain the full expected response structure with
+descriptive placeholder values. Array entry shapes are documented under a
+top-level `_entry_schemas` key (prefixed with `_` to signal metadata). The
+prompt template instructs the model not to include `_entry_schemas` in its
+response.
+
+**Migration:** started with `unified_evaluation.json`. Other steps will be
+migrated incrementally as they are touched.
+
+### 35. UnifiedEvaluation: expand_scene and compute_take_values
+
+**Decision:** add the `expand_scene` signal to the UnifiedEvaluation schema
+(social domain only) and replace the misrouted `apply_qualifier_results` call
+with a dedicated `compute_take_values` method.
+
+**Why:** `expand_scene` was present in the standard beacon path but missing from
+the unified path — social scene expansion would silently fail. The original
+`apply_qualifier_results` call passed `intent` (not a qualifier response), which
+accidentally worked as a no-op for the qualification overlay but obscured the
+actual intent: the unified AI already provides `take_10_eligible` /
+`take_20_eligible` per roll, and only the deterministic sheet-math
+(`take_10_value` / `take_20_value`) was needed.
+
+`compute_take_values` makes the contract explicit: AI decides eligibility, code
+computes the numeric values from the character sheet.
+
 ---
 
 ## Step Index
