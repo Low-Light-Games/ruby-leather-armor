@@ -58,7 +58,7 @@ jobs:
             RAILS_MASTER_KEY=${RAILS_MASTER_KEY}
             OPENAI_API_KEY=${OPENAI_API_KEY}
             SENTRY_DSN=${SENTRY_DSN}
-            RAILS_ENV=production
+            RAILS_ENV=staging
             PORT=${PORT}
             ENV
 
@@ -75,16 +75,16 @@ jobs:
             # Wait for app to be ready (max 2 minutes)
             timeout 120 bash -c \
               'until docker compose -f docker-compose.preview.yml exec -T app \
-                bundle exec rails runner "puts :ok" RAILS_ENV=production 2>/dev/null; \
+                bundle exec rails runner "puts :ok" RAILS_ENV=staging 2>/dev/null; \
                 do sleep 5; done'
 
             # Prepare database (schema + migrations)
             docker compose -f docker-compose.preview.yml exec -T app \
-              bundle exec rails db:prepare RAILS_ENV=production
+              bundle exec rails db:prepare RAILS_ENV=staging
 
             # Seed database
             docker compose -f docker-compose.preview.yml exec -T app \
-              bundle exec rails db:seed RAILS_ENV=production
+              bundle exec rails db:seed RAILS_ENV=staging
 
             # Add Nginx vhost
             sudo /home/ubuntu/scripts/add_vhost.sh $SAFE_BRANCH $PORT

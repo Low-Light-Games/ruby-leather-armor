@@ -14,7 +14,7 @@ load Rails.root.join("db", "seeds", "encounter_tables.rb")
 
 # Only bootstrap local development — production admin accounts should be
 # created through a secure out-of-band process.
-if Rails.env.development?
+if Rails.env.development? || Rails.env.staging?
   admin = User.find_or_initialize_by(email: 'admin@example.com')
   admin.admin = true
   admin.password = 'admin123'
