@@ -44,10 +44,10 @@ flowchart TB
 
     subgraph resolve["CoreResolver.resolve — evaluation_mode controls path"]
         RESOLVE --> EVMODE{evaluation_mode?}
-        EVMODE -->|standard| BEACON
-        EVMODE -->|unified| UNIFIED_EVAL
+        EVMODE -->|unified — default| UNIFIED_EVAL
+        EVMODE -->|standard — legacy| BEACON
 
-        subgraph beacon_parallel["Standard: 6 parallel domain beacons  ☆ AI ×6"]
+        subgraph beacon_parallel["Standard (legacy): 6 parallel domain beacons  ☆ AI ×6"]
             BEACON[run_beacon] --> B1[traversal]
             BEACON --> B2[combat]
             BEACON --> B3[social]
@@ -295,7 +295,11 @@ The outer orchestration loop: for each action in the queue:
 
 The inner pipeline. Behavior depends on `DmConfig["evaluation_mode"]`.
 
-#### Standard mode (default)
+#### Unified mode (default)
+
+A single AI call replaces all 6 beacons plus MechanicalEvaluation plus RollQualifier. The model handles all domains in one pass, producing the same data structures. Recommended model: gpt-5-mini — it fits comfortably within the cost budget freed by consolidating 6 beacon calls and has the cross-domain reasoning needed for a unified evaluation. Floor: gpt-4.1-mini or o4-mini. Stronger models (o3, gpt-5) improve quality further. Sanity checks (world consistency + capability) still run as independent parallel guardrails afterward.
+
+#### Standard mode (legacy — `evaluation_mode: "standard"`)
 
 **5a — Beacon (6 parallel AI calls)**
 
@@ -313,10 +317,6 @@ Each beacon returns:
 Results are converged by `converge_beacons`: affected domains are collected, `needs_mechanics` is true if any beacon says so, destination comes from the traversal beacon, `expand_scene` from the social beacon. Domain priority for `primary_context` is: combat > social > traversal > exploration > rest > inventory.
 
 `plot_relevant` is determined by checking if the current location or affected contexts overlap with any undiscovered clues or story NPCs.
-
-#### Unified mode (`evaluation_mode: "unified"`)
-
-A single AI call replaces all 6 beacons plus MechanicalEvaluation plus RollQualifier. The model handles all domains in one pass, producing the same data structures. Designed for top-tier models (o3, Claude 4+) that can handle cross-domain reasoning without the latency cost of parallelism. Sanity checks (world consistency + capability) still run as independent parallel guardrails afterward.
 
 ---
 
@@ -611,8 +611,8 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 |------|------|---------|
 | **Intake** | AI | Score danger, sanitize input, detect DM query, flag context gaps. |
 | **Sequencer** | AI | Split compound player input into ordered discrete actions. Skipped if `action_queue` off. |
-| **Beacon** | AI ×6 | Per domain (parallel): affected?, needs_mechanics?, rules_needed, transition, destination, combatants, expand_scene. |
-| **UnifiedEvaluation** | AI ×1 | Single-call alternative to Beacon + MechEval + RollQualifier (requires `evaluation_mode: "unified"`). |
+| **UnifiedEvaluation** | AI ×1 | Default evaluation path. Single call covering all domains: affected?, needs_mechanics?, rolls, NPC actions, consequences, expand_scene, Take 10/20 eligibility. |
+| **Beacon** | AI ×6 | Legacy evaluation path (`evaluation_mode: "standard"`). Per domain (parallel): affected?, needs_mechanics?, rules_needed, transition, destination, combatants, expand_scene. |
 | **MechanicalEvaluation** | AI ×N | Sequential per affected domain (primary first): rolls, NPC actions, consequences, summary (each domain sees prior summaries). |
 | **RollQualifier** | AI | Per domain after MechEval: situational modifiers, Take 10/20 eligibility. Take 10/20 values computed from sheet. |
 | **World consistency check** | AI | Validate referenced entities exist in current scene. Runs always (full gate or standalone). |

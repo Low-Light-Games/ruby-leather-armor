@@ -55,25 +55,28 @@ steps into one call, gated by `pipeline_mode: "edge"`. This is available
 for low-traffic deployments or latency-sensitive scenarios where the
 trade-offs are acceptable.
 
-**Middle ground preserved:** the Unified Evaluation mode
-(`evaluation_mode: "unified"`) collapses only the evaluation phase
-(beacons + mechanical evaluations + roll qualifiers) into a single AI
-call while preserving the rest of the pipeline (sanity checks, verdict,
-time keeping, narration, context updates as separate steps). This
-targets top-end models that can handle cross-domain reasoning in one
-pass — delivering better coherence and zero roll duplication — without
-sacrificing the debugging granularity of the non-evaluation steps.
+**Default path:** the Unified Evaluation mode collapses the evaluation
+phase (beacons + mechanical evaluations + roll qualifiers) into a single
+AI call while preserving the rest of the pipeline (sanity checks,
+verdict, time keeping, narration, context updates as separate steps).
+One model handles all domains in one pass, delivering better coherence
+and eliminating roll duplication without sacrificing debugging
+granularity for the non-evaluation steps.
 
-| | Standard | Unified Evaluation | Edge Pipeline |
+The legacy Standard path (6 parallel beacons + sequential mecheval +
+rollqualifier per domain) remains available via `evaluation_mode:
+"standard"` for comparison, rollback, or per-domain model tuning.
+
+| | Unified Evaluation (default) | Standard (legacy) | Edge Pipeline |
 |---|---|---|---|
-| Evaluation calls | 8-14 (6 beacons + N mecheval + N rollqualifier) | 1 | 1 (everything) |
+| Evaluation calls | 1 | 8-14 (6 beacons + N mecheval + N rollqualifier) | 1 (everything) |
 | Other steps | Separate | Separate | N/A (all-in-one) |
-| Per-domain model selection | Yes | No (one model for eval) | No |
-| Cross-domain coherence | Low (each domain isolated) | High (single context) | High |
-| Roll deduplication | Prompt-level (warn-only, see DD 31) | AI avoids duplicates natively | N/A |
-| Prompt size | Small per call | Large (all contexts + rules) | Largest |
-| Target models | Any (cheap models work well) | Top-end only (o3, gpt-5, claude-4) | Capable |
-| Toggle | default | `evaluation_mode: "unified"` | `pipeline_mode: "edge"` |
+| Per-domain model selection | No (one model for eval) | Yes | No |
+| Cross-domain coherence | High (single context) | Low (each domain isolated) | High |
+| Roll deduplication | AI avoids duplicates natively | Prompt-level (warn-only, see DD 31) | N/A |
+| Prompt size | Large (all contexts + rules) | Small per call | Largest |
+| Recommended model | gpt-5-mini (floor: gpt-4.1-mini, o4-mini) | Any (cheap models work) | Capable |
+| Toggle | default | `evaluation_mode: "standard"` | `pipeline_mode: "edge"` |
 
 ### 2. Six micro-contexts instead of a single context blob
 

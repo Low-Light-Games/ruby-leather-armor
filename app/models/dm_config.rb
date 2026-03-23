@@ -41,7 +41,7 @@ class DmConfig < ApplicationRecord
     "action_queue" => true,
     "async_pipeline" => false,
     "show_roll_dc" => true,
-    "evaluation_mode" => "standard",
+    "evaluation_mode" => "unified",
     "roll_qualifier_scope" => "domain",
     "scene_history_depth" => 10,
     "chronicler_tone_direction" => false,
