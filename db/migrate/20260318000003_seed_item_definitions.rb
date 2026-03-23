@@ -1,6 +1,6 @@
 class SeedItemDefinitions < ActiveRecord::Migration[7.1]
   def up
-    load Rails.root.join("db", "seeds", "items.rb")
+    # Data seeding moved to db/seeds.rb — run bin/rails db:seed to populate.
   end
 
   def down
