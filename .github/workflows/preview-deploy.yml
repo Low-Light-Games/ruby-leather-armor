@@ -13,8 +13,9 @@ jobs:
     steps:
       - name: Sanitize branch name
         id: branch
+        env:
+          BRANCH: ${{ github.head_ref }}
         run: |
-          BRANCH="${{ github.head_ref }}"
           SAFE_BRANCH=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | cut -c1-40)
           echo "safe_branch=$SAFE_BRANCH" >> $GITHUB_OUTPUT
           echo "branch=$BRANCH" >> $GITHUB_OUTPUT
@@ -25,15 +26,15 @@ jobs:
           RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          BRANCH: ${{ github.head_ref }}
         with:
           host: ${{ vars.EC2_HOST }}
           username: ${{ vars.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: RAILS_MASTER_KEY,OPENAI_API_KEY,SENTRY_DSN
+          envs: RAILS_MASTER_KEY,OPENAI_API_KEY,SENTRY_DSN,BRANCH
           script: |
             set -e
 
-            BRANCH="${{ github.head_ref }}"
             SAFE_BRANCH=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | cut -c1-40)
 
             # Clone or update repo
