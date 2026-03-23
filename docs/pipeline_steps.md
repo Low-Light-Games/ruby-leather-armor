@@ -602,16 +602,19 @@ Intake runs as one call. The pipeline rejects if `danger_score >= danger_thresho
 
 ### 25. Beacon (parallel per-domain interpretation)
 
-**Decision:** after the PlayerInterpreter step produces a pure intention, dispatch
-parallel per-domain interpreters that each evaluate how the action affects
-their domain.
+**Decision:** dispatch six parallel per-domain interpreters that each evaluate
+how the sanitized player input affects their domain.
 
-**Why:** asking a single PlayerInterpreter step to handle pure intention extraction
-AND domain-specific rule interpretation AND context routing overloaded
-the prompt. The PlayerInterpreter step frequently misidentified affected contexts
-when it was also trying to determine mechanics. By separating "what does
-the player want?" (PlayerInterpreter) from "how does that affect combat/traversal/
-social?" (beacon), each task gets focused attention.
+**Why:** asking a single step to handle both intent extraction and domain-specific
+rule interpretation overloaded the prompt. Separate beacons give each domain
+focused attention — the combat beacon reasons about AoO triggers without being
+distracted by traversal movement rules, and so on. Running them in parallel means
+wall-clock time equals the slowest single domain, not the sum of all domains.
+
+A PlayerInterpreter step previously sat before the beacons to produce a "pure
+restatement" of the input. It was removed (Decision 33) because the beacons
+already receive the sanitized input from Intake and perform the real interpretive
+work themselves — the restatement added a round-trip with no meaningful quality benefit.
 
 All beacons always run (all six domains). The `interpreter_scope` config
 is deprecated — `beacon_domains` always returns all domains.
@@ -765,6 +768,22 @@ Unknown `call_type` values are logged with a warning but the record is
 always saved. This ensures AI costs are never lost due to a typo or
 unregistered step — the warning makes the gap visible for correction.
 
+### 33. PlayerInterpreter removed
+
+**Decision:** remove the PlayerInterpreter step. Sanitized player input now passes
+directly from Intake (or Sequencer) to the beacons.
+
+**Why:** PlayerInterpreter's only job was producing a "pure restatement" of the
+already-sanitized input — one AI call to rephrase what Intake had already cleaned.
+The beacons receive that input and do the real interpretive work themselves
+(domain classification, mechanics detection, rules routing). The restatement added
+latency with no observable quality improvement. The step was pure overhead.
+
+**Trade-off accepted:** beacons now receive the sanitized input verbatim rather than
+a semantically normalized restatement. In practice these are nearly identical;
+Intake's sanitization already handles the safety and formatting concerns that
+PlayerInterpreter was nominally addressing.
+
 ---
 
 ## Step Index
@@ -838,7 +857,7 @@ Every AI call produces an `AiLog` record containing:
 
 | Field | Description |
 |---|---|
-| `step` | Pipeline step name (intake, player_interpreter, beacon, mechanical_evaluation, sanity_checker, sanity_checker_world, mechanic, momentum, social_expansion, chronicler, narrate, micro_context_update, macro_narrative_update, edge_pipeline) |
+| `step` | Pipeline step name (intake, beacon, mechanical_evaluation, sanity_checker, sanity_checker_world, mechanic, momentum, social_expansion, chronicler, narrate, micro_context_update, macro_narrative_update, edge_pipeline) |
 | `prompt_summary` | Truncated description of what was asked |
 | `raw_response` | The complete API response |
 | `parsed_response` | The parsed JSON |

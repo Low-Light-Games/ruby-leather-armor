@@ -284,9 +284,8 @@ The resulting `actions` array drives the **action queue loop**.
 The outer orchestration loop: for each action in the queue:
 
 1. Creates an `AdventureLoop` record (tracks status, timeline events, raw outcome).
-2. Calls **PlayerInterpreter** (AI) — produces a clean restatement of the player's intent. No context classification happens here; this step only restates.
-3. Calls **CoreResolver.resolve** — the inner pipeline (detailed below).
-4. Dispatches on the result status (see "Outcomes" section).
+2. Calls **CoreResolver.resolve** — the inner pipeline (detailed below), passing the sanitized action text directly.
+3. Dispatches on the result status (see "Outcomes" section).
 
 **Inter-action context update:** When an action resolves (`:resolved` status) and there are more actions still in the queue, a `run_micro_context_update` call runs immediately before the next action. This updates the adventure's context JSONB fields so the next action's beacon/evaluation sees the freshest world state.
 
