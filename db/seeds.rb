@@ -27,4 +27,20 @@ if Rails.env.development? || Rails.env.staging?
 
   puts "Created/updated admin user: #{admin.email} (password: admin123)"
   puts "Created/updated test user: #{test_user.email} (password: test123)"
+
+  [admin, test_user].each do |u|
+    unless u.sheets.exists?
+      u.sheets.create!(
+        name: "Aldric Stonebrow",
+        character_class: "Fighter",
+        strength: 15,
+        dexterity: 13,
+        constitution: 14,
+        intelligence: 10,
+        wisdom: 12,
+        charisma: 8
+      )
+      puts "Created sheet for #{u.email}"
+    end
+  end
 end
