@@ -9,14 +9,13 @@ module DungeonMaster
   #
   # Flow:
   #   run_prompt          -> intake -> dm_query_flow | orchestrate_actions
-  #   orchestrate_actions -> sequencer -> [ for each action: player_interpreter -> CoreResolver.resolve ] -> output_phase
+  #   orchestrate_actions -> sequencer -> [ for each action: CoreResolver.resolve ] -> output_phase
   #   run_rolls           -> CoreResolver.finish_resolution -> continue queue if remaining -> output_phase
   #
   class Pipeline
     include Steps::Helpers
     include Steps::Intake
     include Steps::DmQuery
-    include Steps::PlayerInterpreter
     include Steps::Sequencer
     include Steps::Beacon
     include Steps::MechanicalEvaluation
@@ -142,9 +141,7 @@ module DungeonMaster
       actions.each_with_index do |action_text, idx|
         set_action_label(idx, total)
         @loop = create_adventure_loop(action_text, idx)
-
-        intention = run_player_interpreter(action_text)
-        result = resolve(intention)
+        result = resolve(action_text)
 
         case result[:status]
         when :rejected
@@ -219,9 +216,7 @@ module DungeonMaster
         action_idx = base_idx + idx
         set_action_label(action_idx, total_original)
         @loop = create_adventure_loop(action_text, action_idx)
-
-        intention = run_player_interpreter(action_text)
-        result = resolve(intention)
+        result = resolve(action_text)
 
         case result[:status]
         when :rejected
@@ -542,6 +537,7 @@ module DungeonMaster
         pipeline_run_id: @log.pipeline_run_id,
         sequence_index: sequence_index,
         raw_action: action_text&.truncate(500),
+        player_intent: action_text&.truncate(500),
         status: "pending"
       )
     end

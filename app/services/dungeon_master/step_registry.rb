@@ -29,11 +29,6 @@ module DungeonMaster
         model_hint: "Fast, cheap model. Compound action detection — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
         pipeline: true,
       ),
-      "player_interpreter" => Entry.new(
-        token_budget: 200,
-        model_hint: "Fast, cheap model. Simple restatement — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
-        pipeline: true,
-      ),
       "beacon" => Entry.new(
         token_budget: 400,
         model_hint: "Fast, cheap model. Per-domain interpretation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",

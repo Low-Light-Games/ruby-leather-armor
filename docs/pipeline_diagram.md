@@ -39,8 +39,7 @@ flowchart TB
     SEQN & SEQ2 --> ACTION_LOOP
 
     subgraph action_loop["Action loop — for each action"]
-        ACTION_LOOP[Create AdventureLoop record] --> PI[PlayerInterpreter  ☆ AI]
-        PI --> RESOLVE[CoreResolver.resolve]
+        ACTION_LOOP[Create AdventureLoop record] --> RESOLVE[CoreResolver.resolve]
     end
 
     subgraph resolve["CoreResolver.resolve — evaluation_mode controls path"]
@@ -613,7 +612,6 @@ In both resumptions, prior narrate seeds from already-completed actions are carr
 |------|------|---------|
 | **Intake** | AI | Score danger, sanitize input, detect DM query, flag context gaps. |
 | **Sequencer** | AI | Split compound player input into ordered discrete actions. Skipped if `action_queue` off. |
-| **PlayerInterpreter** | AI | Restate player intent as clean intention string. No classification. |
 | **Beacon** | AI ×6 | Per domain (parallel): affected?, needs_mechanics?, rules_needed, transition, destination, combatants, expand_scene. |
 | **UnifiedEvaluation** | AI ×1 | Single-call alternative to Beacon + MechEval + RollQualifier (requires `evaluation_mode: "unified"`). |
 | **MechanicalEvaluation** | AI ×N | Sequential per affected domain (primary first): rolls, NPC actions, consequences, summary (each domain sees prior summaries). |

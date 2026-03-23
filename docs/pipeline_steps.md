@@ -777,7 +777,6 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | 1c | **DM Query** | AI (fast path) | `app/services/dungeon_master/steps/dm_query.rb` |
 | 1d | **Sequencer** | AI (toggled) | `app/services/dungeon_master/steps/sequencer.rb` |
 | -- | **CoreResolver** (module) | Code orchestration | `app/services/dungeon_master/core_resolver.rb` |
-| 2 | **PlayerInterpreter** | AI (per action) | `app/services/dungeon_master/steps/player_interpreter.rb` |
 | 3 | **Beacon** | AI (parallel per domain) | `app/services/dungeon_master/steps/beacon.rb` |
 | 3u | **UnifiedEvaluation** | AI (replaces beacon+mecheval+rollqualifier) | `app/services/dungeon_master/steps/unified_evaluation.rb` |
 | 4a | **MechanicalEvaluation** | AI (loop, parallel with 4b) | `app/services/dungeon_master/steps/mechanical_evaluation.rb` |
