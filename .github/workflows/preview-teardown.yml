@@ -1,0 +1,73 @@
+name: Teardown Preview
+
+on:
+  pull_request:
+    types: [unlabeled, closed]
+
+jobs:
+  teardown-preview:
+    if: |
+      github.event.action == 'closed' ||
+      (github.event.action == 'unlabeled' && github.event.label.name == 'preview')
+    runs-on: ubuntu-latest
+    environment: Preview
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Sanitize branch name
+        id: branch
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          SAFE_BRANCH=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | cut -c1-40)
+          echo "safe_branch=$SAFE_BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Teardown preview environment
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          BRANCH: ${{ github.head_ref }}
+        with:
+          host: ${{ vars.EC2_HOST }}
+          username: ${{ vars.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: BRANCH
+          script: |
+            set -e
+
+            SAFE_BRANCH=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | cut -c1-40)
+            PREVIEW_DIR=/home/ubuntu/previews/$SAFE_BRANCH
+
+            # Stop and remove containers (only if directory exists)
+            if [ -d "$PREVIEW_DIR" ]; then
+              cd "$PREVIEW_DIR"
+              docker compose -f docker-compose.preview.yml down -v || true
+            fi
+
+            # Drop database
+            docker run --rm --network host \
+              -e PGPASSWORD=preview_sekret \
+              postgres:16-alpine \
+              psql -h 127.0.0.1 -p 5433 -U preview \
+              -c "DROP DATABASE IF EXISTS \"preview_${SAFE_BRANCH}\";" postgres || true
+
+            # Release port
+            ruby /home/ubuntu/scripts/port_manager.rb release $SAFE_BRANCH || true
+
+            # Remove vhost
+            sudo /home/ubuntu/scripts/remove_vhost.sh $SAFE_BRANCH || true
+
+            # Remove preview directory
+            rm -rf "$PREVIEW_DIR"
+
+      - name: Comment PR with teardown notice
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const safeBranch = '${{ steps.branch.outputs.safe_branch }}';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🧹 Preview environment torn down for \`${safeBranch}\``
+            })

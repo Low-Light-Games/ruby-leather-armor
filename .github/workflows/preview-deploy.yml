@@ -1,0 +1,105 @@
+name: Deploy Preview
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  deploy-preview:
+    if: github.event.label.name == 'preview'
+    runs-on: ubuntu-latest
+    environment: Preview
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Sanitize branch name
+        id: branch
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          SAFE_BRANCH=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | cut -c1-40)
+          echo "safe_branch=$SAFE_BRANCH" >> $GITHUB_OUTPUT
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Deploy to preview server
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          BRANCH: ${{ github.head_ref }}
+        with:
+          host: ${{ vars.EC2_HOST }}
+          username: ${{ vars.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: RAILS_MASTER_KEY,OPENAI_API_KEY,SENTRY_DSN,BRANCH
+          script: |
+            set -e
+
+            SAFE_BRANCH=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | cut -c1-40)
+
+            # Clone or update repo
+            if [ ! -d /home/ubuntu/previews/$SAFE_BRANCH ]; then
+              git clone git@github.com:Leather-Armor-IO/rpg-tools.git \
+                /home/ubuntu/previews/$SAFE_BRANCH
+            fi
+            cd /home/ubuntu/previews/$SAFE_BRANCH
+            git fetch origin $BRANCH
+            git reset --hard origin/$BRANCH
+
+            # Assign port
+            PORT=$(ruby /home/ubuntu/scripts/port_manager.rb assign $SAFE_BRANCH)
+
+            # Write .env
+            cat > .env << ENV
+            DATABASE_URL=postgres://preview:preview_sekret@127.0.0.1:5433/preview_${SAFE_BRANCH}
+            REDIS_URL=redis://127.0.0.1:6380/0
+            RAILS_MASTER_KEY=${RAILS_MASTER_KEY}
+            OPENAI_API_KEY=${OPENAI_API_KEY}
+            SENTRY_DSN=${SENTRY_DSN}
+            RAILS_ENV=staging
+            PORT=${PORT}
+            ENV
+
+            # Create database (ignore error if already exists)
+            docker run --rm --network host \
+              -e PGPASSWORD=preview_sekret \
+              postgres:16-alpine \
+              psql -h 127.0.0.1 -p 5433 -U preview \
+              -c "CREATE DATABASE \"preview_${SAFE_BRANCH}\";" postgres || true
+
+            # Build and start (retry without cache if build fails)
+            docker compose -f docker-compose.preview.yml up -d --build || \
+              (docker builder prune -af && docker compose -f docker-compose.preview.yml up -d --build)
+
+            # Wait for app to be ready (max 2 minutes)
+            timeout 120 bash -c \
+              'until docker compose -f docker-compose.preview.yml exec -T app \
+                bundle exec rails runner "puts :ok" RAILS_ENV=staging 2>/dev/null; \
+                do sleep 5; done'
+
+            # Prepare database (schema + migrations)
+            docker compose -f docker-compose.preview.yml exec -T app \
+              bundle exec rails db:prepare RAILS_ENV=staging || \
+              (sleep 5 && docker compose -f docker-compose.preview.yml exec -T app \
+              bundle exec rails db:prepare RAILS_ENV=staging)
+
+            # Seed database
+            docker compose -f docker-compose.preview.yml exec -T app \
+              bundle exec rails db:seed RAILS_ENV=staging
+
+            # Add Nginx vhost
+            sudo /home/ubuntu/scripts/add_vhost.sh $SAFE_BRANCH $PORT
+
+      - name: Comment PR with preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const safeBranch = '${{ steps.branch.outputs.safe_branch }}';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 Preview deployed to https://${safeBranch}.leatherarmor.io`
+            })

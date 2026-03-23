@@ -53,7 +53,7 @@ ARG RAILS_ENV=production
 # ENV, so it won't appear in `docker inspect` or image layers.
 ARG RAILS_MASTER_KEY
 
-RUN if [ "$RAILS_ENV" = "production" ]; then \
+RUN if [ "$RAILS_ENV" = "production" ] || [ "$RAILS_ENV" = "staging" ]; then \
       SECRET_KEY_BASE_DUMMY=1 \
       RAILS_MASTER_KEY=${RAILS_MASTER_KEY} \
       RAILS_ENV=production \
