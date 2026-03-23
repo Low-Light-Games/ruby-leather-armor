@@ -12,7 +12,7 @@ module ApplicationHelper
     case event_type
     when "triage", "sanitize", "classify", "intake", "dispatcher", "beacon", "capability_guardrail", "sanity_checker", "sanity_checker_world", "chronicler" then "type-triage"
     when "capability_rejection", "world_check_failure", "intake_rejection" then "type-rejection"
-    when "sequencer", "intent", "player_interpreter" then "type-intent"
+    when "sequencer", "intent" then "type-intent"
     when "mechanical_evaluation", "roll_qualifier" then "type-ruling"
     when "ruling", "verdict", "mechanic" then "type-evaluate"
     when "momentum"                      then "type-evaluate"

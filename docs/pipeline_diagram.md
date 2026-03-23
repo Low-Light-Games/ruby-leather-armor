@@ -39,8 +39,7 @@ flowchart TB
     SEQN & SEQ2 --> ACTION_LOOP
 
     subgraph action_loop["Action loop — for each action"]
-        ACTION_LOOP[Create AdventureLoop record] --> PI[PlayerInterpreter  ☆ AI]
-        PI --> RESOLVE[CoreResolver.resolve]
+        ACTION_LOOP[Create AdventureLoop record] --> RESOLVE[CoreResolver.resolve]
     end
 
     subgraph resolve["CoreResolver.resolve — evaluation_mode controls path"]
@@ -285,9 +284,8 @@ The resulting `actions` array drives the **action queue loop**.
 The outer orchestration loop: for each action in the queue:
 
 1. Creates an `AdventureLoop` record (tracks status, timeline events, raw outcome).
-2. Calls **PlayerInterpreter** (AI) — produces a clean restatement of the player's intent. No context classification happens here; this step only restates.
-3. Calls **CoreResolver.resolve** — the inner pipeline (detailed below).
-4. Dispatches on the result status (see "Outcomes" section).
+2. Calls **CoreResolver.resolve** — the inner pipeline (detailed below), passing the sanitized action text directly.
+3. Dispatches on the result status (see "Outcomes" section).
 
 **Inter-action context update:** When an action resolves (`:resolved` status) and there are more actions still in the queue, a `run_micro_context_update` call runs immediately before the next action. This updates the adventure's context JSONB fields so the next action's beacon/evaluation sees the freshest world state.
 
@@ -613,7 +611,6 @@ In both resumptions, prior narrate seeds from already-completed actions are carr
 |------|------|---------|
 | **Intake** | AI | Score danger, sanitize input, detect DM query, flag context gaps. |
 | **Sequencer** | AI | Split compound player input into ordered discrete actions. Skipped if `action_queue` off. |
-| **PlayerInterpreter** | AI | Restate player intent as clean intention string. No classification. |
 | **Beacon** | AI ×6 | Per domain (parallel): affected?, needs_mechanics?, rules_needed, transition, destination, combatants, expand_scene. |
 | **UnifiedEvaluation** | AI ×1 | Single-call alternative to Beacon + MechEval + RollQualifier (requires `evaluation_mode: "unified"`). |
 | **MechanicalEvaluation** | AI ×N | Sequential per affected domain (primary first): rolls, NPC actions, consequences, summary (each domain sees prior summaries). |

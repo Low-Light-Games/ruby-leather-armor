@@ -4,8 +4,8 @@ module DungeonMaster
   module Steps
     # Pipeline Step: Beacon — parallel per-domain interpretation.
     #
-    # Given the pure intention from the PlayerInterpreter step, each domain
-    # beacon evaluates how that intention affects a single game domain
+    # Given the sanitized player input, each domain beacon evaluates how
+    # that intention affects a single game domain
     # (combat, traversal, etc.). Beacons run in parallel; results are merged
     # by converge_beacons.
     module Beacon
