@@ -10,75 +10,89 @@ Located in `app/models/`. 38 model files total.
 
 ### Foundation
 
-| Model | Description |
-|-------|-------------|
-| `ApplicationRecord` | Base class for all Active Record models |
-| `User` | Authenticated user; has many sheets, adventures, and dm_logs |
-| `DmConfig` | Singleton configuration for DM settings, AI model selection, token budgets, and evaluation modes |
-| `FeatureFlag` | Runtime feature toggles for A/B testing and gradual rollouts |
+
+| Model               | Description                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------ |
+| `ApplicationRecord` | Base class for all Active Record models                                                          |
+| `User`              | Authenticated user; has many sheets, adventures, and dm_logs                                     |
+| `DmConfig`          | Singleton configuration for DM settings, AI model selection, token budgets, and evaluation modes |
+| `FeatureFlag`       | Runtime feature toggles for A/B testing and gradual rollouts                                     |
+
 
 ### Character Sheets
 
-| Model | Description |
-|-------|-------------|
-| `Sheet` | Player character sheet with base stats, derived stat calculations, and currency helpers |
-| `AdventureSheet` | Snapshot copy of a `Sheet` scoped to a specific adventure instance |
-| `CreatureSheet` | NPC/monster stat block with creature types, attitudes, and origin tracking |
+
+| Model            | Description                                                                             |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| `Sheet`          | Player character sheet with base stats, derived stat calculations, and currency helpers |
+| `AdventureSheet` | Snapshot copy of a `Sheet` scoped to a specific adventure instance                      |
+| `CreatureSheet`  | NPC/monster stat block with creature types, attitudes, and origin tracking              |
+
 
 ### Sheet Join Tables
 
 Each sheet type has its own set of join tables for feats, spells, and items:
 
-| Model | Description |
-|-------|-------------|
-| `SheetFeat` | Links feats to a `Sheet` |
-| `SheetSpell` | Links spells to a `Sheet` (known/spellbook) |
-| `SheetItem` | Links items to a `Sheet` with slot management and quantity |
-| `AdventureSheetFeat` | Links feats to an `AdventureSheet` |
-| `AdventureSheetSpell` | Links spells to an `AdventureSheet` |
-| `AdventureSheetItem` | Links items to an `AdventureSheet` |
-| `CreatureSheetFeat` | Links feats to a `CreatureSheet` |
-| `CreatureSheetSpell` | Links spells to a `CreatureSheet` |
-| `CreatureSheetItem` | Links items to a `CreatureSheet` |
+
+| Model                 | Description                                                |
+| --------------------- | ---------------------------------------------------------- |
+| `SheetFeat`           | Links feats to a `Sheet`                                   |
+| `SheetSpell`          | Links spells to a `Sheet` (known/spellbook)                |
+| `SheetItem`           | Links items to a `Sheet` with slot management and quantity |
+| `AdventureSheetFeat`  | Links feats to an `AdventureSheet`                         |
+| `AdventureSheetSpell` | Links spells to an `AdventureSheet`                        |
+| `AdventureSheetItem`  | Links items to an `AdventureSheet`                         |
+| `CreatureSheetFeat`   | Links feats to a `CreatureSheet`                           |
+| `CreatureSheetSpell`  | Links spells to a `CreatureSheet`                          |
+| `CreatureSheetItem`   | Links items to a `CreatureSheet`                           |
+
 
 ### Catalog / Definitions
 
-| Model | Description |
-|-------|-------------|
-| `FeatDefinition` | Feat catalog with categories (combat, general, metamagic, item_creation) |
-| `SpellDefinition` | Spell catalog with school, class levels, and components |
-| `ItemDefinition` | Equipment catalog with armor/shield bonuses, weight, cost, and slot properties |
+
+| Model             | Description                                                                    |
+| ----------------- | ------------------------------------------------------------------------------ |
+| `FeatDefinition`  | Feat catalog with categories (combat, general, metamagic, item_creation)       |
+| `SpellDefinition` | Spell catalog with school, class levels, and components                        |
+| `ItemDefinition`  | Equipment catalog with armor/shield bonuses, weight, cost, and slot properties |
+
 
 ### Adventure & Story
 
-| Model | Description |
-|-------|-------------|
-| `Adventure` | Active game session linking a user and story with full context tracking |
-| `AdventureMessage` | Chat/narrative messages with types: narrative, roll_request, dm_query, etc. |
-| `Story` | Quest/campaign definition with locations, NPCs, clues, milestones, and encounter tables |
-| `StoryLocation` | Map node with connections to other locations |
-| `LocationConnection` | Directed graph edge between two locations with terrain and distance |
-| `StoryNpc` | Non-player character with role (quest_giver, merchant, antagonist, etc.) and attitude |
-| `StoryClue` | Discoverable story element with difficulty level and discovery method |
-| `StoryMilestone` | Story progression marker and objective |
+
+| Model                | Description                                                                             |
+| -------------------- | --------------------------------------------------------------------------------------- |
+| `Adventure`          | Active game session linking a user and story with full context tracking                 |
+| `AdventureMessage`   | Chat/narrative messages with types: narrative, roll_request, dm_query, etc.             |
+| `Story`              | Quest/campaign definition with locations, NPCs, clues, milestones, and encounter tables |
+| `StoryLocation`      | Map node with connections to other locations                                            |
+| `LocationConnection` | Directed graph edge between two locations with terrain and distance                     |
+| `StoryNpc`           | Non-player character with role (quest_giver, merchant, antagonist, etc.) and attitude   |
+| `StoryClue`          | Discoverable story element with difficulty level and discovery method                   |
+| `StoryMilestone`     | Story progression marker and objective                                                  |
+
 
 ### Encounters & Bestiary
 
-| Model | Description |
-|-------|-------------|
-| `EncounterTable` | Container for a set of random encounter entries |
+
+| Model                 | Description                                                                                 |
+| --------------------- | ------------------------------------------------------------------------------------------- |
+| `EncounterTable`      | Container for a set of random encounter entries                                             |
 | `EncounterTableEntry` | Single encounter possibility with weight, terrain/level filters, and optional AI generation |
-| `BestiaryEntry` | OGL/SRD Pathfinder creature template used to seed `CreatureSheet` instances |
+| `BestiaryEntry`       | OGL/SRD Pathfinder creature template used to seed `CreatureSheet` instances                 |
+
 
 ### AI Pipeline & Logging
 
-| Model | Description |
-|-------|-------------|
-| `PipelineRun` | Tracks a single AI pipeline execution with status and timing |
+
+| Model           | Description                                                                          |
+| --------------- | ------------------------------------------------------------------------------------ |
+| `PipelineRun`   | Tracks a single AI pipeline execution with status and timing                         |
 | `AdventureLoop` | Persistent cross-step pipeline context; holds tags, data store, timeline, and status |
-| `DmLog` | Records Dungeon Master activity with step-level granularity |
-| `AiLog` | Records individual AI API calls with token counts and response status |
-| `AiUsageRecord` | Aggregates token consumption and cost per model |
+| `DmLog`         | Records Dungeon Master activity with step-level granularity                          |
+| `AiLog`         | Records individual AI API calls with token counts and response status                |
+| `AiUsageRecord` | Aggregates token consumption and cost per model                                      |
+
 
 ---
 
@@ -88,45 +102,53 @@ Located in `app/controllers/`. 23 controller files total.
 
 ### Core
 
-| Controller | Routes / Actions | Description |
-|------------|-----------------|-------------|
-| `ApplicationController` | (base) | Authentication, policy-based authorization, `current_user` helper |
-| `HomeController` | `GET /` | Redirects admins to dashboard, others to sheets list |
-| `SessionsController` | `POST /login`, `DELETE /logout`, `GET /me` | Authentication endpoints |
-| `StoriesController` | `GET /stories` | Returns available stories for adventure creation |
-| `LegalController` | `GET /privacy`, `GET /terms` | Static legal pages |
-| `FeatureFlagsController` | `GET /feature_flags` | User-facing feature flag state |
+
+| Controller               | Routes / Actions                           | Description                                                       |
+| ------------------------ | ------------------------------------------ | ----------------------------------------------------------------- |
+| `ApplicationController`  | (base)                                     | Authentication, policy-based authorization, `current_user` helper |
+| `HomeController`         | `GET /`                                    | Redirects admins to dashboard, others to sheets list              |
+| `SessionsController`     | `POST /login`, `DELETE /logout`, `GET /me` | Authentication endpoints                                          |
+| `StoriesController`      | `GET /stories`                             | Returns available stories for adventure creation                  |
+| `LegalController`        | `GET /privacy`, `GET /terms`               | Static legal pages                                                |
+| `FeatureFlagsController` | `GET /feature_flags`                       | User-facing feature flag state                                    |
+
 
 ### Character Management
 
-| Controller | Routes / Actions | Description |
-|------------|-----------------|-------------|
-| `SheetsController` | Full CRUD on `/sheets` | Create/read/update/delete character sheets; syncs feats, spells, and items via join tables |
-| `AdventureSheetsController` | `PATCH /adventures/:id/sheet` | Updates feat, spell, and item selections for an adventure-scoped sheet |
-| `FeatDefinitionsController` | `GET /feat_definitions` | Read-only catalog with category and parameter filtering |
-| `SpellDefinitionsController` | `GET /spell_definitions` | Read-only catalog with school, class, and level filtering |
-| `ItemDefinitionsController` | `GET /item_definitions` | Read-only catalog with type and slot filtering |
+
+| Controller                   | Routes / Actions              | Description                                                                                |
+| ---------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------ |
+| `SheetsController`           | Full CRUD on `/sheets`        | Create/read/update/delete character sheets; syncs feats, spells, and items via join tables |
+| `AdventureSheetsController`  | `PATCH /adventures/:id/sheet` | Updates feat, spell, and item selections for an adventure-scoped sheet                     |
+| `FeatDefinitionsController`  | `GET /feat_definitions`       | Read-only catalog with category and parameter filtering                                    |
+| `SpellDefinitionsController` | `GET /spell_definitions`      | Read-only catalog with school, class, and level filtering                                  |
+| `ItemDefinitionsController`  | `GET /item_definitions`       | Read-only catalog with type and slot filtering                                             |
+
 
 ### Adventure Play
 
-| Controller | Routes / Actions | Description |
-|------------|-----------------|-------------|
-| `AdventuresController` | `POST /adventures`, `GET /adventures/:id`, `DELETE /adventures/:id` | Creates adventures (copies sheet, builds initial context, invokes embellisher), shows state, deletes |
-| `AdventureMessagesController` | `POST /adventures/:id/messages` | Accepts player prompts, initiative rolls, and skill checks; triggers async AI pipeline |
+
+| Controller                    | Routes / Actions                                                    | Description                                                                                          |
+| ----------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `AdventuresController`        | `POST /adventures`, `GET /adventures/:id`, `DELETE /adventures/:id` | Creates adventures (copies sheet, builds initial context, invokes embellisher), shows state, deletes |
+| `AdventureMessagesController` | `POST /adventures/:id/messages`                                     | Accepts player prompts, initiative rolls, and skill checks; triggers async AI pipeline               |
+
 
 ### Admin Namespace (`/admin/...`)
 
-| Controller | Description |
-|------------|-------------|
-| `AdminController` | Admin base controller with role guard |
-| `admin/DmLogsController` | Browse and inspect DM activity logs |
-| `admin/AiLogsController` | Browse AI call logs with pipeline run visualization |
-| `admin/DmConfigsController` | Manage DM configuration (model selection, token budgets, evaluation modes) |
-| `admin/StoryController` | Full CRUD for stories and all world-building sub-resources |
-| `admin/AdventuresController` | View and manage all user adventures |
-| `admin/BestiaryEntriesController` | Import and manage OGL creature templates |
-| `admin/BillingController` | Track and visualize token usage and costs |
-| `admin/FeatureFlagsController` | Enable/disable feature flags globally |
+
+| Controller                        | Description                                                                |
+| --------------------------------- | -------------------------------------------------------------------------- |
+| `AdminController`                 | Admin base controller with role guard                                      |
+| `admin/DmLogsController`          | Browse and inspect DM activity logs                                        |
+| `admin/AiLogsController`          | Browse AI call logs with pipeline run visualization                        |
+| `admin/DmConfigsController`       | Manage DM configuration (model selection, token budgets, evaluation modes) |
+| `admin/StoryController`           | Full CRUD for stories and all world-building sub-resources                 |
+| `admin/AdventuresController`      | View and manage all user adventures                                        |
+| `admin/BestiaryEntriesController` | Import and manage OGL creature templates                                   |
+| `admin/BillingController`         | Track and visualize token usage and costs                                  |
+| `admin/FeatureFlagsController`    | Enable/disable feature flags globally                                      |
+
 
 ---
 
@@ -136,23 +158,27 @@ Located in `app/views/`. The application is primarily a JSON API; HTML views are
 
 ### Layouts
 
-| File | Description |
-|------|-------------|
+
+| File                           | Description                                     |
+| ------------------------------ | ----------------------------------------------- |
 | `layouts/application.html.erb` | Main application layout; loads React SPA assets |
-| `layouts/legal.html.erb` | Simplified layout for legal pages |
-| `layouts/mailer.html.erb` | HTML mailer layout |
-| `layouts/mailer.text.erb` | Plain-text mailer layout |
+| `layouts/legal.html.erb`       | Simplified layout for legal pages               |
+| `layouts/mailer.html.erb`      | HTML mailer layout                              |
+| `layouts/mailer.text.erb`      | Plain-text mailer layout                        |
+
 
 ### Feature Views
 
-| Directory | Description |
-|-----------|-------------|
-| `views/home/` | Minimal redirect landing page |
-| `views/sheets/` | Character sheet listing and editor entry point (React SPA) |
-| `views/adventures/` | Adventure creation and gameplay entry point (React SPA) |
-| `views/admin/` | Admin dashboard views for all admin sub-controllers |
-| `views/legal/` | Privacy policy and terms of service pages |
-| `views/stimulus/` | Stimulus JS integration helpers |
+
+| Directory           | Description                                                |
+| ------------------- | ---------------------------------------------------------- |
+| `views/home/`       | Minimal redirect landing page                              |
+| `views/sheets/`     | Character sheet listing and editor entry point (React SPA) |
+| `views/adventures/` | Adventure creation and gameplay entry point (React SPA)    |
+| `views/admin/`      | Admin dashboard views for all admin sub-controllers        |
+| `views/legal/`      | Privacy policy and terms of service pages                  |
+| `views/stimulus/`   | Stimulus JS integration helpers                            |
+
 
 ---
 
@@ -163,3 +189,4 @@ Located in `app/views/`. The application is primarily a JSON API; HTML views are
 - **Join table pattern**: Many-to-many relationships (feats, spells, items) are managed through explicit join-table models to support adventure-scoped snapshots.
 - **AI pipeline**: `AdventureMessagesController` triggers an async multi-step pipeline tracked by `PipelineRun` and `AdventureLoop`; results are streamed back via Action Cable.
 - **Singleton config**: `DmConfig` holds a single global configuration record accessed by pipeline steps for model and budget decisions.
+

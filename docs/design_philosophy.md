@@ -399,7 +399,7 @@ problems that were already solved.
 - `docs/design_philosophy.md` — this file; the guiding principles
 - `docs/pipeline_steps.md` — what each step does, why it exists, how
   it connects
-- `docs/pipeline_model_selection.md` — model recommendations per step
+- `docs/pipeline_steps.md` — design decisions + model tier reference + configuration
   with cost analysis
 - `docs/async_pipeline_design.md` — the specific problem and solution
   for async execution
