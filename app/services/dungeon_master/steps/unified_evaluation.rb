@@ -27,6 +27,8 @@ module DungeonMaster
         domain_beacon_hints = build_all_beacon_hints
         domain_mecheval_hints = build_all_mecheval_hints
 
+        response_schema = PromptRenderer.load_schema("unified_evaluation")
+
         system_prompt = PromptRenderer.render("unified_evaluation",
           character_block: char_block,
           micro_contexts: micro_contexts,
@@ -35,7 +37,8 @@ module DungeonMaster
           extra_context: extra_context,
           scene_summary: scene_summary,
           domain_beacon_hints: domain_beacon_hints,
-          domain_mecheval_hints: domain_mecheval_hints)
+          domain_mecheval_hints: domain_mecheval_hints,
+          response_schema: response_schema)
 
         request_body = { system_prompt: system_prompt, user_message: intention }
 
@@ -49,7 +52,7 @@ module DungeonMaster
         end
 
         intent, evaluations = parse_unified_response(parsed, intention)
-        evaluations = evaluations.map { |eval| apply_qualifier_results(eval, intent) }
+        evaluations = evaluations.map { |eval| compute_take_values(eval) }
         log_unified_to_loop(intent, evaluations)
 
         [intent, evaluations]
@@ -81,6 +84,7 @@ module DungeonMaster
             affected: affected,
             needs_mechanics: d[:needs_mechanics] == true,
             macro_significant: d[:macro_significant] == true,
+            expand_scene: d[:expand_scene] == true,
             rules_needed: Array(d[:rules_needed]).map(&:to_s),
             domain_interpretation: d[:domain_interpretation],
             transition: d[:transition],
@@ -116,10 +120,12 @@ module DungeonMaster
 
         primary_context = determine_primary(affected_contexts)
         plot_relevant = determine_plot_relevance(affected_contexts)
+        expand_scene = beacon_results.dig("social", :expand_scene) == true
 
         intent = {
           intention: intention,
           needs_mechanics: needs_mechanics,
+          expand_scene: expand_scene,
           destination: destination,
           affected_contexts: affected_contexts,
           primary_context: primary_context || "exploration",
@@ -131,6 +137,30 @@ module DungeonMaster
         }
 
         [intent, evaluations]
+      end
+
+      # -------------------------------------------------------------------
+      # Roll qualification — sheet-math only
+      # -------------------------------------------------------------------
+      # The AI already provides take_10_eligible / take_20_eligible per roll.
+      # This adds the numeric take_10_value / take_20_value from the character
+      # sheet (skill modifier + 10 or + 20), which is deterministic and should
+      # never come from the AI.
+
+      def compute_take_values(evaluation)
+        skills_lookup = build_skills_lookup
+
+        qualified_rolls = evaluation[:player_rolls].map do |roll|
+          base = roll.dup
+          if roll[:type].to_s == "skill_check" && roll[:skill].present?
+            mod = skills_lookup[roll[:skill].to_s].to_i
+            base[:take_10_value] = 10 + mod
+            base[:take_20_value] = 20 + mod
+          end
+          base
+        end
+
+        evaluation.merge(player_rolls: qualified_rolls)
       end
 
       # -------------------------------------------------------------------
