@@ -10,7 +10,7 @@ jobs:
       github.event.action == 'closed' ||
       (github.event.action == 'unlabeled' && github.event.label.name == 'preview')
     runs-on: ubuntu-latest
-    environment: staging
+    environment: Preview
 
     steps:
       - name: Sanitize branch name
