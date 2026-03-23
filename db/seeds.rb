@@ -30,7 +30,16 @@ if Rails.env.development? || Rails.env.staging?
 
   [admin, test_user].each do |u|
     unless u.sheets.exists?
-      u.sheets.create!(name: "Aldric Stonebrow", character_class: "Fighter")
+      u.sheets.create!(
+        name: "Aldric Stonebrow",
+        character_class: "Fighter",
+        strength: 15,
+        dexterity: 13,
+        constitution: 14,
+        intelligence: 10,
+        wisdom: 12,
+        charisma: 8
+      )
       puts "Created sheet for #{u.email}"
     end
   end
