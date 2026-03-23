@@ -8,7 +8,7 @@ does, what it receives, what it produces, and how the steps connect.
 For the guiding principles behind these decisions, see
 [Design Philosophy](design_philosophy.md).
 
-Each step has its own detailed reference page under [`docs/steps/`](steps/).
+For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md).
 
 ---
 
@@ -767,203 +767,36 @@ unregistered step — the warning makes the gap visible for correction.
 
 ---
 
-## Architecture Overview
-
-Every player message flows through `DungeonMasterService`, a thin
-orchestrator that handles message persistence and error handling. The
-actual pipeline logic lives in `DungeonMaster::Pipeline`, which runs
-steps sequentially and returns a result hash. The service maps that
-result to persisted `AdventureMessage` records.
-
-When `async_pipeline` is enabled in DmConfig, the controller persists the
-player message, enqueues a `PipelineJob` on Sidekiq, and returns 202
-immediately. The job runs the pipeline and broadcasts results via
-ActionCable. See `docs/async_pipeline_design.md` for details.
-
-```
-Player input
-    |
-    v
-+------------------------------+
-|   DungeonMasterService       |  Persists messages, catches errors
-|   (thin orchestrator)        |
-+--------------+---------------+
-               |
-               v
-+------------------------------+
-|   DungeonMaster::Pipeline    |  Pure pipeline logic (budget mode)
-|   -- OR --                   |
-|   DungeonMaster::EdgePipeline|  Single-call alternative (edge mode)
-|                              |
-|   run_prompt(input)          |
-|   run_rolls(results, meta)   |
-+------------------------------+
-```
-
-The pipeline has **two entry points**:
-
-1. `run_prompt(player_input)` -- player typed something new
-2. `run_rolls(roll_results, metadata)` -- player submitted dice results
-
-**Action queuing:** when `action_queue` is enabled, the Sequencer step
-detects compound player inputs ("I rest, then head to the village") and
-splits them into an ordered queue. Each action is resolved sequentially
-by the CoreResolver (beacon → mechanics → mechanic → time_keeper, or
-beacon → world check → time_keeper → momentum).
-Encounters break the loop; roll requests pause it with remaining actions
-stored in metadata for resumption.
-Social scenes also break the loop — significant NPC interactions
-(transactions, negotiations) are expanded into immersive scenes that pause
-for the player to respond.
-
----
-
-## Flow Diagram
-
-```
-run_prompt(player_input)
-    |
-    v
-+----------------------------+
-|   GATE                    |
-|   +--------+              |
-|   | INTAKE |              |    danger >= threshold
-|   +---+----+              |---------------------------> { action: :rejected }
-+--------+------------------+
-         |
-         |  is_dm_query?
-         +-------------------> CHRONICLER --> DM QUERY --> { action: :dm_query }
-         |
-         v
-+---------------------------------+
-| orchestrate_actions             |
-+---------------------------------+
-         |
-         v
-+---------------------------------+
-| SEQUENCER (compound detection)  |
-| -> returns action queue [1..N]  |
-+--------------+------------------+
-         |
-         v  FOR EACH ACTION:
-+---------------------------------+
-| PLAYER_INTERPRETER (pure restatement) |
-+--------------+------------------+
-               |
-               v
-+---------------------------------+
-| CoreResolver.resolve            |
-+---------------------------------+
-               |
-               v
-+------------------------------------+
-| BEACON                             |
-| (parallel: one per domain)         |
-| +-----++-----++-----++-----+ ...  |
-| |cbt  ||trav ||soc  ||expl |      |
-| +--+--++--+--++--+--++--+--+      |
-|    +---+--+--++---+--+            |
-|        v CONVERGE (code)           |
-+--------------+---------------------+
-               |
-               |  needs_mechanics == false
-               +--> WORLD CHECK --+--> expand_scene? --+--> SOCIAL EXPANSION --> OUTPUT PHASE
-                                  |                    |
-                                  |                    +--> TIME KEEPER --> MOMENTUM --> OUTPUT PHASE
-               |
-               |  needs_mechanics == true
-               v
-+----------------------------------+
-|  MECHANICS GATE (parallel)       |
-|  +--------------+ +-----------+  |
-|  | MECH. EVAL   | |CAPABILITY |  |
-|  | (loop per    | |GUARDRAIL  |  |
-|  |  context)    | |           |  |
-|  |  + ROLL      | |           |  |
-|  |  QUALIFIER   | |           |  |
-|  |  (per domain)| |           |  |
-|  +------+-------+ +-----+----+  |
-+---------+---------------+--------+
-          |               |
-          |    guardrail rejected?
-          |    +-- yes --> { action: :rejected }
-          |    |
-          v    v
-     filter_auto_success_rolls!
-          |
-     player rolls needed?
-          |
-          +-- yes --> { action: :awaiting_rolls }
-          |                 |
-          |                 v (player submits rolls later)
-          |           run_rolls(results, metadata)
-          |                 |
-          |                 v
-          |           +-----------------+
-          |           | RESTORE STATE   |  (from metadata)
-          |           +--------+--------+
-          |                    |
-          +-- no --------------+
-          |                    |
-          v                    v
-+------------------------------------------+
-|            RESOLUTION FLOW               |
-|  1. Resolve NPC actions (app-side rolls) |
-|  2. MECHANIC (AI -- post-roll arbiter)   |
-|  3. Apply mutations (app-side)           |
-|  4. TIME KEEPER (code-first + AI fallback)|
-|     -> Harbinger util (encounter check)  |
-|     -> GameClock util (clock advance)    |
-|  5. CHRONICLER (plot state, optional)    |
-|  6. STAGEHAND (code -- routing)          |
-|  7. OUTPUT PHASE                         |
-|     +-------------------------------+    |
-|     | narration_mode == "parallel": |    |
-|     |   NARRATE    ||  CONTEXT UPD. |    |
-|     |   (parallel) ||  8a. Micro    |    |
-|     |              ||  8b. Macro    |    |
-|     +-------------------------------+    |
-|     | narration_mode == "subjugated"|    |
-|     |   CONTEXT UPD. -> then NARRATE|    |
-|     +-------------------------------+    |
-+------------------------------------------+
-                    |
-                    v
-          { action: :narrated }
-```
-
----
-
 ## Step Index
 
-Each step is documented in detail in its own file.
+For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). Source files below.
 
-| # | Step | Type | File |
-|---|------|------|------|
-| 1 | **Intake** | AI | [steps/intake.md](steps/intake.md) |
-| 1c | **DM Query** | AI (fast path) | [steps/dm_query.md](steps/dm_query.md) |
-| 1d | **Sequencer** | AI (before PlayerInterpreter, toggled) | [steps/sequencer.md](steps/sequencer.md) |
-| -- | **CoreResolver** (module) | Code orchestration | [modules/core_resolver.md](modules/core_resolver.md) |
-| 2 | **PlayerInterpreter** | AI (per action in queue) | [steps/player_interpreter.md](steps/player_interpreter.md) |
-| 3 | **Beacon** | AI (parallel per domain) | [steps/beacon.md](steps/beacon.md) |
-| 4a | **MechanicalEvaluation** | AI (loop, parallel with 4b) | [steps/mechanical_evaluation.md](steps/mechanical_evaluation.md) |
-| 4c | **RollQualifier** | AI (per domain, after 4a when rolls exist) | [steps/roll_qualifier.md](steps/roll_qualifier.md) |
-| 4b | **SanityChecker** (capability + world) | Code/AI + AI (parallel with 4a) | [steps/sanity_checker.md](steps/sanity_checker.md) |
-| -- | **NPC Roll Resolution** | App-side | [steps/npc_rolls.md](steps/npc_rolls.md) |
-| 5 | **Mechanic** | AI (mechanical path) | [steps/mechanic.md](steps/mechanic.md) |
-| 5a | **Momentum** | AI (non-mechanical path) | [steps/momentum.md](steps/momentum.md) |
-| 5b | **TimeKeeper** | Code-first, AI fallback | [steps/time_keeper.md](steps/time_keeper.md) |
-| 5c | **Social Expansion** | AI (conditional, non-mechanical path) | [steps/social_expansion.md](steps/social_expansion.md) |
-| -- | **Harbinger** (utility) | Code-only (called by TimeKeeper) | [steps/harbinger.md](steps/harbinger.md) |
-| -- | **Warmaster** (utility) | Code + opt. AI (creature_generation) | [steps/warmaster.md](steps/warmaster.md) |
-| -- | **GameClock** (utility) | Code-only (called by TimeKeeper) | [utilities/game_clock.md](utilities/game_clock.md) |
-| 5d | **Chronicler** | AI (conditional) | [steps/chronicler.md](steps/chronicler.md) |
-| 6 | **Stagehand** | Code-only | [steps/stagehand.md](steps/stagehand.md) |
-| 7 | **Narrate** | AI | [steps/narrate.md](steps/narrate.md) |
-| 8a | **Micro Context Update** | AI (parallel with 8b) | [steps/micro_context_update.md](steps/micro_context_update.md) |
-| 8b | **Macro Narrative Update** | AI (conditional, parallel with 8a) | [steps/macro_narrative_update.md](steps/macro_narrative_update.md) |
-| -- | **Mutation Application** | App-side | [steps/mutations.md](steps/mutations.md) |
-| -- | **Edge Pipeline** | AI (monolithic alternative) | [steps/edge_pipeline.md](steps/edge_pipeline.md) |
+| # | Step | Type | Source |
+|---|------|------|--------|
+| 1 | **Intake** | AI | `app/services/dungeon_master/steps/intake.rb` |
+| 1c | **DM Query** | AI (fast path) | `app/services/dungeon_master/steps/dm_query.rb` |
+| 1d | **Sequencer** | AI (toggled) | `app/services/dungeon_master/steps/sequencer.rb` |
+| -- | **CoreResolver** (module) | Code orchestration | `app/services/dungeon_master/core_resolver.rb` |
+| 2 | **PlayerInterpreter** | AI (per action) | `app/services/dungeon_master/steps/player_interpreter.rb` |
+| 3 | **Beacon** | AI (parallel per domain) | `app/services/dungeon_master/steps/beacon.rb` |
+| 3u | **UnifiedEvaluation** | AI (replaces beacon+mecheval+rollqualifier) | `app/services/dungeon_master/steps/unified_evaluation.rb` |
+| 4a | **MechanicalEvaluation** | AI (loop, parallel with 4b) | `app/services/dungeon_master/steps/mechanical_evaluation.rb` |
+| 4c | **RollQualifier** | AI (per domain after 4a) | `app/services/dungeon_master/steps/roll_qualifier.rb` |
+| 4b | **SanityChecker** | AI (parallel with 4a) | `app/services/dungeon_master/steps/sanity_checker.rb` |
+| 5 | **Mechanic** | AI (mechanical path) | `app/services/dungeon_master/steps/mechanic.rb` |
+| 5a | **Momentum** | AI (non-mechanical path) | `app/services/dungeon_master/steps/momentum.rb` |
+| 5b | **TimeKeeper** | Code-first, AI fallback | `app/services/dungeon_master/steps/time_keeper.rb` |
+| 5c | **Social Expansion** | AI (conditional) | `app/services/dungeon_master/core_resolver.rb` (`resolve_social_scene`) |
+| -- | **Harbinger** (utility) | Code + optional AI | `app/services/dungeon_master/utilities/harbinger.rb` |
+| -- | **Warmaster** (utility) | Code + optional AI | `app/services/dungeon_master/utilities/warmaster.rb` |
+| -- | **GameClock** (utility) | Code-only | `app/services/dungeon_master/utilities/game_clock.rb` |
+| 5d | **Chronicler** | AI (conditional) | `app/services/dungeon_master/steps/chronicler.rb` |
+| 6 | **Stagehand** | Code-only | `app/services/dungeon_master/steps/stagehand.rb` |
+| 7 | **Narrate** | AI | `app/services/dungeon_master/steps/narrate.rb` |
+| 8a | **Micro Context Update** | AI (parallel with 8b) | `app/services/dungeon_master/steps/context_update.rb` |
+| 8b | **Macro Narrative Update** | AI (conditional) | `app/services/dungeon_master/steps/context_update.rb` |
+| -- | **Mutations** | App-side | `app/services/dungeon_master/mutations.rb` |
+| -- | **Edge Pipeline** | AI (monolithic alternative) | `app/services/dungeon_master/edge_pipeline.rb` |
 
 ---
 
@@ -1073,7 +906,7 @@ Beacon (combat domain) → transition: "combat_started", combatants: [...]
    - `"template"`: tier-scaled generic stat block
    - `"none"`: creature not created
 
-See [steps/warmaster.md](steps/warmaster.md) for detailed documentation.
+See `app/services/dungeon_master/utilities/warmaster.rb` for implementation detail.
 
 ---
 
@@ -1166,5 +999,53 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `creature_generation` | 600 |
 | `edge_pipeline` | 2000 |
 
-See `docs/pipeline_model_selection.md` for detailed model recommendations
-per step.
+### Model tiers
+
+Prices are **per 1 million tokens** (input / output).
+
+**Nano — dirt-cheap, low latency.** Best for: classification, simple JSON, short-answer tasks.
+
+| Model        | Input  | Output | Reasoning | Temp |
+|--------------|--------|--------|-----------|------|
+| gpt-4.1-nano | $0.10  | $0.40  | No        | Yes  |
+| gpt-5-nano   | $0.05  | $0.40  | Yes       | No   |
+
+**Mini — balanced cost/capability.** Best for: structured reasoning, moderate rule application, context updates.
+
+| Model        | Input  | Output | Reasoning | Temp |
+|--------------|--------|--------|-----------|------|
+| gpt-4o-mini  | $0.15  | $0.60  | No        | Yes  |
+| gpt-4.1-mini | $0.40  | $1.60  | No        | Yes  |
+| gpt-5-mini   | $0.25  | $2.00  | Yes       | No   |
+| o3-mini      | $1.10  | $4.40  | Yes       | No   |
+| o4-mini      | $1.10  | $4.40  | Yes       | No   |
+
+**Full — highest non-pro capability.** Best for: creative writing, complex multi-factor evaluation, narrative.
+
+| Model   | Input  | Output  | Reasoning | Temp |
+|---------|--------|---------|-----------|------|
+| gpt-4o  | $2.50  | $10.00  | No        | Yes  |
+| gpt-4.1 | $2.00  | $8.00   | No        | Yes  |
+| gpt-5   | $1.25  | $10.00  | Yes       | No   |
+| gpt-5.1 | $1.25  | $10.00  | Yes       | No   |
+| gpt-5.2 | $1.75  | $14.00  | Yes       | No   |
+| o3      | $2.00  | $8.00   | Yes       | No   |
+
+**Pro — maximum compute (use sparingly).** A single turn could cost dollars. Only for offline batch analysis or debugging a gnarly ruling.
+
+| Model       | Input   | Output   | Reasoning | Temp |
+|-------------|---------|----------|-----------|------|
+| gpt-5-pro   | $15.00  | $120.00  | Yes       | No   |
+| gpt-5.2-pro | $21.00  | $168.00  | Yes       | No   |
+| o3-pro      | $20.00  | $80.00   | Yes       | No   |
+| o1-pro      | $150.00 | $600.00  | Yes       | No   |
+
+**Legacy — avoid for new deployments.** Superseded by newer models that are cheaper and smarter.
+
+| Model         | Input  | Output | Reasoning | Temp |
+|---------------|--------|--------|-----------|------|
+| gpt-4-turbo   | $10.00 | $30.00 | No        | Yes  |
+| gpt-4         | $30.00 | $60.00 | No        | Yes  |
+| gpt-3.5-turbo | $0.50  | $1.50  | No        | Yes  |
+| o1            | $15.00 | $60.00 | Yes       | No   |
+| o1-mini       | $1.10  | $4.40  | Yes       | No   |

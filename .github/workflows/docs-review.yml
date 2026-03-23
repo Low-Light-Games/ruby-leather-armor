@@ -1,0 +1,65 @@
+name: Docs Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  docs-review:
+    name: Check if docs need updating
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          direct_prompt: |
+            You are reviewing a pull request to decide whether any project documentation needs updating.
+
+            ## Docs that exist and what they cover
+
+            - **docs/pipeline_diagram.md** — canonical behavioral reference: Mermaid flow diagrams, what each pipeline step does, AI vs code table, early exits/pauses, step summary table. This is the first doc to check.
+            - **docs/pipeline_steps.md** — the WHY: 32 architecture design decisions, step index (links to source files), error handling strategy, logging schema, encounter/combat/social lifecycles, DmConfig configuration table, model tier pricing.
+            - **docs/design_philosophy.md** — foundational principles. Rarely changes.
+            - **docs/async_pipeline_design.md** — Sidekiq + ActionCable rationale. Only relevant if async infrastructure changes.
+            - **docs/mvc_overview.md** — high-level MVC layers. Only relevant if major architectural layers change.
+
+            ## Changes that require a docs update
+
+            - New, removed, or renamed pipeline steps (files under `app/services/dungeon_master/steps/` or `core_resolver.rb`, `pipeline.rb`, `edge_pipeline.rb`)
+            - Changes to step behavior: what a step does, what it returns, when it runs, what it skips
+            - New or changed early-exit / pause conditions (new `:rejected`, `:awaiting_rolls`, `:awaiting_initiative` paths)
+            - New or changed DmConfig keys / toggles (`dm_config.rb`, `step_registry.rb`)
+            - Changes to what is AI vs what is code
+            - Changes to time mechanics, combat initialization, context update logic, or the action queue
+            - A new design decision or architectural trade-off with no existing decision covering it
+            - New configuration options with defaults that belong in the config table
+
+            ## Changes that never require a docs update
+
+            - Test files only (`spec/`, `test/`)
+            - Frontend / UI changes with no pipeline impact
+            - Bug fixes that correct behavior to already match what the docs say
+            - Dependency bumps (`Gemfile`, `package.json`)
+            - Deployment / infrastructure changes (unless the async pipeline changes)
+            - Prompt template edits (`templates/*.erb`) that don't change step behavior or outputs
+            - Refactors that preserve observable behavior
+
+            ## Your task
+
+            1. Fetch the list of files changed in this PR and their diffs.
+            2. Read the relevant doc files to understand the current documented state.
+            3. Decide honestly: does this PR change something that is documented?
+            4. **If YES**: post a single PR comment that lists exactly which doc(s) need updating, which section(s), and what the update should cover. Be specific — name the section heading, describe what changed, and suggest what the new content should say. Use a checklist format so the author knows what to do.
+            5. **If NO**: do not post any comment. Silence means "docs look fine."
+
+            Be conservative. Most PRs do not need doc updates. Only flag genuine behavioral or architectural changes. Never flag style, test, or trivial refactor PRs.
