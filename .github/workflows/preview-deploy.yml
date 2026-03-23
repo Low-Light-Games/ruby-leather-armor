@@ -69,8 +69,9 @@ jobs:
               psql -h 127.0.0.1 -p 5433 -U preview \
               -c "CREATE DATABASE \"preview_${SAFE_BRANCH}\";" postgres || true
 
-            # Build and start
-            docker compose -f docker-compose.preview.yml up -d --build
+            # Build and start (retry without cache if build fails)
+            docker compose -f docker-compose.preview.yml up -d --build || \
+              (docker builder prune -af && docker compose -f docker-compose.preview.yml up -d --build)
 
             # Wait for app to be ready (max 2 minutes)
             timeout 120 bash -c \
