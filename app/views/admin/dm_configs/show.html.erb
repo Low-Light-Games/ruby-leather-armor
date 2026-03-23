@@ -57,6 +57,66 @@
     </div>
 
     <div class="config-section">
+      <h2>Pipeline</h2>
+
+      <div class="config-field">
+        <label>Evaluation Mode</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <%= radio_button_tag :evaluation_mode, "unified", @config.get("evaluation_mode") == "unified" %>
+            <span>
+              <strong>Unified</strong> (default)
+              — Single AI call handles all 6 domains (beacon + mechanical evaluation + roll qualification) in one pass.
+              Better cross-domain coherence, no duplicate rolls. Recommended model: gpt-5-mini or better.
+            </span>
+          </label>
+          <label class="radio-label">
+            <%= radio_button_tag :evaluation_mode, "standard", @config.get("evaluation_mode") == "standard" %>
+            <span>
+              <strong>Standard</strong> (legacy)
+              — 6 parallel domain beacons followed by sequential mechanical evaluation per domain.
+              Allows per-domain model selection. Use for rollback or A/B comparison.
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="config-field">
+        <label>Pipeline Mode</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <%= radio_button_tag :pipeline_mode, "budget", @config.get("pipeline_mode") == "budget" || @config.get("pipeline_mode").blank? %>
+            <span>
+              <strong>Budget</strong> (default)
+              — Full multi-step pipeline with separate narration, context update, and chronicler steps.
+            </span>
+          </label>
+          <label class="radio-label">
+            <%= radio_button_tag :pipeline_mode, "edge", @config.get("pipeline_mode") == "edge" %>
+            <span>
+              <strong>Edge</strong>
+              — Single AI call handles everything including narration. Fastest, lowest cost, least controllable.
+              Requires a capable creative model.
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <div class="config-field toggle-field">
+        <label class="toggle-label" for="action_queue">
+          <%= check_box_tag :action_queue, "1", @config.get("action_queue") != false, id: "action_queue", class: "toggle-checkbox" %>
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">Action Queue</span>
+        </label>
+        <p class="field-hint">
+          When <strong>on</strong> (default), compound player inputs (e.g. "I open the door and enter the room")
+          are split into discrete sequential actions by the Sequencer step.
+          When <strong>off</strong>, the full input is treated as a single action.
+        </p>
+      </div>
+    </div>
+
+    <div class="config-section">
       <h2>Intake</h2>
 
       <div class="config-field">

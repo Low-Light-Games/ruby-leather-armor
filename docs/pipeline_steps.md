@@ -1033,6 +1033,8 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `model` | `gpt-4o-mini` | Default model for all steps |
 | `step_models[step]` | `{}` | Per-step model override |
 | `token_budgets[step]` | (see below) | Per-step max completion tokens |
+| `action_queue` | `true` | When true, compound player inputs are split into discrete sequential actions by the Sequencer step |
+| `evaluation_mode` | `"unified"` | `"unified"` (single AI call for all domains) or `"standard"` (legacy: 6 parallel beacons + sequential mech eval) |
 | `pipeline_mode` | `"budget"` | `"budget"` (multi-step) or `"edge"` (single-call) |
 | `interpreter_scope` | *(deprecated)* | All beacons always run; this setting has no effect |
 | `guardrail_mode` | `"code"` | `"code"` (deterministic) or `"ai"` (prompt-based) |
