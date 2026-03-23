@@ -80,7 +80,9 @@ jobs:
 
             # Prepare database (schema + migrations)
             docker compose -f docker-compose.preview.yml exec -T app \
-              bundle exec rails db:prepare RAILS_ENV=staging
+              bundle exec rails db:prepare RAILS_ENV=staging || \
+              (sleep 5 && docker compose -f docker-compose.preview.yml exec -T app \
+              bundle exec rails db:prepare RAILS_ENV=staging)
 
             # Seed database
             docker compose -f docker-compose.preview.yml exec -T app \
