@@ -19,6 +19,9 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
+            if [ ! -d ~/app ]; then
+              git clone git@github.com:xcudder/rpg-tools.git ~/app
+            fi
             cd ~/app
 
             echo "--- Pulling latest code ---"
