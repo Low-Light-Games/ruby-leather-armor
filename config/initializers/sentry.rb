@@ -1,4 +1,4 @@
-return unless Rails.env.production?
+return unless Rails.env.production? || Rails.env.staging?
 
 Sentry.init do |config|
   config.dsn = ENV["SENTRY_DSN"]
