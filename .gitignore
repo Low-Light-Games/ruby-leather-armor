@@ -43,3 +43,7 @@
 # Playwright
 /test-results/
 /playwright-report/
+
+/config/credentials/production.key
+
+/config/credentials/staging.key
