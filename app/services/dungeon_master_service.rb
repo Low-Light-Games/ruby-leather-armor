@@ -286,8 +286,7 @@ class DungeonMasterService
         mechanical_summaries: result[:merged][:mechanical_summaries],
         intent: result[:intent],
         show_dc: @adventure.effective_dm_setting("show_roll_dc"),
-        remaining_actions: result[:remaining_actions],
-        prior_narrate_seeds: result[:prior_narrate_seeds]
+        remaining_actions: result[:remaining_actions]
       }
       [persist_message(
         role: "dm",
@@ -299,10 +298,8 @@ class DungeonMasterService
       meta = {
         creature_data: result[:creature_data],
         intent: result[:intent],
-        narrate_seed: result[:narrate_seed],
         mutations: result[:mutations],
-        remaining_actions: result[:remaining_actions],
-        prior_narrate_seeds: result[:prior_narrate_seeds]
+        remaining_actions: result[:remaining_actions]
       }
       [persist_message(
         role: "dm",

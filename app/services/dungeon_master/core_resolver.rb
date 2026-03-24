@@ -8,11 +8,11 @@ module DungeonMaster
   # without duplicating resolution logic.
   #
   # Returns a standardized result hash with :status indicating the outcome:
-  #   :resolved             — action fully resolved, narrate_seed and mutations available
+  #   :resolved             — action fully resolved, mutations available
   #   :awaiting_rolls       — rolls needed, intent and merged available for resumption
   #   :awaiting_initiative  — combat starting, waiting for player initiative roll
   #   :encounter            — Harbinger triggered an encounter mid-action
-  #   :social_scene         — social scene expanded, narrate_seed from scene text
+  #   :social_scene         — social scene expanded, pipeline_outcome written to loop
   #   :rejected             — SanityChecker rejected the action
   module CoreResolver
     private
@@ -78,7 +78,6 @@ module DungeonMaster
 
       {
         status: :resolved, intent: intent,
-        narrate_seed: momentum_result[:outcome],
         mutations: momentum_result[:mutations].presence,
         time_result: time_result
       }
@@ -99,9 +98,10 @@ module DungeonMaster
         return maybe_warmaster_for_encounter(intent, time_result, mutations: verdict_result[:mutations])
       end
 
+      store_pipeline_outcome!(verdict_result[:outcome])
+
       {
         status: :resolved, intent: intent,
-        narrate_seed: verdict_result[:outcome],
         mutations: verdict_result[:mutations],
         time_result: time_result
       }
@@ -126,17 +126,23 @@ module DungeonMaster
             new_data: { "creature_count" => warmaster_result[:creature_data]&.size },
             timeline_entry: { "step" => "warmaster", "summary" => "Combat: #{warmaster_result[:creature_data]&.size} creature(s)", "at" => Time.current.iso8601 })
 
+          encounter_scene = @loop&.get("encounter_scene")
+          combined = [encounter_scene, @loop&.get("verdict_outcome")].compact.join("\n\n").presence
+          store_pipeline_outcome!(combined)
+
           return {
             status: :awaiting_initiative, intent: intent,
             creature_data: warmaster_result[:creature_data],
-            narrate_seed: @loop&.get("verdict_outcome"),
             mutations: mutations, time_result: time_result
           }
         end
       end
 
+      encounter_scene = @loop&.get("encounter_scene")
+      combined = [encounter_scene, @loop&.get("verdict_outcome")].compact.join("\n\n").presence
+      store_pipeline_outcome!(combined)
+
       { status: :encounter, intent: intent,
-        narrate_seed: @loop&.get("verdict_outcome"),
         mutations: mutations, time_result: time_result }
     end
 
@@ -198,7 +204,6 @@ module DungeonMaster
 
       {
         status: :resolved, intent: intent,
-        narrate_seed: momentum_result[:outcome],
         mutations: momentum_result[:mutations].presence,
         time_result: time_result
       }
@@ -248,7 +253,7 @@ module DungeonMaster
 
       if @loop
         loop_data = {
-          "social_scene" => scene.to_s.truncate(1000),
+          "social_scene"    => scene.to_s.truncate(1000),
           "verdict_outcome" => scene.to_s.truncate(500)
         }
         loop_data["social_npc_name"] = npc_name if npc_name.present?
@@ -259,9 +264,10 @@ module DungeonMaster
           timeline_entry: { "step" => "social_expansion", "summary" => "Scene: #{npc_name || 'NPC'} (#{npc_attitude || 'unknown'})", "at" => Time.current.iso8601 })
       end
 
+      store_pipeline_outcome!(scene)
+
       {
-        status: :social_scene, intent: intent,
-        narrate_seed: scene
+        status: :social_scene, intent: intent
       }
     end
 
@@ -281,6 +287,10 @@ module DungeonMaster
       cap_thread.value
 
       [world, capability]
+    end
+
+    def store_pipeline_outcome!(text)
+      @loop&.batch_update!(new_data: { "pipeline_outcome" => text.to_s.truncate(2000) })
     end
   end
 end
