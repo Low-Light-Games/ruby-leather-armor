@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_24_035334) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_24_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -508,9 +508,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_24_035334) do
     t.datetime "updated_at", null: false
     t.text "preview", default: "", null: false
     t.datetime "discarded_at"
-    t.text "initial_context"
     t.text "initial_summary"
-    t.text "hook"
     t.jsonb "initial_contexts", default: {}, null: false
     t.index ["discarded_at"], name: "index_stories_on_discarded_at"
   end
