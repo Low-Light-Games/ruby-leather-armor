@@ -248,8 +248,11 @@ module DungeonMaster
                         usage: ctx.ai.last_usage)
 
         hp = roll_hp_static(parsed["hp_formula"])
+        raw_type = parsed["creature_type"].to_s.downcase.strip
+        normalized_type = BestiaryEntry::CREATURE_TYPE_MAP[raw_type] ||
+                          (CreatureSheet::CREATURE_TYPES.include?(raw_type) ? raw_type : "monster")
         ctx.adventure.creature_sheets.create!(
-          name: name, creature_type: parsed["creature_type"] || "monster", origin: "ai",
+          name: name, creature_type: normalized_type, origin: "ai",
           strength: parsed["strength"].to_i.clamp(1, 40),
           dexterity: parsed["dexterity"].to_i.clamp(1, 40),
           constitution: parsed["constitution"].to_i.clamp(1, 40),
