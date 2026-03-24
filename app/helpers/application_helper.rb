@@ -17,6 +17,8 @@ module ApplicationHelper
     when "ruling", "verdict", "mechanic" then "type-evaluate"
     when "momentum"                      then "type-evaluate"
     when "social_expansion"              then "type-evaluate"
+    when "harbinger"                     then "type-harbinger"
+    when "warmaster"                     then "type-warmaster"
     when "time_keeper"                   then "type-ctx"
     when "queue_paused", "queue_interrupted", "queue_completed",
          "auto_success_filter", "duplicate_roll_warning", "pipeline_abandoned" then "type-ctx"

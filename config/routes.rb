@@ -36,6 +36,7 @@ Rails.application.routes.draw do
       collection do
         get :pipelines
         get "pipelines/:pipeline_run_id", action: :pipeline, as: :pipeline
+        get "pipelines/:pipeline_run_id/export", action: :export_pipeline, as: :export_pipeline
       end
     end
     resources :feature_flags, only: [:index] do
