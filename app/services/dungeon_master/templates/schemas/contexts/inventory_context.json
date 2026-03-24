@@ -1,0 +1,16 @@
+{
+  "description": "Tracks recent inventory changes — items acquired, used, equipped, or identified. This is a recent-activity log, not a complete inventory list. The character sheet holds the full inventory.",
+  "fields": {
+    "recently_acquired": "array of objects — items picked up or received this session: { name, description, quantity }",
+    "recently_used": "array of objects — items consumed or used: { name, effect_applied, quantity_used }",
+    "pending_identifications": "array of strings — unidentified items the player is carrying (e.g. 'mysterious vial', 'ornate ring')",
+    "equipped_changes": "array of strings — equipment changes made (e.g. 'equipped leather armor', 'switched to longsword', 'unequipped shield')",
+    "notable_consumables_remaining": "array of objects — consumable items worth tracking: { name, quantity_remaining }"
+  },
+  "notes": [
+    "This context tracks activity, not the full inventory. Do not attempt to list every item the player owns.",
+    "Populate recently_acquired when the outcome describes the player receiving items.",
+    "Populate recently_used when the outcome describes the player consuming a potion, scroll, or similar item.",
+    "Clear recently_acquired and recently_used periodically when they become stale (several turns with no inventory activity)."
+  ]
+}

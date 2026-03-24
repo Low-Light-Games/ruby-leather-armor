@@ -1,0 +1,21 @@
+{
+  "description": "Tracks the player's current location, travel state, and environmental conditions. This is the foundational context — it should reflect where the player is at all times.",
+  "fields": {
+    "current_location": "string — name of the player's current location (e.g. 'The Crossroads Inn', 'Darkwood Forest path', 'Village of Millhaven')",
+    "destination": "string or null — where the player is heading, if actively traveling; null when not in transit or upon arrival",
+    "scene": "string or null — brief description of the immediate surroundings (1-2 sentences)",
+    "terrain": "string or null — terrain type (e.g. 'forest', 'mountain pass', 'coastal road', 'dungeon corridor')",
+    "weather": "string or null — current weather conditions",
+    "time_of_day": "string or null — approximate time (e.g. 'early morning', 'midday', 'dusk', 'late night')",
+    "nearby_npcs": "array of strings — names or descriptions of NPCs visible or known to be nearby",
+    "points_of_interest": "array of strings — notable features, landmarks, or objects in the current area",
+    "exits": "array of strings — available directions or routes the player can take from this location"
+  },
+  "notes": [
+    "When current_location changes, ALL other fields (terrain, exits, weather, nearby_npcs, points_of_interest) must be updated to match the new location — never carry forward stale values from the previous location.",
+    "When destination is reached, set destination to null.",
+    "Exits should always have at least one entry (e.g. 'the way you came') unless the location is explicitly sealed.",
+    "If an encounter interrupts travel, update current_location to where the encounter occurs, not the intended destination.",
+    "SCENE GRANULARITY: The scene field must describe the player's immediate local situation, not just restate the location name."
+  ]
+}

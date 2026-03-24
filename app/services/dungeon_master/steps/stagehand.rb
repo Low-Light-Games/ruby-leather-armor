@@ -2,22 +2,24 @@
 
 module DungeonMaster
   module Steps
-    # Pipeline Step: Stagehand (output orchestration).
+    # Pipeline Step: Stagehand (narrative phase orchestration).
     #
     # Code-only step — no AI call. Sits between Mechanic/Momentum and Narrate/ContextUpdates.
     # Responsibilities:
-    #   1. Check if combat beacon signaled combat_started (Path B Warmaster gate)
-    #   2. Package outcome + dm_brief into a narrative seed for Narrate
-    #   3. Package factual outcome + mutations into directives for ContextUpdate
-    #   4. Orchestrate Narrate + ContextUpdate based on narration_mode config:
+    #   1. Check if combat signal from UnifiedEvaluation warrants Warmaster (Path B)
+    #   2. Run ContextUpdate before any awaiting_initiative early return (Path B)
+    #   3. Orchestrate Narrate + ContextUpdate based on narration_mode config:
     #        "parallel"   — both run simultaneously (default)
     #        "subjugated" — context updates run first, then narrate sees fresh DB state
     module Stagehand
       private
 
-      def run_output_phase(intent, narrate_seed:, mutations:, dm_brief: nil, forbidden_elements: [], extra: {})
+      def run_narrative_phase(intent, narrate_seed:, mutations:, dm_brief: nil, forbidden_elements: [], extra: {})
         warmaster_result = maybe_initialize_combat(intent)
         if warmaster_result && warmaster_result[:status] == :awaiting_initiative
+          # ContextUpdate runs before the initiative prompt goes to the player so
+          # contexts reflect combat beginning at pause time, not only after the roll.
+          run_context_updates(narrate_seed, mutations)
           return {
             action: :awaiting_initiative,
             intent: intent,
@@ -30,20 +32,16 @@ module DungeonMaster
         narration_mode = @config.get("narration_mode") || "parallel"
         enc_triggered = extra[:encounter_triggered] == true
 
-        what_happened = narrate_seed
-        loop_affected = @loop&.get("affected_contexts")
-        affected_contexts = Array(loop_affected).any? ? loop_affected : intent[:affected_contexts]
-
         if narration_mode == "subjugated"
-          run_subjugated_output(intent, narrate_seed: narrate_seed, what_happened: what_happened,
-                                mutations: mutations, dm_brief: dm_brief,
-                                forbidden_elements: forbidden_elements,
-                                encounter_triggered: enc_triggered, affected_contexts: affected_contexts)
+          run_subjugated_narrative(intent, narrate_seed: narrate_seed,
+                                   mutations: mutations, dm_brief: dm_brief,
+                                   forbidden_elements: forbidden_elements,
+                                   encounter_triggered: enc_triggered)
         else
-          run_parallel_output(intent, narrate_seed: narrate_seed, what_happened: what_happened,
-                              mutations: mutations, dm_brief: dm_brief,
-                              forbidden_elements: forbidden_elements,
-                              encounter_triggered: enc_triggered, affected_contexts: affected_contexts)
+          run_parallel_narrative(intent, narrate_seed: narrate_seed,
+                                 mutations: mutations, dm_brief: dm_brief,
+                                 forbidden_elements: forbidden_elements,
+                                 encounter_triggered: enc_triggered)
         end => narration
 
         adventure_complete = @loop&.get("adventure_complete") == true
@@ -52,9 +50,8 @@ module DungeonMaster
           adventure_complete: adventure_complete }.merge(extra)
       end
 
-      def run_parallel_output(intent, narrate_seed:, what_happened:, mutations:,
-                              dm_brief:, forbidden_elements: [], encounter_triggered: false,
-                              affected_contexts: nil)
+      def run_parallel_narrative(intent, narrate_seed:, mutations:,
+                                 dm_brief:, forbidden_elements: [], encounter_triggered: false)
         narration = nil
 
         narrate_thread = Thread.new do
@@ -66,8 +63,7 @@ module DungeonMaster
         end
         ctx_thread = Thread.new do
           ActiveRecord::Base.connection_pool.with_connection do
-            run_context_updates(what_happened, mutations,
-                                affected_contexts: affected_contexts,
+            run_context_updates(narrate_seed, mutations,
                                 macro_significant: intent[:macro_significant])
           end
         end
@@ -77,11 +73,9 @@ module DungeonMaster
         narration
       end
 
-      def run_subjugated_output(intent, narrate_seed:, what_happened:, mutations:,
-                                dm_brief:, forbidden_elements: [], encounter_triggered: false,
-                                affected_contexts: nil)
-        run_context_updates(what_happened, mutations,
-                            affected_contexts: affected_contexts,
+      def run_subjugated_narrative(intent, narrate_seed:, mutations:,
+                                   dm_brief:, forbidden_elements: [], encounter_triggered: false)
+        run_context_updates(narrate_seed, mutations,
                             macro_significant: intent[:macro_significant])
 
         run_narrate(narrate_seed, intent: intent, dm_brief: dm_brief,

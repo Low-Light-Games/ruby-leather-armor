@@ -81,7 +81,14 @@ debugging granularity for the non-evaluation steps.
 `exploration_context`, `rest_context`, and `inventory_context`, each with
 its own schema.
 
-**Why:** Pathfinder 1e naturally decomposes into these six gameplay
+**Primary motivation:** micro-contexts are the adventure's state
+checkpoints (see Design Philosophy §18). The pipeline does not pass
+message history to AI steps — it passes the current snapshot. Each turn
+reads the snapshot, resolves the action, and writes an updated snapshot.
+Long sessions remain as cheap and reliable as short ones because prompt
+size stays bounded regardless of session length.
+
+**Why six domains:** Pathfinder 1e naturally decomposes into these six gameplay
 domains. A player action can affect multiple domains simultaneously ("I
 jump into the sacred lake to escape my attackers" touches combat,
 traversal, and social), and each domain has fundamentally different state
@@ -433,30 +440,51 @@ pool pressure. Mitigated by wrapping all `Thread.new` blocks with
 checkout and return. The connection pool is sized at 12 to accommodate
 peak parallelism (~3 concurrent connections: main + 2 sanity gate threads).
 
-### 18. Selective context updates (affected + active only)
+### 18. Self-directed ContextUpdate — the single writer of Adventure contexts
 
-**Decision:** the Micro Context Update step only includes *relevant*
-contexts in its prompt — those flagged as `affected_contexts` by
-UnifiedEvaluation plus any that already contain data (active contexts).
-Contexts that are both unaffected and empty are omitted entirely.
+**Decision:** ContextUpdate is the sole entity responsible for writing to
+Adventure context fields. It receives the pipeline outcome (`what_happened`)
+and decides independently which of the six domains changed — no upstream
+`affected_contexts` signal is used to filter or hint. All six domains and
+their JSON schemas are sent on every call; the AI reads the outcome and
+updates what it judges to have changed, carrying forward everything else
+unchanged.
 
-**Why:** with six context domains, sending all six to the model on every
-turn wastes tokens and dilutes the model's attention. A pure social
-interaction has no reason to include empty combat, rest, and inventory
-contexts. By scoping the prompt to only what matters, we:
+**Single-writer principle:** this principle prevents two code paths from
+writing to the same JSONB field with different assumptions. Warmaster
+computes deterministic combat data and returns it as a hash; ContextUpdate
+writes it verbatim to `combat_context` via a `combat_initialization` key in
+mutations. No other step, utility, or service (except emergency recovery in
+`DungeonMasterService#auto_finalize_pending_initiative!`) writes directly to
+Adventure context fields.
 
-- Reduce prompt size (fewer input tokens billed)
-- Reduce output size (the JSON schema only requests relevant keys)
-- Focus the model on meaningful updates rather than copying empty objects
-- Preserve cross-context coherence by including *active* contexts even
-  when they weren't directly affected — e.g. an ongoing combat context
-  is visible during a traversal action so the model can mark combat as
-  ended if enemies were left behind
+**Runs before every player-facing message:** ContextUpdate executes before
+any pipeline early return that presents a message to the player — including
+initiative prompts and roll requests, not only after full narrative resolution.
+This ensures the world state is current at every pause point. If the player
+never returns to a paused adventure, the snapshot still reflects reality up
+to that moment.
 
-Contexts included in the prompt are labelled `[UPDATE]` (directly
-affected) or `[maintain]` (active but not affected), giving the model
-clear instructions on where to focus effort versus where to carry
-forward the existing state.
+**`affected_contexts` observability:** UnifiedEvaluation still emits
+`affected_contexts` as metadata on the loop. It is stored for observability
+and debugging but is no longer routed to ContextUpdate as a domain filter.
+ContextUpdate makes its own judgment.
+
+**Context wishes:** if the AI identifies that the outcome involves a concept
+that does not fit any existing domain, it can emit a `context_wishes` entry.
+Each wish is persisted via `play_log!("context_wish", ...)` and is visible in
+the admin play log UI as an amber badge — a signal for future context domain
+design, not an error.
+
+**Context snapshots on AdventureLoop:** after each ContextUpdate run,
+the full six-field snapshot is written to `adventure_loop.data["context_snapshot"]`.
+This creates a linear progression trail for debugging without consuming AI
+context window — the snapshot is available in the database but never re-sent
+to the model.
+
+**Domain schemas:** formal field descriptions for all six domains live in
+`app/services/dungeon_master/templates/schemas/contexts/`. They are injected
+into the ContextUpdate prompt at render time via `PromptRenderer.load_schema`.
 
 **Fallback:** if no relevant contexts can be determined (e.g. the very
 first turn of a new adventure where nothing has data yet), all six

@@ -517,3 +517,60 @@ rather than on matching text or numbers the AI generated.
 add examples, or restructure the step inputs so the AI doesn't produce the
 problem. If the problem persists, log it as a warning for observability —
 but do not silently alter the output.
+
+---
+
+## 18. Micro-contexts as adventure state checkpoints
+
+The micro-context fields (`traversal_context`, `combat_context`,
+`social_context`, `exploration_context`, `rest_context`,
+`inventory_context`) are the adventure's official world state. Every
+pipeline step that needs world state reads from the current snapshot.
+Every turn ends by writing an updated snapshot. The adventure is
+structured like a linked list: each node contains everything needed to
+produce the next, with no dependency on what came before.
+
+**The problem this solves:** AI wrapper products face a predictable failure
+mode. The context window fills with message history, the model attends to
+older turns inconsistently, and hallucinations about "what already
+happened" accumulate as the adventure grows longer. Sending the full
+conversation is also expensive — prompt size scales with session length
+rather than staying bounded.
+
+**The design response:** the pipeline does not pass message history to AI
+steps. It passes the current micro-context snapshot. A model generating
+narrative for turn 80 has the same clean, bounded input as one generating
+narrative for turn 1. Long adventures do not become harder or less
+reliable to reason about.
+
+**Single-writer principle:** ContextUpdate is the sole entity that writes to
+Adventure context fields. No pipeline step, utility class, or service writes
+to those JSONB fields directly (except emergency recovery in
+`DungeonMasterService#auto_finalize_pending_initiative!`). Deterministic
+utilities like Warmaster compute and return data; ContextUpdate receives it
+as structured mutations and writes it verbatim. This eliminates a class of
+race conditions and drift bugs where two different code paths each write
+partial context with different assumptions.
+
+**Runs before every pause:** ContextUpdate executes before any pipeline
+early return that presents a message to the player — initiative prompts,
+roll requests, and full narrative responses. If the player never resumes
+a paused adventure, the snapshot in the database still reflects reality up to
+that moment.
+
+**Self-directed:** ContextUpdate reads the outcome (`what_happened`) and
+decides which of the six domains changed. It does not rely on upstream hints.
+All six domain schemas are included in every prompt; the AI updates what
+changed and carries forward everything else unchanged.
+
+**Context snapshots on AdventureLoop:** after each ContextUpdate run, the
+full six-field snapshot is written to `adventure_loop.data["context_snapshot"]`.
+This produces a linear progression trail of the world state across every
+pipeline action — available in the database for debugging, never re-sent to
+the model.
+
+**Context wishes:** if the outcome touches something that doesn't fit any
+existing domain, ContextUpdate can emit a `context_wishes` entry. Each wish
+is persisted as a `context_wish` play log event, visible in the admin UI as
+an amber badge. These are observability signals for future domain design, not
+errors.

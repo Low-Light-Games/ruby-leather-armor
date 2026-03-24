@@ -382,9 +382,9 @@ class DungeonMasterService
     player_init = DungeonMaster::Utilities::Warmaster.auto_roll_player_initiative(@sheet)
     creature_data = last_init_msg.metadata["creature_data"].map(&:deep_symbolize_keys)
 
-    DungeonMaster::Utilities::Warmaster.finalize_combat!(
-      adventure: @adventure, creature_data: creature_data,
-      player_initiative: player_init)
+    combat_data = DungeonMaster::Utilities::Warmaster.compute_combat_initialization(
+      creature_data: creature_data, player_initiative: player_init)
+    @adventure.update!(combat_context: combat_data)
 
     @log.log!(:info, "Auto-rolled player initiative (#{player_init}) — player ignored initiative prompt")
   end

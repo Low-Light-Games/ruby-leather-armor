@@ -50,8 +50,11 @@ module DungeonMaster
         build_initiative_result(ctx, creatures)
       end
 
-      # Final step: complete combat_context with player initiative (called on resume)
-      def finalize_combat!(adventure:, creature_data:, player_initiative:)
+      # Compute the finalized combat state from creature data and player initiative.
+      # Pure computation — does NOT write to the adventure record.
+      # Returns a hash suitable for passing as combat_initialization in mutations,
+      # which ContextUpdate will write verbatim to adventure.combat_context.
+      def compute_combat_initialization(creature_data:, player_initiative:)
         participants = creature_data.map do |c|
           { "name" => c[:name], "creature_sheet_id" => c[:creature_sheet_id],
             "initiative" => c[:initiative], "type" => "npc" }
@@ -60,12 +63,12 @@ module DungeonMaster
 
         turn_order = participants.sort_by { |p| -p["initiative"] }.map { |p| p["name"] }
 
-        adventure.update!(combat_context: {
+        {
           "active" => true, "round" => 1,
           "participants" => participants,
           "turn_order" => turn_order,
           "active_effects" => []
-        })
+        }
       end
 
       # Auto-roll player initiative from their character sheet
@@ -248,8 +251,11 @@ module DungeonMaster
                         usage: ctx.ai.last_usage)
 
         hp = roll_hp_static(parsed["hp_formula"])
+        raw_type = parsed["creature_type"].to_s.downcase.strip
+        normalized_type = BestiaryEntry::CREATURE_TYPE_MAP[raw_type] ||
+                          (CreatureSheet::CREATURE_TYPES.include?(raw_type) ? raw_type : "monster")
         ctx.adventure.creature_sheets.create!(
-          name: name, creature_type: parsed["creature_type"] || "monster", origin: "ai",
+          name: name, creature_type: normalized_type, origin: "ai",
           strength: parsed["strength"].to_i.clamp(1, 40),
           dexterity: parsed["dexterity"].to_i.clamp(1, 40),
           constitution: parsed["constitution"].to_i.clamp(1, 40),

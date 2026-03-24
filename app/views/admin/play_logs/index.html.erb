@@ -261,6 +261,7 @@
     &.type-narrate { background-color: #c8e6c9; color: #1b5e20; }
     &.type-dm-query { background-color: #b2dfdb; color: #004d40; }
     &.type-ctx { background-color: #f5f5f5; color: #616161; border: 1px solid #e0e0e0; }
+    &.type-wish { background-color: #fff3e0; color: #bf360c; border: 1px solid #ffcc80; }
     &.type-default { background-color: #f5f5f5; color: #757575; }
   }
 
@@ -360,6 +361,7 @@
       'ruling': 'type-evaluate', 'verdict': 'type-evaluate', 'mechanic': 'type-evaluate', 'momentum': 'type-evaluate', 'time_keeper': 'type-ctx',
       'narrate': 'type-narrate', 'dm_query': 'type-dm-query',
       'micro_context_update': 'type-ctx', 'macro_narrative_update': 'type-ctx',
+      'context_wish': 'type-wish',
       'edge_pipeline': 'type-narrate'
     }[eventType] || 'type-default';
     title.innerHTML = 'Play Log #' + logId + ' <span class="type-badge ' + typeBadgeClass + '">' + eventType.replace(/_/g, ' ') + '</span>';
