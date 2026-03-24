@@ -140,8 +140,8 @@ adjust.
 - `verbose` / `pacing_words_min` / `pacing_words_max` — narration length
 - `temperature` — creativity/randomness
 - Per-step model selection and token budgets
-- `evaluation_mode` — standard (per-domain beacons + sequential mech evals)
-  vs. unified (single combined call for top-end models)
+- `evaluation_mode` — unified (default: single combined call) vs. standard
+  (legacy: per-domain beacons + sequential mech evals)
 - `directed_dm` — per-adventure narrative steering
 - `embellisher_mode` — story enrichment behavior
 
@@ -309,16 +309,16 @@ see the character sheet. A classifier doesn't see the rules manifest.
 - The Chronicler produces a DM Brief instead of passing the full premise
   to the narrator
 
-**Deliberate exception:** the Unified Evaluation mode
-(`evaluation_mode: "unified"`) intentionally sends all six micro-contexts,
-the full character block, and the complete rules manifest to a single AI
-call. This trades prompt isolation for cross-domain coherence — the model
-can see flanking context when adjudicating a Perception roll, or social
-attitude when deciding combat consequences. This is acceptable because:
-(a) it targets top-end models with large context windows that handle the
-full payload without degradation, (b) it is gated behind a toggle and not
-the default, and (c) the rest of the pipeline (sanity checks, verdict,
-narration, context updates) remains isolated.
+**Deliberate exception:** the Unified Evaluation mode (default) intentionally
+sends all six micro-contexts, the full character block, and the complete rules
+manifest to a single AI call. This trades prompt isolation for cross-domain
+coherence — the model can see flanking context when adjudicating a Perception
+roll, or social attitude when deciding combat consequences. This is acceptable
+because: (a) it requires at minimum a mid-capable model (gpt-4.1-mini or
+equivalent) with a sufficient context window, (b) the legacy standard path
+remains available for rollback or per-domain model tuning, and (c) the rest
+of the pipeline (sanity checks, verdict, narration, context updates) remains
+isolated.
 
 ---
 

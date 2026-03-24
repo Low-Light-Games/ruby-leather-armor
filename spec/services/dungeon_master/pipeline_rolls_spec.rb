@@ -13,31 +13,30 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
   let!(:adv_sheet)    { create(:adventure_sheet, adventure: adventure) }
 
   # Responses that produce a mechanical evaluation requiring a roll.
+  # Uses the unified_evaluation path (default evaluation_mode).
   let(:mechanical_ai_responses) do
     AI_STEP_RESPONSES.merge(
-      "beacon" => {
-        "affected"          => true,
-        "needs_mechanics"   => true,
-        "expand_scene"      => false,
-        "destination"       => nil,
-        "rules_needed"      => ["Disable Device"],
-        "transition"        => nil,
-        "macro_significant" => false,
-        "domain_interpretation" => "Player tries to pick the lock — requires Disable Device check."
-      }.to_json,
-
-      "mechanical_evaluation" => {
-        "player_rolls"       => [{ "skill" => "Disable Device", "type" => "skill_check",
-                                   "dc" => 15, "domain" => "exploration" }],
-        "npc_actions"        => [],
-        "consequences"       => [],
-        "mechanical_summary" => "Disable Device DC 15 required."
-      }.to_json,
-
-      "roll_qualifier" => {
-        "player_rolls" => [{ "skill" => "Disable Device", "type" => "skill_check",
-                             "dc" => 15, "domain" => "exploration",
-                             "take_10_eligible" => false, "take_10_value" => nil }]
+      "unified_evaluation" => {
+        "domains" => {
+          "traversal"   => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false },
+          "combat"      => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false },
+          "social"      => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false, "expand_scene" => false },
+          "exploration" => {
+            "affected" => true, "needs_mechanics" => true, "macro_significant" => false,
+            "rules_needed" => ["Disable Device"],
+            "domain_interpretation" => "Player tries to pick the lock — requires Disable Device check.",
+            "player_rolls" => [
+              { "skill" => "Disable Device", "type" => "skill_check", "dc" => 15,
+                "description" => "Disable Device check to pick the lock.",
+                "take_10_eligible" => false, "take_20_eligible" => false, "situational_modifiers" => [] }
+            ],
+            "npc_actions" => [], "consequences" => [], "mechanical_summary" => "Disable Device DC 15 required.",
+            "qualifier_context_hints" => []
+          },
+          "rest"      => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false },
+          "inventory" => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false }
+        },
+        "reasoning" => "Lock-picking requires a Disable Device skill check."
       }.to_json,
 
       "sanity_checker_world" => { "consistent" => true, "reason" => nil, "dm_message" => nil }.to_json,

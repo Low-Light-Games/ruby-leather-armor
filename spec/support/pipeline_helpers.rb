@@ -19,9 +19,27 @@ AI_STEP_RESPONSES = {
     "intention" => "The adventurer opens the door carefully."
   }.to_json,
 
-  # Per-domain beacon response. "affected": true is required for converge_beacons
-  # to register any affected contexts; "needs_mechanics": false routes through
+  # Unified evaluation response: exploration affected, no mechanics — routes through
   # the non-mechanical (momentum) path for the default happy-path specs.
+  "unified_evaluation" => {
+    "domains" => {
+      "traversal"   => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false },
+      "combat"      => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false },
+      "social"      => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false, "expand_scene" => false },
+      "exploration" => {
+        "affected" => true, "needs_mechanics" => false, "macro_significant" => false,
+        "domain_interpretation" => "Player opens a door.",
+        "player_rolls" => [], "npc_actions" => [], "consequences" => [], "mechanical_summary" => ""
+      },
+      "rest"      => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false },
+      "inventory" => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false }
+    },
+    "reasoning" => "Simple exploration action."
+  }.to_json,
+
+  # Per-domain beacon response. Used only when evaluation_mode is set to "standard".
+  # "affected": true registers affected contexts; "needs_mechanics": false routes
+  # through the non-mechanical (momentum) path for the default happy-path specs.
   "beacon" => {
     "affected"          => true,
     "needs_mechanics"   => false,
