@@ -10,6 +10,7 @@ class PlayLog < ApplicationRecord
     auto_success_filter duplicate_roll_warning
     pipeline_abandoned
     harbinger warmaster
+    pipeline_error
   ].freeze
 
   EVENT_TYPES = (DungeonMaster::StepRegistry.all_call_types + PIPELINE_EVENT_TYPES).freeze

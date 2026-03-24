@@ -52,6 +52,7 @@ class DungeonMasterService
     rejection = persist_message(role: "system", content: e.message, message_type: "sanitization_fail")
     { messages: [player_msg, rejection] }
   rescue AiError, StandardError => e
+    capture_pipeline_error(e)
     @log.error_pipeline_run!
     error_msg = persist_message(
       role: "system",
@@ -78,6 +79,7 @@ class DungeonMasterService
     limit_msg = persist_message(role: "system", content: e.message, message_type: "usage_limit")
     { messages: [limit_msg] }
   rescue AiError, StandardError => e
+    capture_pipeline_error(e)
     @log.error_pipeline_run!
     error_msg = persist_message(
       role: "system",
@@ -104,6 +106,7 @@ class DungeonMasterService
     limit_msg = persist_message(role: "system", content: e.message, message_type: "usage_limit")
     { messages: [limit_msg] }
   rescue AiError, StandardError => e
+    capture_pipeline_error(e)
     @log.error_pipeline_run!
     error_msg = persist_message(
       role: "system",
@@ -157,6 +160,7 @@ class DungeonMasterService
     @log.error_pipeline_run!
     [persist_message(role: "system", content: e.message, message_type: "sanitization_fail")]
   rescue AiError, StandardError => e
+    capture_pipeline_error(e)
     @log.error_pipeline_run!
     [persist_message(
       role: "system",
@@ -176,6 +180,7 @@ class DungeonMasterService
   rescue UsageLimitExceeded => e
     [persist_message(role: "system", content: e.message, message_type: "usage_limit")]
   rescue AiError, StandardError => e
+    capture_pipeline_error(e)
     @log.error_pipeline_run!
     [persist_message(
       role: "system",
@@ -195,6 +200,7 @@ class DungeonMasterService
   rescue UsageLimitExceeded => e
     [persist_message(role: "system", content: e.message, message_type: "usage_limit")]
   rescue AiError, StandardError => e
+    capture_pipeline_error(e)
     @log.error_pipeline_run!
     [persist_message(
       role: "system",
@@ -393,6 +399,10 @@ class DungeonMasterService
     else
       error.message
     end
+  end
+
+  def capture_pipeline_error(error)
+    Sentry.capture_exception(error) if defined?(Sentry)
   end
 
   def roll_explanation(ruling_summaries)
