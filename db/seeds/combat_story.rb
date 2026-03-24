@@ -7,6 +7,23 @@
 
 story = Story.find_or_initialize_by(title: "The Bloodfield March")
 story.preview = "A desperate push through war-torn land overrun with enemies. Every mile is a fight."
+story.initial_contexts = {
+  "traversal_context" => {
+    "terrain"            => "road",
+    "weather"            => "overcast morning, acrid smoke drifting from burning tents",
+    "time_of_day"        => "morning",
+    "nearby_npcs"        => [
+      "Distant orc patrol visible across the open field",
+      "Two goblin scouts picking through mercenary corpses to the east"
+    ],
+    "points_of_interest" => [
+      "Overturned supply wagon (provides cover)",
+      "Bodies of fallen mercenaries scattered across the mud",
+      "Smouldering tent remnants",
+      "Garrison Keep silhouette visible to the north"
+    ]
+  }
+}
 story.premise = <<~PREMISE.strip
   A mercenary company was wiped out and the player is the only survivor. Surrounded by roving warbands,
   undead stirred by the battle's carnage, and opportunistic monsters, the player must fight their way

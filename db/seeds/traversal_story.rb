@@ -9,6 +9,23 @@
 
 story = Story.find_or_initialize_by(title: "The Long Road")
 story.preview = "A courier's route stretching from the sea cliffs to the cavern markets — every kind of road lies between."
+story.initial_contexts = {
+  "traversal_context" => {
+    "terrain"            => "coast",
+    "weather"            => "clear dawn, brisk sea breeze, light mist over the water",
+    "time_of_day"        => "dawn",
+    "nearby_npcs"        => [
+      "Harbour porter loading crates onto a cart",
+      "Fisherman hauling nets down to the dock"
+    ],
+    "points_of_interest" => [
+      "Battered signpost: 'Riverford Crossing — 12 mi'",
+      "Cobbled street that turns to packed dirt inland",
+      "Salt-encrusted warehouse district",
+      "Moored fishing boats creaking at the quay"
+    ]
+  }
+}
 story.premise = <<~PREMISE.strip
   A simple delivery job turned into an odyssey. The player must travel a full cross-country route,
   navigating coastal docks, river fords, deep forest, mountain passes, swamps, deserts, an

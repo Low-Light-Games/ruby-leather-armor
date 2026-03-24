@@ -6,6 +6,37 @@
 
 story = Story.find_or_initialize_by(title: "The Envoy's Gambit")
 story.preview = "An envoy corners you in a quiet alcove of the inn — she has a proposition you haven't agreed to yet."
+story.initial_contexts = {
+  "traversal_context" => {
+    "terrain"            => "urban",
+    "weather"            => "clear night, cobblestones damp from earlier rain",
+    "time_of_day"        => "evening",
+    "nearby_npcs"        => [
+      "Barkeep wiping down the counter",
+      "Two merchants playing cards in the far corner"
+    ],
+    "points_of_interest" => [
+      "Corner table where Seraphine is seated",
+      "Inn entrance to the street",
+      "Bar counter with a mostly empty common room"
+    ]
+  },
+  "social_context" => {
+    "scene"               => "The player sits across from Seraphine Dusk at a candlelit corner table in the Crossed Keys Inn. She has just finished the tail-end of her proposal and is watching the player closely, fingers laced on the table, waiting for an answer.",
+    "npcs_present"        => [
+      {
+        "name"     => "Seraphine Dusk",
+        "role"     => "covert noble envoy",
+        "attitude" => "friendly",
+        "notes"    => "Already mid-pitch — she needs a sealed ledger retrieved from a rival noble's vault before the city guard raids at dawn. She knows the vault layout and the guard schedule. She has offered considerable payment. Charming but carries a thread of desperation she is working hard to conceal."
+      }
+    ],
+    "npcs_known"          => [],
+    "conversation_state"  => "awaiting player's response to Seraphine's job proposal",
+    "stakes"              => "Whether the player accepts a high-risk retrieval job — recover a sealed ledger from a rival's vault before the city guard raids it at dawn",
+    "persuasion_progress" => "Seraphine has completed her pitch and named her price. The player has not yet responded."
+  }
+}
 story.premise = <<~PREMISE.strip
   Seraphine Dusk is a covert envoy for a minor noble house trying to survive a political purge.
   She has identified the player as someone unconnected enough to be useful and ruthless enough to
