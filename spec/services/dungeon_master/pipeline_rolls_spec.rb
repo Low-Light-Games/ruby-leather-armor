@@ -117,5 +117,99 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
     it "includes a narrative" do
       expect(result[:narrative]).to be_a(String).and be_present
     end
+
+    it "writes pipeline_outcome to the AdventureLoop row after resolution" do
+      result
+      paused_loop.reload
+      expect(paused_loop.get("pipeline_outcome")).to be_present
+    end
+  end
+
+  describe "run_accumulated_output_phase — pipeline_outcome DB assembly" do
+    # Directly exercise the DB query that assembles the combined narration seed
+    # from AdventureLoop#pipeline_outcome rows ordered by sequence_index.
+
+    let(:pipeline) { build_pipeline(adventure) }
+    let(:run_id)   { pipeline.instance_variable_get(:@log).pipeline_run_id }
+
+    def make_loop(seq, outcome)
+      AdventureLoop.create!(
+        adventure:       adventure,
+        pipeline_run_id: run_id,
+        sequence_index:  seq,
+        raw_action:      "action #{seq}",
+        player_intent:   "action #{seq}",
+        status:          "resolved",
+        data:            { "pipeline_outcome" => outcome }
+      )
+    end
+
+    context "with a single loop row" do
+      before { make_loop(0, "The door swings open.") }
+
+      it "passes the outcome as the narration seed" do
+        narrate_calls = []
+        allow_any_instance_of(DungeonMaster::Pipeline).to receive(:run_narrate).and_wrap_original do |original, seed, **kwargs|
+          narrate_calls << seed
+          original.call(seed, **kwargs)
+        end
+
+        pipeline.send(:run_accumulated_output_phase,
+          [{ status: :resolved, intent: { intention: "open door", affected_contexts: [],
+                                          macro_significant: false, plot_relevant: false,
+                                          primary_context: "exploration", beacon_results: {} } }])
+
+        expect(narrate_calls.first).to eq("The door swings open.")
+      end
+    end
+
+    context "with multiple loop rows (compound action)" do
+      before do
+        make_loop(0, "You pick up the torch.")
+        make_loop(1, "You push open the door.")
+      end
+
+      it "joins outcomes in sequence_index order with 'Then:' separator" do
+        narrate_calls = []
+        allow_any_instance_of(DungeonMaster::Pipeline).to receive(:run_narrate).and_wrap_original do |original, seed, **kwargs|
+          narrate_calls << seed
+          original.call(seed, **kwargs)
+        end
+
+        pipeline.send(:run_accumulated_output_phase,
+          [{ status: :resolved, intent: { intention: "pick up torch then open door",
+                                          affected_contexts: [], macro_significant: false,
+                                          plot_relevant: false, primary_context: "exploration",
+                                          beacon_results: {} } },
+           { status: :resolved, intent: { intention: "pick up torch then open door",
+                                          affected_contexts: [], macro_significant: false,
+                                          plot_relevant: false, primary_context: "exploration",
+                                          beacon_results: {} } }])
+
+        expect(narrate_calls.first).to eq("You pick up the torch.\n\nThen: You push open the door.")
+      end
+    end
+
+    context "with no pipeline_outcome on any loop row" do
+      before { make_loop(0, nil) }
+
+      it "passes nil seed (narrate will raise, which is expected behaviour)" do
+        narrate_calls = []
+        allow_any_instance_of(DungeonMaster::Pipeline).to receive(:run_narrate).and_wrap_original do |original, seed, **kwargs|
+          narrate_calls << seed
+          original.call(seed, **kwargs)
+        end
+
+        expect {
+          pipeline.send(:run_accumulated_output_phase,
+            [{ status: :resolved, intent: { intention: "do something",
+                                            affected_contexts: [], macro_significant: false,
+                                            plot_relevant: false, primary_context: "exploration",
+                                            beacon_results: {} } }])
+        }.to raise_error(DungeonMaster::AiError, /without an outcome/)
+
+        expect(narrate_calls.first).to be_nil
+      end
+    end
   end
 end

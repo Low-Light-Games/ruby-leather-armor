@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_20_145248) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_24_035334) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -29,6 +29,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_20_145248) do
     t.datetime "updated_at", null: false
     t.index ["adventure_id", "created_at"], name: "index_adventure_loops_on_adventure_id_and_created_at"
     t.index ["adventure_id"], name: "index_adventure_loops_on_adventure_id"
+    t.index ["pipeline_run_id", "sequence_index"], name: "index_adventure_loops_on_pipeline_run_id_and_sequence_index"
     t.index ["pipeline_run_id", "status"], name: "index_adventure_loops_on_pipeline_run_id_and_status"
     t.index ["pipeline_run_id"], name: "index_adventure_loops_on_pipeline_run_id"
   end
