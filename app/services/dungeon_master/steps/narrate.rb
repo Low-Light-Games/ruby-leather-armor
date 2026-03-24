@@ -22,7 +22,7 @@ module DungeonMaster
 
         system_prompt = PromptRenderer.render("narrate",
           story_title: @adventure.story.title,
-          story_hook: @adventure.story.hook.presence || @adventure.story.preview,
+          story_hook: @adventure.story.preview,
           dm_brief: dm_brief,
           forbidden_elements: Array(forbidden_elements),
           story_summary: @adventure.story_summary,
