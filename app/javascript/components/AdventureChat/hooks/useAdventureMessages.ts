@@ -30,6 +30,7 @@ export function useAdventureMessages({
   const [sending, setSending] = useState(false)
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [pendingRolls, setPendingRolls] = useState<PendingRolls | null>(null)
+  const [pendingInitiative, setPendingInitiative] = useState(false)
 
   const lastSentRef = useRef<
     | { type: 'message'; text: string }
@@ -49,6 +50,9 @@ export function useAdventureMessages({
 
     const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
     if (dmMsg) activatePendingRolls(dmMsg)
+
+    const initMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'initiative_request')
+    if (initMsg) setPendingInitiative(true)
 
     if (onDmResponse) onDmResponse()
     const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
@@ -106,6 +110,12 @@ export function useAdventureMessages({
           if (!hasRollResult) {
             activatePendingRolls(lastDm)
           }
+        } else if (lastDm?.message_type === 'initiative_request') {
+          const lastDmIdx = data.findIndex(m => m.id === lastDm.id)
+          const hasInitResult = data.slice(lastDmIdx + 1).some(m => m.message_type === 'initiative_result')
+          if (!hasInitResult) {
+            setPendingInitiative(true)
+          }
         }
       } catch (err) {
         console.error('Error loading chat history:', err)
@@ -118,7 +128,7 @@ export function useAdventureMessages({
 
   const addOptimisticMessages = useCallback((
     playerContent: string,
-    messageType: 'narrative' | 'roll_result',
+    messageType: 'narrative' | 'roll_result' | 'initiative_result',
     metadata?: Record<string, any>,
   ) => {
     const optimistic: AdventureMessage = {
@@ -198,6 +208,36 @@ export function useAdventureMessages({
     }
   }
 
+  const sendInitiative = async (value: number) => {
+    setSending(true)
+    lastSentRef.current = { type: 'message', text: `Rolled ${value} for initiative` }
+
+    addOptimisticMessages(`Rolled ${value} for initiative`, 'initiative_result', { initiative: value })
+
+    try {
+      const res = await fetch(`/adventures/${adventureId}/messages/initiative`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken(),
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ initiative: value }),
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || `HTTP ${res.status}`)
+      }
+
+      const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()
+      if (data.async) handleAsyncResponse(data)
+      else handleSyncResponse(data)
+    } catch (err: any) {
+      handleError('Failed to submit initiative', err)
+    }
+  }
+
   const handleRetry = () => {
     const last = lastSentRef.current
     if (!last || sending) return
@@ -208,6 +248,7 @@ export function useAdventureMessages({
   return {
     messages, sending, loadingHistory,
     pendingRolls, setPendingRolls,
-    sendMessage, sendRolls, handleRetry,
+    pendingInitiative, setPendingInitiative,
+    sendMessage, sendRolls, sendInitiative, handleRetry,
   }
 }
