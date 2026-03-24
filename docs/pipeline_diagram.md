@@ -509,11 +509,7 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 |-----------|-----|-------|
 | Intake | ✅ AI | Danger scoring, sanitization, DM query detection |
 | Sequencer | ✅ AI | Action splitting (skipped if `action_queue` off) |
-| PlayerInterpreter | ✅ AI | Intent restatement only |
-| Beacon (×6) | ✅ AI | Parallel; one call per domain |
-| UnifiedEvaluation | ✅ AI | Single call replaces beacons + MechEval + RollQualifier |
-| MechanicalEvaluation | ✅ AI | Sequential per domain |
-| RollQualifier | ✅ AI | Per domain, after MechEval |
+| UnifiedEvaluation | ✅ AI | Single call: domain assessment + mechanics + roll qualification |
 | World consistency check | ✅ AI | Scene/entity validation |
 | Capability check | ✅ AI | Spell/feat/item ownership |
 | Momentum | ✅ AI | Non-mechanical outcome |

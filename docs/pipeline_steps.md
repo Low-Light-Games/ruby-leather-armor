@@ -104,8 +104,8 @@ really traversal, and "drinking a potion" is not combat.
 
 A single blob would force the AI to reason about all six schemas in
 every call, even when only one is relevant. Separate contexts let the
-MechanicalEvaluation step receive *only the domain it's adjudicating*,
-keeping the prompt focused and the output structured.
+UnifiedEvaluation step scope its mechanics output per domain,
+keeping each domain's output structured and independent.
 
 **Trade-off accepted:** the Context Update step must output relevant
 contexts. This is mitigated by the selective context update optimization
@@ -128,10 +128,10 @@ not the AI.
 - Be inconsistent about which modifiers it applies
 
 By having the app roll deterministically using the modifiers specified
-by the MechanicalEvaluation step (which references real `CreatureSheet`
-data), we guarantee that NPC combat is mechanically honest. The
-MechanicalEvaluation step decides *what* the NPC does and *what modifier*
-applies; the app decides *what the die shows*.
+by UnifiedEvaluation (which references real `CreatureSheet` data), we
+guarantee that NPC combat is mechanically honest. UnifiedEvaluation
+decides *what* the NPC does and *what modifier* applies; the app decides
+*what the die shows*.
 
 **Trade-off accepted:** the Mechanic step receives NPC results as text
 ("Goblin A rolled 14 + 3 = 17 vs AC 15: HIT") rather than structured
@@ -143,33 +143,30 @@ via the UI. This is a deliberate engagement choice — rolling dice is part
 of the tabletop experience. The app trusts the player's reported values
 (honor system, as in a real tabletop game).
 
-### 4. MechanicalEvaluation loop with summary chaining
+### 4. UnifiedEvaluation: single AI call for all domains
 
-**Decision:** run the MechanicalEvaluation step once per affected context,
-passing previous evaluation summaries to each subsequent iteration.
+**Decision:** replace the 6-parallel-beacon + sequential-mechanical-evaluation
++ per-domain-roll-qualifier chain with a single AI call (UnifiedEvaluation)
+that handles domain assessment, mechanics, and roll qualification in one pass.
 
-**Why:** asking the AI to adjudicate combat mechanics, traversal skill
-checks, and social consequences in a single prompt produces unreliable
-results. The model loses track of which rules apply where — it might
-apply combat attack-of-opportunity rules to a social interaction, or
-forget a traversal check because it was focused on combat.
+**Why:** the old architecture made 8–14 AI calls per action, ran parallel
+beacon threads that stressed the DB connection pool, and frequently produced
+duplicate rolls across domains (each domain independently requested the same
+Perception check, for example). Per-domain isolation also made it impossible
+for combat mechanics to account for traversal context within the same call.
 
-By looping with summaries, each call is scoped to one domain ("you are
-adjudicating COMBAT only") while retaining cross-context awareness
-("here's what already happened in TRAVERSAL"). The summary chaining
-ensures that the social evaluation knows the player jumped into the sacred
-lake (from the traversal evaluation) without having to reason about swim
-checks itself.
+A capable model handling all six domains in one pass achieves better
+cross-domain coherence, eliminates duplicate rolls natively, and reduces
+latency from 8–14 serial/parallel AI calls to one.
 
-**Trade-off accepted:** multi-context actions cost 2-3x the mechanical
-evaluation budget. This is acceptable because multi-context actions are
-less common than single-context ones, and the accuracy improvement is
-dramatic.
+**Trade-off accepted:** the prompt is larger (all contexts + rules manifest
+in one call) and requires a capable model (gpt-4.1-mini or better). Budget
+nano-tier models are not reliable at this task.
 
-**Alternative rejected:** forking the entire pipeline per context was
-considered but would have duplicated verdict, narration, and context
-updates — far more expensive and harder to merge into a coherent
-narrative.
+**Alternative considered:** keeping domain isolation via summary chaining
+(each domain call sees prior summaries). Rejected because it still multiplied
+cost linearly with the number of affected domains and added latency between
+calls with no meaningful accuracy benefit over a single capable model.
 
 ### 5. Mechanic/Momentum before narration (facts-first ordering)
 
@@ -210,27 +207,24 @@ the rolls and evaluations that produced them.
 
 ### 7. Rules fetched by slug from a YAML index
 
-**Decision:** rules are stored as YAML files keyed by slug. The
-Beacon step requests rules by slug, and the app
-fetches the corresponding text to inject into the MechanicalEvaluation
-prompt.
+**Decision:** rules are stored as YAML files keyed by slug. A manifest
+of available rules (slug + brief) is injected into the UnifiedEvaluation
+prompt, giving the model a reminder of what rule text is available.
 
 **Why:** LLMs hallucinate rules. Pathfinder 1e has thousands of rules
 with subtle interactions (grapple, combat maneuvers, spell resistance,
 damage reduction). If the model recites rules from memory, it will get
 details wrong — particularly for less common rules.
 
-By giving the model a manifest of available rules (slug + short
-description) and having it request what it needs, we ensure:
-- The MechanicalEvaluation step receives accurate rule text, not
-  hallucinated rules
-- The rules can be updated or corrected without retraining
-- We can audit which rules were used for each evaluation
+By giving the model a rules manifest, we ensure:
+- The model is reminded of rules it might otherwise deprioritise
+- Rules can be updated or corrected without retraining
+- We can audit which rules were surfaced for each evaluation
 
-**Trade-off accepted:** the beacon step must correctly identify which
-rules are relevant. If it misses a rule, the MechanicalEvaluation step
-won't have it. This is mitigated by providing domain-scoped rule
-manifests — each beacon sees rules relevant to its domain.
+**Trade-off accepted:** the model must correctly apply relevant rules
+from the manifest. This is mitigated by expecting capable models to have
+strong Pathfinder 1e rule knowledge already; the manifest is a structured
+reminder, not the sole source.
 
 ### 8. OGL/SRD-compliant bestiary
 
@@ -325,7 +319,7 @@ via `DmConfig#model_for(step)` with a global default fallback.
 **Why:** steps have fundamentally different cognitive demands:
 
 - Intake is a simple assessment — a nano model handles it perfectly
-- MechanicalEvaluation requires precise rule interpretation — benefits
+- UnifiedEvaluation requires cross-domain rule interpretation — benefits
   from reasoning models
 - Narrate requires creative prose — benefits from large, temperature-
   tunable models
@@ -422,7 +416,7 @@ failing and can investigate.
 ### 17. Parallel execution of independent steps
 
 **Decision:** several step pairs run concurrently in Ruby threads:
-- MechanicalEvaluation + SanityChecker (capability check + world consistency check) — the full gate
+- SanityChecker (capability check + world consistency check) — 2 parallel threads on the mechanics path
 - Narrate + ContextUpdate (the output phase, in parallel mode)
 - Micro Context Update + Macro Narrative Update (within context updates)
 
@@ -437,14 +431,14 @@ Classify parallel pair has been merged into Intake.
 pool pressure. Mitigated by wrapping all `Thread.new` blocks with
 `ActiveRecord::Base.connection_pool.with_connection` to ensure proper
 checkout and return. The connection pool is sized at 12 to accommodate
-peak parallelism (~8 concurrent connections during beacon fan-out).
+peak parallelism (~3 concurrent connections: main + 2 sanity gate threads).
 
 ### 18. Selective context updates (affected + active only)
 
 **Decision:** the Micro Context Update step only includes *relevant*
-contexts in its prompt — those flagged as `affected_contexts` by the
-beacon plus any that already contain data (active contexts). Contexts
-that are both unaffected and empty are omitted entirely.
+contexts in its prompt — those flagged as `affected_contexts` by
+UnifiedEvaluation plus any that already contain data (active contexts).
+Contexts that are both unaffected and empty are omitted entirely.
 
 **Why:** with six context domains, sending all six to the model on every
 turn wastes tokens and dilutes the model's attention. A pure social
@@ -488,10 +482,10 @@ awareness while still reducing scope.
 **Decision:** the pipeline explicitly tracks travel and distance changes
 across three steps:
 
-1. **MechanicalEvaluation** (traversal domain only): the prompt instructs
+1. **UnifiedEvaluation** (traversal domain): the prompt instructs
    the model to estimate travel time and distance using Pathfinder 1e
    overland movement rules (speed, mount, terrain, forced march). The
-   estimate appears in the `mechanical_summary`.
+   estimate appears in the traversal domain's `mechanical_summary`.
 2. **Verdict**: a `mutations.travel` object
    (`{ hours_traveled, distance_covered, new_location }`) captures the
    mechanical travel outcome alongside HP/condition mutations.
@@ -531,16 +525,16 @@ player trying to accomplish?" not "does this involve spellcasting?"
 
 ### 21. Domain-specific instruction partials
 
-**Decision:** both the MechanicalEvaluation step and the
-Beacon load domain-specific instructions from separate
-partial files (`templates/mechanical_evaluation/_combat.text.erb`,
-`templates/beacon/_traversal.text.erb`, etc.) rather than inlining
-all domain logic in a single template with `if/elsif` blocks.
+**Decision:** domain-specific guidance is stored in separate partial files
+(`templates/mechanical_evaluation/_combat.text.erb`,
+`templates/mechanical_evaluation/_traversal.text.erb`, etc.) and injected
+into the UnifiedEvaluation prompt as a single "DOMAIN GUIDANCE" block,
+rather than inlining all domain logic in one template with `if/elsif` blocks.
 
 **How:** `PromptRenderer.render_partial("mechanical_evaluation/_#{domain}")`
-loads the partial for the current domain. If no partial exists, it returns
-an empty string gracefully. The rendered text is injected into the main
-template via `@domain_instructions`.
+loads the partial for each domain. If no partial exists, it returns
+an empty string gracefully. All rendered partials are concatenated and
+injected into the unified template via `@domain_hints`.
 
 **Why:** with six domains each needing domain-specific Pathfinder 1e
 guidance (combat: AoO, flanking, concentration; traversal: overland
@@ -599,24 +593,19 @@ decision has been superseded.
 Intake runs as one call. The pipeline rejects if `danger_score >= danger_threshold`
 (configurable in DmConfig). This gate fires before any expensive downstream calls.
 
-### 25. Beacon (parallel per-domain interpretation)
+### 25. Beacon architecture retired → UnifiedEvaluation (see Decision 4)
 
-**Decision:** dispatch six parallel per-domain interpreters that each evaluate
-how the sanitized player input affects their domain.
+The original design used six parallel per-domain beacon AI calls (one per domain:
+traversal, combat, social, exploration, rest, inventory) followed by sequential
+per-domain MechanicalEvaluation calls and per-domain RollQualifier calls — 8–14
+AI calls per action.
 
-**Why:** asking a single step to handle both intent extraction and domain-specific
-rule interpretation overloaded the prompt. Separate beacons give each domain
-focused attention — the combat beacon reasons about AoO triggers without being
-distracted by traversal movement rules, and so on. Running them in parallel means
-wall-clock time equals the slowest single domain, not the sum of all domains.
-
-A PlayerInterpreter step previously sat before the beacons to produce a "pure
-restatement" of the input. It was removed (Decision 33) because the beacons
-already receive the sanitized input from Intake and perform the real interpretive
-work themselves — the restatement added a round-trip with no meaningful quality benefit.
-
-All beacons always run (all six domains). The `interpreter_scope` config
-is deprecated — `beacon_domains` always returns all domains.
+This was replaced by UnifiedEvaluation (Decision 4): a single AI call that handles
+domain assessment, mechanics, and roll qualification across all domains in one pass.
+The domain-specific guidance that was previously split across beacon prompt partials
+and mechanical evaluation prompt partials is now injected together as a "DOMAIN GUIDANCE"
+block in the unified prompt (`templates/mechanical_evaluation/_*.text.erb` partials,
+rendered via `build_domain_hints`).
 
 ### 26. SanityChecker (capability + world consistency validation)
 
@@ -624,25 +613,25 @@ is deprecated — `beacon_domains` always returns all domains.
 into two sub-checks:
 
 **A) Capability Check** — validates that the player possesses the spells,
-feats, or items they reference. Runs in parallel with MechanicalEvaluation
-(only on the mechanics path). Two modes via `guardrail_mode`:
+feats, or items they reference. Runs on the mechanics path only. Two modes
+via `guardrail_mode`:
 - `"code"` (default): deterministic fuzzy-match against character sheet.
 - `"ai"`: AI prompt for holistic validation.
 
 **B) World Consistency Check** — validates that the entities, targets, or
 objects the player references actually exist in the current scene. AI-only
-step that runs ALWAYS (via the full gate on mechanics path, or standalone
-on the non-mechanics path). Receives all non-empty micro-contexts, scene
-summary, scene history, and story NPCs.
+step that runs ALWAYS (in the sanity gate on the mechanics path, or
+standalone on the non-mechanics path). Receives all non-empty micro-contexts,
+scene summary, scene history, and story NPCs.
 
 **Why:** the capability check alone was insufficient. Players could
 reference non-existent creatures, NPCs, or objects (e.g., "attack the
 goblin" when no goblin exists) and the pipeline would process the action
 as valid. The world consistency check closes this gap.
 
-The full gate runs 3 threads in parallel (MechanicalEvaluation + Capability
-Check + World Consistency Check) — zero added latency on the happy path.
-On the non-mechanics path, the world check runs as a standalone AI call.
+On the mechanics path both checks run in parallel (2 threads) — zero added
+latency on the happy path. On the non-mechanics path, the world check runs
+as a standalone AI call.
 
 Both sub-checks fail open on errors to avoid blocking the player.
 
@@ -974,7 +963,7 @@ TimeKeeper → Harbinger (roll encounter) → encounter_entry found
 ### Path B — Narrative-originated combat
 
 ```
-Beacon (combat domain) → transition: "combat_started", combatants: [...]
+UnifiedEvaluation (combat domain) → transition: "combat_started", combatants: [...]
   → Stagehand#maybe_initialize_combat
     → Warmaster.initialize_from_names!
       → fuzzy bestiary lookup + dynamic fallback
@@ -993,7 +982,7 @@ Beacon (combat domain) → transition: "combat_started", combatants: [...]
 
 - `combat_active?` check in `TimeKeeper#consult_harbinger_if_needed` prevents encounters during combat
 - `stagehand_combat_active?` check prevents re-initialization when combat is already active
-- Combat beacon partial shows active participants, preventing AI from re-signaling `combat_started`
+- Combat domain hint instructs UnifiedEvaluation not to re-signal `combat_started` when combat is already active
 
 ### Creature Resolution Chain
 
@@ -1016,7 +1005,7 @@ into an immersive NPC scene rather than auto-resolving via Momentum.
 ### Flow
 
 ```
-Beacon (social domain) → expand_scene: true
+UnifiedEvaluation (social domain) → expand_scene: true
   → CoreResolver#resolve_social_scene
     → Social Expander AI call (social_expansion template)
     → Scene data written to @loop
