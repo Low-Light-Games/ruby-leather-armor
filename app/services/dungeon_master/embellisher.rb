@@ -12,8 +12,6 @@ module DungeonMaster
   #   adventure_messages[0]      (opening DM narrative)
   #   StoryNpc / StoryClue records with adventure_id (Expand mode only)
   class Embellisher
-    MODES = %w[embellish expand].freeze
-
     def initialize(adventure, user: nil)
       @adventure = adventure
       @story = adventure.story

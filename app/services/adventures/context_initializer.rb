@@ -24,9 +24,8 @@ module Adventures
     end
 
     def build_time_context
-      hour = parse_time_cue(@story.initial_context) ||
-             parse_time_cue(@story.hook) ||
-             8
+      seeded_time = @story.initial_contexts&.dig("traversal_context", "time_of_day")
+      hour = parse_time_cue(seeded_time) || 8
       hour = hour.clamp(0, 23)
 
       {

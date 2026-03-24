@@ -24,7 +24,8 @@ You are a creative writer for a tabletop RPG. Your job is to take structured sto
 <% end -%>
 === OPENING CONDITIONS ===
 <% if @traversal_context.present? -%>
-Location: <%= @traversal_context["current_location"] %>
+<% if @traversal_context["current_location"].present? -%>Location: <%= @traversal_context["current_location"] %>
+<% end -%>
 <% if @traversal_context["terrain"].present? -%>Terrain: <%= @traversal_context["terrain"] %><% end %>
 <% if @traversal_context["weather"].present? -%>Weather: <%= @traversal_context["weather"] %><% end %>
 <% if @traversal_context["time_of_day"].present? -%>Time: <%= @traversal_context["time_of_day"] %><% end %>

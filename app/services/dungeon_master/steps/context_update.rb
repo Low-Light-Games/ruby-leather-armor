@@ -70,7 +70,7 @@ module DungeonMaster
         prompt_summary = "Macro narrative update"
 
         system_prompt, user_msg = PromptRenderer.render_with_user_message("macro_narrative_update",
-          story_intro: @adventure.story.hook.presence || @adventure.story.title,
+          story_intro: @adventure.story.preview,
           story_summary: @adventure.story_summary,
           what_happened: what_happened)
 

@@ -77,6 +77,7 @@ class AdventuresController < ApplicationController
       })
 
       run_embellisher(@adventure)
+      ensure_opening_message(@adventure)
 
       @adventure.reload
       render json: adventure_json(@adventure), status: :created
@@ -147,7 +148,6 @@ class AdventuresController < ApplicationController
     DungeonMaster::Embellisher.new(adventure, user: current_user).run
   rescue DungeonMaster::AiError, DungeonMaster::TokenBudgetExceededError => e
     Rails.logger.error("[AdventuresController] Embellisher failed: #{e.message}")
-    ensure_opening_message(adventure)
   end
 
   def ensure_opening_message(adventure)
