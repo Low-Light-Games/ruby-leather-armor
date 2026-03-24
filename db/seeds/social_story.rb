@@ -45,13 +45,6 @@ story.premise = <<~PREMISE.strip
   would never let the desperation show. The player walked into the inn for a quiet drink and ended
   up in the middle of her pitch.
 PREMISE
-story.initial_context = <<~CONTEXT.strip
-  Seraphine Dusk is mid-sentence. The player is sitting across from her at a corner table in the
-  Crossed Keys Inn, a half-empty tankard between them. She leans forward, voice low, and says:
-  "—which is why I need someone the city register has never heard of. Someone like you. I can make
-  it worth your while, considerably so, but I need your answer before the bell tower strikes eleven."
-  She holds the player's gaze, fingers laced on the table, waiting.
-CONTEXT
 story.initial_summary = <<~SUMMARY.strip
   The player is already in conversation with Seraphine Dusk, a covert noble envoy, who has just
   made the tail end of a proposal. The player does not yet know the full details — only that

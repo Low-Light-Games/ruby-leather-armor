@@ -30,13 +30,6 @@ story.premise = <<~PREMISE.strip
   from the ruined Forward Camp to the relative safety of Garrison Keep. There are no allies, no
   diplomacy, no puzzles — only the next enemy.
 PREMISE
-story.initial_context = <<~CONTEXT.strip
-  The player crouches behind an overturned supply wagon at the edge of the ruined Forward Camp.
-  Smoke curls from smouldering tents. The bodies of fallen mercenaries litter the muddy field.
-  In the distance, across a stretch of open road, the silhouette of Garrison Keep is visible —
-  but between here and there, the Bloodfield teems with hostile patrols. The player is armed,
-  wounded, and very much alone.
-CONTEXT
 story.initial_summary = <<~SUMMARY.strip
   The player must cross from the Forward Camp to Garrison Keep. Enemy patrols cover every route.
   The player has no information about what awaits at the Keep — only that it is the nearest

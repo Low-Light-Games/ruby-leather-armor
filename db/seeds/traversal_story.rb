@@ -32,12 +32,6 @@ story.premise = <<~PREMISE.strip
   underground trading post, and urban streets before reaching the final destination. No grand villain,
   no mystery — just the road and whatever it throws at the player.
 PREMISE
-story.initial_context = <<~CONTEXT.strip
-  The player stands at the Coastal Docks at dawn, a sealed satchel slung over one shoulder.
-  Gulls cry overhead and the smell of salt and fish hangs in the cool morning air.
-  A battered signpost points inland: "Riverford Crossing — 12 mi". The road ahead begins as
-  a cobbled street that quickly turns to packed dirt as it leaves the harbour behind.
-CONTEXT
 story.initial_summary = <<~SUMMARY.strip
   The player has accepted a courier contract: deliver a sealed satchel to the Underground Market
   at Cavern's Reach. The client paid half up front and warned that the package must arrive within
