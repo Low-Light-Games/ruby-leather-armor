@@ -1,0 +1,32 @@
+=== PIPELINE RUN: <%= @pipeline_run_id %> ===
+Adventure: <%= @adventure&.id || "unknown" %><% if @pipeline_run %> | Status: <%= @pipeline_run.status %> | Duration: <%= @pipeline_run.active_duration_ms %>ms<% end %>
+Player: "<%= @player_message_content %>"
+Exported: <%= Time.current.utc.iso8601 %>
+================================================================
+<% @logs.each_with_index do |log, idx| %>
+
+--- [<%= idx + 1 %>] <%= log.event_type %> | <%= log.status %><% if log.model_used.present? %> | <%= log.model_used %><% end %><% if log.duration_ms %> | <%= log.duration_ms %>ms<% end %> ---
+Log ID: <%= log.id %>
+Created: <%= log.created_at.utc.iso8601 %>
+Summary: <%= log.prompt_summary %>
+<% if log.ai_usage_record %>
+Tokens: <%= log.ai_usage_record.input_tokens %> in / <%= log.ai_usage_record.output_tokens %> out<% if log.ai_usage_record.reasoning_tokens > 0 %> / <%= log.ai_usage_record.reasoning_tokens %> reasoning<% end %> | Total: <%= log.ai_usage_record.total_tokens %>
+Cost: $<%= "%.6f" % (log.ai_usage_record.total_cost_microdollars / 1_000_000.0) %>
+<% end %>
+<% if log.error_message.present? %>
+ERROR: <%= log.error_message %>
+<% end %>
+<% if log.request_body.present? %>
+REQUEST BODY:
+<%= begin; JSON.pretty_generate(JSON.parse(log.request_body)); rescue; log.request_body; end %>
+<% end %>
+<% if log.raw_response.present? %>
+RAW RESPONSE:
+<%= log.raw_response %>
+<% end %>
+<% if log.parsed_response.present? %>
+PARSED RESPONSE:
+<%= begin; JSON.pretty_generate(JSON.parse(log.parsed_response)); rescue; log.parsed_response; end %>
+<% end %>
+<% end %>
+================================================================

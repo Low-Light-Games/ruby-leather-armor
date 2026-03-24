@@ -67,11 +67,13 @@ module DungeonMaster
 
     # Write a structured pipeline event (sanity rejections, queue state, etc.)
     # visible in Admin -> Play Logs. No AI columns are populated.
-    def play_log!(event_type, summary)
+    # Pass parsed_response: a Hash to store structured data shown in the pipeline card body.
+    def play_log!(event_type, summary, parsed_response: nil)
       PlayLog.create!(
         adventure: @adventure,
         event_type: event_type,
         prompt_summary: summary,
+        parsed_response: parsed_response&.to_json,
         status: "pipeline_event",
         dm_service: @dm_service,
         player_message_id: @player_message_id,

@@ -72,11 +72,20 @@ module DungeonMaster
                   timeline_entry: { "step" => "harbinger", "summary" => "Encounter: #{entry.title}", "at" => Time.current.iso8601 })
               end
 
+              log&.play_log!("harbinger", "Encounter: #{entry.title}",
+                             parsed_response: { stop_reason: "encounter", title: entry.title,
+                                                hours_elapsed: enc_hours.round(2),
+                                                distance_covered_miles: enc_distance.round(2) })
+
               return build_result(:encounter, enc_hours, enc_distance, narrative, encounter_entry: entry)
             end
           end
 
           if is_journey && elapsed >= JOURNEY_FATIGUE_HOURS && hours > JOURNEY_FATIGUE_HOURS
+            log&.play_log!("harbinger", "Fatigue cutoff at #{elapsed.round(1)}h",
+                           parsed_response: { stop_reason: "rest_needed", hours_elapsed: elapsed.round(2),
+                                              distance_covered_miles: distance.round(2) })
+
             return build_result(
               :rest_needed, elapsed, distance,
               "After #{elapsed.round(1)} hours of travel, fatigue sets in. Time to rest."
@@ -84,7 +93,12 @@ module DungeonMaster
           end
         end
 
-        build_result(is_journey ? :arrived : :completed, elapsed, distance, nil)
+        stop_reason = is_journey ? :arrived : :completed
+        log&.play_log!("harbinger", "Clear passage: #{elapsed.round(1)}h",
+                       parsed_response: { stop_reason: stop_reason, hours_elapsed: elapsed.round(2),
+                                          distance_covered_miles: distance.round(2) })
+
+        build_result(stop_reason, elapsed, distance, nil)
       end
 
       def build_result(stop_reason, hours, distance, narrative_seed, encounter_entry: nil)

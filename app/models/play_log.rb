@@ -9,6 +9,7 @@ class PlayLog < ApplicationRecord
     queue_paused queue_interrupted queue_completed
     auto_success_filter duplicate_roll_warning
     pipeline_abandoned
+    harbinger warmaster
   ].freeze
 
   EVENT_TYPES = (DungeonMaster::StepRegistry.all_call_types + PIPELINE_EVENT_TYPES).freeze

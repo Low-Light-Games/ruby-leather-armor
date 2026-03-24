@@ -112,6 +112,27 @@ module Admin
       render layout: 'admin'
     end
 
+    def export_pipeline
+      @pipeline_run_id = params[:pipeline_run_id]
+      @logs = PlayLog.where(pipeline_run_id: @pipeline_run_id)
+                     .order(:created_at)
+                     .includes(:ai_usage_record)
+
+      if @logs.empty?
+        redirect_to pipelines_admin_play_logs_path, alert: "Pipeline run not found"
+        return
+      end
+
+      @pipeline_run = PipelineRun.find_by(pipeline_run_id: @pipeline_run_id)
+      @adventure = @logs.first&.adventure
+      @player_message_content = @logs.first&.player_message&.content || @logs.first&.player_message_content
+
+      send_data render_to_string("pipeline_export", formats: [:text], layout: false),
+                filename: "pipeline-#{@pipeline_run_id}.log",
+                type: "text/plain",
+                disposition: "attachment"
+    end
+
     private
 
     def require_admin

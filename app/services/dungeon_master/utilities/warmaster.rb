@@ -147,7 +147,7 @@ module DungeonMaster
 
       def build_initiative_result(ctx, creatures)
         if creatures.empty?
-          ctx.log.log!(:warn, "Warmaster: no creatures could be created — combat initialization aborted")
+          ctx.log.play_log!("warmaster", "Combat aborted: no creatures created")
           return { status: :no_creatures }
         end
 
@@ -156,7 +156,9 @@ module DungeonMaster
           c.merge(initiative: initiative)
         end
 
-        ctx.log.log!(:info, "Warmaster: #{creature_data.size} creature(s) ready, awaiting player initiative")
+        creature_names = creature_data.map { |c| "#{c[:name]} (init #{c[:initiative]})" }
+        ctx.log.play_log!("warmaster", "Combat: #{creature_data.size} creature(s) ready",
+                          parsed_response: { creature_count: creature_data.size, creatures: creature_names })
 
         { status: :awaiting_initiative, creature_data: creature_data }
       end
