@@ -39,7 +39,7 @@ module DungeonMaster
 
         unless outcome
           @log&.play_log!("pipeline_error", "Narrate step reached without an outcome — nothing to narrate",
-                          parsed_response: { narrate_seed: outcome, encounter_scene: encounter_scene,
+                          parsed_response: { pipeline_outcome: outcome, encounter_scene: encounter_scene,
                                              verdict_outcome: what_happened }.compact)
           raise AiError, "Narrate step reached without an outcome — nothing to narrate"
         end
