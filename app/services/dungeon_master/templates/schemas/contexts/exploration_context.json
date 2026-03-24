@@ -1,0 +1,16 @@
+{
+  "description": "Tracks the player's investigative activity, discoveries, and active detection in the current area. Scoped to the current location — reset when the player moves to a new area.",
+  "fields": {
+    "searched_areas": "array of strings — parts of the current location that have been searched or examined (e.g. 'north wall', 'the desk', 'behind the waterfall')",
+    "discovered_items": "array of objects — items found during exploration: { name, description, location_found }",
+    "discovered_secrets": "array of strings — hidden information, concealed doors, or secrets uncovered",
+    "knowledge_checks_attempted": "array of objects — knowledge rolls made: { topic, result (success|failure), what_learned }",
+    "active_detection": "string or null — any ongoing detection effect active (e.g. 'Detect Magic running', 'Tracking footprints', 'Listen check in progress')",
+    "pending_investigations": "array of strings — things the player has flagged to investigate but has not yet examined"
+  },
+  "notes": [
+    "This context is scoped to the current area. When the player leaves, preserve discovered_items and discovered_secrets but clear searched_areas and active_detection.",
+    "Do not populate this context for purely social or traversal actions — only when the player is actively investigating, searching, or using knowledge skills.",
+    "A successful Perception check that reveals something should populate discovered_secrets."
+  ]
+}

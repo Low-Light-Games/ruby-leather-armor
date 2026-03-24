@@ -66,13 +66,14 @@ module DungeonMaster
         timeline_entry: tl("initiative_resolved", "Player initiative: #{player_initiative}"))
 
       creature_data = metadata["creature_data"] || []
-      Utilities::Warmaster.finalize_combat!(
-        adventure: @adventure, creature_data: creature_data.map(&:deep_symbolize_keys),
+      combat_data = Utilities::Warmaster.compute_combat_initialization(
+        creature_data: creature_data.map(&:deep_symbolize_keys),
         player_initiative: player_initiative)
 
       intent = metadata["intent"]&.deep_symbolize_keys
       raise AiError, "Initiative metadata missing intent — state integrity failure" unless intent
-      mutations = metadata["mutations"]
+      base_mutations = metadata["mutations"] || {}
+      mutations = base_mutations.merge("combat_initialization" => combat_data)
       remaining = metadata["remaining_actions"] || []
 
       if remaining.any?
@@ -80,7 +81,7 @@ module DungeonMaster
                             accumulated_intents: [intent],
                             accumulated_mutations: [mutations].compact)
       else
-        run_accumulated_output_phase(
+        run_accumulated_narrative_phase(
           [{ status: :encounter, intent: intent, mutations: mutations }])
       end
     end
@@ -104,7 +105,7 @@ module DungeonMaster
                             accumulated_intents: [result[:intent]],
                             accumulated_mutations: [result[:mutations]])
       else
-        run_accumulated_output_phase([result])
+        run_accumulated_narrative_phase([result])
       end
     end
 
@@ -144,6 +145,7 @@ module DungeonMaster
         when :awaiting_rolls
           @loop&.batch_update!(new_status: "paused",
             timeline_entry: tl("awaiting_rolls", "Paused for player rolls"))
+          run_context_updates_at_pause(result[:intent], result[:merged])
           remaining = actions[(idx + 1)..]
           log_queue_pause(idx, total, remaining)
           return {
@@ -155,6 +157,7 @@ module DungeonMaster
           @loop&.batch_update!(new_status: "paused",
             new_tags: { "combat_started" => true },
             timeline_entry: tl("awaiting_initiative", "Paused for player initiative"))
+          run_context_updates_at_encounter_pause(result[:mutations])
           remaining = actions[(idx + 1)..]
           log_queue_pause(idx, total, remaining)
           return {
@@ -190,7 +193,7 @@ module DungeonMaster
       clear_action_label
       log_queue_completed(total) if total > 1
 
-      run_accumulated_output_phase(accumulated)
+      run_accumulated_narrative_phase(accumulated)
     end
 
     # Continue the action queue after a roll pause or from a mid-queue resume.
@@ -215,6 +218,7 @@ module DungeonMaster
         when :awaiting_rolls
           @loop&.batch_update!(new_status: "paused",
             timeline_entry: tl("awaiting_rolls", "Paused for player rolls"))
+          run_context_updates_at_pause(result[:intent], result[:merged])
           new_remaining = remaining[(idx + 1)..]
           log_queue_pause(action_idx, total_original, new_remaining)
           return {
@@ -226,6 +230,7 @@ module DungeonMaster
           @loop&.batch_update!(new_status: "paused",
             new_tags: { "combat_started" => true },
             timeline_entry: tl("awaiting_initiative", "Paused for player initiative"))
+          run_context_updates_at_encounter_pause(result[:mutations])
           new_remaining = remaining[(idx + 1)..]
           log_queue_pause(action_idx, total_original, new_remaining)
           return {
@@ -259,14 +264,14 @@ module DungeonMaster
       end
 
       clear_action_label
-      run_accumulated_output_phase(accumulated)
+      run_accumulated_narrative_phase(accumulated)
     end
 
     # ----------------------------------------------------------------
-    # Accumulated output phase
+    # Narrative phase (formerly output phase)
     # ----------------------------------------------------------------
 
-    def run_accumulated_output_phase(results)
+    def run_accumulated_narrative_phase(results)
       return { action: :narrated, narrative: "", adventure_complete: false } if results.empty?
 
       merged_intent = merge_result_intents(results)
@@ -289,7 +294,7 @@ module DungeonMaster
       extra[:encounter_triggered] = true if encounter_triggered
       extra[:social_scene_triggered] = true if social_scene_triggered
 
-      run_output_phase(merged_intent,
+      run_narrative_phase(merged_intent,
         narrate_seed: combined_seed,
         mutations: combined_mutations.presence,
         dm_brief: dm_brief,
@@ -320,13 +325,36 @@ module DungeonMaster
     # ----------------------------------------------------------------
 
     def run_inter_action_context_update(result)
-      affected = Array(result.dig(:intent, :affected_contexts))
       outcome = @loop&.get("pipeline_outcome")
-      parsed = run_micro_context_update(outcome, result[:mutations], affected)
-      persist_micro_contexts(parsed)
+      return unless outcome.present?
+
+      run_context_updates(outcome, result[:mutations])
       @adventure.reload
       @loop&.batch_update!(
         timeline_entry: tl("inter_action_ctx", "Micro contexts updated between actions"))
+    end
+
+    # Run ContextUpdate before a roll-request pause. what_happened is constructed
+    # from the player's intent and the rolls being requested — the mechanic has not
+    # resolved yet, but the attempt is underway and contexts should reflect it.
+    def run_context_updates_at_pause(intent, merged)
+      rolls_desc = Array(merged[:player_rolls])
+                     .map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]}" }.join(", ")
+      what_happened = "Player attempting: #{intent[:intention]}. Pending rolls: #{rolls_desc}."
+      run_context_updates(what_happened, nil)
+    rescue => e
+      @log.log!(:warn, "[pause_ctx_update] #{e.class}: #{e.message}")
+    end
+
+    # Run ContextUpdate before an initiative-pause from a Harbinger encounter.
+    # The encounter scene is the outcome — contexts reflect combat beginning
+    # before the player rolls initiative.
+    def run_context_updates_at_encounter_pause(mutations)
+      encounter_outcome = @loop&.get("pipeline_outcome")
+      return unless encounter_outcome.present?
+      run_context_updates(encounter_outcome, mutations)
+    rescue => e
+      @log.log!(:warn, "[encounter_pause_ctx_update] #{e.class}: #{e.message}")
     end
 
     # ----------------------------------------------------------------

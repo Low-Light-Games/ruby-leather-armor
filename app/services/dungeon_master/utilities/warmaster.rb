@@ -50,8 +50,11 @@ module DungeonMaster
         build_initiative_result(ctx, creatures)
       end
 
-      # Final step: complete combat_context with player initiative (called on resume)
-      def finalize_combat!(adventure:, creature_data:, player_initiative:)
+      # Compute the finalized combat state from creature data and player initiative.
+      # Pure computation — does NOT write to the adventure record.
+      # Returns a hash suitable for passing as combat_initialization in mutations,
+      # which ContextUpdate will write verbatim to adventure.combat_context.
+      def compute_combat_initialization(creature_data:, player_initiative:)
         participants = creature_data.map do |c|
           { "name" => c[:name], "creature_sheet_id" => c[:creature_sheet_id],
             "initiative" => c[:initiative], "type" => "npc" }
@@ -60,12 +63,12 @@ module DungeonMaster
 
         turn_order = participants.sort_by { |p| -p["initiative"] }.map { |p| p["name"] }
 
-        adventure.update!(combat_context: {
+        {
           "active" => true, "round" => 1,
           "participants" => participants,
           "turn_order" => turn_order,
           "active_effects" => []
-        })
+        }
       end
 
       # Auto-roll player initiative from their character sheet

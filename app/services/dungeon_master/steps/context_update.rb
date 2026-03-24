@@ -3,15 +3,20 @@
 module DungeonMaster
   module Steps
     # Pipeline Step 6a/6b: Context updates.
-    # 6a — Micro context update (affected + active contexts only)
+    # 6a — Micro context update (self-directed: reads outcome, decides which domains changed)
     # 6b — Macro narrative update (story summary)
     # Run in parallel; 6b is conditional on macro_significant.
+    #
+    # ContextUpdate is the sole writer of all Adventure context fields.
+    # It receives what_happened (the full outcome text) and decides independently
+    # which of the six domains to update. No upstream affected_contexts signal is
+    # used — the AI reads the outcome and makes that judgment itself.
     module ContextUpdate
       private
 
-      def run_context_updates(what_happened, mutations, affected_contexts: [], macro_significant: false)
+      def run_context_updates(what_happened, mutations, macro_significant: false)
         micro_thread = Thread.new do
-          ActiveRecord::Base.connection_pool.with_connection { run_micro_context_update(what_happened, mutations, affected_contexts) }
+          ActiveRecord::Base.connection_pool.with_connection { run_micro_context_update(what_happened, mutations) }
         end
         macro_thread = if macro_significant
                          Thread.new do
@@ -23,6 +28,7 @@ module DungeonMaster
         persist_micro_contexts(micro_result)
         persist_scene_summary(micro_result["scene_summary"])
         handle_new_creatures(micro_result["new_creatures"]) if micro_result["new_creatures"].present?
+        handle_context_wishes(micro_result["context_wishes"]) if micro_result["context_wishes"].present?
 
         if macro_thread
           macro_result = macro_thread.value
@@ -32,28 +38,18 @@ module DungeonMaster
         pipeline_error!("context_updates", e)
       end
 
-      def run_micro_context_update(what_happened, mutations, affected_contexts)
+      def run_micro_context_update(what_happened, mutations)
         prompt_summary = "Micro context update"
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
 
-        affected = Array(affected_contexts).map(&:to_s)
-
-        # When traversal is being updated, social must also be actively re-evaluated.
-        # A location change may or may not end the current social scene — that is AI judgment —
-        # but the AI must evaluate it rather than silently carrying the old scene forward.
-        if affected.include?("traversal") && micro_contexts[:social].present?
-          affected = (affected | ["social"]).uniq
+        context_schemas = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, h|
+          h[field] = PromptRenderer.load_schema("contexts/#{field}_context")
         end
-
-        active = PromptHelpers::CONTEXT_FIELDS.select { |f| micro_contexts[f.to_sym].present? }
-        relevant = (affected | active).uniq & PromptHelpers::CONTEXT_FIELDS
-
-        relevant = PromptHelpers::CONTEXT_FIELDS if relevant.empty?
 
         system_prompt, user_msg = PromptRenderer.render_with_user_message("micro_context_update",
           micro_contexts: micro_contexts,
-          relevant_fields: relevant,
-          affected_fields: affected,
+          context_fields: PromptHelpers::CONTEXT_FIELDS,
+          context_schemas: context_schemas,
           what_happened: what_happened,
           mutations_json: mutations.present? ? mutations.to_json : nil,
           canonical_hp: build_canonical_hp)
@@ -94,6 +90,18 @@ module DungeonMaster
           h[key.to_sym] = parsed[key] if parsed[key].present?
         end
         @adventure.update!(updates) if updates.any?
+        snapshot_contexts_to_loop
+      end
+
+      def snapshot_contexts_to_loop
+        return unless @loop
+
+        snapshot = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, h|
+          key = "#{field}_context"
+          h[key] = @adventure.public_send(key)
+        end
+
+        @loop.batch_update!(new_data: { "context_snapshot" => snapshot })
       end
 
       def persist_scene_summary(summary)
@@ -116,6 +124,17 @@ module DungeonMaster
         end
 
         lines.any? ? lines.join("\n") : nil
+      end
+
+      # Log context wishes emitted by the AI when the outcome touches something
+      # that doesn't map cleanly to the existing six domain fields. These are
+      # observability signals for future context domain design, visible in the
+      # admin play log UI under event_type "context_wish".
+      def handle_context_wishes(wishes)
+        Array(wishes).each do |wish|
+          next unless wish.is_a?(String) && wish.present?
+          @log.play_log!("context_wish", wish)
+        end
       end
     end
   end

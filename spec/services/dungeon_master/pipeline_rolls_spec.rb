@@ -118,7 +118,7 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
     end
   end
 
-  describe "run_accumulated_output_phase — pipeline_outcome DB assembly" do
+  describe "run_accumulated_narrative_phase — pipeline_outcome DB assembly" do
     # Directly exercise the DB query that assembles the combined narration seed
     # from AdventureLoop#pipeline_outcome rows ordered by sequence_index.
 
@@ -147,7 +147,7 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
           original.call(seed, **kwargs)
         end
 
-        pipeline.send(:run_accumulated_output_phase,
+        pipeline.send(:run_accumulated_narrative_phase,
           [{ status: :resolved, intent: { intention: "open door", affected_contexts: [],
                                           macro_significant: false, domain_results: {} } }])
 
@@ -168,7 +168,7 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
           original.call(seed, **kwargs)
         end
 
-        pipeline.send(:run_accumulated_output_phase,
+        pipeline.send(:run_accumulated_narrative_phase,
           [{ status: :resolved, intent: { intention: "pick up torch then open door",
                                           affected_contexts: [], macro_significant: false,
                                           domain_results: {} } },
@@ -191,7 +191,7 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
         end
 
         expect {
-          pipeline.send(:run_accumulated_output_phase,
+          pipeline.send(:run_accumulated_narrative_phase,
             [{ status: :resolved, intent: { intention: "do something",
                                             affected_contexts: [], macro_significant: false,
                                             domain_results: {} } }])
