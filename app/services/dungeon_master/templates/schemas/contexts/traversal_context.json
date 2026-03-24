@@ -15,6 +15,7 @@
     "When current_location changes, ALL other fields (terrain, exits, weather, nearby_npcs, points_of_interest) must be updated to match the new location — never carry forward stale values from the previous location.",
     "When destination is reached, set destination to null.",
     "Exits should always have at least one entry (e.g. 'the way you came') unless the location is explicitly sealed.",
-    "If an encounter interrupts travel, update current_location to where the encounter occurs, not the intended destination."
+    "If an encounter interrupts travel, update current_location to where the encounter occurs, not the intended destination.",
+    "SCENE GRANULARITY: The scene field must describe the player's immediate local situation, not just restate the location name."
   ]
 }
