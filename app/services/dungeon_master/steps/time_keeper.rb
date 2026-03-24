@@ -66,7 +66,6 @@ module DungeonMaster
           source: estimated[:source],
           journey: estimated[:journey_data],
           encounter: encounter,
-          encounter_narrative: encounter&.dig(:narrative_seed),
           time_context: time_ctx,
           thresholds: thresholds,
           harbinger_result: harbinger_result
@@ -242,7 +241,7 @@ module DungeonMaster
 
       def consult_harbinger_if_needed(estimated, intent)
         no_op = { interrupted: false, stop_reason: :skipped, hours_granted: estimated[:hours],
-                  distance_covered_miles: 0, narrative_seed: nil, encounter_entry: nil }
+                  distance_covered_miles: 0, encounter_entry: nil }
 
         return no_op if combat_active?
         return no_op if estimated[:hours] < 0.01

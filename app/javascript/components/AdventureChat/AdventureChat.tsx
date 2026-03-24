@@ -6,6 +6,7 @@ import { useAdventureMessages } from './hooks/useAdventureMessages'
 import { ResolutionMethod } from './rollHelpers'
 import ChatMessage from './ChatMessage'
 import PendingRollsPanel from './PendingRollsPanel'
+import PendingInitiativePanel from './PendingInitiativePanel'
 import './AdventureChat.scss'
 
 interface AdventureChatProps {
@@ -27,7 +28,8 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
   const {
     messages, sending, loadingHistory,
     pendingRolls, setPendingRolls,
-    sendMessage, sendRolls, handleRetry,
+    pendingInitiative,
+    sendMessage, sendRolls, sendInitiative, handleRetry,
   } = useAdventureMessages({ adventureId, derivedStats, onAdventureComplete, onDmResponse })
 
   const scrollToBottom = useCallback(() => {
@@ -122,6 +124,13 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
         />
       )}
 
+      {pendingInitiative && !sending && (
+        <PendingInitiativePanel
+          derivedStats={derivedStats}
+          onSubmit={sendInitiative}
+        />
+      )}
+
       <RollResultModal
         roll={rollModalDisplay}
         onClose={handleRollModalClose}
@@ -142,7 +151,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={askDm ? 'Ask the GM a question...' : (pendingRolls ? 'Submit your rolls above, or describe another action...' : 'What does your character do?')}
+            placeholder={askDm ? 'Ask the GM a question...' : (pendingInitiative ? 'Roll for initiative above...' : (pendingRolls ? 'Submit your rolls above, or describe another action...' : 'What does your character do?'))}
             disabled={sending}
             rows={2}
             maxLength={500}

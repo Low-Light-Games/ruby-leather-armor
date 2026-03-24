@@ -47,7 +47,7 @@ module DungeonMaster
 
       def simulate_passage(hours:, table:, terrain:, party_level:, is_journey:,
                            speed_mph:, adventure:, ai:, config:, log:, loop: nil)
-        return build_result(:completed, hours, 0, nil) if hours <= 0
+        return build_result(:completed, hours, 0) if hours <= 0
 
         freq = table&.check_frequency_hours&.to_f || 4.0
         elapsed   = 0.0
@@ -63,7 +63,7 @@ module DungeonMaster
             if entry
               enc_hours = elapsed - (segment * rand(0.2..0.8))
               enc_distance = is_journey ? (speed_mph * enc_hours) : distance
-              narrative = expand_encounter(entry, adventure: adventure, ai: ai, config: config, log: log, loop: loop)
+              expand_encounter(entry, adventure: adventure, ai: ai, config: config, log: log, loop: loop)
 
               if loop
                 loop.batch_update!(
@@ -77,7 +77,7 @@ module DungeonMaster
                                                 hours_elapsed: enc_hours.round(2),
                                                 distance_covered_miles: enc_distance.round(2) })
 
-              return build_result(:encounter, enc_hours, enc_distance, narrative, encounter_entry: entry)
+              return build_result(:encounter, enc_hours, enc_distance, encounter_entry: entry)
             end
           end
 
@@ -86,10 +86,7 @@ module DungeonMaster
                            parsed_response: { stop_reason: "rest_needed", hours_elapsed: elapsed.round(2),
                                               distance_covered_miles: distance.round(2) })
 
-            return build_result(
-              :rest_needed, elapsed, distance,
-              "After #{elapsed.round(1)} hours of travel, fatigue sets in. Time to rest."
-            )
+            return build_result(:rest_needed, elapsed, distance)
           end
         end
 
@@ -98,24 +95,25 @@ module DungeonMaster
                        parsed_response: { stop_reason: stop_reason, hours_elapsed: elapsed.round(2),
                                           distance_covered_miles: distance.round(2) })
 
-        build_result(stop_reason, elapsed, distance, nil)
+        build_result(stop_reason, elapsed, distance)
       end
 
-      def build_result(stop_reason, hours, distance, narrative_seed, encounter_entry: nil)
+      def build_result(stop_reason, hours, distance, encounter_entry: nil)
         interrupted = stop_reason == :encounter || stop_reason == :rest_needed
         {
           interrupted: interrupted,
           stop_reason: stop_reason,
           hours_granted: hours.round(2),
           distance_covered_miles: (distance || 0).round(2),
-          narrative_seed: narrative_seed,
           encounter_entry: encounter_entry
         }
       end
 
       def expand_encounter(entry, adventure:, ai:, config:, log:, loop: nil)
-        return entry.description if entry.fixed?
-        return entry.description unless ai && config && log
+        if entry.fixed? || !(ai && config && log)
+          loop&.batch_update!(new_data: { "encounter_scene" => entry.description.to_s.truncate(1000) })
+          return entry.description
+        end
 
         t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         raw = nil

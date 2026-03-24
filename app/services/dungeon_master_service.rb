@@ -301,9 +301,13 @@ class DungeonMasterService
         mutations: result[:mutations],
         remaining_actions: result[:remaining_actions]
       }
+      encounter_intro = AdventureLoop.for_pipeline(@log.pipeline_run_id)
+                                      .paused.order(:created_at).last
+                                      &.get("pipeline_outcome")
+      initiative_content = [encounter_intro.presence, "Roll for initiative!"].compact.join("\n\n")
       [persist_message(
         role: "dm",
-        content: "Roll for initiative!",
+        content: initiative_content,
         message_type: "initiative_request",
         metadata: meta)]
 
