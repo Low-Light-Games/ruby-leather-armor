@@ -46,7 +46,8 @@ module DungeonMaster
         merged_affected = (beacon_affected | ai_affected).uniq
 
         loop_data = {
-          "verdict_outcome" => outcome.to_s.truncate(500),
+          "verdict_outcome"  => outcome.to_s.truncate(500),
+          "pipeline_outcome" => outcome.to_s.truncate(2000),
           "affected_contexts" => merged_affected
         }
 

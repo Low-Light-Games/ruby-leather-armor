@@ -830,6 +830,44 @@ actual intent: the unified AI already provides `take_10_eligible` /
 `compute_take_values` makes the contract explicit: AI decides eligibility, code
 computes the numeric values from the character sheet.
 
+### 36. `AdventureLoop#pipeline_outcome` as the authoritative narration seed
+
+**Decision:** every `CoreResolver` terminal writes the action's narration seed into
+`AdventureLoop#data["pipeline_outcome"]` via `batch_update!`. The output phase
+(`run_accumulated_output_phase`) assembles the combined seed by querying all
+`AdventureLoop` rows for the current `pipeline_run_id` in `sequence_index` order
+and joining their `pipeline_outcome` values with `"\n\nThen: "`. The old
+`narrate_seed` field is removed from result hashes and from `AdventureMessage`
+metadata entirely.
+
+**Why:** the previous design threaded `narrate_seed` through every in-memory result
+hash and carried `prior_narrate_seeds` across pause boundaries (serialised into
+`roll_request` / `initiative_request` metadata). This created several problems:
+
+- Encounter paths (non-combat and social scenes) could produce a nil seed when
+  `verdict_outcome` was never set, causing `narrate.rb` to raise immediately.
+- The pause/resume boundary required explicitly carrying seeds forward across
+  the DB serialisation — a fragile contract where any missed key meant lost
+  context.
+- Context updates between compound actions read `result[:narrate_seed]`, which
+  was nil for every terminal that didn't manually populate it.
+
+`AdventureLoop` rows are already created for each action in a pipeline run and
+indexed on `pipeline_run_id`. Querying them adds one cheap indexed read and
+replaces the entire in-memory accumulation pattern. Any terminal that writes to
+the row automatically participates in the combined seed without changes to the
+caller.
+
+**Mapping of terminals to `pipeline_outcome`:**
+
+| Path | Value written |
+|---|---|
+| No-mechanics, no encounter | `momentum_result[:outcome]` — written by `momentum.rb` |
+| Mechanics, no encounter | `verdict_result[:outcome]` — written by `finish_resolution` |
+| Encounter — awaiting initiative | `[encounter_scene, verdict_outcome].compact.join("\n\n")` |
+| Encounter — non-combat | same combined join |
+| Social scene | `scene` text from `social_expansion` |
+
 ---
 
 ## Step Index
