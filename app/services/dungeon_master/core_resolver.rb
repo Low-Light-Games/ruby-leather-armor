@@ -282,5 +282,12 @@ module DungeonMaster
 
       [world, capability]
     end
+
+    def store_pipeline_outcome!(text)
+      if text.blank?
+        @log&.play_log!("empty_pipeline_outcome", "Terminal wrote blank pipeline_outcome — narration context will be missing")
+      end
+      @loop&.batch_update!(new_data: { "pipeline_outcome" => text.to_s.truncate(2000) })
+    end
   end
 end
