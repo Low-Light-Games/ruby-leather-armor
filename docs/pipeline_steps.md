@@ -81,7 +81,14 @@ debugging granularity for the non-evaluation steps.
 `exploration_context`, `rest_context`, and `inventory_context`, each with
 its own schema.
 
-**Why:** Pathfinder 1e naturally decomposes into these six gameplay
+**Primary motivation:** micro-contexts are the adventure's state
+checkpoints (see Design Philosophy §18). The pipeline does not pass
+message history to AI steps — it passes the current snapshot. Each turn
+reads the snapshot, resolves the action, and writes an updated snapshot.
+Long sessions remain as cheap and reliable as short ones because prompt
+size stays bounded regardless of session length.
+
+**Why six domains:** Pathfinder 1e naturally decomposes into these six gameplay
 domains. A player action can affect multiple domains simultaneously ("I
 jump into the sacred lake to escape my attackers" touches combat,
 traversal, and social), and each domain has fundamentally different state
@@ -440,7 +447,17 @@ contexts in its prompt — those flagged as `affected_contexts` by
 UnifiedEvaluation plus any that already contain data (active contexts).
 Contexts that are both unaffected and empty are omitted entirely.
 
-**Why:** with six context domains, sending all six to the model on every
+**State integrity note:** because micro-contexts are the adventure's state
+checkpoints (see Design Philosophy §18), omitting a domain from
+`affected_contexts` when that domain was actually touched by the
+resolution does not just waste or save tokens — it means the next turn's
+snapshot will not reflect what happened. `affected_contexts` accuracy is a
+correctness requirement. UnifiedEvaluation provides this signal for
+player-action-driven turns; any pipeline path that resolves differently
+(Harbinger encounters, Chronicler plot events) must supplement it with the
+domains it touched before ContextUpdate runs.
+
+**Why selective:** with six context domains, sending all six to the model on every
 turn wastes tokens and dilutes the model's attention. A pure social
 interaction has no reason to include empty combat, rest, and inventory
 contexts. By scoping the prompt to only what matters, we:

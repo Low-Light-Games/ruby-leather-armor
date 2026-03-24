@@ -517,3 +517,43 @@ rather than on matching text or numbers the AI generated.
 add examples, or restructure the step inputs so the AI doesn't produce the
 problem. If the problem persists, log it as a warning for observability —
 but do not silently alter the output.
+
+---
+
+## 18. Micro-contexts as adventure state checkpoints
+
+The micro-context fields (`traversal_context`, `combat_context`,
+`social_context`, `exploration_context`, `rest_context`,
+`inventory_context`) are the adventure's official world state. Every
+pipeline step that needs world state reads from the current snapshot.
+Every turn ends by writing an updated snapshot. The adventure is
+structured like a linked list: each node contains everything needed to
+produce the next, with no dependency on what came before.
+
+**The problem this solves:** AI wrapper products face a predictable failure
+mode. The context window fills with message history, the model attends to
+older turns inconsistently, and hallucinations about "what already
+happened" accumulate as the adventure grows longer. Sending the full
+conversation is also expensive — prompt size scales with session length
+rather than staying bounded.
+
+**The design response:** the pipeline does not pass message history to AI
+steps. It passes the current micro-context snapshot. A model generating
+narrative for turn 80 has the same clean, bounded input as one generating
+narrative for turn 1. Long adventures do not become harder or less
+reliable to reason about.
+
+**Consequence for ContextUpdate:** because micro-contexts are ground truth
+rather than a convenience cache, keeping them current is a correctness
+requirement, not an optimisation. If ContextUpdate runs with an incomplete
+`affected_contexts` — missing a domain that was actually touched — the
+snapshot written for the next turn silently omits that domain's changes.
+The adventure state diverges from what actually happened. Getting
+`affected_contexts` right is therefore **state integrity**, not token
+efficiency.
+
+**Implication:** any pipeline path that resolves via a route
+UnifiedEvaluation could not foresee (Harbinger firing an encounter,
+Chronicler unlocking a plot event) must supplement `affected_contexts`
+with the domains that path touched. Failing to do so doesn't crash the
+pipeline — it quietly erases that event from the world state forward.
