@@ -22,6 +22,7 @@ module ApplicationHelper
     when "time_keeper"                   then "type-ctx"
     when "queue_paused", "queue_interrupted", "queue_completed",
          "auto_success_filter", "duplicate_roll_warning", "pipeline_abandoned" then "type-ctx"
+    when "pipeline_error"                then "type-error"
     when "narrate"                       then "type-narrate"
     when "dm_query"                      then "type-dm-query"
     when "micro_context_update"          then "type-ctx"

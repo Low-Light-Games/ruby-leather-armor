@@ -37,7 +37,12 @@ module DungeonMaster
           encounter_new_elements: encounter_new_elements,
           encounter_has_creatures: Array(encounter_creatures).any?)
 
-        raise AiError, "Narrate step reached without an outcome — nothing to narrate" unless outcome
+        unless outcome
+          @log&.play_log!("pipeline_error", "Narrate step reached without an outcome — nothing to narrate",
+                          parsed_response: { narrate_seed: outcome, encounter_scene: encounter_scene,
+                                             verdict_outcome: what_happened }.compact)
+          raise AiError, "Narrate step reached without an outcome — nothing to narrate"
+        end
         request_body = { system_prompt: system_prompt, user_message: outcome }
 
         parsed = timed_ai_call("narrate", prompt_summary, request_body) do
