@@ -13,3 +13,18 @@ services:
       RAILS_MAX_THREADS: "12"
     network_mode: host
     restart: unless-stopped
+
+  worker:
+    build:
+      context: ./
+      args:
+        RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+        RAILS_ENV: staging
+    env_file:
+      - .env
+    environment:
+      RAILS_ENV: staging
+      RAILS_MAX_THREADS: "12"
+    network_mode: host
+    restart: unless-stopped
+    command: bundle exec sidekiq -C config/sidekiq.yml

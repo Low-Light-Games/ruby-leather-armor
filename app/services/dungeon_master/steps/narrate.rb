@@ -8,6 +8,7 @@ module DungeonMaster
       private
 
       def run_narrate(outcome, intent: nil, dm_brief: nil, forbidden_elements: [], encounter_triggered: false)
+        broadcast_progress("Writing the story...")
         prompt_summary = "Narrate"
 
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)

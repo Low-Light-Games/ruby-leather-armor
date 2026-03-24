@@ -15,6 +15,7 @@ module DungeonMaster
       private
 
       def run_context_updates(what_happened, mutations, macro_significant: false)
+        broadcast_progress("Remembering the world...")
         micro_thread = Thread.new do
           ActiveRecord::Base.connection_pool.with_connection { run_micro_context_update(what_happened, mutations) }
         end

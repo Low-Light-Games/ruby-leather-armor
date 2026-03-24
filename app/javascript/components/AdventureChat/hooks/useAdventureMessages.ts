@@ -44,6 +44,10 @@ export function useAdventureMessages({
     if (rolls) setPendingRolls(rolls)
   }, [derivedStats])
 
+  const handleProgressUpdate = useCallback((message: string) => {
+    setMessages(prev => prev.map(m => m.id === THINKING_ID ? { ...m, content: message } : m))
+  }, [])
+
   const handleSyncResponse = useCallback((data: { messages: AdventureMessage[] }) => {
     setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), ...data.messages])
     lastSentRef.current = null
@@ -61,10 +65,13 @@ export function useAdventureMessages({
   }, [activatePendingRolls, onDmResponse, onAdventureComplete])
 
   const handleAsyncResponse = useCallback((data: { messages: AdventureMessage[] }) => {
-    setMessages(prev => [
-      ...prev.filter(m => m.id !== OPTIMISTIC_ID),
-      ...data.messages,
-    ])
+    setMessages(prev => {
+      const thinking = prev.find(m => m.id === THINKING_ID)
+      const rest = prev.filter(m => !isSentinel(m.id))
+      return thinking
+        ? [...rest, ...data.messages, thinking]
+        : [...rest, ...data.messages]
+    })
   }, [])
 
   const handleError = useCallback((errorPrefix: string, err: any) => {
@@ -82,16 +89,18 @@ export function useAdventureMessages({
     const subscription = cable.subscriptions.create(
       { channel: 'AdventureChannel', adventure_id: adventureId },
       {
-        received(data: { type: string; messages: AdventureMessage[] }) {
+        received(data: { type: string; messages: AdventureMessage[]; message?: string }) {
           if (data.type === 'pipeline_result' && data.messages) {
             handleSyncResponse(data)
+          } else if (data.type === 'pipeline_progress' && data.message) {
+            handleProgressUpdate(data.message)
           }
         },
       }
     )
 
     return () => { subscription.unsubscribe() }
-  }, [adventureId, handleSyncResponse])
+  }, [adventureId, handleSyncResponse, handleProgressUpdate])
 
   // Load message history on mount
   useEffect(() => {

@@ -9,6 +9,7 @@ module DungeonMaster
       private
 
       def run_chronicler(intent, verdict_outcome: nil, encounter_triggered: false)
+        broadcast_progress("Consulting the chronicle...")
         prompt_summary = "Chronicler: #{@adventure.current_location&.name || 'unknown'}"
 
         enriched_premise = @adventure.enriched_premise.presence || @adventure.story.premise
