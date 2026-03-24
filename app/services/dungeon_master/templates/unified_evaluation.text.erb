@@ -22,21 +22,15 @@ domains are affected, what mechanical checks are needed, and what NPC actions oc
 <% if @rules_manifest.present? -%>
 
 === RULES MANIFEST ===
-The following Pathfinder 1e rules are available in this system. Reference them by slug
-in rules_needed if they apply to this action. You are expected to know these rules in
-detail — only the briefs are shown here as a reminder.
+The following Pathfinder 1e rules are available in this system. You are expected to know
+these rules in detail — the briefs below serve as a reminder only.
 <%= @rules_manifest %>
 <% end -%>
 
-=== DOMAIN-SPECIFIC BEACON GUIDANCE ===
-For each domain, use these hints to decide if the action affects that domain:
+=== DOMAIN GUIDANCE ===
+Per-domain notes on what constitutes affected mechanics, roll requirements, and edge cases:
 
-<%= @domain_beacon_hints %>
-
-=== DOMAIN-SPECIFIC MECHANICAL GUIDANCE ===
-When a domain is affected and needs mechanics, use these rules references:
-
-<%= @domain_mecheval_hints %>
+<%= @domain_hints %>
 
 === TAKE 10 / TAKE 20 RULES ===
 
@@ -64,9 +58,8 @@ to eligible. Do NOT deny based on absence of information alone.
 Evaluate the player's action across all six domains (traversal, combat, social,
 exploration, rest, inventory) in a single pass. For each domain:
 
-1. BEACON: Determine if the action affects this domain. Set "affected" to true ONLY if
-   the action DIRECTLY and IMMEDIATELY changes that domain's game state. Most actions
-   affect only 1-2 domains — be conservative.
+1. DOMAIN ASSESSMENT: Set "affected" to true ONLY if the action DIRECTLY and IMMEDIATELY
+   changes that domain's game state. Most actions affect only 1-2 domains — be conservative.
 
 2. MECHANICS (only if affected AND needs_mechanics is true): Determine what player rolls,
    NPC actions, and automatic consequences are required in this domain.

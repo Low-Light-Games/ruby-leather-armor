@@ -140,8 +140,6 @@ adjust.
 - `verbose` / `pacing_words_min` / `pacing_words_max` — narration length
 - `temperature` — creativity/randomness
 - Per-step model selection and token budgets
-- `evaluation_mode` — unified (default: single combined call) vs. standard
-  (legacy: per-domain beacons + sequential mech evals)
 - `directed_dm` — per-adventure narrative steering
 - `embellisher_mode` — story enrichment behavior
 

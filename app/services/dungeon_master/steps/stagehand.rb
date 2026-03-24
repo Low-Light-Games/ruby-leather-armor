@@ -92,11 +92,11 @@ module DungeonMaster
       def maybe_initialize_combat(intent)
         return nil if stagehand_combat_active?
 
-        beacon_results = intent[:beacon_results]
-        return nil unless beacon_results.is_a?(Hash)
+        domain_results = intent[:domain_results]
+        return nil unless domain_results.is_a?(Hash)
 
         combatants = []
-        beacon_results.each_value do |beacon|
+        domain_results.each_value do |beacon|
           next unless beacon.is_a?(Hash)
 
           transition = beacon[:transition] || beacon["transition"]

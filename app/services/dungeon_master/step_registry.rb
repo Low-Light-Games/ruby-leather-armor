@@ -29,21 +29,6 @@ module DungeonMaster
         model_hint: "Fast, cheap model. Compound action detection — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
         pipeline: true,
       ),
-      "beacon" => Entry.new(
-        token_budget: 400,
-        model_hint: "Fast, cheap model. Per-domain interpretation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
-        pipeline: true,
-      ),
-      "mechanical_evaluation" => Entry.new(
-        token_budget: 500,
-        model_hint: "➡️ Capable model suggested. Rules adjudication across domains; must catch required rolls and consequences from context. Use a capable model — e.g. o3-mini, o4-mini, gpt-5-mini.",
-        pipeline: true,
-      ),
-      "roll_qualifier" => Entry.new(
-        token_budget: 400,
-        model_hint: "Fast, cheap model with broader context. Situational modifiers and Take 10/20 — e.g. gpt-4.1-nano, gpt-4o-mini.",
-        pipeline: true,
-      ),
       "sanity_checker" => Entry.new(
         token_budget: 300,
         model_hint: "Fast, cheap model. Sheet validation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini. Only used in AI mode.",

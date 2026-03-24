@@ -9,7 +9,7 @@ module DungeonMaster
       private
 
       def run_chronicler(intent, verdict_outcome: nil, encounter_triggered: false)
-        prompt_summary = "Chronicler: plot_relevant action at #{@adventure.current_location&.name || 'unknown'}"
+        prompt_summary = "Chronicler: #{@adventure.current_location&.name || 'unknown'}"
 
         enriched_premise = @adventure.enriched_premise.presence || @adventure.story.premise
         plot_state = @adventure.plot_state || {}
@@ -36,7 +36,7 @@ module DungeonMaster
           reached_milestones: all_milestones.select { |m| (m.trigger_clue_ids - discovered_ids).empty? && m.trigger_clue_ids.any? }.map { |m| { title: m.title } },
           npcs_met: all_npcs.select { |n| met_npc_ids.include?(n.id) }.map { |n| { name: n.name } },
           intention: intent[:intention],
-          primary_context: intent[:primary_context],
+          affected_contexts: intent[:affected_contexts],
           current_location: @adventure.current_location&.name,
           verdict_outcome: verdict_outcome,
           undiscovered_clues: build_undiscovered_clues(all_clues, discovered_ids),

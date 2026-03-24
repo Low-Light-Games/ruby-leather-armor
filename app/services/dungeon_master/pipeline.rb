@@ -17,9 +17,7 @@ module DungeonMaster
     include Steps::Intake
     include Steps::DmQuery
     include Steps::Sequencer
-    include Steps::Beacon
     include Steps::MechanicalEvaluation
-    include Steps::RollQualifier
     include Steps::SanityChecker
     include Steps::UnifiedEvaluation
     include Steps::Mechanic
@@ -117,7 +115,7 @@ module DungeonMaster
     # ----------------------------------------------------------------
 
     def run_dm_query_flow(clean_input)
-      intent_stub = { intention: clean_input, primary_context: "dm_query", affected_contexts: [], macro_significant: false, plot_relevant: true }
+      intent_stub = { intention: clean_input, affected_contexts: [], macro_significant: false }
       plot_result = resolve_plot(intent_stub)
       dm_brief = plot_result&.dig(:dm_brief)
       forbidden_elements = plot_result&.dig(:forbidden_elements) || []
@@ -282,14 +280,10 @@ module DungeonMaster
       combined_seed = all_outcomes.compact.join("\n\nThen: ").presence
       combined_mutations = all_mutations.compact.reduce({}) { |acc, m| deep_merge_mutations(acc, m) }
 
-      dm_brief = nil
-      forbidden_elements = []
-      if merged_intent[:plot_relevant]
-        plot_result = resolve_plot(merged_intent, verdict_outcome: combined_seed,
-                                   encounter_triggered: encounter_triggered)
-        dm_brief = plot_result&.dig(:dm_brief)
-        forbidden_elements = plot_result&.dig(:forbidden_elements) || []
-      end
+      plot_result = resolve_plot(merged_intent, verdict_outcome: combined_seed,
+                                 encounter_triggered: encounter_triggered)
+      dm_brief = plot_result&.dig(:dm_brief)
+      forbidden_elements = plot_result&.dig(:forbidden_elements) || []
 
       extra = {}
       extra[:encounter_triggered] = true if encounter_triggered
@@ -311,9 +305,7 @@ module DungeonMaster
         intention: intents.map { |i| i[:intention] }.compact.join("; "),
         affected_contexts: intents.flat_map { |i| Array(i[:affected_contexts]) }.uniq,
         macro_significant: intents.any? { |i| i[:macro_significant] },
-        plot_relevant: intents.any? { |i| i[:plot_relevant] },
-        primary_context: intents.last[:primary_context],
-        beacon_results: intents.last[:beacon_results]
+        domain_results: intents.last[:domain_results]
       }
     end
 
@@ -338,31 +330,6 @@ module DungeonMaster
     end
 
     # ----------------------------------------------------------------
-    # Gate: parallel mechanical_evaluation + capability_check + world_consistency_check
-    # ----------------------------------------------------------------
-
-    def run_full_gate(intent)
-      evaluations = nil
-      world = nil
-      capability = nil
-
-      eval_thread = Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection { evaluations = run_mechanical_evaluation_loop(intent) }
-      end
-      world_thread = Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection { world = run_world_consistency_check(intent) }
-      end
-      cap_thread = Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection { capability = run_capability_check(intent) }
-      end
-
-      eval_thread.value
-      world_thread.value
-      cap_thread.value
-
-      [evaluations, world, capability]
-    end
-
     # ----------------------------------------------------------------
     # Helpers
     # ----------------------------------------------------------------

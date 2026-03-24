@@ -55,28 +55,24 @@ steps into one call, gated by `pipeline_mode: "edge"`. This is available
 for low-traffic deployments or latency-sensitive scenarios where the
 trade-offs are acceptable.
 
-**Default path:** the Unified Evaluation mode collapses the evaluation
-phase (beacons + mechanical evaluations + roll qualifiers) into a single
-AI call while preserving the rest of the pipeline (sanity checks,
-verdict, time keeping, narration, context updates as separate steps).
-One model handles all domains in one pass, delivering better coherence
-and eliminating roll duplication without sacrificing debugging
-granularity for the non-evaluation steps.
+**Standard path:** UnifiedEvaluation collapses the evaluation phase
+(domain intent classification + mechanical roll determination + Take 10/20
+eligibility) into a single AI call, while preserving the rest of the
+pipeline (sanity checks, verdict, time keeping, narration, context updates
+as separate steps). One model handles all 6 domains in one pass, delivering
+better coherence and eliminating roll duplication without sacrificing
+debugging granularity for the non-evaluation steps.
 
-The legacy Standard path (6 parallel beacons + sequential mecheval +
-rollqualifier per domain) remains available via `evaluation_mode:
-"standard"` for comparison, rollback, or per-domain model tuning.
-
-| | Unified Evaluation (default) | Standard (legacy) | Edge Pipeline |
-|---|---|---|---|
-| Evaluation calls | 1 | 8-14 (6 beacons + N mecheval + N rollqualifier) | 1 (everything) |
-| Other steps | Separate | Separate | N/A (all-in-one) |
-| Per-domain model selection | No (one model for eval) | Yes | No |
-| Cross-domain coherence | High (single context) | Low (each domain isolated) | High |
-| Roll deduplication | AI avoids duplicates natively | Prompt-level (warn-only, see DD 31) | N/A |
-| Prompt size | Large (all contexts + rules) | Small per call | Largest |
-| Recommended model | gpt-5-mini (floor: gpt-4.1-mini, o4-mini) | Any (cheap models work) | Capable |
-| Toggle | default | `evaluation_mode: "standard"` | `pipeline_mode: "edge"` |
+| | Unified Evaluation | Edge Pipeline |
+|---|---|---|
+| Evaluation calls | 1 | 1 (everything) |
+| Other steps | Separate | N/A (all-in-one) |
+| Per-domain model selection | No (one model for eval) | No |
+| Cross-domain coherence | High (single context) | High |
+| Roll deduplication | AI avoids duplicates natively | N/A |
+| Prompt size | Large (all contexts + rules) | Largest |
+| Recommended model | gpt-5-mini (floor: gpt-4.1-mini, o4-mini) | Capable |
+| Toggle | always active | `pipeline_mode: "edge"` |
 
 ### 2. Six micro-contexts instead of a single context blob
 
@@ -883,11 +879,8 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | 1c | **DM Query** | AI (fast path) | `app/services/dungeon_master/steps/dm_query.rb` |
 | 1d | **Sequencer** | AI (toggled) | `app/services/dungeon_master/steps/sequencer.rb` |
 | -- | **CoreResolver** (module) | Code orchestration | `app/services/dungeon_master/core_resolver.rb` |
-| 3 | **Beacon** | AI (parallel per domain) | `app/services/dungeon_master/steps/beacon.rb` |
-| 3u | **UnifiedEvaluation** | AI (replaces beacon+mecheval+rollqualifier) | `app/services/dungeon_master/steps/unified_evaluation.rb` |
-| 4a | **MechanicalEvaluation** | AI (loop, parallel with 4b) | `app/services/dungeon_master/steps/mechanical_evaluation.rb` |
-| 4c | **RollQualifier** | AI (per domain after 4a) | `app/services/dungeon_master/steps/roll_qualifier.rb` |
-| 4b | **SanityChecker** | AI (parallel with 4a) | `app/services/dungeon_master/steps/sanity_checker.rb` |
+| 3 | **UnifiedEvaluation** | AI ×1 | `app/services/dungeon_master/steps/unified_evaluation.rb` |
+| 4 | **SanityChecker** | AI (parallel, mechanical path) | `app/services/dungeon_master/steps/sanity_checker.rb` |
 | 5 | **Mechanic** | AI (mechanical path) | `app/services/dungeon_master/steps/mechanic.rb` |
 | 5a | **Momentum** | AI (non-mechanical path) | `app/services/dungeon_master/steps/momentum.rb` |
 | 5b | **TimeKeeper** | Code-first, AI fallback | `app/services/dungeon_master/steps/time_keeper.rb` |
@@ -1075,9 +1068,7 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `step_models[step]` | `{}` | Per-step model override |
 | `token_budgets[step]` | (see below) | Per-step max completion tokens |
 | `action_queue` | `true` | When true, compound player inputs are split into discrete sequential actions by the Sequencer step |
-| `evaluation_mode` | `"unified"` | `"unified"` (single AI call for all domains) or `"standard"` (legacy: 6 parallel beacons + sequential mech eval) |
 | `pipeline_mode` | `"budget"` | `"budget"` (multi-step) or `"edge"` (single-call) |
-| `interpreter_scope` | *(deprecated)* | All beacons always run; this setting has no effect |
 | `guardrail_mode` | `"code"` | `"code"` (deterministic) or `"ai"` (prompt-based) |
 | `narration_mode` | `"parallel"` | `"parallel"` (concurrent) or `"subjugated"` (sequential) |
 | `async_pipeline` | `false` | When true, pipeline runs in Sidekiq with ActionCable delivery |
@@ -1091,8 +1082,7 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `intake` | 400 |
 | `dm_query` | 300 |
 | `player_interpreter` | 200 |
-| `beacon` | 400 |
-| `mechanical_evaluation` | 500 |
+| `unified_evaluation` | 1500 |
 | `sanity_checker` | 300 |
 | `sanity_checker_world` | 500 |
 | `mechanic` | 600 |

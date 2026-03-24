@@ -17,16 +17,12 @@ module DungeonMaster
   module CoreResolver
     private
 
-    # Full resolution: beacon → full gate (mech eval + world check + cap check) → [verdict + mutations + time_keeper]
+    # Full resolution: UnifiedEvaluation → sanity gate → [verdict + mutations + time_keeper]
     def resolve(intention)
-      if @config.get("evaluation_mode") == "unified"
-        return resolve_unified(intention)
-      end
-
-      intent = run_beacon(intention)
+      intent, evaluations = run_unified_evaluation(intention)
 
       if intent[:needs_mechanics]
-        evaluations, world, capability = run_full_gate(intent)
+        world, capability = run_sanity_gate(intent)
 
         unless world[:consistent]
           @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
@@ -37,7 +33,7 @@ module DungeonMaster
         unless capability[:allowed]
           @log.play_log!("capability_rejection", "SanityChecker capability check failed: #{capability[:reason]}")
           @loop&.log_step("sanity_checker", "Capability check FAILED: #{capability[:reason].to_s.truncate(100)}")
-          return { status: :rejected, intent: intent, reason: capability[:reason], dm_message: capability[:dm_message] }
+          return { status: :rejected, intent: intent, reason: capability[:reason] }
         end
 
         @loop&.log_step("sanity_checker", "World: consistent")
@@ -146,69 +142,6 @@ module DungeonMaster
         mutations: mutations, time_result: time_result }
     end
 
-    # Unified evaluation path: single AI call replaces beacons + mech eval + roll qualifier.
-    # Sanity checks (world + capability) still run independently as guardrails.
-    def resolve_unified(intention)
-      intent, evaluations = run_unified_evaluation(intention)
-
-      if intent[:needs_mechanics]
-        world, capability = run_sanity_gate(intent)
-
-        unless world[:consistent]
-          @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
-          @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
-          return { status: :rejected, intent: intent, reason: world[:reason], dm_message: world[:dm_message] }
-        end
-
-        unless capability[:allowed]
-          @log.play_log!("capability_rejection", "SanityChecker capability check failed: #{capability[:reason]}")
-          @loop&.log_step("sanity_checker", "Capability check FAILED: #{capability[:reason].to_s.truncate(100)}")
-          return { status: :rejected, intent: intent, reason: capability[:reason] }
-        end
-
-        @loop&.log_step("sanity_checker", "World: consistent")
-
-        merged = merge_mechanical_evaluations(evaluations)
-        warn_duplicate_rolls(merged)
-        rolls_desc = merged[:player_rolls].map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]} (#{r[:domain]})" }.join(", ")
-        @loop&.log_step("mech_eval", rolls_desc.presence || "No rolls")
-        filter_auto_success_rolls!(merged)
-
-        if merged[:player_rolls].any?
-          return { status: :awaiting_rolls, intent: intent, merged: merged }
-        end
-
-        return finish_resolution(intent, merged, auto_success_roll_message(merged))
-      end
-
-      world = run_world_consistency_check(intent)
-      unless world[:consistent]
-        @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
-        @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
-        return { status: :rejected, intent: intent, reason: world[:reason], dm_message: world[:dm_message] }
-      end
-
-      @loop&.log_step("sanity_checker", "World: consistent (no mechanics)")
-
-      if intent[:expand_scene]
-        return resolve_social_scene(intent)
-      end
-
-      time_result = run_time_keeper(intent, nil)
-
-      if time_result[:encounter]
-        return maybe_warmaster_for_encounter(intent, time_result, mutations: nil)
-      end
-
-      momentum_result = run_momentum(intent)
-
-      {
-        status: :resolved, intent: intent,
-        mutations: momentum_result[:mutations].presence,
-        time_result: time_result
-      }
-    end
-
     def auto_success_roll_message(merged)
       descs = (merged[:auto_successes] || []).map { |s| "AUTO-SUCCESS: #{s}" }
       descs.any? ? descs.join("\n") : nil
@@ -221,7 +154,7 @@ module DungeonMaster
     def resolve_social_scene(intent)
       prompt_summary = "SocialExpansion: \"#{@log.truncate(intent[:intention])}\""
 
-      social_beacon = intent.dig(:beacon_results, "social") || {}
+      social_beacon = intent.dig(:domain_results, "social") || {}
       npc_names = begin
         @adventure.story.story_npcs.pluck(:name)
       rescue => e

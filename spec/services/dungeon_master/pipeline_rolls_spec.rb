@@ -13,7 +13,6 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
   let!(:adv_sheet)    { create(:adventure_sheet, adventure: adventure) }
 
   # Responses that produce a mechanical evaluation requiring a roll.
-  # Uses the unified_evaluation path (default evaluation_mode).
   let(:mechanical_ai_responses) do
     AI_STEP_RESPONSES.merge(
       "unified_evaluation" => {
@@ -23,15 +22,12 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
           "social"      => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false, "expand_scene" => false },
           "exploration" => {
             "affected" => true, "needs_mechanics" => true, "macro_significant" => false,
-            "rules_needed" => ["Disable Device"],
-            "domain_interpretation" => "Player tries to pick the lock — requires Disable Device check.",
             "player_rolls" => [
               { "skill" => "Disable Device", "type" => "skill_check", "dc" => 15,
                 "description" => "Disable Device check to pick the lock.",
                 "take_10_eligible" => false, "take_20_eligible" => false, "situational_modifiers" => [] }
             ],
-            "npc_actions" => [], "consequences" => [], "mechanical_summary" => "Disable Device DC 15 required.",
-            "qualifier_context_hints" => []
+            "npc_actions" => [], "consequences" => [], "mechanical_summary" => "Disable Device DC 15 required."
           },
           "rest"      => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false },
           "inventory" => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false }
@@ -79,10 +75,8 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
           "needs_mechanics"   => true,
           "expand_scene"      => false,
           "affected_contexts" => ["exploration"],
-          "primary_context"   => "exploration",
           "macro_significant" => false,
-          "plot_relevant"     => false,
-          "beacon_results"    => {}
+          "domain_results"    => {}
         },
         "mechanical_summaries"  => ["Disable Device DC 15 required."],
         "pending_npc_actions"   => [],
@@ -155,8 +149,7 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
 
         pipeline.send(:run_accumulated_output_phase,
           [{ status: :resolved, intent: { intention: "open door", affected_contexts: [],
-                                          macro_significant: false, plot_relevant: false,
-                                          primary_context: "exploration", beacon_results: {} } }])
+                                          macro_significant: false, domain_results: {} } }])
 
         expect(narrate_calls.first).to eq("The door swings open.")
       end
@@ -178,12 +171,10 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
         pipeline.send(:run_accumulated_output_phase,
           [{ status: :resolved, intent: { intention: "pick up torch then open door",
                                           affected_contexts: [], macro_significant: false,
-                                          plot_relevant: false, primary_context: "exploration",
-                                          beacon_results: {} } },
+                                          domain_results: {} } },
            { status: :resolved, intent: { intention: "pick up torch then open door",
                                           affected_contexts: [], macro_significant: false,
-                                          plot_relevant: false, primary_context: "exploration",
-                                          beacon_results: {} } }])
+                                          domain_results: {} } }])
 
         expect(narrate_calls.first).to eq("You pick up the torch.\n\nThen: You push open the door.")
       end
@@ -203,8 +194,7 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
           pipeline.send(:run_accumulated_output_phase,
             [{ status: :resolved, intent: { intention: "do something",
                                             affected_contexts: [], macro_significant: false,
-                                            plot_relevant: false, primary_context: "exploration",
-                                            beacon_results: {} } }])
+                                            domain_results: {} } }])
         }.to raise_error(DungeonMaster::AiError, /without an outcome/)
 
         expect(narrate_calls.first).to be_nil

@@ -42,48 +42,25 @@ flowchart TB
         ACTION_LOOP[Create AdventureLoop record] --> RESOLVE[CoreResolver.resolve]
     end
 
-    subgraph resolve["CoreResolver.resolve — evaluation_mode controls path"]
-        RESOLVE --> EVMODE{evaluation_mode?}
-        EVMODE -->|unified — default| UNIFIED_EVAL
-        EVMODE -->|standard — legacy| BEACON
-
-        subgraph beacon_parallel["Standard (legacy): 6 parallel domain beacons  ☆ AI ×6"]
-            BEACON[run_beacon] --> B1[traversal]
-            BEACON --> B2[combat]
-            BEACON --> B3[social]
-            BEACON --> B4[exploration]
-            BEACON --> B5[rest]
-            BEACON --> B6[inventory]
-            B1 & B2 & B3 & B4 & B5 & B6 --> CONVERGE[converge_beacons]
+    subgraph resolve["CoreResolver.resolve — UnifiedEvaluation + sanity gate"]
+        subgraph unified_eval["UnifiedEvaluation: 1 AI call for all 6 domains  ☆ AI ×1"]
+            RESOLVE --> UNIFIED_EVAL[run_unified_evaluation]
         end
 
-        subgraph unified_eval["Unified: 1 AI call replaces beacons + MechEval  ☆ AI ×1"]
-            UNIFIED_EVAL[run_unified_evaluation]
-        end
-
-        CONVERGE & UNIFIED_EVAL --> NM{needs_mechanics?}
+        UNIFIED_EVAL --> NM{needs_mechanics?}
     end
 
-    NM -->|yes| FULL_GATE
+    NM -->|yes| SANITY_GATE
     NM -->|no| WORLD_ONLY
 
-    subgraph full_gate["Full gate — 3 parallel threads"]
-        FULL_GATE --> FG1
-        FULL_GATE --> FG2
-        FULL_GATE --> FG3
-        subgraph mecheval["MechEval — sequential per affected domain  ☆ AI ×N"]
-            FG1[run_mechanical_evaluation_loop] --> FG1a["domain 1 (primary)"]
-            FG1a --> FG1b[run_roll_qualifier  ☆ AI]
-            FG1b --> FG1c[domain 2…N with prior summaries]
-            FG1c --> FG1d[run_roll_qualifier  ☆ AI]
-        end
-        FG2[world_consistency_check  ☆ AI]
-        FG3[capability_check  ☆ AI]
+    subgraph sanity_gate["Sanity gate — 2 parallel threads (mechanical path)"]
+        SANITY_GATE --> FG2[world_consistency_check  ☆ AI]
+        SANITY_GATE --> FG3[capability_check  ☆ AI]
     end
 
     FG2 -->|not consistent| REJECT
     FG3 -->|not allowed| REJECT
-    FG1d --> MERGE[merge evaluations]
+    SANITY_GATE --> MERGE[merge_mechanical_evaluations — code]
     MERGE --> AUTOSUC[filter_auto_success_rolls!  — code]
     AUTOSUC --> ROLLCHECK{Player rolls still needed?}
     ROLLCHECK -->|yes| PAUSE_ROLLS[Return :awaiting_rolls]
@@ -148,7 +125,7 @@ flowchart TB
     BREAK_ENC & BREAK_SOC & MECH_RESOLVED & NM_RESOLVED2 --> OUTPUT_PHASE
 
     subgraph output_phase["Output phase — run_accumulated_output_phase"]
-        OUTPUT_PHASE --> CHRON{plot_relevant?}
+        OUTPUT_PHASE --> CHRON{story has plot data?}
         CHRON -->|yes| CHRONICLER[run_chronicler  ☆ AI]
         CHRONICLER --> CHRON_OUT[dm_brief + forbidden_elements + plot_state updates]
         CHRON -->|no| SKIP_CHRON[dm_brief = nil]
@@ -260,7 +237,7 @@ The first AI call. Every message passes through this gate.
 
 If Intake sets `is_dm_query = true`, or the controller passes `mode: "dm_query"`:
 
-1. A stub `intent` is created with `primary_context: "dm_query"`.
+1. A stub `intent` is created with empty `affected_contexts`.
 2. **Chronicler** is called via `resolve_plot` — but only if the story has NPC or clue data. This produces a `dm_brief` with plot-aware guidance.
 3. **DM Query** (`run_dm_query`) produces the answer using the dm_brief as framing.
 4. Returns `{ action: :dm_query, answer: ... }` — no context updates, no time advancement.
@@ -287,72 +264,48 @@ The outer orchestration loop: for each action in the queue:
 2. Calls **CoreResolver.resolve** — the inner pipeline (detailed below), passing the sanitized action text directly.
 3. Dispatches on the result status (see "Outcomes" section).
 
-**Inter-action context update:** When an action resolves (`:resolved` status) and there are more actions still in the queue, a `run_micro_context_update` call runs immediately before the next action. This updates the adventure's context JSONB fields so the next action's beacon/evaluation sees the freshest world state.
+**Inter-action context update:** When an action resolves (`:resolved` status) and there are more actions still in the queue, a `run_micro_context_update` call runs immediately before the next action. This updates the adventure's context JSONB fields so the next action's evaluation sees the freshest world state.
 
 ---
 
 ### Step 5 — CoreResolver.resolve
 
-The inner pipeline. Behavior depends on `DmConfig["evaluation_mode"]`.
+The inner pipeline entry point, always using `UnifiedEvaluation`.
 
-#### Unified mode (default)
+#### UnifiedEvaluation
 
-A single AI call replaces all 6 beacons plus MechanicalEvaluation plus RollQualifier. The model handles all domains in one pass, producing the same data structures. Recommended model: gpt-5-mini — it fits comfortably within the cost budget freed by consolidating 6 beacon calls and has the cross-domain reasoning needed for a unified evaluation. Floor: gpt-4.1-mini or o4-mini. Stronger models (o3, gpt-5) improve quality further. Sanity checks (world consistency + capability) still run as independent parallel guardrails afterward.
+A single AI call handles all 6 domains (`traversal`, `combat`, `social`, `exploration`, `rest`, `inventory`) in one pass, producing the intent hash and per-domain evaluations. The model determines which domains are affected, whether mechanics are needed, what rolls to request, and whether to expand a social scene — all without separate per-domain calls. Recommended model: gpt-5-mini or gpt-4.1-mini.
 
-#### Standard mode (legacy — `evaluation_mode: "standard"`)
-
-**5a — Beacon (6 parallel AI calls)**
-
-Six domain-specific AI calls run simultaneously, one per domain: `traversal`, `combat`, `social`, `exploration`, `rest`, `inventory`. Each beacon receives the player's restated intention + the full domain context JSONB + character data filtered to that domain + a domain-specific rules manifest.
-
-Each beacon returns:
-- `affected` (bool) — does this action touch this domain?
-- `needs_mechanics` (bool) — does it require dice or mechanical resolution?
-- `macro_significant` (bool) — is this a major story-level event?
-- `expand_scene` (bool, social only) — should a social expansion scene be generated?
-- `rules_needed` (array) — specific rule slugs to load for MechEval.
-- `transition` / `destination` — location transition type and target.
-- `combatants` (array) — names of entities the player is fighting (combat domain).
-
-Results are converged by `converge_beacons`: affected domains are collected, `needs_mechanics` is true if any beacon says so, destination comes from the traversal beacon, `expand_scene` from the social beacon. Domain priority for `primary_context` is: combat > social > traversal > exploration > rest > inventory.
-
-`plot_relevant` is determined by checking if the current location or affected contexts overlap with any undiscovered clues or story NPCs.
+The output `intent` hash includes:
+- `needs_mechanics` (bool) — any domain requires dice rolls.
+- `expand_scene` (bool) — significant social interaction warrants a scene expansion.
+- `affected_contexts` (array) — domain names that this action touches.
+- `macro_significant` (bool) — major story beat (quest completion, boss defeat, critical secret).
+- `destination`, `transition` — from the traversal domain.
+- `domain_results` (hash) — per-domain detail (used by social expansion and Stagehand).
 
 ---
 
 ### Step 6 — Mechanical path (needs_mechanics = true)
 
-The **Full Gate** runs three things in parallel:
+The **sanity gate** runs two checks in parallel, then merges the evaluation results from UnifiedEvaluation:
 
 | Thread | Step | Type |
 |--------|------|------|
-| eval_thread | MechanicalEvaluation loop + RollQualifier | AI (sequential) |
 | world_thread | World consistency check | AI |
 | cap_thread | Capability check | AI |
-
-**MechanicalEvaluation loop** — Sequential, one AI call per affected domain, primary context first. Each iteration receives the summaries from all preceding iterations ("cross-context awareness"). For each domain the model produces:
-- `player_rolls` — list of required dice rolls (skill, type, DC, domain).
-- `npc_actions` — what NPCs do independently.
-- `consequences` — if-then consequence structures.
-- `mechanical_summary` — plain text summary passed to subsequent domains.
-- `qualifier_context_hints` — which contexts the Roll Qualifier should look at.
-
-After each domain's MechEval, **RollQualifier** runs (AI). It reads the domain context (scope configurable: domain-only, all, dynamic, etc.) and for each roll determines:
-- `take_10_eligible` / `take_20_eligible` (based on duress, threat, time pressure).
-- `situational_modifiers` (advantage, flanking, high ground, terrain, surprise, etc.).
-- Take 10/20 *values* are computed from the character sheet (modifier + 10 or 20), not from the AI.
 
 **World consistency check** — AI. Validates that entities, targets, and objects the player references actually exist in the current scene (checking scene_summary, scene_history, all micro contexts, NPC names). Returns `{ consistent: bool, reason: string, dm_message: string }`.
 
 **Capability check** — AI. Validates the player actually has the spell, feat, or item they're attempting to use. Returns `{ allowed: bool, reason: string }`.
 
-**Early exits from Full Gate:**
+**Early exits from sanity gate:**
 - World check fails → `:rejected` (optionally with a `dm_message` shown as narrative prose instead of a system error).
 - Capability check fails → `:rejected`.
 
 **Post-gate processing (code):**
 
-1. `merge_mechanical_evaluations` — flattens all domain results.
+1. `merge_mechanical_evaluations` — flattens all domain results from UnifiedEvaluation.
 2. `warn_duplicate_rolls` — detects duplicate roll requests across domains and logs a warning. Does **not** remove duplicates (any fix must come from prompt improvement).
 3. `filter_auto_success_rolls!` — removes rolls the character cannot possibly fail: DC ≤ 0, skill modifier + 1 ≥ DC, or Take 10 value ≥ DC (and player is Take 10 eligible). Also keeps all attack rolls (never auto-succeed). Logs removed rolls for visibility.
 
@@ -369,14 +322,14 @@ After each domain's MechEval, **RollQualifier** runs (AI). It reads the domain c
 Early exit: world check fails → `:rejected`.
 
 **Social expansion branch** (`expand_scene = true`):
-- Only triggered when the social beacon set `expand_scene`. Represents significant social interactions (negotiations, transactions, confrontations) that merit an immersive NPC scene.
+- Triggered when UnifiedEvaluation's social domain set `expand_scene`. Represents significant social interactions (negotiations, transactions, confrontations) that merit an immersive NPC scene.
 - A single AI call (`social_expansion`) generates a rich scene description with NPC name, attitude, and new story elements.
 - Returns `{ status: :social_scene }`. The action queue **breaks** — remaining actions are abandoned.
 - TimeKeeper is **skipped**. No in-game time passes until the social scene resolves.
 
 **TimeKeeper** (see dedicated section below) runs next. If an encounter is triggered → Warmaster Path A (see Combat section). Otherwise:
 
-**Momentum** (AI) — Determines what factually happened when no dice were needed. Produces `outcome` (plain text), optionally `mutations`, and refines `affected_contexts` by merging the beacon's assessment with its own. Also writes `verdict_outcome`, `pipeline_outcome`, and merged `affected_contexts` to the `AdventureLoop`.
+**Momentum** (AI) — Determines what factually happened when no dice were needed. Produces `outcome` (plain text), optionally `mutations`, and refines `affected_contexts` by merging the evaluation's assessment with its own. Also writes `verdict_outcome`, `pipeline_outcome`, and merged `affected_contexts` to the `AdventureLoop`.
 
 Returns `{ status: :resolved }`.
 
@@ -490,11 +443,11 @@ After `CoreResolver.resolve` returns, the action loop dispatches on `result[:sta
 
 After all actions complete (or the queue breaks), the output phase runs.
 
-Multiple resolved/encounter/social_scene results are **merged**: intentions concatenated with "; ", affected contexts unioned, `macro_significant` and `plot_relevant` or-ed. The combined narration seed is assembled by querying all `AdventureLoop` rows for the current `pipeline_run_id` in `sequence_index` order and joining their `pipeline_outcome` fields with `"\n\nThen: "`.
+Multiple resolved/encounter/social_scene results are **merged**: intentions concatenated with "; ", affected contexts unioned, `macro_significant` or-ed. The combined narration seed is assembled by querying all `AdventureLoop` rows for the current `pipeline_run_id` in `sequence_index` order and joining their `pipeline_outcome` fields with `"\n\nThen: "`.
 
 #### Chronicler (AI, conditional)
 
-Runs only if `merged_intent[:plot_relevant]` is true (story has NPCs or clues, and the current action's location/context could interact with them).
+Runs whenever the story has any plot data (`story_has_plot_data?` — NPCs, clues, or milestones).
 
 Receives: story premise, all story NPCs + clues, player's progress (discovered/attempted clues, met NPCs, reached milestones), current location, verdict outcome, and context snippets.
 
@@ -506,7 +459,7 @@ Produces:
 
 #### Stagehand (Path B combat check)
 
-Before narration, Stagehand checks if any beacon in the most recent action signaled a combat transition (`combat_started`, `*_to_combat`). If yes and no combat is already active, calls `Warmaster.initialize_from_names!` and potentially returns `:awaiting_initiative` before narration runs at all.
+Before narration, Stagehand checks if the most recent action's evaluation signaled a combat transition (`combat_started`, `*_to_combat`) via `intent[:beacon_results]`. If yes and no combat is already active, calls `Warmaster.initialize_from_names!` and potentially returns `:awaiting_initiative` before narration runs at all.
 
 #### Narration modes
 
@@ -611,20 +564,17 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 |------|------|---------|
 | **Intake** | AI | Score danger, sanitize input, detect DM query, flag context gaps. |
 | **Sequencer** | AI | Split compound player input into ordered discrete actions. Skipped if `action_queue` off. |
-| **UnifiedEvaluation** | AI ×1 | Default evaluation path. Single call covering all domains: affected?, needs_mechanics?, rolls, NPC actions, consequences, expand_scene, Take 10/20 eligibility. |
-| **Beacon** | AI ×6 | Legacy evaluation path (`evaluation_mode: "standard"`). Per domain (parallel): affected?, needs_mechanics?, rules_needed, transition, destination, combatants, expand_scene. |
-| **MechanicalEvaluation** | AI ×N | Sequential per affected domain (primary first): rolls, NPC actions, consequences, summary (each domain sees prior summaries). |
-| **RollQualifier** | AI | Per domain after MechEval: situational modifiers, Take 10/20 eligibility. Take 10/20 values computed from sheet. |
-| **World consistency check** | AI | Validate referenced entities exist in current scene. Runs always (full gate or standalone). |
-| **Capability check** | AI | Validate player has required spells/feats/items. Runs in full gate (needs_mechanics only). |
+| **UnifiedEvaluation** | AI ×1 | Single call covering all 6 domains: affected?, needs_mechanics?, rolls, NPC actions, consequences, expand_scene, Take 10/20 eligibility. |
+| **World consistency check** | AI | Validate referenced entities exist in current scene. Runs always (sanity gate or standalone). |
+| **Capability check** | AI | Validate player has required spells/feats/items. Runs in sanity gate (needs_mechanics only). |
 | **Auto-success filter** | Code | Remove rolls the character cannot possibly fail (DC ≤ 0, guaranteed modifier, Take 10 covers DC). Never removes attack rolls. |
 | **Momentum** | AI | Non-mechanical outcome: what happened + affected contexts + optional mutations. |
-| **Social Expansion** | AI | Immersive NPC scene for significant social interactions (`expand_scene` from social beacon). Skips TimeKeeper. |
+| **Social Expansion** | AI | Immersive NPC scene for significant social interactions (`expand_scene` from evaluation). Skips TimeKeeper. |
 | **Mechanic** | AI | Post-roll arbitration: factual outcome + structured mutations from rolls + NPC results. |
 | **TimeKeeper** | Code + AI | Estimate time (code-first: journey/combat/rest/take_20, then AI) → consult Harbinger → advance GameClock → apply fatigue. |
 | **Harbinger** | Code + AI | Segment-based encounter check against table. AI expands encounter scene if entry is non-fixed. |
 | **GameClock** | Code | Advance current_hour, adventure_day, light_conditions, hours_since_last_rest, hours_since_last_encounter_check. |
-| **Warmaster** | Code + AI | Initialize combat: spawn creatures (bestiary → AI → template), roll initiative. Two paths: encounter table (A) or combat beacon (B). |
+| **Warmaster** | Code + AI | Initialize combat: spawn creatures (bestiary → AI → template), roll initiative. Two paths: encounter table (A) or narrative-triggered combat (B). |
 | **Chronicler** | AI | Plot state management: discover clues, mark NPCs met, produce dm_brief + forbidden_elements for Narrate. Determines adventure_complete. |
 | **Narrate** | AI | Prose generation from outcome + contexts + dm_brief + journey/encounter data + pacing directives. |
 | **Micro context update** | AI | Update affected + active context JSONBs. Forces social re-evaluation on traversal changes. Updates scene_summary + scene_history. |
