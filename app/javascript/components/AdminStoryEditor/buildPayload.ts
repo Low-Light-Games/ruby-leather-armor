@@ -9,8 +9,6 @@ export interface PayloadArgs {
   title: string
   preview: string
   premise: string
-  hook: string
-  initialContext: string
   initialSummary: string
   currentStoryId: number | undefined
   locations: ClientLocation[]
@@ -100,14 +98,13 @@ export const buildInitialContextsPayload = (
 
 export const buildPayload = (args: PayloadArgs, skipUnresolvedConns = false) => {
   const {
-    title, preview, premise, hook, initialContext, initialSummary,
+    title, preview, premise, initialSummary,
     currentStoryId, locations, encounterTables, npcs, clues, milestones,
     icTraversal, icCombat, icSocial, icExploration, icRest, icInventory,
   } = args
 
   const story: Record<string, unknown> = {
-    title, preview, premise, hook,
-    initial_context: initialContext,
+    title, preview, premise,
     initial_summary: initialSummary,
     initial_contexts: buildInitialContextsPayload(
       icTraversal, icCombat, icSocial, icExploration, icRest, icInventory,

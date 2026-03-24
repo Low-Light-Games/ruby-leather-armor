@@ -15,7 +15,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   const {
     user, authLoading, loading, saving, enriching, feedback, dismissFeedback,
     title, setTitle, preview, setPreview, premise, setPremise,
-    hook, setHook, initialContext, setInitialContext, initialSummary, setInitialSummary,
+    initialSummary, setInitialSummary,
     currentStoryId,
     locations, setLocations,
     encounterTables, setEncounterTables,
@@ -95,20 +95,6 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
           <textarea id="story-premise" value={premise}
             onChange={e => setPremise(e.target.value)} rows={6}
             placeholder="The complete plot with all secrets and twists. Who is the villain? What's really going on? Include NPC motivations, hidden connections, and the intended resolution. The AI DM reads this to run the story — the player never sees it." />
-        </div>
-
-        <div className="form-field">
-          <label htmlFor="story-hook" title="A spoiler-free introduction the narrator can reference. Sets the scene without revealing secrets. Used by the Narrate step as story context.">Hook (spoiler-free narrator intro)</label>
-          <textarea id="story-hook" value={hook}
-            onChange={e => setHook(e.target.value)} rows={4}
-            placeholder="A narrator-safe description of the setting and situation. The narrator sees this instead of the premise to avoid spoiling secrets. E.g. 'Rumors of goblin raids have reached the village. The mayor is looking for adventurers.'" />
-        </div>
-
-        <div className="form-field">
-          <label htmlFor="story-initial-context" title="The first DM message the player sees. This is sent as a narrative message when the adventure starts. Describe where the player wakes up or arrives.">Initial Context (opening DM message)</label>
-          <textarea id="story-initial-context" value={initialContext}
-            onChange={e => setInitialContext(e.target.value)} rows={4}
-            placeholder="The opening narration. E.g. 'You wake in a small bedroom at the Village Inn. Sunlight streams through a window. Downstairs, you hear the murmur of the morning crowd.' This is the first thing the player reads." />
         </div>
 
         <div className="form-field">

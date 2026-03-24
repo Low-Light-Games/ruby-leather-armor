@@ -119,8 +119,6 @@ export interface Story {
   title: string
   preview: string
   premise: string
-  hook: string | null
-  initial_context: string | null
   initial_summary: string | null
   created_at: string
   updated_at: string
@@ -131,8 +129,6 @@ export interface AdminStory {
   title: string
   preview: string
   premise: string
-  hook: string | null
-  initial_context: string | null
   initial_summary: string | null
   story_locations?: StoryLocationData[]
   encounter_tables?: EncounterTableData[]

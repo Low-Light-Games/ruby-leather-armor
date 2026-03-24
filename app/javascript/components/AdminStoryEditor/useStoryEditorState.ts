@@ -25,8 +25,6 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
   const [title, setTitle] = useState('')
   const [preview, setPreview] = useState('')
   const [premise, setPremise] = useState('')
-  const [hook, setHook] = useState('')
-  const [initialContext, setInitialContext] = useState('')
   const [initialSummary, setInitialSummary] = useState('')
   const [currentStoryId, setCurrentStoryId] = useState<number | undefined>(storyId)
 
@@ -101,8 +99,6 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
     setTitle(data.title)
     setPreview(data.preview)
     setPremise(data.premise)
-    setHook(data.hook || '')
-    setInitialContext(data.initial_context || '')
     setInitialSummary(data.initial_summary || '')
     setLocations(fresh
       ? hydrateLocations(data.story_locations || [])
@@ -164,7 +160,7 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
   }
 
   const getPayloadArgs = () => ({
-    title, preview, premise, hook, initialContext, initialSummary,
+    title, preview, premise, initialSummary,
     currentStoryId, locations, encounterTables, npcs, clues, milestones,
     icTraversal, icCombat, icSocial, icExploration, icRest, icInventory,
   })
@@ -372,7 +368,7 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
   return {
     user, authLoading, loading, saving, enriching, feedback, dismissFeedback,
     title, setTitle, preview, setPreview, premise, setPremise,
-    hook, setHook, initialContext, setInitialContext, initialSummary, setInitialSummary,
+    initialSummary, setInitialSummary,
     currentStoryId,
     locations, setLocations,
     encounterTables, setEncounterTables,
