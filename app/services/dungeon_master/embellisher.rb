@@ -2,15 +2,17 @@
 
 module DungeonMaster
   # Runs once at adventure creation to add unique flavor to a story's
-  # structured data. In Embellish mode it only decorates; in Expand mode
-  # it also creates adventure-specific NPC and Clue records.
+  # structured data. Always runs. In Embellish mode it only decorates; in
+  # Expand mode it also creates adventure-specific NPC and Clue records.
+  # Both modes generate the opening DM narrative message.
   #
   # Produces:
-  #   adventure.enriched_world  (JSONB)
+  #   adventure.enriched_world   (JSONB)
   #   adventure.enriched_premise (text)
+  #   adventure_messages[0]      (opening DM narrative)
   #   StoryNpc / StoryClue records with adventure_id (Expand mode only)
   class Embellisher
-    MODES = %w[off embellish expand].freeze
+    MODES = %w[embellish expand].freeze
 
     def initialize(adventure, user: nil)
       @adventure = adventure
@@ -21,8 +23,6 @@ module DungeonMaster
     end
 
     def run
-      return if @mode == "off"
-
       client = AiClient.new(@config)
       model = @config.get("embellisher_model").presence || @config.model
       log = Logging.new(adventure: @adventure, user: @user, dm_service: "standard")
@@ -33,6 +33,10 @@ module DungeonMaster
         npcs: npc_data,
         clues: clue_data,
         mode: @mode,
+        traversal_context: @adventure.traversal_context,
+        social_context: @adventure.social_context,
+        character_name: @adventure.adventure_sheets.first&.name,
+        initial_summary: @story.initial_summary,
       )
 
       t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -100,6 +104,14 @@ module DungeonMaster
         enriched_world: parsed["enriched_world"] || {},
         enriched_premise: parsed["enriched_premise"].to_s.strip.presence || @story.premise,
       )
+
+      if parsed["opening_narrative"].present?
+        @adventure.adventure_messages.create!(
+          role: "dm",
+          content: parsed["opening_narrative"].to_s.strip,
+          message_type: "narrative"
+        )
+      end
 
       return unless @mode == "expand"
 

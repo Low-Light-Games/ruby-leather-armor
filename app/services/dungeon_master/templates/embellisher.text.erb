@@ -8,14 +8,39 @@ You are a creative writer for a tabletop RPG. Your job is to take structured sto
 - "<%= loc[:name] %>"<%= loc[:description].present? ? ": #{loc[:description]}" : "" %>
 <% end -%>
 
+<% if @npcs.any? -%>
 === NPCs ===
 <% @npcs.each do |npc| -%>
 - [ID:<%= npc[:id] %>] "<%= npc[:name] %>" (<%= npc[:role] %>, <%= npc[:attitude] %>)<%= npc[:description].present? ? " — #{npc[:description]}" : "" %>
 <% end -%>
 
+<% end -%>
+<% if @clues.any? -%>
 === CLUES ===
 <% @clues.each do |clue| -%>
 - [ID:<%= clue[:id] %>] "<%= clue[:title] %>" (<%= clue[:discovery_method] %>, <%= clue[:difficulty] %>)<%= clue[:description].present? ? " — #{clue[:description]}" : "" %>
+<% end -%>
+
+<% end -%>
+=== OPENING CONDITIONS ===
+<% if @traversal_context.present? -%>
+Location: <%= @traversal_context["current_location"] %>
+<% if @traversal_context["terrain"].present? -%>Terrain: <%= @traversal_context["terrain"] %><% end %>
+<% if @traversal_context["weather"].present? -%>Weather: <%= @traversal_context["weather"] %><% end %>
+<% if @traversal_context["time_of_day"].present? -%>Time: <%= @traversal_context["time_of_day"] %><% end %>
+<% if @traversal_context["scene"].present? -%>Scene: <%= @traversal_context["scene"] %><% end %>
+<% if Array(@traversal_context["nearby_npcs"]).any? -%>Nearby: <%= @traversal_context["nearby_npcs"].join(", ") %><% end %>
+<% if Array(@traversal_context["points_of_interest"]).any? -%>Points of interest: <%= @traversal_context["points_of_interest"].join("; ") %><% end %>
+<% end -%>
+<% if @social_context.present? && @social_context["scene"].present? -%>
+Active social scene: <%= @social_context["scene"] %>
+<% if Array(@social_context["npcs_present"]).any? -%>NPCs present: <%= @social_context["npcs_present"].map { |n| "#{n["name"]} (#{n["attitude"]})" }.join(", ") %><% end %>
+<% if @social_context["conversation_state"].present? -%>Conversation state: <%= @social_context["conversation_state"] %><% end %>
+<% if @social_context["stakes"].present? -%>Stakes: <%= @social_context["stakes"] %><% end %>
+<% end -%>
+<% if @character_name.present? -%>Player character: <%= @character_name %>
+<% end -%>
+<% if @initial_summary.present? -%>What the player knows: <%= @initial_summary %>
 <% end -%>
 
 === YOUR TASK ===
@@ -44,6 +69,8 @@ MODE: EXPAND — Add flavor AND create new story elements.
 
 7. **Write enriched_premise**: Rewrite the premise incorporating all enriched names and new elements. This becomes the canonical version for this adventure.
 
+8. **Write opening narrative**: See instructions below.
+
 CONSTRAINTS:
 - Do NOT contradict existing story elements
 - New NPCs must serve the existing plot — they can provide color, rumors, or minor assistance
@@ -65,10 +92,20 @@ MODE: EMBELLISH — Add flavor only. Do NOT create new NPCs or clues.
 4. **Generate atmosphere**: Overall mood, weather, local customs, sounds and smells.
 
 5. **Write enriched_premise**: Rewrite the premise incorporating all enriched names. This becomes the canonical version for this adventure.
+
+6. **Write opening narrative**: See instructions below.
 <% end -%>
 
-Return JSON:
-```json
+=== OPENING NARRATIVE INSTRUCTIONS ===
+Write the first DM message the player reads when this adventure begins. Use the OPENING CONDITIONS
+above as your source of truth for setting, time, weather, and who is present.
+- 2-4 sentences of vivid, immersive prose written in second person ("You stand...", "The air smells of...")
+- If there is an active social scene, open in the middle of it — the player is already there
+- Reflect the time of day and weather naturally; do not state them as facts
+- Do NOT reveal plot spoilers, hidden motivations, or secret story elements
+- Do NOT describe the player taking any action — end at the moment they must decide what to do
+
+Return JSON (no markdown, no code fences):
 {
   "enriched_world": {
     "npcs": { "<npc_id>": { "enriched_name": "...", "enriched_description": "...", "enriched_knowledge": "..." }, ... },
@@ -78,10 +115,10 @@ Return JSON:
     "local_details": "..."
   },
   "enriched_premise": "...",
-  "new_npcs": [ ... ],
-  "new_clues": [ ... ]
+  "opening_narrative": "...",
+  "new_npcs": [],
+  "new_clues": []
 }
-```
 
 `new_npcs` and `new_clues` should be empty arrays in EMBELLISH mode.
 ---USER_MESSAGE---
