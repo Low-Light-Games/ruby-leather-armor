@@ -107,33 +107,29 @@ sequenceDiagram
 
 ## Implementation
 
-### Feature flag
-
-Gated by `DmConfig` toggle `async_pipeline` (default: `false`). When disabled, the
-existing synchronous request/response path is used. Both paths coexist.
-
 ### Infrastructure
 
-- `redis` and `sidekiq` gems added to Gemfile
+- `redis` and `sidekiq` gems in Gemfile
 - `config/sidekiq.yml` defines `dm_pipeline` priority queue
-- `config/cable.yml` wired to Redis in development (was in-process `async` adapter)
-- `REDIS_URL` added to app and worker services in `compose.yml`
-- Separate `worker` service runs `bundle exec sidekiq`
+- `config/cable.yml` wired to Redis (`REDIS_URL`) in all environments
+- Separate `worker` service in all Docker Compose files runs `bundle exec sidekiq`
+- `active_job.queue_adapter = :sidekiq` set in both development and production environments
 
 ### Backend
 
-- **`AdventureChannel`** — ActionCable channel scoped per adventure with session-based user auth
-- **`PipelineJob` / `RollPipelineJob`** — Sidekiq jobs that run the pipeline and broadcast results
-- **`DungeonMasterService`** split into sync API (`process_player_prompt`) and async API (`prepare_prompt` + `execute_prompt`)
-- **`AdventureMessagesController`** checks `async_pipeline?` and either runs sync or enqueues + returns 202
+- **`AdventureChannel`** — ActionCable channel scoped per adventure; authorises via `adventure.user_id == current_user.id || current_user.admin?`
+- **`PipelineJob` / `RollPipelineJob` / `InitiativePipelineJob`** — Sidekiq jobs that run the pipeline and broadcast results
+- **`DungeonMasterService`** exposes a two-phase async API: `prepare_*` (persist player message, return it for the 202) and `execute_*` (run pipeline in job, return DM messages for broadcast)
+- **`AdventureMessagesController`** always calls `prepare_*` + `perform_later` and returns 202 — no sync path
 
 ### Frontend
 
-- `AdventureChat.tsx` subscribes to `AdventureChannel` on mount via `@rails/actioncable`
-- In async mode: HTTP returns 202 with player message, thinking indicator stays until ActionCable delivers the DM response
-- In sync mode: existing behavior unchanged
+- `useAdventureMessages` subscribes to `AdventureChannel` on mount via `@rails/actioncable`
+- HTTP 202 returns immediately with the persisted player message; thinking indicator appears
+- ActionCable delivers `pipeline_result` when the job completes — sentinel is replaced with real DM messages
+- ActionCable delivers `pipeline_progress` during job execution — thinking indicator shows step-level status text (see Live Progress below)
 
-### Connection pool (after)
+### Connection pool
 
 | Process | Pool Size | Peak Connections | Purpose |
 |---------|-----------|-----------------|---------|
@@ -142,8 +138,46 @@ existing synchronous request/response path is used. Both paths coexist.
 
 ---
 
-## Migration Path
+## Live Progress Feedback
 
-1. Add Sidekiq, Redis wiring, ActionCable channel, PipelineJob. Keep sync as default.
-2. Enable `async_pipeline` toggle to test async path.
-3. Make async the default once stable. Remove sync path.
+While a pipeline job runs, step modules broadcast incremental status messages to the player's UI. This replaces the generic thinking dots with live text that updates as the pipeline advances.
+
+### How it works
+
+Each pipeline step that has a meaningful player-facing status calls `broadcast_progress("message")` at its entry point:
+
+```ruby
+# e.g. in steps/unified_evaluation.rb
+def run_unified_evaluation(intention)
+  broadcast_progress("Reading the situation...")
+  # ...
+end
+```
+
+`broadcast_progress` is defined in `Steps::Helpers` and calls `@on_progress&.call(message)`. The `@on_progress` callback is set by `DungeonMasterService` when it constructs the pipeline:
+
+```ruby
+# dungeon_master_service.rb
+def pipeline
+  @pipeline ||= DungeonMaster::Pipeline.new(
+    ...,
+    on_progress: method(:broadcast_pipeline_progress))
+end
+
+def broadcast_pipeline_progress(message)
+  AdventureChannel.broadcast_to(@adventure, { type: "pipeline_progress", message: message })
+end
+```
+
+The frontend `useAdventureMessages` hook handles `pipeline_progress` events by patching the content of the thinking sentinel in place, so the status text appears beneath the animated dots.
+
+### Current progress messages
+
+| Step | Message |
+|------|---------|
+| `UnifiedEvaluation` | "Reading the situation..." |
+| `Chronicler` | "Consulting the chronicle..." |
+| `Narrate` | "Writing the story..." |
+| `ContextUpdate` | "Remembering the world..." |
+
+Steps that don't call `broadcast_progress` simply don't participate — fully opt-in. The callback is a no-op when `@on_progress` is not set (e.g. in tests), so no test changes are needed to add a new progress message.

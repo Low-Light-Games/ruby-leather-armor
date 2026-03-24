@@ -9,6 +9,7 @@ module DungeonMaster
       private
 
       def run_unified_evaluation(intention)
+        broadcast_progress("Reading the situation...")
         prompt_summary = "UnifiedEval: \"#{@log.truncate(intention)}\""
 
         char_block     = CharacterBlock.full(@sheet)

@@ -7,9 +7,9 @@
 #   1. Persisting AdventureMessage records
 #   2. Catching errors and producing player-safe messages
 #
-# Supports two modes of operation:
-#   Sync  — process_player_prompt / process_roll_result (original, blocking)
-#   Async — prepare_prompt + execute_prompt (split across controller + Sidekiq job)
+# All pipeline actions are async: the controller calls prepare_* (persists the
+# player message and returns immediately with 202), then enqueues a Sidekiq job
+# that calls execute_* (runs the pipeline and broadcasts results via ActionCable).
 #
 # See DungeonMaster::Pipeline for the step-by-step flow.
 #
@@ -29,94 +29,7 @@ class DungeonMasterService
   end
 
   # ----------------------------------------------------------------
-  # Sync API (original — blocks until pipeline completes)
-  # ----------------------------------------------------------------
-
-  def process_player_prompt(player_input, mode: nil)
-    enforce_usage_limit!
-    maybe_log_abandoned_pipeline
-    auto_finalize_pending_initiative!
-
-    player_msg = persist_message(role: "player", content: player_input, message_type: "narrative")
-    @log.player_message_id = player_msg.id
-    @log.start_pipeline_run!(player_input)
-
-    result = run_timed_pipeline { pipeline.run_prompt(player_input, mode: mode) }
-    { messages: [player_msg] + messages_for(result) }
-  rescue UsageLimitExceeded => e
-    player_msg ||= persist_message(role: "player", content: player_input, message_type: "narrative")
-    limit_msg = persist_message(role: "system", content: e.message, message_type: "usage_limit")
-    { messages: [player_msg, limit_msg] }
-  rescue SanitizationRejected => e
-    @log.error_pipeline_run!
-    rejection = persist_message(role: "system", content: e.message, message_type: "sanitization_fail")
-    { messages: [player_msg, rejection] }
-  rescue AiError, StandardError => e
-    capture_pipeline_error(e)
-    @log.error_pipeline_run!
-    error_msg = persist_message(
-      role: "system",
-      content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
-      message_type: "narrative")
-    { messages: [player_msg, error_msg] }
-  end
-
-  def process_roll_result(roll_results_from_player)
-    enforce_usage_limit!
-
-    metadata = latest_roll_metadata
-    roll_msg = persist_message(
-      role: "player",
-      content: format_roll_results(roll_results_from_player),
-      message_type: "roll_result",
-      metadata: { rolls: roll_results_from_player })
-    @log.player_message_id = roll_msg.id
-    resume_or_start_pipeline!(metadata, format_roll_results(roll_results_from_player))
-
-    result = run_timed_pipeline { pipeline.run_rolls(format_roll_results(roll_results_from_player), metadata) }
-    { messages: [roll_msg] + messages_for(result) }
-  rescue UsageLimitExceeded => e
-    limit_msg = persist_message(role: "system", content: e.message, message_type: "usage_limit")
-    { messages: [limit_msg] }
-  rescue AiError, StandardError => e
-    capture_pipeline_error(e)
-    @log.error_pipeline_run!
-    error_msg = persist_message(
-      role: "system",
-      content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
-      message_type: "narrative")
-    { messages: [roll_msg, error_msg] }
-  end
-
-  def process_initiative_result(player_initiative)
-    enforce_usage_limit!
-
-    metadata = latest_initiative_metadata
-    init_msg = persist_message(
-      role: "player",
-      content: "Initiative: #{player_initiative}",
-      message_type: "initiative_result",
-      metadata: { initiative: player_initiative })
-    @log.player_message_id = init_msg.id
-    resume_or_start_pipeline!(metadata, "Initiative: #{player_initiative}")
-
-    result = run_timed_pipeline { pipeline.run_initiative(player_initiative.to_i, metadata) }
-    { messages: [init_msg] + messages_for(result) }
-  rescue UsageLimitExceeded => e
-    limit_msg = persist_message(role: "system", content: e.message, message_type: "usage_limit")
-    { messages: [limit_msg] }
-  rescue AiError, StandardError => e
-    capture_pipeline_error(e)
-    @log.error_pipeline_run!
-    error_msg = persist_message(
-      role: "system",
-      content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
-      message_type: "narrative")
-    { messages: [init_msg, error_msg] }
-  end
-
-  # ----------------------------------------------------------------
-  # Async API — Phase 1 (controller: persist + enqueue)
+  # Phase 1 — controller: persist player message + enqueue job
   # ----------------------------------------------------------------
 
   def prepare_prompt(player_input)
@@ -141,7 +54,7 @@ class DungeonMasterService
   end
 
   # ----------------------------------------------------------------
-  # Async API — Phase 2 (Sidekiq job: run pipeline + broadcast)
+  # Phase 2 — Sidekiq job: run pipeline + broadcast via ActionCable
   # ----------------------------------------------------------------
 
   def execute_prompt(player_input, player_message_id:, mode: nil)
@@ -252,11 +165,17 @@ class DungeonMasterService
   def pipeline
     @pipeline ||= if @config.get("pipeline_mode") == "edge"
                     DungeonMaster::EdgePipeline.new(
-                      adventure: @adventure, config: @config, ai: @ai, log: @log, sheet: @sheet)
+                      adventure: @adventure, config: @config, ai: @ai, log: @log, sheet: @sheet,
+                      on_progress: method(:broadcast_pipeline_progress))
                   else
                     DungeonMaster::Pipeline.new(
-                      adventure: @adventure, config: @config, ai: @ai, log: @log, sheet: @sheet)
+                      adventure: @adventure, config: @config, ai: @ai, log: @log, sheet: @sheet,
+                      on_progress: method(:broadcast_pipeline_progress))
                   end
+  end
+
+  def broadcast_pipeline_progress(message)
+    AdventureChannel.broadcast_to(@adventure, { type: "pipeline_progress", message: message })
   end
 
   # ----------------------------------------------------------------

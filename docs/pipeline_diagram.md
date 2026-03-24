@@ -190,7 +190,7 @@ flowchart LR
 
 ### Overview
 
-The DM pipeline is a multi-step orchestration system that translates a player's free-form text input into a game outcome: narrative prose, dice roll requests, initiative prompts, or outright rejections. It runs as either a **synchronous blocking call** (original path, holds Puma thread 5–15s) or an **asynchronous Sidekiq job** (current default, returns immediately via ActionCable WebSocket).
+The DM pipeline is a multi-step orchestration system that translates a player's free-form text input into a game outcome: narrative prose, dice roll requests, initiative prompts, or outright rejections. It runs exclusively as an **asynchronous Sidekiq job**: the HTTP request returns 202 immediately, the pipeline executes in the background, and results are delivered to the player via an ActionCable WebSocket. There is no synchronous path.
 
 Two pipeline variants exist, selected by `DmConfig.pipeline_mode`:
 
@@ -200,6 +200,38 @@ Two pipeline variants exist, selected by `DmConfig.pipeline_mode`:
 | **Edge pipeline** (`EdgePipeline`) | `pipeline_mode = "edge"` | 1 | Monolithic. Lower latency, no roll requests — AI simulates dice internally. |
 
 The rest of this document covers the **budget pipeline** exclusively.
+
+---
+
+### Live progress feedback
+
+While a job runs, the player sees incremental status messages beneath the
+animated thinking dots instead of a static spinner. Each AI-heavy step
+calls `broadcast_progress("message")` at its entry point:
+
+```ruby
+def run_unified_evaluation(intention)
+  broadcast_progress("Reading the situation...")
+  # ...
+end
+```
+
+`broadcast_progress` is a helper in `Steps::Helpers` that invokes an
+`@on_progress` callback when present. `DungeonMasterService` wires that
+callback to `AdventureChannel.broadcast_to`, which pushes a
+`pipeline_progress` WebSocket event to the player's browser. The
+`useAdventureMessages` hook patches the content of the thinking sentinel
+in place so the status line animates in without replacing the dots.
+
+| Step | Message shown to player |
+|------|------------------------|
+| `UnifiedEvaluation` | "Reading the situation..." |
+| `Chronicler` | "Consulting the chronicle..." |
+| `Narrate` | "Writing the story..." |
+| `ContextUpdate` | "Remembering the world..." |
+
+The callback is a no-op when `@on_progress` is not set (tests, console
+runs), so adding a new progress call to a step requires no test changes.
 
 ---
 

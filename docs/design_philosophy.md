@@ -135,7 +135,6 @@ adjust.
 - `pipeline_mode` — budget (multi-step) vs. edge (single-call)
 - `guardrail_mode` — code-based vs. AI-based validation
 - `narration_mode` — parallel vs. subjugated output
-- `async_pipeline` — synchronous vs. Sidekiq background execution
 - `sanitization_threshold` — danger score cutoff (0-100)
 - `verbose` / `pacing_words_min` / `pacing_words_max` — narration length
 - `temperature` — creativity/randomness
@@ -253,8 +252,8 @@ observe where it breaks, and split at the fault line.
   both tasks suffered
 - Started with monolithic Intent → split into Intent + Beacon when
   context routing failed
-- Started with synchronous HTTP → added async Sidekiq when connection
-  pool exhausted
+- Started with synchronous HTTP → moved to async Sidekiq permanently
+  when connection pool exhaustion caused 504 timeouts under real load
 
 Every split was motivated by observed failure, not theoretical purity.
 This avoids premature abstraction while ensuring that when complexity is
@@ -264,6 +263,13 @@ added, it solves a real problem.
 (see principle 4). The new approach might not be better — you need the
 ability to compare.
 
+**Exception — retiring a proven path:** once a new approach has been
+validated in production and the old path adds complexity without
+comparison value, it can be retired. The synchronous HTTP pipeline is
+an example: after async Sidekiq proved strictly superior (no timeout
+risk, better UX, identical player experience), the sync path was
+deleted rather than kept behind a dead toggle.
+
 ---
 
 ## 10. Coexistence over migration
@@ -271,13 +277,20 @@ ability to compare.
 When introducing a new approach, don't rip out the old one. Keep both
 paths alive behind a toggle and let observation determine which wins.
 
-- Sync and async pipelines coexist (`async_pipeline` toggle)
 - Budget and Edge pipelines coexist (`pipeline_mode` toggle)
 - Code and AI guardrails coexist (`guardrail_mode` toggle)
 - Parallel and subjugated narration coexist (`narration_mode` toggle)
+
 This principle is a direct consequence of principles 4 and 9: if you
 toggle everything and split incrementally, coexistence is the natural
 result. The old path is your safety net and your control group.
+
+**Note:** the synchronous HTTP pipeline is an intentional exception.
+After async Sidekiq was validated in production, the sync path was
+retired entirely — it offered no meaningful comparison value and keeping
+it would have required maintaining two diverging code paths. Coexistence
+is the default strategy; retirement is acceptable when the old path is
+strictly dominated and confidence is high.
 
 ---
 

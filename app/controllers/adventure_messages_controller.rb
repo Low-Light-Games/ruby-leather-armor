@@ -23,14 +23,9 @@ class AdventureMessagesController < ApplicationController
     mode = params[:mode]&.strip
     service = dm_service
 
-    if async_pipeline?
-      player_msg = service.prepare_prompt(player_input)
-      PipelineJob.perform_later(@adventure.id, player_msg.id, player_input, mode, current_user.id)
-      render json: { async: true, messages: [message_json(player_msg)] }, status: :accepted
-    else
-      result = service.process_player_prompt(player_input, mode: mode)
-      render json: { messages: result[:messages].map { |m| message_json(m) } }
-    end
+    player_msg = service.prepare_prompt(player_input)
+    PipelineJob.perform_later(@adventure.id, player_msg.id, player_input, mode, current_user.id)
+    render json: { async: true, messages: [message_json(player_msg)] }, status: :accepted
   end
 
   # POST /adventures/:adventure_id/messages/initiative
@@ -42,14 +37,9 @@ class AdventureMessagesController < ApplicationController
 
     service = dm_service
 
-    if async_pipeline?
-      init_msg = service.prepare_initiative(player_initiative)
-      InitiativePipelineJob.perform_later(@adventure.id, init_msg.id, player_initiative, current_user.id)
-      render json: { async: true, messages: [message_json(init_msg)] }, status: :accepted
-    else
-      result = service.process_initiative_result(player_initiative)
-      render json: { messages: result[:messages].map { |m| message_json(m) } }
-    end
+    init_msg = service.prepare_initiative(player_initiative)
+    InitiativePipelineJob.perform_later(@adventure.id, init_msg.id, player_initiative, current_user.id)
+    render json: { async: true, messages: [message_json(init_msg)] }, status: :accepted
   end
 
   # POST /adventures/:adventure_id/messages/roll
@@ -73,15 +63,10 @@ class AdventureMessagesController < ApplicationController
 
     service = dm_service
 
-    if async_pipeline?
-      roll_msg = service.prepare_roll(rolls)
-      roll_text = service.send(:format_roll_results, rolls)
-      RollPipelineJob.perform_later(@adventure.id, roll_msg.id, roll_text, current_user.id)
-      render json: { async: true, messages: [message_json(roll_msg)] }, status: :accepted
-    else
-      result = service.process_roll_result(rolls)
-      render json: { messages: result[:messages].map { |m| message_json(m) } }
-    end
+    roll_msg = service.prepare_roll(rolls)
+    roll_text = service.send(:format_roll_results, rolls)
+    RollPipelineJob.perform_later(@adventure.id, roll_msg.id, roll_text, current_user.id)
+    render json: { async: true, messages: [message_json(roll_msg)] }, status: :accepted
   end
 
   private
@@ -92,10 +77,6 @@ class AdventureMessagesController < ApplicationController
 
   def dm_service
     DungeonMasterService.new(@adventure, user: current_user)
-  end
-
-  def async_pipeline?
-    DmConfig.instance.get("async_pipeline") == true
   end
 
   def message_json(message)

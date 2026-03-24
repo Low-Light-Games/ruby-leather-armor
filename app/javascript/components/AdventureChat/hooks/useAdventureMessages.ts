@@ -39,10 +39,17 @@ export function useAdventureMessages({
     | null
   >(null)
 
+  const sendingRef = useRef(false)
+  useEffect(() => { sendingRef.current = sending }, [sending])
+
   const activatePendingRolls = useCallback((msg: AdventureMessage) => {
     const rolls = buildPendingRollsFromMessage(msg, derivedStats)
     if (rolls) setPendingRolls(rolls)
   }, [derivedStats])
+
+  const handleProgressUpdate = useCallback((message: string) => {
+    setMessages(prev => prev.map(m => m.id === THINKING_ID ? { ...m, content: message } : m))
+  }, [])
 
   const handleSyncResponse = useCallback((data: { messages: AdventureMessage[] }) => {
     setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), ...data.messages])
@@ -61,10 +68,13 @@ export function useAdventureMessages({
   }, [activatePendingRolls, onDmResponse, onAdventureComplete])
 
   const handleAsyncResponse = useCallback((data: { messages: AdventureMessage[] }) => {
-    setMessages(prev => [
-      ...prev.filter(m => m.id !== OPTIMISTIC_ID),
-      ...data.messages,
-    ])
+    setMessages(prev => {
+      const thinking = prev.find(m => m.id === THINKING_ID)
+      const rest = prev.filter(m => !isSentinel(m.id))
+      return thinking
+        ? [...rest, ...data.messages, thinking]
+        : [...rest, ...data.messages]
+    })
   }, [])
 
   const handleError = useCallback((errorPrefix: string, err: any) => {
@@ -82,16 +92,43 @@ export function useAdventureMessages({
     const subscription = cable.subscriptions.create(
       { channel: 'AdventureChannel', adventure_id: adventureId },
       {
-        received(data: { type: string; messages: AdventureMessage[] }) {
+        received(data: { type: string; messages: AdventureMessage[]; message?: string }) {
           if (data.type === 'pipeline_result' && data.messages) {
             handleSyncResponse(data)
+          } else if (data.type === 'pipeline_progress' && data.message) {
+            handleProgressUpdate(data.message)
           }
+        },
+
+        connected() {
+          // On reconnect while waiting for a response, re-fetch to pick up
+          // any pipeline results that arrived during the disconnect window.
+          if (!sendingRef.current) return
+
+          fetch(`/adventures/${adventureId}/messages`, { headers: { Accept: 'application/json' } })
+            .then(r => r.ok ? r.json() : null)
+            .then((serverMessages: AdventureMessage[] | null) => {
+              if (!serverMessages || !sendingRef.current) return
+
+              const lastPlayer = [...serverMessages].reverse().find(m => m.role === 'player')
+              if (!lastPlayer) return
+
+              const lastPlayerIdx = serverMessages.findIndex(m => m.id === lastPlayer.id)
+              const dmMessages = serverMessages
+                .slice(lastPlayerIdx + 1)
+                .filter(m => m.role === 'dm' || m.role === 'system')
+
+              if (dmMessages.length > 0) {
+                handleSyncResponse({ messages: dmMessages })
+              }
+            })
+            .catch(() => {})
         },
       }
     )
 
     return () => { subscription.unsubscribe() }
-  }, [adventureId, handleSyncResponse])
+  }, [adventureId, handleSyncResponse, handleProgressUpdate])
 
   // Load message history on mount
   useEffect(() => {

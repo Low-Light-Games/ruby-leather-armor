@@ -19,12 +19,13 @@ module DungeonMaster
     include Steps::Helpers
     include Mutations
 
-    def initialize(adventure:, config:, ai:, log:, sheet:)
-      @adventure = adventure
-      @config    = config
-      @ai        = ai
-      @log       = log
-      @sheet     = sheet
+    def initialize(adventure:, config:, ai:, log:, sheet:, on_progress: nil)
+      @adventure   = adventure
+      @config      = config
+      @ai          = ai
+      @log         = log
+      @sheet       = sheet
+      @on_progress = on_progress
     end
 
     def run_prompt(player_input, mode: nil)

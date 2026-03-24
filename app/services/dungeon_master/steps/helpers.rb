@@ -45,6 +45,12 @@ module DungeonMaster
       def elapsed_ms(t0)
         ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
       end
+
+      # Sends a live status message to the player's UI via ActionCable.
+      # No-op when no progress callback is wired (e.g. in tests).
+      def broadcast_progress(message)
+        @on_progress&.call(message)
+      end
     end
   end
 end

@@ -1088,7 +1088,6 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `pipeline_mode` | `"budget"` | `"budget"` (multi-step) or `"edge"` (single-call) |
 | `guardrail_mode` | `"code"` | `"code"` (deterministic) or `"ai"` (prompt-based) |
 | `narration_mode` | `"parallel"` | `"parallel"` (concurrent) or `"subjugated"` (sequential) |
-| `async_pipeline` | `false` | When true, pipeline runs in Sidekiq with ActionCable delivery |
 | `creature_creation_fallback` | `"ai"` | `"ai"` (bestiary + AI gen), `"template"` (bestiary + generic stats), `"none"` |
 | `scene_history_depth` | `10` | Number of scene summaries retained for world consistency checks |
 

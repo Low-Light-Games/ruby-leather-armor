@@ -39,7 +39,6 @@ class DmConfig < ApplicationRecord
     "pipeline_mode" => "budget",
     "narration_mode" => "parallel",
     "action_queue" => true,
-    "async_pipeline" => false,
     "show_roll_dc" => true,
     "scene_history_depth" => 10,
     "chronicler_tone_direction" => false,

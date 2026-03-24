@@ -18,6 +18,7 @@ const ChatMessage = ({ msg, isAdmin, onRetry }: ChatMessageProps) => {
         <div className="thinking-dots">
           <span /><span /><span />
         </div>
+        {msg.content && <div className="thinking-status">{msg.content}</div>}
       </div>
     )
   }
