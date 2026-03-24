@@ -190,7 +190,7 @@ flowchart LR
 
 ### Overview
 
-The DM pipeline is a multi-step orchestration system that translates a player's free-form text input into a game outcome: narrative prose, dice roll requests, initiative prompts, or outright rejections. It runs as either a **synchronous blocking call** (original path, holds Puma thread 5–15s) or an **asynchronous Sidekiq job** (current default, returns immediately via ActionCable WebSocket).
+The DM pipeline is a multi-step orchestration system that translates a player's free-form text input into a game outcome: narrative prose, dice roll requests, initiative prompts, or outright rejections. It runs exclusively as an **asynchronous Sidekiq job**: the HTTP request returns 202 immediately, the pipeline executes in the background, and results are delivered to the player via an ActionCable WebSocket. There is no synchronous path.
 
 Two pipeline variants exist, selected by `DmConfig.pipeline_mode`:
 
