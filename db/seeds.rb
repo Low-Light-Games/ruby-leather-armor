@@ -9,7 +9,9 @@ load Rails.root.join("db", "seeds", "items.rb")
 load Rails.root.join("db", "seeds", "bestiary.rb")
 
 # Story content — must run before encounter_tables, which depends on stories existing
-load Rails.root.join("db", "seeds", "lake_of_whispers_story.rb")
+load Rails.root.join("db", "seeds", "traversal_story.rb")
+load Rails.root.join("db", "seeds", "combat_story.rb")
+load Rails.root.join("db", "seeds", "social_story.rb")
 load Rails.root.join("db", "seeds", "encounter_tables.rb")
 
 # Only bootstrap local development — production admin accounts should be
@@ -28,19 +30,41 @@ if Rails.env.development? || Rails.env.staging?
   puts "Created/updated admin user: #{admin.email} (password: admin123)"
   puts "Created/updated test user: #{test_user.email} (password: test123)"
 
-  [admin, test_user].each do |u|
-    unless u.sheets.exists?
-      u.sheets.create!(
-        name: "Aldric Stonebrow",
-        character_class: "Fighter",
-        strength: 15,
-        dexterity: 13,
-        constitution: 14,
-        intelligence: 10,
-        wisdom: 12,
-        charisma: 8
-      )
-      puts "Created sheet for #{u.email}"
+  minmax_sheets = [
+    {
+      name: "Aldric Ironwall",
+      character_class: "Fighter",
+      race: "Human",
+      subclass: "Two-Handed Fighter",
+      level: 5,
+      strength: 20,
+      dexterity: 12,
+      constitution: 16,
+      intelligence: 8,
+      wisdom: 10,
+      charisma: 7,
+      currency: { "gold" => 150, "silver" => 0, "copper" => 0, "platinum" => 0 }
+    },
+    {
+      name: "Vex Nightwhisper",
+      character_class: "Rogue",
+      race: "Elf",
+      subclass: "Knife Master",
+      level: 5,
+      strength: 8,
+      dexterity: 20,
+      constitution: 12,
+      intelligence: 14,
+      wisdom: 10,
+      charisma: 10,
+      currency: { "gold" => 200, "silver" => 50, "copper" => 0, "platinum" => 0 }
+    }
+  ]
+
+  [[admin, 0], [test_user, 1]].each do |user, sheet_idx|
+    unless user.sheets.exists?
+      user.sheets.create!(minmax_sheets[sheet_idx])
+      puts "Created sheet '#{minmax_sheets[sheet_idx][:name]}' for #{user.email}"
     end
   end
 end
