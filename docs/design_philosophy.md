@@ -47,8 +47,8 @@ rule interactions, writing narrative prose, deciding what's
 macro-significant, evaluating whether a context changed.
 
 **Code is better at:** rolling dice, applying HP changes, validating JSON
-schemas, routing pipeline steps, merging beacon results, looking up
-stat blocks, enforcing clamping bounds.
+schemas, routing pipeline steps, merging domain evaluation results,
+looking up stat blocks, enforcing clamping bounds.
 
 The temptation is to let the AI do everything because it *can*. Resist
 this. Every task handed to the AI is a task that can hallucinate, cost
@@ -107,10 +107,11 @@ receives a bloated, 13,000-character prompt doing eight things.
 **In practice:**
 - The original single-prompt DM was replaced by a 10+ step pipeline
 - Triage was split into Sanitize + Classify when both tasks degraded
-- Intent was split from Beacon when context routing
-  suffered
-- MechanicalEvaluation was split from Verdict when roll arbitration
-  conflated with roll identification
+- Evaluation was consolidated from 6 parallel beacons + sequential
+  MechanicalEvaluation + RollQualifier into a single UnifiedEvaluation
+  call when the multi-step cost outweighed the isolation benefit
+- MechanicalEvaluation was originally split from Verdict when roll
+  arbitration was conflated with roll identification
 - Context updates were decoupled from narrative so they work from
   unambiguous factual outcomes
 
@@ -132,7 +133,6 @@ adjust.
 
 **Current toggles:**
 - `pipeline_mode` — budget (multi-step) vs. edge (single-call)
-- `interpreter_scope` — all domains vs. filtered
 - `guardrail_mode` — code-based vs. AI-based validation
 - `narration_mode` — parallel vs. subjugated output
 - `async_pipeline` — synchronous vs. Sidekiq background execution
@@ -140,8 +140,6 @@ adjust.
 - `verbose` / `pacing_words_min` / `pacing_words_max` — narration length
 - `temperature` — creativity/randomness
 - Per-step model selection and token budgets
-- `evaluation_mode` — unified (default: single combined call) vs. standard
-  (legacy: per-domain beacons + sequential mech evals)
 - `directed_dm` — per-adventure narrative steering
 - `embellisher_mode` — story enrichment behavior
 
@@ -276,9 +274,7 @@ paths alive behind a toggle and let observation determine which wins.
 - Sync and async pipelines coexist (`async_pipeline` toggle)
 - Budget and Edge pipelines coexist (`pipeline_mode` toggle)
 - Code and AI guardrails coexist (`guardrail_mode` toggle)
-- All-domain and filtered beacon modes coexist (`interpreter_scope` toggle)
 - Parallel and subjugated narration coexist (`narration_mode` toggle)
-
 This principle is a direct consequence of principles 4 and 9: if you
 toggle everything and split incrementally, coexistence is the natural
 result. The old path is your safety net and your control group.
@@ -349,7 +345,7 @@ belongs to none of them.
 
 This separation means time tracking works universally — for traversal, rest,
 crafting, waiting, Take 20, or any other passage of time — without requiring
-each domain's beacon to understand time mechanics.
+the evaluation step to understand time mechanics.
 
 ---
 
@@ -362,10 +358,9 @@ nature immediately obvious:
 scoped to one responsibility. If you can't name it without a compound
 word, the step is probably doing too much.
 
-Current AI step names: PlayerInterpreter, Beacon, Sequencer, Verdict,
-MechanicalEvaluation, RollQualifier, SanityChecker (capability check +
-world consistency check), TimeKeeper, Chronicler, Narrate, Sanitize,
-Classify, DM Query.
+Current AI step names: Sequencer, UnifiedEvaluation, SanityChecker
+(capability check + world consistency check), Mechanic, Momentum,
+Social Expansion, TimeKeeper, Chronicler, Narrate, Intake, DM Query.
 
 **Code-only steps get role/object names** — functional, clearly
 non-creative, conveying "no AI judgment here."

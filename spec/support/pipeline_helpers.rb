@@ -37,20 +37,6 @@ AI_STEP_RESPONSES = {
     "reasoning" => "Simple exploration action."
   }.to_json,
 
-  # Per-domain beacon response. Used only when evaluation_mode is set to "standard".
-  # "affected": true registers affected contexts; "needs_mechanics": false routes
-  # through the non-mechanical (momentum) path for the default happy-path specs.
-  "beacon" => {
-    "affected"          => true,
-    "needs_mechanics"   => false,
-    "expand_scene"      => false,
-    "destination"       => nil,
-    "rules_needed"      => [],
-    "transition"        => nil,
-    "macro_significant" => false,
-    "domain_interpretation" => "Player opens a door."
-  }.to_json,
-
   "sanity_checker" => {
     "consistent"  => true,
     "reason"      => nil,
@@ -96,19 +82,6 @@ AI_STEP_RESPONSES = {
 
   "dm_query" => {
     "answer" => "You can attempt a Perception check (DC 12) to listen at the door."
-  }.to_json,
-
-  # Mechanical path responses (for roll-pause specs)
-  "mechanical_evaluation" => {
-    "player_rolls"        => [{ "skill" => "Perception", "type" => "skill_check", "dc" => 12, "domain" => "exploration" }],
-    "npc_actions"         => [],
-    "consequences"        => [],
-    "mechanical_summary"  => "Perception check required."
-  }.to_json,
-
-  "roll_qualifier" => {
-    "player_rolls" => [{ "skill" => "Perception", "type" => "skill_check", "dc" => 12, "domain" => "exploration",
-                         "take_10_eligible" => false, "take_10_value" => nil }]
   }.to_json,
 
   "mechanic" => {

@@ -4,80 +4,63 @@
       "affected": false,
       "needs_mechanics": false,
       "macro_significant": false,
-      "rules_needed": [],
-      "domain_interpretation": "How this action relates to traversal",
       "transition": null,
       "destination": null,
       "combatants": [],
       "player_rolls": [],
       "npc_actions": [],
       "consequences": [],
-      "mechanical_summary": "",
-      "qualifier_context_hints": []
+      "mechanical_summary": ""
     },
     "combat": {
       "affected": false,
       "needs_mechanics": false,
       "macro_significant": false,
-      "rules_needed": [],
-      "domain_interpretation": "How this action relates to combat",
       "transition": null,
       "combatants": [],
       "player_rolls": [],
       "npc_actions": [],
       "consequences": [],
-      "mechanical_summary": "",
-      "qualifier_context_hints": []
+      "mechanical_summary": ""
     },
     "social": {
       "affected": false,
       "needs_mechanics": false,
       "macro_significant": false,
       "expand_scene": false,
-      "rules_needed": [],
-      "domain_interpretation": "How this action relates to social interaction",
+      "domain_interpretation": "How the player's action was interpreted in the social context",
       "transition": null,
       "player_rolls": [],
       "npc_actions": [],
       "consequences": [],
-      "mechanical_summary": "",
-      "qualifier_context_hints": []
+      "mechanical_summary": ""
     },
     "exploration": {
       "affected": false,
       "needs_mechanics": false,
       "macro_significant": false,
-      "rules_needed": [],
-      "domain_interpretation": "How this action relates to exploration",
       "player_rolls": [],
       "npc_actions": [],
       "consequences": [],
-      "mechanical_summary": "",
-      "qualifier_context_hints": []
+      "mechanical_summary": ""
     },
     "rest": {
       "affected": false,
       "needs_mechanics": false,
       "macro_significant": false,
-      "rules_needed": [],
-      "domain_interpretation": "How this action relates to rest",
       "player_rolls": [],
       "npc_actions": [],
       "consequences": [],
-      "mechanical_summary": "",
-      "qualifier_context_hints": []
+      "mechanical_summary": ""
     },
     "inventory": {
       "affected": false,
       "needs_mechanics": false,
       "macro_significant": false,
-      "rules_needed": [],
-      "domain_interpretation": "How this action relates to inventory",
       "player_rolls": [],
       "npc_actions": [],
       "consequences": [],
-      "mechanical_summary": "",
-      "qualifier_context_hints": []
+      "mechanical_summary": ""
     }
   },
   "reasoning": "Brief explanation of your overall assessment (2-3 sentences)",

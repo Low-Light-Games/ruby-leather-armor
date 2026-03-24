@@ -23,11 +23,6 @@ module Admin
         new_settings["pipeline_mode"] = params[:pipeline_mode]
       end
 
-      # Evaluation mode
-      if params[:evaluation_mode].present? && %w[unified standard].include?(params[:evaluation_mode])
-        new_settings["evaluation_mode"] = params[:evaluation_mode]
-      end
-
       # Numeric settings
       if params[:temperature].present?
         temp = params[:temperature].to_f.clamp(0.0, 2.0)

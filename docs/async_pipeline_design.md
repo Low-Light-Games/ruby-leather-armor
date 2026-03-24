@@ -4,15 +4,15 @@
 
 The DM pipeline runs synchronously inside the HTTP request/response cycle. A single pipeline run takes 5-15 seconds (dominated by sequential and parallel OpenAI API calls) and holds a Puma thread hostage for the entire duration.
 
-The pipeline spawns parallel Ruby threads for concurrent AI calls (beacon, gates, output phase). Each thread needs its own ActiveRecord database connection. With the default pool of 5 and up to 7 concurrent threads, this causes `ActiveRecord::ConnectionTimeoutError` and 500 errors.
+The pipeline spawns parallel Ruby threads for concurrent AI calls (sanity gate, output phase). Each thread needs its own ActiveRecord database connection. With the default pool of 5 and up to 3 concurrent threads, this can cause `ActiveRecord::ConnectionTimeoutError` under contention.
 
 We raised the pool to 12, which fixes the immediate crash but introduces a deeper scaling constraint:
 
 ```
 1 pipeline run = 1 Puma thread blocked for 5-15s
-               + up to 8 DB connections at peak (main + 6 beacon + 1 gate residual)
+               + up to 3 DB connections at peak (main + 2 sanity gate threads)
 
-12-thread Puma / 8 connections per pipeline = ~1.5 concurrent pipelines max
+12-thread Puma / 3 connections per pipeline = ~4 concurrent pipelines max
 ```
 
 Beyond ~2 simultaneous players, the server either runs out of DB connections or out of Puma threads (starving all other HTTP requests including page loads, API calls, and health checks).
@@ -45,18 +45,18 @@ sequenceDiagram
 
     Browser->>Puma: POST /messages (held 5-15s)
     Puma->>Pipeline: run_prompt (blocking)
-    Pipeline->>OpenAI: sanitize + classify
-    OpenAI-->>Pipeline: results
-    Pipeline->>OpenAI: player_interpreter
+    Pipeline->>OpenAI: intake
     OpenAI-->>Pipeline: result
-    Pipeline->>OpenAI: 6x beacon
-    Note over Pipeline,Postgres: 7 DB connections held simultaneously
-    OpenAI-->>Pipeline: results
-    Pipeline->>OpenAI: mech_eval + guardrail
-    OpenAI-->>Pipeline: results
-    Pipeline->>OpenAI: verdict
+    Pipeline->>OpenAI: sequencer
     OpenAI-->>Pipeline: result
-    Pipeline->>OpenAI: narrate + context_updates
+    Pipeline->>OpenAI: unified_evaluation
+    OpenAI-->>Pipeline: result
+    Pipeline->>OpenAI: sanity gate (world check + capability, parallel)
+    Note over Pipeline,Postgres: 3 DB connections held simultaneously
+    OpenAI-->>Pipeline: results
+    Pipeline->>OpenAI: mechanic / momentum
+    OpenAI-->>Pipeline: result
+    Pipeline->>OpenAI: narrate + context_updates (parallel)
     OpenAI-->>Pipeline: results
     Pipeline->>Postgres: persist messages
     Pipeline-->>Puma: result hash
@@ -99,7 +99,7 @@ sequenceDiagram
 ### Why this solves the problem
 
 - **Puma is freed immediately.** The HTTP request returns in <50ms instead of 5-15s. Puma threads serve other requests normally.
-- **DB connections are isolated.** Sidekiq workers run in a separate process with their own connection pool. The pipeline's 7-8 concurrent connections don't compete with web request connections.
+- **DB connections are isolated.** Sidekiq workers run in a separate process with their own connection pool. The pipeline's concurrent connections don't compete with web request connections.
 - **Scales independently.** Add more Sidekiq workers to handle more concurrent pipelines without affecting web server capacity.
 - **Better UX potential.** ActionCable enables future step-by-step streaming (e.g., show "Interpreting intent..." then "Rolling dice..." then final narrative).
 
@@ -138,7 +138,7 @@ existing synchronous request/response path is used. Both paths coexist.
 | Process | Pool Size | Peak Connections | Purpose |
 |---------|-----------|-----------------|---------|
 | Puma (web) | 5 | ~5 | Serve HTTP requests (fast, no pipeline) |
-| Sidekiq (worker) | 12 | ~8 per pipeline | Run DM pipelines with parallel threads |
+| Sidekiq (worker) | 12 | ~3 per pipeline | Run DM pipelines with parallel threads |
 
 ---
 
