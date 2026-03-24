@@ -376,7 +376,7 @@ Early exit: world check fails → `:rejected`.
 
 **TimeKeeper** (see dedicated section below) runs next. If an encounter is triggered → Warmaster Path A (see Combat section). Otherwise:
 
-**Momentum** (AI) — Determines what factually happened when no dice were needed. Produces `outcome` (plain text), optionally `mutations`, and refines `affected_contexts` by merging the beacon's assessment with its own. Also writes `verdict_outcome` and merged `affected_contexts` to the `AdventureLoop`.
+**Momentum** (AI) — Determines what factually happened when no dice were needed. Produces `outcome` (plain text), optionally `mutations`, and refines `affected_contexts` by merging the beacon's assessment with its own. Also writes `verdict_outcome`, `pipeline_outcome`, and merged `affected_contexts` to the `AdventureLoop`.
 
 Returns `{ status: :resolved }`.
 
@@ -465,7 +465,7 @@ In both paths, `Warmaster`:
 2. Rolls each creature's initiative (d20 + DEX modifier, +4 for Improved Initiative feat).
 3. Returns `{ status: :awaiting_initiative, creature_data: [...] }`.
 
-The pipeline pauses, saves creature data + intent + narrate_seed + remaining queue into the `initiative_request` message metadata. When the player submits their initiative roll, `run_initiative` is called, `Warmaster.finalize_combat!` sets `adventure.combat_context` with sorted turn order, and the queue resumes.
+The pipeline pauses, saves creature data + intent + mutations + remaining queue into the `initiative_request` message metadata. When the player submits their initiative roll, `run_initiative` is called, `Warmaster.finalize_combat!` sets `adventure.combat_context` with sorted turn order, and the queue resumes.
 
 **If no creatures could be spawned** (all lookups failed), Path A returns `{ status: :encounter }` which breaks the action queue but doesn't pause for initiative. The encounter is narrated but no combat_context is created.
 
@@ -478,8 +478,8 @@ After `CoreResolver.resolve` returns, the action loop dispatches on `result[:sta
 | Status | Behavior |
 |--------|----------|
 | `:rejected` | **Returns immediately** — pipeline ends. If `dm_message` is present, it's shown as DM prose; otherwise a system message. |
-| `:awaiting_rolls` | **Returns immediately** — pipeline pauses. Serializes `intent`, `merged` (roll requests + NPC actions + consequences + summaries), `remaining_actions`, and `prior_narrate_seeds` into the `roll_request` message metadata. |
-| `:awaiting_initiative` | **Returns immediately** — pipeline pauses. Serializes `creature_data`, `intent`, `narrate_seed`, `mutations`, `remaining_actions`, and `prior_narrate_seeds` into the `initiative_request` metadata. |
+| `:awaiting_rolls` | **Returns immediately** — pipeline pauses. Serializes `intent`, `merged` (roll requests + NPC actions + consequences + summaries), and `remaining_actions` into the `roll_request` message metadata. |
+| `:awaiting_initiative` | **Returns immediately** — pipeline pauses. Serializes `creature_data`, `intent`, `mutations`, and `remaining_actions` into the `initiative_request` metadata. |
 | `:encounter` | **Breaks the action queue.** Remaining actions in the queue are discarded. Proceeds to output phase with encounter status. |
 | `:social_scene` | **Breaks the action queue.** Remaining actions discarded. Proceeds to output phase. |
 | `:resolved` | **Accumulates** result. Runs inter-action context update if more actions follow. Continues to next action. |
@@ -490,7 +490,7 @@ After `CoreResolver.resolve` returns, the action loop dispatches on `result[:sta
 
 After all actions complete (or the queue breaks), the output phase runs.
 
-Multiple resolved/encounter/social_scene results are **merged**: intentions concatenated with "; ", affected contexts unioned, `macro_significant` and `plot_relevant` or-ed, narrate_seeds joined with "\n\nThen: ".
+Multiple resolved/encounter/social_scene results are **merged**: intentions concatenated with "; ", affected contexts unioned, `macro_significant` and `plot_relevant` or-ed. The combined narration seed is assembled by querying all `AdventureLoop` rows for the current `pipeline_run_id` in `sequence_index` order and joining their `pipeline_outcome` fields with `"\n\nThen: "`.
 
 #### Chronicler (AI, conditional)
 
@@ -517,7 +517,7 @@ Controlled by `DmConfig["narration_mode"]`:
 
 #### Narrate (AI)
 
-The prose generator. Receives: story title/hook, story summary, all micro contexts, time context (current hour, adventure day, light conditions), `what_happened` (from `@loop.verdict_outcome`), the narrate seed, dm_brief, forbidden_elements, journey data, encounter scene/creatures, pacing instructions, and directed play instructions.
+The prose generator. Receives: story title/hook, story summary, all micro contexts, time context (current hour, adventure day, light conditions), `what_happened` (from `@loop.verdict_outcome`), the combined narration seed (assembled from `pipeline_outcome` across all loop rows for this pipeline run), dm_brief, forbidden_elements, journey data, encounter scene/creatures, pacing instructions, and directed play instructions.
 
 Has a special fallback: if the model returns raw text instead of JSON, the text is treated as the narrative directly (`fallback_as: :dm_response`).
 
@@ -543,10 +543,10 @@ Has a special fallback: if the model returns raw text instead of JSON, the text 
 
 1. `restore_paused_loop!` — finds the paused loop.
 2. `Warmaster.finalize_combat!` — writes `adventure.combat_context` with player + creature initiatives, sorted turn order.
-3. Reconstructs intent, narrate_seed, mutations, remaining actions from metadata.
+3. Reconstructs intent, mutations, and remaining actions from metadata.
 4. If more actions in queue → `run_remaining_queue`. Otherwise → `run_accumulated_output_phase`.
 
-In both resumptions, prior narrate seeds from already-completed actions are carried forward and concatenated with new seeds for the output phase.
+In both resumptions, the output phase reads `pipeline_outcome` from all `AdventureLoop` rows for the current `pipeline_run_id` — no in-memory seed accumulation is needed across the pause boundary.
 
 ---
 

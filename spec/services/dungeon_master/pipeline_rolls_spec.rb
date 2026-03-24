@@ -88,14 +88,27 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
         "mechanical_summaries"  => ["Disable Device DC 15 required."],
         "pending_npc_actions"   => [],
         "pending_consequences"  => [],
-        "remaining_actions"     => [],
-        "prior_narrate_seeds"   => []
+        "remaining_actions"     => []
       }
     end
 
     let(:roll_results) { "Disable Device: rolled 18 (total 22 vs DC 15) — success" }
 
-    subject(:result) { build_pipeline(adventure).run_rolls(roll_results, metadata) }
+    # Build the pipeline once so we can read its pipeline_run_id and create the
+    # matching paused AdventureLoop row that restore_paused_loop! expects.
+    let(:pipeline) { build_pipeline(adventure) }
+    let!(:paused_loop) do
+      AdventureLoop.create!(
+        adventure:        adventure,
+        pipeline_run_id:  pipeline.instance_variable_get(:@log).pipeline_run_id,
+        sequence_index:   0,
+        raw_action:       "try to pick the lock",
+        player_intent:    "try to pick the lock",
+        status:           "paused"
+      )
+    end
+
+    subject(:result) { pipeline.run_rolls(roll_results, metadata) }
 
     it "returns action: :narrated" do
       expect(result[:action]).to eq(:narrated)
