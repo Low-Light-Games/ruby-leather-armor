@@ -203,6 +203,38 @@ The rest of this document covers the **budget pipeline** exclusively.
 
 ---
 
+### Live progress feedback
+
+While a job runs, the player sees incremental status messages beneath the
+animated thinking dots instead of a static spinner. Each AI-heavy step
+calls `broadcast_progress("message")` at its entry point:
+
+```ruby
+def run_unified_evaluation(intention)
+  broadcast_progress("Reading the situation...")
+  # ...
+end
+```
+
+`broadcast_progress` is a helper in `Steps::Helpers` that invokes an
+`@on_progress` callback when present. `DungeonMasterService` wires that
+callback to `AdventureChannel.broadcast_to`, which pushes a
+`pipeline_progress` WebSocket event to the player's browser. The
+`useAdventureMessages` hook patches the content of the thinking sentinel
+in place so the status line animates in without replacing the dots.
+
+| Step | Message shown to player |
+|------|------------------------|
+| `UnifiedEvaluation` | "Reading the situation..." |
+| `Chronicler` | "Consulting the chronicle..." |
+| `Narrate` | "Writing the story..." |
+| `ContextUpdate` | "Remembering the world..." |
+
+The callback is a no-op when `@on_progress` is not set (tests, console
+runs), so adding a new progress call to a step requires no test changes.
+
+---
+
 ### Pre-flight checks (before run_prompt)
 
 Three checks run before the pipeline proper, all in `DungeonMasterService`:

@@ -263,6 +263,13 @@ added, it solves a real problem.
 (see principle 4). The new approach might not be better — you need the
 ability to compare.
 
+**Exception — retiring a proven path:** once a new approach has been
+validated in production and the old path adds complexity without
+comparison value, it can be retired. The synchronous HTTP pipeline is
+an example: after async Sidekiq proved strictly superior (no timeout
+risk, better UX, identical player experience), the sync path was
+deleted rather than kept behind a dead toggle.
+
 ---
 
 ## 10. Coexistence over migration
@@ -273,9 +280,17 @@ paths alive behind a toggle and let observation determine which wins.
 - Budget and Edge pipelines coexist (`pipeline_mode` toggle)
 - Code and AI guardrails coexist (`guardrail_mode` toggle)
 - Parallel and subjugated narration coexist (`narration_mode` toggle)
+
 This principle is a direct consequence of principles 4 and 9: if you
 toggle everything and split incrementally, coexistence is the natural
 result. The old path is your safety net and your control group.
+
+**Note:** the synchronous HTTP pipeline is an intentional exception.
+After async Sidekiq was validated in production, the sync path was
+retired entirely — it offered no meaningful comparison value and keeping
+it would have required maintaining two diverging code paths. Coexistence
+is the default strategy; retirement is acceptable when the old path is
+strictly dominated and confidence is high.
 
 ---
 
