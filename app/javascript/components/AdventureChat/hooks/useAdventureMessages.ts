@@ -35,6 +35,7 @@ export function useAdventureMessages({
   const lastSentRef = useRef<
     | { type: 'message'; text: string }
     | { type: 'rolls'; rolls: Array<{ roll_value: number; roll_description: string }> }
+    | { type: 'initiative'; value: number }
     | null
   >(null)
 
@@ -210,7 +211,7 @@ export function useAdventureMessages({
 
   const sendInitiative = async (value: number) => {
     setSending(true)
-    lastSentRef.current = { type: 'message', text: `Rolled ${value} for initiative` }
+    lastSentRef.current = { type: 'initiative', value }
 
     addOptimisticMessages(`Rolled ${value} for initiative`, 'initiative_result', { initiative: value })
 
@@ -231,6 +232,7 @@ export function useAdventureMessages({
       }
 
       const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()
+      setPendingInitiative(false)
       if (data.async) handleAsyncResponse(data)
       else handleSyncResponse(data)
     } catch (err: any) {
@@ -242,7 +244,8 @@ export function useAdventureMessages({
     const last = lastSentRef.current
     if (!last || sending) return
     if (last.type === 'message') sendMessage(last.text)
-    else sendRolls(last.rolls)
+    else if (last.type === 'rolls') sendRolls(last.rolls)
+    else sendInitiative(last.value)
   }
 
   return {

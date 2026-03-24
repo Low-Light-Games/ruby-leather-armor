@@ -28,7 +28,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
   const {
     messages, sending, loadingHistory,
     pendingRolls, setPendingRolls,
-    pendingInitiative, setPendingInitiative,
+    pendingInitiative,
     sendMessage, sendRolls, sendInitiative, handleRetry,
   } = useAdventureMessages({ adventureId, derivedStats, onAdventureComplete, onDmResponse })
 
@@ -127,7 +127,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
       {pendingInitiative && !sending && (
         <PendingInitiativePanel
           derivedStats={derivedStats}
-          onSubmit={(value) => { setPendingInitiative(false); sendInitiative(value) }}
+          onSubmit={sendInitiative}
         />
       )}
 
