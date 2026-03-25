@@ -38,8 +38,8 @@ gem "bcrypt", "~> 3.1.7"
 # OpenAI API client
 gem "ruby-openai"
 
-# AWS SES for email delivery
-gem "aws-sdk-ses"
+# Resend for transactional email delivery
+gem "resend"
 
 # Load environment variables from .env
 gem "dotenv-rails"
