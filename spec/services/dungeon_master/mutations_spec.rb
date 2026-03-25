@@ -108,4 +108,79 @@ RSpec.describe DungeonMaster::Mutations, type: :service do
       expect(creature.reload.conditions).to eq(["shaken"])
     end
   end
+
+  describe "#apply_mutations — inventory" do
+    it "adds a new item to player inventory" do
+      pipeline.send(:apply_mutations, {
+        inventory: { "candle" => 1 }
+      })
+
+      item_record = sheet.adventure_sheet_items.first
+      expect(item_record).to be_present
+      expect(item_record.quantity).to eq(1)
+      expect(item_record.item_definition.name).to eq("Candle")
+      expect(item_record.equipped).to be false
+    end
+
+    it "increases quantity of existing item" do
+      # Create an existing item
+      item_def = ItemDefinition.create!(
+        id: "test_candle", name: "Candle", item_type: "gear", slot: "none",
+        weight: 1, cost_gp: 0, armor_bonus: 0, shield_bonus: 0,
+        armor_check_penalty: 0, arcane_spell_failure: 0,
+        properties: {}, summary: "Test candle"
+      )
+      sheet.adventure_sheet_items.create!(
+        item_definition_id: item_def.id, quantity: 2, equipped: false
+      )
+
+      pipeline.send(:apply_mutations, {
+        inventory: { "candle" => 3 }
+      })
+
+      item_record = sheet.adventure_sheet_items.first
+      expect(item_record.quantity).to eq(5) # 2 + 3
+    end
+
+    it "creates item definition for unknown items" do
+      expect(ItemDefinition.find_by(id: "mysterious_orb")).to be_nil
+
+      pipeline.send(:apply_mutations, {
+        inventory: { "mysterious orb" => 1 }
+      })
+
+      item_def = ItemDefinition.find_by(id: "mysterious_orb")
+      expect(item_def).to be_present
+      expect(item_def.name).to eq("Mysterious Orb")
+      expect(item_def.item_type).to eq("gear")
+      expect(item_def.slot).to eq("none")
+    end
+
+    it "handles multiple items in one mutation" do
+      pipeline.send(:apply_mutations, {
+        inventory: { "candle" => 2, "rope" => 1 }
+      })
+
+      expect(sheet.adventure_sheet_items.count).to eq(2)
+      
+      candle_item = sheet.adventure_sheet_items.joins(:item_definition)
+                         .find_by(item_definitions: { name: "Candle" })
+      rope_item = sheet.adventure_sheet_items.joins(:item_definition)
+                       .find_by(item_definitions: { name: "Rope" })
+      
+      expect(candle_item.quantity).to eq(2)
+      expect(rope_item.quantity).to eq(1)
+    end
+
+    it "ignores zero or negative quantities" do
+      pipeline.send(:apply_mutations, {
+        inventory: { "candle" => 0, "rope" => -1, "torch" => 1 }
+      })
+
+      expect(sheet.adventure_sheet_items.count).to eq(1)
+      torch_item = sheet.adventure_sheet_items.joins(:item_definition)
+                        .find_by(item_definitions: { name: "Torch" })
+      expect(torch_item.quantity).to eq(1)
+    end
+  end
 end

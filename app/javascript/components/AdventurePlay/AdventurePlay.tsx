@@ -119,6 +119,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
             adventureSheet={advSheet}
             onAdventureComplete={reload}
             onDmResponse={reload}
+            onSheetUpdate={reload}
           />
         </div>
 

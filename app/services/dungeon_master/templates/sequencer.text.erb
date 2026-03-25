@@ -18,6 +18,9 @@ NOT COMPOUND (single actions, even if complex):
 - "I ask the innkeeper about the quest and the disappearances" → 1 action (same NPC, same conversation, compound topic)
 - "I fight, I attack whichever is closest to me" → 1 action (restatement/emphasis of the same intent)
 - "I ask about the weather and if there are any rumors" → 1 action (gathering information in one conversation)
+- "I grab the candle and store it away" → 1 action (picking up and pocketing an item is a single inventory action)
+- "I pick up the torch and put it in my pack" → 1 action (same: take item, stow it)
+- "I take the gold and pocket it" → 1 action (looting and stowing are one motion)
 
 === RULES ===
 - Only split on TEMPORAL sequence (first...then, after, once done, in the morning)
@@ -29,6 +32,8 @@ NOT COMPOUND (single actions, even if complex):
   moves to a DIFFERENT interaction or activity between topics.
 - Do NOT split restatements or emphasis. "I fight, I attack" is one intent phrased
   twice, not two actions.
+- Do NOT split pickup-and-stow actions. Taking/grabbing/picking up an item and then
+  pocketing/storing/stowing it is always ONE inventory action, never two.
 - Preserve the player's original wording for each action segment
 - Maximum 3 actions — if more, group later ones into the third
 

@@ -15,9 +15,10 @@ interface AdventureChatProps {
   adventureSheet?: AdventureSheet | null
   onAdventureComplete?: () => void
   onDmResponse?: () => void
+  onSheetUpdate?: () => void
 }
 
-export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdventureComplete, onDmResponse }: AdventureChatProps) => {
+export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdventureComplete, onDmResponse, onSheetUpdate }: AdventureChatProps) => {
   const { user } = useAuth()
   const [input, setInput] = useState('')
   const [askDm, setAskDm] = useState(false)
@@ -30,7 +31,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
     pendingRolls, setPendingRolls,
     pendingInitiative,
     sendMessage, sendRolls, sendInitiative, handleRetry,
-  } = useAdventureMessages({ adventureId, derivedStats, onAdventureComplete, onDmResponse })
+  } = useAdventureMessages({ adventureId, derivedStats, onAdventureComplete, onDmResponse, onSheetUpdate })
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
