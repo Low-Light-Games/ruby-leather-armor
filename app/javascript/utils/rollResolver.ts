@@ -53,7 +53,7 @@ export function resolveRollRequest(req: RollRequest, ds: DerivedStats): Resolved
   }
 
   if (rollType === 'ability_check' || rollType === 'ability') {
-    return resolveAbilityCheck(skillLower, ds)
+     return resolveAbilityCheck(skillLower, ds) ?? resolveSave(skillLower, ds)
   }
 
   if (rollType === 'initiative') {
