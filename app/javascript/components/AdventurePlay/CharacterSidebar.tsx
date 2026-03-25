@@ -68,7 +68,7 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
     const result: { item: ItemDefinition; id: string }[] = []
     for (const owned of items) {
       if (!owned.equipped) continue
-      const def = getItemById(owned.itemId)
+      const def = getItemById(owned.itemId) ?? owned.definition
       if (!def || !def.damageDice) continue
       if (def.itemType === 'weapon' || def.itemType === 'shield') {
         result.push({ item: def, id: owned.itemId })
@@ -81,7 +81,7 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
     const items = sheet.details?.items ?? []
     const result: { item: ItemDefinition; id: string; quantity: number; equipped: boolean }[] = []
     for (const owned of items) {
-      const def = getItemById(owned.itemId)
+      const def = getItemById(owned.itemId) ?? owned.definition
       if (!def) continue
       result.push({ item: def, id: owned.itemId, quantity: owned.quantity, equipped: owned.equipped })
     }

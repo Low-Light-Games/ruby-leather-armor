@@ -102,6 +102,9 @@ export interface OwnedItem {
   quantity: number;
   equipped: boolean;
   slotOverride: ResolvedSlot | null;
+  /** Full definition from the server — present for dynamically-created items
+   *  that do not exist in the static rules cache. */
+  definition?: ItemDefinition;
 }
 
 // ── Currency ─────────────────────────────────────────────────────
