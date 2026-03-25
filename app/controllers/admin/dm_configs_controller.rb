@@ -18,11 +18,6 @@ module Admin
       new_settings["chronicler_tone_direction"] = params[:chronicler_tone_direction] == "1"
       new_settings["action_queue"] = params[:action_queue] == "1"
 
-      # Pipeline mode (only "budget" is supported)
-      if params[:pipeline_mode].present? && params[:pipeline_mode] == "budget"
-        new_settings["pipeline_mode"] = params[:pipeline_mode]
-      end
-
       # Numeric settings
       if params[:temperature].present?
         temp = params[:temperature].to_f.clamp(0.0, 2.0)

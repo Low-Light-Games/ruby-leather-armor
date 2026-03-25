@@ -132,7 +132,6 @@ the feedback loop must be fast: change a setting, observe the result,
 adjust.
 
 **Current toggles:**
-- `pipeline_mode` — always `"budget"` (multi-step)
 - `guardrail_mode` — code-based vs. AI-based validation
 - `narration_mode` — parallel vs. subjugated output
 - `sanitization_threshold` — danger score cutoff (0-100)

@@ -36,7 +36,6 @@ class DmConfig < ApplicationRecord
     "model" => "gpt-4o-mini",
     "step_models" => {},
     "embellisher_mode" => "embellish",
-    "pipeline_mode" => "budget",
     "narration_mode" => "parallel",
     "action_queue" => true,
     "show_roll_dc" => true,
