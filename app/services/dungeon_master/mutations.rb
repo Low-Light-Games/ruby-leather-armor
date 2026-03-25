@@ -13,6 +13,7 @@ module DungeonMaster
       mutations = mutations.deep_symbolize_keys
       apply_player_mutations(mutations[:player])
       apply_npc_mutations(mutations[:npcs])
+      apply_inventory_mutations(mutations[:inventory])
     end
 
     def resolve_npc_actions(npc_actions)
@@ -104,6 +105,104 @@ module DungeonMaster
         conditions_changed = apply_conditions(creature, npc_mut[:conditions_add], npc_mut[:conditions_remove])
         creature.recompute_derived_stats! if conditions_changed
       end
+    end
+
+    def apply_inventory_mutations(inventory_muts)
+      return unless inventory_muts.present? && @sheet
+      
+      # Get the adventure sheet for the current adventure
+      adventure_sheet = @adventure.adventure_sheets.first
+      return unless adventure_sheet
+      
+      inventory_muts.each do |item_name, quantity|
+        next unless item_name.present? && quantity.to_i > 0
+        
+        add_inventory_item(adventure_sheet, item_name.to_s, quantity.to_i)
+      end
+    rescue => e
+      pipeline_error!("inventory_mutations", e)
+    end
+
+    def add_inventory_item(adventure_sheet, item_name, quantity)
+      # Try to find existing item definition
+      item_def = find_or_create_item_definition(item_name)
+      return unless item_def
+      
+      # Check if player already has this item
+      existing_item = adventure_sheet.adventure_sheet_items.find_by(item_definition_id: item_def.id)
+      
+      if existing_item
+        # Update quantity of existing item
+        new_quantity = existing_item.quantity + quantity
+        existing_item.update!(quantity: new_quantity)
+        @log.log!(:info, "Updated inventory: #{item_name} quantity #{existing_item.quantity - quantity} -> #{new_quantity}")
+      else
+        # Create new inventory item
+        adventure_sheet.adventure_sheet_items.create!(
+          item_definition_id: item_def.id,
+          quantity: quantity,
+          equipped: false
+        )
+        @log.log!(:info, "Added to inventory: #{item_name} (quantity: #{quantity})")
+      end
+    end
+
+    def find_or_create_item_definition(item_name)
+      # Normalize the item name for lookup
+      normalized_name = item_name.downcase.strip
+      
+      # Try exact match first
+      item_def = ItemDefinition.find_by("LOWER(name) = ?", normalized_name)
+      return item_def if item_def
+      
+      # Try partial match
+      item_def = ItemDefinition.where("LOWER(name) LIKE ?", "%#{normalized_name}%").first
+      return item_def if item_def
+      
+      # Create a generic item definition for unknown items
+      create_generic_item_definition(item_name)
+    end
+
+    def create_generic_item_definition(item_name)
+      # Generate a unique ID based on the item name
+      item_id = item_name.downcase.gsub(/[^a-z0-9]/, '_').gsub(/_+/, '_').gsub(/^_+|_+$/, '')
+      
+      # Ensure uniqueness
+      counter = 1
+      base_id = item_id
+      while ItemDefinition.exists?(id: item_id)
+        item_id = "#{base_id}_#{counter}"
+        counter += 1
+      end
+      
+      ItemDefinition.create!(
+        id: item_id,
+        name: item_name.titleize,
+        item_type: "gear",
+        category: nil,
+        slot: "none",
+        weight: 1,
+        cost_gp: 0,
+        armor_bonus: 0,
+        shield_bonus: 0,
+        max_dex_bonus: nil,
+        armor_check_penalty: 0,
+        arcane_spell_failure: 0,
+        speed_30: nil,
+        speed_20: nil,
+        weapon_category: nil,
+        weapon_type: nil,
+        damage_dice: nil,
+        critical_range: nil,
+        damage_type: nil,
+        range_increment: nil,
+        properties: nil,
+        effects: nil,
+        summary: "A generic item acquired during adventure."
+      )
+    rescue ActiveRecord::RecordInvalid => e
+      @log.log!(:error, "Failed to create item definition for '#{item_name}': #{e.message}")
+      nil
     end
 
     def apply_conditions(sheet, add, remove)
