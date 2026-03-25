@@ -38,5 +38,15 @@ Respond ONLY with valid JSON (no markdown, no code fences):
   "outcome": "Factual summary of what happened",
   "affected_contexts": ["traversal", "rest"],
   "reasoning": "Brief explanation",
-  "mutations": {}
+  "mutations": {
+    "player": { "hp_change": 0, "conditions_add": [], "conditions_remove": [] },
+    "npcs": [],
+    "inventory": { "item_name": 1 }
+  }
 }
+
+Notes on mutations:
+- "inventory" is a flat map of item name to integer quantity added (e.g. {"candle": 1, "ration": 2}).
+  Use snake_case item names. Omit the key entirely if no items were acquired.
+- Do NOT use "recently_acquired", "recently_used", or any nested structure for inventory — those
+  belong to the inventory context, not mutations. Only list items the player newly received.

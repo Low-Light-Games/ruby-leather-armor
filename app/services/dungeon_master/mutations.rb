@@ -115,8 +115,8 @@ module DungeonMaster
       return unless adventure_sheet
       
       inventory_muts.each do |item_name, quantity|
-        next unless item_name.present? && quantity.to_i > 0
-        
+        next unless item_name.present? && quantity.is_a?(Numeric) && quantity.to_i > 0
+
         add_inventory_item(adventure_sheet, item_name.to_s, quantity.to_i)
       end
     rescue => e
