@@ -163,15 +163,9 @@ class DungeonMasterService
   # ----------------------------------------------------------------
 
   def pipeline
-    @pipeline ||= if @config.get("pipeline_mode") == "edge"
-                    DungeonMaster::EdgePipeline.new(
-                      adventure: @adventure, config: @config, ai: @ai, log: @log, sheet: @sheet,
-                      on_progress: method(:broadcast_pipeline_progress))
-                  else
-                    DungeonMaster::Pipeline.new(
-                      adventure: @adventure, config: @config, ai: @ai, log: @log, sheet: @sheet,
-                      on_progress: method(:broadcast_pipeline_progress))
-                  end
+    @pipeline ||= DungeonMaster::Pipeline.new(
+      adventure: @adventure, config: @config, ai: @ai, log: @log, sheet: @sheet,
+      on_progress: method(:broadcast_pipeline_progress))
   end
 
   def broadcast_pipeline_progress(message)

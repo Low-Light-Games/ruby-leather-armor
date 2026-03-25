@@ -361,8 +361,7 @@
       'ruling': 'type-evaluate', 'verdict': 'type-evaluate', 'mechanic': 'type-evaluate', 'momentum': 'type-evaluate', 'time_keeper': 'type-ctx',
       'narrate': 'type-narrate', 'dm_query': 'type-dm-query',
       'micro_context_update': 'type-ctx', 'macro_narrative_update': 'type-ctx',
-      'context_wish': 'type-wish',
-      'edge_pipeline': 'type-narrate'
+      'context_wish': 'type-wish'
     }[eventType] || 'type-default';
     title.innerHTML = 'Play Log #' + logId + ' <span class="type-badge ' + typeBadgeClass + '">' + eventType.replace(/_/g, ' ') + '</span>';
     var html = '';

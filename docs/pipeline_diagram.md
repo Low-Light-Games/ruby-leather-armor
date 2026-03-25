@@ -192,14 +192,7 @@ flowchart LR
 
 The DM pipeline is a multi-step orchestration system that translates a player's free-form text input into a game outcome: narrative prose, dice roll requests, initiative prompts, or outright rejections. It runs exclusively as an **asynchronous Sidekiq job**: the HTTP request returns 202 immediately, the pipeline executes in the background, and results are delivered to the player via an ActionCable WebSocket. There is no synchronous path.
 
-Two pipeline variants exist, selected by `DmConfig.pipeline_mode`:
-
-| Variant | When | AI calls | Notes |
-|---------|------|----------|-------|
-| **Budget pipeline** (`Pipeline`) | `pipeline_mode != "edge"` | 8–14+ | Default. Multi-step, granular control, can pause for player rolls. |
-| **Edge pipeline** (`EdgePipeline`) | `pipeline_mode = "edge"` | 1 | Monolithic. Lower latency, no roll requests — AI simulates dice internally. |
-
-The rest of this document covers the **budget pipeline** exclusively.
+The rest of this document covers the budget pipeline.
 
 ---
 
@@ -562,7 +555,6 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | Narrate | ✅ AI | Prose generation |
 | Micro context update | ✅ AI | Updates context JSONBs |
 | Macro narrative update | ✅ AI | Updates story summary |
-| Edge pipeline | ✅ AI | Single monolithic call |
 
 ---
 
@@ -608,8 +600,3 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | **Micro context update** | AI | Update affected + active context JSONBs. Forces social re-evaluation on traversal changes. Updates scene_summary + scene_history. |
 | **Macro narrative update** | AI | Update story_summary (rolling adventure log). Conditional on `macro_significant`. |
 
----
-
-## Edge pipeline (alternative)
-
-When `pipeline_mode: "edge"`, a single **Edge Pipeline** call replaces the full step sequence: one AI call handles sanitization, adjudication (dice simulated internally), narration, and state in one pass. Returns `{ action: :narrated }`, `{ action: :rejected }`, or `{ action: :dm_query }`. Does **not** support roll resumption — calling `run_rolls` raises `AiError`. See `app/services/dungeon_master/edge_pipeline.rb` for implementation detail.

@@ -2,7 +2,7 @@ module Admin
   class PlayLogsController < BaseController
 
     PER_PAGE = 50
-    TERMINAL_STEPS = %w[narrate dm_query edge_pipeline].freeze
+    TERMINAL_STEPS = %w[narrate dm_query].freeze
     ERROR_STATUSES = %w[api_error parse_error token_budget_exceeded logging_error].freeze
     RETRY_WINDOW = 5.minutes
 

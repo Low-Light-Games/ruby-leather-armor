@@ -89,10 +89,6 @@ AI_STEP_RESPONSES = {
     "mutations" => {}
   }.to_json,
 
-  "edge_pipeline" => {
-    "narrative"        => "The door creaks open. Inside, darkness waits.",
-    "adventure_complete" => false
-  }.to_json
 }.freeze
 
 # ── Shared context ───────────────────────────────────────────────────────────
@@ -123,21 +119,6 @@ module PipelineHelpers
     sheet = DungeonMaster::CharacterBlock.load_sheet(adventure)
 
     DungeonMaster::Pipeline.new(
-      adventure: adventure,
-      config:    config,
-      ai:        ai,
-      log:       log,
-      sheet:     sheet
-    )
-  end
-
-  def build_edge_pipeline(adventure, config: nil)
-    config ||= DmConfig.instance
-    ai  = DungeonMaster::AiClient.new(config)
-    log = build_nulled_logger(adventure)
-    sheet = DungeonMaster::CharacterBlock.load_sheet(adventure)
-
-    DungeonMaster::EdgePipeline.new(
       adventure: adventure,
       config:    config,
       ai:        ai,
