@@ -29,15 +29,13 @@ jobs:
             git reset --hard origin/main
 
             echo "--- Writing .env ---"
-            printf 'RAILS_MASTER_KEY=%s\nOPENAI_API_KEY=%s\nPOSTGRES_PASSWORD=%s\nDATABASE_URL=%s\nREDIS_URL=%s\nSES_ACCESS_KEY_ID=%s\nSES_SECRET_ACCESS_KEY=%s\nSES_FROM_EMAIL=%s\nSENTRY_DSN=%s\nGOOGLE_CLIENT_ID=%s\nGOOGLE_CLIENT_SECRET=%s\nGOOGLE_OAUTH_REDIRECT_URI=%s\n' \
+            printf 'RAILS_MASTER_KEY=%s\nOPENAI_API_KEY=%s\nPOSTGRES_PASSWORD=%s\nDATABASE_URL=%s\nREDIS_URL=%s\nRESEND_API_KEY=%s\nSENTRY_DSN=%s\nGOOGLE_CLIENT_ID=%s\nGOOGLE_CLIENT_SECRET=%s\nGOOGLE_OAUTH_REDIRECT_URI=%s\n' \
               '${{ secrets.RAILS_MASTER_KEY }}' \
               '${{ secrets.OPENAI_API_KEY }}' \
               '${{ secrets.POSTGRES_PASSWORD }}' \
               'postgres://exercises:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/exercises_production' \
               'redis://redis:6379/0' \
-              '${{ secrets.SES_ACCESS_KEY_ID }}' \
-              '${{ secrets.SES_SECRET_ACCESS_KEY }}' \
-              '${{ secrets.SES_FROM_EMAIL }}' \
+              '${{ secrets.RESEND_API_KEY }}' \
               '${{ secrets.SENTRY_DSN }}' \
               '${{ secrets.GOOGLE_CLIENT_ID }}' \
               '${{ secrets.GOOGLE_CLIENT_SECRET }}' \
