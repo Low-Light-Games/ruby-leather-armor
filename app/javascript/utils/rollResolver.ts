@@ -10,9 +10,15 @@ export interface ResolvedRoll {
 const SAVE_MAP: Record<string, { key: keyof Pick<DerivedStats, 'fort' | 'ref' | 'will'>; label: string }> = {
   fortitude: { key: 'fort', label: 'Fortitude Save' },
   fort: { key: 'fort', label: 'Fortitude Save' },
+  constitution: { key: 'fort', label: 'Fortitude Save' }, // AI sometimes uses "Constitution" for Fortitude saves
+  con: { key: 'fort', label: 'Fortitude Save' },
   reflex: { key: 'ref', label: 'Reflex Save' },
   ref: { key: 'ref', label: 'Reflex Save' },
+  dexterity: { key: 'ref', label: 'Reflex Save' }, // AI sometimes uses "Dexterity" for Reflex saves
+  dex: { key: 'ref', label: 'Reflex Save' },
   will: { key: 'will', label: 'Will Save' },
+  wisdom: { key: 'will', label: 'Will Save' }, // AI sometimes uses "Wisdom" for Will saves
+  wis: { key: 'will', label: 'Will Save' },
 }
 
 const ABILITY_MAP: Record<string, string> = {
