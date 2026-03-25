@@ -206,6 +206,8 @@ export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceRes
         ctx.setSheets([...ctx.sheets, savedSheet]);
       }
 
+      setCurrentSheetId(savedSheet.id);
+      setPristine();
       ctx.setSheetToEdit(savedSheet);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Error saving sheet';
