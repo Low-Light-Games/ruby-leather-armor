@@ -61,23 +61,7 @@
 
       <div class="config-field">
         <label>Pipeline Mode</label>
-        <div class="radio-group">
-          <label class="radio-label">
-            <%= radio_button_tag :pipeline_mode, "budget", @config.get("pipeline_mode") == "budget" || @config.get("pipeline_mode").blank? %>
-            <span>
-              <strong>Budget</strong> (default)
-              — Full multi-step pipeline with separate narration, context update, and chronicler steps.
-            </span>
-          </label>
-          <label class="radio-label">
-            <%= radio_button_tag :pipeline_mode, "edge", @config.get("pipeline_mode") == "edge" %>
-            <span>
-              <strong>Edge</strong>
-              — Single AI call handles everything including narration. Fastest, lowest cost, least controllable.
-              Requires a capable creative model.
-            </span>
-          </label>
-        </div>
+        <p class="config-note">Budget pipeline — full multi-step pipeline with separate narration, context update, and chronicler steps.</p>
       </div>
 
       <div class="config-field toggle-field">

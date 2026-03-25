@@ -18,8 +18,8 @@ module Admin
       new_settings["chronicler_tone_direction"] = params[:chronicler_tone_direction] == "1"
       new_settings["action_queue"] = params[:action_queue] == "1"
 
-      # Pipeline mode
-      if params[:pipeline_mode].present? && %w[budget edge].include?(params[:pipeline_mode])
+      # Pipeline mode (only "budget" is supported)
+      if params[:pipeline_mode].present? && params[:pipeline_mode] == "budget"
         new_settings["pipeline_mode"] = params[:pipeline_mode]
       end
 

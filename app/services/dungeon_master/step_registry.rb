@@ -79,11 +79,6 @@ module DungeonMaster
         model_hint: "Mid-tier model. Judges narrative significance — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
         pipeline: true,
       ),
-      "edge_pipeline" => Entry.new(
-        token_budget: 2000,
-        model_hint: "Capable, creative model. Handles everything in one call — e.g. gpt-4.1, gpt-4o, gpt-5, o3-mini.",
-        pipeline: true,
-      ),
       "creature_generation" => Entry.new(
         token_budget: 600,
         model_hint: "Mid-tier model recommended. Must produce valid PF1e stat blocks — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",

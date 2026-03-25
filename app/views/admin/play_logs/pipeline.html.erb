@@ -36,7 +36,7 @@
         <% else %>
           <% step_types = @logs.map(&:event_type) %>
           <% has_error = @logs.any? { |l| l.status.in?(%w[api_error parse_error token_budget_exceeded logging_error]) } %>
-          <% has_terminal = step_types.any? { |t| t.in?(%w[narrate dm_query edge_pipeline]) } %>
+          <% has_terminal = step_types.any? { |t| t.in?(%w[narrate dm_query]) } %>
           <% overall = if has_error && !has_terminal then "errored"
                        elsif has_error                then "partial"
                        elsif has_terminal             then "complete"

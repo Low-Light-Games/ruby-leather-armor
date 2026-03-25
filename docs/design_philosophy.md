@@ -132,7 +132,7 @@ the feedback loop must be fast: change a setting, observe the result,
 adjust.
 
 **Current toggles:**
-- `pipeline_mode` — budget (multi-step) vs. edge (single-call)
+- `pipeline_mode` — always `"budget"` (multi-step)
 - `guardrail_mode` — code-based vs. AI-based validation
 - `narration_mode` — parallel vs. subjugated output
 - `sanitization_threshold` — danger score cutoff (0-100)
@@ -170,11 +170,6 @@ better than a 4-second turn that miscalculates damage.
 - NPC rolls are app-side deterministic, not AI-generated
 - The Verdict step produces structured mutations, not natural language —
   `{ "hp_change": -8 }` is unambiguous, "takes some damage" is not
-
-**Exception:** the Edge Pipeline deliberately trades accuracy for speed.
-It exists as an opt-in mode for scenarios where latency matters more
-than precision (demos, low-stakes play). The default is always the
-accurate path.
 
 ---
 
@@ -277,7 +272,6 @@ deleted rather than kept behind a dead toggle.
 When introducing a new approach, don't rip out the old one. Keep both
 paths alive behind a toggle and let observation determine which wins.
 
-- Budget and Edge pipelines coexist (`pipeline_mode` toggle)
 - Code and AI guardrails coexist (`guardrail_mode` toggle)
 - Parallel and subjugated narration coexist (`narration_mode` toggle)
 

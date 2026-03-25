@@ -20,9 +20,7 @@ rejected, and what trade-offs we accepted.
 ### 1. Sequential pipeline of small prompts vs. single monolithic prompt
 
 **Decision:** break the AI interaction into focused calls instead of
-one large "do everything" prompt. A single-call alternative (Edge Pipeline)
-exists as a configurable opt-in mode.
-
+one large "do everything" prompt. 
 **Why:** the original architecture used a single prompt that received the
 player input, all context, all rules, and was expected to sanitize,
 adjudicate, narrate, and update state in one pass. This had compounding
@@ -50,11 +48,6 @@ We accepted this because correctness and debuggability matter more than
 speed for a turn-based game, and per-step model selection recovers most
 of the cost overhead by using cheap models on cheap steps.
 
-**Alternative preserved:** the Edge Pipeline (see below) collapses all
-steps into one call, gated by `pipeline_mode: "edge"`. This is available
-for low-traffic deployments or latency-sensitive scenarios where the
-trade-offs are acceptable.
-
 **Standard path:** UnifiedEvaluation collapses the evaluation phase
 (domain intent classification + mechanical roll determination + Take 10/20
 eligibility) into a single AI call, while preserving the rest of the
@@ -63,16 +56,16 @@ as separate steps). One model handles all 6 domains in one pass, delivering
 better coherence and eliminating roll duplication without sacrificing
 debugging granularity for the non-evaluation steps.
 
-| | Unified Evaluation | Edge Pipeline |
-|---|---|---|
-| Evaluation calls | 1 | 1 (everything) |
-| Other steps | Separate | N/A (all-in-one) |
-| Per-domain model selection | No (one model for eval) | No |
-| Cross-domain coherence | High (single context) | High |
-| Roll deduplication | AI avoids duplicates natively | N/A |
-| Prompt size | Large (all contexts + rules) | Largest |
-| Recommended model | gpt-5-mini (floor: gpt-4.1-mini, o4-mini) | Capable |
-| Toggle | always active | `pipeline_mode: "edge"` |
+| | Unified Evaluation |
+|---|---|
+| Evaluation calls | 1 |
+| Other steps | Separate |
+| Per-domain model selection | No (one model for eval) |
+| Cross-domain coherence | High (single context) |
+| Roll deduplication | AI avoids duplicates natively |
+| Prompt size | Large (all contexts + rules) |
+| Recommended model | gpt-5-mini (floor: gpt-4.1-mini, o4-mini) |
+| Toggle | always active |
 
 ### 2. Six micro-contexts instead of a single context blob
 
@@ -911,7 +904,6 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | 8a | **Micro Context Update** | AI (parallel with 8b) | `app/services/dungeon_master/steps/context_update.rb` |
 | 8b | **Macro Narrative Update** | AI (conditional) | `app/services/dungeon_master/steps/context_update.rb` |
 | -- | **Mutations** | App-side | `app/services/dungeon_master/mutations.rb` |
-| -- | **Edge Pipeline** | AI (monolithic alternative) | `app/services/dungeon_master/edge_pipeline.rb` |
 
 ---
 
@@ -954,7 +946,7 @@ Every AI call produces an `AiLog` record containing:
 
 | Field | Description |
 |---|---|
-| `step` | Pipeline step name (intake, beacon, mechanical_evaluation, sanity_checker, sanity_checker_world, mechanic, momentum, social_expansion, chronicler, narrate, micro_context_update, macro_narrative_update, edge_pipeline) |
+| `step` | Pipeline step name (intake, beacon, mechanical_evaluation, sanity_checker, sanity_checker_world, mechanic, momentum, social_expansion, chronicler, narrate, micro_context_update, macro_narrative_update) |
 | `prompt_summary` | Truncated description of what was asked |
 | `raw_response` | The complete API response |
 | `parsed_response` | The parsed JSON |
@@ -1085,7 +1077,7 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `step_models[step]` | `{}` | Per-step model override |
 | `token_budgets[step]` | (see below) | Per-step max completion tokens |
 | `action_queue` | `true` | When true, compound player inputs are split into discrete sequential actions by the Sequencer step |
-| `pipeline_mode` | `"budget"` | `"budget"` (multi-step) or `"edge"` (single-call) |
+| `pipeline_mode` | `"budget"` | Always `"budget"` (multi-step pipeline) |
 | `guardrail_mode` | `"code"` | `"code"` (deterministic) or `"ai"` (prompt-based) |
 | `narration_mode` | `"parallel"` | `"parallel"` (concurrent) or `"subjugated"` (sequential) |
 | `creature_creation_fallback` | `"ai"` | `"ai"` (bestiary + AI gen), `"template"` (bestiary + generic stats), `"none"` |
@@ -1110,7 +1102,6 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `micro_context_update` | 800 |
 | `macro_narrative_update` | 500 |
 | `creature_generation` | 600 |
-| `edge_pipeline` | 2000 |
 
 ### Model tiers
 

@@ -6,7 +6,7 @@ module DungeonMaster
     #
     # Pure code, no AI. Advances the adventure's time_context by a given
     # number of hours, derives light conditions, and checks fatigue/hunger
-    # thresholds. Called by TimeKeeper (budget pipeline) and EdgePipeline.
+    # thresholds. Called by TimeKeeper.
     module GameClock
       LIGHT_CONDITIONS = {
         (5..6)   => "dawn",
