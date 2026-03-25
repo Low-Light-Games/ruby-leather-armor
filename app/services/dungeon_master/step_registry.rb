@@ -70,7 +70,7 @@ module DungeonMaster
         pipeline: true,
       ),
       "micro_context_update" => Entry.new(
-        token_budget: 800,
+        token_budget: 1500,
         model_hint: "Mid-tier model. Structured JSON with moderate judgment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
         pipeline: true,
       ),
@@ -90,7 +90,7 @@ module DungeonMaster
         pipeline: true,
       ),
       "unified_evaluation" => Entry.new(
-        token_budget: 1500,
+        token_budget: 2000,
         model_hint: "➡️ Capable model required (this is the default evaluation path). Replaces 6 beacons + mechanical evaluations + roll qualifiers in one pass. Recommended: gpt-5-mini (best reasoning/cost ratio — fits comfortably within the budget freed by consolidating 6 beacon calls). Minimum floor: gpt-4.1-mini or o4-mini. Top-end (o3, gpt-5) improves cross-domain reasoning quality further.",
         pipeline: true,
       ),

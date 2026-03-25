@@ -101,6 +101,7 @@ module DungeonMaster
 
       if finish_reason == "length"
         label = step_name || "unknown"
+        @last_failed_raw_response = content
         Rails.logger.error(
           "[DungeonMaster::AiClient] Token budget exceeded on '#{label}' step " \
           "(budget: #{max_tokens}, finish_reason: length, content_length: #{content&.length || 0})"
