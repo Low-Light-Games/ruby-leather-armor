@@ -26,6 +26,7 @@ module SheetJsonSerialization
         quantity: si.quantity,
         equipped: si.equipped,
         slotOverride: si.slot_override,
+        definition: si.item_definition&.as_json,
       }
     }
 
