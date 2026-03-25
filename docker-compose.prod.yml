@@ -42,12 +42,9 @@ services:
       POSTGRES_USER: exercises
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - /data/postgres:/var/lib/postgresql/data
     restart: unless-stopped
 
   redis:
     image: redis:alpine
     restart: unless-stopped
-
-volumes:
-  postgres_data:
