@@ -47,10 +47,6 @@ You are a story analyst for a tabletop RPG system. Your job is to read a story p
 <% end -%>
 <% end -%>
 
-<% if @initial_context.present? -%>
-=== OPENING SCENE (admin's description of where the story begins) ===
-<%= @initial_context %>
-<% end -%>
 <% if @initial_summary.present? -%>
 === INITIAL SUMMARY ===
 <%= @initial_summary %>

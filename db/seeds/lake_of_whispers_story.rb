@@ -11,9 +11,6 @@ story.premise = <<~PREMISE.strip
 
   The Aboleth got there by being invoked by the mad mage 150 years ago. The Mage quickly realized he had doomed the village, and before thinking too much, he hastely petrified himself with a custom spell that made him petrified and forever a dormant protector of the village.
 PREMISE
-story.initial_context = <<~CONTEXT.strip
-  The player is leaving his last camp, at 6 in the morning, just as the sun is coming up. Still 60 miles away from the village. The path ahead is a well worn dirt road with heavy foliage at the sides.
-CONTEXT
 story.initial_summary = <<~SUMMARY.strip
   The player doesn't know anything about the disappearances in the village except what the Quest Posting said:
   "People disappearing. Need adventurer help. Intelligent detectives or competent guards welcome"

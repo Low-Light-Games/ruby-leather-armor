@@ -249,10 +249,8 @@
                 <%= radio_button_tag :embellisher_mode, mode, @config.get("embellisher_mode") == mode || (mode == "embellish" && @config.get("embellisher_mode").blank?) %>
                 <span>
                   <strong><%= mode.capitalize %></strong>
-                  <% if mode == "off" %>
-                    — No enrichment. Story data used as-is.
-                  <% elsif mode == "embellish" %>
-                    — Adds flavor (names, descriptions, atmosphere) to existing story data. Safe for any model.
+                  <% if mode == "embellish" %>
+                    — Adds flavor (names, descriptions, atmosphere) to existing story data. Also generates the opening scene narrative.
                   <% elsif mode == "expand" %>
                     — All of Embellish, plus creates up to 2 new NPCs and 2 new clues per adventure for unique playthroughs. Benefits from a capable model.
                   <% end %>

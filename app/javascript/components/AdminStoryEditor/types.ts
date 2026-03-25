@@ -35,8 +35,6 @@ export interface StoryData {
   title: string
   preview: string
   premise: string
-  hook: string | null
-  initial_context: string | null
   initial_summary: string | null
   initial_contexts?: InitialContexts
   story_locations?: StoryLocationData[]

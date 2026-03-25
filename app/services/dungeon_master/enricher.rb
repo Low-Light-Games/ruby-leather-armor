@@ -27,7 +27,6 @@ module DungeonMaster
         encounter_entries: encounter_entry_data,
         bestiary_catalog: bestiary_catalog,
         has_encounter_tables: @story.encounter_tables.exists?,
-        initial_context: @story.initial_context,
         initial_summary: @story.initial_summary,
       )
 

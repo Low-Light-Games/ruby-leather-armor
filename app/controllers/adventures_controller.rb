@@ -63,13 +63,6 @@ class AdventuresController < ApplicationController
     )
 
     if @adventure.save
-      opening_text = story.initial_context.presence || story.preview
-      @adventure.adventure_messages.create!(
-        role: "dm",
-        content: opening_text,
-        message_type: "narrative"
-      )
-
       Adventures::SheetCopier.new(
         @adventure, sheet, max_hp: max_hp, currency: stats.remaining_currency
       ).call
@@ -84,6 +77,7 @@ class AdventuresController < ApplicationController
       })
 
       run_embellisher(@adventure)
+      ensure_opening_message(@adventure)
 
       @adventure.reload
       render json: adventure_json(@adventure), status: :created
@@ -154,5 +148,14 @@ class AdventuresController < ApplicationController
     DungeonMaster::Embellisher.new(adventure, user: current_user).run
   rescue DungeonMaster::AiError, DungeonMaster::TokenBudgetExceededError => e
     Rails.logger.error("[AdventuresController] Embellisher failed: #{e.message}")
+  end
+
+  def ensure_opening_message(adventure)
+    return if adventure.adventure_messages.exists?
+    adventure.adventure_messages.create!(
+      role: "dm",
+      content: adventure.story.preview,
+      message_type: "narrative"
+    )
   end
 end

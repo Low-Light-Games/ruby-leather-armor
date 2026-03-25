@@ -92,10 +92,9 @@ module DungeonMaster
     private
 
     def build_story_block
-      hook = @adventure.story.hook.presence || @adventure.story.preview
       parts = []
       parts << "Title: #{@adventure.story.title}"
-      parts << "Hook: #{hook}" if hook.present?
+      parts << "Hook: #{@adventure.story.preview}" if @adventure.story.preview.present?
       atmosphere = @adventure.enriched_world&.dig("atmosphere")
       parts << "Atmosphere: #{atmosphere}" if atmosphere.present?
       parts << "Story so far: #{@adventure.story_summary}" if @adventure.story_summary.present?
