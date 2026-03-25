@@ -128,7 +128,7 @@ RSpec.describe DungeonMaster::Mutations, type: :service do
         id: "test_candle", name: "Candle", item_type: "gear", slot: "none",
         weight: 1, cost_gp: 0, armor_bonus: 0, shield_bonus: 0,
         armor_check_penalty: 0, arcane_spell_failure: 0,
-        summary: "Test candle"
+        properties: {}, summary: "Test candle"
       )
       sheet.adventure_sheet_items.create!(
         item_definition_id: item_def.id, quantity: 2, equipped: false

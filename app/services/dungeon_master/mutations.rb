@@ -196,8 +196,6 @@ module DungeonMaster
         critical_range: nil,
         damage_type: nil,
         range_increment: nil,
-        properties: nil,
-        effects: nil,
         summary: "A generic item acquired during adventure."
       )
     rescue ActiveRecord::RecordInvalid => e
