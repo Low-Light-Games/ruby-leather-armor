@@ -41,6 +41,9 @@ gem "ruby-openai"
 # Resend for transactional email delivery
 gem "resend"
 
+# AWS S3 for play log payload archiving
+gem "aws-sdk-s3"
+
 # Load environment variables from .env
 gem "dotenv-rails"
 

@@ -3,3 +3,4 @@
 :queues:
   - [dm_pipeline, 3]
   - [default, 1]
+  - [logging, 1]

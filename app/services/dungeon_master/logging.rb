@@ -27,6 +27,7 @@ module DungeonMaster
         started_at: Time.current,
         app_version: APP_VERSION
       )
+      enqueue_pipeline_run_event!
     rescue => e
       report_error(e, context: { method: "start_pipeline_run!" })
     end
@@ -49,18 +50,21 @@ module DungeonMaster
 
     def pause_pipeline_run!
       pipeline_run_record&.update!(status: "paused")
+      enqueue_pipeline_run_event!
     rescue => e
       report_error(e, context: { method: "pause_pipeline_run!" })
     end
 
     def complete_pipeline_run!
       pipeline_run_record&.update!(status: "completed", finished_at: Time.current)
+      enqueue_pipeline_run_event!
     rescue => e
       report_error(e, context: { method: "complete_pipeline_run!" })
     end
 
     def error_pipeline_run!
       pipeline_run_record&.update!(status: "errored", finished_at: Time.current)
+      enqueue_pipeline_run_event!
     rescue => e
       report_error(e, context: { method: "error_pipeline_run!" })
     end
@@ -69,7 +73,7 @@ module DungeonMaster
     # visible in Admin -> Play Logs. No AI columns are populated.
     # Pass parsed_response: a Hash to store structured data shown in the pipeline card body.
     def play_log!(event_type, summary, parsed_response: nil)
-      PlayLog.create!(
+      log = PlayLog.create!(
         adventure: @adventure,
         event_type: event_type,
         prompt_summary: summary,
@@ -81,6 +85,7 @@ module DungeonMaster
         player_message_content: @player_message_content,
         app_version: APP_VERSION
       )
+      enqueue_play_log_event!(log)
     rescue => e
       report_error(e, context: { method: "play_log!", event_type: event_type })
     end
@@ -113,6 +118,7 @@ module DungeonMaster
         app_version: APP_VERSION
       )
       attach_usage_record!(log, model_used, usage)
+      enqueue_play_log_event!(log)
     rescue => e
       report_error(e, context: { method: "ai_log!", call_type: call_type })
       try_fallback_log(call_type, e)
@@ -139,6 +145,7 @@ module DungeonMaster
         app_version: APP_VERSION
       )
       attach_usage_record!(log, model_used, usage)
+      enqueue_play_log_event!(log)
     rescue => e
       report_error(e, context: { method: "ai_log_error!", call_type: call_type, original_error: error.message })
       try_fallback_log(call_type, e)
@@ -182,6 +189,19 @@ module DungeonMaster
     def pipeline_run_record
       return nil unless @pipeline_run_id
       PipelineRun.find_by(pipeline_run_id: @pipeline_run_id)
+    end
+
+    def enqueue_play_log_event!(log)
+      ShipPlayLogJob.perform_later(log.id)
+    rescue => e
+      report_error(e, context: { method: "enqueue_play_log_event!", play_log_id: log&.id })
+    end
+
+    def enqueue_pipeline_run_event!
+      return unless @pipeline_run_id
+      ShipPipelineRunEventJob.perform_later(@pipeline_run_id)
+    rescue => e
+      report_error(e, context: { method: "enqueue_pipeline_run_event!", pipeline_run_id: @pipeline_run_id })
     end
 
     def report_error(exception, context: {})
