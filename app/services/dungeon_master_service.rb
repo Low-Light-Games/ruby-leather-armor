@@ -165,11 +165,16 @@ class DungeonMasterService
   def pipeline
     @pipeline ||= DungeonMaster::Pipeline.new(
       adventure: @adventure, config: @config, ai: @ai, log: @log, sheet: @sheet,
-      on_progress: method(:broadcast_pipeline_progress))
+      on_progress: method(:broadcast_pipeline_progress),
+      on_sheet_update: method(:broadcast_sheet_update))
   end
 
   def broadcast_pipeline_progress(message)
     AdventureChannel.broadcast_to(@adventure, { type: "pipeline_progress", message: message })
+  end
+
+  def broadcast_sheet_update
+    AdventureChannel.broadcast_to(@adventure, { type: "sheet_update" })
   end
 
   # ----------------------------------------------------------------

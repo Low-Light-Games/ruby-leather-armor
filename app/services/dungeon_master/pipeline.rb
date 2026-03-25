@@ -30,14 +30,15 @@ module DungeonMaster
     include CoreResolver
     include Mutations
 
-    def initialize(adventure:, config:, ai:, log:, sheet:, on_progress: nil)
-      @adventure   = adventure
-      @config      = config
-      @ai          = ai
-      @log         = log
-      @sheet       = sheet
-      @loop        = nil
-      @on_progress = on_progress
+    def initialize(adventure:, config:, ai:, log:, sheet:, on_progress: nil, on_sheet_update: nil)
+      @adventure        = adventure
+      @config           = config
+      @ai               = ai
+      @log              = log
+      @sheet            = sheet
+      @loop             = nil
+      @on_progress      = on_progress
+      @on_sheet_update  = on_sheet_update
     end
 
     # Main entry point: player typed something.

@@ -14,6 +14,7 @@ module DungeonMaster
       apply_player_mutations(mutations[:player])
       apply_npc_mutations(mutations[:npcs])
       apply_inventory_mutations(mutations[:inventory])
+      @on_sheet_update&.call
     end
 
     def resolve_npc_actions(npc_actions)

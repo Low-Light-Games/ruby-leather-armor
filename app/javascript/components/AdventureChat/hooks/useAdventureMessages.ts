@@ -21,10 +21,11 @@ interface UseAdventureMessagesArgs {
   derivedStats?: DerivedStats | null
   onAdventureComplete?: () => void
   onDmResponse?: () => void
+  onSheetUpdate?: () => void
 }
 
 export function useAdventureMessages({
-  adventureId, derivedStats, onAdventureComplete, onDmResponse,
+  adventureId, derivedStats, onAdventureComplete, onDmResponse, onSheetUpdate,
 }: UseAdventureMessagesArgs) {
   const [messages, setMessages] = useState<AdventureMessage[]>([])
   const [sending, setSending] = useState(false)
@@ -97,6 +98,8 @@ export function useAdventureMessages({
             handleSyncResponse(data)
           } else if (data.type === 'pipeline_progress' && data.message) {
             handleProgressUpdate(data.message)
+          } else if (data.type === 'sheet_update') {
+            onSheetUpdate?.()
           }
         },
 
@@ -128,7 +131,7 @@ export function useAdventureMessages({
     )
 
     return () => { subscription.unsubscribe() }
-  }, [adventureId, handleSyncResponse, handleProgressUpdate])
+  }, [adventureId, handleSyncResponse, handleProgressUpdate, onSheetUpdate])
 
   // Load message history on mount
   useEffect(() => {
