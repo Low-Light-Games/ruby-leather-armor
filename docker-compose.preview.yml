@@ -40,6 +40,7 @@ services:
       - .env
     environment:
       NODE_ENV: production
+      PORT: 3001
     network_mode: host
     restart: unless-stopped
     command: node evaluator/src/index.js
