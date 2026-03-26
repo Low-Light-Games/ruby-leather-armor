@@ -301,7 +301,6 @@ module DungeonMaster
         narrate_seed: combined_seed,
         mutations: combined_mutations.presence,
         dm_brief: dm_brief,
-        forbidden_elements: forbidden_elements,
         extra: extra)
     end
 

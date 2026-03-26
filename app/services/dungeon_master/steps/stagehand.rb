@@ -14,7 +14,7 @@ module DungeonMaster
     module Stagehand
       private
 
-      def run_narrative_phase(intent, narrate_seed:, mutations:, dm_brief: nil, forbidden_elements: [], extra: {})
+      def run_narrative_phase(intent, narrate_seed:, mutations:, dm_brief: nil, extra: {})
         warmaster_result = maybe_initialize_combat(intent)
         if warmaster_result && warmaster_result[:status] == :awaiting_initiative
           # ContextUpdate runs before the initiative prompt goes to the player so
@@ -35,12 +35,10 @@ module DungeonMaster
         if narration_mode == "subjugated"
           run_subjugated_narrative(intent, narrate_seed: narrate_seed,
                                    mutations: mutations, dm_brief: dm_brief,
-                                   forbidden_elements: forbidden_elements,
                                    encounter_triggered: enc_triggered)
         else
           run_parallel_narrative(intent, narrate_seed: narrate_seed,
                                  mutations: mutations, dm_brief: dm_brief,
-                                 forbidden_elements: forbidden_elements,
                                  encounter_triggered: enc_triggered)
         end => narration
 
@@ -51,13 +49,12 @@ module DungeonMaster
       end
 
       def run_parallel_narrative(intent, narrate_seed:, mutations:,
-                                 dm_brief:, forbidden_elements: [], encounter_triggered: false)
+                                 dm_brief:, encounter_triggered: false)
         narration = nil
 
         narrate_thread = Thread.new do
           ActiveRecord::Base.connection_pool.with_connection do
             narration = run_narrate(narrate_seed, intent: intent, dm_brief: dm_brief,
-                                    forbidden_elements: forbidden_elements,
                                     encounter_triggered: encounter_triggered)
           end
         end
@@ -74,12 +71,11 @@ module DungeonMaster
       end
 
       def run_subjugated_narrative(intent, narrate_seed:, mutations:,
-                                   dm_brief:, forbidden_elements: [], encounter_triggered: false)
+                                   dm_brief:, encounter_triggered: false)
         run_context_updates(narrate_seed, mutations,
                             macro_significant: intent[:macro_significant])
 
         run_narrate(narrate_seed, intent: intent, dm_brief: dm_brief,
-                    forbidden_elements: forbidden_elements,
                     encounter_triggered: encounter_triggered)
       end
 

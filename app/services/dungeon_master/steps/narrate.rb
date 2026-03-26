@@ -7,26 +7,19 @@ module DungeonMaster
     module Narrate
       private
 
-      def run_narrate(outcome, intent: nil, dm_brief: nil, forbidden_elements: [], encounter_triggered: false)
+      def run_narrate(outcome, intent: nil, dm_brief: nil, encounter_triggered: false)
         broadcast_progress("Writing the story...")
         prompt_summary = "Narrate"
 
-        micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
         time_ctx = @adventure.time_context || {}
 
         what_happened = @loop&.get("verdict_outcome")
         journey_data = @loop&.get("journey_data")
         encounter_scene = @loop&.get("encounter_scene")
         encounter_new_elements = @loop&.get("encounter_new_elements")
-        encounter_creatures = @loop&.get("encounter_creatures")
 
         system_prompt = PromptRenderer.render("narrate",
-          story_title: @adventure.story.title,
-          story_hook: @adventure.story.preview,
           dm_brief: dm_brief,
-          forbidden_elements: Array(forbidden_elements),
-          story_summary: @adventure.story_summary,
-          contexts_text: PromptHelpers.format_contexts(micro_contexts),
           time_context: time_ctx,
           what_happened: what_happened,
           outcome: outcome,
@@ -35,8 +28,7 @@ module DungeonMaster
           encounter_triggered: encounter_triggered,
           journey_data: journey_data,
           encounter_scene: encounter_scene,
-          encounter_new_elements: encounter_new_elements,
-          encounter_has_creatures: Array(encounter_creatures).any?)
+          encounter_new_elements: encounter_new_elements)
 
         unless outcome
           @log&.play_log!("pipeline_error", "Narrate step reached without an outcome — nothing to narrate",

@@ -13,19 +13,7 @@
     <div class="config-section">
       <h2>Pacing</h2>
 
-      <div class="config-field toggle-field">
-        <label class="toggle-label" for="verbose">
-          <%= check_box_tag :verbose, "1", @config.verbose?, id: "verbose", class: "toggle-checkbox" %>
-          <span class="toggle-switch"></span>
-          <span class="toggle-text">Verbose DM</span>
-        </label>
-        <p class="field-hint">
-          When <strong>off</strong>, the DM keeps responses to short iterative beats (1-2 paragraphs, <%= @config.pacing_words_min %>-<%= @config.pacing_words_max %> words).
-          When <strong>on</strong>, the DM may write longer, richer responses. This uses more tokens.
-        </p>
-      </div>
-
-      <div class="config-field range-fields" id="pacing-range" style="<%= 'opacity: 0.4; pointer-events: none;' if @config.verbose? %>">
+      <div class="config-field range-fields" id="pacing-range">
         <div class="range-pair">
           <div class="range-input">
             <label for="pacing_words_min">Min words</label>
@@ -303,13 +291,6 @@
 </div>
 
 <script>
-  // Toggle pacing range visibility based on verbose checkbox
-  document.getElementById('verbose').addEventListener('change', function() {
-    var pacingRange = document.getElementById('pacing-range');
-    pacingRange.style.opacity = this.checked ? '0.4' : '1';
-    pacingRange.style.pointerEvents = this.checked ? 'none' : 'auto';
-  });
-
   // Update temperature display
   document.getElementById('temp-slider').addEventListener('input', function() {
     document.getElementById('temp-display').textContent = this.value;
