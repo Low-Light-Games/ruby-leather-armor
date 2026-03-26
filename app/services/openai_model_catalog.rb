@@ -21,6 +21,13 @@ class OpenaiModelCatalog
     {}
   end
 
+  # OpenAI API responses return pinned versioned model IDs (e.g. "gpt-4o-mini-2024-07-18")
+  # even when the caller requested the base alias ("gpt-4o-mini"). The catalog is keyed
+  # by alias, so strip the date suffix before any lookup.
+  def self.normalize(model_id)
+    model_id.to_s.sub(/-\d{4}-\d{2}-\d{2}(-preview)?$/, "")
+  end
+
   def self.reload!
     @catalog = nil
   end
@@ -31,23 +38,23 @@ class OpenaiModelCatalog
   end
 
   def self.supports_temperature?(model_id)
-    caps = catalog.dig(model_id, "capabilities")
+    caps = catalog.dig(normalize(model_id), "capabilities")
     return true unless caps
     caps.fetch("supports_temperature", true)
   end
 
   def self.reasoning_model?(model_id)
-    caps = catalog.dig(model_id, "capabilities")
+    caps = catalog.dig(normalize(model_id), "capabilities")
     return false unless caps
     caps.fetch("reasoning_model", false)
   end
 
   def self.default_token_budgets(model_id)
-    catalog.dig(model_id, "default_token_budgets") || DungeonMaster::StepRegistry.default_token_budgets
+    catalog.dig(normalize(model_id), "default_token_budgets") || DungeonMaster::StepRegistry.default_token_budgets
   end
 
   def self.for_model(model_id)
-    meta = catalog[model_id] || {}
+    meta = catalog[normalize(model_id)] || {}
     { "id" => model_id, "name" => meta["name"] || model_id,
       "description" => meta["description"],
       "input_cost" => meta["input_cost"], "output_cost" => meta["output_cost"],
