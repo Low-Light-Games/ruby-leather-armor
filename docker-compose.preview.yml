@@ -28,3 +28,18 @@ services:
     network_mode: host
     restart: unless-stopped
     command: bundle exec sidekiq -C config/sidekiq.yml
+
+  evaluator:
+    build:
+      context: ./
+      args:
+        RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+        RAILS_ENV: staging
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+    network_mode: host
+    restart: unless-stopped
+    command: node evaluator/src/index.js

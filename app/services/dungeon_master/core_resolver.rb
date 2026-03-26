@@ -17,9 +17,16 @@ module DungeonMaster
   module CoreResolver
     private
 
-    # Full resolution: UnifiedEvaluation → sanity gate → [verdict + mutations + time_keeper]
+    # Full resolution: evaluation → sanity gate → [verdict + mutations + time_keeper]
+    # Branches on evaluation_mode:
+    #   "parallel" → Steps::ParallelEvaluation (Node microservice: beacon + mech_eval + roll_qualifier)
+    #   "unified"  → Steps::UnifiedEvaluation  (single AI call, default)
     def resolve(intention)
-      intent, evaluations = run_unified_evaluation(intention)
+      intent, evaluations = if @config.get("evaluation_mode") == "parallel"
+                               run_parallel_evaluation(intention)
+                             else
+                               run_unified_evaluation(intention)
+                             end
 
       if intent[:needs_mechanics]
         world, capability = run_sanity_gate(intent)

@@ -72,6 +72,7 @@ jobs:
             AWS_S3_REGION=${AWS_S3_REGION}
             RAILS_ENV=staging
             PORT=${PORT}
+            EVALUATOR_URL=http://localhost:3001
             ENV
 
             # Create database (ignore error if already exists)

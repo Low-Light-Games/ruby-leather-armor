@@ -1,0 +1,12 @@
+
+- Only mark affected if the player is ACTIVELY IN COMBAT or initiating a fight.
+  Casting a utility spell outside combat is NOT combat.
+- transition: set to "combat_started" if this action initiates combat, "combat_ended"
+  if combat concludes. null otherwise.
+- combatants: REQUIRED when transition is "combat_started". Array of creature/NPC names
+  the player is engaging (e.g. ["goblin", "wolf"]). Use singular lowercase bestiary-style
+  names. Empty array otherwise.
+<% if @domain_context.is_a?(Hash) && @domain_context["active"] == true -%>
+- COMBAT IS ALREADY ACTIVE. Current participants: <%= Array(@domain_context["participants"]).map { |p| p["name"] }.join(", ") %>.
+  Round: <%= @domain_context["round"] %>. Do NOT set transition to "combat_started" again.
+<% end -%>
