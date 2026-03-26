@@ -18,12 +18,15 @@ if (process.env.SENTRY_DSN) {
 process.on("uncaughtException", (err) => {
   console.error("[evaluator] uncaughtException:", err);
   Sentry.captureException(err);
-  process.exit(1);
+  // Flush buffered Sentry events before exiting — captureException is async.
+  Sentry.flush(2000).finally(() => process.exit(1));
 });
 
 process.on("unhandledRejection", (reason) => {
   console.error("[evaluator] unhandledRejection:", reason);
   Sentry.captureException(reason instanceof Error ? reason : new Error(String(reason)));
+  // unhandledRejection is non-fatal by default; flush but do not exit.
+  Sentry.flush(2000);
 });
 
 // ----------------------------------------------------------------
@@ -38,6 +41,20 @@ app.use(express.json({ limit: "4mb" }));
 app.use((req, _res, next) => {
   const count = Array.isArray(req.body) ? ` (${req.body.length} items)` : "";
   console.log(`[evaluator] ${req.method} ${req.path}${count}`);
+  next();
+});
+
+// 120s covers the worst case: 6 parallel 30s OpenAI calls with buffer.
+// Rails HTTP client waits 150s — always above this so Rails gets a well-formed error.
+const REQUEST_TIMEOUT_MS = 120_000;
+app.use((req, res, next) => {
+  const timer = setTimeout(() => {
+    if (!res.headersSent) {
+      res.status(503).json({ error: "Request timed out after 120s", partial_results: [] });
+    }
+  }, REQUEST_TIMEOUT_MS);
+  res.on("finish", () => clearTimeout(timer));
+  res.on("close", () => clearTimeout(timer));
   next();
 });
 

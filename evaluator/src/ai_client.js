@@ -41,10 +41,18 @@ async function chat({ systemPrompt, userMessage, model, maxTokens, meta = {} }) 
   let parseStatus = "success";
 
   try {
-    const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
-    parsedResponse = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(rawContent);
+    // Try the full content first (handles well-formed responses).
+    parsedResponse = JSON.parse(rawContent);
   } catch {
-    parseStatus = "parse_error";
+    try {
+      // Fall back to extracting the first complete JSON object — handles responses
+      // where the model prefixes or suffixes the JSON with prose.
+      const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) parsedResponse = JSON.parse(jsonMatch[0]);
+      else parseStatus = "parse_error";
+    } catch {
+      parseStatus = "parse_error";
+    }
   }
 
   return {
