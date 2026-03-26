@@ -4,50 +4,33 @@ module DungeonMaster
   module Steps
     # Pipeline Step 5: Narrate.
     # Produces player-facing narrative prose from the mechanical outcome.
+    # Receives a PipelineContext covering the full turn (all loops), not just
+    # the last action's loop.
     module Narrate
       private
 
-      def run_narrate(outcome, intent: nil, dm_brief: nil, forbidden_elements: [], encounter_triggered: false)
+      def run_narrate(pipeline)
         broadcast_progress("Writing the story...")
         prompt_summary = "Narrate"
 
-        micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
-        time_ctx = @adventure.time_context || {}
-
-        what_happened = @loop&.get("verdict_outcome")
-        journey_data = @loop&.get("journey_data")
-        encounter_scene = @loop&.get("encounter_scene")
-        encounter_new_elements = @loop&.get("encounter_new_elements")
-        encounter_creatures = @loop&.get("encounter_creatures")
-
         system_prompt = PromptRenderer.render("narrate",
-          story_title: @adventure.story.title,
-          story_hook: @adventure.story.preview,
-          dm_brief: dm_brief,
-          forbidden_elements: Array(forbidden_elements),
-          story_summary: @adventure.story_summary,
-          contexts_text: PromptHelpers.format_contexts(micro_contexts),
-          time_context: time_ctx,
-          what_happened: what_happened,
-          outcome: outcome,
+          loop: @loop,
+          pipeline: pipeline,
+          time_context: @adventure.time_context || {},
           pacing_text: PromptHelpers.pacing_instructions(@config),
-          directed_play_text: PromptHelpers.directed_play_instructions(@adventure),
-          encounter_triggered: encounter_triggered,
-          journey_data: journey_data,
-          encounter_scene: encounter_scene,
-          encounter_new_elements: encounter_new_elements,
-          encounter_has_creatures: Array(encounter_creatures).any?)
+          directed_play_text: PromptHelpers.directed_play_instructions(@adventure))
 
-        unless outcome
+        unless pipeline.combined_seed
           @log&.play_log!("pipeline_error", "Narrate step reached without an outcome — nothing to narrate",
-                          parsed_response: { pipeline_outcome: outcome, encounter_scene: encounter_scene,
-                                             verdict_outcome: what_happened }.compact)
+                          parsed_response: { encounter_scene: @loop&.get("encounter_scene"),
+                                             verdict_outcome: @loop&.get("verdict_outcome") }.compact)
           raise AiError, "Narrate step reached without an outcome — nothing to narrate"
         end
-        request_body = { system_prompt: system_prompt, user_message: outcome }
+
+        request_body = { system_prompt: system_prompt, user_message: pipeline.combined_seed }
 
         parsed = timed_ai_call("narrate", prompt_summary, request_body) do
-          raw = @ai.chat(system_prompt: system_prompt, user_message: outcome,
+          raw = @ai.chat(system_prompt: system_prompt, user_message: pipeline.combined_seed,
                           max_tokens: @config.token_budget_for("narrate"), step_name: "narrate",
                           model: @config.model_for("narrate"))
           # fallback_as: :dm_response is the only surviving parse fallback.

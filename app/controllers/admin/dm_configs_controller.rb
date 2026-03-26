@@ -14,7 +14,6 @@ module Admin
       new_settings = @config.settings.dup
 
       # Boolean toggles
-      new_settings["verbose"] = params[:verbose] == "1"
       new_settings["chronicler_tone_direction"] = params[:chronicler_tone_direction] == "1"
       new_settings["action_queue"] = params[:action_queue] == "1"
 

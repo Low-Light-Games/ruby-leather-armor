@@ -42,7 +42,6 @@ module DungeonMaster
 
     def pacing_instructions(config)
       PromptRenderer.render_partial("narrate/_pacing",
-        verbose: config.verbose?,
         words_min: config.pacing_words_min,
         words_max: config.pacing_words_max)
     end

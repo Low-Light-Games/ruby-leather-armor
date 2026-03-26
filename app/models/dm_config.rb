@@ -28,7 +28,6 @@ class DmConfig < ApplicationRecord
   ].freeze
 
   DEFAULTS = {
-    "verbose" => false,
     "temperature" => 0.8,
     "pacing_words_min" => 40,
     "pacing_words_max" => 120,
@@ -63,10 +62,6 @@ class DmConfig < ApplicationRecord
 
   def set(key, value)
     self.settings = settings.merge(key.to_s => value)
-  end
-
-  def verbose?
-    get("verbose") == true
   end
 
   def temperature

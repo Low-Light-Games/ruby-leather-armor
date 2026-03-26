@@ -3,14 +3,14 @@ that required no mechanical evaluation (no dice rolls, no skill checks). Determi
 factual outcome — what happened, what changed, what the player perceives.
 
 === PLAYER INTENT ===
-<%= @intention %>
+<%= @loop&.player_intent %>
 
 === TIME PASSAGE ===
-<% if @time_data -%>
-Hours elapsed: <%= @time_data["hours_elapsed"] %> | Source: <%= @time_data["time_source"] %>
-<% if @journey_data -%>
-Journey: <%= @journey_data["origin"] %> -> <%= @journey_data["destination"] %> (<%= @journey_data["distance_miles"] %> mi, <%= @journey_data["terrain_type"] || "unknown" %> terrain)
-Speed: <%= @journey_data["speed_mph"] %> mph | Estimated: <%= @journey_data["estimated_hours"] %>h
+<% if @loop&.get("hours_elapsed").present? -%>
+Hours elapsed: <%= @loop.get("hours_elapsed") %> | Source: <%= @loop.get("time_source") %>
+<% if @loop.get("journey_data") -%>
+Journey: <%= @loop.get("journey_data")["origin"] %> -> <%= @loop.get("journey_data")["destination"] %> (<%= @loop.get("journey_data")["distance_miles"] %> mi, <%= @loop.get("journey_data")["terrain_type"] || "unknown" %> terrain)
+Speed: <%= @loop.get("journey_data")["speed_mph"] %> mph | Estimated: <%= @loop.get("journey_data")["estimated_hours"] %>h
 <% end -%>
 <% else -%>
 (no time data available)
