@@ -23,7 +23,7 @@ as the most recently updated field. Do NOT infer the player is somewhere else ba
 secondary fields. Do NOT fabricate location details not supported by the contexts above.
 
 === PLAYER'S ACTION ===
-Intent: <%= @intention %>
+Intent: <%= @loop&.player_intent %>
 Affected domains: <%= Array(@affected_contexts).join(', ').presence || '(none)' %>
 Location: <%= @current_location || "(unknown)" %>
 <% if @verdict_outcome -%>

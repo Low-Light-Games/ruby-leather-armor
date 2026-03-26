@@ -17,16 +17,9 @@ module DungeonMaster
         prompt_summary = "Momentum: \"#{@log.truncate(intent[:intention])}\""
 
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
-        time_data = {
-          "hours_elapsed" => @loop&.get("hours_elapsed"),
-          "time_source" => @loop&.get("time_source")
-        }
-        journey_data = @loop&.get("journey_data")
 
         system_prompt = PromptRenderer.render("momentum",
-          intention: intent[:intention],
-          time_data: time_data,
-          journey_data: journey_data,
+          loop: @loop,
           contexts_text: PromptHelpers.format_contexts(micro_contexts),
           context_domains: PromptHelpers::CONTEXT_FIELDS)
 

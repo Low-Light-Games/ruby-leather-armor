@@ -169,7 +169,7 @@ module DungeonMaster
       end
 
       system_prompt = PromptRenderer.render("social_expansion",
-        intention: intent[:intention],
+        loop: @loop,
         location: @adventure.current_location&.name || "the area",
         social_context: @adventure.social_context,
         character_block: CharacterBlock.full(@sheet),

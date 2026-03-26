@@ -31,12 +31,12 @@ module DungeonMaster
         exploration_ctx = @adventure.exploration_context
 
         system_prompt, user_msg = PromptRenderer.render_with_user_message("chronicler",
+          loop: @loop,
           enriched_premise: enriched_premise,
           discovered_clues: all_clues.select { |c| discovered_ids.include?(c.id) }.map { |c| { id: c.id, title: c.title } },
           attempted_clues: all_clues.select { |c| attempted_ids.include?(c.id) }.map { |c| { id: c.id, title: c.title } },
           reached_milestones: all_milestones.select { |m| (m.trigger_clue_ids - discovered_ids).empty? && m.trigger_clue_ids.any? }.map { |m| { title: m.title } },
           npcs_met: all_npcs.select { |n| met_npc_ids.include?(n.id) }.map { |n| { name: n.name } },
-          intention: intent[:intention],
           affected_contexts: intent[:affected_contexts],
           current_location: @adventure.current_location&.name,
           verdict_outcome: verdict_outcome,

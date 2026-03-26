@@ -278,9 +278,8 @@ module DungeonMaster
       return { action: :narrated, narrative: "", adventure_complete: false } if results.empty?
 
       merged_intent = merge_result_intents(results)
-      all_outcomes = AdventureLoop.for_pipeline(@log.pipeline_run_id)
-                                   .order(:sequence_index)
-                                   .filter_map { |l| l.get("pipeline_outcome") }
+      all_loops = AdventureLoop.for_pipeline(@log.pipeline_run_id).order(:sequence_index)
+      all_outcomes = all_loops.filter_map { |l| l.get("pipeline_outcome") }
       all_mutations = results.filter_map { |r| r[:mutations] }
       encounter_triggered = results.any? { |r| r[:status] == :encounter }
       social_scene_triggered = results.any? { |r| r[:status] == :social_scene }
@@ -290,17 +289,20 @@ module DungeonMaster
 
       plot_result = resolve_plot(merged_intent, verdict_outcome: combined_seed,
                                  encounter_triggered: encounter_triggered)
-      dm_brief = plot_result&.dig(:dm_brief)
-      forbidden_elements = plot_result&.dig(:forbidden_elements) || []
+
+      pipeline = PipelineContext.new(
+        combined_seed: combined_seed,
+        dm_brief: plot_result&.dig(:dm_brief),
+        player_action: all_loops.filter_map(&:player_intent).join("\nThen: ").presence
+      )
 
       extra = {}
       extra[:encounter_triggered] = true if encounter_triggered
       extra[:social_scene_triggered] = true if social_scene_triggered
 
       run_narrative_phase(merged_intent,
-        narrate_seed: combined_seed,
+        pipeline: pipeline,
         mutations: combined_mutations.presence,
-        dm_brief: dm_brief,
         extra: extra)
     end
 
