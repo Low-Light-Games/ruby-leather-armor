@@ -92,18 +92,15 @@ module DungeonMaster
         response = http.request(request)
         duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
 
-        body = begin
-          JSON.parse(response.body)
-        rescue JSON::ParserError
-          nil
+        begin
+          body = JSON.parse(response.body)
+        rescue JSON::ParserError => e
+          raise AiError, "Evaluator #{phase} returned non-JSON body (HTTP #{response.code}): #{e.message} — raw: #{response.body.truncate(500)}"
         end
 
         if response.code.to_i >= 400
-          # Persist logs for any calls that completed before the failure.
-          # body may be nil if the error response is not valid JSON.
-          persist_partial_logs(Array(body&.dig("partial_results")), intention)
-          error_detail = body&.dig("error") || response.body.truncate(500)
-          raise AiError, "Evaluator #{phase} failed (HTTP #{response.code}): #{error_detail}"
+          persist_partial_logs(Array(body.dig("partial_results")), intention)
+          raise AiError, "Evaluator #{phase} failed (HTTP #{response.code}): #{body.dig("error") || response.body.truncate(500)}"
         end
 
         # Persist logs for all completed calls in this phase
