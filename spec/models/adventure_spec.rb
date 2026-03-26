@@ -34,4 +34,14 @@ RSpec.describe Adventure, type: :model do
       expect(build(:adventure, directed_dm: true).directed_dm?).to be true
     end
   end
+
+  describe "#skip_world_sanity_check?" do
+    it "returns false by default" do
+      expect(build(:adventure).skip_world_sanity_check?).to be false
+    end
+
+    it "returns true when skip_world_sanity_check is set" do
+      expect(build(:adventure, skip_world_sanity_check: true).skip_world_sanity_check?).to be true
+    end
+  end
 end

@@ -42,6 +42,7 @@ class AdventuresController < ApplicationController
     ctx     = Adventures::ContextInitializer.new(story)
 
     directed_dm = ActiveModel::Type::Boolean.new.cast(params[:directed_dm]) && FeatureFlag.enabled?(:directed_dm)
+    skip_world_sanity_check = ActiveModel::Type::Boolean.new.cast(params[:skip_world_sanity_check]) && FeatureFlag.enabled?(:skip_world_sanity_check)
 
     start_loc = story.starting_location
     seed = story.initial_contexts || {}
@@ -51,6 +52,7 @@ class AdventuresController < ApplicationController
       story: story,
       dm_mode: "standard",
       directed_dm: directed_dm,
+      skip_world_sanity_check: skip_world_sanity_check,
       current_location: start_loc,
       traversal_context: (seed["traversal_context"] || {}).deep_merge(ctx.build_traversal(start_loc)),
       combat_context: seed["combat_context"] || {},
@@ -129,7 +131,8 @@ class AdventuresController < ApplicationController
       story_summary: adventure.story_summary,
       scene_summary: adventure.scene_summary,
       current_category: adventure.current_category,
-      directed_dm: adventure.directed_dm?
+      directed_dm: adventure.directed_dm?,
+      skip_world_sanity_check: adventure.skip_world_sanity_check?
     }
   end
 

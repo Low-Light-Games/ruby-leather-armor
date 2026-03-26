@@ -11,13 +11,14 @@ export const AdventureCreation = () => {
 
   const {
     stories, sheets, adventures,
-    directedDmEnabled, loadingData, submitting, error, waitMessage,
+    directedDmEnabled, skipWorldSanityCheckEnabled, loadingData, submitting, error, waitMessage,
     submitAdventure, deleteAdventure,
   } = useAdventureCreationData(user)
 
   const [selectedStoryId, setSelectedStoryId] = useState<number | ''>('')
   const [selectedSheetId, setSelectedSheetId] = useState<number | ''>('')
   const [directedDm, setDirectedDm] = useState(false)
+  const [skipWorldSanityCheck, setSkipWorldSanityCheck] = useState(false)
 
   const selectedStory = stories.find(s => s.id === selectedStoryId) || null
   const selectedSheet = sheets.find(s => s.id === selectedSheetId) || null
@@ -25,7 +26,7 @@ export const AdventureCreation = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedStoryId || !selectedSheetId) return
-    submitAdventure(selectedStoryId as number, selectedSheetId as number, directedDm)
+    submitAdventure(selectedStoryId as number, selectedSheetId as number, directedDm, skipWorldSanityCheck)
   }
 
   if (authLoading) return <div className="app">Loading...</div>
@@ -87,6 +88,28 @@ export const AdventureCreation = () => {
                         type="checkbox"
                         checked={directedDm}
                         onChange={e => setDirectedDm(e.target.checked)}
+                      />
+                      <span className="toggle-track">
+                        <span className="toggle-knob" />
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              {skipWorldSanityCheckEnabled && (
+                <div className="form-group">
+                  <label className="toggle-row" htmlFor="skip-world-sanity-check-toggle">
+                    <span className="toggle-text">
+                      <span className="toggle-label">Skip World Sanity Check</span>
+                      <span className="toggle-desc">Allow any action regardless of whether it is consistent with the current scene</span>
+                    </span>
+                    <span className={`toggle-switch ${skipWorldSanityCheck ? 'active' : ''}`} role="switch" aria-checked={skipWorldSanityCheck}>
+                      <input
+                        id="skip-world-sanity-check-toggle"
+                        type="checkbox"
+                        checked={skipWorldSanityCheck}
+                        onChange={e => setSkipWorldSanityCheck(e.target.checked)}
                       />
                       <span className="toggle-track">
                         <span className="toggle-knob" />

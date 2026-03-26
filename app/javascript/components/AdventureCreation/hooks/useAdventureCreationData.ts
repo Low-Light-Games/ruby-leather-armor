@@ -25,6 +25,7 @@ export function useAdventureCreationData(user: any) {
   const [sheets, setSheets] = useState<Sheet[]>([])
   const [adventures, setAdventures] = useState<AdventureSummary[]>([])
   const [directedDmEnabled, setDirectedDmEnabled] = useState(false)
+  const [skipWorldSanityCheckEnabled, setSkipWorldSanityCheckEnabled] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -63,6 +64,7 @@ export function useAdventureCreationData(user: any) {
         setSheets(sheetsData)
         setAdventures(adventuresData)
         setDirectedDmEnabled(flagsData.enabled?.includes('directed_dm') ?? false)
+        setSkipWorldSanityCheckEnabled(flagsData.enabled?.includes('skip_world_sanity_check') ?? false)
         setLoadingData(false)
       })
       .catch(err => {
@@ -72,7 +74,7 @@ export function useAdventureCreationData(user: any) {
       })
   }, [user])
 
-  const submitAdventure = async (storyId: number, sheetId: number, directedDm: boolean) => {
+  const submitAdventure = async (storyId: number, sheetId: number, directedDm: boolean, skipWorldSanityCheck: boolean) => {
     setSubmitting(true)
     setError(null)
     startWaitMessages()
@@ -88,6 +90,7 @@ export function useAdventureCreationData(user: any) {
           story_id: storyId,
           sheet_id: sheetId,
           directed_dm: directedDm,
+          skip_world_sanity_check: skipWorldSanityCheck,
         }),
       })
 
@@ -124,7 +127,7 @@ export function useAdventureCreationData(user: any) {
 
   return {
     stories, sheets, adventures,
-    directedDmEnabled, loadingData, submitting, error, waitMessage,
+    directedDmEnabled, skipWorldSanityCheckEnabled, loadingData, submitting, error, waitMessage,
     submitAdventure, deleteAdventure,
   }
 }
