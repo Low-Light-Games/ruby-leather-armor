@@ -60,9 +60,11 @@ flowchart TB
     NM -->|yes| SANITY_GATE
     NM -->|no| WORLD_ONLY
 
-    subgraph sanity_gate["Sanity gate — 2 parallel threads (mechanical path)"]
-        SANITY_GATE --> FG2[world_consistency_check  ☆ AI]
-        SANITY_GATE --> FG3[capability_check  ☆ AI]
+    subgraph sanity_gate["Sanity gate — mechanical path"]
+        SANITY_GATE --> SKIP_W{skip_world_sanity_check?}
+        SKIP_W -->|yes| FG3[capability_check  ☆ AI]
+        SKIP_W -->|no| FG2[world_consistency_check  ☆ AI]
+        FG2 --> FG3
     end
 
     FG2 -->|not consistent| REJECT
@@ -80,8 +82,10 @@ flowchart TB
     end
 
     subgraph no_mech["Non-mechanical path"]
-        WORLD_ONLY --> WC[run_world_consistency_check  ☆ AI]
+        WORLD_ONLY --> SKIP_W2{skip_world_sanity_check?}
+        SKIP_W2 -->|no| WC[run_world_consistency_check  ☆ AI]
         WC -->|not consistent| REJECT
+        SKIP_W2 -->|yes| EXPAND
         WC -->|consistent| EXPAND{expand_scene?}
         EXPAND -->|yes| SOCIAL[resolve_social_scene  ☆ AI]
         SOCIAL --> SOC_STATUS[status: :social_scene — breaks queue]
@@ -338,19 +342,23 @@ The output `intent` hash (from either path) includes:
 
 ### Step 6 — Mechanical path (needs_mechanics = true)
 
-The **sanity gate** runs two checks in parallel, then merges the evaluation results from UnifiedEvaluation:
+The **sanity gate** validates the action before any mechanics are resolved. Its behaviour depends on the adventure's `skip_world_sanity_check` flag:
+
+**Default (skip_world_sanity_check = false):** two checks run in parallel, then evaluation results from UnifiedEvaluation are merged:
 
 | Thread | Step | Type |
 |--------|------|------|
 | world_thread | World consistency check | AI |
 | cap_thread | Capability check | AI |
 
-**World consistency check** — AI. Validates that entities, targets, and objects the player references actually exist in the current scene (checking scene_summary, scene_history, all micro contexts, NPC names). Returns `{ consistent: bool, reason: string, dm_message: string }`.
+**When skip_world_sanity_check = true:** the world thread is skipped entirely. Only the capability check runs (no parallelism needed).
 
-**Capability check** — AI. Validates the player actually has the spell, feat, or item they're attempting to use. Returns `{ allowed: bool, reason: string }`.
+**World consistency check** — AI. Validates that entities, targets, and objects the player references actually exist in the current scene (checking scene_summary, scene_history, all micro contexts, NPC names). Returns `{ consistent: bool, reason: string, dm_message: string }`. Skipped when `skip_world_sanity_check` is set on the adventure.
+
+**Capability check** — AI. Validates the player actually has the spell, feat, or item they're attempting to use. Returns `{ allowed: bool, reason: string }`. Always runs regardless of `skip_world_sanity_check`.
 
 **Early exits from sanity gate:**
-- World check fails → `:rejected` (optionally with a `dm_message` shown as narrative prose instead of a system error).
+- World check fails → `:rejected` (optionally with a `dm_message` shown as narrative prose instead of a system error). Never reached when skipped.
 - Capability check fails → `:rejected`.
 
 **Post-gate processing (code):**
@@ -367,9 +375,9 @@ The **sanity gate** runs two checks in parallel, then merges the evaluation resu
 
 ### Step 7 — Non-mechanical path (needs_mechanics = false)
 
-**World consistency check** — Same AI call as above, but runs alone (no parallel threads).
+**World consistency check** — Same AI call as above, but runs alone (no parallel threads). Skipped entirely when the adventure's `skip_world_sanity_check` flag is set; the pipeline proceeds directly to the expansion/TimeKeeper branch.
 
-Early exit: world check fails → `:rejected`.
+Early exit: world check fails → `:rejected`. Never reached when skipped.
 
 **Social expansion branch** (`expand_scene = true`):
 - Triggered when UnifiedEvaluation's social domain set `expand_scene`. Represents significant social interactions (negotiations, transactions, confrontations) that merit an immersive NPC scene.
@@ -618,8 +626,8 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | **↳ beacon** | AI ×6 (parallel, Node) | Per-domain intent classification. One call per domain, all 6 run concurrently via `Promise.all` in Node. |
 | **↳ mechanical_evaluation** | AI ×N (sequential, Node) | Per-domain mechanical resolution for each affected domain. Sequential with cross-domain summary injection. |
 | **↳ roll_qualifier** | AI ×N (parallel, Node) | Take 10/20 eligibility + situational modifiers per domain that has rolls. |
-| **World consistency check** | AI | Validate referenced entities exist in current scene. Runs always (sanity gate or standalone). |
-| **Capability check** | AI | Validate player has required spells/feats/items. Runs in sanity gate (needs_mechanics only). |
+| **World consistency check** | AI | Validate referenced entities exist in current scene. Runs in the sanity gate (mechanics path) or standalone (non-mechanics path). Bypassed on both paths when the adventure's `skip_world_sanity_check` flag is set. |
+| **Capability check** | AI | Validate player has required spells/feats/items. Runs in sanity gate (needs_mechanics only). Always runs regardless of `skip_world_sanity_check`. |
 | **Auto-success filter** | Code | Remove rolls the character cannot possibly fail (DC ≤ 0, guaranteed modifier, Take 10 covers DC). Never removes attack rolls. |
 | **Momentum** | AI | Non-mechanical outcome: what happened + affected contexts + optional mutations. |
 | **Social Expansion** | AI | Immersive NPC scene for significant social interactions (`expand_scene` from evaluation). Skips TimeKeeper. |

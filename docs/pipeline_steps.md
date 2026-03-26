@@ -656,18 +656,27 @@ via `guardrail_mode`:
 
 **B) World Consistency Check** — validates that the entities, targets, or
 objects the player references actually exist in the current scene. AI-only
-step that runs ALWAYS (in the sanity gate on the mechanics path, or
+step that normally runs ALWAYS (in the sanity gate on the mechanics path, or
 standalone on the non-mechanics path). Receives all non-empty micro-contexts,
 scene summary, scene history, and story NPCs.
+
+**Optional bypass:** when the adventure's `skip_world_sanity_check` boolean
+attribute is `true` (set at adventure creation, gated by the
+`skip_world_sanity_check` feature flag), the world consistency check is
+skipped on **both** paths. On the mechanics path, `run_sanity_gate` (which
+runs world + capability in parallel) is replaced by a direct
+`run_capability_check` call so no unnecessary thread is spawned. On the
+non-mechanics path the standalone `run_world_consistency_check` call is
+bypassed entirely. The capability check is unaffected and still runs.
 
 **Why:** the capability check alone was insufficient. Players could
 reference non-existent creatures, NPCs, or objects (e.g., "attack the
 goblin" when no goblin exists) and the pipeline would process the action
 as valid. The world consistency check closes this gap.
 
-On the mechanics path both checks run in parallel (2 threads) — zero added
-latency on the happy path. On the non-mechanics path, the world check runs
-as a standalone AI call.
+On the mechanics path both checks normally run in parallel (2 threads) —
+zero added latency on the happy path. On the non-mechanics path, the world
+check runs as a standalone AI call.
 
 Both sub-checks fail open on errors to avoid blocking the player.
 
@@ -1099,6 +1108,7 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `narration_mode` | `"parallel"` | `"parallel"` (concurrent) or `"subjugated"` (sequential) |
 | `creature_creation_fallback` | `"ai"` | `"ai"` (bestiary + AI gen), `"template"` (bestiary + generic stats), `"none"` |
 | `scene_history_depth` | `10` | Number of scene summaries retained for world consistency checks |
+| `skip_world_sanity_check` _(feature flag + adventure attribute)_ | `false` | When enabled, allows the adventure-creation form to expose a per-adventure toggle. When the toggle is on, the world consistency check is bypassed on both the mechanical and non-mechanical resolution paths. The capability check always runs. |
 
 ### Default token budgets
 
