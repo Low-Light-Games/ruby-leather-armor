@@ -142,9 +142,9 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
 
       it "passes the outcome as the narration seed" do
         narrate_calls = []
-        allow_any_instance_of(DungeonMaster::Pipeline).to receive(:run_narrate).and_wrap_original do |original, seed, **kwargs|
-          narrate_calls << seed
-          original.call(seed, **kwargs)
+        allow_any_instance_of(DungeonMaster::Pipeline).to receive(:run_narrate).and_wrap_original do |original, pipeline_ctx|
+          narrate_calls << pipeline_ctx.combined_seed
+          original.call(pipeline_ctx)
         end
 
         pipeline.send(:run_accumulated_narrative_phase,
@@ -163,9 +163,9 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
 
       it "joins outcomes in sequence_index order with 'Then:' separator" do
         narrate_calls = []
-        allow_any_instance_of(DungeonMaster::Pipeline).to receive(:run_narrate).and_wrap_original do |original, seed, **kwargs|
-          narrate_calls << seed
-          original.call(seed, **kwargs)
+        allow_any_instance_of(DungeonMaster::Pipeline).to receive(:run_narrate).and_wrap_original do |original, pipeline_ctx|
+          narrate_calls << pipeline_ctx.combined_seed
+          original.call(pipeline_ctx)
         end
 
         pipeline.send(:run_accumulated_narrative_phase,
@@ -185,9 +185,9 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
 
       it "passes nil seed (narrate will raise, which is expected behaviour)" do
         narrate_calls = []
-        allow_any_instance_of(DungeonMaster::Pipeline).to receive(:run_narrate).and_wrap_original do |original, seed, **kwargs|
-          narrate_calls << seed
-          original.call(seed, **kwargs)
+        allow_any_instance_of(DungeonMaster::Pipeline).to receive(:run_narrate).and_wrap_original do |original, pipeline_ctx|
+          narrate_calls << pipeline_ctx.combined_seed
+          original.call(pipeline_ctx)
         end
 
         expect {
