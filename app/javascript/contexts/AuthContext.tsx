@@ -12,6 +12,7 @@ interface User {
   id: number;
   email: string;
   admin: boolean;
+  tier: string;
 }
 
 interface AuthContextType {

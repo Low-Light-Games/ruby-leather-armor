@@ -95,25 +95,27 @@ export const AdventureCreation = () => {
                 </label>
               </div>
 
-              <div className="form-group">
-                <label className="toggle-row" htmlFor="skip-world-sanity-check-toggle">
-                  <span className="toggle-text">
-                    <span className="toggle-label">Skip World Sanity Check</span>
+              {user.tier === 'paid' && (
+                <div className="form-group">
+                  <label className="toggle-row" htmlFor="skip-world-sanity-check-toggle">
+                    <span className="toggle-text">
+                      <span className="toggle-label">Skip World Sanity Check</span>
                       <span className="toggle-desc">If you want to hallucinate a goblin sidekick by acting as if he always existed, go for it — however, we may fail to stop the world from getting out of hand</span>
-                  </span>
-                  <span className={`toggle-switch ${skipWorldSanityCheck ? 'active' : ''}`} role="switch" aria-checked={skipWorldSanityCheck}>
-                    <input
-                      id="skip-world-sanity-check-toggle"
-                      type="checkbox"
-                      checked={skipWorldSanityCheck}
-                      onChange={e => setSkipWorldSanityCheck(e.target.checked)}
-                    />
-                    <span className="toggle-track">
-                      <span className="toggle-knob" />
                     </span>
-                  </span>
-                </label>
-              </div>
+                    <span className={`toggle-switch ${skipWorldSanityCheck ? 'active' : ''}`} role="switch" aria-checked={skipWorldSanityCheck}>
+                      <input
+                        id="skip-world-sanity-check-toggle"
+                        type="checkbox"
+                        checked={skipWorldSanityCheck}
+                        onChange={e => setSkipWorldSanityCheck(e.target.checked)}
+                      />
+                      <span className="toggle-track">
+                        <span className="toggle-knob" />
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              )}
 
               {selectedSheet && (
                 <div className="character-preview">

@@ -29,7 +29,7 @@ module DungeonMaster
                              end
 
       if intent[:needs_mechanics]
-        if @adventure.skip_world_sanity_check?
+        if @adventure.skip_world_sanity_check? && (@adventure.user.paid? || @adventure.user.admin)
           capability = run_capability_check(intent)
           @loop&.log_step("sanity_checker", "World: skipped (player opt-out)")
         else
@@ -63,7 +63,7 @@ module DungeonMaster
         return finish_resolution(intent, merged, auto_success_roll_message(merged))
       end
 
-      if @adventure.skip_world_sanity_check?
+      if @adventure.skip_world_sanity_check? && (@adventure.user.paid? || @adventure.user.admin)
         @loop&.log_step("sanity_checker", "World: skipped (player opt-out, no mechanics)")
       else
         world = run_world_consistency_check(intent)

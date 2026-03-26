@@ -42,7 +42,7 @@ class AdventuresController < ApplicationController
     ctx     = Adventures::ContextInitializer.new(story)
 
     directed_dm = ActiveModel::Type::Boolean.new.cast(params[:directed_dm])
-    skip_world_sanity_check = ActiveModel::Type::Boolean.new.cast(params[:skip_world_sanity_check])
+    skip_world_sanity_check = (current_user.paid? || current_user.admin) && ActiveModel::Type::Boolean.new.cast(params[:skip_world_sanity_check])
 
     start_loc = story.starting_location
     seed = story.initial_contexts || {}
