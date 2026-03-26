@@ -28,12 +28,18 @@ jobs:
           RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          AXIOM_API_KEY: ${{ secrets.AXIOM_API_KEY }}
+          AXIOM_DATASET: ${{ vars.AXIOM_DATASET }}
+          AWS_S3_ACCESS_KEY_ID: ${{ secrets.AWS_S3_ACCESS_KEY_ID }}
+          AWS_S3_SECRET_ACCESS_KEY: ${{ secrets.AWS_S3_SECRET_ACCESS_KEY }}
+          AWS_S3_BUCKET: ${{ vars.AWS_S3_BUCKET }}
+          AWS_S3_REGION: ${{ vars.AWS_S3_REGION }}
           BRANCH: ${{ github.head_ref }}
         with:
           host: ${{ vars.EC2_HOST }}
           username: ${{ vars.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: RAILS_MASTER_KEY,OPENAI_API_KEY,SENTRY_DSN,BRANCH
+          envs: RAILS_MASTER_KEY,OPENAI_API_KEY,SENTRY_DSN,AXIOM_API_KEY,AXIOM_DATASET,AWS_S3_ACCESS_KEY_ID,AWS_S3_SECRET_ACCESS_KEY,AWS_S3_BUCKET,AWS_S3_REGION,BRANCH
           script: |
             set -e
 
@@ -58,6 +64,12 @@ jobs:
             RAILS_MASTER_KEY=${RAILS_MASTER_KEY}
             OPENAI_API_KEY=${OPENAI_API_KEY}
             SENTRY_DSN=${SENTRY_DSN}
+            AXIOM_API_KEY=${AXIOM_API_KEY}
+            AXIOM_DATASET=${AXIOM_DATASET}
+            AWS_S3_ACCESS_KEY_ID=${AWS_S3_ACCESS_KEY_ID}
+            AWS_S3_SECRET_ACCESS_KEY=${AWS_S3_SECRET_ACCESS_KEY}
+            AWS_S3_BUCKET=${AWS_S3_BUCKET}
+            AWS_S3_REGION=${AWS_S3_REGION}
             RAILS_ENV=staging
             PORT=${PORT}
             ENV
