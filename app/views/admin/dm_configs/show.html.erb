@@ -60,9 +60,6 @@
       <h2>Pipeline</h2>
 
       <div class="config-field">
-        <label>Pipeline Mode</label>
-        <p class="config-note">Budget pipeline — full multi-step pipeline with separate narration, context update, and chronicler steps.</p>
-      </div>
 
       <div class="config-field toggle-field">
         <label class="toggle-label" for="action_queue">
@@ -74,6 +71,22 @@
           When <strong>on</strong> (default), compound player inputs (e.g. "I open the door and enter the room")
           are split into discrete sequential actions by the Sequencer step.
           When <strong>off</strong>, the full input is treated as a single action.
+        </p>
+      </div>
+
+      <div class="config-field">
+        <label>Evaluation Mode</label>
+        <div class="radio-group">
+          <% [["unified", "Unified (default) — single AI call across all domains"], ["parallel", "Parallel — 6 beacon calls + sequential mech eval + parallel roll qualifier via Node microservice"]].each do |value, label| %>
+            <label class="radio-label">
+              <%= radio_button_tag :evaluation_mode, value, @config.get("evaluation_mode") == value || (value == "unified" && @config.get("evaluation_mode").blank?) %>
+              <%= label %>
+            </label>
+          <% end %>
+        </div>
+        <p class="field-hint">
+          <strong>Unified</strong> sends all contexts to one capable model — better cross-domain coherence, lower latency.
+          <strong>Parallel</strong> uses the Node evaluator microservice: 6 domain beacons run concurrently, then mechanical evaluation per affected domain, then roll qualification. Requires <code>EVALUATOR_URL</code> to be set.
         </p>
       </div>
     </div>

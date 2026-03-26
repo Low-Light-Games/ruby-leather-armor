@@ -26,13 +26,30 @@ services:
     depends_on:
       - postgres
       - redis
+      - evaluator
     env_file:
       - .env
     environment:
       RAILS_ENV: production
       NODE_ENV: production
       RAILS_MAX_THREADS: "12"
+      EVALUATOR_URL: http://evaluator:3001
     command: bundle exec sidekiq -C config/sidekiq.yml
+    restart: unless-stopped
+
+  evaluator:
+    build:
+      context: ./
+      args:
+        RAILS_MASTER_KEY: ${RAILS_MASTER_KEY}
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    command: node evaluator/src/index.js
     restart: unless-stopped
 
   postgres:

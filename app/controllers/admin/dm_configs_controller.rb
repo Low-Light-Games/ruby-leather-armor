@@ -18,6 +18,11 @@ module Admin
       new_settings["chronicler_tone_direction"] = params[:chronicler_tone_direction] == "1"
       new_settings["action_queue"] = params[:action_queue] == "1"
 
+      # Evaluation mode toggle
+      if %w[unified parallel].include?(params[:evaluation_mode])
+        new_settings["evaluation_mode"] = params[:evaluation_mode]
+      end
+
       # Numeric settings
       if params[:temperature].present?
         temp = params[:temperature].to_f.clamp(0.0, 2.0)

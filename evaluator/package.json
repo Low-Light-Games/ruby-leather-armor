@@ -1,0 +1,18 @@
+{
+  "name": "dm-evaluator",
+  "version": "1.0.0",
+  "description": "Parallel AI evaluation microservice for the DM pipeline",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "@sentry/node": "^8",
+    "express": "^4",
+    "openai": "^4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

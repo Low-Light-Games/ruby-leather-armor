@@ -37,11 +37,27 @@ services:
     depends_on:
       - postgres
       - redis
+      - evaluator
     env_file:
       - .env
     environment:
       RAILS_MAX_THREADS: "12"
+      EVALUATOR_URL: http://evaluator:3001
     command: bundle exec sidekiq -C config/sidekiq.yml
+
+  evaluator:
+    build:
+      context: ./
+      args:
+        RAILS_ENV: development
+    volumes:
+      - .:/app
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env
+    command: node evaluator/src/index.js
 
   proxy:
     image: traefik:v3.4

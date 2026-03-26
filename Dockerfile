@@ -43,6 +43,10 @@ COPY Gemfile Gemfile.lock package.json yarn.lock ./
 RUN bundle install
 RUN yarn install && npx playwright install chromium
 
+# Install evaluator Node.js dependencies (separate layer for caching)
+COPY evaluator/package.json evaluator/package-lock.json ./evaluator/
+RUN cd evaluator && npm install --omit=dev
+
 # Copy full app source before anything that needs it
 COPY . .
 

@@ -20,6 +20,7 @@ module DungeonMaster
     include Steps::MechanicalEvaluation
     include Steps::SanityChecker
     include Steps::UnifiedEvaluation
+    include Steps::ParallelEvaluation
     include Steps::Mechanic
     include Steps::Momentum
     include Steps::TimeKeeper
