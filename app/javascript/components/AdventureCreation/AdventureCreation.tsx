@@ -79,7 +79,7 @@ export const AdventureCreation = () => {
                 <label className="toggle-row" htmlFor="directed-dm-toggle">
                   <span className="toggle-text">
                     <span className="toggle-label">Directed Play</span>
-                    <span className="toggle-desc">The GM actively guides you with clear choices and direction</span>
+                      <span className="toggle-desc">At the end of each turn the GM prompts you with 2–3 concrete choices, guiding the adventure like a Choose Your Own Adventure game</span>
                   </span>
                   <span className={`toggle-switch ${directedDm ? 'active' : ''}`} role="switch" aria-checked={directedDm}>
                     <input
@@ -99,7 +99,7 @@ export const AdventureCreation = () => {
                 <label className="toggle-row" htmlFor="skip-world-sanity-check-toggle">
                   <span className="toggle-text">
                     <span className="toggle-label">Skip World Sanity Check</span>
-                    <span className="toggle-desc">Allow any action regardless of whether it is consistent with the current scene</span>
+                      <span className="toggle-desc">If you want to hallucinate a goblin sidekick by acting as if he always existed, go for it — however, we may fail to stop the world from getting out of hand</span>
                   </span>
                   <span className={`toggle-switch ${skipWorldSanityCheck ? 'active' : ''}`} role="switch" aria-checked={skipWorldSanityCheck}>
                     <input
