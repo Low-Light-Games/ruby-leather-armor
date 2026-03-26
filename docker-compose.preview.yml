@@ -25,7 +25,6 @@ services:
     environment:
       RAILS_ENV: staging
       RAILS_MAX_THREADS: "12"
-      EVALUATOR_URL: http://localhost:3001
     network_mode: host
     restart: unless-stopped
     command: bundle exec sidekiq -C config/sidekiq.yml
