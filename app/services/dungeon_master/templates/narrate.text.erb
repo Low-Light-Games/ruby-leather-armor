@@ -22,11 +22,11 @@ Speed: <%= @loop.get("journey_data")["speed_mph"] %> mph | Estimated travel: <%=
 <% end -%>
 
 <% if @pipeline.player_action.present? -%>
-=== WHAT THE PLAYER DID ===
+=== WHAT THE PLAYER DID (make sure to link this to what happened) ===
 <%= @pipeline.player_action %>
 
 <% end -%>
-=== WHAT HAPPENED ===
+=== WHAT HAPPENED (make sure the link between what the player did and this is clear) ===
 <%= @pipeline.combined_seed %>
 
 <% if @loop&.get("encounter_scene") -%>
