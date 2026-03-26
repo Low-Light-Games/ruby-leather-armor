@@ -273,6 +273,7 @@ export interface Adventure {
   scene_summary: string | null
   current_category: string | null
   directed_dm: boolean
+  skip_world_sanity_check: boolean
 }
 
 export interface AdventureSummary {

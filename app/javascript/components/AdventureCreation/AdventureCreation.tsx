@@ -11,13 +11,14 @@ export const AdventureCreation = () => {
 
   const {
     stories, sheets, adventures,
-    directedDmEnabled, loadingData, submitting, error, waitMessage,
+    loadingData, submitting, error, waitMessage,
     submitAdventure, deleteAdventure,
   } = useAdventureCreationData(user)
 
   const [selectedStoryId, setSelectedStoryId] = useState<number | ''>('')
   const [selectedSheetId, setSelectedSheetId] = useState<number | ''>('')
   const [directedDm, setDirectedDm] = useState(false)
+  const [skipWorldSanityCheck, setSkipWorldSanityCheck] = useState(false)
 
   const selectedStory = stories.find(s => s.id === selectedStoryId) || null
   const selectedSheet = sheets.find(s => s.id === selectedSheetId) || null
@@ -25,7 +26,7 @@ export const AdventureCreation = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedStoryId || !selectedSheetId) return
-    submitAdventure(selectedStoryId as number, selectedSheetId as number, directedDm)
+    submitAdventure(selectedStoryId as number, selectedSheetId as number, directedDm, skipWorldSanityCheck)
   }
 
   if (authLoading) return <div className="app">Loading...</div>
@@ -74,19 +75,39 @@ export const AdventureCreation = () => {
                 </select>
               </div>
 
-              {directedDmEnabled && (
-                <div className="form-group">
-                  <label className="toggle-row" htmlFor="directed-dm-toggle">
-                    <span className="toggle-text">
-                      <span className="toggle-label">Directed Play</span>
-                      <span className="toggle-desc">The GM actively guides you with clear choices and direction</span>
+              <div className="form-group">
+                <label className="toggle-row" htmlFor="directed-dm-toggle">
+                  <span className="toggle-text">
+                    <span className="toggle-label">Directed Play</span>
+                      <span className="toggle-desc">At the end of each turn the GM prompts you with 2–3 concrete choices, guiding the adventure like a Choose Your Own Adventure game</span>
+                  </span>
+                  <span className={`toggle-switch ${directedDm ? 'active' : ''}`} role="switch" aria-checked={directedDm}>
+                    <input
+                      id="directed-dm-toggle"
+                      type="checkbox"
+                      checked={directedDm}
+                      onChange={e => setDirectedDm(e.target.checked)}
+                    />
+                    <span className="toggle-track">
+                      <span className="toggle-knob" />
                     </span>
-                    <span className={`toggle-switch ${directedDm ? 'active' : ''}`} role="switch" aria-checked={directedDm}>
+                  </span>
+                </label>
+              </div>
+
+              {(user.tier === 'paid' || user.admin) && (
+                <div className="form-group">
+                  <label className="toggle-row" htmlFor="skip-world-sanity-check-toggle">
+                    <span className="toggle-text">
+                      <span className="toggle-label">Skip World Sanity Check</span>
+                      <span className="toggle-desc">If you want to hallucinate a goblin sidekick by acting as if he always existed, go for it — however, we may fail to stop the world from getting out of hand</span>
+                    </span>
+                    <span className={`toggle-switch ${skipWorldSanityCheck ? 'active' : ''}`} role="switch" aria-checked={skipWorldSanityCheck}>
                       <input
-                        id="directed-dm-toggle"
+                        id="skip-world-sanity-check-toggle"
                         type="checkbox"
-                        checked={directedDm}
-                        onChange={e => setDirectedDm(e.target.checked)}
+                        checked={skipWorldSanityCheck}
+                        onChange={e => setSkipWorldSanityCheck(e.target.checked)}
                       />
                       <span className="toggle-track">
                         <span className="toggle-knob" />

@@ -29,12 +29,19 @@ module DungeonMaster
                              end
 
       if intent[:needs_mechanics]
-        world, capability = run_sanity_gate(intent)
+        if @adventure.skip_world_sanity_check? && (@adventure.user.paid? || @adventure.user.admin)
+          capability = run_capability_check(intent)
+          @loop&.log_step("sanity_checker", "World: skipped (player opt-out)")
+        else
+          world, capability = run_sanity_gate(intent)
 
-        unless world[:consistent]
-          @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
-          @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
-          return { status: :rejected, intent: intent, reason: world[:reason], dm_message: world[:dm_message] }
+          unless world[:consistent]
+            @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
+            @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
+            return { status: :rejected, intent: intent, reason: world[:reason], dm_message: world[:dm_message] }
+          end
+
+          @loop&.log_step("sanity_checker", "World: consistent")
         end
 
         unless capability[:allowed]
@@ -42,8 +49,6 @@ module DungeonMaster
           @loop&.log_step("sanity_checker", "Capability check FAILED: #{capability[:reason].to_s.truncate(100)}")
           return { status: :rejected, intent: intent, reason: capability[:reason] }
         end
-
-        @loop&.log_step("sanity_checker", "World: consistent")
 
         merged = merge_mechanical_evaluations(evaluations)
         warn_duplicate_rolls(merged)
@@ -58,14 +63,18 @@ module DungeonMaster
         return finish_resolution(intent, merged, auto_success_roll_message(merged))
       end
 
-      world = run_world_consistency_check(intent)
-      unless world[:consistent]
-        @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
-        @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
-        return { status: :rejected, intent: intent, reason: world[:reason], dm_message: world[:dm_message] }
-      end
+      if @adventure.skip_world_sanity_check? && (@adventure.user.paid? || @adventure.user.admin)
+        @loop&.log_step("sanity_checker", "World: skipped (player opt-out, no mechanics)")
+      else
+        world = run_world_consistency_check(intent)
+        unless world[:consistent]
+          @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
+          @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
+          return { status: :rejected, intent: intent, reason: world[:reason], dm_message: world[:dm_message] }
+        end
 
-      @loop&.log_step("sanity_checker", "World: consistent (no mechanics)")
+        @loop&.log_step("sanity_checker", "World: consistent (no mechanics)")
+      end
 
       if intent[:expand_scene]
         return resolve_social_scene(intent)

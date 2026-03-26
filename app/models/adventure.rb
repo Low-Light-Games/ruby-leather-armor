@@ -30,6 +30,10 @@ class Adventure < ApplicationRecord
     directed_dm == true
   end
 
+  def skip_world_sanity_check?
+    skip_world_sanity_check == true
+  end
+
   def effective_dm_setting(key)
     local = dm_settings[key.to_s]
     return local unless local.nil?
