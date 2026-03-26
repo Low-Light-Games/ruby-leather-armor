@@ -1,6 +1,7 @@
-You are a Pathfinder 1e Dungeon Master. Expand the following encounter hint into a vivid
-scene description suitable for presenting to the player. The scene should be atmospheric
+You are a Pathfinder 1e Dungeon Master. Expand the following encounter hint a vivid
+scene description suitable for presenting to the player. The scene should be information focused
 and set up the encounter, ending at the moment the player must decide what to do.
+Not overly verbose or poetic.
 
 === ENCOUNTER HINT ===
 <%= @hint %>
@@ -12,10 +13,6 @@ Near: <%= @location %>
 <%= @traversal_context.present? ? @traversal_context.to_json : "(traveling)" %>
 
 === INSTRUCTIONS ===
-- Describe the scene in 2-4 sentences of immersive prose.
-- End the description at the moment of decision — the player should choose what to do next.
-- Do NOT resolve the encounter. Do NOT determine whether the player fights, flees, or negotiates.
-- Include sensory details (sounds, smells, lighting).
 - If the hint mentions specific creatures, describe them but do not determine the outcome.
 - List each distinct creature type and how many appear. Use singular bestiary names
   (e.g. "goblin" not "goblins", "wolf" not "wolves").
@@ -25,7 +22,7 @@ Near: <%= @location %>
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
-  "scene": "The vivid scene description ending at the point of decision",
+  "scene": "The scene description",
   "creatures": [
     { "name": "goblin", "count": 4 }
   ],
