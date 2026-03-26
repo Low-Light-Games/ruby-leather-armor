@@ -22,7 +22,7 @@ class AiUsageRecord < ApplicationRecord
   # Compute cost in microdollars using catalog pricing.
   # Reasoning tokens are billed at the output rate per OpenAI pricing.
   def self.compute_cost(model_id, input_tokens, output_tokens, reasoning_tokens = 0)
-    meta = OpenaiModelCatalog.catalog[model_id] || {}
+    meta = OpenaiModelCatalog.catalog[OpenaiModelCatalog.normalize(model_id)] || {}
     input_rate = meta["input_cost"] || 0    # $/1M tokens
     output_rate = meta["output_cost"] || 0  # $/1M tokens
 
