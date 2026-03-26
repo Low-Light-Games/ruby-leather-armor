@@ -41,8 +41,8 @@ class AdventuresController < ApplicationController
     max_hp  = stats.starting_hp
     ctx     = Adventures::ContextInitializer.new(story)
 
-    directed_dm = ActiveModel::Type::Boolean.new.cast(params[:directed_dm]) && FeatureFlag.enabled?(:directed_dm)
-    skip_world_sanity_check = ActiveModel::Type::Boolean.new.cast(params[:skip_world_sanity_check]) && FeatureFlag.enabled?(:skip_world_sanity_check)
+    directed_dm = ActiveModel::Type::Boolean.new.cast(params[:directed_dm])
+    skip_world_sanity_check = ActiveModel::Type::Boolean.new.cast(params[:skip_world_sanity_check])
 
     start_loc = story.starting_location
     seed = story.initial_contexts || {}

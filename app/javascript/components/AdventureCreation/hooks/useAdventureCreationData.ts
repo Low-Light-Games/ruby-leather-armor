@@ -24,8 +24,6 @@ export function useAdventureCreationData(user: any) {
   const [stories, setStories] = useState<Story[]>([])
   const [sheets, setSheets] = useState<Sheet[]>([])
   const [adventures, setAdventures] = useState<AdventureSummary[]>([])
-  const [directedDmEnabled, setDirectedDmEnabled] = useState(false)
-  const [skipWorldSanityCheckEnabled, setSkipWorldSanityCheckEnabled] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -57,14 +55,11 @@ export function useAdventureCreationData(user: any) {
       fetch('/stories').then(r => r.json()),
       fetch('/sheets.json').then(r => r.json()),
       fetch('/adventures.json').then(r => r.json()),
-      fetch('/feature_flags.json').then(r => r.json()),
     ])
-      .then(([storiesData, sheetsData, adventuresData, flagsData]) => {
+      .then(([storiesData, sheetsData, adventuresData]) => {
         setStories(storiesData)
         setSheets(sheetsData)
         setAdventures(adventuresData)
-        setDirectedDmEnabled(flagsData.enabled?.includes('directed_dm') ?? false)
-        setSkipWorldSanityCheckEnabled(flagsData.enabled?.includes('skip_world_sanity_check') ?? false)
         setLoadingData(false)
       })
       .catch(err => {
@@ -127,7 +122,7 @@ export function useAdventureCreationData(user: any) {
 
   return {
     stories, sheets, adventures,
-    directedDmEnabled, skipWorldSanityCheckEnabled, loadingData, submitting, error, waitMessage,
+    loadingData, submitting, error, waitMessage,
     submitAdventure, deleteAdventure,
   }
 }

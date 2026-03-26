@@ -11,7 +11,7 @@ export const AdventureCreation = () => {
 
   const {
     stories, sheets, adventures,
-    directedDmEnabled, skipWorldSanityCheckEnabled, loadingData, submitting, error, waitMessage,
+    loadingData, submitting, error, waitMessage,
     submitAdventure, deleteAdventure,
   } = useAdventureCreationData(user)
 
@@ -75,49 +75,45 @@ export const AdventureCreation = () => {
                 </select>
               </div>
 
-              {directedDmEnabled && (
-                <div className="form-group">
-                  <label className="toggle-row" htmlFor="directed-dm-toggle">
-                    <span className="toggle-text">
-                      <span className="toggle-label">Directed Play</span>
-                      <span className="toggle-desc">The GM actively guides you with clear choices and direction</span>
+              <div className="form-group">
+                <label className="toggle-row" htmlFor="directed-dm-toggle">
+                  <span className="toggle-text">
+                    <span className="toggle-label">Directed Play</span>
+                    <span className="toggle-desc">The GM actively guides you with clear choices and direction</span>
+                  </span>
+                  <span className={`toggle-switch ${directedDm ? 'active' : ''}`} role="switch" aria-checked={directedDm}>
+                    <input
+                      id="directed-dm-toggle"
+                      type="checkbox"
+                      checked={directedDm}
+                      onChange={e => setDirectedDm(e.target.checked)}
+                    />
+                    <span className="toggle-track">
+                      <span className="toggle-knob" />
                     </span>
-                    <span className={`toggle-switch ${directedDm ? 'active' : ''}`} role="switch" aria-checked={directedDm}>
-                      <input
-                        id="directed-dm-toggle"
-                        type="checkbox"
-                        checked={directedDm}
-                        onChange={e => setDirectedDm(e.target.checked)}
-                      />
-                      <span className="toggle-track">
-                        <span className="toggle-knob" />
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              )}
+                  </span>
+                </label>
+              </div>
 
-              {skipWorldSanityCheckEnabled && (
-                <div className="form-group">
-                  <label className="toggle-row" htmlFor="skip-world-sanity-check-toggle">
-                    <span className="toggle-text">
-                      <span className="toggle-label">Skip World Sanity Check</span>
-                      <span className="toggle-desc">Allow any action regardless of whether it is consistent with the current scene</span>
+              <div className="form-group">
+                <label className="toggle-row" htmlFor="skip-world-sanity-check-toggle">
+                  <span className="toggle-text">
+                    <span className="toggle-label">Skip World Sanity Check</span>
+                    <span className="toggle-desc">Allow any action regardless of whether it is consistent with the current scene</span>
+                  </span>
+                  <span className={`toggle-switch ${skipWorldSanityCheck ? 'active' : ''}`} role="switch" aria-checked={skipWorldSanityCheck}>
+                    <input
+                      id="skip-world-sanity-check-toggle"
+                      type="checkbox"
+                      checked={skipWorldSanityCheck}
+                      onChange={e => setSkipWorldSanityCheck(e.target.checked)}
+                    />
+                    <span className="toggle-track">
+                      <span className="toggle-knob" />
                     </span>
-                    <span className={`toggle-switch ${skipWorldSanityCheck ? 'active' : ''}`} role="switch" aria-checked={skipWorldSanityCheck}>
-                      <input
-                        id="skip-world-sanity-check-toggle"
-                        type="checkbox"
-                        checked={skipWorldSanityCheck}
-                        onChange={e => setSkipWorldSanityCheck(e.target.checked)}
-                      />
-                      <span className="toggle-track">
-                        <span className="toggle-knob" />
-                      </span>
-                    </span>
-                  </label>
-                </div>
-              )}
+                  </span>
+                </label>
+              </div>
 
               {selectedSheet && (
                 <div className="character-preview">
