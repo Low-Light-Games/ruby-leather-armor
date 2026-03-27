@@ -51,16 +51,15 @@ test.describe('Per-action narration — progressive action queue', () => {
       page.locator('.chat-message.msg-player').last()
     ).toBeVisible({ timeout: 10_000 });
 
-    // ── Verify the thinking indicator appeared (pipeline started) ────────────
-    await expect(page.locator('.msg-thinking')).toBeVisible({ timeout: 10_000 });
-
     // ── Action 1 narrated immediately (badge 1 / 3) ─────────────────────────
+    // Note: .msg-thinking is intentionally not checked here. With inline job
+    // execution (RAILS_ENV=playwright) the pipeline completes synchronously
+    // inside the HTTP request, so the thinking indicator may appear and clear
+    // before Playwright can observe it. Thinking indicator resilience is
+    // covered by the page-refresh test below.
     const badge1 = page.locator('.msg-sequence-badge', { hasText: '1 / 3' });
     await badge1.waitFor({ timeout: 20_000 });
     await expect(badge1).toBeVisible();
-
-    // Thinking indicator is still present while actions 2+ are processing
-    await expect(page.locator('.msg-thinking')).toBeVisible();
 
     // ── Roll request appears (action 2 — pick the lock needs Disable Device) ─
     const rollRequestMsg = page.locator('.msg-type-roll_request');
