@@ -4,13 +4,14 @@ module DungeonMaster
   module Steps
     # Pipeline Step: Stagehand (narrative phase orchestration).
     #
-    # Code-only step — no AI call. Sits between Mechanic/Momentum and Narrate/ContextUpdates.
+    # Code-only step — no AI call. Sits between Mechanic/Momentum and the
+    # narrative/context-update phase.
     # Responsibilities:
-    #   1. Check if combat signal from UnifiedEvaluation warrants Warmaster (Path B)
+    #   1. Check if combat signal from ParallelEvaluation warrants Warmaster (Path B)
     #   2. Run ContextUpdate before any awaiting_initiative early return (Path B)
     #   3. Orchestrate Narrate + ContextUpdate based on narration_mode config:
-    #        "parallel"   — both run simultaneously (default)
-    #        "subjugated" — context updates run first, then narrate sees fresh DB state
+    #        "parallel"   — narrate + context updates sent to Node /fan_out together (default)
+    #        "subjugated" — context updates via Node fan-out first, then narrate sequentially
     module Stagehand
       private
 
@@ -43,23 +44,58 @@ module DungeonMaster
       end
 
       def run_parallel_narrative(intent, pipeline:, mutations:)
-        narration = nil
-
-        narrate_thread = Thread.new do
-          ActiveRecord::Base.connection_pool.with_connection do
-            narration = run_narrate(pipeline)
-          end
-        end
-        ctx_thread = Thread.new do
-          ActiveRecord::Base.connection_pool.with_connection do
-            run_context_updates(pipeline.combined_seed, mutations,
-                                macro_significant: intent[:macro_significant])
-          end
+        unless pipeline.combined_seed
+          @log&.play_log!("pipeline_error", "Narrate step reached without an outcome — nothing to narrate",
+                          parsed_response: { encounter_scene: @loop&.get("encounter_scene"),
+                                             verdict_outcome: @loop&.get("verdict_outcome") }.compact)
+          raise AiError, "Narrate step reached without an outcome — nothing to narrate"
         end
 
-        narrate_thread.value
-        ctx_thread.value
-        narration
+        broadcast_progress("Writing the story...")
+        evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
+
+        narrate_prompt = build_narrate_prompt(pipeline)
+        ctx_prompts    = build_context_update_prompts(pipeline.combined_seed, mutations,
+                                                      macro_significant: intent[:macro_significant])
+
+        results = call_evaluator!("#{evaluator_url}/fan_out",
+                                  [narrate_prompt, *ctx_prompts],
+                                  pipeline.combined_seed.to_s.truncate(120),
+                                  phase: "parallel_narrative")
+
+        narrate_raw    = results.find { |r| r.dig("meta", "step") == "narrate" }
+        parsed_narrate = narrate_raw&.dig("parsed_response") || {}
+
+        # Fallback: if the model returned raw prose instead of JSON the node
+        # service leaves parsed_response nil and exposes raw_response.
+        if !parsed_narrate["narrative"].present? && narrate_raw&.dig("raw_response").present?
+          raw_text = narrate_raw["raw_response"].to_s.strip
+          parsed_narrate = { "narrative" => raw_text } if raw_text.present?
+        end
+
+        raise AiError, "Narrate step returned no narrative — model produced: #{parsed_narrate.inspect.truncate(200)}" \
+          unless parsed_narrate["narrative"].present?
+
+        apply_context_update_results(results, macro_significant: intent[:macro_significant])
+
+        { narrative: parsed_narrate["narrative"] }
+      end
+
+      def build_narrate_prompt(pipeline)
+        system_prompt = PromptRenderer.render("narrate",
+          loop:              @loop,
+          pipeline:          pipeline,
+          time_context:      @adventure.time_context || {},
+          pacing_text:       PromptHelpers.pacing_instructions(@config),
+          directed_play_text: PromptHelpers.directed_play_instructions(@adventure))
+
+        {
+          system_prompt: system_prompt,
+          user_message:  pipeline.combined_seed,
+          model:         @config.model_for("narrate"),
+          max_tokens:    @config.token_budget_for("narrate"),
+          meta:          { step: "narrate" }
+        }
       end
 
       def run_subjugated_narrative(intent, pipeline:, mutations:)

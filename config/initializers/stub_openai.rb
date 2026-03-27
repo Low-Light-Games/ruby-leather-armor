@@ -92,16 +92,32 @@ if ENV["STUB_OPENAI"].present?
   WebMock.stub_request(:post, "#{evaluator_base}/fan_out")
          .to_return do |request|
     body     = JSON.parse(request.body) rescue []
-    step     = body.dig(0, "meta", "step").to_s
     user_msg = body.dig(0, "user_message").to_s.downcase
     is_lock  = user_msg.include?("lock")
 
-    results = if step == "roll_qualifier"
-      body.map { |p| build_entry.call("roll_qualifier", p.dig("meta", "domain"),
-                                      "qualifications" => []) }
-    else
-      body.map do |p|
-        domain     = p.dig("meta", "domain")
+    results = body.map do |p|
+      step   = p.dig("meta", "step").to_s
+      domain = p.dig("meta", "domain")
+
+      case step
+      when "roll_qualifier"
+        build_entry.call("roll_qualifier", domain, "qualifications" => [])
+      when "sanity_checker_world"
+        build_entry.call("sanity_checker_world", nil,
+                         "consistent" => true, "reason" => nil,
+                         "dm_message" => nil, "referenced_entities" => [])
+      when "sanity_checker"
+        build_entry.call("sanity_checker", nil, "allowed" => true, "reason" => nil)
+      when "micro_context_update"
+        build_entry.call("micro_context_update", nil, "context_updates" => {})
+      when "macro_narrative_update"
+        build_entry.call("macro_narrative_update", nil,
+                         "story_summary" => "The adventurer opened a door.")
+      when "narrate"
+        build_entry.call("narrate", nil,
+                         "narrative" => "The adventurer moves with purpose through the dungeon.")
+      else
+        # beacon
         needs_mech = is_lock && domain == "exploration"
         build_entry.call("beacon", domain,
                          "affected"          => domain == "exploration",
