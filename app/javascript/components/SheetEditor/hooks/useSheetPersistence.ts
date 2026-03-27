@@ -4,6 +4,7 @@ import type { Sheet, AttributeType } from '../../../types';
 import type { AttributeValues } from '../../../contexts/SheetsContext';
 import type { OwnedItem, Currency } from '../../../rules/pathfinder_items_types';
 import { csrfToken } from '../../../utils/api';
+import { routes } from '../../../utils/routes';
 import { getCastingStyle } from '../../../rules/pathfinder_spells';
 import { EMPTY_CURRENCY } from '../../../rules/pathfinder_items';
 import { DEFAULT_ATTRIBUTES } from './usePointBuy';
@@ -152,7 +153,7 @@ export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceRes
   const saveSheet = useCallback(async () => {
     try {
       const isUpdate = currentSheetId !== null;
-      const url = isUpdate ? `/sheets/${currentSheetId}` : '/sheets';
+      const url = isUpdate ? routes.sheet(currentSheetId) : routes.sheets;
       const method = isUpdate ? 'PATCH' : 'POST';
 
       const response = await fetch(url, {

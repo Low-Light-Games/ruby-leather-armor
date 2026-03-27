@@ -8,7 +8,9 @@ class OmniauthCallbacksController < ApplicationController
 
     if user&.persisted?
       session[:user_id] = user.id
-      redirect_to root_path
+      # APP_URL is the canonical player app URL (https://app.leatherarmor.io).
+      # Falls back to app_path (/app) for local development without the env var.
+      redirect_to ENV.fetch("APP_URL", app_path)
     else
       redirect_to root_path, alert: "Google sign-in failed. Please try again."
     end

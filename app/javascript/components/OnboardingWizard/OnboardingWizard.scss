@@ -1,0 +1,322 @@
+@use '../tokens' as *;
+
+// ── Wizard shell ────────────────────────────────────────────────
+
+.onboarding-wizard {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+
+  &__intro {
+    p {
+      margin: 0 0 12px;
+      color: $ink-mid;
+      line-height: 1.7;
+      font-family: $font-body;
+
+      &:last-child { margin-bottom: 0; }
+    }
+  }
+
+  &__rule {
+    border: none;
+    border-top: 1px solid $border-light;
+    margin: 0;
+  }
+
+  &__section-heading {
+    margin: 0;
+    font-family: $font-display;
+    font-weight: normal;
+    font-size: 20px;
+    letter-spacing: 0.05em;
+    color: $ink;
+    text-align: center;
+  }
+
+  &__error {
+    border: 1px solid $red-ink-lt;
+    background: $red-ink-lt;
+    padding: 12px 16px;
+    font-family: $font-body;
+    color: $red-ink-dk;
+    font-size: 14px;
+    line-height: 1.5;
+
+    p { margin: 0 0 6px; }
+
+    a {
+      color: $red-ink;
+      text-decoration: underline;
+
+      &:hover { color: $red-ink-dk; }
+    }
+  }
+
+  &__cards {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  &__own {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 0 16px;
+    text-align: center;
+  }
+
+  &__own-desc {
+    margin: 0;
+    font-size: 14px;
+    color: $ink-light;
+    max-width: 420px;
+    line-height: 1.7;
+  }
+
+  &__own-link {
+    display: inline-block;
+    margin-top: 4px;
+    padding: 10px 28px;
+    border: 1px solid $ink;
+    font-family: $font-display;
+    font-size: 13px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: $ink;
+    transition: background-color 0.2s, color 0.2s;
+
+    &:hover {
+      background-color: $ink;
+      color: $parchment;
+    }
+  }
+}
+
+// ── Character card ───────────────────────────────────────────────
+
+.onboarding-card {
+  position: relative;
+  overflow: hidden;
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: $parchment-dk;
+  border: 1px solid $border-light;
+  padding: 24px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+
+  // Ink-blot hover: radial spotlight that follows the cursor
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at var(--ink-x, 50%) var(--ink-y, 50%),
+      rgba(20, 14, 10, 0.06) 0%,
+      transparent 70%
+    );
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  // Ink sweep: shimmer across on hover
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(20, 14, 10, 0.03), transparent);
+    transition: left 0.8s ease;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  &:hover:not(:disabled) {
+    border-color: $border;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+
+    &::before { opacity: 1; }
+    &::after  { left: 100%; }
+
+    .onboarding-card__hint { opacity: 1; }
+  }
+
+  &:disabled { cursor: not-allowed; opacity: 0.6; }
+
+  &:focus-visible {
+    outline: 2px solid $red-ink;
+    outline-offset: 2px;
+  }
+
+  // All direct children sit above the pseudo-element overlays
+  & > * { position: relative; z-index: 1; }
+
+  &__body {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+  }
+
+  &__portrait {
+    flex-shrink: 0;
+    width: 112px;
+    border: 1px solid $border-light;
+    padding: 2px;
+    background: $parchment;
+
+    img {
+      display: block;
+      width: 100%;
+      height: auto;
+      filter: grayscale(1) contrast(1.2);
+      opacity: 0.9;
+      transition: opacity 0.4s;
+    }
+
+    @media (min-width: 600px) { width: 140px; }
+  }
+
+  &:hover:not(:disabled) &__portrait img {
+    opacity: 1;
+  }
+
+  &__details {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__name {
+    margin: 0;
+    font-family: $font-display;
+    font-weight: normal;
+    font-size: 18px;
+    letter-spacing: 0.04em;
+    color: $ink;
+  }
+
+  &__meta {
+    margin: 0;
+    font-family: $font-mono;
+    font-size: 11px;
+    color: $ink-faint;
+    letter-spacing: 0.02em;
+  }
+
+  &__description {
+    margin: 0;
+    font-family: $font-body;
+    font-size: 14px;
+    font-style: italic;
+    color: $ink-mid;
+    line-height: 1.65;
+  }
+
+  &__abilities {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+    font-family: $font-mono;
+    font-size: 11px;
+    color: $ink-light;
+  }
+
+  &__combat {
+    margin: 0;
+    font-family: $font-mono;
+    font-size: 11px;
+    color: $ink-light;
+  }
+
+  &__hint {
+    margin: 16px 0 0;
+    font-family: $font-mono;
+    font-size: 11px;
+    color: $ink-faint;
+    letter-spacing: 0.08em;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+}
+
+// ── Loading screen ───────────────────────────────────────────────
+
+.onboarding-loading {
+  max-width: 480px;
+  margin: 80px auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+
+  &__character {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__name {
+    margin: 0;
+    font-family: $font-display;
+    font-weight: normal;
+    font-size: 22px;
+    letter-spacing: 0.05em;
+    color: $ink;
+  }
+
+  &__class {
+    margin: 0;
+    font-family: $font-mono;
+    font-size: 12px;
+    color: $ink-faint;
+    letter-spacing: 0.04em;
+  }
+
+  &__rule {
+    width: 48px;
+    border: none;
+    border-top: 1px solid $border-light;
+    margin: 0;
+  }
+
+  &__message {
+    margin: 0;
+    font-family: $font-body;
+    font-size: 15px;
+    font-style: italic;
+    color: $ink-mid;
+    line-height: 1.6;
+    min-height: 48px;
+    animation: onboarding-fade-in 0.4s ease-out;
+  }
+
+  &__hint {
+    margin: 0;
+    font-family: $font-mono;
+    font-size: 11px;
+    color: $ink-faint;
+    letter-spacing: 0.06em;
+  }
+}
+
+@keyframes onboarding-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

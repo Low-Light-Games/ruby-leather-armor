@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { Adventure } from '../../../types';
 import { csrfToken } from '../../../utils/api';
+import { routes } from '../../../utils/routes';
 
 interface UseInventoryResult {
   toggleEquip: (itemId: string) => void;
@@ -21,7 +22,7 @@ export function useInventory(
     setEquipError(null);
 
     try {
-      const res = await fetch(`/adventures/${adventure.id}/adventure_sheet/toggle_equip`, {
+      const res = await fetch(routes.adventureSheetToggleEquip(adventure.id), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
         body: JSON.stringify({ item_id: itemId }),

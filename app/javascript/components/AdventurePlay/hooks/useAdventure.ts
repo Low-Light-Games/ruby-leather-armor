@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Adventure, DerivedStats } from '../../../types';
+import { routes } from '../../../utils/routes';
 
 interface UseAdventureResult {
   adventure: Adventure | null;
@@ -20,7 +21,7 @@ export function useAdventure(adventureId: number, user: unknown): UseAdventureRe
   const loadAdventure = useCallback(() => {
     if (!user) return;
 
-    fetch(`/adventures/${adventureId}.json`)
+    fetch(routes.adventureJson(adventureId))
       .then(response => {
         if (!response.ok) throw new Error('Failed to load adventure');
         return response.json();

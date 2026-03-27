@@ -15,6 +15,7 @@ import type { FeatDefinition } from '../rules/pathfinder_feats_types';
 import type { SpellDefinition } from '../rules/pathfinder_spells_types';
 import type { ItemDefinition } from '../rules/pathfinder_items_types';
 import { setFeatDefinitions } from '../rules/pathfinder_feats';
+import { routes } from '../utils/routes';
 import { setSpellDefinitions } from '../rules/pathfinder_spells';
 import { setItemDefinitions } from '../rules/pathfinder_items';
 
@@ -57,9 +58,9 @@ export const GameDataProvider: React.FC<Props> = ({ children }) => {
     const load = async () => {
       try {
         const [featsRes, spellsRes, itemsRes] = await Promise.all([
-          fetch('/feat_definitions.json'),
-          fetch('/spell_definitions.json'),
-          fetch('/item_definitions.json'),
+          fetch(`${routes.featDefinitions}.json`),
+          fetch(`${routes.spellDefinitions}.json`),
+          fetch(`${routes.itemDefinitions}.json`),
         ]);
 
         if (!featsRes.ok) throw new Error(`Feats fetch failed: ${featsRes.status}`);
