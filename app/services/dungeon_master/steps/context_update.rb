@@ -5,7 +5,7 @@ module DungeonMaster
     # Pipeline Step 6a/6b: Context updates.
     # 6a — Micro context update (self-directed: reads outcome, decides which domains changed)
     # 6b — Macro narrative update (story summary)
-    # Run in parallel; 6b is conditional on macro_significant.
+    # Both are POSTed to Node /fan_out in a single call; 6b is conditional on macro_significant.
     #
     # ContextUpdate is the sole writer of all Adventure context fields.
     # It receives what_happened (the full outcome text) and decides independently
@@ -16,73 +16,79 @@ module DungeonMaster
 
       def run_context_updates(what_happened, mutations, macro_significant: false)
         broadcast_progress("Remembering the world...")
-        micro_thread = Thread.new do
-          ActiveRecord::Base.connection_pool.with_connection { run_micro_context_update(what_happened, mutations) }
-        end
-        macro_thread = if macro_significant
-                         Thread.new do
-                           ActiveRecord::Base.connection_pool.with_connection { run_macro_narrative_update(what_happened) }
-                         end
-                       end
+        evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
 
-        micro_result = micro_thread.value
+        prompts = build_context_update_prompts(what_happened, mutations, macro_significant: macro_significant)
+        results = call_evaluator!("#{evaluator_url}/fan_out", prompts,
+                                  what_happened.to_s.truncate(120), phase: "context_updates")
+
+        apply_context_update_results(results, macro_significant: macro_significant)
+      rescue => e
+        pipeline_error!("context_updates", e)
+      end
+
+      # Builds the prompt array for a context-update fan-out call.
+      # Called by run_context_updates and by Stagehand's run_parallel_narrative
+      # (which merges these into the same fan-out as narrate).
+      def build_context_update_prompts(what_happened, mutations, macro_significant: false)
+        prompts = [build_micro_context_prompt(what_happened, mutations)]
+        prompts << build_macro_narrative_prompt(what_happened) if macro_significant
+        prompts
+      end
+
+      # Applies results from a context-update fan-out (called both here and from Stagehand).
+      def apply_context_update_results(results, macro_significant: false)
+        micro_raw = results.find { |r| r.dig("meta", "step") == "micro_context_update" }
+        macro_raw = results.find { |r| r.dig("meta", "step") == "macro_narrative_update" }
+
+        micro_result = micro_raw&.dig("parsed_response") || {}
         persist_micro_contexts(micro_result)
         persist_scene_summary(micro_result["scene_summary"])
         handle_new_creatures(micro_result["new_creatures"]) if micro_result["new_creatures"].present?
         handle_context_wishes(micro_result["context_wishes"]) if micro_result["context_wishes"].present?
 
-        if macro_thread
-          macro_result = macro_thread.value
+        if macro_raw
+          macro_result = macro_raw.dig("parsed_response") || {}
           @adventure.update!(story_summary: macro_result["story_summary"]) if macro_result["story_summary"].present?
         end
-      rescue => e
-        pipeline_error!("context_updates", e)
       end
 
-      def run_micro_context_update(what_happened, mutations)
-        prompt_summary = "Micro context update"
-        micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
-
-        context_schemas = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, h|
+      def build_micro_context_prompt(what_happened, mutations)
+        micro_contexts   = PromptHelpers.all_micro_contexts(@adventure)
+        context_schemas  = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, h|
           h[field] = PromptRenderer.load_schema("contexts/#{field}_context")
         end
 
         system_prompt, user_msg = PromptRenderer.render_with_user_message("micro_context_update",
-          micro_contexts: micro_contexts,
-          context_fields: PromptHelpers::CONTEXT_FIELDS,
+          micro_contexts:  micro_contexts,
+          context_fields:  PromptHelpers::CONTEXT_FIELDS,
           context_schemas: context_schemas,
-          what_happened: what_happened,
-          mutations_json: mutations.present? ? mutations.to_json : nil,
-          canonical_hp: build_canonical_hp)
+          what_happened:   what_happened,
+          mutations_json:  mutations.present? ? mutations.to_json : nil,
+          canonical_hp:    build_canonical_hp)
 
-        request_body = { system_prompt: system_prompt, user_message: user_msg }
-
-        timed_ai_call("micro_context_update", prompt_summary, request_body) do
-          raw = @ai.chat(system_prompt: system_prompt, user_message: user_msg,
-                          max_tokens: @config.token_budget_for("micro_context_update"),
-                          step_name: "micro_context_update",
-                          model: @config.model_for("micro_context_update"))
-          [raw, @ai.parse_json(raw)]
-        end
+        {
+          system_prompt: system_prompt,
+          user_message:  user_msg,
+          model:         @config.model_for("micro_context_update"),
+          max_tokens:    @config.token_budget_for("micro_context_update"),
+          meta:          { step: "micro_context_update" }
+        }
       end
 
-      def run_macro_narrative_update(what_happened)
-        prompt_summary = "Macro narrative update"
-
+      def build_macro_narrative_prompt(what_happened)
         system_prompt, user_msg = PromptRenderer.render_with_user_message("macro_narrative_update",
-          story_intro: @adventure.story.preview,
-          story_summary: @adventure.story_summary,
-          what_happened: what_happened)
+          story_intro:    @adventure.story.preview,
+          story_summary:  @adventure.story_summary,
+          what_happened:  what_happened)
 
-        request_body = { system_prompt: system_prompt, user_message: user_msg }
-
-        timed_ai_call("macro_narrative_update", prompt_summary, request_body) do
-          raw = @ai.chat(system_prompt: system_prompt, user_message: user_msg,
-                          max_tokens: @config.token_budget_for("macro_narrative_update"),
-                          step_name: "macro_narrative_update",
-                          model: @config.model_for("macro_narrative_update"))
-          [raw, @ai.parse_json(raw)]
-        end
+        {
+          system_prompt: system_prompt,
+          user_message:  user_msg,
+          model:         @config.model_for("macro_narrative_update"),
+          max_tokens:    @config.token_budget_for("macro_narrative_update"),
+          meta:          { step: "macro_narrative_update" }
+        }
       end
 
       def persist_micro_contexts(parsed)

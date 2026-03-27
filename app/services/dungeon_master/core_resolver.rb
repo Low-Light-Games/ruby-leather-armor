@@ -214,20 +214,32 @@ module DungeonMaster
       }
     end
 
-    # Parallel world + capability checks without mech eval.
+    # Parallel world + capability checks via Node fan-out (no Ruby threads).
     def run_sanity_gate(intent)
-      world = nil
-      capability = nil
+      evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
 
-      world_thread = Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection { world = run_world_consistency_check(intent) }
-      end
-      cap_thread = Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection { capability = run_capability_check(intent) }
-      end
+      prompts = [build_world_check_prompt(intent)]
+      prompts << build_capability_prompt(intent) if @sheet
 
-      world_thread.value
-      cap_thread.value
+      results = call_evaluator!("#{evaluator_url}/fan_out", prompts, intent[:intention], phase: "sanity_gate")
+
+      world_raw = results.find { |r| r.dig("meta", "step") == "sanity_checker_world" }
+      cap_raw   = results.find { |r| r.dig("meta", "step") == "sanity_checker" }
+
+      world_p = world_raw&.dig("parsed_response") || {}
+      world = {
+        consistent:          world_p["consistent"] != false,
+        reason:              world_p["reason"],
+        dm_message:          world_p["dm_message"],
+        referenced_entities: Array(world_p["referenced_entities"])
+      }
+
+      capability = if cap_raw
+        cap_p = cap_raw.dig("parsed_response") || {}
+        { allowed: cap_p["allowed"] != false, reason: cap_p["reason"] }
+      else
+        { allowed: true, reason: nil }
+      end
 
       [world, capability]
     end
