@@ -17,12 +17,10 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
 === PREVIOUS EVALUATION SUMMARIES ===
 <%= @previous_summaries.join("\n\n") %>
 <% end -%>
-<% if @prior_outcomes.present? && @prior_outcomes.any? -%>
+<% _prior = PromptRenderer.render_partial("partials/prior_outcomes", outcomes: @prior_outcomes) -%>
+<% if _prior.present? -%>
 
-=== PRIOR ACTIONS THIS TURN ===
-<% @prior_outcomes.each_with_index do |outcome, idx| -%>
-[Action <%= idx + 1 %>] <%= outcome %>
-<% end -%>
+<%= _prior %>
 <% end -%>
 
 === RELEVANT RULES ===

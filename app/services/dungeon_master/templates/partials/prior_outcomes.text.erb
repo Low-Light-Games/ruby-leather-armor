@@ -1,0 +1,9 @@
+<% if @outcomes.present? && @outcomes.any? -%>
+=== PRIOR ACTIONS THIS TURN ===
+<% @outcomes.each_with_index do |outcome, idx| -%>
+[Action <%= idx + 1 %>] <%= outcome %>
+<% end -%>
+<% if @note.present? -%>
+<%= @note %>
+<% end -%>
+<% end -%>

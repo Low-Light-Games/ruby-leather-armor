@@ -16,14 +16,10 @@ You evaluate how a player's intended action affects the <%= @domain.upcase %> do
 === STORY LOCATIONS ===
 <%= @extra_context %>
 <% end -%>
-<% if @prior_outcomes.present? && @prior_outcomes.any? -%>
+<% _prior = PromptRenderer.render_partial("partials/prior_outcomes", outcomes: @prior_outcomes, note: "NOTE: If the player's current action depends on something from a prior action\n(e.g. cutting down a tree that was never found), reflect that in affected/needs_mechanics.") -%>
+<% if _prior.present? -%>
 
-=== PRIOR ACTIONS THIS TURN ===
-<% @prior_outcomes.each_with_index do |outcome, idx| -%>
-[Action <%= idx + 1 %>] <%= outcome %>
-<% end -%>
-NOTE: If the player's current action depends on something from a prior action
-(e.g. cutting down a tree that was never found), reflect that in affected/needs_mechanics.
+<%= _prior %>
 <% end -%>
 
 === INSTRUCTIONS ===
