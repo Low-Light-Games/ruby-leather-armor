@@ -1210,3 +1210,27 @@
 .context-cancel-btn {
   background: $parchment-dk;
 }
+
+// ── First-time onboarding hint ───────────────────────────────────
+
+.first-time-hint {
+  border: 1px solid $border-light;
+  background: $parchment-dk;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: $ink-mid;
+    line-height: 1.55;
+    font-family: $font-body;
+
+    strong {
+      font-family: $font-display;
+      font-weight: normal;
+      color: $ink;
+      letter-spacing: 0.02em;
+    }
+  }
+}

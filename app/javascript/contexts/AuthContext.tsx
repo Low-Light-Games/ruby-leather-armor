@@ -7,12 +7,14 @@ import {
 } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { csrfToken } from '../utils/api';
+import { routes } from '../utils/routes';
 
 interface User {
   id: number;
   email: string;
   admin: boolean;
   tier: string;
+  onboarding_state: 'new' | 'in_progress' | 'completed';
 }
 
 interface AuthContextType {
@@ -32,7 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('/current_user');
+      const response = await fetch(routes.currentUser);
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
@@ -48,7 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = async (email: string, password: string) => {
-    const response = await fetch('/login', {
+    const response = await fetch(routes.login, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -75,7 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      await fetch('/logout', {
+      await fetch(routes.logout, {
         method: 'DELETE',
         headers: {
           'X-CSRF-Token': csrfToken(),
