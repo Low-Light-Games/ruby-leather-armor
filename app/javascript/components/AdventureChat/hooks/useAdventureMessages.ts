@@ -121,7 +121,7 @@ export function useAdventureMessages({
         },
 
         connected() {
-          // On reconnect while waiting for a response, re-fetch to pick up
+          // On reconnect while waiting for a response, re-fetch to recover
           // any pipeline results that arrived during the disconnect window.
           if (!sendingRef.current) return
 
@@ -130,18 +130,26 @@ export function useAdventureMessages({
             .then((data: { messages: AdventureMessage[]; pipeline_running: boolean } | null) => {
               if (!data || !sendingRef.current) return
 
-              const serverMessages = data.messages
-              const lastPlayer = [...serverMessages].reverse().find(m => m.role === 'player')
-              if (!lastPlayer) return
+              // Pipeline still running — WebSocket events will deliver results as
+              // they arrive. Do NOT call handleSyncResponse here: it would append
+              // already-present progressive messages and set sending=false early.
+              if (data.pipeline_running) return
 
-              const lastPlayerIdx = serverMessages.findIndex(m => m.id === lastPlayer.id)
-              const dmMessages = serverMessages
-                .slice(lastPlayerIdx + 1)
-                .filter(m => m.role === 'dm' || m.role === 'system')
+              // Pipeline finished during the disconnect window. Replace state with
+              // the server's authoritative list to avoid duplicating any messages
+              // that were already appended via pipeline_action_result events.
+              const msgs = data.messages
+              const dmMsg = msgs.find(m => m.role === 'dm' && m.message_type === 'roll_request')
+              if (dmMsg) activatePendingRolls(dmMsg)
+              const initMsg = msgs.find(m => m.role === 'dm' && m.message_type === 'initiative_request')
+              if (initMsg) setPendingInitiative(true)
 
-              if (dmMessages.length > 0) {
-                handleSyncResponse({ messages: dmMessages })
-              }
+              setMessages(msgs)
+              setSending(false)
+              lastSentRef.current = null
+              if (onDmResponse) onDmResponse()
+              const completeMsg = msgs.find(m => m.message_type === 'adventure_complete')
+              if (completeMsg && onAdventureComplete) onAdventureComplete()
             })
             .catch(() => {})
         },
