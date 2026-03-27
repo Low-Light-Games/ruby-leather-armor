@@ -78,6 +78,21 @@ export function useAdventureMessages({
     })
   }, [])
 
+  // Progressive per-action narration: insert messages before the thinking sentinel
+  // so the player sees each action result as it arrives. The thinking indicator
+  // stays visible until the final empty pipeline_result "done" signal removes it.
+  const handleActionResult = useCallback((data: { messages: AdventureMessage[] }) => {
+    setMessages(prev => {
+      const thinking = prev.find(m => m.id === THINKING_ID)
+      const rest = prev.filter(m => !isSentinel(m.id))
+      return thinking
+        ? [...rest, ...data.messages, thinking]
+        : [...rest, ...data.messages]
+    })
+    const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
+    if (completeMsg && onAdventureComplete) onAdventureComplete()
+  }, [onAdventureComplete])
+
   const handleError = useCallback((errorPrefix: string, err: any) => {
     console.error(`${errorPrefix}:`, err)
     const errorMsg: AdventureMessage = {
@@ -96,6 +111,8 @@ export function useAdventureMessages({
         received(data: { type: string; messages: AdventureMessage[]; message?: string }) {
           if (data.type === 'pipeline_result' && data.messages) {
             handleSyncResponse(data)
+          } else if (data.type === 'pipeline_action_result' && data.messages) {
+            handleActionResult(data)
           } else if (data.type === 'pipeline_progress' && data.message) {
             handleProgressUpdate(data.message)
           } else if (data.type === 'sheet_update') {
@@ -131,7 +148,7 @@ export function useAdventureMessages({
     )
 
     return () => { subscription.unsubscribe() }
-  }, [adventureId, handleSyncResponse, handleProgressUpdate, onSheetUpdate])
+  }, [adventureId, handleSyncResponse, handleActionResult, handleProgressUpdate, onSheetUpdate])
 
   // Load message history on mount
   useEffect(() => {

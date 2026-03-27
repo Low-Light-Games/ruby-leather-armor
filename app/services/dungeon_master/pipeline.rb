@@ -32,7 +32,7 @@ module DungeonMaster
     include CoreResolver
     include Mutations
 
-    def initialize(adventure:, config:, ai:, log:, sheet:, on_progress: nil, on_sheet_update: nil)
+    def initialize(adventure:, config:, ai:, log:, sheet:, on_progress: nil, on_sheet_update: nil, on_narrative: nil)
       @adventure        = adventure
       @config           = config
       @ai               = ai
@@ -41,6 +41,7 @@ module DungeonMaster
       @loop             = nil
       @on_progress      = on_progress
       @on_sheet_update  = on_sheet_update
+      @on_narrative     = on_narrative
     end
 
     # Main entry point: player typed something.
@@ -350,13 +351,16 @@ module DungeonMaster
         pipeline: action_pipeline,
         mutations: result[:mutations])
 
-      {
+      narrative_entry = {
         narrative: narration[:narrative],
         adventure_complete: narration[:adventure_complete],
         sequence_index: sequence_index,
         total_actions: total_actions,
         action_text: @loop&.player_intent&.truncate(200)
       }
+
+      @on_narrative&.call(narrative_entry)
+      narrative_entry
     end
 
     def per_action_narration?
