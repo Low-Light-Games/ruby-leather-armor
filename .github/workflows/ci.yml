@@ -9,10 +9,14 @@ jobs:
   rspec:
     name: RSpec
     runs-on: ubuntu-latest
+    environment: Test
 
     services:
       postgres:
         image: postgres:15
+        credentials:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
         env:
           POSTGRES_USER: exercises
           POSTGRES_PASSWORD: sekret

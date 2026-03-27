@@ -9,6 +9,7 @@ jobs:
   playwright:
     name: Playwright E2E
     runs-on: ubuntu-latest
+    environment: Test
 
     # Run when the PR carries the "e2e" label, or when triggered manually.
     if: |
@@ -18,6 +19,9 @@ jobs:
     services:
       postgres:
         image: postgres:15
+        credentials:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
         env:
           POSTGRES_USER: exercises
           POSTGRES_PASSWORD: sekret
