@@ -18,6 +18,15 @@ RSpec.configure do |config|
   config.filter_rails_from_backtrace!
 
   config.include FactoryBot::Syntax::Methods
+
+  # Service specs that exercise the full pipeline spawn background threads for
+  # parallel context updates (ContextUpdate module). After each example, wait
+  # for any still-running threads and release their connections back to the pool
+  # so the reaper never finds a connection owned by a dead thread.
+  config.after(:each, type: :service) do
+    Thread.list.reject { |t| t == Thread.current }.each { |t| t.join(2) }
+    ActiveRecord::Base.connection_handler.clear_active_connections!
+  end
 end
 
 Shoulda::Matchers.configure do |config|
