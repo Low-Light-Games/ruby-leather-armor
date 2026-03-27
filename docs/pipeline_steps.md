@@ -933,6 +933,11 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | 8b | **Macro Narrative Update** | AI (conditional) | `app/services/dungeon_master/steps/context_update.rb` |
 | -- | **Mutations** | App-side | `app/services/dungeon_master/mutations.rb` |
 
+**Action queue narrative delivery modes:** when `action_queue` is enabled and the Sequencer splits input into multiple actions, there are two output paths depending on `per_action_narration`:
+
+- **Accumulated (default):** all resolved actions collect into a single result set, then the output phase (Chronicler → Stagehand → Narrate → ContextUpdate) runs once and returns `:narrated`.
+- **Progressive (`per_action_narration: true`):** each resolved action is narrated immediately via `run_single_action_narrative_phase` and broadcast as a `pipeline_action_result` WebSocket event before the next action begins. The pipeline skips the output phase and returns `:narrated_sequence`. Interrupted queues (encounter, social scene, roll request) still fall back to the accumulated path for the interrupting event.
+
 ---
 
 ## Error Handling
@@ -1102,7 +1107,8 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `model` | `gpt-4o-mini` | Default model for all steps |
 | `step_models[step]` | `{}` | Per-step model override |
 | `token_budgets[step]` | (see below) | Per-step max completion tokens |
-| `action_queue` | `true` | When true, compound player inputs are split into discrete sequential actions by the Sequencer step |
+| `action_queue` | `true` | When true, compound player inputs are split into discrete sequential actions by the Sequencer step. See also `per_action_narration` |
+| `per_action_narration` | `false` | When true and `action_queue` is enabled, each resolved action in a multi-action sequence gets its own DM narrative immediately broadcast via WebSocket (`pipeline_action_result` event) instead of waiting for all actions to complete. The pipeline returns `:narrated_sequence` instead of `:narrated`. Can also be toggled per-adventure via `adventure.dm_settings["per_action_narration"]` |
 | `evaluation_mode` | `"unified"` | `"unified"` (single AI call, default) or `"parallel"` (Node microservice: beacon + mech_eval + roll_qualifier). Requires `EVALUATOR_URL` env var when `"parallel"` |
 | `guardrail_mode` | `"code"` | `"code"` (deterministic) or `"ai"` (prompt-based) |
 | `narration_mode` | `"parallel"` | `"parallel"` (concurrent) or `"subjugated"` (sequential) |
