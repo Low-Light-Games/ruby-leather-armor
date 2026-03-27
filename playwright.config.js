@@ -8,7 +8,7 @@ module.exports = defineConfig({
   webServer: process.env.BASE_URL ? undefined : {
     command: 'RAILS_ENV=playwright STUB_OPENAI=true rm -f tmp/pids/server.pid && RAILS_ENV=playwright STUB_OPENAI=true bundle exec rails server -p 3000 -b 0.0.0.0',
     url: 'http://localhost:3000/up',
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 30_000,
     stdout: 'ignore',
     stderr: 'pipe',
