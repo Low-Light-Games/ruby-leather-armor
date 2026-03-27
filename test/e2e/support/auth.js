@@ -20,4 +20,29 @@ async function login(page, role = 'user') {
   await page.locator('#story-select').waitFor({ timeout: 10_000 });
 }
 
-module.exports = { login, CREDENTIALS };
+// Selects the first available story and sheet, then clicks Begin Adventure.
+// Always picks by position so it is independent of seed data ordering.
+async function createAdventure(page) {
+  const storySelect = page.locator('#story-select');
+  await storySelect.waitFor({ timeout: 10_000 });
+  const storyOptions = await storySelect.locator('option').all();
+  const firstStoryValue = await storyOptions[1].getAttribute('value');
+  await storySelect.selectOption(firstStoryValue);
+
+  const sheetSelect = page.locator('#sheet-select');
+  await sheetSelect.waitFor({ timeout: 5_000 });
+  await page.waitForFunction(() => {
+    const sel = document.querySelector('#sheet-select');
+    return sel && sel.options.length > 1;
+  }, { timeout: 5_000 });
+  const sheetOptions = await sheetSelect.locator('option').all();
+  const firstSheetValue = await sheetOptions[1].getAttribute('value');
+  await sheetSelect.selectOption(firstSheetValue);
+
+  await Promise.all([
+    page.waitForURL(/\/adventures\/\d+/, { timeout: 30_000 }),
+    page.getByRole('button', { name: /begin adventure/i }).click(),
+  ]);
+}
+
+module.exports = { login, createAdventure, CREDENTIALS };

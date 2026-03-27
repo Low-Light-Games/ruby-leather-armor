@@ -1,26 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { login } = require('../support/auth');
-
-// ── shared helper (mirrors admin_context_edit.spec.js) ──────────────────────
-async function createAdventure(page) {
-  await page.locator('#story-select').waitFor({ timeout: 10_000 });
-  await page.locator('#story-select').selectOption({ label: 'The Lake of Whispers' });
-
-  const sheetSelect = page.locator('#sheet-select');
-  await sheetSelect.waitFor({ timeout: 5_000 });
-  await page.waitForFunction(() => {
-    const sel = document.querySelector('#sheet-select');
-    return sel && sel.options.length > 1;
-  }, { timeout: 5_000 });
-  const options = await sheetSelect.locator('option').all();
-  const firstValue = await options[1].getAttribute('value');
-  await sheetSelect.selectOption(firstValue);
-
-  await Promise.all([
-    page.waitForURL(/\/adventures\/\d+/, { timeout: 30_000 }),
-    page.getByRole('button', { name: /begin adventure/i }).click(),
-  ]);
-}
+const { login, createAdventure } = require('../support/auth');
 
 // ── ensure the Action Queue radio is set to "Progressive" ───────────────────
 async function ensureProgressiveActionQueue(page) {
