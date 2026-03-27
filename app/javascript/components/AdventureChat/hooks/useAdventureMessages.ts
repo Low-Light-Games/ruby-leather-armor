@@ -127,9 +127,10 @@ export function useAdventureMessages({
 
           fetch(`/adventures/${adventureId}/messages`, { headers: { Accept: 'application/json' } })
             .then(r => r.ok ? r.json() : null)
-            .then((serverMessages: AdventureMessage[] | null) => {
-              if (!serverMessages || !sendingRef.current) return
+            .then((data: { messages: AdventureMessage[]; pipeline_running: boolean } | null) => {
+              if (!data || !sendingRef.current) return
 
+              const serverMessages = data.messages
               const lastPlayer = [...serverMessages].reverse().find(m => m.role === 'player')
               if (!lastPlayer) return
 
@@ -158,19 +159,32 @@ export function useAdventureMessages({
           headers: { Accept: 'application/json' },
         })
         if (!res.ok) throw new Error('Failed to load messages')
-        const data: AdventureMessage[] = await res.json()
-        setMessages(data)
+        const data: { messages: AdventureMessage[]; pipeline_running: boolean } = await res.json()
+        const msgs = data.messages
 
-        const lastDm = [...data].reverse().find(m => m.role === 'dm')
+        if (data.pipeline_running) {
+          // Pipeline is still running (e.g. player refreshed mid-turn).
+          // Restore the thinking indicator so the player knows the GM is still working.
+          const thinkingSentinel: AdventureMessage = {
+            id: THINKING_ID, role: 'dm', content: '',
+            message_type: 'narrative', metadata: {}, created_at: new Date().toISOString(),
+          }
+          setMessages([...msgs, thinkingSentinel])
+          setSending(true)
+        } else {
+          setMessages(msgs)
+        }
+
+        const lastDm = [...msgs].reverse().find(m => m.role === 'dm')
         if (lastDm?.message_type === 'roll_request') {
-          const lastDmIdx = data.findIndex(m => m.id === lastDm.id)
-          const hasRollResult = data.slice(lastDmIdx + 1).some(m => m.message_type === 'roll_result')
+          const lastDmIdx = msgs.findIndex(m => m.id === lastDm.id)
+          const hasRollResult = msgs.slice(lastDmIdx + 1).some(m => m.message_type === 'roll_result')
           if (!hasRollResult) {
             activatePendingRolls(lastDm)
           }
         } else if (lastDm?.message_type === 'initiative_request') {
-          const lastDmIdx = data.findIndex(m => m.id === lastDm.id)
-          const hasInitResult = data.slice(lastDmIdx + 1).some(m => m.message_type === 'initiative_result')
+          const lastDmIdx = msgs.findIndex(m => m.id === lastDm.id)
+          const hasInitResult = msgs.slice(lastDmIdx + 1).some(m => m.message_type === 'initiative_result')
           if (!hasInitResult) {
             setPendingInitiative(true)
           }

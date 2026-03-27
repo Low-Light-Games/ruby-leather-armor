@@ -5,7 +5,10 @@ class AdventureMessagesController < ApplicationController
   # GET /adventures/:adventure_id/messages
   def index
     messages = @adventure.adventure_messages.chronological
-    render json: messages.map { |m| message_json(m) }
+    render json: {
+      messages: messages.map { |m| message_json(m) },
+      pipeline_running: PipelineRun.active_for?(@adventure)
+    }
   end
 
   # POST /adventures/:adventure_id/messages
