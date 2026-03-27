@@ -9,28 +9,7 @@ RUN apt-get update -y && \
       git \
       libpq-dev \
       nodejs \
-      npm \
-      # Playwright/Chromium dependencies
-      libglib2.0-0 \
-      libnss3 \
-      libnspr4 \
-      libatk1.0-0 \
-      libatk-bridge2.0-0 \
-      libcups2 \
-      libdrm2 \
-      libxkbcommon0 \
-      libxcomposite1 \
-      libxdamage1 \
-      libxfixes3 \
-      libxrandr2 \
-      libgbm1 \
-      libasound2 \
-      libpango-1.0-0 \
-      libcairo2 \
-      libx11-6 \
-      libx11-xcb1 \
-      libxcb1 \
-      libxext6 && \
+      npm && \
     npm install -g yarn && \
     rm -rf /var/lib/apt/lists/*
 
@@ -41,7 +20,7 @@ ENV BUNDLE_PATH=/bundle
 # Install Ruby & JS deps first (good layer caching — only re-runs on lockfile changes)
 COPY Gemfile Gemfile.lock package.json yarn.lock ./
 RUN bundle install
-RUN yarn install && npx playwright install chromium
+RUN yarn install
 
 # Install evaluator Node.js dependencies (separate layer for caching)
 COPY evaluator/package.json evaluator/package-lock.json ./evaluator/
