@@ -133,21 +133,35 @@ shared_context "with evaluator stubs" do
     WebMock.stub_request(:post, "#{evaluator_base}/fan_out")
            .to_return do |request|
       body     = JSON.parse(request.body)
-      step     = body.dig(0, "meta", "step").to_s
       user_msg = body.dig(0, "user_message").to_s.downcase
       is_lock  = user_msg.include?("lock")
 
-      results = if step == "roll_qualifier"
-        body.map do |p|
-          domain = p.dig("meta", "domain")
-          evaluator_entry("roll_qualifier", domain,
-                          "parsed_response" => { "qualifications" => [] })
-        end
-      else
-        # beacons
-        body.map do |p|
-          domain      = p.dig("meta", "domain")
-          needs_mech  = is_lock && domain == "exploration"
+      results = body.map do |p|
+        step   = p.dig("meta", "step").to_s
+        domain = p.dig("meta", "domain")
+
+        case step
+        when "roll_qualifier"
+          evaluator_entry("roll_qualifier", domain, "parsed_response" => { "qualifications" => [] })
+        when "sanity_checker_world"
+          evaluator_entry("sanity_checker_world", nil,
+                          "parsed_response" => { "consistent" => true, "reason" => nil,
+                                                 "dm_message" => nil, "referenced_entities" => [] })
+        when "sanity_checker"
+          evaluator_entry("sanity_checker", nil,
+                          "parsed_response" => { "allowed" => true, "reason" => nil })
+        when "micro_context_update"
+          evaluator_entry("micro_context_update", nil,
+                          "parsed_response" => AI_STEP_RESPONSES["micro_context_update"].then { |r| JSON.parse(r) })
+        when "macro_narrative_update"
+          evaluator_entry("macro_narrative_update", nil,
+                          "parsed_response" => JSON.parse(AI_STEP_RESPONSES["macro_narrative_update"]))
+        when "narrate"
+          evaluator_entry("narrate", nil,
+                          "parsed_response" => JSON.parse(AI_STEP_RESPONSES["narrate"]))
+        else
+          # beacon
+          needs_mech = is_lock && domain == "exploration"
           evaluator_entry("beacon", domain,
                           "parsed_response" => {
                             "affected"          => domain == "exploration",

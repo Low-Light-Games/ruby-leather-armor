@@ -68,13 +68,9 @@ RSpec.describe "DungeonMaster pipeline error handling", type: :service do
 
   describe "narrate step returns no narrative" do
     before do
-      allow_any_instance_of(DungeonMaster::AiClient).to receive(:chat) do |instance, **kwargs|
-        instance.instance_variable_set(:@last_parse_status, "success")
-        instance.instance_variable_set(:@last_model_used, "gpt-4o-mini-test")
-        instance.instance_variable_set(:@last_usage, {})
-        step = kwargs[:step_name].to_s
-        step == "narrate" ? '{"narrative": ""}' : AI_STEP_RESPONSES.fetch(step, '{"result":"ok"}')
-      end
+      allow_any_instance_of(DungeonMaster::Pipeline)
+        .to receive(:run_parallel_narrative)
+        .and_raise(DungeonMaster::AiError, "Narrate step returned no narrative — model produced: {}")
     end
 
     it "raises AiError mentioning narrate" do
