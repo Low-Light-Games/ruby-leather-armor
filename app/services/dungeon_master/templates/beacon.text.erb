@@ -16,6 +16,15 @@ You evaluate how a player's intended action affects the <%= @domain.upcase %> do
 === STORY LOCATIONS ===
 <%= @extra_context %>
 <% end -%>
+<% if @prior_outcomes.present? && @prior_outcomes.any? -%>
+
+=== PRIOR ACTIONS THIS TURN ===
+<% @prior_outcomes.each_with_index do |outcome, idx| -%>
+[Action <%= idx + 1 %>] <%= outcome %>
+<% end -%>
+NOTE: If the player's current action depends on something from a prior action
+(e.g. cutting down a tree that was never found), reflect that in affected/needs_mechanics.
+<% end -%>
 
 === INSTRUCTIONS ===
 Determine if and how this action affects the <%= @domain.upcase %> domain.

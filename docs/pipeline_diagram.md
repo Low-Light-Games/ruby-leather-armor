@@ -43,18 +43,14 @@ flowchart TB
     end
 
     subgraph resolve["CoreResolver.resolve — evaluation + sanity gate"]
-        RESOLVE --> EVAL_MODE{evaluation_mode?}
-        subgraph unified_eval["UnifiedEvaluation: 1 AI call for all 6 domains  ☆ AI ×1  (default)"]
-            EVAL_MODE -->|unified| UNIFIED_EVAL[run_unified_evaluation]
-        end
         subgraph parallel_eval["ParallelEvaluation: Node microservice — 3 HTTP phases"]
-            EVAL_MODE -->|parallel| PE1["Phase 1: POST /fan_out — beacon ×6  ☆ AI ×6"]
+            RESOLVE --> PE1["Phase 1: POST /fan_out — beacon ×6  ☆ AI ×6"]
             PE1 --> PE1B["converge_beacons — code"]
             PE1B --> PE2["Phase 2: POST /sequential — mech_eval ×N  ☆ AI ×N"]
             PE2 --> PE3["Phase 3: POST /fan_out — roll_qualifier ×N  ☆ AI ×N"]
         end
 
-        UNIFIED_EVAL & PE3 --> NM{needs_mechanics?}
+        PE3 --> NM{needs_mechanics?}
     end
 
     NM -->|yes| SANITY_GATE
@@ -126,7 +122,7 @@ flowchart TB
         LOOP_OUTCOME -->|:encounter| BREAK_ENC[break action queue → output phase]
         LOOP_OUTCOME -->|:social_scene| BREAK_SOC[break action queue → output phase]
         LOOP_OUTCOME -->|:resolved| ACCUMULATE[accumulate result]
-        LOOP_OUTCOME -->|":resolved + per_action_narration"| PROGRESSIVE_NARRATE["run_single_action_narrative_phase\n+ on_narrative callback"]
+        LOOP_OUTCOME -->|":resolved + action_queue progressive"| PROGRESSIVE_NARRATE["run_single_action_narrative_phase\n+ on_narrative callback"]
         PROGRESSIVE_NARRATE --> ACCUMULATE
     end
 
@@ -217,7 +213,7 @@ animated thinking dots instead of a static spinner. Each AI-heavy step
 calls `broadcast_progress("message")` at its entry point:
 
 ```ruby
-def run_unified_evaluation(intention)
+def run_parallel_evaluation(intention)
   broadcast_progress("Reading the situation...")
   # ...
 end
@@ -310,20 +306,11 @@ The outer orchestration loop: for each action in the queue:
 
 ### Step 5 — CoreResolver.resolve
 
-The inner pipeline entry point. Branches on `DmConfig["evaluation_mode"]`:
+The inner pipeline entry point. Always uses `Steps::ParallelEvaluation` (Node microservice). Requires `EVALUATOR_URL` to be set (default: `http://evaluator:3001`).
 
-- **`"unified"` (default)** → `Steps::UnifiedEvaluation`
-- **`"parallel"`** → `Steps::ParallelEvaluation` (Node microservice)
+#### ParallelEvaluation
 
-Both paths produce the same `[intent, evaluations]` output shape consumed by the rest of the resolver.
-
-#### UnifiedEvaluation (`evaluation_mode: "unified"`)
-
-A single AI call handles all 6 domains (`traversal`, `combat`, `social`, `exploration`, `rest`, `inventory`) in one pass, producing the intent hash and per-domain evaluations. The model determines which domains are affected, whether mechanics are needed, what rolls to request, and whether to expand a social scene — all without separate per-domain calls. Recommended model: gpt-5-mini or gpt-4.1-mini.
-
-#### ParallelEvaluation (`evaluation_mode: "parallel"`)
-
-Three sequential HTTP calls to the **Node evaluator microservice** (`evaluator/`), each implementing a different parallelism pattern. Requires `EVALUATOR_URL` to be set (default: `http://evaluator:3001`). The Node service is stateless — no DB access, no domain logic, no config; model and token budgets travel inline per request from `DmConfig`.
+Three sequential HTTP calls to the **Node evaluator microservice** (`evaluator/`), each implementing a different parallelism pattern. The Node service is stateless — no DB access, no domain logic, no config; model and token budgets travel inline per request from `DmConfig`.
 
 **Phase 1 — Beacons (`POST /fan_out`):** Renders 6 domain-specific beacon ERB prompts in Rails, then POSTs them to Node which runs all 6 OpenAI calls via `Promise.all`. `converge_beacons` (pure Ruby data merge) builds the intent hash from the 6 results.
 
@@ -347,7 +334,7 @@ The output `intent` hash (from either path) includes:
 
 The **sanity gate** validates the action before any mechanics are resolved. Its behaviour depends on the adventure's `skip_world_sanity_check` flag:
 
-**Default (skip_world_sanity_check = false):** two checks run in parallel, then evaluation results from UnifiedEvaluation are merged:
+**Default (skip_world_sanity_check = false):** two checks run in parallel, then evaluation results are merged:
 
 | Thread | Step | Type |
 |--------|------|------|
@@ -366,7 +353,7 @@ The **sanity gate** validates the action before any mechanics are resolved. Its 
 
 **Post-gate processing (code):**
 
-1. `merge_mechanical_evaluations` — flattens all domain results from UnifiedEvaluation.
+1. `merge_mechanical_evaluations` — flattens all domain results from ParallelEvaluation.
 2. `warn_duplicate_rolls` — detects duplicate roll requests across domains and logs a warning. Does **not** remove duplicates (any fix must come from prompt improvement).
 3. `filter_auto_success_rolls!` — removes rolls the character cannot possibly fail: DC ≤ 0, skill modifier + 1 ≥ DC, or Take 10 value ≥ DC (and player is Take 10 eligible). Also keeps all attack rolls (never auto-succeed). Logs removed rolls for visibility.
 
@@ -383,7 +370,7 @@ The **sanity gate** validates the action before any mechanics are resolved. Its 
 Early exit: world check fails → `:rejected`. Never reached when skipped.
 
 **Social expansion branch** (`expand_scene = true`):
-- Triggered when UnifiedEvaluation's social domain set `expand_scene`. Represents significant social interactions (negotiations, transactions, confrontations) that merit an immersive NPC scene.
+- Triggered when the social beacon set `expand_scene`. Represents significant social interactions (negotiations, transactions, confrontations) that merit an immersive NPC scene.
 - A single AI call (`social_expansion`) generates a rich scene description with NPC name, attitude, and new story elements.
 - Returns `{ status: :social_scene }`. The action queue **breaks** — remaining actions are abandoned.
 - TimeKeeper is **skipped**. No in-game time passes until the social scene resolves.
@@ -570,11 +557,10 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 |-----------|-----|-------|
 | Intake | ✅ AI | Danger scoring, sanitization, DM query detection |
 | Sequencer | ✅ AI | Action splitting (skipped if `action_queue` off) |
-| UnifiedEvaluation | ✅ AI | Single call: domain assessment + mechanics + roll qualification. Used when `evaluation_mode` = `"unified"` (default) |
-| ParallelEvaluation (beacon) | ✅ AI ×6 | Per-domain intent classification via Node `/fan_out`. Used when `evaluation_mode` = `"parallel"` |
-| ParallelEvaluation (mech_eval) | ✅ AI ×N | Sequential per-domain mechanical resolution via Node `/sequential`. Parallel mode only |
-| ParallelEvaluation (roll_qualifier) | ✅ AI ×N | Per-domain Take 10/20 + situational modifiers via Node `/fan_out`. Parallel mode only |
-| converge_beacons | ❌ Code | Merges 6 beacon results into the `intent` hash. Parallel mode only |
+| ParallelEvaluation (beacon) | ✅ AI ×6 | Per-domain intent classification via Node `/fan_out` |
+| ParallelEvaluation (mech_eval) | ✅ AI ×N | Sequential per-domain mechanical resolution via Node `/sequential` |
+| ParallelEvaluation (roll_qualifier) | ✅ AI ×N | Per-domain Take 10/20 + situational modifiers via Node `/fan_out` |
+| converge_beacons | ❌ Code | Merges 6 beacon results into the `intent` hash |
 | World consistency check | ✅ AI | Scene/entity validation |
 | Capability check | ✅ AI | Spell/feat/item ownership |
 | Momentum | ✅ AI | Non-mechanical outcome |
@@ -624,8 +610,7 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 |------|------|---------|
 | **Intake** | AI | Score danger, sanitize input, detect DM query, flag context gaps. |
 | **Sequencer** | AI | Split compound player input into ordered discrete actions. Skipped if `action_queue` off. |
-| **UnifiedEvaluation** | AI ×1 | Single call covering all 6 domains: affected?, needs_mechanics?, rolls, NPC actions, consequences, expand_scene, Take 10/20 eligibility. Active when `evaluation_mode` = `"unified"` (default). |
-| **ParallelEvaluation** | Code orchestration + 3 HTTP phases to Node | Parallel re-implementation of the beacon→mech_eval→roll_qualifier chain. Active when `evaluation_mode` = `"parallel"`. Requires `EVALUATOR_URL`. |
+| **ParallelEvaluation** | Code orchestration + 3 HTTP phases to Node | beacon→mech_eval→roll_qualifier chain via Node evaluator microservice. Requires `EVALUATOR_URL`. |
 | **↳ beacon** | AI ×6 (parallel, Node) | Per-domain intent classification. One call per domain, all 6 run concurrently via `Promise.all` in Node. |
 | **↳ mechanical_evaluation** | AI ×N (sequential, Node) | Per-domain mechanical resolution for each affected domain. Sequential with cross-domain summary injection. |
 | **↳ roll_qualifier** | AI ×N (parallel, Node) | Take 10/20 eligibility + situational modifiers per domain that has rolls. |

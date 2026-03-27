@@ -8,5 +8,5 @@ module DungeonMaster
   # sequenced action. PipelineContext spans the whole turn — for single-action
   # turns the two overlap; for multi-action turns only this object has the
   # full picture.
-  PipelineContext = Struct.new(:combined_seed, :dm_brief, :player_action, keyword_init: true)
+  PipelineContext = Struct.new(:combined_seed, :dm_brief, :player_action, :prior_outcomes, keyword_init: true)
 end

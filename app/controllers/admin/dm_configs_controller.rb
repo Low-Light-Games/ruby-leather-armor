@@ -15,13 +15,12 @@ module Admin
 
       # Boolean toggles
       new_settings["chronicler_tone_direction"] = params[:chronicler_tone_direction] == "1"
-      new_settings["action_queue"] = params[:action_queue] == "1"
-      new_settings["per_action_narration"] = params[:per_action_narration] == "1"
 
-      # Evaluation mode toggle
-      if %w[unified parallel].include?(params[:evaluation_mode])
-        new_settings["evaluation_mode"] = params[:evaluation_mode]
-      end
+      # Action queue — 3-state: false / "progressive" / "progressive_continuity"
+      new_settings["action_queue"] =
+        %w[progressive progressive_continuity].include?(params[:action_queue]) \
+          ? params[:action_queue] \
+          : false
 
       # Numeric settings
       if params[:temperature].present?

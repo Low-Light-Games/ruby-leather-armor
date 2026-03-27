@@ -10,7 +10,9 @@ module DungeonMaster
   # Flow:
   #   run_prompt          -> intake -> dm_query_flow | orchestrate_actions
   #   orchestrate_actions -> sequencer -> [ for each action: CoreResolver.resolve ] -> output_phase
-  #                          output_phase: accumulated narrative (default) | per-action narrative (per_action_narration setting)
+  #                          output_phase: per-action narrative streamed immediately (action_queue setting)
+  #                            "progressive"             — no prior context injected
+  #                            "progressive_continuity"  — prior action outcomes fed into beacon/mech_eval/narrate
   #   run_rolls           -> CoreResolver.finish_resolution -> continue queue if remaining -> output_phase
   #
   class Pipeline
@@ -20,7 +22,6 @@ module DungeonMaster
     include Steps::Sequencer
     include Steps::MechanicalEvaluation
     include Steps::SanityChecker
-    include Steps::UnifiedEvaluation
     include Steps::ParallelEvaluation
     include Steps::Mechanic
     include Steps::Momentum
@@ -342,9 +343,10 @@ module DungeonMaster
       plot_result = resolve_plot(result[:intent], verdict_outcome: outcome)
 
       action_pipeline = PipelineContext.new(
-        combined_seed: outcome,
-        dm_brief: plot_result&.dig(:dm_brief),
-        player_action: @loop&.player_intent
+        combined_seed:  outcome,
+        dm_brief:       plot_result&.dig(:dm_brief),
+        player_action:  @loop&.player_intent,
+        prior_outcomes: action_queue_continuity? ? prior_action_outcomes : []
       )
 
       narration = run_narrative_phase(result[:intent],
@@ -363,8 +365,28 @@ module DungeonMaster
       narrative_entry
     end
 
+    def action_queue_mode
+      @adventure.effective_dm_setting("action_queue")
+    end
+
+    # True for both progressive modes — controls whether per-action narration runs at all.
     def per_action_narration?
-      @adventure.effective_dm_setting("per_action_narration")
+      %w[progressive progressive_continuity].include?(action_queue_mode)
+    end
+
+    # True only for progressive_continuity — gates prior_action_outcomes usage.
+    def action_queue_continuity?
+      action_queue_mode == "progressive_continuity"
+    end
+
+    # Returns pipeline_outcome strings for all actions earlier in this turn,
+    # ordered by sequence_index. Safe to call before @loop exists (returns []).
+    def prior_action_outcomes
+      return [] unless @loop && @log&.pipeline_run_id
+      AdventureLoop.for_pipeline(@log.pipeline_run_id)
+        .where("sequence_index < ?", @loop.sequence_index)
+        .order(:sequence_index)
+        .filter_map { |l| l.get("pipeline_outcome") }
     end
 
     def merge_result_intents(results)

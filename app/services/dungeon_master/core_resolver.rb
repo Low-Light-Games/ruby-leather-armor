@@ -18,15 +18,9 @@ module DungeonMaster
     private
 
     # Full resolution: evaluation → sanity gate → [verdict + mutations + time_keeper]
-    # Branches on evaluation_mode:
-    #   "parallel" → Steps::ParallelEvaluation (Node microservice: beacon + mech_eval + roll_qualifier)
-    #   "unified"  → Steps::UnifiedEvaluation  (single AI call, default)
+    # Always uses Steps::ParallelEvaluation (Node microservice: beacon + mech_eval + roll_qualifier).
     def resolve(intention)
-      intent, evaluations = if @config.get("evaluation_mode") == "parallel"
-                               run_parallel_evaluation(intention)
-                             else
-                               run_unified_evaluation(intention)
-                             end
+      intent, evaluations = run_parallel_evaluation(intention)
 
       if intent[:needs_mechanics]
         if @adventure.skip_world_sanity_check? && (@adventure.user.paid? || @adventure.user.admin)
@@ -220,7 +214,7 @@ module DungeonMaster
       }
     end
 
-    # Parallel world + capability checks without mech eval (used by unified path).
+    # Parallel world + capability checks without mech eval.
     def run_sanity_gate(intent)
       world = nil
       capability = nil

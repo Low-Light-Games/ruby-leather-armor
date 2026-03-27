@@ -21,6 +21,13 @@ Distance: <%= @loop.get("journey_data")["distance_miles"] %> miles | Terrain: <%
 Speed: <%= @loop.get("journey_data")["speed_mph"] %> mph | Estimated travel: <%= @loop.get("journey_data")["estimated_hours"] %> hours
 <% end -%>
 
+<% if @pipeline.prior_outcomes.present? && @pipeline.prior_outcomes.any? -%>
+=== EARLIER ACTIONS THIS TURN ===
+<% @pipeline.prior_outcomes.each_with_index do |o, i| -%>
+[<%= i + 1 %>] <%= o %>
+<% end -%>
+
+<% end -%>
 <% if @pipeline.player_action.present? -%>
 === WHAT THE PLAYER DID (make sure to link this to what happened) ===
 <%= @pipeline.player_action %>
