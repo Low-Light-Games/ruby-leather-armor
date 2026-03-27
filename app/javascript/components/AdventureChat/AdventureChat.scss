@@ -72,6 +72,26 @@
           text-decoration: underline;
         }
       }
+
+      .msg-sequence-badge {
+        font-size: 10px;
+        font-family: $font-mono;
+        color: $ink-mid;
+        background: rgba(0, 0, 0, 0.06);
+        padding: 1px 6px;
+        border-radius: 8px;
+        letter-spacing: 0.3px;
+      }
+    }
+
+    .msg-action-label {
+      font-size: 11px;
+      font-family: $font-mono;
+      color: $ink-mid;
+      font-style: italic;
+      margin-bottom: 6px;
+      padding-bottom: 6px;
+      border-bottom: 1px dashed $border-light;
     }
 
     .msg-content { white-space: pre-wrap; }

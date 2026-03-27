@@ -238,6 +238,29 @@ class DungeonMasterService
           message_type: "adventure_complete")
       end
       msgs
+
+    when :narrated_sequence
+      msgs = result[:narratives].flat_map do |n|
+        entry = persist_message(
+          role: "dm",
+          content: n[:narrative],
+          message_type: "narrative",
+          metadata: {
+            sequence_index: n[:sequence_index],
+            total_actions:  n[:total_actions],
+            action_text:    n[:action_text]
+          }
+        )
+        adventure_complete_msgs = []
+        if n[:adventure_complete]
+          adventure_complete_msgs << persist_message(
+            role: "system",
+            content: "The adventure has reached its conclusion.",
+            message_type: "adventure_complete")
+        end
+        [entry] + adventure_complete_msgs
+      end
+      msgs
     end
   end
 

@@ -25,6 +25,10 @@ const ChatMessage = ({ msg, isAdmin, onRetry }: ChatMessageProps) => {
 
   const rollRequests = msg.message_type === 'roll_request' ? extractRollRequests(msg) : []
   const msgShowDc = msg.metadata?.show_dc !== false
+  const isSequenced = msg.metadata?.total_actions != null && msg.metadata.total_actions > 1
+  const sequenceIndex = msg.metadata?.sequence_index
+  const totalActions = msg.metadata?.total_actions
+  const actionText = msg.metadata?.action_text
 
   return (
     <div className={`chat-message msg-${msg.role} msg-type-${msg.message_type}`}>
@@ -32,6 +36,11 @@ const ChatMessage = ({ msg, isAdmin, onRetry }: ChatMessageProps) => {
         <span className="msg-role">
           {msg.role === 'player' ? '🗡️ You' : msg.role === 'dm' ? '🐉 GM' : '📜 System'}
         </span>
+        {isSequenced && sequenceIndex != null && (
+          <span className="msg-sequence-badge" title={actionText ?? undefined}>
+            {sequenceIndex + 1} / {totalActions}
+          </span>
+        )}
         {isAdmin && msg.pipeline_run_id && (
           <a
             href={`/admin/play_logs/pipelines/${msg.pipeline_run_id}`}
@@ -44,6 +53,9 @@ const ChatMessage = ({ msg, isAdmin, onRetry }: ChatMessageProps) => {
           </a>
         )}
       </div>
+      {isSequenced && actionText && (
+        <div className="msg-action-label">{actionText}</div>
+      )}
       <div className="msg-content">{msg.content}</div>
       {rollRequests.length > 0 && (
         <div className="roll-request-badges">

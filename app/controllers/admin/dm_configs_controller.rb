@@ -16,6 +16,7 @@ module Admin
       # Boolean toggles
       new_settings["chronicler_tone_direction"] = params[:chronicler_tone_direction] == "1"
       new_settings["action_queue"] = params[:action_queue] == "1"
+      new_settings["per_action_narration"] = params[:per_action_narration] == "1"
 
       # Evaluation mode toggle
       if %w[unified parallel].include?(params[:evaluation_mode])

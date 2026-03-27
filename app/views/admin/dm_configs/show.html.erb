@@ -62,6 +62,21 @@
         </p>
       </div>
 
+      <div class="config-field toggle-field">
+        <label class="toggle-label" for="per_action_narration">
+          <%= check_box_tag :per_action_narration, "1", @config.get("per_action_narration") == true, id: "per_action_narration", class: "toggle-checkbox" %>
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">Per-Action Narration</span>
+        </label>
+        <p class="field-hint">
+          Requires <strong>Action Queue</strong> to be on.
+          When <strong>on</strong>, each sequenced action gets its own DM narrative message in chat, giving the player
+          a clearer step-by-step feedback loop. When <strong>off</strong> (default), all actions in a turn are narrated
+          in one combined response.
+          Can also be toggled per-adventure via <code>dm_settings["per_action_narration"]</code>.
+        </p>
+      </div>
+
       <div class="config-field">
         <label>Evaluation Mode</label>
         <div class="radio-group">

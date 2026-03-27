@@ -319,6 +319,9 @@ export interface AdventureMessage {
     roll_value?: number
     roll_description?: string
     rolls?: Array<{ roll_value: number; roll_description: string }>
+    sequence_index?: number
+    total_actions?: number
+    action_text?: string | null
     [key: string]: unknown
   }
   pipeline_run_id?: string | null
