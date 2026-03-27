@@ -228,7 +228,6 @@ in place so the status line animates in without replacing the dots.
 
 | Step | Message shown to player |
 |------|------------------------|
-| `UnifiedEvaluation` | "Reading the situation..." |
 | `ParallelEvaluation` | "Reading the situation..." |
 | `Chronicler` | "Consulting the chronicle..." |
 | `Narrate` | "Writing the story..." |

@@ -143,39 +143,29 @@ via the UI. This is a deliberate engagement choice — rolling dice is part
 of the tabletop experience. The app trusts the player's reported values
 (honor system, as in a real tabletop game).
 
-### 4. Evaluation modes: UnifiedEvaluation (default) and ParallelEvaluation
+### 4. ParallelEvaluation as the sole evaluation path, and action_queue narration modes
 
-**Decision:** maintain two coexisting evaluation paths, selectable via `DmConfig["evaluation_mode"]`:
+#### Why UnifiedEvaluation was retired
 
-- **`"unified"` (default):** a single AI call (UnifiedEvaluation) handles all 6 domains in one pass.
-- **`"parallel"`:** a Node.js microservice (`evaluator/`) runs the original 3-phase beacon → mechanical evaluation → roll qualifier chain with true async parallelism.
+UnifiedEvaluation (a single AI call handling all 6 domains in one pass) was introduced to fix Ruby-thread-based parallelism: 8–14 concurrent calls stressed the DB connection pool and frequently produced duplicate rolls because each domain evaluated independently. A single call with full context achieved better cross-domain coherence.
 
-Both paths produce identical `[intent, evaluations]` output and are transparent to the rest of the resolver.
+However, maintaining two parallel code paths (unified and parallel) created ongoing maintenance overhead and a growing divergence in prompt quality. ParallelEvaluation, which offloads concurrency to a dedicated Node.js microservice via `Promise.all`, had caught up in quality while providing per-domain observability, per-phase model selection, and smaller per-domain prompts. The unified path was retired.
 
-#### Why UnifiedEvaluation was introduced (and remains the default)
+`Steps::ParallelEvaluation` (via `EVALUATOR_URL`, default `http://evaluator:3001`) is now the only evaluation route. `CoreResolver#resolve` calls it unconditionally.
 
-The old architecture made 8–14 AI calls per action using Ruby threads, stressed the DB connection pool, and frequently produced duplicate rolls across domains (each domain independently requested the same Perception check). Per-domain isolation also made it impossible for combat mechanics to account for traversal context within the same call.
+#### action_queue: the three narration delivery modes
 
-A capable model handling all six domains in one pass achieves better cross-domain coherence, eliminates duplicate rolls natively, and reduces latency from 8–14 calls to one.
+How player input is split and how narratives are delivered is controlled by the single `DmConfig["action_queue"]` key (per-adventure override available via `dm_settings["action_queue"]`):
 
-**Trade-off accepted:** the prompt is larger (all contexts + rules manifest in one call) and requires a capable model (gpt-4.1-mini or better). Budget nano-tier models are not reliable at this task.
+| | `false` | `"progressive"` (default) | `"progressive_continuity"` |
+|---|---|---|---|
+| Input splitting | No — compound input treated as one action | Yes — Sequencer splits into ordered actions | Yes — same |
+| Per-action narrative | No — single combined narrative at the end | Yes — each resolved action is narrated immediately, broadcast as `pipeline_action_result` before the next action begins | Yes — same |
+| Prior-action context | N/A | No — each action evaluated independently | Yes — prior `pipeline_outcome` values from `AdventureLoop` injected into beacon, mech_eval, and narrate prompts |
+| Pipeline return type | `:narrated` | `:narrated_sequence` | `:narrated_sequence` |
+| Infrastructure | None | Requires `evaluator` Docker service | Requires `evaluator` Docker service |
 
-#### Why ParallelEvaluation was re-introduced as an option
-
-The Node microservice replaces Ruby threads with `Promise.all`, moving true parallelism out of the Rails process into a dedicated stateless service. This gives operators the ability to select different (cheaper) models per phase, observe per-domain AI calls individually in the admin log, and experiment with domain isolation without affecting the default unified path.
-
-The Node service is a stateless HTTP proxy — no DB access, no domain logic, no config. All prompts are rendered in Rails (ERB templates). Model and token budget travel inline per request from `DmConfig`. Requires `EVALUATOR_URL` env var (default: `http://evaluator:3001`).
-
-| | Unified | Parallel |
-|---|---|---|
-| Evaluation calls | 1 | 8–14 (6 beacons + N mech + N qualifier) |
-| Per-domain model selection | No | Yes (separate config per step) |
-| Cross-domain coherence | High (single context window) | Medium (mech_eval sees prior summaries) |
-| Roll deduplication | AI avoids duplicates natively | Prompt instructs later domains not to duplicate |
-| Prompt size | Large (all contexts + rules) | Small per domain |
-| Infrastructure dependency | None | Requires `evaluator` Docker service |
-| Recommended model | gpt-5-mini (floor: gpt-4.1-mini) | nano for beacons; mini for mech_eval/qualifier |
-| Toggle | `evaluation_mode: "unified"` | `evaluation_mode: "parallel"` |
+**Trade-off: `"progressive_continuity"` token cost.** Injecting prior outcomes adds tokens to every subsequent evaluation and narration call in a sequence. For a 3-action turn the second and third actions each carry the outcomes of all preceding actions. This is intentional — the AI needs the context — but it means token spend scales with sequence length. This mode is not the default; enable it explicitly when conditional action chains (e.g. "scout for a tree, then cut it down if found") require the second action's evaluation to know the first action's result.
 
 ### 5. Mechanic/Momentum before narration (facts-first ordering)
 
@@ -623,25 +613,28 @@ decision has been superseded.
 Intake runs as one call. The pipeline rejects if `danger_score >= danger_threshold`
 (configurable in DmConfig). This gate fires before any expensive downstream calls.
 
-### 25. Beacon architecture: retired then re-introduced as an optional parallel mode (see Decision 4)
+### 25. Beacon architecture: the primary (and sole) evaluation path
 
 The original design used six parallel per-domain beacon AI calls (one per domain:
 traversal, combat, social, exploration, rest, inventory) followed by sequential
 per-domain MechanicalEvaluation calls and per-domain RollQualifier calls — 8–14
 AI calls per action using Ruby threads.
 
-This was replaced by UnifiedEvaluation (commit `520f36a`): a single AI call handling
-all domains in one pass. The domain-specific guidance that was previously split across
-beacon prompt partials is now injected together as a "DOMAIN GUIDANCE" block in the
-unified prompt (`templates/mechanical_evaluation/_*.text.erb` partials, rendered via
-`build_domain_hints`).
+This was replaced by UnifiedEvaluation: a single AI call handling all domains in one
+pass, which eliminated Ruby-thread concurrency, reduced duplicate roll requests, and
+improved cross-domain coherence.
 
-The parallel chain has since been re-introduced as an opt-in mode (`evaluation_mode: "parallel"`)
-via the `Steps::ParallelEvaluation` module, which offloads concurrency to a dedicated Node.js
-microservice (`evaluator/`) instead of Ruby threads. The ERB prompt templates for beacon,
-mechanical_evaluation, and roll_qualifier are restored from git history. The Node service
-runs `Promise.all` for the beacon and roll_qualifier phases and a sequential loop for
-mechanical evaluation. See Decision 4 for the full comparison.
+UnifiedEvaluation was subsequently retired (see Decision 4) in favour of
+`Steps::ParallelEvaluation`, which restores the 3-phase beacon → mechanical_evaluation →
+roll_qualifier chain but offloads concurrency to a dedicated stateless Node.js microservice
+(`evaluator/`) via `Promise.all` for the beacon and roll_qualifier phases and a sequential
+loop for mechanical_evaluation. The Node service is a stateless HTTP proxy — no DB access,
+no domain logic. All prompts are rendered in Rails (ERB templates); model and token budget
+travel inline per request from `DmConfig`. Requires `EVALUATOR_URL` (default:
+`http://evaluator:3001`).
+
+`ParallelEvaluation` is now the **only** evaluation path. `CoreResolver#resolve` calls it
+unconditionally.
 
 ### 26. SanityChecker (capability + world consistency validation)
 
@@ -843,8 +836,7 @@ top-level `_entry_schemas` key (prefixed with `_` to signal metadata). The
 prompt template instructs the model not to include `_entry_schemas` in its
 response.
 
-**Migration:** started with `unified_evaluation.json`. Other steps will be
-migrated incrementally as they are touched.
+**Migration:** the pattern was first introduced with `unified_evaluation.json` (now removed along with the step itself). All remaining steps use their own schema files.
 
 ### 35. UnifiedEvaluation: expand_scene and compute_take_values
 
@@ -978,7 +970,7 @@ Every AI call produces an `AiLog` record containing:
 
 | Field | Description |
 |---|---|
-| `step` | Pipeline step name (intake, unified_evaluation, beacon, mechanical_evaluation, roll_qualifier, sanity_checker, sanity_checker_world, mechanic, momentum, social_expansion, chronicler, narrate, micro_context_update, macro_narrative_update) |
+| `step` | Pipeline step name (intake, beacon, mechanical_evaluation, roll_qualifier, sanity_checker, sanity_checker_world, mechanic, momentum, social_expansion, chronicler, narrate, micro_context_update, macro_narrative_update) |
 | `prompt_summary` | Truncated description of what was asked |
 | `raw_response` | The complete API response |
 | `parsed_response` | The parsed JSON |
@@ -1015,7 +1007,7 @@ TimeKeeper → Harbinger (roll encounter) → encounter_entry found
 ### Path B — Narrative-originated combat
 
 ```
-UnifiedEvaluation (combat domain) → transition: "combat_started", combatants: [...]
+ParallelEvaluation (combat beacon) → transition: "combat_started", combatants: [...]
   → Stagehand#maybe_initialize_combat
     → Warmaster.initialize_from_names!
       → fuzzy bestiary lookup + dynamic fallback
@@ -1034,7 +1026,7 @@ UnifiedEvaluation (combat domain) → transition: "combat_started", combatants: 
 
 - `combat_active?` check in `TimeKeeper#consult_harbinger_if_needed` prevents encounters during combat
 - `stagehand_combat_active?` check prevents re-initialization when combat is already active
-- Combat domain hint instructs UnifiedEvaluation not to re-signal `combat_started` when combat is already active
+- Combat domain hint instructs the combat beacon not to re-signal `combat_started` when combat is already active
 
 ### Creature Resolution Chain
 
@@ -1057,7 +1049,7 @@ into an immersive NPC scene rather than auto-resolving via Momentum.
 ### Flow
 
 ```
-UnifiedEvaluation (social domain) → expand_scene: true
+ParallelEvaluation (social beacon) → expand_scene: true
   → CoreResolver#resolve_social_scene
     → Social Expander AI call (social_expansion template)
     → Scene data written to @loop
