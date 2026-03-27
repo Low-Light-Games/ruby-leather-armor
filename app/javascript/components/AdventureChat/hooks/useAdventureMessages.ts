@@ -103,20 +103,53 @@ export function useAdventureMessages({
     setSending(false)
   }, [])
 
-  // ActionCable subscription for async pipeline results
+  // Stable ref that always holds the latest handler versions. The subscription
+  // effect closes over this ref (not the handlers directly) so it never needs
+  // to be recreated when callbacks or derivedStats change — which would briefly
+  // produce two simultaneous server-side subscriptions and deliver every
+  // broadcast event twice.
+  const handlersRef = useRef({
+    handleSyncResponse,
+    handleActionResult,
+    handleProgressUpdate,
+    onSheetUpdate,
+    activatePendingRolls,
+    onDmResponse,
+    onAdventureComplete,
+  })
+
+  // Keep the ref current on every render so the subscription always calls the
+  // latest versions without being recreated.
+  useEffect(() => {
+    handlersRef.current = {
+      handleSyncResponse,
+      handleActionResult,
+      handleProgressUpdate,
+      onSheetUpdate,
+      activatePendingRolls,
+      onDmResponse,
+      onAdventureComplete,
+    }
+  })
+
+  // ActionCable subscription for async pipeline results.
+  // Depends ONLY on adventureId — never recreated due to callback churn,
+  // which would produce a brief window of two server-side subscriptions
+  // and deliver every broadcast event twice.
   useEffect(() => {
     const subscription = cable.subscriptions.create(
       { channel: 'AdventureChannel', adventure_id: adventureId },
       {
         received(data: { type: string; messages: AdventureMessage[]; message?: string }) {
+          const h = handlersRef.current
           if (data.type === 'pipeline_result' && data.messages) {
-            handleSyncResponse(data)
+            h.handleSyncResponse(data)
           } else if (data.type === 'pipeline_action_result' && data.messages) {
-            handleActionResult(data)
+            h.handleActionResult(data)
           } else if (data.type === 'pipeline_progress' && data.message) {
-            handleProgressUpdate(data.message)
+            h.handleProgressUpdate(data.message)
           } else if (data.type === 'sheet_update') {
-            onSheetUpdate?.()
+            h.onSheetUpdate?.()
           }
         },
 
@@ -139,17 +172,18 @@ export function useAdventureMessages({
               // the server's authoritative list to avoid duplicating any messages
               // that were already appended via pipeline_action_result events.
               const msgs = data.messages
+              const h = handlersRef.current
               const dmMsg = msgs.find(m => m.role === 'dm' && m.message_type === 'roll_request')
-              if (dmMsg) activatePendingRolls(dmMsg)
+              if (dmMsg) h.activatePendingRolls(dmMsg)
               const initMsg = msgs.find(m => m.role === 'dm' && m.message_type === 'initiative_request')
               if (initMsg) setPendingInitiative(true)
 
               setMessages(msgs)
               setSending(false)
               lastSentRef.current = null
-              if (onDmResponse) onDmResponse()
+              if (h.onDmResponse) h.onDmResponse()
               const completeMsg = msgs.find(m => m.message_type === 'adventure_complete')
-              if (completeMsg && onAdventureComplete) onAdventureComplete()
+              if (completeMsg && h.onAdventureComplete) h.onAdventureComplete()
             })
             .catch(() => {})
         },
@@ -157,7 +191,7 @@ export function useAdventureMessages({
     )
 
     return () => { subscription.unsubscribe() }
-  }, [adventureId, handleSyncResponse, handleActionResult, handleProgressUpdate, onSheetUpdate])
+  }, [adventureId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load message history on mount
   useEffect(() => {
