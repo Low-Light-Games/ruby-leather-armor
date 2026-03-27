@@ -5,6 +5,10 @@ require "rails_helper"
 # Phase 2: run_rolls with submitted values → :narrated
 RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :service do
   include_context "with mocked ai"
+  # Evaluator stubs intercept /fan_out and /sequential. "lock" in the action
+  # text causes the exploration beacon to flag needs_mechanics: true and
+  # mech_eval to return a Disable Device DC 15 roll.
+  include_context "with evaluator stubs"
 
   let(:story)         { create(:story) }
   let(:user)          { create(:user) }
@@ -12,44 +16,21 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
   # Mechanic step guards on @sheet — create an adventure_sheet so it loads one.
   let!(:adv_sheet)    { create(:adventure_sheet, adventure: adventure) }
 
-  # Responses that produce a mechanical evaluation requiring a roll.
-  let(:mechanical_ai_responses) do
-    AI_STEP_RESPONSES.merge(
-      "unified_evaluation" => {
-        "domains" => {
-          "traversal"   => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false },
-          "combat"      => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false },
-          "social"      => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false, "expand_scene" => false },
-          "exploration" => {
-            "affected" => true, "needs_mechanics" => true, "macro_significant" => false,
-            "player_rolls" => [
-              { "skill" => "Disable Device", "type" => "skill_check", "dc" => 15,
-                "description" => "Disable Device check to pick the lock.",
-                "take_10_eligible" => false, "take_20_eligible" => false, "situational_modifiers" => [] }
-            ],
-            "npc_actions" => [], "consequences" => [], "mechanical_summary" => "Disable Device DC 15 required."
-          },
-          "rest"      => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false },
-          "inventory" => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false }
-        },
-        "reasoning" => "Lock-picking requires a Disable Device skill check."
-      }.to_json,
-
-      "sanity_checker_world" => { "consistent" => true, "reason" => nil, "dm_message" => nil }.to_json,
-      "sanity_checker"       => { "consistent" => true, "reason" => nil, "dm_message" => nil, "allowed" => true }.to_json
-    )
-  end
-
-  before do
-    allow_any_instance_of(DungeonMaster::AiClient).to receive(:chat) do |instance, **kwargs|
-      instance.instance_variable_set(:@last_parse_status, "success")
-      instance.instance_variable_set(:@last_model_used, "gpt-4o-mini-test")
-      instance.instance_variable_set(:@last_usage, {})
-      mechanical_ai_responses.fetch(kwargs[:step_name].to_s, '{"result":"ok"}')
-    end
-  end
-
   describe "phase 1 — run_prompt returns :awaiting_rolls for mechanical actions" do
+    # Override intake + sequencer so "lock" reaches the evaluator stubs,
+    # which then mark exploration needs_mechanics: true → Disable Device DC 15.
+    let(:ai_responses) do
+      AI_STEP_RESPONSES.merge(
+        "intake"    => { "sanitized_input" => "try to pick the lock",
+                         "danger_score" => 0, "reason" => "Lock-picking attempt.",
+                         "is_dm_query" => false }.to_json,
+        "sequencer" => { "actions" => ["try to pick the lock"] }.to_json,
+        "sanity_checker_world" => { "consistent" => true, "reason" => nil, "dm_message" => nil }.to_json,
+        "sanity_checker"       => { "consistent" => true, "reason" => nil, "dm_message" => nil,
+                                    "allowed" => true }.to_json
+      )
+    end
+
     subject(:result) { build_pipeline(adventure).run_prompt("I try to pick the lock.") }
 
     it "returns action: :awaiting_rolls" do

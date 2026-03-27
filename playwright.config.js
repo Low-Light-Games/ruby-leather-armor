@@ -6,7 +6,7 @@ module.exports = defineConfig({
   expect: { timeout: 8_000 },
   reporter: 'list',
   webServer: process.env.BASE_URL ? undefined : {
-    command: 'STUB_OPENAI=true rm -f tmp/pids/server.pid && STUB_OPENAI=true bundle exec rails server -p 3000 -b 0.0.0.0',
+    command: 'RAILS_ENV=playwright STUB_OPENAI=true rm -f tmp/pids/server.pid && RAILS_ENV=playwright STUB_OPENAI=true bundle exec rails server -p 3000 -b 0.0.0.0',
     url: 'http://localhost:3000/up',
     reuseExistingServer: true,
     timeout: 30_000,

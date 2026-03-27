@@ -6,6 +6,7 @@ require "rails_helper"
 # time_keeper → momentum → narrate
 RSpec.describe "DungeonMaster::Pipeline — full prompt flow", type: :service do
   include_context "with mocked ai"
+  include_context "with evaluator stubs"
 
   let(:story)      { create(:story) }
   let(:user)       { create(:user) }
