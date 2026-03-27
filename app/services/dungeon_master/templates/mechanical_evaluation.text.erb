@@ -17,6 +17,11 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
 === PREVIOUS EVALUATION SUMMARIES ===
 <%= @previous_summaries.join("\n\n") %>
 <% end -%>
+<% _prior = PromptRenderer.render_partial("partials/prior_outcomes", outcomes: @prior_outcomes) -%>
+<% if _prior.present? -%>
+
+<%= _prior %>
+<% end -%>
 
 === RELEVANT RULES ===
 <%= @rules_text.presence || "(no specific rules requested for this domain)" %>
@@ -35,6 +40,11 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
 - Write a mechanical_summary that describes what happens mechanically in this domain. This summary
   will be passed to subsequent evaluations for other domains.
 - Only adjudicate for the <%= @domain.upcase %> domain. Do not rule on other domains.
+<% if @prior_outcomes.present? && @prior_outcomes.any? -%>
+- If a PRIOR ACTION THIS TURN failed to produce the prerequisite for this action
+  (e.g. tree not found, so nothing to cut), set player_rolls to [] and write a
+  mechanical_summary explaining that the dependency was not met.
+<% end -%>
 - If a PREVIOUS EVALUATION SUMMARY already requested a check for the same skill
   (e.g. Diplomacy, Perception, Intimidate) targeting the same NPC or situation,
   do NOT request that skill check again — even at a different DC.

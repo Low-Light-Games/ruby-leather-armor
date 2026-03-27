@@ -8,6 +8,7 @@ require "rails_helper"
 # Type :service triggers the PipelineHelpers module (see support/pipeline_helpers.rb).
 RSpec.describe DungeonMaster::Pipeline, type: :service do
   include_context "with mocked ai"
+  include_context "with evaluator stubs"
 
   let(:story)      { create(:story) }
   let(:user)       { create(:user) }

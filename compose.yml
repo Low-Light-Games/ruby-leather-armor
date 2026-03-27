@@ -20,7 +20,6 @@ services:
       RAILS_MAX_THREADS: "12"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.app.rule=Host(`exercises.localhost`)"
       - "traefik.http.routers.app.entrypoints=web"
       - "traefik.http.services.app.loadbalancer.server.port=3000"
       - "traefik.http.services.app.loadbalancer.healthcheck.path=/up"

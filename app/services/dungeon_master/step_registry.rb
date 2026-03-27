@@ -84,24 +84,19 @@ module DungeonMaster
         model_hint: "Mid-tier model recommended. Must produce valid PF1e stat blocks — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
         pipeline: true,
       ),
-      "unified_evaluation" => Entry.new(
-        token_budget: 2000,
-        model_hint: "➡️ Capable model required (this is the default evaluation path). Replaces 6 beacons + mechanical evaluations + roll qualifiers in one pass. Recommended: gpt-5-mini (best reasoning/cost ratio — fits comfortably within the budget freed by consolidating 6 beacon calls). Minimum floor: gpt-4.1-mini or o4-mini. Top-end (o3, gpt-5) improves cross-domain reasoning quality further.",
-        pipeline: true,
-      ),
       "beacon" => Entry.new(
         token_budget: 400,
-        model_hint: "Fast, cheap model. Per-domain intent classification — runs 6 in parallel. Used only when evaluation_mode is 'parallel'. e.g. gpt-4.1-nano, gpt-4o-mini, gpt-4.1-mini.",
+        model_hint: "Fast, cheap model. Per-domain intent classification — runs 6 in parallel via the Node evaluator microservice. e.g. gpt-4.1-nano, gpt-4o-mini, gpt-4.1-mini.",
         pipeline: true,
       ),
       "mechanical_evaluation" => Entry.new(
         token_budget: 600,
-        model_hint: "Mid-tier model. Per-domain mechanical resolution, run sequentially with cross-domain awareness. Used only when evaluation_mode is 'parallel'. e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
+        model_hint: "Mid-tier model. Per-domain mechanical resolution, run sequentially with cross-domain awareness via the Node evaluator microservice. e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
         pipeline: true,
       ),
       "roll_qualifier" => Entry.new(
         token_budget: 300,
-        model_hint: "Fast, cheap model. Determines Take 10/20 eligibility and situational modifiers. Run in parallel per domain. Used only when evaluation_mode is 'parallel'. e.g. gpt-4.1-nano, gpt-4o-mini.",
+        model_hint: "Fast, cheap model. Determines Take 10/20 eligibility and situational modifiers. Run in parallel per domain via the Node evaluator microservice. e.g. gpt-4.1-nano, gpt-4o-mini.",
         pipeline: true,
       ),
       "encounter_expand" => Entry.new(

@@ -7,6 +7,9 @@ default: &default
 development:
   <<: *default
 
+playwright:
+  <<: *default
+
 test:
   <<: *default
   url: <%= ENV.fetch("DATABASE_URL_TEST") { ENV["DATABASE_URL"]&.sub(/exercises_development/, "exercises_test") } %>

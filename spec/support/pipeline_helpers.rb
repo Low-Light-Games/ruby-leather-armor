@@ -1,4 +1,8 @@
 require "ostruct"
+require "webmock"
+
+# ── Evaluator domain list (mirrors ParallelEvaluation::DOMAINS) ─────────────
+EVALUATOR_DOMAINS = %w[traversal combat social exploration rest inventory].freeze
 
 # ── Minimal AI response map ─────────────────────────────────────────────────
 # Each key matches the step_name: kwarg passed to AiClient#chat.
@@ -19,8 +23,7 @@ AI_STEP_RESPONSES = {
     "intention" => "The adventurer opens the door carefully."
   }.to_json,
 
-  # Unified evaluation response: exploration affected, no mechanics — routes through
-  # the non-mechanical (momentum) path for the default happy-path specs.
+  # unified_evaluation is retired — kept for reference only; never called.
   "unified_evaluation" => {
     "domains" => {
       "traversal"   => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false },
@@ -91,7 +94,7 @@ AI_STEP_RESPONSES = {
 
 }.freeze
 
-# ── Shared context ───────────────────────────────────────────────────────────
+# ── Shared context — mocked OpenAI (AiClient level) ─────────────────────────
 shared_context "with mocked ai" do
   let(:ai_responses) { AI_STEP_RESPONSES }
 
@@ -108,22 +111,134 @@ shared_context "with mocked ai" do
   end
 end
 
+# ── Shared context — Node evaluator HTTP stubs (WebMock) ─────────────────────
+# Intercepts the three evaluator endpoints used by ParallelEvaluation so specs
+# are hermetic and don't require a running evaluator service.
+#
+# Default behaviour:
+#   beacon  — exploration affected, no mechanics
+#   mech_eval — no rolls (exploration only, no lock mechanics)
+#   roll_qualifier — qualifications: []
+#
+# Lock-pick detection: if the user_message (player action text) contains "lock",
+# the exploration beacon is marked needs_mechanics: true, and mech_eval returns
+# a Disable Device DC 15 roll for exploration.
+shared_context "with evaluator stubs" do
+  before do
+    WebMock.enable!
+    WebMock.allow_net_connect!(allow_localhost: true)
+
+    evaluator_base = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
+
+    WebMock.stub_request(:post, "#{evaluator_base}/fan_out")
+           .to_return do |request|
+      body     = JSON.parse(request.body)
+      step     = body.dig(0, "meta", "step").to_s
+      user_msg = body.dig(0, "user_message").to_s.downcase
+      is_lock  = user_msg.include?("lock")
+
+      results = if step == "roll_qualifier"
+        body.map do |p|
+          domain = p.dig("meta", "domain")
+          evaluator_entry("roll_qualifier", domain,
+                          "parsed_response" => { "qualifications" => [] })
+        end
+      else
+        # beacons
+        body.map do |p|
+          domain      = p.dig("meta", "domain")
+          needs_mech  = is_lock && domain == "exploration"
+          evaluator_entry("beacon", domain,
+                          "parsed_response" => {
+                            "affected"          => domain == "exploration",
+                            "needs_mechanics"   => needs_mech,
+                            "macro_significant" => false,
+                            "expand_scene"      => false,
+                            "transition"        => nil,
+                            "destination"       => nil,
+                            "combatants"        => [],
+                            "reasoning"         => domain == "exploration" ? "Exploration action" : "Not affected"
+                          })
+        end
+      end
+
+      { status: 200, body: results.to_json,
+        headers: { "Content-Type" => "application/json" } }
+    end
+
+    WebMock.stub_request(:post, "#{evaluator_base}/sequential")
+           .to_return do |request|
+      body     = JSON.parse(request.body)
+      user_msg = body.dig(0, "user_message").to_s.downcase
+      is_lock  = user_msg.include?("lock")
+
+      results = body.map do |p|
+        domain = p.dig("meta", "domain")
+        if is_lock && domain == "exploration"
+          evaluator_entry("mechanical_evaluation", domain,
+                          "parsed_response" => {
+                            "player_rolls"       => [{ "type" => "skill_check", "skill" => "Disable Device",
+                                                       "dc" => 15, "description" => "Pick the lock" }],
+                            "npc_actions"        => [],
+                            "consequences"       => [],
+                            "mechanical_summary" => "Player must beat DC 15 Disable Device"
+                          })
+        else
+          evaluator_entry("mechanical_evaluation", domain,
+                          "parsed_response" => {
+                            "player_rolls"       => [],
+                            "npc_actions"        => [],
+                            "consequences"       => [],
+                            "mechanical_summary" => "No mechanical interaction"
+                          })
+        end
+      end
+
+      { status: 200, body: results.to_json,
+        headers: { "Content-Type" => "application/json" } }
+    end
+  end
+
+  after do
+    WebMock.reset!
+    WebMock.disable!
+  end
+
+  private
+
+  # Builds a single evaluator result envelope matching the Node service shape.
+  def evaluator_entry(step, domain, overrides = {})
+    {
+      "raw_response"    => "stub",
+      "parse_status"    => "success",
+      "parsed_response" => {},
+      "meta"            => { "step" => step, "domain" => domain },
+      "usage"           => { "input_tokens" => 80, "output_tokens" => 30,
+                             "reasoning_tokens" => 0, "total_tokens" => 110 },
+      "model_used"      => "gpt-4o-mini",
+      "duration_ms"     => 50,
+      "request_body"    => {}
+    }.merge(overrides)
+  end
+end
+
 # ── Pipeline builder helpers ─────────────────────────────────────────────────
 module PipelineHelpers
   # Build a real Pipeline instance with a real Adventure / DmConfig,
   # but a stubbed AiClient and a nulled-out logger.
-  def build_pipeline(adventure, config: nil)
+  def build_pipeline(adventure, config: nil, on_narrative: nil)
     config ||= DmConfig.instance
     ai  = DungeonMaster::AiClient.new(config)
     log = build_nulled_logger(adventure)
     sheet = DungeonMaster::CharacterBlock.load_sheet(adventure)
 
     DungeonMaster::Pipeline.new(
-      adventure: adventure,
-      config:    config,
-      ai:        ai,
-      log:       log,
-      sheet:     sheet
+      adventure:    adventure,
+      config:       config,
+      ai:           ai,
+      log:          log,
+      sheet:        sheet,
+      on_narrative: on_narrative
     )
   end
 

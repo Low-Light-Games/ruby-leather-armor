@@ -149,6 +149,7 @@ module DungeonMaster
       # ----------------------------------------------------------------
 
       def build_beacon_prompts(intention)
+        prior = action_queue_continuity? ? prior_action_outcomes : []
         DOMAINS.map do |domain|
           char_data    = CharacterBlock.for(@sheet, category: domain)
           domain_ctx   = @adventure.send("#{domain}_context")
@@ -163,7 +164,8 @@ module DungeonMaster
             domain_context:       domain_ctx,
             rules_manifest:       rules_mfst,
             extra_context:        extra_ctx,
-            domain_instructions:  instructions)
+            domain_instructions:  instructions,
+            prior_outcomes:       prior)
 
           {
             system_prompt: system_prompt,
@@ -233,6 +235,7 @@ module DungeonMaster
       # ----------------------------------------------------------------
 
       def build_mech_eval_prompts(ordered_domains, intention, intent)
+        prior = action_queue_continuity? ? prior_action_outcomes : []
         ordered_domains.map do |domain|
           char_block    = CharacterBlock.for(@sheet, category: domain)
           micro_ctx     = @adventure.send("#{domain}_context")
@@ -248,7 +251,8 @@ module DungeonMaster
             creature_stats:      creature_stats,
             previous_summaries:  [],
             rules_text:          rules_text,
-            domain_instructions: instructions)
+            domain_instructions: instructions,
+            prior_outcomes:      prior)
 
           {
             system_prompt_base:      system_prompt_base,

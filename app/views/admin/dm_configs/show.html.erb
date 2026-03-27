@@ -49,47 +49,27 @@
 
       <div class="config-field">
 
-      <div class="config-field toggle-field">
-        <label class="toggle-label" for="action_queue">
-          <%= check_box_tag :action_queue, "1", @config.get("action_queue") != false, id: "action_queue", class: "toggle-checkbox" %>
-          <span class="toggle-switch"></span>
-          <span class="toggle-text">Action Queue</span>
-        </label>
-        <p class="field-hint">
-          When <strong>on</strong> (default), compound player inputs (e.g. "I open the door and enter the room")
-          are split into discrete sequential actions by the Sequencer step.
-          When <strong>off</strong>, the full input is treated as a single action.
-        </p>
-      </div>
-
-      <div class="config-field toggle-field">
-        <label class="toggle-label" for="per_action_narration">
-          <%= check_box_tag :per_action_narration, "1", @config.get("per_action_narration") == true, id: "per_action_narration", class: "toggle-checkbox" %>
-          <span class="toggle-switch"></span>
-          <span class="toggle-text">Per-Action Narration</span>
-        </label>
-        <p class="field-hint">
-          Requires <strong>Action Queue</strong> to be on.
-          When <strong>on</strong>, each sequenced action gets its own DM narrative message in chat, giving the player
-          a clearer step-by-step feedback loop. When <strong>off</strong> (default), all actions in a turn are narrated
-          in one combined response.
-          Can also be toggled per-adventure via <code>dm_settings["per_action_narration"]</code>.
-        </p>
-      </div>
-
       <div class="config-field">
-        <label>Evaluation Mode</label>
+        <label class="field-label">Action Queue</label>
         <div class="radio-group">
-          <% [["unified", "Unified (default) — single AI call across all domains"], ["parallel", "Parallel — 6 beacon calls + sequential mech eval + parallel roll qualifier via Node microservice"]].each do |value, label| %>
-            <label class="radio-label">
-              <%= radio_button_tag :evaluation_mode, value, @config.get("evaluation_mode") == value || (value == "unified" && @config.get("evaluation_mode").blank?) %>
-              <%= label %>
-            </label>
-          <% end %>
+          <label class="radio-label">
+            <%= radio_button_tag :action_queue, "", @config.get("action_queue") == false %>
+            Off — single action only
+          </label>
+          <label class="radio-label">
+            <%= radio_button_tag :action_queue, "progressive",
+                  @config.get("action_queue") == "progressive" || @config.get("action_queue") == true %>
+            Progressive — split compound inputs and stream each action's narrative immediately
+          </label>
+          <label class="radio-label">
+            <%= radio_button_tag :action_queue, "progressive_continuity",
+                  @config.get("action_queue") == "progressive_continuity" %>
+            Progressive with Continuity — as above, and each action is evaluated with awareness of what prior actions in the same turn produced
+          </label>
         </div>
         <p class="field-hint">
-          <strong>Unified</strong> sends all contexts to one capable model — better cross-domain coherence, lower latency.
-          <strong>Parallel</strong> uses the Node evaluator microservice: 6 domain beacons run concurrently, then mechanical evaluation per affected domain, then roll qualification. Requires <code>EVALUATOR_URL</code> to be set.
+          Per-adventure override: <code>dm_settings["action_queue"] = "progressive_continuity"</code>.
+          The Node evaluator microservice (<code>EVALUATOR_URL</code>) is required for all modes.
         </p>
       </div>
     </div>
