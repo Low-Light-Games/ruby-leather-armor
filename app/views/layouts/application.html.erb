@@ -10,6 +10,24 @@
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
+    <%# Route config — JS reads window.AppRoutes; source of truth is routes.rb via Rails helpers %>
+    <script>
+      window.AppRoutes = {
+        app:               "<%= app_path %>",
+        login:             "<%= login_path %>",
+        logout:            "<%= logout_path %>",
+        currentUser:       "<%= current_user_path %>",
+        sheets:            "<%= sheets_path %>",
+        adventures:        "<%= adventures_path %>",
+        newAdventure:      "<%= new_adventure_path %>",
+        stories:           "<%= stories_path %>",
+        featDefinitions:   "<%= feat_definitions_path %>",
+        spellDefinitions:  "<%= spell_definitions_path %>",
+        itemDefinitions:   "<%= item_definitions_path %>",
+        featureFlags:      "<%= feature_flags_path %>",
+        onboardingComplete: "<%= onboarding_complete_path %>"
+      };
+    </script>
   </head>
 
   <body style="margin:0; background:hsl(40,30%,88%); font-family:'IM Fell English','Georgia',serif;">

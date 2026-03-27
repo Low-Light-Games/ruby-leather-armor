@@ -113,6 +113,14 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
 
         {/* MIDDLE COLUMN — Chat */}
         <div className="adventure-column middle-column">
+          {user.onboarding_state === 'in_progress' && (
+            <div className="first-time-hint">
+              <p>
+                <strong>Your first adventure.</strong> Type what your character does and the DM will respond.
+                Directed play is on — each turn ends with concrete choices to keep things moving.
+              </p>
+            </div>
+          )}
           <AdventureChat
             adventureId={adventureId}
             derivedStats={ds}

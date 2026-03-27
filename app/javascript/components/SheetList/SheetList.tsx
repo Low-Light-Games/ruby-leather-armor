@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useSheetsContext } from "../../contexts/SheetsContext"
 import { Sheet } from "../../types"
 import { csrfToken } from "../../utils/api"
+import { routes } from "../../utils/routes"
 import './SheetList.scss'
 
 export const SheetList = () => {
@@ -13,7 +14,7 @@ export const SheetList = () => {
     setLoading(true)
     setError(null)
     
-    fetch('/sheets.json')
+    fetch(`${routes.sheets}.json`)
       .then(response => {
         if (!response.ok) {
           if (response.status === 401) {
@@ -51,7 +52,7 @@ export const SheetList = () => {
     if (!confirmed) return
 
     try {
-      const response = await fetch(`/sheets/${sheet.id}`, {
+      const response = await fetch(routes.sheet(sheet.id), {
         method: 'DELETE',
         headers: { 'X-CSRF-Token': csrfToken() },
       })

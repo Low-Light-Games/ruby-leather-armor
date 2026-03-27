@@ -37,6 +37,7 @@ class SessionsController < ApplicationController
       email: user.email,
       admin: user.admin,
       tier: user.tier,
+      onboarding_state: user.onboarding_state,
       usage: {
         current_microdollars: user.monthly_usage_microdollars,
         limit_microdollars: user.monthly_usage_limit,

@@ -48,3 +48,6 @@ evaluator/node_modules/
 /config/credentials/production.key
 
 /config/credentials/staging.key
+
+# Loveable
+/loveable

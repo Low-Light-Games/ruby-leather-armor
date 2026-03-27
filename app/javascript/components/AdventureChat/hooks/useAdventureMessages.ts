@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { createConsumer } from '@rails/actioncable'
 import type { AdventureMessage, DerivedStats } from '../../../types'
 import { csrfToken } from '../../../utils/api'
+import { routes } from '../../../utils/routes'
 import { buildPendingRollsFromMessage, PendingRolls } from '../rollHelpers'
 
 const OPTIMISTIC_ID = -1
@@ -158,7 +159,7 @@ export function useAdventureMessages({
           // any pipeline results that arrived during the disconnect window.
           if (!sendingRef.current) return
 
-          fetch(`/adventures/${adventureId}/messages`, { headers: { Accept: 'application/json' } })
+          fetch(routes.adventureMessages(adventureId), { headers: { Accept: 'application/json' } })
             .then(r => r.ok ? r.json() : null)
             .then((data: { messages: AdventureMessage[]; pipeline_running: boolean } | null) => {
               if (!data || !sendingRef.current) return
@@ -197,7 +198,7 @@ export function useAdventureMessages({
   useEffect(() => {
     const loadHistory = async () => {
       try {
-        const res = await fetch(`/adventures/${adventureId}/messages`, {
+        const res = await fetch(routes.adventureMessages(adventureId), {
           headers: { Accept: 'application/json' },
         })
         if (!res.ok) throw new Error('Failed to load messages')
@@ -263,7 +264,7 @@ export function useAdventureMessages({
     addOptimisticMessages(text, 'narrative')
 
     try {
-      const res = await fetch(`/adventures/${adventureId}/messages`, {
+      const res = await fetch(routes.adventureMessages(adventureId), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -299,7 +300,7 @@ export function useAdventureMessages({
     addOptimisticMessages(rollSummary, 'roll_result', { rolls })
 
     try {
-      const res = await fetch(`/adventures/${adventureId}/messages/roll`, {
+      const res = await fetch(routes.adventureRoll(adventureId), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -329,7 +330,7 @@ export function useAdventureMessages({
     addOptimisticMessages(`Rolled ${value} for initiative`, 'initiative_result', { initiative: value })
 
     try {
-      const res = await fetch(`/adventures/${adventureId}/messages/initiative`, {
+      const res = await fetch(routes.adventureInitiative(adventureId), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
