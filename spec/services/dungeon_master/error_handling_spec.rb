@@ -4,6 +4,7 @@ require "rails_helper"
 # calling service (DungeonMasterService) can catch and surface them safely.
 RSpec.describe "DungeonMaster pipeline error handling", type: :service do
   include_context "with mocked ai"
+  include_context "with evaluator stubs"
 
   let(:story)      { create(:story) }
   let(:user)       { create(:user) }
