@@ -126,6 +126,8 @@ flowchart TB
         LOOP_OUTCOME -->|:encounter| BREAK_ENC[break action queue → output phase]
         LOOP_OUTCOME -->|:social_scene| BREAK_SOC[break action queue → output phase]
         LOOP_OUTCOME -->|:resolved| ACCUMULATE[accumulate result]
+        LOOP_OUTCOME -->|":resolved + per_action_narration"| PROGRESSIVE_NARRATE["run_single_action_narrative_phase\n+ on_narrative callback"]
+        PROGRESSIVE_NARRATE --> ACCUMULATE
     end
 
     ACCUMULATE --> INTER_CTX{More actions in queue?}
@@ -164,6 +166,7 @@ flowchart TB
     end
 
     MICRO & MACRO_UPDATE & SKIP_MACRO --> OUT_NARR[Return :narrated]
+    PROGRESSIVE_NARRATE -.->|"all actions done"| OUT_SEQ["Return :narrated_sequence\n(progressive narration path)"]
 ```
 
 ---

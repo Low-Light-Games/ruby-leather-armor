@@ -166,7 +166,8 @@ class DungeonMasterService
     @pipeline ||= DungeonMaster::Pipeline.new(
       adventure: @adventure, config: @config, ai: @ai, log: @log, sheet: @sheet,
       on_progress: method(:broadcast_pipeline_progress),
-      on_sheet_update: method(:broadcast_sheet_update))
+      on_sheet_update: method(:broadcast_sheet_update),
+      on_narrative: method(:handle_progressive_narrative))
   end
 
   def broadcast_pipeline_progress(message)
@@ -175,6 +176,34 @@ class DungeonMasterService
 
   def broadcast_sheet_update
     AdventureChannel.broadcast_to(@adventure, { type: "sheet_update" })
+  end
+
+  # Called by the pipeline for each resolved action when per_action_narration is on.
+  # Persists and broadcasts the narrative immediately so the player sees it in real time,
+  # without waiting for the full pipeline to finish.
+  def handle_progressive_narrative(narrative_entry)
+    msg = persist_message(
+      role: "dm",
+      content: narrative_entry[:narrative],
+      message_type: "narrative",
+      metadata: {
+        sequence_index: narrative_entry[:sequence_index],
+        total_actions:  narrative_entry[:total_actions],
+        action_text:    narrative_entry[:action_text]
+      }
+    )
+
+    to_broadcast = [ DungeonMasterService.message_json(msg, admin: @user&.admin?) ]
+
+    if narrative_entry[:adventure_complete]
+      complete_msg = persist_message(
+        role: "system",
+        content: "The adventure has reached its conclusion.",
+        message_type: "adventure_complete")
+      to_broadcast << DungeonMasterService.message_json(complete_msg, admin: @user&.admin?)
+    end
+
+    AdventureChannel.broadcast_to(@adventure, { type: "pipeline_action_result", messages: to_broadcast })
   end
 
   # ----------------------------------------------------------------
@@ -238,6 +267,13 @@ class DungeonMasterService
           message_type: "adventure_complete")
       end
       msgs
+
+    when :narrated_sequence
+      # Each narrative was already persisted and broadcast individually via the
+      # on_narrative callback (handle_progressive_narrative) as pipeline_action_result
+      # events. Return an empty array so the job broadcasts an empty pipeline_result,
+      # which the frontend uses as a "done" signal to remove the thinking indicator.
+      []
     end
   end
 

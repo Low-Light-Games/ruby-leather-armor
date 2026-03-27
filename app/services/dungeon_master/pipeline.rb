@@ -10,6 +10,7 @@ module DungeonMaster
   # Flow:
   #   run_prompt          -> intake -> dm_query_flow | orchestrate_actions
   #   orchestrate_actions -> sequencer -> [ for each action: CoreResolver.resolve ] -> output_phase
+  #                          output_phase: accumulated narrative (default) | per-action narrative (per_action_narration setting)
   #   run_rolls           -> CoreResolver.finish_resolution -> continue queue if remaining -> output_phase
   #
   class Pipeline
@@ -31,7 +32,7 @@ module DungeonMaster
     include CoreResolver
     include Mutations
 
-    def initialize(adventure:, config:, ai:, log:, sheet:, on_progress: nil, on_sheet_update: nil)
+    def initialize(adventure:, config:, ai:, log:, sheet:, on_progress: nil, on_sheet_update: nil, on_narrative: nil)
       @adventure        = adventure
       @config           = config
       @ai               = ai
@@ -40,6 +41,7 @@ module DungeonMaster
       @loop             = nil
       @on_progress      = on_progress
       @on_sheet_update  = on_sheet_update
+      @on_narrative     = on_narrative
     end
 
     # Main entry point: player typed something.
@@ -133,6 +135,8 @@ module DungeonMaster
       actions = run_sequencer(clean_input)
       total = actions.size
       accumulated = []
+      use_per_action = per_action_narration? && total > 1
+      action_narratives = []
 
       actions.each_with_index do |action_text, idx|
         set_action_label(idx, total)
@@ -188,15 +192,38 @@ module DungeonMaster
         when :resolved
           @loop&.batch_update!(new_status: "resolved",
             timeline_entry: tl("resolved", "Action resolved"))
-          accumulated << result
-          run_inter_action_context_update(result) if idx < actions.size - 1
+          if use_per_action
+            action_narratives << run_single_action_narrative_phase(result, idx, total)
+            run_inter_action_context_update(result) if idx < actions.size - 1
+          else
+            accumulated << result
+            run_inter_action_context_update(result) if idx < actions.size - 1
+          end
         end
       end
 
       clear_action_label
       log_queue_completed(total) if total > 1
 
-      run_accumulated_narrative_phase(accumulated)
+      if use_per_action && action_narratives.any?
+        if accumulated.any?
+          # An encounter or social scene broke the loop after some resolved actions.
+          # Narrate the encounter via the accumulated path; if it needs initiative
+          # that takes priority and the per-action narratives are discarded.
+          final = run_accumulated_narrative_phase(accumulated)
+          return final unless final[:action] == :narrated
+          action_narratives << {
+            narrative: final[:narrative],
+            adventure_complete: final[:adventure_complete],
+            sequence_index: action_narratives.size,
+            total_actions: total,
+            action_text: nil
+          }
+        end
+        { action: :narrated_sequence, narratives: action_narratives }
+      else
+        run_accumulated_narrative_phase(accumulated)
+      end
     end
 
     # Continue the action queue after a roll pause or from a mid-queue resume.
@@ -304,6 +331,40 @@ module DungeonMaster
         pipeline: pipeline,
         mutations: combined_mutations.presence,
         extra: extra)
+    end
+
+    # Narrate a single resolved action immediately, before the next action starts.
+    # Because loops are created one at a time, only this loop's pipeline_outcome
+    # exists in the DB at this point, so the PipelineContext naturally carries
+    # just the current action's outcome as its combined_seed.
+    def run_single_action_narrative_phase(result, sequence_index, total_actions)
+      outcome = @loop&.get("pipeline_outcome")
+      plot_result = resolve_plot(result[:intent], verdict_outcome: outcome)
+
+      action_pipeline = PipelineContext.new(
+        combined_seed: outcome,
+        dm_brief: plot_result&.dig(:dm_brief),
+        player_action: @loop&.player_intent
+      )
+
+      narration = run_narrative_phase(result[:intent],
+        pipeline: action_pipeline,
+        mutations: result[:mutations])
+
+      narrative_entry = {
+        narrative: narration[:narrative],
+        adventure_complete: narration[:adventure_complete],
+        sequence_index: sequence_index,
+        total_actions: total_actions,
+        action_text: @loop&.player_intent&.truncate(200)
+      }
+
+      @on_narrative&.call(narrative_entry)
+      narrative_entry
+    end
+
+    def per_action_narration?
+      @adventure.effective_dm_setting("per_action_narration")
     end
 
     def merge_result_intents(results)

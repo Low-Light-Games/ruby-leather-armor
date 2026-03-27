@@ -78,6 +78,21 @@ export function useAdventureMessages({
     })
   }, [])
 
+  // Progressive per-action narration: insert messages before the thinking sentinel
+  // so the player sees each action result as it arrives. The thinking indicator
+  // stays visible until the final empty pipeline_result "done" signal removes it.
+  const handleActionResult = useCallback((data: { messages: AdventureMessage[] }) => {
+    setMessages(prev => {
+      const thinking = prev.find(m => m.id === THINKING_ID)
+      const rest = prev.filter(m => !isSentinel(m.id))
+      return thinking
+        ? [...rest, ...data.messages, thinking]
+        : [...rest, ...data.messages]
+    })
+    const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
+    if (completeMsg && onAdventureComplete) onAdventureComplete()
+  }, [onAdventureComplete])
+
   const handleError = useCallback((errorPrefix: string, err: any) => {
     console.error(`${errorPrefix}:`, err)
     const errorMsg: AdventureMessage = {
@@ -96,6 +111,8 @@ export function useAdventureMessages({
         received(data: { type: string; messages: AdventureMessage[]; message?: string }) {
           if (data.type === 'pipeline_result' && data.messages) {
             handleSyncResponse(data)
+          } else if (data.type === 'pipeline_action_result' && data.messages) {
+            handleActionResult(data)
           } else if (data.type === 'pipeline_progress' && data.message) {
             handleProgressUpdate(data.message)
           } else if (data.type === 'sheet_update') {
@@ -104,26 +121,35 @@ export function useAdventureMessages({
         },
 
         connected() {
-          // On reconnect while waiting for a response, re-fetch to pick up
+          // On reconnect while waiting for a response, re-fetch to recover
           // any pipeline results that arrived during the disconnect window.
           if (!sendingRef.current) return
 
           fetch(`/adventures/${adventureId}/messages`, { headers: { Accept: 'application/json' } })
             .then(r => r.ok ? r.json() : null)
-            .then((serverMessages: AdventureMessage[] | null) => {
-              if (!serverMessages || !sendingRef.current) return
+            .then((data: { messages: AdventureMessage[]; pipeline_running: boolean } | null) => {
+              if (!data || !sendingRef.current) return
 
-              const lastPlayer = [...serverMessages].reverse().find(m => m.role === 'player')
-              if (!lastPlayer) return
+              // Pipeline still running — WebSocket events will deliver results as
+              // they arrive. Do NOT call handleSyncResponse here: it would append
+              // already-present progressive messages and set sending=false early.
+              if (data.pipeline_running) return
 
-              const lastPlayerIdx = serverMessages.findIndex(m => m.id === lastPlayer.id)
-              const dmMessages = serverMessages
-                .slice(lastPlayerIdx + 1)
-                .filter(m => m.role === 'dm' || m.role === 'system')
+              // Pipeline finished during the disconnect window. Replace state with
+              // the server's authoritative list to avoid duplicating any messages
+              // that were already appended via pipeline_action_result events.
+              const msgs = data.messages
+              const dmMsg = msgs.find(m => m.role === 'dm' && m.message_type === 'roll_request')
+              if (dmMsg) activatePendingRolls(dmMsg)
+              const initMsg = msgs.find(m => m.role === 'dm' && m.message_type === 'initiative_request')
+              if (initMsg) setPendingInitiative(true)
 
-              if (dmMessages.length > 0) {
-                handleSyncResponse({ messages: dmMessages })
-              }
+              setMessages(msgs)
+              setSending(false)
+              lastSentRef.current = null
+              if (onDmResponse) onDmResponse()
+              const completeMsg = msgs.find(m => m.message_type === 'adventure_complete')
+              if (completeMsg && onAdventureComplete) onAdventureComplete()
             })
             .catch(() => {})
         },
@@ -131,7 +157,7 @@ export function useAdventureMessages({
     )
 
     return () => { subscription.unsubscribe() }
-  }, [adventureId, handleSyncResponse, handleProgressUpdate, onSheetUpdate])
+  }, [adventureId, handleSyncResponse, handleActionResult, handleProgressUpdate, onSheetUpdate])
 
   // Load message history on mount
   useEffect(() => {
@@ -141,19 +167,32 @@ export function useAdventureMessages({
           headers: { Accept: 'application/json' },
         })
         if (!res.ok) throw new Error('Failed to load messages')
-        const data: AdventureMessage[] = await res.json()
-        setMessages(data)
+        const data: { messages: AdventureMessage[]; pipeline_running: boolean } = await res.json()
+        const msgs = data.messages
 
-        const lastDm = [...data].reverse().find(m => m.role === 'dm')
+        if (data.pipeline_running) {
+          // Pipeline is still running (e.g. player refreshed mid-turn).
+          // Restore the thinking indicator so the player knows the GM is still working.
+          const thinkingSentinel: AdventureMessage = {
+            id: THINKING_ID, role: 'dm', content: '',
+            message_type: 'narrative', metadata: {}, created_at: new Date().toISOString(),
+          }
+          setMessages([...msgs, thinkingSentinel])
+          setSending(true)
+        } else {
+          setMessages(msgs)
+        }
+
+        const lastDm = [...msgs].reverse().find(m => m.role === 'dm')
         if (lastDm?.message_type === 'roll_request') {
-          const lastDmIdx = data.findIndex(m => m.id === lastDm.id)
-          const hasRollResult = data.slice(lastDmIdx + 1).some(m => m.message_type === 'roll_result')
+          const lastDmIdx = msgs.findIndex(m => m.id === lastDm.id)
+          const hasRollResult = msgs.slice(lastDmIdx + 1).some(m => m.message_type === 'roll_result')
           if (!hasRollResult) {
             activatePendingRolls(lastDm)
           }
         } else if (lastDm?.message_type === 'initiative_request') {
-          const lastDmIdx = data.findIndex(m => m.id === lastDm.id)
-          const hasInitResult = data.slice(lastDmIdx + 1).some(m => m.message_type === 'initiative_result')
+          const lastDmIdx = msgs.findIndex(m => m.id === lastDm.id)
+          const hasInitResult = msgs.slice(lastDmIdx + 1).some(m => m.message_type === 'initiative_result')
           if (!hasInitResult) {
             setPendingInitiative(true)
           }

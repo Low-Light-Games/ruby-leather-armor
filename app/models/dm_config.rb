@@ -37,6 +37,7 @@ class DmConfig < ApplicationRecord
     "embellisher_mode" => "embellish",
     "narration_mode" => "parallel",
     "action_queue" => true,
+    "per_action_narration" => false,
     "evaluation_mode" => "unified",
     "show_roll_dc" => true,
     "scene_history_depth" => 10,

@@ -15,5 +15,11 @@ class PipelineRun < ApplicationRecord
 
   scope :recent_first, -> { order(started_at: :desc) }
 
+  def self.active_for?(adventure)
+    where(adventure: adventure, status: "running")
+      .where("started_at > ?", 15.minutes.ago)
+      .exists?
+  end
+
 
 end
