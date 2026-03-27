@@ -44,4 +44,8 @@ Rails.application.configure do
   config.action_cable.disable_request_forgery_protection = true
 
   config.hosts << "localhost"
+
+  # No credentials file for this environment — use an env var or a fixed
+  # test-only value. Sessions don't need to survive server restarts in E2E runs.
+  config.secret_key_base = ENV.fetch("SECRET_KEY_BASE", "playwright" + "0" * 118)
 end
