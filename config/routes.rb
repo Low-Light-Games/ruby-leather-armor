@@ -1,4 +1,8 @@
 Rails.application.routes.draw do
+  # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
+
+  # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
+  # Can be used by load balancers and uptime monitors to verify that the app is live.
   get "up" => "rails/health#show", as: :rails_health_check
 
   # Public pages (no authentication required)
@@ -55,17 +59,20 @@ Rails.application.routes.draw do
 
   resources :feature_flags, only: [:index]
 
+  # Read-only game-rule definition endpoints
   resources :feat_definitions,  only: [:index, :show]
   resources :spell_definitions, only: [:index, :show]
   resources :item_definitions,  only: [:index, :show]
 
+  # Sheets: HTML (SPA) + JSON API
   resources :sheets
 
+  # API endpoints for stories and adventures
   resources :stories, only: [:index]
   resources :adventures, only: [:index, :new, :create, :show, :destroy] do
-    resources :messages, only: [:index, :create], controller: "adventure_messages"
-    post "messages/roll",       to: "adventure_messages#roll",       as: :roll_message
-    post "messages/initiative", to: "adventure_messages#initiative", as: :initiative_message
+    resources :messages, only: [:index, :create], controller: 'adventure_messages'
+    post 'messages/roll', to: 'adventure_messages#roll', as: :roll_message
+    post 'messages/initiative', to: 'adventure_messages#initiative', as: :initiative_message
     resource :adventure_sheet, only: [:update] do
       patch :toggle_equip
     end
