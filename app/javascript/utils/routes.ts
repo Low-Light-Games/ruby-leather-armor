@@ -8,7 +8,7 @@
  */
 
 interface AppRoutes {
-  app: string
+  appBase: string
   login: string
   logout: string
   currentUser: string
@@ -33,13 +33,12 @@ const base = window.AppRoutes
 
 export const routes = {
   // ── Static paths (from Rails helpers) ───────────────────────
-  app:               base.app,
   login:             base.login,
   logout:            base.logout,
   currentUser:       base.currentUser,
-  // OmniAuth lives at root /auth (not under /app) so it works from both
-  // localhost:3000/app and app.leatherarmor.io without path doubling.
-  googleAuth:        "/auth/google_oauth2",
+  // OmniAuth is under /app/auth — derives from appBase so it follows
+  // the same context-aware prefix as every other player route.
+  googleAuth:        `${base.appBase}/auth/google_oauth2`,
   sheets:            base.sheets,
   adventures:        base.adventures,
   newAdventure:      base.newAdventure,
