@@ -42,6 +42,7 @@
     </script>
 
     <%= stylesheet_link_tag "frontpage", "data-turbo-track": "reload" %>
+    <script>window.AppUrl = "<%= ENV.fetch('APP_URL', app_path) %>";</script>
     <%= javascript_include_tag "frontpage", "data-turbo-track": "reload", defer: true %>
   </head>
 
