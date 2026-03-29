@@ -94,6 +94,7 @@ Rails.application.configure do
   config.hosts = [
     "leatherarmor.io",
     "www.leatherarmor.io",
+    "app.leatherarmor.io",
     "44.220.128.51"
   ]
   config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
