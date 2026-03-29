@@ -33,6 +33,14 @@ Rails.application.routes.draw do
       get :models, on: :member
     end
     resource :billing, only: [:show], controller: "billing"
+    resources :users, only: [:index, :show] do
+      member do
+        patch :ban
+        patch :unban
+        patch :trust
+        patch :untrust
+      end
+    end
     resources :bestiary_entries, only: [:index] do
       collection do
         get :import_candidates
