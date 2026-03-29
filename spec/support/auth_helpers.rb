@@ -1,6 +1,6 @@
 module AuthHelpers
   def sign_in(user)
-    post "/login", params: { email: user.email, password: "password123" }
+    post "/app/login", params: { email: user.email, password: "password123" }
   end
 
   def sign_in_via_session(user)
