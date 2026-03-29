@@ -37,9 +37,9 @@ export const routes = {
   login:             base.login,
   logout:            base.logout,
   currentUser:       base.currentUser,
-  // Google OAuth initiation — handled by OmniAuth middleware at /app/auth,
-  // derived from the app base path so it follows any prefix change automatically.
-  googleAuth:        `${base.app}/auth/google_oauth2`,
+  // OmniAuth lives at root /auth (not under /app) so it works from both
+  // localhost:3000/app and app.leatherarmor.io without path doubling.
+  googleAuth:        "/auth/google_oauth2",
   sheets:            base.sheets,
   adventures:        base.adventures,
   newAdventure:      base.newAdventure,
