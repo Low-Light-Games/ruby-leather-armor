@@ -137,7 +137,7 @@ const FrontPage: React.FC = () => (
           surprising thing — then you are welcome at the table.
         </p>
         <div className="fp-cta-wrap">
-          <a href="/app" className="fp-cta-btn">
+          <a href={(window as any).AppUrl} className="fp-cta-btn">
             Begin
           </a>
         </div>
