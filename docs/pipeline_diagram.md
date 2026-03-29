@@ -13,7 +13,18 @@ flowchart TB
         PRE0 -->|yes| ULIMIT[Return :usage_limit_exceeded]
         PRE0 -->|no| PRE1[Log abandoned pipeline?]
         PRE1 --> PRE2[Auto-finalize pending initiative?]
-        PRE2 --> B[run_prompt]
+        PRE2 --> MODTRUST{"user.trusted?"}
+        MODTRUST -->|"trusted"| MOD_ASYNC["ModerationCheckJob.perform_later\nstrikes/ban applied async — no pipeline delay"]
+        MOD_ASYNC --> B[run_prompt]
+        MODTRUST -->|"not trusted"| MOD_SYNC["ModerationService.call\nPOST /moderate → Node evaluator"]
+        MOD_SYNC -->|"clean"| B[run_prompt]
+        MOD_SYNC -->|"flagged"| MOD_BLOCK["increment strike\nauto-ban if strikes ≥ max_strikes\nReturn moderation_flagged message"]
+    end
+
+    subgraph controller_gate["Controller gate — AdventureMessagesController"]
+        REQ[Incoming request] --> BAN_CHECK{"user.banned?"}
+        BAN_CHECK -->|yes| BAN_RESP["403 + banned: true\n(all three actions: create / roll / initiative)"]
+        BAN_CHECK -->|no| A
     end
 
     subgraph gate["Gate — Intake  ☆ AI"]
@@ -240,13 +251,20 @@ runs), so adding a new progress call to a step requires no test changes.
 
 ### Pre-flight checks (before run_prompt)
 
-Three checks run before the pipeline proper, all in `DungeonMasterService`:
+A controller-level ban gate runs first, then four checks inside `DungeonMasterService#execute_prompt` before the pipeline proper:
+
+**Controller gate (`AdventureMessagesController#check_ban`)** — If `current_user.banned?`, all three actions (`create`, `roll`, `initiative`) return 403 immediately with `{ banned: true }`. No player message is persisted, no job is enqueued.
 
 1. **Usage limit** — Raises `UsageLimitExceeded` if the user has hit their quota. Returns a `usage_limit` system message.
 
 2. **Abandoned pipeline log** — Detects if the previous pipeline was paused (a `roll_request` or `initiative_request` message exists) but the player submitted a new free-text message instead of the expected roll/initiative. Logs a `pipeline_abandoned` event for observability. Does **not** block the pipeline — the new message is processed normally.
 
 3. **Auto-finalize pending initiative** — If an `initiative_request` message exists but the player's most recent response was a new free-text action (not an `initiative_result`), the pipeline auto-rolls the player's initiative using their DEX modifier and calls `Warmaster.finalize_combat!`. This silently resolves combat initialization so the new action can proceed with an active `combat_context`.
+
+4. **Moderation gate** — POSTs the player's raw input to the Node evaluator's `POST /moderate` endpoint (OpenAI `omni-moderation-latest`). Behaviour depends on whether the user is trusted:
+   - **Regular users (blocking):** if the input is flagged, a `ModerationEvent` is recorded, `moderation_strikes` is incremented, and the pipeline short-circuits — returning a `moderation_flagged` DM message without starting a pipeline run. If `moderation_strikes >= max_strikes` the user is automatically banned and `trusted` is revoked.
+   - **Trusted users (async):** `ModerationCheckJob` is enqueued via Sidekiq; the pipeline proceeds immediately with no added latency. Strikes and bans still apply after the fact. The user remains trusted until strikes hit the threshold, at which point trust is auto-revoked alongside the ban.
+   - If `moderation.enabled` is `false` in `config/moderation.yml`, this entire gate is skipped.
 
 ---
 
@@ -587,6 +605,8 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 
 | Trigger | Type | What returns |
 |---------|------|-------------|
+| User is banned (controller layer) | Hard stop | 403 — `{ banned: true }` — no message persisted, no job enqueued |
+| Moderation flags input — non-trusted user | Hard stop | `moderation_flagged` DM message — pipeline never starts; strike incremented; auto-ban if at threshold |
 | Usage limit exceeded | Hard stop | `:usage_limit_exceeded` system message |
 | Intake danger score ≥ threshold | Hard stop | `:rejected` — reason from Intake |
 | Intake: no sanitized_input | Hard stop → error | "DM distracted" system message |
@@ -607,6 +627,7 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 
 | Step | Type | Purpose |
 |------|------|---------|
+| **Moderation gate** | Code (blocking or async Sidekiq) | Classify player input via OpenAI moderation API. Regular users: blocking — flags short-circuit the pipeline and increment strikes; auto-ban at `max_strikes`. Trusted users: async via `ModerationCheckJob` — no pipeline delay; strikes and bans still apply. Skipped entirely when `moderation.enabled: false`. |
 | **Intake** | AI | Score danger, sanitize input, detect DM query, flag context gaps. |
 | **Sequencer** | AI | Split compound player input into ordered discrete actions. Skipped if `action_queue` off. |
 | **ParallelEvaluation** | Code orchestration + 3 HTTP phases to Node | beacon→mech_eval→roll_qualifier chain via Node evaluator microservice. Requires `EVALUATOR_URL`. |

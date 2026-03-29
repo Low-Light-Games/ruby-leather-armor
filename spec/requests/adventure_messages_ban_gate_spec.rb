@@ -9,9 +9,9 @@ RSpec.describe "Adventure Messages ban gate", type: :request do
   context "when the user is banned" do
     let(:user) { create(:user, banned: true) }
 
-    describe "POST /adventures/:id/messages" do
+    describe "POST /app/adventures/:id/messages" do
       it "returns 403 with a banned payload" do
-        post "/adventures/#{adventure.id}/messages",
+        post "/app/adventures/#{adventure.id}/messages",
              params: { content: "I try to open the door." },
              headers: { "Accept" => "application/json" }
 
@@ -22,9 +22,9 @@ RSpec.describe "Adventure Messages ban gate", type: :request do
       end
     end
 
-    describe "POST /adventures/:id/messages/roll" do
+    describe "POST /app/adventures/:id/messages/roll" do
       it "returns 403" do
-        post "/adventures/#{adventure.id}/messages/roll",
+        post "/app/adventures/#{adventure.id}/messages/roll",
              params: { roll_value: 15, roll_description: "Perception check",
                        resolution_method: "roll" },
              headers: { "Accept" => "application/json" }
@@ -33,9 +33,9 @@ RSpec.describe "Adventure Messages ban gate", type: :request do
       end
     end
 
-    describe "POST /adventures/:id/messages/initiative" do
+    describe "POST /app/adventures/:id/messages/initiative" do
       it "returns 403" do
-        post "/adventures/#{adventure.id}/messages/initiative",
+        post "/app/adventures/#{adventure.id}/messages/initiative",
              params: { initiative: 12 },
              headers: { "Accept" => "application/json" }
 
@@ -48,7 +48,7 @@ RSpec.describe "Adventure Messages ban gate", type: :request do
     let(:user) { create(:user) }
 
     it "does not block access to GET /messages" do
-      get "/adventures/#{adventure.id}/messages",
+      get "/app/adventures/#{adventure.id}/messages",
           headers: { "Accept" => "application/json" }
 
       expect(response).not_to have_http_status(:forbidden)
@@ -62,7 +62,7 @@ RSpec.describe "Adventure Messages ban gate", type: :request do
       end
       allow(PipelineJob).to receive(:perform_later)
 
-      post "/adventures/#{adventure.id}/messages",
+      post "/app/adventures/#{adventure.id}/messages",
            params: { content: "I open the door." },
            headers: { "Accept" => "application/json" }
 
