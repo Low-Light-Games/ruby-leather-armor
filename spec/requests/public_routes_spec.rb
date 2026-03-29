@@ -33,18 +33,18 @@ RSpec.describe "Public routes", type: :request do
   end
 
   describe "unauthenticated JSON API" do
-    it "GET /feat_definitions returns 401 without auth" do
-      get "/feat_definitions", headers: { "Accept" => "application/json" }
+    it "GET /app/feat_definitions returns 401 without auth" do
+      get "/app/feat_definitions", headers: { "Accept" => "application/json" }
       expect(response).to have_http_status(:unauthorized)
     end
 
-    it "GET /spell_definitions returns 401 without auth" do
-      get "/spell_definitions", headers: { "Accept" => "application/json" }
+    it "GET /app/spell_definitions returns 401 without auth" do
+      get "/app/spell_definitions", headers: { "Accept" => "application/json" }
       expect(response).to have_http_status(:unauthorized)
     end
 
-    it "GET /item_definitions returns 401 without auth" do
-      get "/item_definitions", headers: { "Accept" => "application/json" }
+    it "GET /app/item_definitions returns 401 without auth" do
+      get "/app/item_definitions", headers: { "Accept" => "application/json" }
       expect(response).to have_http_status(:unauthorized)
     end
   end
