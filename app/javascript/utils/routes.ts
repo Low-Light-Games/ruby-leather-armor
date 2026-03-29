@@ -9,6 +9,7 @@
 
 interface AppRoutes {
   appBase: string
+  mainUrl: string
   login: string
   logout: string
   currentUser: string
@@ -33,6 +34,7 @@ const base = window.AppRoutes
 
 export const routes = {
   // ── Static paths (from Rails helpers) ───────────────────────
+  mainUrl:           base.mainUrl,
   login:             base.login,
   logout:            base.logout,
   currentUser:       base.currentUser,
