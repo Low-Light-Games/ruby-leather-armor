@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { Story, Sheet, AdventureSummary } from '../../../types'
 import { csrfToken } from '../../../utils/api'
-import { routes } from '../../../utils/routes'
 
 const WAIT_MESSAGES = [
   "Sculpting nightmarish creatures from clay...",
@@ -53,9 +52,9 @@ export function useAdventureCreationData(user: any) {
     if (!user) return
 
     Promise.all([
-      fetch(routes.stories).then(r => r.json()),
-      fetch(`${routes.sheets}.json`).then(r => r.json()),
-      fetch(`${routes.adventures}.json`).then(r => r.json()),
+      fetch('/stories').then(r => r.json()),
+      fetch('/sheets.json').then(r => r.json()),
+      fetch('/adventures.json').then(r => r.json()),
     ])
       .then(([storiesData, sheetsData, adventuresData]) => {
         setStories(storiesData)
@@ -76,7 +75,7 @@ export function useAdventureCreationData(user: any) {
     startWaitMessages()
 
     try {
-      const response = await fetch(routes.adventures, {
+      const response = await fetch('/adventures', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -96,7 +95,7 @@ export function useAdventureCreationData(user: any) {
       }
 
       const adventure = await response.json()
-      window.location.href = routes.adventure(adventure.id)
+      window.location.href = `/adventures/${adventure.id}`
     } catch (err) {
       stopWaitMessages()
       setError(err instanceof Error ? err.message : 'Something went wrong')
@@ -108,7 +107,7 @@ export function useAdventureCreationData(user: any) {
     if (!window.confirm('Are you sure you want to delete this adventure? This cannot be undone.')) return
 
     try {
-      const response = await fetch(routes.adventure(adventureId), {
+      const response = await fetch(`/adventures/${adventureId}`, {
         method: 'DELETE',
         headers: { 'X-CSRF-Token': csrfToken() },
       })

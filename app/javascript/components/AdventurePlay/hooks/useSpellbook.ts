@@ -2,7 +2,6 @@ import { useState, useMemo, useCallback } from 'react';
 import type { Adventure, DerivedStats } from '../../../types';
 import type { SpellDefinition } from '../../../rules/pathfinder_spells_types';
 import { csrfToken } from '../../../utils/api';
-import { routes } from '../../../utils/routes';
 import {
   getCastingStyle,
   getSpellsForClass,
@@ -61,7 +60,7 @@ export function useSpellbook(
     setSpellbookSaving(true);
     try {
       const newSpellbook = [...currentSpellIds, spell.id];
-      const res = await fetch(routes.adventureSheet(adventure.id), {
+      const res = await fetch(`/adventures/${adventure.id}/adventure_sheet`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
         body: JSON.stringify({ spellbook: newSpellbook }),

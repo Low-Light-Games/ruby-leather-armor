@@ -1,7 +1,6 @@
 import type { AdventureSummary } from '../../types'
 import { formatCurrency } from '../../rules/pathfinder_items'
 import type { Currency } from '../../rules/pathfinder_items_types'
-import { routes } from '../../utils/routes'
 
 interface AdventureListProps {
   adventures: AdventureSummary[]
@@ -26,7 +25,7 @@ const AdventureList = ({ adventures, loading, onDelete }: AdventureListProps) =>
       <ul className="adventure-list">
         {adventures.map(adv => (
           <li key={adv.id} className="adventure-list-item">
-            <a href={routes.adventure(adv.id)} className="adventure-link">
+            <a href={`/adventures/${adv.id}`} className="adventure-link">
               <span className="adventure-character">{adv.character_name}</span>
               <span className="adventure-story">{adv.story_title}</span>
               <span className="adventure-meta">

@@ -15,11 +15,7 @@ class ApplicationController < ActionController::Base
   end
 
   def require_login
-    return if current_user
-
-    if request.format.html?
-      redirect_to app_path
-    else
+    unless current_user
       render json: { error: 'Authentication required' }, status: :unauthorized
     end
   end

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { csrfToken } from '../../utils/api'
-import { routes } from '../../utils/routes'
 import OnboardingLoadingScreen from './OnboardingLoadingScreen'
 import './OnboardingWizard.scss'
 
@@ -128,7 +127,7 @@ const OnboardingWizard = () => {
     setError(null)
 
     try {
-      const response = await fetch(routes.onboardingComplete, {
+      const response = await fetch('/onboarding/complete', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,7 +145,7 @@ const OnboardingWizard = () => {
 
       // Navigate directly — AdventurePlay will re-fetch user state on mount,
       // picking up the updated onboarding_state without a flicker here.
-      window.location.href = routes.adventure(data.adventure_id)
+      window.location.href = `/adventures/${data.adventure_id}`
     } catch (err) {
       setSubmitting(false)
       setSelectedType(null)
@@ -180,7 +179,7 @@ const OnboardingWizard = () => {
         <div className="onboarding-wizard__error">
           <p>{error}</p>
           {error.toLowerCase().includes('no adventure') && (
-            <a href={routes.sheets}>Build your own character instead</a>
+            <a href="/sheets">Build your own character instead</a>
           )}
         </div>
       )}
@@ -204,7 +203,7 @@ const OnboardingWizard = () => {
           Bring your own. First-level characters only. The system will accept what
           you provide and hold you to it.
         </p>
-        <a href={routes.sheets} className="onboarding-wizard__own-link">
+        <a href="/sheets" className="onboarding-wizard__own-link">
           Create a Character
         </a>
       </div>

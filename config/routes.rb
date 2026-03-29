@@ -1,14 +1,25 @@
 Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
 
-  # Public pages — always at root, no auth required
+  # Public pages (no authentication required)
   get "legal"   => "legal#index"
   get "privacy" => "privacy#index"
 
   root "home#index"
 
+  # Authentication routes
+  post "login" => "sessions#create"
+  delete "logout" => "sessions#destroy"
+  get "current_user" => "sessions#show"
 
-  # Admin — separate namespace, unaffected by /app scope
+  # OmniAuth callbacks
+  get  "auth/:provider/callback", to: "omniauth_callbacks#google_oauth2", as: :omniauth_callback
+  get  "auth/failure",            to: "omniauth_callbacks#failure"
+  post "auth/:provider/callback", to: "omniauth_callbacks#google_oauth2"
+
+  # First-login wizard (API — UI is embedded in AdventureCreation)
+  post "onboarding/complete", to: "onboarding#complete", as: :onboarding_complete
+
   namespace :admin do
     resources :adventures, only: [:index, :show, :update, :destroy] do
       member do
@@ -42,44 +53,21 @@ Rails.application.routes.draw do
     end
   end
 
-  # ── Player application (/app) ──────────────────────────────────────────────
-  # All player-facing routes are scoped under /app.
-  # Locally: localhost:3000/app/...
-  # Production: app.leatherarmor.io/... (proxy rewrites to /app before Rails sees it)
-  # This means routing is identical in both environments — no env vars needed.
-  scope "/app" do
-    get  "",                    to: "home#app",           as: :app
+  resources :feature_flags, only: [:index]
 
-    # Auth — under /app so the SPA at app.leatherarmor.io can reach them
-    # without crossing back to the main domain.
-    post   "login"        => "sessions#create",    as: :login
-    delete "logout"       => "sessions#destroy",   as: :logout
-    get    "current_user" => "sessions#show",      as: :current_user
+  resources :feat_definitions,  only: [:index, :show]
+  resources :spell_definitions, only: [:index, :show]
+  resources :item_definitions,  only: [:index, :show]
 
-    # OmniAuth — path_prefix in omniauth.rb is set to /app/auth to match.
-    # Google redirects to app.leatherarmor.io/auth/... → nginx → /app/auth/...
-    get  "auth/:provider/callback", to: "omniauth_callbacks#google_oauth2", as: :omniauth_callback
-    get  "auth/failure",            to: "omniauth_callbacks#failure"
-    post "auth/:provider/callback", to: "omniauth_callbacks#google_oauth2"
+  resources :sheets
 
-    post "onboarding/complete", to: "onboarding#complete", as: :onboarding_complete
-
-    resources :feature_flags, only: [:index]
-
-    resources :feat_definitions,  only: [:index, :show]
-    resources :spell_definitions, only: [:index, :show]
-    resources :item_definitions,  only: [:index, :show]
-
-    resources :sheets
-
-    resources :stories, only: [:index]
-    resources :adventures, only: [:index, :new, :create, :show, :destroy] do
-      resources :messages, only: [:index, :create], controller: "adventure_messages"
-      post "messages/roll",       to: "adventure_messages#roll",       as: :roll_message
-      post "messages/initiative", to: "adventure_messages#initiative", as: :initiative_message
-      resource :adventure_sheet, only: [:update] do
-        patch :toggle_equip
-      end
+  resources :stories, only: [:index]
+  resources :adventures, only: [:index, :new, :create, :show, :destroy] do
+    resources :messages, only: [:index, :create], controller: "adventure_messages"
+    post "messages/roll",       to: "adventure_messages#roll",       as: :roll_message
+    post "messages/initiative", to: "adventure_messages#initiative", as: :initiative_message
+    resource :adventure_sheet, only: [:update] do
+      patch :toggle_equip
     end
   end
 end

@@ -1,6 +1,3 @@
-OmniAuth.config.path_prefix = "/app/auth"
-OmniAuth.config.allowed_request_methods = [:post]
-
 Rails.application.config.middleware.use OmniAuth::Builder do
   provider :google_oauth2,
            ENV["GOOGLE_CLIENT_ID"],
@@ -13,3 +10,5 @@ Rails.application.config.middleware.use OmniAuth::Builder do
              redirect_uri: ENV["GOOGLE_OAUTH_REDIRECT_URI"]
            }
 end
+
+OmniAuth.config.allowed_request_methods = [:post]

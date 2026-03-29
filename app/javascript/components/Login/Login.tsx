@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { csrfToken } from '../../utils/api';
-import { routes } from '../../utils/routes';
 import './Login.scss';
 
 export const Login = () => {
@@ -31,7 +30,7 @@ export const Login = () => {
         <h1>Character Sheet Login</h1>
         {error && <p className="feedback-error">{error}</p>}
 
-        <form action={routes.googleAuth} method="post" className="google-signin">
+        <form action="/auth/google_oauth2" method="post" className="google-signin">
           <input type="hidden" name="authenticity_token" value={csrfToken()} />
           <button type="submit" className="google-btn">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">

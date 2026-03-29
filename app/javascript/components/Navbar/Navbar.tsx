@@ -1,5 +1,4 @@
 import { useAuth } from '../../contexts/AuthContext'
-import { routes } from '../../utils/routes'
 import './Navbar.scss'
 
 export const Navbar = () => {
@@ -14,8 +13,8 @@ export const Navbar = () => {
         {user.admin && <span className="admin-badge">Admin</span>}
       </div>
       <div className="header-actions">
-        <a href={routes.sheets} className="nav-link">Sheets</a>
-        <a href={routes.newAdventure} className="adventure-cta">Adventure!</a>
+        <a href="/sheets" className="nav-link">Sheets</a>
+        <a href="/adventures/new" className="adventure-cta">Adventure!</a>
         {user.admin && <a href="/admin/stories" className="nav-link admin-panel-link">Admin Panel</a>}
         <button onClick={logout} className="logout-button">Logout</button>
       </div>
