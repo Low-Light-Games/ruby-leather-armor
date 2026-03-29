@@ -16,7 +16,7 @@ export const Navbar = () => {
       <div className="header-actions">
         <a href={routes.sheets} className="nav-link">Sheets</a>
         <a href={routes.newAdventure} className="adventure-cta">Adventure!</a>
-        {user.admin && <a href="/admin/stories" className="nav-link admin-panel-link">Admin Panel</a>}
+        {user.admin && <a href={`${routes.mainUrl}/admin/stories`} className="nav-link admin-panel-link">Admin Panel</a>}
         <button onClick={logout} className="logout-button">Logout</button>
       </div>
     </div>

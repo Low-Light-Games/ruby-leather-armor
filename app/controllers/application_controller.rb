@@ -18,7 +18,7 @@ class ApplicationController < ActionController::Base
     return if current_user
 
     if request.format.html?
-      redirect_to app_path
+      redirect_to ENV.fetch("APP_URL", app_path)
     else
       render json: { error: 'Authentication required' }, status: :unauthorized
     end
