@@ -19,10 +19,10 @@ export const AdminNavbar = ({ active }: AdminNavbarProps) => {
       </div>
       <div className="navbar-right">
         <a href={routes.newAdventure} className="nav-link player-view-link">Player View</a>
-        <a href="/admin/stories" className={`nav-link${active === 'stories' ? ' active-link' : ''}`}>Stories</a>
-        <a href="/admin/dm_logs" className={`nav-link${active === 'dm_logs' ? ' active-link' : ''}`}>DM Logs</a>
-        <a href="/admin/ai_logs" className={`nav-link${active === 'ai_logs' ? ' active-link' : ''}`}>AI Logs</a>
-        <a href="/admin/dm_config" className={`nav-link${active === 'dm_config' ? ' active-link' : ''}`}>DM Config</a>
+        <a href={`${routes.mainUrl}/admin/stories`} className={`nav-link${active === 'stories' ? ' active-link' : ''}`}>Stories</a>
+        <a href={`${routes.mainUrl}/admin/dm_logs`} className={`nav-link${active === 'dm_logs' ? ' active-link' : ''}`}>DM Logs</a>
+        <a href={`${routes.mainUrl}/admin/ai_logs`} className={`nav-link${active === 'ai_logs' ? ' active-link' : ''}`}>AI Logs</a>
+        <a href={`${routes.mainUrl}/admin/dm_config`} className={`nav-link${active === 'dm_config' ? ' active-link' : ''}`}>DM Config</a>
         <button onClick={logout} className="logout-link">Logout</button>
       </div>
     </nav>

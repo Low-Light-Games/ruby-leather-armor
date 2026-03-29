@@ -6,9 +6,9 @@ RSpec.describe "Player routes", type: :request do
   # Stubs current_user so we don't need to replicate OAuth session setup.
   before { sign_in_via_session(user) }
 
-  describe "GET /sheets" do
+  describe "GET /app/sheets" do
     it "returns 200 (React SPA)" do
-      get "/sheets"
+      get "/app/sheets"
       expect(response).to have_http_status(:ok)
     end
 
@@ -16,68 +16,68 @@ RSpec.describe "Player routes", type: :request do
       before { sign_in_via_session(nil) }
 
       it "returns 200 even without auth (SPA shell is public)" do
-        get "/sheets"
+        get "/app/sheets"
         expect(response).to have_http_status(:ok)
       end
     end
   end
 
-  describe "GET /adventures/new" do
+  describe "GET /app/adventures/new" do
     it "returns 200 (React SPA entry point)" do
-      get "/adventures/new"
+      get "/app/adventures/new"
       expect(response).to have_http_status(:ok)
     end
   end
 
   describe "JSON API endpoints" do
-    describe "GET /stories" do
+    describe "GET /app/stories" do
       it "returns 200 with JSON" do
-        get "/stories", headers: { "Accept" => "application/json" }
+        get "/app/stories", headers: { "Accept" => "application/json" }
         expect(response).to have_http_status(:ok)
         expect(response.content_type).to include("application/json")
       end
     end
 
-    describe "GET /sheets (JSON)" do
+    describe "GET /app/sheets (JSON)" do
       it "returns 200 with the user's sheets" do
         create(:sheet, user: user)
-        get "/sheets", headers: { "Accept" => "application/json" }
+        get "/app/sheets", headers: { "Accept" => "application/json" }
         expect(response).to have_http_status(:ok)
         expect(JSON.parse(response.body)).to be_an(Array)
       end
     end
 
-    describe "GET /adventures (JSON)" do
+    describe "GET /app/adventures (JSON)" do
       it "returns 200 with the user's adventures" do
-        get "/adventures", headers: { "Accept" => "application/json" }
+        get "/app/adventures", headers: { "Accept" => "application/json" }
         expect(response).to have_http_status(:ok)
       end
     end
 
-    describe "GET /feat_definitions" do
+    describe "GET /app/feat_definitions" do
       it "returns 200" do
-        get "/feat_definitions", headers: { "Accept" => "application/json" }
+        get "/app/feat_definitions", headers: { "Accept" => "application/json" }
         expect(response).to have_http_status(:ok)
       end
     end
 
-    describe "GET /spell_definitions" do
+    describe "GET /app/spell_definitions" do
       it "returns 200" do
-        get "/spell_definitions", headers: { "Accept" => "application/json" }
+        get "/app/spell_definitions", headers: { "Accept" => "application/json" }
         expect(response).to have_http_status(:ok)
       end
     end
 
-    describe "GET /item_definitions" do
+    describe "GET /app/item_definitions" do
       it "returns 200" do
-        get "/item_definitions", headers: { "Accept" => "application/json" }
+        get "/app/item_definitions", headers: { "Accept" => "application/json" }
         expect(response).to have_http_status(:ok)
       end
     end
 
-    describe "GET /feature_flags" do
+    describe "GET /app/feature_flags" do
       it "returns 200" do
-        get "/feature_flags", headers: { "Accept" => "application/json" }
+        get "/app/feature_flags", headers: { "Accept" => "application/json" }
         expect(response).to have_http_status(:ok)
       end
     end
@@ -86,13 +86,13 @@ RSpec.describe "Player routes", type: :request do
   describe "unauthenticated access to protected routes" do
     before { sign_in_via_session(nil) }
 
-    it "GET /adventures returns 401" do
-      get "/adventures", headers: { "Accept" => "application/json" }
+    it "GET /app/adventures returns 401" do
+      get "/app/adventures", headers: { "Accept" => "application/json" }
       expect(response).to have_http_status(:unauthorized)
     end
 
-    it "GET /stories returns 401" do
-      get "/stories", headers: { "Accept" => "application/json" }
+    it "GET /app/stories returns 401" do
+      get "/app/stories", headers: { "Accept" => "application/json" }
       expect(response).to have_http_status(:unauthorized)
     end
   end
