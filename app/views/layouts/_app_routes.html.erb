@@ -1,44 +1,23 @@
 <%#
   Injected into player (application) and admin layouts.
-  new_adventure: on the app subdomain use a path (same host). On the main domain
-  (leatherarmor.io) use APP_URL so full navigation hits the player subdomain —
-  /app/adventures/new on the apex host is easy to misconfigure or confuse nginx.
-%>
-<%
-  app_url_raw  = ENV["APP_URL"].presence
-  app_url_host = app_url_raw ? URI.parse(app_url_raw).host : nil
-  app_base     = (app_url_host && request.host == app_url_host) ? "" : "/app"
-  main_url     = app_url_host ? app_url_raw.sub("//#{app_url_host}", "//#{app_url_host.sub(/\Aapp\./, '')}") : ""
-  main_host    = app_url_host&.sub(/\Aapp\./, "")
-
-  on_main_domain = app_url_raw.present? && main_host.present? && (
-    request.host == main_host || request.host == "www.#{main_host}"
-  )
-
-  new_adventure =
-    if app_url_raw.present? && app_url_host && request.host == app_url_host
-      "#{app_base}/adventures/new"
-    elsif on_main_domain
-      "#{app_url_raw.chomp('/')}/adventures/new"
-    else
-      "#{app_base}/adventures/new"
-    end
+  Logic: AppRoutesHelper (app/helpers/app_routes_helper.rb) — keep in sync with
+  app/javascript/utils/routes.ts consumers of window.AppRoutes.
 %>
 <script>
   window.AppRoutes = {
-    appBase:           "<%= app_base %>",
-    mainUrl:           "<%= main_url %>",
-    login:             "<%= app_base %>/login",
-    logout:            "<%= app_base %>/logout",
-    currentUser:       "<%= app_base %>/current_user",
-    sheets:            "<%= app_base %>/sheets",
-    adventures:        "<%= app_base %>/adventures",
-    newAdventure:      <%= raw new_adventure.to_json %>,
-    stories:           "<%= app_base %>/stories",
-    featDefinitions:   "<%= app_base %>/feat_definitions",
-    spellDefinitions:  "<%= app_base %>/spell_definitions",
-    itemDefinitions:   "<%= app_base %>/item_definitions",
-    featureFlags:      "<%= app_base %>/feature_flags",
-    onboardingComplete: "<%= app_base %>/onboarding/complete"
+    appBase:           "<%= app_routes_app_base %>",
+    mainUrl:           "<%= app_routes_main_url %>",
+    login:             "<%= app_routes_app_base %>/login",
+    logout:            "<%= app_routes_app_base %>/logout",
+    currentUser:       "<%= app_routes_app_base %>/current_user",
+    sheets:            "<%= app_routes_app_base %>/sheets",
+    adventures:        "<%= app_routes_app_base %>/adventures",
+    newAdventure:      <%= raw player_new_adventure_href.to_json %>,
+    stories:           "<%= app_routes_app_base %>/stories",
+    featDefinitions:   "<%= app_routes_app_base %>/feat_definitions",
+    spellDefinitions:  "<%= app_routes_app_base %>/spell_definitions",
+    itemDefinitions:   "<%= app_routes_app_base %>/item_definitions",
+    featureFlags:      "<%= app_routes_app_base %>/feature_flags",
+    onboardingComplete: "<%= app_routes_app_base %>/onboarding/complete"
   };
 </script>

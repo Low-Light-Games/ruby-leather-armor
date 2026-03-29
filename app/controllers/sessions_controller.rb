@@ -17,8 +17,12 @@ class SessionsController < ApplicationController
   end
 
   def destroy
-    session[:user_id] = nil
-    render json: { message: 'Logged out successfully' }
+    reset_session
+
+    respond_to do |format|
+      format.html { redirect_to root_path, status: :see_other }
+      format.json { render json: { message: 'Logged out successfully' } }
+    end
   end
 
   def show

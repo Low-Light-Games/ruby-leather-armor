@@ -5,7 +5,7 @@
     <span class="admin-badge">Admin</span>
   </div>
   <div class="navbar-right">
-    <a href="/adventures/new" class="nav-link player-view-link">Player View</a>
+    <a href="<%= player_new_adventure_href %>" class="nav-link player-view-link">Player View</a>
     <a href="<%= admin_adventures_path %>" class="nav-link<%= ' active-link' if _active == :adventures %>">Adventures</a>
     <a href="<%= admin_stories_path %>" class="nav-link<%= ' active-link' if _active == :stories %>">Stories</a>
     <a href="<%= admin_play_logs_path %>" class="nav-link<%= ' active-link' if _active == :play_logs %>">Play Logs</a>

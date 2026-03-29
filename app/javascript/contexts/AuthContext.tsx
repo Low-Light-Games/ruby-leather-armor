@@ -80,6 +80,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await fetch(routes.logout, {
         method: 'DELETE',
         headers: {
+          Accept: 'application/json',
           'X-CSRF-Token': csrfToken(),
         },
       });
