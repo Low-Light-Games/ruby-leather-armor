@@ -10,22 +10,29 @@
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
-    <%# Route config — JS reads window.AppRoutes; source of truth is routes.rb via Rails helpers %>
+    <%#
+      Route config for the JS layer.
+      On the subdomain (APP_URL set), nginx adds the /app/ prefix automatically,
+      so paths must NOT include it — the browser sends /adventures and nginx
+      rewrites to /app/adventures before Rails sees it.
+      Locally (no APP_URL), there is no nginx rewrite, so /app/ must be included.
+    %>
+    <% app_base = ENV["APP_URL"].present? ? "" : "/app" %>
     <script>
       window.AppRoutes = {
-        app:               "<%= app_path %>",
-        login:             "<%= login_path %>",
-        logout:            "<%= logout_path %>",
-        currentUser:       "<%= current_user_path %>",
-        sheets:            "<%= sheets_path %>",
-        adventures:        "<%= adventures_path %>",
-        newAdventure:      "<%= new_adventure_path %>",
-        stories:           "<%= stories_path %>",
-        featDefinitions:   "<%= feat_definitions_path %>",
-        spellDefinitions:  "<%= spell_definitions_path %>",
-        itemDefinitions:   "<%= item_definitions_path %>",
-        featureFlags:      "<%= feature_flags_path %>",
-        onboardingComplete: "<%= onboarding_complete_path %>"
+        appBase:           "<%= app_base %>",
+        login:             "<%= app_base %>/login",
+        logout:            "<%= app_base %>/logout",
+        currentUser:       "<%= app_base %>/current_user",
+        sheets:            "<%= app_base %>/sheets",
+        adventures:        "<%= app_base %>/adventures",
+        newAdventure:      "<%= app_base %>/adventures/new",
+        stories:           "<%= app_base %>/stories",
+        featDefinitions:   "<%= app_base %>/feat_definitions",
+        spellDefinitions:  "<%= app_base %>/spell_definitions",
+        itemDefinitions:   "<%= app_base %>/item_definitions",
+        featureFlags:      "<%= app_base %>/feature_flags",
+        onboardingComplete: "<%= app_base %>/onboarding/complete"
       };
     </script>
   </head>

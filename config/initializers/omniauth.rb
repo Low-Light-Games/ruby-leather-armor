@@ -1,3 +1,4 @@
+OmniAuth.config.path_prefix = "/app/auth"
 OmniAuth.config.allowed_request_methods = [:post]
 
 Rails.application.config.middleware.use OmniAuth::Builder do
