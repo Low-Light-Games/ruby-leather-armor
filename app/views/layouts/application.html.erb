@@ -10,37 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
-    <%#
-      Route config for the JS layer.
-      app_base is empty when the request arrives at the app subdomain (nginx already
-      rewrites /adventures → /app/adventures before Rails sees it).
-      On any other host (main domain, localhost) the /app prefix must be explicit.
-      main_url is the canonical main-domain origin; used by AdminNavbar so that
-      /admin/* links from the app subdomain resolve to the right host.
-    %>
-    <%
-      app_url_host = ENV["APP_URL"].present? ? URI.parse(ENV["APP_URL"]).host : nil
-      app_base     = (app_url_host && request.host == app_url_host) ? "" : "/app"
-      main_url     = app_url_host ? ENV["APP_URL"].sub("//#{app_url_host}", "//#{app_url_host.sub(/\Aapp\./, '')}") : ""
-    %>
-    <script>
-      window.AppRoutes = {
-        appBase:           "<%= app_base %>",
-        mainUrl:           "<%= main_url %>",
-        login:             "<%= app_base %>/login",
-        logout:            "<%= app_base %>/logout",
-        currentUser:       "<%= app_base %>/current_user",
-        sheets:            "<%= app_base %>/sheets",
-        adventures:        "<%= app_base %>/adventures",
-        newAdventure:      "<%= app_base %>/adventures/new",
-        stories:           "<%= app_base %>/stories",
-        featDefinitions:   "<%= app_base %>/feat_definitions",
-        spellDefinitions:  "<%= app_base %>/spell_definitions",
-        itemDefinitions:   "<%= app_base %>/item_definitions",
-        featureFlags:      "<%= app_base %>/feature_flags",
-        onboardingComplete: "<%= app_base %>/onboarding/complete"
-      };
-    </script>
+    <%= render "layouts/app_routes" %>
   </head>
 
   <body style="margin:0; background:hsl(40,30%,88%); font-family:'IM Fell English','Georgia',serif;">
