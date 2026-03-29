@@ -12,15 +12,21 @@
     <%= javascript_include_tag "application", "data-turbo-track": "reload", defer: true %>
     <%#
       Route config for the JS layer.
-      On the subdomain (APP_URL set), nginx adds the /app/ prefix automatically,
-      so paths must NOT include it — the browser sends /adventures and nginx
-      rewrites to /app/adventures before Rails sees it.
-      Locally (no APP_URL), there is no nginx rewrite, so /app/ must be included.
+      app_base is empty when the request arrives at the app subdomain (nginx already
+      rewrites /adventures → /app/adventures before Rails sees it).
+      On any other host (main domain, localhost) the /app prefix must be explicit.
+      main_url is the canonical main-domain origin; used by AdminNavbar so that
+      /admin/* links from the app subdomain resolve to the right host.
     %>
-    <% app_base = ENV["APP_URL"].present? ? "" : "/app" %>
+    <%
+      app_url_host = ENV["APP_URL"].present? ? URI.parse(ENV["APP_URL"]).host : nil
+      app_base     = (app_url_host && request.host == app_url_host) ? "" : "/app"
+      main_url     = app_url_host ? ENV["APP_URL"].sub("//#{app_url_host}", "//#{app_url_host.sub(/\Aapp\./, '')}") : ""
+    %>
     <script>
       window.AppRoutes = {
         appBase:           "<%= app_base %>",
+        mainUrl:           "<%= main_url %>",
         login:             "<%= app_base %>/login",
         logout:            "<%= app_base %>/logout",
         currentUser:       "<%= app_base %>/current_user",
