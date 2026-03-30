@@ -72,4 +72,23 @@ async function chat({ systemPrompt, userMessage, model, maxTokens, meta = {} }) 
   };
 }
 
-module.exports = { chat };
+/**
+ * Calls the OpenAI Moderation API on a text input.
+ *
+ * @param {string} input - The player text to classify.
+ * @returns {Promise<Object>} { flagged, categories, category_scores }
+ */
+async function moderate(input) {
+  const response = await client.moderations.create({
+    model: "omni-moderation-latest",
+    input,
+  });
+  const result = response.results[0];
+  return {
+    flagged: result.flagged,
+    categories: result.categories,
+    category_scores: result.category_scores,
+  };
+}
+
+module.exports = { chat, moderate };

@@ -14,6 +14,9 @@ interface User {
   admin: boolean;
   tier: string;
   onboarding_state: 'new' | 'in_progress' | 'completed';
+  banned: boolean;
+  trusted: boolean;
+  moderation_strikes: number;
 }
 
 interface AuthContextType {

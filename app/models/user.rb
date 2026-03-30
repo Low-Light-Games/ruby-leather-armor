@@ -14,6 +14,7 @@ class User < ApplicationRecord
   has_many :sheets, dependent: :destroy
   has_many :adventures, dependent: :destroy
   has_many :ai_usage_records, dependent: :nullify
+  has_many :moderation_events, dependent: :destroy
 
   validates :email, presence: true, uniqueness: { case_sensitive: false }
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
@@ -67,5 +68,13 @@ class User < ApplicationRecord
     return 0.0 if limit.nil? || limit.zero?
 
     [(monthly_usage_microdollars.to_f / limit * 100).round(1), 100.0].min
+  end
+
+  def banned?
+    banned
+  end
+
+  def trusted?
+    trusted
   end
 end
