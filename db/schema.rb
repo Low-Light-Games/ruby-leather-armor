@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_27_000001) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_29_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -375,6 +375,19 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_27_000001) do
     t.index ["to_location_id"], name: "index_location_connections_on_to_location_id"
   end
 
+  create_table "moderation_events", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.text "input_excerpt"
+    t.jsonb "flagged_categories", default: {}, null: false
+    t.integer "strike_number", null: false
+    t.boolean "auto_banned", default: false, null: false
+    t.boolean "auto_untrusted", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_moderation_events_on_created_at"
+    t.index ["user_id"], name: "index_moderation_events_on_user_id"
+  end
+
   create_table "pipeline_runs", force: :cascade do |t|
     t.string "pipeline_run_id", null: false
     t.bigint "adventure_id", null: false
@@ -585,6 +598,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_27_000001) do
     t.string "uid"
     t.string "tier", default: "free", null: false
     t.string "onboarding_state", default: "new", null: false
+    t.integer "moderation_strikes", default: 0, null: false
+    t.boolean "banned", default: false, null: false
+    t.datetime "banned_at"
+    t.boolean "trusted", default: false, null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["onboarding_state"], name: "index_users_on_onboarding_state"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true, where: "(provider IS NOT NULL)"
@@ -615,6 +632,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_27_000001) do
   add_foreign_key "experience_suggestions", "adventures"
   add_foreign_key "location_connections", "story_locations", column: "from_location_id"
   add_foreign_key "location_connections", "story_locations", column: "to_location_id"
+  add_foreign_key "moderation_events", "users"
   add_foreign_key "play_logs", "adventure_messages", column: "player_message_id", on_delete: :nullify
   add_foreign_key "play_logs", "adventures", on_delete: :nullify
   add_foreign_key "play_logs", "ai_usage_records", on_delete: :nullify

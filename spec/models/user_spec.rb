@@ -91,4 +91,36 @@ RSpec.describe User, type: :model do
       expect(create(:user).usage_limit_reached?).to be false
     end
   end
+
+  describe "moderation fields" do
+    describe "#banned?" do
+      it "returns false by default" do
+        expect(create(:user).banned?).to be false
+      end
+
+      it "returns true when banned is set" do
+        expect(create(:user, banned: true).banned?).to be true
+      end
+    end
+
+    describe "#trusted?" do
+      it "returns false by default" do
+        expect(create(:user).trusted?).to be false
+      end
+
+      it "returns true when trusted is set" do
+        expect(create(:user, trusted: true).trusted?).to be true
+      end
+    end
+
+    describe "moderation_strikes" do
+      it "defaults to 0" do
+        expect(create(:user).moderation_strikes).to eq(0)
+      end
+    end
+
+    describe "has_many :moderation_events" do
+      it { should have_many(:moderation_events).dependent(:destroy) }
+    end
+  end
 end

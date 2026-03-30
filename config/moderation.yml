@@ -1,0 +1,11 @@
+# Moderation settings — controls OpenAI Moderation API enforcement in the pipeline.
+#
+# enabled:          Master switch. Set to false to bypass all moderation checks.
+# max_strikes:      Number of offenses before a user is automatically banned.
+#                   Trusted users who hit this threshold also lose their trusted status.
+# default_response: In-world message returned to a non-trusted user when their input
+#                   is flagged. Should read as narrative flavour, not a system error.
+moderation:
+  enabled: true
+  max_strikes: 3
+  default_response: "Your mind wandered to dark places... you recollect yourself after a brief moment and press on."

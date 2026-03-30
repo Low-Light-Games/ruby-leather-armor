@@ -33,7 +33,7 @@ process.on("unhandledRejection", (reason) => {
 // App
 // ----------------------------------------------------------------
 const express = require("express");
-const { chat } = require("./ai_client");
+const { chat, moderate } = require("./ai_client");
 
 const app = express();
 app.use(express.json({ limit: "4mb" }));
@@ -65,6 +65,24 @@ const PORT = process.env.PORT || 3001;
 // ----------------------------------------------------------------
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
+});
+
+// ----------------------------------------------------------------
+// POST /moderate
+//
+// Classifies a single text input using the OpenAI Moderation API.
+// Body:    { "input": "text to classify" }
+// Returns: { flagged, categories, category_scores }
+// ----------------------------------------------------------------
+app.post("/moderate", async (req, res) => {
+  const { input } = req.body;
+
+  if (!input || typeof input !== "string") {
+    return res.status(400).json({ error: "Request body must include a non-empty string 'input'." });
+  }
+
+  const result = await moderate(input);
+  return res.json(result);
 });
 
 // ----------------------------------------------------------------

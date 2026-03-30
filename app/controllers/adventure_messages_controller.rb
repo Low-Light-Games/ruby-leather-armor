@@ -1,6 +1,7 @@
 class AdventureMessagesController < ApplicationController
   before_action :set_adventure
   before_action -> { authorize(@adventure, :show?) }
+  before_action :check_ban
 
   # GET /adventures/:adventure_id/messages
   def index
@@ -73,6 +74,15 @@ class AdventureMessagesController < ApplicationController
   end
 
   private
+
+  def check_ban
+    return unless current_user&.banned?
+
+    render json: {
+      banned: true,
+      message: "Your account has been suspended. Contact appeals@leatheramor.io for assistance."
+    }, status: :forbidden
+  end
 
   def set_adventure
     @adventure = Adventure.kept.find(params[:adventure_id])

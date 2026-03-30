@@ -901,6 +901,7 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 
 | # | Step | Type | Source |
 |---|------|------|--------|
+| 0 | **Moderation gate** | Code + Node evaluator `POST /moderate` | `app/services/dungeon_master/moderation_service.rb`, `app/jobs/moderation_check_job.rb`, `evaluator/src/index.js` |
 | 1 | **Intake** | AI | `app/services/dungeon_master/steps/intake.rb` |
 | 1c | **DM Query** | AI (fast path) | `app/services/dungeon_master/steps/dm_query.rb` |
 | 1d | **Sequencer** | AI (toggled) | `app/services/dungeon_master/steps/sequencer.rb` |
@@ -1085,6 +1086,18 @@ This is visible in the admin pipeline logs for diagnostic purposes.
 ---
 
 ## Configuration
+
+### Moderation config (`config/moderation.yml`)
+
+Loaded at boot from the YAML file — changes require a redeploy. Not editable via the admin UI.
+
+| Setting | Default | Description |
+|---|---|---|
+| `moderation.enabled` | `true` | Master switch. When `false`, the moderation gate is skipped entirely for all users. |
+| `moderation.max_strikes` | `3` | Number of offenses before a user is automatically banned. Trusted users who hit this threshold also lose their trusted status. |
+| `moderation.default_response` | _(see file)_ | In-world flavour text returned to a non-trusted user when their input is flagged. Shown as a DM message without starting a pipeline run. |
+
+### DmConfig settings (admin UI — `/admin/dm_config`)
 
 All pipeline behavior is configurable through `DmConfig` (admin UI at
 `/admin/dm_config`):
