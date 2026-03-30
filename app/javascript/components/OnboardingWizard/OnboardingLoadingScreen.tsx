@@ -45,8 +45,15 @@ const OnboardingLoadingScreen = ({ characterType }: Props) => {
     let idx = 0
 
     intervalRef.current = setInterval(() => {
-      idx = (idx + 1) % shuffled.length
-      setMessageIndex(idx)
+      try {
+        idx = (idx + 1) % shuffled.length
+        setMessageIndex(idx)
+      } catch {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current)
+          intervalRef.current = null
+        }
+      }
     }, 3500)
 
     return () => {

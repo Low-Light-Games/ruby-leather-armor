@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { csrfToken } from '../../utils/api'
 import OnboardingLoadingScreen from './OnboardingLoadingScreen'
 import './OnboardingWizard.scss'
@@ -120,8 +120,19 @@ const OnboardingWizard = () => {
   const [submitting, setSubmitting] = useState(false)
   const [selectedType, setSelectedType] = useState<CharacterType | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort()
+    }
+  }, [])
 
   const handleSelect = async (characterType: CharacterType) => {
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
     setSelectedType(characterType)
     setSubmitting(true)
     setError(null)
@@ -135,6 +146,7 @@ const OnboardingWizard = () => {
         },
         body: JSON.stringify({ character_type: characterType }),
         credentials: 'same-origin',
+        signal: controller.signal,
       })
 
       const data = await response.json()
@@ -147,6 +159,7 @@ const OnboardingWizard = () => {
       // picking up the updated onboarding_state without a flicker here.
       window.location.href = `/adventures/${data.adventure_id}`
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
       setSubmitting(false)
       setSelectedType(null)
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
