@@ -32,6 +32,7 @@ class SheetsController < ApplicationController
       sync_spells!(@sheet.sheet_spells, spell_data)
       sync_items!(@sheet.sheet_items, item_data)
       @sheet.recompute_derived_stats!
+      current_user.update_column(:onboarding_state, "in_progress") if current_user.onboarding_state == "new"
       render json: sheet_json(@sheet.reload), status: :created
     else
       render json: { errors: @sheet.errors.full_messages }, status: :unprocessable_entity

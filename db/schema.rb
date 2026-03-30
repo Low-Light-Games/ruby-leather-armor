@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_26_000002) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_27_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -584,7 +584,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_26_000002) do
     t.string "provider"
     t.string "uid"
     t.string "tier", default: "free", null: false
+    t.string "onboarding_state", default: "new", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["onboarding_state"], name: "index_users_on_onboarding_state"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true, where: "(provider IS NOT NULL)"
   end
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import Navbar from '../Navbar'
 import Login from '../Login'
+import OnboardingWizard from '../OnboardingWizard'
 import { useAdventureCreationData } from './hooks/useAdventureCreationData'
 import AdventureList from './AdventureList'
 import './AdventureCreation.scss'
@@ -31,6 +32,14 @@ export const AdventureCreation = () => {
 
   if (authLoading) return <div className="app">Loading...</div>
   if (!user) return <Login />
+  if (user.onboarding_state === 'new') {
+    return (
+      <div className="app">
+        <Navbar />
+        <OnboardingWizard />
+      </div>
+    )
+  }
 
   return (
     <div className="app">

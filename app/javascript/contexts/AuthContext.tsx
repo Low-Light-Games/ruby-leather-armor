@@ -13,6 +13,7 @@ interface User {
   email: string;
   admin: boolean;
   tier: string;
+  onboarding_state: 'new' | 'in_progress' | 'completed';
 }
 
 interface AuthContextType {

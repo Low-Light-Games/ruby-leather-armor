@@ -2,6 +2,7 @@ class User < ApplicationRecord
   has_secure_password validations: false
 
   TIERS = %w[free paid].freeze
+  ONBOARDING_STATES = %w[new in_progress completed].freeze
 
   # Monthly cost cap in microdollars ($1 = 1,000,000 microdollars).
   # Defined in tier_limits.yml at the project root.
@@ -18,6 +19,7 @@ class User < ApplicationRecord
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :password, presence: true, on: :create, unless: :oauth_user?
   validates :tier, inclusion: { in: TIERS }
+  validates :onboarding_state, inclusion: { in: ONBOARDING_STATES }
 
   def self.from_omniauth(auth)
     user = find_by(provider: auth.provider, uid: auth.uid)

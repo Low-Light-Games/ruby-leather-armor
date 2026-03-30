@@ -21,6 +21,9 @@ Rails.application.routes.draw do
   get  "auth/failure",            to: "omniauth_callbacks#failure"
   post "auth/:provider/callback", to: "omniauth_callbacks#google_oauth2"
 
+  # First-login wizard (API — UI is embedded in AdventureCreation)
+  post "onboarding/complete", to: "onboarding#complete", as: :onboarding_complete
+
   namespace :admin do
     resources :adventures, only: [:index, :show, :update, :destroy] do
       member do
