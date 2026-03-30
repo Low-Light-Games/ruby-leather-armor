@@ -1,15 +1,16 @@
-
-- Affected when the player is interacting with NPCs: dialogue, persuasion, intimidation,
-  deception, diplomacy, gathering information from people.
+- Affected when the player is interacting with NPCs directly or indirectly: dialogue,
+  persuasion, intimidation, deception, diplomacy, gathering information, eavesdropping,
+  observing NPC behavior, sending messages, writing letters, making speeches, bribing,
+  or using Disguise in a social context.
+- Eavesdropping and passive observation of NPCs IS social — affected: true,
+  needs_mechanics: false unless the player is actively trying to go unnoticed
+  (Stealth check) or read intent (Sense Motive check).
+- Sense Motive without speaking is social — affected: true, needs_mechanics: true.
 - transition: set to "social_to_combat" if the social interaction is escalating to violence.
 - expand_scene: set to true for SIGNIFICANT social interactions that deserve player agency
-  before resolution — transactions (buying, selling, renting, hiring), negotiations,
-  information-gathering from NPCs, confrontations, service requests. The player should
-  experience the NPC's reaction and choose how to respond, not have it auto-resolved.
-  Set to false for casual greetings, passing remarks, simple observations, or interactions
+  before resolution — transactions, negotiations, information-gathering, confrontations,
+  service requests. Set to false for casual greetings, passing remarks, or interactions
   with no meaningful NPC stake.
   IMPORTANT: Do NOT set expand_scene to true if the SOCIAL CONTEXT already shows an active
-  NPC interaction the player is responding to. Scene expansion is for INITIATING new social
-  encounters, not continuing them. If the player is responding to an ongoing interaction
-  (e.g. the social context mentions a conversation in progress), set expand_scene to false —
-  normal resolution will handle the continuation and natural conclusion.
+  NPC interaction the player is responding to. Scene expansion is for INITIATING new
+  encounters, not continuing them.

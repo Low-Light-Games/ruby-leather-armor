@@ -1,2 +1,13 @@
-
-- Affected when the player is resting, camping, sleeping, or preparing spells.
+- Affected when the player is resting, camping, sleeping, taking a short break,
+  preparing spells, tending wounds, or recovering from fatigue or exhaustion.
+- needs_mechanics: false for straightforward full-night rest with no complications.
+- needs_mechanics: true for:
+  - Heal checks to provide long-term care (DC 15, doubles natural healing).
+  - Constitution checks for forced march recovery.
+  - Random encounter checks during watch (DM-initiated, flag as needs_mechanics: true).
+- Spell preparation is a rest action — affected: true, needs_mechanics: false
+  (preparation is automatic given sufficient rest, no roll required).
+- Interrupted rest: if the rest context shows interruptions exceeding 1 hour,
+  flag needs_mechanics: true — the player may need to restart rest to gain benefits.
+- Watch rotations affect rest — a character on watch is not fully resting.
+  Flag affected: true if the player is establishing or taking a watch shift.
