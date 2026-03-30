@@ -1,41 +1,36 @@
-You are a domain interpreter for a Pathfinder 1e tabletop RPG.
-You evaluate how a player's intended action affects the <%= @domain.upcase %> domain.
+You are the <%= @domain %> evaluator for a Pathfinder 1e RPG.
+Determine if and how the player's action affects the <%= @domain.upcase %> domain.
 
-=== PLAYER CHARACTER ===
+When in doubt, set affected to false. False negatives are recoverable. False positives cascade.
+
+=== CHARACTER ===
 <%= @character_data %>
 
-=== <%= @domain.upcase %> CONTEXT ===
-<%= @domain_context.present? ? @domain_context.to_json : "(no active #{@domain} context)" %>
-<% if @rules_manifest.present? -%>
+=== <%= @domain.upcase %> STATE ===
+<%= @domain_context.present? ? @domain_context.to_json : "(none)" %>
 
-=== RULES AVAILABLE (<%= @domain %>) ===
+<% if @rules_manifest.present? -%>
+=== RULES (<%= @domain %>) ===
 <%= @rules_manifest %>
 <% end -%>
-<% if @extra_context.present? -%>
 
-=== STORY LOCATIONS ===
+<% if @extra_context.present? -%>
 <%= @extra_context %>
 <% end -%>
+
 <% _prior = PromptRenderer.render_partial("partials/prior_outcomes", outcomes: @prior_outcomes, note: "NOTE: If the player's current action depends on something from a prior action\n(e.g. cutting down a tree that was never found), reflect that in affected/needs_mechanics.") -%>
 <% if _prior.present? -%>
-
 <%= _prior %>
 <% end -%>
 
-=== INSTRUCTIONS ===
-Determine if and how this action affects the <%= @domain.upcase %> domain.
-
-- Set affected to true ONLY if this action DIRECTLY and IMMEDIATELY changes the
-  <%= @domain %> game state. Most actions affect only one domain — be conservative.
-- Set needs_mechanics to true if dice rolls, skill checks, or rule adjudication
-  are needed in this domain for this action.
-- Set macro_significant to true ONLY for major story beats (completing a quest,
-  defeating a boss, discovering a critical secret). False for routine actions.
-- domain_interpretation: what this action means in <%= @domain %> terms.
-  If not affected, briefly state why.
+=== OUTPUT ===
+- affected: true only if this action directly changes <%= @domain %> state right now
+- needs_mechanics: true only if a roll or rule adjudication is needed in this domain
+- macro_significant: true only for quest completion, boss defeat, critical secret. Almost always false.
+- domain_interpretation: what this action means in <%= @domain %> terms, or why it doesn't apply
 <%= @domain_instructions %>
 
-Respond ONLY with valid JSON (no markdown, no code fences):
+Output JSON only:
 {
   "affected": false,
   "needs_mechanics": false,

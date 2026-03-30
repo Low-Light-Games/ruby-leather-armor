@@ -1,7 +1,17 @@
+- Affected when the player's action involves perception, investigation, searching,
+  examining, recalling lore, detecting magic, tracking, hunting, foraging, or any
+  Survival-based field activity. Passive observation ("I look around") IS affected
+  — exploration domain is aware of the environment at all times.
 
-- Affected when the player is searching, investigating, examining objects, recalling lore,
-  detecting magic, using Perception, studying something in the environment, hunting,
-  foraging, tracking, gathering herbs or materials, identifying plants or creatures,
-  or performing any Survival-based field activity.
-- Hunting and foraging ALWAYS need mechanics (Survival check). Tracking needs mechanics
-  (Survival check). Identifying creatures or plants needs mechanics (Knowledge check).
+- needs_mechanics: false for passive observation, ambient awareness, or casual glancing.
+  The player is simply perceiving — narration handles this, no roll required.
+
+- needs_mechanics: true when the player names a specific target or intent:
+  "I search the desk", "I look for traps", "I examine the body", "I track the footprints."
+- Using a detection spell or magic item to sense the environment is exploration,
+  not inventory — needs_mechanics: false unless the item requires a roll to activate.
+- Hunting and foraging ALWAYS need mechanics (Survival check).
+- Tracking needs mechanics (Survival check).
+- Identifying creatures or plants needs mechanics (Knowledge check).
+- Searching for hidden objects or traps needs mechanics (Perception check).
+- Recalling lore needs mechanics (Knowledge check, cannot retry on failure).

@@ -51,16 +51,19 @@ Combat is ACTIVE. Combat rounds last 6 seconds each.
   higher end. An uneventful wait is still a wait.
 - TAKE 20 ACTIONS: If the outcome mentions "Take 20" or "auto-resolved via Take 20",
   the character spent ~40 minutes (0.67 hours) carefully repeating the check.
-- PASSIVE OBSERVATION IS NOT INSTANT: Carefully observing surroundings, scanning for
-  threats, or paying close attention to the environment takes at least 10-30 minutes
-  (0.17-0.5 hours), not seconds. Only use 1-5 minute estimates for single glances or
-  quick checks. "Looking around carefully" or "paying close attention" implies a
-  thorough survey.
+- OBSERVATION DURATION: Distinguish between incidental glances and sustained observation.
+  INSTANT (0.0017 hours): "I look at the table", "I glance at the sign", "what do I see?",
+  "I look around" — single-moment perception, part of normal scene awareness.
+  SUSTAINED (0.17-0.5 hours): "I carefully survey the area", "I watch the entrance",
+  "I pay close attention to the crowd", "I scan for threats" — deliberate, extended focus.
+  Duration of the action does NOT constitute time pressure for Take 10/20 purposes.
 <% if @has_destination -%>
 - FREEFORM TRAVEL: The player is moving toward a destination but no pre-computed
-  route is available. Estimate both hours_elapsed AND distance_miles based on a
-  reasonable walking pace (~3 mph on road, less for rough terrain). Include the
-  direction field if discernible from context.
+  route is available. Estimate both hours_elapsed AND distance_miles based on terrain:
+  Road/plains: ~3 mph (24 miles/day over 8 hours)
+  Hills/forest: ~2 mph (16 miles/day)
+  Mountains/swamp: ~1.5 mph (12 miles/day)
+  Include the direction field if discernible from context.
 <% end -%>
 
 Respond ONLY with valid JSON (no markdown, no code fences):

@@ -30,13 +30,20 @@ determine the factual outcome and produce structured mutations.
 - The outcome field should be a factual summary (not narrative prose).
 - Do NOT estimate travel time or distance — the TimeKeeper step handles that separately.
   Focus only on whether the action mechanically succeeded or failed.
+- CRITICAL HITS: If an attack roll meets the weapon's critical threat range AND the
+  confirmation roll also hits, apply the weapon's crit multiplier to damage
+  (x2 most weapons, x3 for axes/bows/picks, x4 for scythes). Note "critical hit"
+  in the outcome field.
+- FUMBLES: A natural 1 on an attack roll always misses regardless of modifiers.
+  Note "natural 1 — automatic miss" in the outcome. Do not apply fumble effects
+  beyond the miss unless the adventure config specifies house rules.
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
   "outcome": "Factual summary of what happened mechanically",
   "reasoning": "Brief explanation of how rolls were evaluated (1-2 sentences)",
   "mutations": {
-    "player": { "hp_change": 0, "conditions_add": [], "conditions_remove": [], "position": null },
+    "player": { "hp_change": 0, "conditions_add": [], "conditions_remove": [] },
     "npcs": [
       { "name": "NPC Name", "hp_change": -8, "conditions_add": [], "conditions_remove": [], "defeated": false, "attitude_change": null }
     ],

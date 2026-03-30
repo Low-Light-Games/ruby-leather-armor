@@ -33,12 +33,18 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
   - Walking, riding a trained mount on a road, or other routine actions require NO roll.
   - Using an item, equipping gear, or other standard actions require NO roll unless rules say otherwise.
   If no rolls are needed, return an EMPTY player_rolls array. Do NOT invent rolls the rules don't call for.
-  Every roll MUST include a numeric "dc" value. If you cannot determine a valid DC, the roll is not needed.
+  Every roll MUST include a numeric "dc" value. EXCEPTION: opposed checks (Bluff vs Sense Motive,
+  contested grapples, etc.) use dc: 0 and note "opposed" in the description — the DC is the
+  opponent's roll result and cannot be predetermined.
 - Determine what NPC actions occur in this domain in response to the player's action.
-  For each NPC action, include the NPC name, action type, target, and their attack/skill modifier.
+  For each NPC action include: actor name, action type, target, modifier (total attack bonus
+  or skill bonus as a single integer), and damage (dice string, for attacks only).
 - List any automatic consequences that don't require rolls (e.g. attitude shifts from witnessed actions).
 - Write a mechanical_summary that describes what happens mechanically in this domain. This summary
   will be passed to subsequent evaluations for other domains.
+- If this domain has no mechanical involvement in this action, return empty arrays and write
+  mechanical_summary as "(no mechanical involvement in this domain)". Do not narrate or speculate
+  about outcomes — leave that to the Narrate step.
 - Only adjudicate for the <%= @domain.upcase %> domain. Do not rule on other domains.
 <% if @prior_outcomes.present? && @prior_outcomes.any? -%>
 - If a PRIOR ACTION THIS TURN failed to produce the prerequisite for this action
@@ -59,7 +65,7 @@ Respond ONLY with valid JSON (no markdown, no code fences):
     { "type": "skill_check", "skill": "Swim", "dc": 10, "description": "Swim check to stay afloat" }
   ],
   "npc_actions": [
-    { "actor": "Goblin A", "action": "attack", "target": "player", "modifier": 3 }
+    { "actor": "Goblin A", "action": "attack", "target": "player", "modifier": 3, "damage": "1d6+2" }
   ],
   "consequences": [
     { "target": "NPC Name", "effect": "attitude_shift", "from": "friendly", "to": "unfriendly", "reason": "explanation" }
