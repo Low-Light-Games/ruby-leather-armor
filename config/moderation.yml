@@ -1,0 +1,14 @@
+defaults: &defaults
+  strikes_before_ban: 3
+  strikes_before_untrust: 1
+  max_excerpt_length: 200
+  response_text: "Your message was flagged as potentially harmful and could not be processed."
+
+development:
+  <<: *defaults
+
+test:
+  <<: *defaults
+
+production:
+  <<: *defaults
