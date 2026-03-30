@@ -62,6 +62,16 @@ class DungeonMasterService
     maybe_log_abandoned_pipeline
     auto_finalize_pending_initiative!
 
+    if @user&.trusted?
+      ModerationCheckJob.perform_later(@user.id, player_input)
+    else
+      mod = DungeonMaster::ModerationService.call(player_input, user: @user)
+      if mod.flagged?
+        return [persist_message(role: "dm", content: mod.response_text,
+                                message_type: "moderation_flagged")]
+      end
+    end
+
     @log.player_message_id = player_message_id
     @log.start_pipeline_run!(player_input)
 

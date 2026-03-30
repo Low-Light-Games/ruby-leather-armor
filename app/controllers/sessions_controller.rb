@@ -38,6 +38,9 @@ class SessionsController < ApplicationController
       admin: user.admin,
       tier: user.tier,
       onboarding_state: user.onboarding_state,
+      banned: user.banned?,
+      trusted: user.trusted?,
+      moderation_strikes: user.moderation_strikes,
       usage: {
         current_microdollars: user.monthly_usage_microdollars,
         limit_microdollars: user.monthly_usage_limit,

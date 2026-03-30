@@ -38,6 +38,22 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
     return <Login />;
   }
 
+  if (user.banned) {
+    return (
+      <div className="app">
+        <Navbar />
+        <div className="banned-notice">
+          <h2>Adventure Suspended</h2>
+          <p>Your account has been suspended from all adventures and AI features.</p>
+          <p>
+            If you believe this was in error, contact{' '}
+            <a href="mailto:appeals@leatheramor.io">appeals@leatheramor.io</a> to appeal.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="app">

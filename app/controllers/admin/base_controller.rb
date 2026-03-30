@@ -16,7 +16,8 @@ module Admin
       'dm_configs'       => :dm_config,
       'billing'          => :billing,
       'bestiary_entries' => :bestiary,
-      'feature_flags'    => :feature_flags
+      'feature_flags'    => :feature_flags,
+      'users'            => :users
     }.freeze
 
     def set_active_nav
