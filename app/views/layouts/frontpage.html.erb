@@ -44,7 +44,15 @@
     <%= stylesheet_link_tag "frontpage", "data-turbo-track": "reload" %>
     <%= javascript_include_tag "frontpage", "data-turbo-track": "reload", defer: true %>
   </head>
-
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-51BYWNGJGY"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+  
+    gtag('config', 'G-51BYWNGJGY');
+  </script>
   <body style="margin:0; background:hsl(40,30%,88%);">
     <%= yield %>
   </body>
