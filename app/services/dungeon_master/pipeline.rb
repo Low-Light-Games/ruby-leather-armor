@@ -232,7 +232,9 @@ module DungeonMaster
       processed_count = AdventureLoop.for_pipeline(@log.pipeline_run_id).count
       total_original = processed_count + remaining.size
       base_idx = processed_count
-      accumulated = []
+      accumulated = accumulated_intents.each_with_index.map do |intent, i|
+        { status: :resolved, intent: intent, mutations: accumulated_mutations[i] }
+      end
 
       remaining.each_with_index do |action_text, idx|
         action_idx = base_idx + idx
