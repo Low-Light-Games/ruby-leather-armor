@@ -489,22 +489,30 @@ module DungeonMaster
     def deduplicate_rolls!(merged)
       seen = {}
       removed = []
+      kept_conflicts = []
 
       merged[:player_rolls].reject! do |roll|
         key = [roll[:skill].to_s.downcase, roll[:type].to_s, roll[:dc].to_i]
         first = seen[key]
 
-        if first && roll_descriptions_similar?(first[:description], roll[:description])
-          removed << "#{roll[:skill]} DC #{roll[:dc]} (#{roll[:domain]}) — duplicate of #{first[:domain]}"
-          true
+        if first
+          if roll_descriptions_similar?(first[:description], roll[:description])
+            removed << "#{roll[:skill]} DC #{roll[:dc]} (#{roll[:domain]}) — duplicate of #{first[:domain]}"
+            true
+          else
+            kept_conflicts << "#{roll[:skill]} DC #{roll[:dc]}: (#{first[:domain]}) \"#{first[:description]}\" vs (#{roll[:domain]}) \"#{roll[:description]}\""
+            false
+          end
         else
-          seen[key] ||= roll
+          seen[key] = roll
           false
         end
       end
 
       @log.play_log!("duplicate_rolls_removed",
         "Removed #{removed.size} duplicate roll(s): #{removed.join('; ')}") if removed.any?
+      @log.play_log!("duplicate_rolls_kept_conflict",
+        "#{kept_conflicts.size} same-key roll(s) kept (descriptions differ — review MechEval): #{kept_conflicts.join('; ')}") if kept_conflicts.any?
     end
 
     def roll_descriptions_similar?(a, b)
