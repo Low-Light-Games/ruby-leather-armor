@@ -45,7 +45,7 @@ module DungeonMaster
         end
 
         merged = merge_mechanical_evaluations(evaluations)
-        warn_duplicate_rolls(merged)
+        deduplicate_rolls!(merged)
         rolls_desc = merged[:player_rolls].map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]} (#{r[:domain]})" }.join(", ")
         @loop&.log_step("mech_eval", rolls_desc.presence || "No rolls")
         filter_auto_success_rolls!(merged)

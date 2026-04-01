@@ -481,22 +481,40 @@ module DungeonMaster
     # Cross-domain roll deduplication
     # ----------------------------------------------------------------
 
-    # Observability-only: detects duplicate rolls across domain evaluations and
-    # logs a warning. Does NOT alter the rolls array — per Principle 17, code
-    # must not heuristically fix AI-generated inconsistencies. If duplicates
-    # appear, the MechEval prompt needs improvement.
-    def warn_duplicate_rolls(merged)
+    # Removes duplicate rolls across domain evaluations. Two rolls are considered
+    # duplicates when they share the same skill, type, and DC AND their descriptions
+    # are similar enough (Jaccard similarity >= 0.30 on significant words). Rolls
+    # that happen to share skill+DC but describe different situations (different
+    # targets, contexts) are kept.
+    def deduplicate_rolls!(merged)
       seen = {}
-      duplicates = []
-      merged[:player_rolls].each do |roll|
+      removed = []
+
+      merged[:player_rolls].reject! do |roll|
         key = [roll[:skill].to_s.downcase, roll[:type].to_s, roll[:dc].to_i]
-        if seen[key]
-          duplicates << "#{roll[:skill]} DC #{roll[:dc]} (#{roll[:domain]}) — duplicate of #{seen[key]}"
+        first = seen[key]
+
+        if first && roll_descriptions_similar?(first[:description], roll[:description])
+          removed << "#{roll[:skill]} DC #{roll[:dc]} (#{roll[:domain]}) — duplicate of #{first[:domain]}"
+          true
         else
-          seen[key] = roll[:domain] || "unknown"
+          seen[key] ||= roll
+          false
         end
       end
-      @log.play_log!("duplicate_roll_warning", "#{duplicates.size} duplicate roll(s) from MechEval (not removed — fix prompt): #{duplicates.join('; ')}") if duplicates.any?
+
+      @log.play_log!("duplicate_rolls_removed",
+        "Removed #{removed.size} duplicate roll(s): #{removed.join('; ')}") if removed.any?
+    end
+
+    def roll_descriptions_similar?(a, b)
+      stop = %w[a an the to of for in on at with by from and or is it that this i]
+      words = ->(s) { s.to_s.downcase.scan(/[a-z]+/) - stop }
+      wa = words.(a).to_set
+      wb = words.(b).to_set
+      union = (wa | wb).size
+      return true if union.zero?
+      (wa & wb).size.to_f / union >= 0.30
     end
 
     # ----------------------------------------------------------------
