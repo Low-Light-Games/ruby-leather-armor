@@ -541,9 +541,7 @@ module DungeonMaster
           return "modifier #{modifier} guarantees success (min roll 1 + #{modifier} = #{modifier + 1} >= DC #{dc})"
         end
 
-        if roll[:take_10_eligible] && roll[:take_10_value].to_i >= dc
-          return "Take 10 auto-succeeds (#{roll[:take_10_value]} >= DC #{dc})"
-        end
+
       end
 
       nil
