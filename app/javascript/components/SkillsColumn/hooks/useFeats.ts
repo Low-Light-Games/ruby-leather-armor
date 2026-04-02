@@ -143,7 +143,9 @@ export function useFeats({
       pool = pool.filter(f => f.name.toLowerCase().includes(term) || f.category.includes(term) || f.summary.toLowerCase().includes(term));
     }
     return pool.slice(0, 20);
-  }, [featSearch, selectedFeats]);
+    // getAllFeats() is a module cache filled after fetch; length must be a dep or this
+    // memo stays stuck on the first (empty) result until featSearch/selectedFeats change.
+  }, [featSearch, selectedFeats, getAllFeats().length]);
 
   const filteredFeatsWithChecks = useMemo(() => {
     return filteredFeats.map(feat => {
@@ -159,7 +161,7 @@ export function useFeats({
       const def = getAllFeats().find(f => f.id === parsed.featId);
       return { ...parsed, def };
     }).filter(e => e.def != null) as SelectedFeatParsed[],
-    [selectedFeats],
+    [selectedFeats, getAllFeats().length],
   );
 
   // Feat-granted skill bonuses

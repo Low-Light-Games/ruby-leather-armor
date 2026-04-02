@@ -150,7 +150,8 @@ export function useEquipment({
     }
 
     return pool.slice(0, 20);
-  }, [search, typeFilter]);
+    // getItemDefinitions() cache is filled after fetch; length must be a dep to avoid stale empty lists.
+  }, [search, typeFilter, getItemDefinitions().length]);
 
   // ── Selected items with resolved definitions ──
 
@@ -159,7 +160,7 @@ export function useEquipment({
       selectedItems
         .map(oi => ({ oi, def: getItemById(oi.itemId) }))
         .filter((x): x is SelectedItemRow => x.def != null),
-    [selectedItems],
+    [selectedItems, getItemDefinitions().length],
   );
 
   return {

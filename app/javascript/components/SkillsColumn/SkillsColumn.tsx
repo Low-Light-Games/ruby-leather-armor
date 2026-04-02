@@ -8,6 +8,7 @@ import { useFeats } from './hooks/useFeats';
 import { useSpells } from './hooks/useSpells';
 import { useSkills } from './hooks/useSkills';
 import { useSkillRanks } from './hooks/useSkillRanks';
+import { useEquipment } from './hooks/useEquipment';
 import { CombatStatsSection } from './sections/CombatStatsSection';
 import { SkillsSection } from './sections/SkillsSection';
 import { FeatsSection } from './sections/FeatsSection';
@@ -71,6 +72,14 @@ export const SkillsColumn = () => {
     classDef,
   });
 
+  const equipment = useEquipment({
+    selectedItems,
+    setSelectedItems,
+    currentCurrency,
+    setCurrentCurrency,
+    currentClass,
+  });
+
   const { calculatedSkills, racialSkillBonuses } = useSkills({
     finalAttributes, race,
     featSkillBonuses: feats.featSkillBonuses,
@@ -113,13 +122,7 @@ export const SkillsColumn = () => {
         isOpen={openSections.equipment}
         onToggle={() => toggleSection('equipment')}
       >
-        <EquipmentSection
-          selectedItems={selectedItems}
-          setSelectedItems={setSelectedItems}
-          currentCurrency={currentCurrency}
-          setCurrentCurrency={setCurrentCurrency}
-          currentClass={currentClass}
-        />
+        <EquipmentSection currentCurrency={currentCurrency} {...equipment} />
       </Accordion>
 
       <Accordion

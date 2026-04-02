@@ -1,8 +1,8 @@
 import React from 'react';
-import type { OwnedItem, ItemDefinition, EquipmentSlot, Currency } from '../../../rules/pathfinder_items_types';
+import type { ItemDefinition, EquipmentSlot, Currency } from '../../../rules/pathfinder_items_types';
 import { EQUIPMENT_SLOTS } from '../../../rules/pathfinder_items';
 import { Picker } from '../../ui/Picker';
-import { useEquipment } from '../hooks/useEquipment';
+import type { UseEquipmentResult } from '../hooks/useEquipment';
 
 // ── View helpers ─────────────────────────────────────────────────
 
@@ -35,26 +35,31 @@ function slotLabel(slot: EquipmentSlot): string {
 
 // ── Props ────────────────────────────────────────────────────────
 
-interface EquipmentSectionProps {
-  selectedItems: OwnedItem[];
-  setSelectedItems: React.Dispatch<React.SetStateAction<OwnedItem[]>>;
+type EquipmentSectionProps = UseEquipmentResult & {
   currentCurrency: Currency;
-  setCurrentCurrency: React.Dispatch<React.SetStateAction<Currency>>;
-  currentClass: string | null;
-}
+};
 
 // ── Component ────────────────────────────────────────────────────
 
-export const EquipmentSection: React.FC<EquipmentSectionProps> = (props) => {
-  const {
-    search, setSearch,
-    typeFilter, setTypeFilter,
-    startingGold, totalCost, currentGpValue, remainingGp,
-    setCurrencyDenom, applyStartingGold,
-    addItem, removeItem, toggleEquip, changeQuantity,
-    filteredItems, selectedWithDefs,
-  } = useEquipment(props);
-
+export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
+  currentCurrency,
+  search,
+  setSearch,
+  typeFilter,
+  setTypeFilter,
+  startingGold,
+  totalCost,
+  currentGpValue,
+  remainingGp,
+  setCurrencyDenom,
+  applyStartingGold,
+  addItem,
+  removeItem,
+  toggleEquip,
+  changeQuantity,
+  filteredItems,
+  selectedWithDefs,
+}) => {
   return (
     <div className="picker-section equipment-section">
       {/* ── Currency management ── */}
@@ -65,7 +70,7 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = (props) => {
               type="number"
               className="currency-input"
               min={0}
-              value={props.currentCurrency[denom]}
+              value={currentCurrency[denom]}
               onChange={e => setCurrencyDenom(denom, parseInt(e.target.value, 10) || 0)}
             />
             <span className="currency-label">{DENOM_LABELS[denom]}</span>

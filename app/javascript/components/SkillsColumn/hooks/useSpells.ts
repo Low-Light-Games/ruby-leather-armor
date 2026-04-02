@@ -131,7 +131,8 @@ export function useSpells({
     if (!currentClass) return getAllSpells();
     if (!classCasts) return [];
     return getSpellsForClass(currentClass, 9);
-  }, [currentClass, classCasts]);
+    // getAllSpells() cache is filled after fetch; length must be a dep for same stale-memo issue as feats.
+  }, [currentClass, classCasts, getAllSpells().length]);
 
   const filteredSpellsWithChecks = useMemo(() => {
     const term = spellSearch.toLowerCase().trim();
@@ -165,7 +166,7 @@ export function useSpells({
 
   const selectedSpellDefs = useMemo(
     () => selectedSpells.map(id => getSpellById(id)).filter(Boolean) as SpellDefinition[],
-    [selectedSpells],
+    [selectedSpells, getAllSpells().length],
   );
 
   const selectedSpellEligibilities = useMemo(() => {
