@@ -16,6 +16,15 @@
     flex-direction: row;
     gap: 24px;
 
+    .attribute-modifier {
+      font-size: 18px;
+      font-weight: 700;
+
+      &.positive { color: $green-ink; }
+      &.negative { color: $red-ink; }
+      &.zero { color: $ink-mid; }
+    }
+
     .column-editor  { flex: 1 1 0; min-width: 300px; }
     .column-skills  { flex: 1 1 0; min-width: 280px; }
     .column-list    { flex: 1 1 0; min-width: 200px; }

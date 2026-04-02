@@ -1,5 +1,6 @@
 import { AttributeType } from '../../../types';
 import { formatMod } from '../../../utils/formatting';
+import { AttributeModifier } from './AttributeModifier';
 
 interface AttributeRowProps {
   attribute: AttributeType;
@@ -19,12 +20,15 @@ export const AttributeRow = ({
   canDecrease
 }: AttributeRowProps) => {
   const finalValue = value + racialModifier;
+  
 
   return (
     <div>
       <p className="attribute-row">
         <span>
-          <span>{attribute}:</span>
+          <span>
+            {attribute} <AttributeModifier attributeValue={value} />
+          </span>
           <span className="attribute-values">
             {racialModifier !== 0 ? (
               <>
