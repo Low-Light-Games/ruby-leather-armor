@@ -102,6 +102,20 @@ module DungeonMaster
 
       remaining = metadata["remaining_actions"] || []
 
+      if result[:status] == :awaiting_initiative
+        @loop&.batch_update!(new_status: "paused",
+          new_tags: { "combat_started" => true },
+          timeline_entry: tl("awaiting_initiative", "Paused for player initiative"))
+        run_context_updates_at_encounter_pause(result[:mutations])
+        return {
+          action: :awaiting_initiative,
+          intent: result[:intent],
+          creature_data: result[:creature_data],
+          mutations: result[:mutations],
+          remaining_actions: remaining
+        }
+      end
+
       final_status = result[:status] == :encounter ? "encounter" : "resolved"
       @loop&.batch_update!(new_status: final_status,
         timeline_entry: tl("rolls_resolved", "Rolls submitted, status: #{final_status}"))
