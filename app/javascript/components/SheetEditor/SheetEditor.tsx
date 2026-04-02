@@ -65,8 +65,6 @@ export const SheetEditor = () => {
           onDismiss={dismissFeedback}
         />
       )}
-      <h2>Points spent: {spentPoints} / {AVAILABLE_POINTS}</h2>
-
       <div className="form-field">
         <label htmlFor="character-name">Character Name:</label>
         <NameField name={name} onChange={setName} />
@@ -134,7 +132,7 @@ export const SheetEditor = () => {
           )}
         </div>
       )}
-
+      <h3>Points spent: {spentPoints} / {AVAILABLE_POINTS}</h3>
       {/* Ability score rows */}
       {ATTRIBUTE_ORDER.map(attribute => (
         <AttributeRow
