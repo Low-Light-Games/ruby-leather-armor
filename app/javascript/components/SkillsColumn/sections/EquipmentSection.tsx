@@ -108,7 +108,7 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = (props) => {
                     onClick={() => toggleEquip(oi.itemId)}
                     title={oi.equipped ? `Unequip (${slotLabel(def.slot)})` : `Equip → ${slotLabel(def.slot)}`}
                   >
-                    {oi.equipped ? 'E' : '○'}
+                    {oi.equipped ? 'Equipped' : 'Equip'}
                   </button>
                 )}
 
