@@ -92,6 +92,10 @@
       border: 1px solid $border-light;
 
       .combat-label {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
         font-size: 10px;
         font-family: $font-mono;
         text-transform: uppercase;
@@ -107,6 +111,43 @@
         color: $ink;
 
         &.penalty { color: $red-ink; }
+      }
+    }
+
+    button.combat-glossary-cell {
+      appearance: none;
+      width: 100%;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+      text-align: center;
+
+      .combat-glossary-cell-head {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        margin-bottom: 2px;
+      }
+
+      .combat-glossary-info-icon {
+        flex-shrink: 0;
+        color: $ink-faint;
+        opacity: 0.9;
+      }
+
+      &:hover .combat-glossary-info-icon {
+        color: $ink-mid;
+      }
+
+      &:hover {
+        background-color: $parchment-dk;
+      }
+
+      &:focus-visible {
+        outline: none;
+        border-color: $red-ink;
+        box-shadow: 0 0 0 2px rgba(114, 38, 38, 0.15);
       }
     }
   }
@@ -142,6 +183,47 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 6px;
+
+      .enc-glossary-trigger {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        border: none;
+        background: transparent;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        text-align: left;
+
+        &:hover .enc-label {
+          color: $ink;
+        }
+
+        &:focus-visible {
+          outline: none;
+          border-radius: 2px;
+          box-shadow: 0 0 0 2px rgba(114, 38, 38, 0.2);
+        }
+      }
+
+      .enc-glossary-tier-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .enc-glossary-info-icon {
+        flex-shrink: 0;
+        color: $ink-faint;
+        opacity: 0.9;
+      }
+
+      .enc-glossary-trigger:hover .enc-glossary-info-icon {
+        color: $ink-mid;
+      }
 
       .enc-label {
         font-size: 12px;
@@ -800,7 +882,7 @@
   
   .picker-dropdown-container {
     position: fixed;
-    top: 5Nvh;
+    top: 5vh;
     left: 10vw;
     right: 0;
     z-index: 100;
@@ -812,7 +894,6 @@
     padding: 0;
     height: 80vh;
     width: 80vw;
-    overflow-y: auto;
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
     visibility: hidden;
     opacity: 0;
@@ -856,6 +937,11 @@
       border-color: $red-ink;
       box-shadow: 0 0 0 2px rgba(114, 38, 38, 0.15);
     }
+  }
+
+  .picker-dropdown {
+    overflow-y: auto;
+    max-height: 100%;
   }
 
   .picker-toggle {
@@ -1093,5 +1179,79 @@
     color: $ink-faint;
     text-align: center;
     font-style: italic;
+  }
+}
+
+/* ===== Combat stat glossary help modal ===== */
+.csh-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fcm-fadeIn 0.15s ease;
+}
+
+.csh-modal {
+  background: $parchment;
+  border: 1px solid $border;
+  width: min(360px, calc(100vw - 32px));
+  max-height: min(420px, calc(100vh - 48px));
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  animation: fcm-popIn 0.2s ease;
+  overflow: hidden;
+}
+
+.csh-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid $border-light;
+  flex-shrink: 0;
+
+  h3 {
+    margin: 0;
+    font-size: 16px;
+    font-family: $font-display;
+    font-weight: normal;
+    letter-spacing: 0.04em;
+    color: $ink;
+    line-height: 1.25;
+  }
+
+  .csh-close {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: $ink-faint;
+    font-size: 20px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+
+    &:hover { color: $red-ink; }
+  }
+}
+
+.csh-body {
+  padding: 12px 16px 16px;
+  overflow-y: auto;
+}
+
+.csh-paragraph {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-family: $font-body;
+  color: $ink-light;
+  line-height: 1.5;
+
+  &:last-child {
+    margin-bottom: 0;
   }
 }
