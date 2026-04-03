@@ -1,8 +1,17 @@
-import React from 'react';
-import type { ItemDefinition, EquipmentSlot, Currency } from '../../../rules/pathfinder_items_types';
+import React, { useState, useCallback } from 'react';
+import type {
+  ItemDefinition,
+  EquipmentSlot,
+  Currency,
+  CarryCapacity,
+  EncumbranceTier,
+} from '../../../rules/pathfinder_items_types';
 import { EQUIPMENT_SLOTS } from '../../../rules/pathfinder_items';
 import { Picker } from '../../ui/Picker';
 import type { UseEquipmentResult } from '../hooks/useEquipment';
+import type { CombatGlossaryKey } from '../combatGlossary/types';
+import { EncumbranceBarPanel } from '../combatHelp/EncumbranceBarPanel';
+import { CombatStatHelpModal } from '../combatHelp/CombatStatHelpModal';
 
 // ── View helpers ─────────────────────────────────────────────────
 
@@ -35,8 +44,15 @@ function slotLabel(slot: EquipmentSlot): string {
 
 // ── Props ────────────────────────────────────────────────────────
 
+export interface EquipmentEncumbranceProps {
+  totalWeight: number;
+  encumbranceTier: EncumbranceTier;
+  carryCapacity: CarryCapacity;
+}
+
 type EquipmentSectionProps = UseEquipmentResult & {
   currentCurrency: Currency;
+  encumbrance: EquipmentEncumbranceProps;
 };
 
 // ── Component ────────────────────────────────────────────────────
@@ -59,9 +75,23 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   changeQuantity,
   filteredItems,
   selectedWithDefs,
+  encumbrance,
 }) => {
+  const [encGlossaryKey, setEncGlossaryKey] = useState<CombatGlossaryKey | null>(null);
+  const closeEncGlossary = useCallback(() => setEncGlossaryKey(null), []);
+  const openEncGlossary = useCallback((key: CombatGlossaryKey) => setEncGlossaryKey(key), []);
+
   return (
     <div className="picker-section equipment-section">
+      <EncumbranceBarPanel
+        totalWeight={encumbrance.totalWeight}
+        encumbranceTier={encumbrance.encumbranceTier}
+        carryCapacity={encumbrance.carryCapacity}
+        onOpenGlossary={openEncGlossary}
+      />
+
+      <CombatStatHelpModal activeKey={encGlossaryKey} onClose={closeEncGlossary} />
+
       {/* ── Currency management ── */}
       <div className="currency-row">
         {DENOM_ORDER.map(denom => (

@@ -120,7 +120,15 @@ export const SkillsColumn = () => {
         isOpen={openSections.equipment}
         onToggle={() => toggleSection('equipment')}
       >
-        <EquipmentSection currentCurrency={currentCurrency} {...equipment} />
+        <EquipmentSection
+          currentCurrency={currentCurrency}
+          {...equipment}
+          encumbrance={{
+            totalWeight: combatStats.totalWeight,
+            encumbranceTier: combatStats.encumbranceTier,
+            carryCapacity: combatStats.carryCapacity,
+          }}
+        />
       </Accordion>
 
       <Accordion

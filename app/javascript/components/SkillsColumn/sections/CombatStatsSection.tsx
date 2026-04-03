@@ -1,30 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import type { CombatStats } from '../hooks/useCombatStats';
-import type { EncumbranceTier } from '../../../rules/pathfinder_items_types';
 import type { CombatGlossaryKey } from '../combatGlossary/types';
 import { formatMod } from '../../../utils/formatting';
 import { CombatStatHelpModal } from '../combatHelp/CombatStatHelpModal';
 import { CombatStatGlossaryCell } from '../combatHelp/CombatStatGlossaryCell';
-import { EncumbranceGlossaryTrigger } from '../combatHelp/EncumbranceGlossaryTrigger';
-import { CombatStatInfoIcon } from '../combatHelp/CombatStatInfoIcon';
 
 interface CombatStatsSectionProps {
   combatStats: CombatStats;
 }
-
-const ENCUMBRANCE_LABELS: Record<EncumbranceTier, string> = {
-  light: 'Light',
-  medium: 'Medium',
-  heavy: 'Heavy',
-  overloaded: 'Overloaded',
-};
-
-const ENCUMBRANCE_CLASSES: Record<EncumbranceTier, string> = {
-  light: 'enc-light',
-  medium: 'enc-medium',
-  heavy: 'enc-heavy',
-  overloaded: 'enc-overloaded',
-};
 
 export const CombatStatsSection: React.FC<CombatStatsSectionProps> = ({ combatStats }) => {
   const [glossaryKey, setGlossaryKey] = useState<CombatGlossaryKey | null>(null);
@@ -156,50 +139,6 @@ export const CombatStatsSection: React.FC<CombatStatsSectionProps> = ({ combatSt
           </div>
         </>
       )}
-
-      <div className="encumbrance-bar">
-        <div className="enc-header">
-          <EncumbranceGlossaryTrigger onOpenGlossary={openGlossary}>
-            <span className="enc-label">
-              Load: <strong>{combatStats.totalWeight.toFixed(1)} lbs</strong>
-            </span>
-            <span className="enc-glossary-tier-wrap">
-              <span className={`enc-tier ${ENCUMBRANCE_CLASSES[combatStats.encumbranceTier]}`}>
-                {ENCUMBRANCE_LABELS[combatStats.encumbranceTier]}
-              </span>
-              <CombatStatInfoIcon className="enc-glossary-info-icon" />
-            </span>
-          </EncumbranceGlossaryTrigger>
-        </div>
-        <div className="enc-track">
-          <div
-            className={`enc-fill ${ENCUMBRANCE_CLASSES[combatStats.encumbranceTier]}`}
-            style={{
-              width: `${Math.min(
-                (combatStats.totalWeight / Math.max(combatStats.carryCapacity.heavy, 1)) * 100,
-                100,
-              )}%`,
-            }}
-          />
-          <div
-            className="enc-marker light-marker"
-            style={{
-              left: `${(combatStats.carryCapacity.light / Math.max(combatStats.carryCapacity.heavy, 1)) * 100}%`,
-            }}
-          />
-          <div
-            className="enc-marker medium-marker"
-            style={{
-              left: `${(combatStats.carryCapacity.medium / Math.max(combatStats.carryCapacity.heavy, 1)) * 100}%`,
-            }}
-          />
-        </div>
-        <div className="enc-thresholds">
-          <span>Light ≤{combatStats.carryCapacity.light}</span>
-          <span>Med ≤{combatStats.carryCapacity.medium}</span>
-          <span>Heavy ≤{combatStats.carryCapacity.heavy}</span>
-        </div>
-      </div>
 
       <CombatStatHelpModal activeKey={glossaryKey} onClose={closeGlossary} />
     </div>

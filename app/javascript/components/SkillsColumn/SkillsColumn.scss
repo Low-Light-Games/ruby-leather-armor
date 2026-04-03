@@ -463,6 +463,13 @@
 
   /* ===== Equipment Section ===== */
   .equipment-section {
+    .encumbrance-bar--equipment-top {
+      border-top: none;
+      border-bottom: 1px solid $border-light;
+      margin-bottom: 8px;
+      padding-top: 4px;
+    }
+
     .currency-row {
       display: flex;
       align-items: center;
