@@ -85,6 +85,15 @@ export const SpellsSection: React.FC<SpellsSectionProps> = ({
     ? 'No known spells yet.'
     : 'No spells selected.';
 
+  const spellPickerModalTitle =
+    castingStyle === 'spellbook'
+      ? 'Spellbook'
+      : castingStyle === 'spontaneous'
+        ? classDef?.name
+          ? `${classDef.name} spells`
+          : 'Known spells'
+        : 'Spells';
+
   return (
     <div className="picker-section">
       {!currentClass && (
@@ -142,6 +151,7 @@ export const SpellsSection: React.FC<SpellsSectionProps> = ({
 
       {/* Search / add */}
       <Picker<FilteredSpellWithChecks>
+        modalTitle={spellPickerModalTitle}
         search={search}
         onSearchChange={onSearchChange}
         placeholder={placeholder}

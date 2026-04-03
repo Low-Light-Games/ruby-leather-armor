@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useId, useRef, useState } from 'react';
 
 /**
  * Generic search-and-select dropdown used by Feats, Spells, Equipment,
@@ -35,6 +35,8 @@ export interface PickerProps<T> {
   inputDisabled?: boolean;
   /** Shown in the list when `items` is empty (still lets the user type). */
   emptyMessage?: string;
+  /** Title shown in the modal header (e.g. "Feats", "Spells", "Equipment"). */
+  modalTitle: string;
 }
 
 export function Picker<T>({
@@ -49,9 +51,11 @@ export function Picker<T>({
   before,
   inputDisabled,
   emptyMessage = 'No results.',
+  modalTitle,
 }: PickerProps<T>) {
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const modalTitleId = useId();
 
   const togglePanel = () => {
     setIsOpen(prev => {
@@ -71,52 +75,64 @@ export function Picker<T>({
           Search
         </button>
 
-        <div className={`picker-dropdown-container ${isOpen ? 'open' : ''}`}>
-          <button
-            type="button"
-            className="picker-dropdown-close"
-            aria-label="Close"
-            onMouseDown={e => e.preventDefault()}
-            onClick={() => setIsOpen(false)}
-          >
-            X
-          </button>
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder={placeholder}
-            value={search}
-            onChange={e => {
-              onSearchChange(e.target.value);
-            }}
-            onFocus={() => setIsOpen(true)}
-            onBlur={() => setTimeout(() => setIsOpen(false), 150)}
-            onKeyDown={e => {
-              if (e.key === 'Escape') (e.target as HTMLElement).blur();
-            }}
-            className="picker-input"
-            disabled={inputDisabled}
-          />
-          <ul className="picker-dropdown">
-            {items.length === 0 ? (
-              <li className="picker-dropdown-empty">
-                {emptyMessage}
-              </li>
-            ) : (
-              items.map(item => {
-                const disabled = isDisabled?.(item) ?? false;
-                return (
-                  <li
-                    key={itemKey(item)}
-                    className={`picker-option ${disabled ? 'locked' : ''}`}
-                    onClick={() => !disabled && onSelect(item)}
-                  >
-                    {renderOption(item)}
-                  </li>
-                );
-              })
-            )}
-          </ul>
+        <div
+          className={`picker-dropdown-container ${isOpen ? 'open' : ''}`}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={modalTitleId}
+        >
+          <header className="picker-dropdown-header">
+            <h2 id={modalTitleId} className="picker-dropdown-title">
+              {modalTitle}
+            </h2>
+            <button
+              type="button"
+              className="picker-dropdown-close"
+              aria-label="Close"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => setIsOpen(false)}
+            >
+              ×
+            </button>
+          </header>
+          <div className="picker-dropdown-body">
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder={placeholder}
+              value={search}
+              onChange={e => {
+                onSearchChange(e.target.value);
+              }}
+              onFocus={() => setIsOpen(true)}
+              onBlur={() => setTimeout(() => setIsOpen(false), 150)}
+              onKeyDown={e => {
+                if (e.key === 'Escape') (e.target as HTMLElement).blur();
+              }}
+              className="picker-input"
+              disabled={inputDisabled}
+            />
+            <ul className="picker-dropdown">
+              {items.length === 0 ? (
+                <li className="picker-dropdown-empty">
+                  {emptyMessage}
+                </li>
+              ) : (
+                items.map(item => {
+                  const disabled = isDisabled?.(item) ?? false;
+                  return (
+                    <li
+                      key={itemKey(item)}
+                      className={`picker-option ${disabled ? 'locked' : ''}`}
+                      onClick={() => !disabled && onSelect(item)}
+                    >
+                      {renderOption(item)}
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </div>
         </div>
       </div>
     </>

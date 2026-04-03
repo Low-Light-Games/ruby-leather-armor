@@ -43,6 +43,24 @@ function slotLabel(slot: EquipmentSlot): string {
   return entry ? entry.label : slot;
 }
 
+/** Picker header by item-type filter (must match type-filter option values). */
+function equipmentPickerModalTitle(typeFilter: string): string {
+  switch (typeFilter) {
+    case 'armor':
+      return 'Armor';
+    case 'shield':
+      return 'Shields';
+    case 'weapon':
+      return 'Weapons';
+    case 'gear':
+      return 'Gear';
+    case 'ammunition':
+      return 'Ammunition';
+    default:
+      return 'Equipment';
+  }
+}
+
 // ── Props ────────────────────────────────────────────────────────
 
 export interface EquipmentEncumbranceProps {
@@ -209,6 +227,7 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
       {/* ── Search + type filter ── */}
       <div className="equip-search-row">
         <Picker<ItemDefinition>
+          modalTitle={equipmentPickerModalTitle(typeFilter)}
           search={search}
           onSearchChange={setSearch}
           placeholder="Search items…"

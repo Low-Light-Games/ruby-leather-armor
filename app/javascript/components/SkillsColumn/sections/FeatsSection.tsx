@@ -45,6 +45,7 @@ export const FeatsSection: React.FC<FeatsSectionProps> = ({
 
       {/* Search / add */}
       <Picker<FilteredFeatWithChecks>
+        modalTitle="Feats"
         search={search}
         onSearchChange={onSearchChange}
         placeholder="Search feats…"
