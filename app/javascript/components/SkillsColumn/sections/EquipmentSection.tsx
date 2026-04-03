@@ -1,8 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type {
   ItemDefinition,
   EquipmentSlot,
-  Currency,
   CarryCapacity,
   EncumbranceTier,
 } from '../../../rules/pathfinder_items_types';
@@ -24,14 +23,6 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   ammunition: 'Ammo',
   potion: 'Potion',
   wondrous: 'Wondrous',
-};
-
-const DENOM_ORDER: (keyof Currency)[] = ['platinum', 'gold', 'silver', 'copper'];
-const DENOM_LABELS: Record<keyof Currency, string> = {
-  platinum: 'pp',
-  gold: 'gp',
-  silver: 'sp',
-  copper: 'cp',
 };
 
 function formatGp(amount: number): string {
@@ -70,7 +61,7 @@ export interface EquipmentEncumbranceProps {
 }
 
 type EquipmentSectionProps = UseEquipmentResult & {
-  currentCurrency: Currency;
+  currentClass: string | null;
   encumbrance: EquipmentEncumbranceProps;
   encumbranceCalculation: CombatStatCalculation;
 };
@@ -78,7 +69,7 @@ type EquipmentSectionProps = UseEquipmentResult & {
 // ── Component ────────────────────────────────────────────────────
 
 export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
-  currentCurrency,
+  currentClass,
   search,
   setSearch,
   typeFilter,
@@ -87,8 +78,7 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   totalCost,
   currentGpValue,
   remainingGp,
-  setCurrencyDenom,
-  applyStartingGold,
+  setGoldGp,
   addItem,
   removeItem,
   toggleEquip,
@@ -99,8 +89,34 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   encumbranceCalculation,
 }) => {
   const [encGlossaryKey, setEncGlossaryKey] = useState<CombatGlossaryKey | null>(null);
+  const [customGoldEditOpen, setCustomGoldEditOpen] = useState(false);
+  const [customGoldDraft, setCustomGoldDraft] = useState('');
+
   const closeEncGlossary = useCallback(() => setEncGlossaryKey(null), []);
   const openEncGlossary = useCallback((key: CombatGlossaryKey) => setEncGlossaryKey(key), []);
+
+  useEffect(() => {
+    setCustomGoldEditOpen(false);
+  }, [currentClass]);
+
+  const openCustomGoldEdit = useCallback(() => {
+    setCustomGoldDraft(formatGp(currentGpValue));
+    setCustomGoldEditOpen(true);
+  }, [currentGpValue]);
+
+  const saveCustomGold = useCallback(() => {
+    const parsed = parseFloat(customGoldDraft.replace(',', '.'));
+    setGoldGp(Number.isFinite(parsed) ? parsed : 0);
+    setCustomGoldEditOpen(false);
+  }, [customGoldDraft, setGoldGp]);
+
+  const cancelCustomGold = useCallback(() => {
+    setCustomGoldEditOpen(false);
+  }, []);
+
+  const spentAllGold =
+    currentGpValue > 0 && remainingGp <= 0.001;
+  const overBudget = remainingGp < -0.001;
 
   return (
     <div className="picker-section equipment-section">
@@ -119,40 +135,65 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
         }
       />
 
-      {/* ── Currency management ── */}
-      <div className="currency-row">
-        {DENOM_ORDER.map(denom => (
-          <label key={denom} className="currency-input-group">
-            <input
-              type="number"
-              className="currency-input"
-              min={0}
-              value={currentCurrency[denom]}
-              onChange={e => setCurrencyDenom(denom, parseInt(e.target.value, 10) || 0)}
-            />
-            <span className="currency-label">{DENOM_LABELS[denom]}</span>
-          </label>
-        ))}
-        {startingGold > 0 && (
-          <button
-            type="button"
-            className="starting-gold-btn"
-            onClick={applyStartingGold}
-            title={`Set currency to class average (${startingGold} gp)`}
-          >
-            Class avg: {startingGold} gp
-          </button>
-        )}
-      </div>
-
-      {/* ── Cost summary ── */}
-      <div className="cost-summary">
-        <span>Wealth: <strong>{formatGp(currentGpValue)} gp</strong></span>
-        <span>Spent: <strong>{formatGp(totalCost)} gp</strong></span>
-        <span className={remainingGp < 0 ? 'overspent' : ''}>
-          Remaining: <strong>{formatGp(remainingGp)} gp</strong>
-        </span>
-      </div>
+      {/* ── Gold (class required) ── */}
+      {!currentClass ? (
+        <p className="gold-class-hint">Choose a class to calculate your gold.</p>
+      ) : (
+        <div className="gold-budget-block">
+          <div className="gold-budget-row">
+            <div className="gold-gp-label">
+              <span>Gold (gp)</span>
+              {customGoldEditOpen ? (
+                <div className="gold-custom-edit">
+                  <input
+                    type="number"
+                    className="gold-gp-input"
+                    min={0}
+                    step="any"
+                    autoFocus
+                    value={customGoldDraft}
+                    onChange={e => setCustomGoldDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') saveCustomGold();
+                      if (e.key === 'Escape') cancelCustomGold();
+                    }}
+                  />
+                  <div className="gold-custom-edit-actions">
+                    <button type="button" className="gold-custom-save-btn" onClick={saveCustomGold}>
+                      Save
+                    </button>
+                    <button type="button" className="gold-custom-cancel-btn" onClick={cancelCustomGold}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="gold-gp-readout-row">
+                  <span className="gold-gp-readout">{formatGp(currentGpValue)} gp</span>
+                  <button
+                    type="button"
+                    className="gold-own-starting-btn"
+                    onClick={openCustomGoldEdit}
+                  >
+                    Set your own starting gold
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className={`gold-usage${overBudget ? ' gold-usage--over' : ''}`}>
+            <span className="gold-usage-fraction">
+              {formatGp(totalCost)} / {formatGp(currentGpValue)} gp
+            </span>
+            {spentAllGold && <span className="gold-usage-note">You spent all your gold.</span>}
+            {overBudget && (
+              <span className="gold-usage-note gold-usage-note--warn">
+                Equipment costs more than your gold.
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Selected items ── */}
       {selectedWithDefs.length > 0 ? (

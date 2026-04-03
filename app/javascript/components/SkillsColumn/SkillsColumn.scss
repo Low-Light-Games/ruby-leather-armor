@@ -470,77 +470,151 @@
       padding-top: 4px;
     }
 
-    .currency-row {
+    .gold-class-hint {
+      margin: 0 0 10px;
+      font-size: 16px;
+      color: $ink-mid;
+    }
+
+    .gold-budget-block {
+      margin-bottom: 10px;
+    }
+
+    .gold-budget-row {
       display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 8px;
+      align-items: flex-end;
+      gap: 10px;
+      margin-bottom: 6px;
       flex-wrap: wrap;
+    }
 
-      .currency-input-group {
-        display: flex;
-        align-items: center;
-        gap: 2px;
-        font-size: 12px;
+    .gold-gp-label {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 11px;
+      color: $ink-mid;
+      font-family: $font-body;
+    }
+
+    .gold-gp-readout-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+    }
+
+    .gold-gp-readout {
+      font-size: 15px;
+      font-family: $font-mono;
+      font-weight: 600;
+      color: $ink;
+      min-width: 4ch;
+    }
+
+    .gold-own-starting-btn {
+      font-size: 11px;
+      font-family: $font-body;
+      padding: 0;
+      border: none;
+      background: none;
+      color: $ink-light;
+      cursor: pointer;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+
+      &:hover {
         color: $ink-mid;
-      }
-
-      .currency-input {
-        width: 52px;
-        padding: 4px;
-        border: 1px solid $border-light;
-        font-size: 12px;
-        text-align: right;
-        font-family: $font-mono;
-        background: $parchment;
-        color: $ink;
-
-        &:focus {
-          outline: none;
-          border-color: $red-ink;
-          box-shadow: 0 0 0 2px rgba(114, 38, 38, 0.15);
-        }
-      }
-
-      .currency-label {
-        font-size: 11px;
-        font-family: $font-mono;
-        color: $ink-light;
-      }
-
-      .starting-gold-btn {
-        font-size: 11px;
-        font-family: $font-body;
-        padding: 3px 8px;
-        border: 1px solid $border-light;
-        background: $parchment-dk;
-        color: $ink-mid;
-        cursor: pointer;
-        white-space: nowrap;
-
-        &:hover {
-          background: $parchment-mid;
-          border-color: $border;
-        }
       }
     }
 
-    .cost-summary {
+    .gold-custom-edit {
       display: flex;
-      justify-content: space-between;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    .gold-custom-edit-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .gold-custom-save-btn,
+    .gold-custom-cancel-btn {
+      font-size: 11px;
+      font-family: $font-body;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 1px solid $border-light;
+    }
+
+    .gold-custom-save-btn {
+      background: $red-ink;
+      border-color: $red-ink;
+      color: #fff;
+
+      &:hover {
+        filter: brightness(1.05);
+      }
+    }
+
+    .gold-custom-cancel-btn {
+      background: $parchment-dk;
+      color: $ink-mid;
+
+      &:hover {
+        background: $parchment-mid;
+      }
+    }
+
+    .gold-gp-input {
+      width: 100px;
+      padding: 5px 8px;
+      border: 1px solid $border-light;
+      font-size: 13px;
+      text-align: right;
+      font-family: $font-mono;
+      background: $parchment;
+      color: $ink;
+
+      &:focus {
+        outline: none;
+        border-color: $red-ink;
+        box-shadow: 0 0 0 2px rgba(114, 38, 38, 0.15);
+      }
+    }
+
+    .gold-usage {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
       font-size: 12px;
       font-family: $font-mono;
       color: $ink-mid;
       padding: 6px 8px;
       background: $parchment;
       border: 1px solid $border-light;
-      margin-bottom: 8px;
 
-      strong { color: $ink; }
-
-      .overspent {
+      &--over .gold-usage-fraction {
         color: $red-ink;
-        strong { color: $red-ink; }
+      }
+    }
+
+    .gold-usage-fraction {
+      color: $ink;
+      font-weight: 600;
+    }
+
+    .gold-usage-note {
+      font-size: 11px;
+      font-family: $font-body;
+      font-weight: normal;
+      color: $ink-mid;
+
+      &--warn {
+        color: $red-ink;
       }
     }
 

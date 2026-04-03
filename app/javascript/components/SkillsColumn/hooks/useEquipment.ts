@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useLayoutEffect, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { OwnedItem, ItemDefinition, Currency } from '../../../rules/pathfinder_items_types';
 import {
@@ -36,9 +36,8 @@ export interface UseEquipmentResult {
   totalCost: number;
   currentGpValue: number;
   remainingGp: number;
-  // Currency editing
-  setCurrencyDenom: (denom: keyof Currency, value: number) => void;
-  applyStartingGold: () => void;
+  /** Set gold when using “Set your own starting gold” (normalizes to gp-only currency). */
+  setGoldGp: (gp: number) => void;
   // Item CRUD
   addItem: (itemId: string) => void;
   removeItem: (itemId: string) => void;
@@ -68,18 +67,40 @@ export function useEquipment({
   const currentGpValue = totalGpValue(currentCurrency);
   const remainingGp = currentGpValue - totalCost;
 
-  // ── Currency editing ──
+  /** Tracks class we’ve already synced so we only auto-fill on first equip / class change. */
+  const goldSyncClassRef = useRef<string | null | undefined>(undefined);
 
-  const setCurrencyDenom = useCallback(
-    (denom: keyof Currency, value: number) => {
-      setCurrentCurrency(prev => ({ ...prev, [denom]: Math.max(0, value) }));
+  useLayoutEffect(() => {
+    if (!currentClass) {
+      goldSyncClassRef.current = null;
+      return;
+    }
+
+    const prev = goldSyncClassRef.current;
+
+    if (prev === undefined) {
+      goldSyncClassRef.current = currentClass;
+      setCurrentCurrency(curr => {
+        if (totalGpValue(curr) > 0.0001) return curr;
+        if (startingGold > 0) return currencyFromGold(startingGold);
+        return curr;
+      });
+      return;
+    }
+
+    if (prev !== currentClass) {
+      goldSyncClassRef.current = currentClass;
+      setCurrentCurrency(currencyFromGold(startingGold));
+    }
+  }, [currentClass, startingGold, setCurrentCurrency]);
+
+  const setGoldGp = useCallback(
+    (gp: number) => {
+      const n = Number.isFinite(gp) ? gp : 0;
+      setCurrentCurrency(currencyFromGold(Math.max(0, n)));
     },
     [setCurrentCurrency],
   );
-
-  const applyStartingGold = useCallback(() => {
-    setCurrentCurrency(currencyFromGold(startingGold));
-  }, [startingGold, setCurrentCurrency]);
 
   // ── Item CRUD ──
 
@@ -172,8 +193,7 @@ export function useEquipment({
     totalCost,
     currentGpValue,
     remainingGp,
-    setCurrencyDenom,
-    applyStartingGold,
+    setGoldGp,
     addItem,
     removeItem,
     toggleEquip,

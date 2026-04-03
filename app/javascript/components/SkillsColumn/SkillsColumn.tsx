@@ -124,7 +124,7 @@ export const SkillsColumn = () => {
         onToggle={() => toggleSection('equipment')}
       >
         <EquipmentSection
-          currentCurrency={currentCurrency}
+          currentClass={currentClass}
           {...equipment}
           encumbrance={{
             totalWeight: combatStats.totalWeight,
