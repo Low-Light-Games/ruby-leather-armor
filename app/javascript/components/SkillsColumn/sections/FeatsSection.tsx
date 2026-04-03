@@ -26,7 +26,12 @@ export const FeatsSection: React.FC<FeatsSectionProps> = ({
   onAddFeat,
   onRemoveFeat,
 }) => {
-  const anyOver = featPoolBlocks.some(b => b.overBudget);
+  /** Hide pools with no capacity unless the character still has feats there (e.g. after class change). */
+  const visiblePoolBlocks = featPoolBlocks.filter(
+    b => b.def.maxSlots > 0 || b.used > 0,
+  );
+
+  const anyOver = visiblePoolBlocks.some(b => b.overBudget);
 
   return (
     <div className="picker-section feats-section">
@@ -40,7 +45,7 @@ export const FeatsSection: React.FC<FeatsSectionProps> = ({
 
       <div className="feat-pools-global-search">
         <label className="feat-pools-search-label" htmlFor="feat-pools-search">
-          Search feats (applies to every pool below)
+          Search feats (applies to each open pool below)
         </label>
         <input
           id="feat-pools-search"
@@ -53,7 +58,7 @@ export const FeatsSection: React.FC<FeatsSectionProps> = ({
         />
       </div>
 
-      {featPoolBlocks.map(block => (
+      {visiblePoolBlocks.map(block => (
         <FeatPoolBlock
           key={block.def.id}
           block={block}
