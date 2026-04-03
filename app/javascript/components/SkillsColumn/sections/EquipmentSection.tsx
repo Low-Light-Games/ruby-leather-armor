@@ -10,6 +10,7 @@ import { EQUIPMENT_SLOTS } from '../../../rules/pathfinder_items';
 import { Picker } from '../../ui/Picker';
 import type { UseEquipmentResult } from '../hooks/useEquipment';
 import type { CombatGlossaryKey } from '../combatGlossary/types';
+import type { CombatStatCalculation } from '../combatHelp/combatCalcTypes';
 import { EncumbranceBarPanel } from '../combatHelp/EncumbranceBarPanel';
 import { CombatStatHelpModal } from '../combatHelp/CombatStatHelpModal';
 
@@ -53,6 +54,7 @@ export interface EquipmentEncumbranceProps {
 type EquipmentSectionProps = UseEquipmentResult & {
   currentCurrency: Currency;
   encumbrance: EquipmentEncumbranceProps;
+  encumbranceCalculation: CombatStatCalculation;
 };
 
 // ── Component ────────────────────────────────────────────────────
@@ -76,6 +78,7 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   filteredItems,
   selectedWithDefs,
   encumbrance,
+  encumbranceCalculation,
 }) => {
   const [encGlossaryKey, setEncGlossaryKey] = useState<CombatGlossaryKey | null>(null);
   const closeEncGlossary = useCallback(() => setEncGlossaryKey(null), []);
@@ -90,7 +93,13 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
         onOpenGlossary={openEncGlossary}
       />
 
-      <CombatStatHelpModal activeKey={encGlossaryKey} onClose={closeEncGlossary} />
+      <CombatStatHelpModal
+        activeKey={encGlossaryKey}
+        onClose={closeEncGlossary}
+        calculation={
+          encGlossaryKey === 'encumbrance' ? encumbranceCalculation : undefined
+        }
+      />
 
       {/* ── Currency management ── */}
       <div className="currency-row">

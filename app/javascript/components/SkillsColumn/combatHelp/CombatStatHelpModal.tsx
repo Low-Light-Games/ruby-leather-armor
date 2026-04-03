@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
 import type { CombatGlossaryKey } from '../combatGlossary/types';
 import { getCombatGlossaryEntry } from '../combatGlossary';
+import type { CombatStatCalculation } from './combatCalcTypes';
 import { CombatStatHelpBody } from './CombatStatHelpBody';
 
 interface CombatStatHelpModalProps {
   activeKey: CombatGlossaryKey | null;
+  calculation?: CombatStatCalculation | null;
   onClose: () => void;
 }
 
@@ -13,6 +15,7 @@ interface CombatStatHelpModalProps {
  */
 export const CombatStatHelpModal: React.FC<CombatStatHelpModalProps> = ({
   activeKey,
+  calculation,
   onClose,
 }) => {
   useEffect(() => {
@@ -43,7 +46,7 @@ export const CombatStatHelpModal: React.FC<CombatStatHelpModalProps> = ({
             &times;
           </button>
         </div>
-        <CombatStatHelpBody entry={entry} />
+        <CombatStatHelpBody entry={entry} calculation={calculation ?? undefined} />
       </div>
     </div>
   );

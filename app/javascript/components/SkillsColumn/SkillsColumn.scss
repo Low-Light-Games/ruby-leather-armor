@@ -1262,3 +1262,40 @@
     margin-bottom: 0;
   }
 }
+
+.csh-calculation {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid $border-light;
+}
+
+.csh-calculation-heading {
+  font-size: 11px;
+  font-family: $font-mono;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: $ink-faint;
+  margin-bottom: 8px;
+}
+
+.csh-calculation-sum {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-family: $font-mono;
+  color: $ink;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.csh-calculation-note {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-family: $font-body;
+  color: $ink-mid;
+  line-height: 1.45;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}

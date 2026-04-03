@@ -1,15 +1,20 @@
 import React, { useState, useCallback } from 'react';
 import type { CombatStats } from '../hooks/useCombatStats';
 import type { CombatGlossaryKey } from '../combatGlossary/types';
+import type { CombatStatCalculations } from '../combatHelp/combatCalcTypes';
 import { formatMod } from '../../../utils/formatting';
 import { CombatStatHelpModal } from '../combatHelp/CombatStatHelpModal';
 import { CombatStatGlossaryCell } from '../combatHelp/CombatStatGlossaryCell';
 
 interface CombatStatsSectionProps {
   combatStats: CombatStats;
+  combatStatCalculations: CombatStatCalculations;
 }
 
-export const CombatStatsSection: React.FC<CombatStatsSectionProps> = ({ combatStats }) => {
+export const CombatStatsSection: React.FC<CombatStatsSectionProps> = ({
+  combatStats,
+  combatStatCalculations,
+}) => {
   const [glossaryKey, setGlossaryKey] = useState<CombatGlossaryKey | null>(null);
   const closeGlossary = useCallback(() => setGlossaryKey(null), []);
   const openGlossary = useCallback((key: CombatGlossaryKey) => setGlossaryKey(key), []);
@@ -140,7 +145,11 @@ export const CombatStatsSection: React.FC<CombatStatsSectionProps> = ({ combatSt
         </>
       )}
 
-      <CombatStatHelpModal activeKey={glossaryKey} onClose={closeGlossary} />
+      <CombatStatHelpModal
+        activeKey={glossaryKey}
+        onClose={closeGlossary}
+        calculation={glossaryKey ? combatStatCalculations[glossaryKey] : undefined}
+      />
     </div>
   );
 };

@@ -45,7 +45,7 @@ export const SkillsColumn = () => {
 
   // ── Hooks ──────────────────────────────────────────────────────
 
-  const { combatStats, totalACP, equipSkillBonuses } = useCombatStats({
+  const { combatStats, combatStatCalculations, totalACP, equipSkillBonuses } = useCombatStats({
     finalAttributes, race, classDef, currentLevel,
     selectedFeats, selectedItems, currentCurrency,
   });
@@ -96,7 +96,10 @@ export const SkillsColumn = () => {
       <div className="combat-stats-panel">
         <div className="combat-stats-panel-header">Combat Stats</div>
         <div className="combat-stats-panel-body">
-          <CombatStatsSection combatStats={combatStats} />
+          <CombatStatsSection
+            combatStats={combatStats}
+            combatStatCalculations={combatStatCalculations}
+          />
         </div>
       </div>
 
@@ -128,6 +131,7 @@ export const SkillsColumn = () => {
             encumbranceTier: combatStats.encumbranceTier,
             carryCapacity: combatStats.carryCapacity,
           }}
+          encumbranceCalculation={combatStatCalculations.encumbrance}
         />
       </Accordion>
 
