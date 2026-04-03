@@ -31,6 +31,7 @@ import {
   computeBaseSave,
   computeFeatStatBonuses,
 } from '../../../rules/pathfinder_feats';
+import { featListRawEntries, migrateFeatListToPooled } from '../../../rules/pathfinder_feat_pools';
 import type { CombatStatCalculations, CombatStatCalculation } from '../combatHelp/combatCalcTypes';
 
 export interface CombatStats {
@@ -116,10 +117,10 @@ export function useCombatStats({
   selectedItems,
   currentCurrency,
 }: UseCombatStatsParams): UseCombatStatsResult {
-  const featStatBonuses = useMemo(
-    () => computeFeatStatBonuses(selectedFeats, currentLevel),
-    [selectedFeats, currentLevel],
-  );
+  const featStatBonuses = useMemo(() => {
+    const raw = featListRawEntries(migrateFeatListToPooled(selectedFeats));
+    return computeFeatStatBonuses(raw, currentLevel);
+  }, [selectedFeats, currentLevel]);
 
   const equipBonuses = useMemo(
     () => computeEquipmentBonuses(selectedItems),

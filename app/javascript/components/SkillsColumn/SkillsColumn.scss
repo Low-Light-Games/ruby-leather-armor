@@ -741,6 +741,115 @@
   /* ===== Feat & Spell Picker ===== */
   .picker-section { padding: 10px; }
 
+  .feats-section {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .feat-pools-overbudget {
+    margin: 0;
+    padding: 8px 10px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: $red-ink;
+    background: $red-ink-lt;
+    border: 1px solid $red-ink;
+  }
+
+  .feat-pools-global-search {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid $border-light;
+  }
+
+  .feat-pools-search-label {
+    font-size: 11px;
+    font-family: $font-mono;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: $ink-light;
+  }
+
+  .feat-pools-search-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid $border-light;
+    font-size: 13px;
+    font-family: $font-body;
+    background: $parchment;
+    color: $ink;
+
+    &:focus {
+      outline: none;
+      border-color: $red-ink;
+      box-shadow: 0 0 0 2px rgba(114, 38, 38, 0.12);
+    }
+  }
+
+  .feat-pool-block {
+    padding: 10px;
+    background: $parchment-dk;
+    border: 1px solid $border-light;
+
+    &--over {
+      border-color: $red-ink;
+      box-shadow: inset 0 0 0 1px rgba(114, 38, 38, 0.15);
+    }
+  }
+
+  .feat-pool-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+
+  .feat-pool-title {
+    margin: 0;
+    font-size: 13px;
+    font-family: $font-display;
+    font-weight: normal;
+    letter-spacing: 0.03em;
+    color: $ink;
+  }
+
+  .feat-pool-usage {
+    font-size: 12px;
+    font-family: $font-mono;
+    color: $ink-mid;
+    white-space: nowrap;
+
+    &--full { color: $amber; }
+    &--over { color: $red-ink; font-weight: 700; }
+  }
+
+  .feat-pool-explanation {
+    margin: 0 0 10px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: $ink-mid;
+  }
+
+  .feat-pool-selected {
+    margin-bottom: 8px;
+  }
+
+  .feat-pool-empty {
+    margin-bottom: 8px;
+  }
+
+  .feat-pool-locked {
+    margin: 0;
+    font-size: 12px;
+    font-style: italic;
+    color: $ink-faint;
+  }
+
   .empty-text {
     margin: 0 0 8px;
     font-size: 12px;

@@ -52,8 +52,13 @@ export const SkillsColumn = () => {
   });
 
   const feats = useFeats({
-    selectedFeats, setSelectedFeats,
-    finalAttributes, currentClass, classDef, currentLevel,
+    selectedFeats,
+    setSelectedFeats,
+    finalAttributes,
+    currentRace,
+    currentClass,
+    classDef,
+    currentLevel,
     onSheetDirty: markSheetDirty,
   });
 
@@ -146,11 +151,10 @@ export const SkillsColumn = () => {
         onToggle={() => toggleSection('feats')}
       >
         <FeatsSection
-          selectedFeats={feats.selectedFeatsParsed}
-          filteredFeats={feats.filteredFeatsWithChecks}
+          featPoolBlocks={feats.featPoolBlocks}
           search={feats.featSearch}
           onSearchChange={feats.setFeatSearch}
-          onAddFeat={feats.addFeat}
+          onAddFeat={feats.addFeatToPool}
           onRemoveFeat={feats.removeFeat}
         />
       </Accordion>
@@ -187,7 +191,7 @@ export const SkillsColumn = () => {
           onSearchChange={feats.setFeatChoiceSearch}
           onConfirm={feats.confirmFeatChoice}
           onCancel={feats.cancelFeatChoice}
-          alreadySelected={selectedFeats}
+          alreadySelected={feats.rawFeatEntries}
         />
       )}
     </div>

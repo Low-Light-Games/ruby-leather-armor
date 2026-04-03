@@ -14,7 +14,9 @@ module SheetJsonSerialization
     base = sheet.as_json
 
     feats = feat_rel.map { |sf|
-      sf.choice ? "#{sf.feat_id}::#{sf.choice}" : sf.feat_id
+      entry = sf.choice ? "#{sf.feat_id}::#{sf.choice}" : sf.feat_id
+      pool = sf.respond_to?(:pool) ? (sf.pool.presence || SheetFeat::DEFAULT_POOL) : SheetFeat::DEFAULT_POOL
+      pool == SheetFeat::DEFAULT_POOL ? entry : "#{pool}|#{entry}"
     }
 
     known_spells    = spell_rel.where(storage_type: "known").pluck(:spell_id)

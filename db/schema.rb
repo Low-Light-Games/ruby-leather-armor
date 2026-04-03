@@ -52,6 +52,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_02_140000) do
     t.string "choice"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "pool", default: "general", null: false
     t.index ["adventure_sheet_id", "feat_id", "choice"], name: "idx_adv_sheet_feats_unique", unique: true
     t.index ["adventure_sheet_id"], name: "index_adventure_sheet_feats_on_adventure_sheet_id"
   end
@@ -440,6 +441,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_02_140000) do
     t.string "choice"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "pool", default: "general", null: false
     t.index ["sheet_id", "feat_id", "choice"], name: "idx_sheet_feats_unique", unique: true
     t.index ["sheet_id"], name: "index_sheet_feats_on_sheet_id"
   end

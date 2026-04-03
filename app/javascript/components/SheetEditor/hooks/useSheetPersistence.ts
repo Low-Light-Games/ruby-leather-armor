@@ -9,6 +9,7 @@ import { EMPTY_CURRENCY } from '../../../rules/pathfinder_items';
 import { DEFAULT_ATTRIBUTES } from './usePointBuy';
 import type { SkillRanksMap } from '../../../rules/pathfinder_skill_ranks';
 import { normalizeSkillRanksMap } from '../../../rules/pathfinder_skill_ranks';
+import { migrateFeatListToPooled } from '../../../rules/pathfinder_feat_pools';
 
 /** Leaving the sheet editor (another character, adventure, etc.) with a dirty sheet. */
 export const UNSAVED_SHEET_CHANGES_CONFIRM_MESSAGE =
@@ -108,7 +109,7 @@ export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceRes
     ctx.setCurrentFlexibleBonus((sheet.racial_bonus_attribute as AttributeType) || null);
     ctx.setCurrentClass(sheet.character_class || null);
     ctx.setCurrentLevel(sheet.level || 1);
-    ctx.setSelectedFeats(sheet.details?.feats || []);
+    ctx.setSelectedFeats(migrateFeatListToPooled(sheet.details?.feats || []));
 
     const style = getCastingStyle(sheet.character_class);
     if (style === 'spontaneous') {
@@ -177,7 +178,7 @@ export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceRes
             racial_bonus_attribute: ctx.currentFlexibleBonus,
             character_class: ctx.currentClass,
             level: ctx.currentLevel,
-            feat_ids: ctx.selectedFeats,
+            feat_ids: migrateFeatListToPooled(ctx.selectedFeats),
             ...(getCastingStyle(ctx.currentClass) === 'spontaneous'
               ? { known_spell_ids: ctx.selectedSpells }
               : getCastingStyle(ctx.currentClass) === 'spellbook'
