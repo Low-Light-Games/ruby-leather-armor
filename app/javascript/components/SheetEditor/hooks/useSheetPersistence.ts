@@ -10,6 +10,10 @@ import { DEFAULT_ATTRIBUTES } from './usePointBuy';
 import type { SkillRanksMap } from '../../../rules/pathfinder_skill_ranks';
 import { normalizeSkillRanksMap } from '../../../rules/pathfinder_skill_ranks';
 
+/** Leaving the sheet editor (another character, adventure, etc.) with a dirty sheet. */
+export const UNSAVED_SHEET_CHANGES_CONFIRM_MESSAGE =
+  'You have unsaved changes on this sheet. If you continue, they will be lost unless you save first. Continue anyway?';
+
 // ── Context setters we need from the parent ─────────────────────
 
 interface ContextSetters {
@@ -78,9 +82,7 @@ export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceRes
   useEffect(() => {
     if (ctx.sheetToEdit) {
       if (!isPristine) {
-        const confirmed = window.confirm(
-          'You have unsaved changes. Are you sure you want to load this character? Your current changes will be lost.',
-        );
+        const confirmed = window.confirm(UNSAVED_SHEET_CHANGES_CONFIRM_MESSAGE);
         if (!confirmed) {
           ctx.setSheetToEdit(null);
           return;

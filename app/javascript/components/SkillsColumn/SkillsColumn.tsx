@@ -25,6 +25,7 @@ export const SkillsColumn = () => {
     selectedItems, setSelectedItems,
     currentCurrency, setCurrentCurrency,
     skillRanks, setSkillRanks,
+    markSheetDirty,
   } = useSheetsContext();
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -53,12 +54,14 @@ export const SkillsColumn = () => {
   const feats = useFeats({
     selectedFeats, setSelectedFeats,
     finalAttributes, currentClass, classDef, currentLevel,
+    onSheetDirty: markSheetDirty,
   });
 
   const spells = useSpells({
     selectedSpells, setSelectedSpells,
     currentClass, classDef, currentLevel,
     intelligenceScore: finalAttributes.intelligence,
+    onSheetDirty: markSheetDirty,
   });
 
   const skillRankUi = useSkillRanks({
@@ -69,6 +72,7 @@ export const SkillsColumn = () => {
     currentRace,
     intelligenceScore: finalAttributes.intelligence,
     classDef,
+    onSheetDirty: markSheetDirty,
   });
 
   const equipment = useEquipment({
@@ -77,6 +81,7 @@ export const SkillsColumn = () => {
     currentCurrency,
     setCurrentCurrency,
     currentClass,
+    onSheetDirty: markSheetDirty,
   });
 
   const { calculatedSkills, racialSkillBonuses } = useSkills({

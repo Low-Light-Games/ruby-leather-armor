@@ -2,6 +2,8 @@ import {
   createContext,
   useState,
   useMemo,
+  useRef,
+  useCallback,
   ReactNode,
   useContext,
 } from 'react';
@@ -56,6 +58,14 @@ interface SheetsContextType {
   /** Pathfinder skill ranks (stored in `sheets.skill_ranks`). */
   skillRanks: SkillRanksMap;
   setSkillRanks: Dispatch<SetStateAction<SkillRanksMap>>;
+  /** True when the editor has unsaved work (synced from sheet persistence). */
+  sheetHasUnsavedChanges: boolean;
+  /** SheetEditor calls this when `useSheetPersistence` pristine flag changes. */
+  syncSheetPristine: (pristine: boolean) => void;
+  /** Forwards to sheet persistence `setDirty` once SheetEditor has registered. */
+  markSheetDirty: () => void;
+  /** SheetEditor registers `setDirty` here so SkillsColumn / fields can mark dirty. */
+  registerSheetDirtySource: (fn: (() => void) | null) => void;
 }
 
 const SheetsContext = createContext<SheetsContextType | undefined>(
@@ -63,6 +73,21 @@ const SheetsContext = createContext<SheetsContextType | undefined>(
 );
 
 export const SheetsProvider = ({ children }: { children: ReactNode }) => {
+  const sheetDirtySourceRef = useRef<(() => void) | null>(null);
+  const [sheetHasUnsavedChanges, setSheetHasUnsavedChanges] = useState(false);
+
+  const registerSheetDirtySource = useCallback((fn: (() => void) | null) => {
+    sheetDirtySourceRef.current = fn;
+  }, []);
+
+  const markSheetDirty = useCallback(() => {
+    sheetDirtySourceRef.current?.();
+  }, []);
+
+  const syncSheetPristine = useCallback((pristine: boolean) => {
+    setSheetHasUnsavedChanges(!pristine);
+  }, []);
+
   const [sheets, setSheets] = useState<Sheet[]>([]);
   const [sheetToEdit, setSheetToEdit] = useState<Sheet | null>(null);
   const [currentAttributes, setCurrentAttributes] = useState<AttributeValues>(DEFAULT_ATTRIBUTES);
@@ -118,6 +143,10 @@ export const SheetsProvider = ({ children }: { children: ReactNode }) => {
     setCurrentCurrency,
     skillRanks,
     setSkillRanks,
+    sheetHasUnsavedChanges,
+    syncSheetPristine,
+    markSheetDirty,
+    registerSheetDirtySource,
   };
 
   return (
@@ -134,3 +163,6 @@ export const useSheetsContext = () => {
   }
   return ctx;
 };
+
+/** Shell UI (e.g. Navbar) that mounts on pages without SheetsProvider. */
+export const useSheetsContextOptional = () => useContext(SheetsContext);

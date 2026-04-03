@@ -18,6 +18,7 @@ interface UseEquipmentParams {
   currentCurrency: Currency;
   setCurrentCurrency: Dispatch<SetStateAction<Currency>>;
   currentClass: string | null;
+  onSheetDirty?: () => void;
 }
 
 export interface SelectedItemRow {
@@ -56,6 +57,7 @@ export function useEquipment({
   currentCurrency,
   setCurrentCurrency,
   currentClass,
+  onSheetDirty,
 }: UseEquipmentParams): UseEquipmentResult {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -98,8 +100,9 @@ export function useEquipment({
     (gp: number) => {
       const n = Number.isFinite(gp) ? gp : 0;
       setCurrentCurrency(currencyFromGold(Math.max(0, n)));
+      onSheetDirty?.();
     },
-    [setCurrentCurrency],
+    [setCurrentCurrency, onSheetDirty],
   );
 
   // ── Item CRUD ──
@@ -109,35 +112,45 @@ export function useEquipment({
       setSelectedItems(prev => {
         const existing = prev.find(i => i.itemId === itemId && !i.equipped);
         if (existing) {
+          onSheetDirty?.();
           return prev.map(i =>
             i === existing ? { ...i, quantity: i.quantity + 1 } : i,
           );
         }
+        onSheetDirty?.();
         return [...prev, { itemId, quantity: 1, equipped: false, slotOverride: null }];
       });
       setSearch('');
     },
-    [setSelectedItems],
+    [setSelectedItems, onSheetDirty],
   );
 
   const removeItem = useCallback(
     (itemId: string) => {
-      setSelectedItems(prev => prev.filter(i => i.itemId !== itemId));
+      setSelectedItems(prev => {
+        const next = prev.filter(i => i.itemId !== itemId);
+        if (next.length !== prev.length) onSheetDirty?.();
+        return next;
+      });
     },
-    [setSelectedItems],
+    [setSelectedItems, onSheetDirty],
   );
 
   const toggleEquip = useCallback(
     (itemId: string) => {
-      setSelectedItems(prev =>
-        prev.map(i => (i.itemId === itemId ? { ...i, equipped: !i.equipped } : i)),
-      );
+      setSelectedItems(prev => {
+        const idx = prev.findIndex(i => i.itemId === itemId);
+        if (idx < 0) return prev;
+        onSheetDirty?.();
+        return prev.map(i => (i.itemId === itemId ? { ...i, equipped: !i.equipped } : i));
+      });
     },
-    [setSelectedItems],
+    [setSelectedItems, onSheetDirty],
   );
 
   const changeQuantity = useCallback(
     (itemId: string, delta: number) => {
+      onSheetDirty?.();
       setSelectedItems(prev =>
         prev
           .map(i => {
@@ -148,7 +161,7 @@ export function useEquipment({
           .filter(i => i.quantity > 0),
       );
     },
-    [setSelectedItems],
+    [setSelectedItems, onSheetDirty],
   );
 
   // ── Dropdown search results ──

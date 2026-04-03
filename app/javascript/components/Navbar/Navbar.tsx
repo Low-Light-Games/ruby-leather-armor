@@ -1,8 +1,22 @@
+import { useCallback, type MouseEvent } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useSheetsContextOptional } from '../../contexts/SheetsContext'
+import { UNSAVED_SHEET_CHANGES_CONFIRM_MESSAGE } from '../SheetEditor/hooks/useSheetPersistence'
 import './Navbar.scss'
 
 export const Navbar = () => {
   const { user, logout } = useAuth()
+  const sheetsCtx = useSheetsContextOptional()
+  const sheetHasUnsavedChanges = sheetsCtx?.sheetHasUnsavedChanges ?? false
+
+  const onAdventureClick = useCallback(
+    (e: MouseEvent<HTMLAnchorElement>) => {
+      if (sheetHasUnsavedChanges && !window.confirm(UNSAVED_SHEET_CHANGES_CONFIRM_MESSAGE)) {
+        e.preventDefault()
+      }
+    },
+    [sheetHasUnsavedChanges],
+  )
 
   if (!user) return null
 
@@ -14,7 +28,9 @@ export const Navbar = () => {
       </div>
       <div className="header-actions">
         <a href="/sheets" className="nav-link">Sheets</a>
-        <a href="/adventures/new" className="adventure-cta">Adventure!</a>
+        <a href="/adventures/new" className="adventure-cta" onClick={onAdventureClick}>
+          Adventure!
+        </a>
         {user.admin && <a href="/admin/stories" className="nav-link admin-panel-link">Admin Panel</a>}
         <button onClick={logout} className="logout-button">Logout</button>
       </div>

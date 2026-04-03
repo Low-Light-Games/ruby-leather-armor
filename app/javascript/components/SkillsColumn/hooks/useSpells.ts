@@ -42,6 +42,7 @@ interface UseSpellsParams {
   classDef: ClassDefinition | undefined;
   currentLevel: number;
   intelligenceScore: number;
+  onSheetDirty?: () => void;
 }
 
 // ── Hook result ──────────────────────────────────────────────────
@@ -78,19 +79,34 @@ export function useSpells({
   classDef,
   currentLevel,
   intelligenceScore,
+  onSheetDirty,
 }: UseSpellsParams): UseSpellsResult {
   const [spellSearch, setSpellSearch] = useState('');
 
   // ── Actions ─────────────────────────────────────────────────────
 
-  const addSpell = useCallback((spellId: string) => {
-    setSelectedSpells(prev => prev.includes(spellId) ? prev : [...prev, spellId]);
-    setSpellSearch('');
-  }, [setSelectedSpells]);
+  const addSpell = useCallback(
+    (spellId: string) => {
+      setSelectedSpells(prev => {
+        if (prev.includes(spellId)) return prev;
+        onSheetDirty?.();
+        return [...prev, spellId];
+      });
+      setSpellSearch('');
+    },
+    [setSelectedSpells, onSheetDirty],
+  );
 
-  const removeSpell = useCallback((spellId: string) => {
-    setSelectedSpells(prev => prev.filter(id => id !== spellId));
-  }, [setSelectedSpells]);
+  const removeSpell = useCallback(
+    (spellId: string) => {
+      setSelectedSpells(prev => {
+        const next = prev.filter(id => id !== spellId);
+        if (next.length !== prev.length) onSheetDirty?.();
+        return next;
+      });
+    },
+    [setSelectedSpells, onSheetDirty],
+  );
 
   // ── Casting metadata ────────────────────────────────────────────
 

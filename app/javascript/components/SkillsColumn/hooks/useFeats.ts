@@ -42,6 +42,8 @@ interface UseFeatsParams {
   currentClass: string | null;
   classDef: ClassDefinition | undefined;
   currentLevel: number;
+  /** Called when feat list changes (for unsaved-sheet tracking). */
+  onSheetDirty?: () => void;
 }
 
 // ── Hook result ──────────────────────────────────────────────────
@@ -82,6 +84,7 @@ export function useFeats({
   currentClass,
   classDef,
   currentLevel,
+  onSheetDirty,
 }: UseFeatsParams): UseFeatsResult {
   const [featSearch, setFeatSearch] = useState('');
   const [featChoiceModal, setFeatChoiceModal] = useState<FeatChoiceModalState | null>(null);
@@ -113,26 +116,41 @@ export function useFeats({
       return;
     }
 
-    setSelectedFeats(prev => prev.includes(featId) ? prev : [...prev, featId]);
+    setSelectedFeats(prev => {
+      if (prev.includes(featId)) return prev;
+      onSheetDirty?.();
+      return [...prev, featId];
+    });
     setFeatSearch('');
-  }, [setSelectedFeats]);
+  }, [setSelectedFeats, onSheetDirty]);
 
   const confirmFeatChoice = useCallback((choice: string) => {
     if (!featChoiceModal) return;
     const entry = buildFeatEntry(featChoiceModal.feat.id, choice);
-    setSelectedFeats(prev => prev.includes(entry) ? prev : [...prev, entry]);
+    setSelectedFeats(prev => {
+      if (prev.includes(entry)) return prev;
+      onSheetDirty?.();
+      return [...prev, entry];
+    });
     setFeatChoiceModal(null);
     setFeatChoiceSearch('');
-  }, [featChoiceModal, setSelectedFeats]);
+  }, [featChoiceModal, setSelectedFeats, onSheetDirty]);
 
   const cancelFeatChoice = useCallback(() => {
     setFeatChoiceModal(null);
     setFeatChoiceSearch('');
   }, []);
 
-  const removeFeat = useCallback((featId: string) => {
-    setSelectedFeats(prev => prev.filter(id => id !== featId));
-  }, [setSelectedFeats]);
+  const removeFeat = useCallback(
+    (featId: string) => {
+      setSelectedFeats(prev => {
+        const next = prev.filter(id => id !== featId);
+        if (next.length !== prev.length) onSheetDirty?.();
+        return next;
+      });
+    },
+    [setSelectedFeats, onSheetDirty],
+  );
 
   // ── Derived lists ───────────────────────────────────────────────
 

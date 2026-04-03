@@ -20,8 +20,8 @@ const AppContent = () => {
 
   return (
     <div className="app">
-      <Navbar />
       <SheetsProvider>
+        <Navbar />
         <div className="app-content">
           <div className="column-editor">
             <h1>Character Sheet</h1>
