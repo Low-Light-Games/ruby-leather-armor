@@ -36,6 +36,11 @@ class AdventureSheetsController < ApplicationController
       sync_items!(@adventure_sheet.adventure_sheet_items, item_entries)
     end
 
+    if params.key?(:skill_ranks) && AdventureSheet.column_names.include?("skill_ranks")
+      @adventure_sheet.skill_ranks = normalize_skill_ranks_param(params[:skill_ranks])
+      @adventure_sheet.save!
+    end
+
     @adventure_sheet.recompute_derived_stats!
 
     render json: adventure_sheet_json(@adventure_sheet.reload)
@@ -76,5 +81,10 @@ class AdventureSheetsController < ApplicationController
       spell_rel: adv_sheet.adventure_sheet_spells,
       item_rel:  adv_sheet.adventure_sheet_items
     )
+  end
+
+  def normalize_skill_ranks_param(raw)
+    h = raw.respond_to?(:to_unsafe_h) ? raw.to_unsafe_h : raw.to_h
+    h.transform_keys(&:to_s).transform_values { |v| v.to_i }
   end
 end

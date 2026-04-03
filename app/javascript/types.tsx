@@ -86,6 +86,8 @@ export interface DerivedSkill {
   feat_bonus: number
   equip_bonus?: number
   acp_penalty?: number
+  /** Ranks contributing to the check (capped by class/cross-class max). */
+  rank_bonus?: number
   total: number
 }
 
@@ -107,6 +109,8 @@ export interface Sheet {
   subclass: string | null
   level: number
   currency: Currency
+  /** Per-skill rank counts (Pathfinder); independent from `details`. */
+  skill_ranks?: Record<string, number>
   user_id: number
   created_at: string
   updated_at: string
@@ -252,6 +256,8 @@ export interface AdventureSheet {
   subclass: string | null
   level: number
   currency: Currency
+  /** Per-skill rank counts; adventure copy is independent from the source sheet. */
+  skill_ranks?: Record<string, number>
   hp: number
   max_hp: number
   items: string | null       // legacy text field

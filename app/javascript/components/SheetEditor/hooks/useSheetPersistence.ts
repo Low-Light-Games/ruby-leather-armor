@@ -7,6 +7,8 @@ import { csrfToken } from '../../../utils/api';
 import { getCastingStyle } from '../../../rules/pathfinder_spells';
 import { EMPTY_CURRENCY } from '../../../rules/pathfinder_items';
 import { DEFAULT_ATTRIBUTES } from './usePointBuy';
+import type { SkillRanksMap } from '../../../rules/pathfinder_skill_ranks';
+import { normalizeSkillRanksMap } from '../../../rules/pathfinder_skill_ranks';
 
 // ── Context setters we need from the parent ─────────────────────
 
@@ -33,6 +35,8 @@ interface ContextSetters {
   setSelectedItems: Dispatch<SetStateAction<OwnedItem[]>>;
   currentCurrency: Currency;
   setCurrentCurrency: Dispatch<SetStateAction<Currency>>;
+  skillRanks: SkillRanksMap;
+  setSkillRanks: Dispatch<SetStateAction<SkillRanksMap>>;
 }
 
 export interface Feedback {
@@ -115,6 +119,7 @@ export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceRes
 
     ctx.setSelectedItems(sheet.details?.items || []);
     ctx.setCurrentCurrency(sheet.currency || { ...EMPTY_CURRENCY });
+    ctx.setSkillRanks(normalizeSkillRanksMap(sheet.skill_ranks));
     setCurrentSheetId(sheet.id);
     setPristine();
     ctx.setSheetToEdit(null);
@@ -141,6 +146,7 @@ export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceRes
     ctx.setSelectedSpells([]);
     ctx.setSelectedItems([]);
     ctx.setCurrentCurrency({ ...EMPTY_CURRENCY });
+    ctx.setSkillRanks({});
     setCurrentSheetId(null);
     ctx.setSheetToEdit(null);
     setPristine();
@@ -182,6 +188,7 @@ export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceRes
               slot_override: i.slotOverride,
             })),
             currency: ctx.currentCurrency,
+            skill_ranks: ctx.skillRanks,
             ...ctx.currentAttributes,
           },
         }),
@@ -218,6 +225,7 @@ export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceRes
     currentSheetId, name, description,
     ctx.currentRace, ctx.currentFlexibleBonus, ctx.currentClass, ctx.currentLevel,
     ctx.selectedFeats, ctx.selectedSpells, ctx.selectedItems, ctx.currentCurrency,
+    ctx.skillRanks,
     ctx.currentAttributes, ctx.sheets, resetToNew,
   ]);
 

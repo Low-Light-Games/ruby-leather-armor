@@ -72,12 +72,18 @@ class SheetsController < ApplicationController
   end
 
   def sheet_params
-    params.require(:sheet).permit(
+    p = params.require(:sheet).permit(
       :name, :description, :strength, :intelligence, :dexterity,
       :constitution, :wisdom, :charisma, :race, :racial_bonus_attribute,
       :character_class, :subclass, :level,
-      currency: [:gold, :silver, :copper, :platinum]
+      currency: [:gold, :silver, :copper, :platinum],
+      skill_ranks: {},
     )
+    # Avoid UnknownAttributeError if this DB has not run `AddSkillRanksToSheetTables` yet.
+    unless Sheet.column_names.include?("skill_ranks")
+      p = p.except(:skill_ranks, "skill_ranks")
+    end
+    p
   end
 
   # Extract feat/spell/item arrays from params before they reach sheet_params.

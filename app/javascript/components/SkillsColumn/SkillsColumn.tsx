@@ -7,6 +7,7 @@ import { useCombatStats } from './hooks/useCombatStats';
 import { useFeats } from './hooks/useFeats';
 import { useSpells } from './hooks/useSpells';
 import { useSkills } from './hooks/useSkills';
+import { useSkillRanks } from './hooks/useSkillRanks';
 import { CombatStatsSection } from './sections/CombatStatsSection';
 import { SkillsSection } from './sections/SkillsSection';
 import { FeatsSection } from './sections/FeatsSection';
@@ -22,6 +23,7 @@ export const SkillsColumn = () => {
     selectedSpells, setSelectedSpells,
     selectedItems, setSelectedItems,
     currentCurrency, setCurrentCurrency,
+    skillRanks, setSkillRanks,
   } = useSheetsContext();
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -59,11 +61,24 @@ export const SkillsColumn = () => {
     intelligenceScore: finalAttributes.intelligence,
   });
 
+  const skillRankUi = useSkillRanks({
+    skillRanks,
+    setSkillRanks,
+    currentClass,
+    currentLevel,
+    currentRace,
+    intelligenceScore: finalAttributes.intelligence,
+    classDef,
+  });
+
   const { calculatedSkills, racialSkillBonuses } = useSkills({
     finalAttributes, race,
     featSkillBonuses: feats.featSkillBonuses,
     equipSkillBonuses,
     totalACP,
+    skillRanks,
+    classId: currentClass,
+    level: currentLevel,
   });
 
   // ── Render ─────────────────────────────────────────────────────
@@ -87,6 +102,9 @@ export const SkillsColumn = () => {
           skills={calculatedSkills}
           racialBonuses={racialSkillBonuses}
           featBonuses={feats.featSkillBonuses}
+          canAssignRanks={skillRankUi.canAssignRanks}
+          pointsSummary={skillRankUi.pointsSummary}
+          onAdjustRank={skillRankUi.adjustRank}
         />
       </Accordion>
 

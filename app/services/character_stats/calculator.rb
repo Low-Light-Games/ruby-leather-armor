@@ -732,6 +732,7 @@ module CharacterStats
 
     def compute_skills(mods, race_info, feat_skill_bonuses, equip_skill_bonuses = {}, total_acp = 0)
       racial_skills = race_info[:skill_bonuses] || {}
+      ranks_map     = skill_ranks_raw
 
       SKILLS.map do |skill|
         ability_mod  = mods[skill[:key]] || 0
@@ -739,7 +740,8 @@ module CharacterStats
         feat_bonus   = feat_skill_bonuses[skill[:name]] || 0
         equip_bonus  = equip_skill_bonuses[skill[:name]] || 0
         acp_penalty  = skill[:acp] ? total_acp : 0  # total_acp is already negative
-        total        = ability_mod + racial_bonus + feat_bonus + equip_bonus + acp_penalty
+        rank_bonus   = effective_rank_bonus(skill[:name], ranks_map)
+        total        = ability_mod + racial_bonus + feat_bonus + equip_bonus + acp_penalty + rank_bonus
 
         {
           name: skill[:name],
@@ -750,9 +752,35 @@ module CharacterStats
           feat_bonus: feat_bonus,
           equip_bonus: equip_bonus,
           acp_penalty: acp_penalty,
+          rank_bonus: rank_bonus,
           total: total,
         }
       end
+    end
+
+    def skill_ranks_raw
+      raw = @src.try(:skill_ranks)
+      return {} unless raw.is_a?(Hash)
+
+      raw.transform_keys(&:to_s).transform_values { |v| v.to_i }
+    end
+
+    def effective_rank_bonus(skill_name, ranks_map)
+      cid   = @src.character_class
+      level = @src.level.to_i
+      level = 1 if level < 1
+      cap   = max_ranks_cap(skill_name, cid, level)
+      ranks_map.fetch(skill_name, 0).clamp(0, cap)
+    end
+
+    # Max ranks investable in this skill at this level (class vs cross-class).
+    def max_ranks_cap(skill_name, class_id, level)
+      per_level_cap = level + 3
+      return (per_level_cap / 2) if class_id.blank?
+
+      list = ClassSkillsData::LISTS[class_id]
+      is_class = list&.include?(skill_name)
+      is_class ? per_level_cap : (per_level_cap / 2)
     end
   end
 end

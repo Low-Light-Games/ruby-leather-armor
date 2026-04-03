@@ -1,14 +1,26 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
 import { Accordion } from '../ui/Accordion'
 import type { AdventureSheet, AttributeType, DerivedStats } from '../../types'
 import type { ItemDefinition } from '../../rules/pathfinder_items_types'
 import type { SpellDefinition } from '../../rules/pathfinder_spells_types'
 import type { SpellbookSearchResult } from './hooks/useSpellbook'
+import type { SkillRanksMap } from '../../rules/pathfinder_skill_ranks'
 import { formatMod, ABILITY_ABBR, ATTRIBUTE_ORDER } from '../../utils/formatting'
 import { getItemById } from '../../rules/pathfinder_items'
 import { getFeatById, featDisplayName } from '../../rules/pathfinder_feats'
+import { getClassById } from '../../rules/pathfinder_classes'
+import { abilityModifier } from '../../rules/pathfinder_skills'
+import {
+  normalizeSkillRanksMap,
+  tryAdjustSkillRank,
+  spentSkillPoints,
+  totalSkillPoints,
+  maxRanksForSkill,
+  rankPointCost,
+} from '../../rules/pathfinder_skill_ranks'
 import { getCastingStyle } from '../../rules/pathfinder_spells'
 import { getWeaponAttackMod } from '../../rules/damage'
+import { SkillRankStepper } from '../SkillsColumn/skills/SkillRankStepper'
 import CombatStatsGrid from './CharacterSidebar/CombatStatsGrid'
 import ConditionsBadges from './CharacterSidebar/ConditionsBadges'
 import SpellsSection from './CharacterSidebar/SpellsSection'
@@ -38,6 +50,8 @@ interface CharacterSidebarProps {
   toggleEquip: (itemId: string) => void
   equipSaving: boolean
   equipError: string | null
+  patchSkillRanks: (next: SkillRanksMap) => Promise<void>
+  rankSaving: boolean
 }
 
 export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
@@ -49,6 +63,7 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
   spellbookSearch, setSpellbookSearch, spellbookSaving,
   spellbookSearchResults, addSpellToSpellbook,
   toggleEquip, equipSaving, equipError,
+  patchSkillRanks, rankSaving,
 }) => {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     attributes: true, weapons: false, inventory: false,
@@ -58,9 +73,41 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }))
 
   const feats = sheet.details?.feats || []
-  const featDefs = useMemo(() =>
-    feats.map(id => getFeatById(id)).filter((f): f is NonNullable<typeof f> => !!f),
-    [feats]
+  const featDefs = useMemo(
+    () =>
+      feats.map(entry => getFeatById(entry)).filter((f): f is NonNullable<typeof f> => !!f),
+    [feats],
+  )
+
+  const classDef = useMemo(
+    () => (sheet.character_class ? getClassById(sheet.character_class) : undefined),
+    [sheet.character_class],
+  )
+
+  const ranksMap = useMemo(() => normalizeSkillRanksMap(sheet.skill_ranks), [sheet.skill_ranks])
+
+  const pointsSummary = useMemo(() => {
+    if (!sheet.character_class || !classDef) return null
+    const intMod = abilityModifier(ds.final_scores.intelligence)
+    const total = totalSkillPoints(sheet.level, intMod, classDef.skillPointsBase, sheet.race)
+    const spent = spentSkillPoints(ranksMap, sheet.character_class)
+    return { spent, total, remaining: Math.max(0, total - spent) }
+  }, [sheet.character_class, classDef, sheet.level, ds.final_scores.intelligence, sheet.race, ranksMap])
+
+  const handleRankDelta = useCallback(
+    async (skillName: string, delta: 1 | -1) => {
+      if (!sheet.character_class || !classDef) return
+      const intMod = abilityModifier(ds.final_scores.intelligence)
+      const next = tryAdjustSkillRank(ranksMap, skillName, delta, {
+        classId: sheet.character_class,
+        level: sheet.level,
+        intMod,
+        skillPointsBase: classDef.skillPointsBase,
+        raceId: sheet.race,
+      })
+      if (next) await patchSkillRanks(next)
+    },
+    [classDef, ds.final_scores.intelligence, patchSkillRanks, ranksMap, sheet.character_class, sheet.level],
   )
 
   const equippedWeapons: { item: ItemDefinition; id: string }[] = useMemo(() => {
@@ -146,22 +193,57 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
         </Accordion>
 
         <Accordion title="Skills" isOpen={openSections.skills} onToggle={() => toggleSection('skills')}>
+          {!sheet.character_class && (
+            <p className="skills-assign-hint-adventure">Choose a class to assign skill ranks.</p>
+          )}
+          {sheet.character_class && classDef && pointsSummary && (
+            <div className="skills-points-bar-adventure" role="status">
+              <span>Skill points</span>
+              <span>
+                {pointsSummary.spent} / {pointsSummary.total}
+                {pointsSummary.remaining > 0 && (
+                  <span className="skills-points-remaining"> ({pointsSummary.remaining} left)</span>
+                )}
+              </span>
+            </div>
+          )}
           <div className="skills-list-adventure">
-            {ds.skills.map(skill => (
-              <div key={skill.name} className={`skill-row ${skill.trained_only ? 'trained-only' : ''}`}>
-                <span className="skill-name">
-                  {skill.name}
-                  {skill.trained_only && <span className="badge-t">T</span>}
-                </span>
-                <span className={`skill-mod ${skill.total >= 0 ? 'positive' : 'negative'}`}>
-                  {formatMod(skill.total)}
-                </span>
-                <button className="roll-dice-btn" onClick={() => rollSkill(skill.name, skill.total)}
-                  title={`Roll ${skill.name} Check`} aria-label={`Roll ${skill.name} Check`}>
-                  🎲
-                </button>
-              </div>
-            ))}
+            {ds.skills.map(skill => {
+              const rankStored = ranksMap[skill.name] ?? 0
+              const rankMax = maxRanksForSkill(skill.name, sheet.character_class, sheet.level)
+              const nextCost = sheet.character_class ? rankPointCost(skill.name, sheet.character_class) : 2
+              const showRanks = Boolean(sheet.character_class && classDef)
+              return (
+                <div key={skill.name} className={`skill-row skill-row-adventure-skills ${skill.trained_only ? 'trained-only' : ''}`}>
+                  <span className="skill-name">
+                    {skill.name}
+                    {skill.trained_only && <span className="badge-t">T</span>}
+                  </span>
+                  {showRanks && (
+                    <span className="skill-rank-cell-adventure">
+                      <SkillRankStepper
+                        value={rankStored}
+                        onDelta={d => { void handleRankDelta(skill.name, d) }}
+                        disabledMinus={rankStored <= 0 || rankSaving}
+                        disabledPlus={
+                          rankSaving ||
+                          rankStored >= rankMax ||
+                          !pointsSummary ||
+                          pointsSummary.remaining < nextCost
+                        }
+                      />
+                    </span>
+                  )}
+                  <span className={`skill-mod ${skill.total >= 0 ? 'positive' : 'negative'}`}>
+                    {formatMod(skill.total)}
+                  </span>
+                  <button className="roll-dice-btn" onClick={() => rollSkill(skill.name, skill.total)}
+                    title={`Roll ${skill.name} Check`} aria-label={`Roll ${skill.name} Check`}>
+                    🎲
+                  </button>
+                </div>
+              )
+            })}
           </div>
         </Accordion>
 
