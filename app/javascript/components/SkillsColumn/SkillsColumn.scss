@@ -50,6 +50,27 @@
 
   .accordion-body { padding: 0; }
 
+  /* ===== Combat Stats (always visible, not accordion) ===== */
+  .combat-stats-panel {
+    border: 1px solid $border-light;
+    background: $parchment-dk;
+    position: relative;
+  }
+
+  .combat-stats-panel-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid $border-light;
+    font-size: 14px;
+    font-family: $font-display;
+    font-weight: normal;
+    letter-spacing: 0.03em;
+    color: $ink;
+  }
+
+  .combat-stats-panel-body {
+    padding: 0;
+  }
+
   /* ===== Combat Stats ===== */
   .combat-stats-section {
     display: flex;
@@ -779,7 +800,7 @@
   
   .picker-dropdown-container {
     position: fixed;
-    top: 5vh;
+    top: 5Nvh;
     left: 10vw;
     right: 0;
     z-index: 100;

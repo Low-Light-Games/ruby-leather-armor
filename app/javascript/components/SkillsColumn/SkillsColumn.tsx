@@ -28,8 +28,7 @@ export const SkillsColumn = () => {
   } = useSheetsContext();
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    combat: true,
-    skills: true,
+    skills: false,
     equipment: false,
     feats: false,
     spells: false,
@@ -94,13 +93,12 @@ export const SkillsColumn = () => {
 
   return (
     <div className="skills-column">
-      <Accordion
-        title="Combat Stats"
-        isOpen={openSections.combat}
-        onToggle={() => toggleSection('combat')}
-      >
-        <CombatStatsSection combatStats={combatStats} />
-      </Accordion>
+      <div className="combat-stats-panel">
+        <div className="combat-stats-panel-header">Combat Stats</div>
+        <div className="combat-stats-panel-body">
+          <CombatStatsSection combatStats={combatStats} />
+        </div>
+      </div>
 
       <Accordion
         title="Skills"
