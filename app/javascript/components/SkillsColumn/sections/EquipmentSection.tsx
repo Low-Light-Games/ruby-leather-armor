@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { useModal } from '../../../hooks/useModal';
 import type {
   ItemDefinition,
   EquipmentSlot,
@@ -88,12 +89,12 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   encumbrance,
   encumbranceCalculation,
 }) => {
-  const [encGlossaryKey, setEncGlossaryKey] = useState<CombatGlossaryKey | null>(null);
+  const encGlossary = useModal<CombatGlossaryKey>();
   const [customGoldEditOpen, setCustomGoldEditOpen] = useState(false);
   const [customGoldDraft, setCustomGoldDraft] = useState('');
 
-  const closeEncGlossary = useCallback(() => setEncGlossaryKey(null), []);
-  const openEncGlossary = useCallback((key: CombatGlossaryKey) => setEncGlossaryKey(key), []);
+  const closeEncGlossary = encGlossary.close;
+  const openEncGlossary = useCallback((key: CombatGlossaryKey) => encGlossary.open(key), [encGlossary.open]);
 
   useEffect(() => {
     setCustomGoldEditOpen(false);
@@ -128,10 +129,10 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
       />
 
       <CombatStatHelpModal
-        activeKey={encGlossaryKey}
+        activeKey={encGlossary.data}
         onClose={closeEncGlossary}
         calculation={
-          encGlossaryKey === 'encumbrance' ? encumbranceCalculation : undefined
+          encGlossary.data === 'encumbrance' ? encumbranceCalculation : undefined
         }
       />
 

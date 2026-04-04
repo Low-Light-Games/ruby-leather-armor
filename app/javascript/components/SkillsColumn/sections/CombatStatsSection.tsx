@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
+import { useModal } from '../../../hooks/useModal';
 import type { CombatStats } from '../hooks/useCombatStats';
 import type { CombatGlossaryKey } from '../combatGlossary/types';
 import type { CombatStatCalculations } from '../combatHelp/combatCalcTypes';
@@ -15,9 +16,9 @@ export const CombatStatsSection: React.FC<CombatStatsSectionProps> = ({
   combatStats,
   combatStatCalculations,
 }) => {
-  const [glossaryKey, setGlossaryKey] = useState<CombatGlossaryKey | null>(null);
-  const closeGlossary = useCallback(() => setGlossaryKey(null), []);
-  const openGlossary = useCallback((key: CombatGlossaryKey) => setGlossaryKey(key), []);
+  const glossary = useModal<CombatGlossaryKey>();
+  const closeGlossary = glossary.close;
+  const openGlossary = useCallback((key: CombatGlossaryKey) => glossary.open(key), [glossary.open]);
 
   const hasEquipment = combatStats.armorBonus > 0 ||
                        combatStats.shieldBonus > 0 ||
@@ -146,9 +147,9 @@ export const CombatStatsSection: React.FC<CombatStatsSectionProps> = ({
       )}
 
       <CombatStatHelpModal
-        activeKey={glossaryKey}
+        activeKey={glossary.data}
         onClose={closeGlossary}
-        calculation={glossaryKey ? combatStatCalculations[glossaryKey] : undefined}
+        calculation={glossary.data ? combatStatCalculations[glossary.data] : undefined}
       />
     </div>
   );

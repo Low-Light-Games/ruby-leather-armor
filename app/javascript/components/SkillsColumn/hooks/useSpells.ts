@@ -47,7 +47,7 @@ interface UseSpellsParams {
 
 // ── Hook result ──────────────────────────────────────────────────
 
-interface UseSpellsResult {
+export interface UseSpellsResult {
   // Search state
   spellSearch: string;
   setSpellSearch: (v: string) => void;

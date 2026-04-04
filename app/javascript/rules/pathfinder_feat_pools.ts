@@ -4,6 +4,7 @@
  */
 
 import type { FeatCategory } from './pathfinder_feats_types';
+import { getAllFeats } from './pathfinder_feats';
 
 /** Separator between pool id and feat entry in stored strings. */
 export const FEAT_POOL_SEPARATOR = '|';
@@ -133,14 +134,41 @@ export function decodeFeatSlot(encoded: string): DecodedFeatSlot {
 }
 
 /** Migrate legacy flat feat list to encoded slots (all general). */
-export function migrateFeatListToPooled(feats: string[]): string[] {
-  return feats.map(f => {
+export function migrateToPooledFormat(entries: string[]): string[] {
+  return entries.map(f => {
     if (f.includes(FEAT_POOL_SEPARATOR)) return f;
     return encodeFeatSlot('general', f);
   });
+}
+
+export function migrateFeatListToPooled(feats: string[]): string[] {
+  return migrateToPooledFormat(feats);
 }
 
 /** Strip pool prefix for prerequisite / duplicate checks on raw feat entries. */
 export function featListRawEntries(encodedList: string[]): string[] {
   return encodedList.map(e => decodeFeatSlot(e).rawEntry);
 }
+
+/**
+ * Feat string encoding/decoding and migration — separated from pool slot math (counts, UI copy).
+ */
+export const FeatMigrationUtils = {
+  parsePooledEntry: decodeFeatSlot,
+  migrateToPooledFormat,
+  validatePoolAssignment(
+    featId: string,
+    poolId: FeatPoolId,
+    ctx: { level: number; raceId: string | null; classId: string | null },
+  ): { ok: boolean; reason?: string } {
+    const feat = getAllFeats().find(f => f.id === featId);
+    if (!feat) return { ok: false, reason: 'Unknown feat' };
+    const poolDef = describeFeatPools(ctx.level, ctx.raceId, ctx.classId).find(p => p.id === poolId);
+    if (!poolDef) return { ok: false, reason: 'Unknown pool' };
+    if (poolDef.maxSlots <= 0) return { ok: false, reason: 'Pool has no slots at this level' };
+    if (!poolAllowsFeatCategory(poolDef, feat.category)) {
+      return { ok: false, reason: 'Feat category not allowed in this pool' };
+    }
+    return { ok: true };
+  },
+} as const;
