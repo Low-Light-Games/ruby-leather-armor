@@ -14,34 +14,45 @@ class AdventureSheetsController < ApplicationController
   def update
     authorize @adventure, :show?
 
-    if params.key?(:spellbook)
-      spellbook_ids = Array(params[:spellbook]).map(&:to_s)
-      sync_spells_by_type!(@adventure_sheet.adventure_sheet_spells, "spellbook", spellbook_ids)
+    skill_ranks_rejected = false
+
+    AdventureSheet.transaction do
+      if params.key?(:spellbook)
+        spellbook_ids = Array(params[:spellbook]).map(&:to_s)
+        sync_spells_by_type!(@adventure_sheet.adventure_sheet_spells, "spellbook", spellbook_ids)
+      end
+
+      if params.key?(:known_spells)
+        known_ids = Array(params[:known_spells]).map(&:to_s)
+        sync_spells_by_type!(@adventure_sheet.adventure_sheet_spells, "known", known_ids)
+      end
+
+      if params.key?(:feats)
+        feat_entries = Array(params[:feats]).map(&:to_s)
+        sync_feats!(@adventure_sheet.adventure_sheet_feats, feat_entries)
+      end
+
+      if params.key?(:items)
+        item_entries = Array(params[:items]).map { |e|
+          e.respond_to?(:to_h) ? e.to_h.with_indifferent_access : e
+        }
+        sync_items!(@adventure_sheet.adventure_sheet_items, item_entries)
+      end
+
+      if params.key?(:skill_ranks) && AdventureSheet.column_names.include?("skill_ranks")
+        @adventure_sheet.skill_ranks = normalize_skill_ranks_param(params[:skill_ranks])
+        unless @adventure_sheet.save
+          skill_ranks_rejected = true
+          raise ActiveRecord::Rollback
+        end
+      end
+
+      @adventure_sheet.recompute_derived_stats!
     end
 
-    if params.key?(:known_spells)
-      known_ids = Array(params[:known_spells]).map(&:to_s)
-      sync_spells_by_type!(@adventure_sheet.adventure_sheet_spells, "known", known_ids)
+    if skill_ranks_rejected
+      return render json: { errors: @adventure_sheet.errors.full_messages }, status: :unprocessable_entity
     end
-
-    if params.key?(:feats)
-      feat_entries = Array(params[:feats]).map(&:to_s)
-      sync_feats!(@adventure_sheet.adventure_sheet_feats, feat_entries)
-    end
-
-    if params.key?(:items)
-      item_entries = Array(params[:items]).map { |e|
-        e.respond_to?(:to_h) ? e.to_h.with_indifferent_access : e
-      }
-      sync_items!(@adventure_sheet.adventure_sheet_items, item_entries)
-    end
-
-    if params.key?(:skill_ranks) && AdventureSheet.column_names.include?("skill_ranks")
-      @adventure_sheet.skill_ranks = normalize_skill_ranks_param(params[:skill_ranks])
-      @adventure_sheet.save!
-    end
-
-    @adventure_sheet.recompute_derived_stats!
 
     render json: adventure_sheet_json(@adventure_sheet.reload)
   end

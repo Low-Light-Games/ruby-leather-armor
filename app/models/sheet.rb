@@ -20,6 +20,8 @@ class Sheet < ApplicationRecord
   validates :charisma, presence: true
   validates :level, numericality: { only_integer: true, greater_than: 0 }
 
+  validate :skill_ranks_within_pathfinder_rules
+
   # ── Currency helpers ─────────────────────────────────────────
   # The DB column `currency` is a JSONB hash:
   #   { "gold" => 0, "silver" => 0, "copper" => 0, "platinum" => 0 }
@@ -46,5 +48,15 @@ class Sheet < ApplicationRecord
   def recompute_derived_stats!
     stats = CharacterStats::Calculator.new(self).compute
     update_column(:derived_stats, stats)
+  end
+
+  private
+
+  def skill_ranks_within_pathfinder_rules
+    return unless self.class.column_names.include?("skill_ranks")
+
+    CharacterStats::SkillRanksValidator.errors_for(self).each do |msg|
+      errors.add(:skill_ranks, msg)
+    end
   end
 end

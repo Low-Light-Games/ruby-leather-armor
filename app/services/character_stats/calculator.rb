@@ -14,17 +14,17 @@ module CharacterStats
     # ── Class data (OGC mechanical tables) ────────────────────────
 
     CLASS_DATA = {
-      "barbarian"  => { hit_die: 12, bab: "full",  good_saves: %w[fort] },
-      "bard"       => { hit_die: 8,  bab: "3/4",   good_saves: %w[ref will] },
-      "cleric"     => { hit_die: 8,  bab: "3/4",   good_saves: %w[fort will] },
-      "druid"      => { hit_die: 8,  bab: "3/4",   good_saves: %w[fort will] },
-      "fighter"    => { hit_die: 10, bab: "full",   good_saves: %w[fort] },
-      "monk"       => { hit_die: 8,  bab: "3/4",   good_saves: %w[fort ref will] },
-      "paladin"    => { hit_die: 10, bab: "full",   good_saves: %w[fort will] },
-      "ranger"     => { hit_die: 10, bab: "full",   good_saves: %w[fort ref] },
-      "rogue"      => { hit_die: 8,  bab: "3/4",   good_saves: %w[ref] },
-      "sorcerer"   => { hit_die: 6,  bab: "1/2",   good_saves: %w[will] },
-      "wizard"     => { hit_die: 6,  bab: "1/2",   good_saves: %w[will] },
+      "barbarian"  => { hit_die: 12, bab: "full",  good_saves: %w[fort], skill_points: 4 },
+      "bard"       => { hit_die: 8,  bab: "3/4",   good_saves: %w[ref will], skill_points: 6 },
+      "cleric"     => { hit_die: 8,  bab: "3/4",   good_saves: %w[fort will], skill_points: 2 },
+      "druid"      => { hit_die: 8,  bab: "3/4",   good_saves: %w[fort will], skill_points: 4 },
+      "fighter"    => { hit_die: 10, bab: "full",   good_saves: %w[fort], skill_points: 2 },
+      "monk"       => { hit_die: 8,  bab: "3/4",   good_saves: %w[fort ref will], skill_points: 4 },
+      "paladin"    => { hit_die: 10, bab: "full",   good_saves: %w[fort will], skill_points: 2 },
+      "ranger"     => { hit_die: 10, bab: "full",   good_saves: %w[fort ref], skill_points: 6 },
+      "rogue"      => { hit_die: 8,  bab: "3/4",   good_saves: %w[ref], skill_points: 8 },
+      "sorcerer"   => { hit_die: 6,  bab: "1/2",   good_saves: %w[will], skill_points: 2 },
+      "wizard"     => { hit_die: 6,  bab: "1/2",   good_saves: %w[will], skill_points: 2 },
     }.freeze
 
     # ── Race data (OGC mechanical tables) ─────────────────────────
@@ -317,6 +317,15 @@ module CharacterStats
         ref_breakdown: ref_breakdown,
         will_breakdown: will_breakdown,
       }
+    end
+
+    # Intelligence modifier after racial + optional flex bonus (matches client skill-point budget).
+    def self.intelligence_modifier_for_skill_budget(source)
+      calc = new(source)
+      race_info = RACE_DATA[source.race] || RACE_DATA["human"]
+      racial = calc.send(:compute_racial_mods, race_info)
+      final = calc.send(:compute_final_scores, racial)
+      calc.send(:compute_ability_mods, final)["intelligence"] || 0
     end
 
     private
