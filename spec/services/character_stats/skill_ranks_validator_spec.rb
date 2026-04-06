@@ -29,15 +29,19 @@ RSpec.describe CharacterStats::SkillRanksValidator do
     end
 
     it "rejects when total spent exceeds budget" do
-      # Level 1 fighter, Int 10: per-level skill points = max(1, 2+0)=2, total = 8 (×4 for 1st level).
+      # Use human (not elf): elf's +2 Int would make final Int 12 → mod +1 → budget 12, and 4+4+4 ranks
+      # would no longer exceed it. Human with Int 10 and no flex on Int: per-level = max(1, 2+0)=2, budget 8.
+      # Three fighter class skills at max ranks (4+4+4 = 12) is legal per-skill but over budget.
       sheet = build(:sheet,
                     character_class: "fighter",
                     level: 1,
                     intelligence: 10,
-                    race: "elf",
+                    race: "human",
+                    racial_bonus_attribute: "strength",
                     skill_ranks: {
                       "Climb" => 4,
                       "Swim" => 4,
+                      "Ride" => 4,
                     })
       errors = described_class.errors_for(sheet)
       expect(errors.any? { |e| e.include?("exceed") && e.include?("budget") }).to be true
