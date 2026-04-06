@@ -129,6 +129,8 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           equipError={inventory.equipError}
           patchSkillRanks={skillRanks.patchSkillRanks}
           rankSaving={skillRanks.rankSaving}
+          rankErrors={skillRanks.rankErrors}
+          dismissRankErrors={skillRanks.dismissRankErrors}
         />
 
         {/* MIDDLE COLUMN — Chat */}

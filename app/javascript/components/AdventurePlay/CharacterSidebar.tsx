@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react'
+import React, { useState, useMemo, useCallback, useEffect } from 'react'
 import type { AdventureSheet, AttributeType, DerivedStats } from '../../types'
 import type { ItemDefinition } from '../../rules/pathfinder_items_types'
 import type { SpellDefinition } from '../../rules/pathfinder_spells_types'
@@ -50,6 +50,8 @@ interface CharacterSidebarProps {
   equipError: string | null
   patchSkillRanks: (next: SkillRanksMap) => Promise<void>
   rankSaving: boolean
+  rankErrors: string[]
+  dismissRankErrors: () => void
 }
 
 export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
@@ -61,7 +63,7 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
   spellbookSearch, setSpellbookSearch, spellbookSaving,
   spellbookSearchResults, addSpellToSpellbook,
   toggleEquip, equipSaving, equipError,
-  patchSkillRanks, rankSaving,
+  patchSkillRanks, rankSaving, rankErrors, dismissRankErrors,
 }) => {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     attributes: true, weapons: false, inventory: false,
@@ -69,6 +71,12 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
   })
   const toggleSection = (section: string) =>
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }))
+
+  useEffect(() => {
+    if (rankErrors.length > 0) {
+      setOpenSections(prev => (prev.skills ? prev : { ...prev, skills: true }))
+    }
+  }, [rankErrors])
 
   const feats = sheet.details?.feats || []
   const featDefs = useMemo(
@@ -176,6 +184,8 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
           pointsSummary={pointsSummary}
           handleRankDelta={handleRankDelta}
           rankSaving={rankSaving}
+          rankErrors={rankErrors}
+          dismissRankErrors={dismissRankErrors}
           rollSkill={rollSkill}
         />
         <WeaponsAccordion

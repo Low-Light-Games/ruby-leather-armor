@@ -515,6 +515,53 @@
       }
     }
 
+    .skills-rank-errors {
+      margin: 0 10px 10px;
+      padding: 10px 12px;
+      background: #fff5f5;
+      border: 1px solid #ffcdd2;
+      border-radius: 6px;
+      color: $ink;
+
+      &__title {
+        margin: 0 0 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: $red-ink;
+      }
+
+      &__list {
+        margin: 0 0 10px;
+        padding-left: 1.15rem;
+        font-size: 11px;
+        line-height: 1.45;
+        color: $ink-mid;
+
+        li {
+          margin-bottom: 4px;
+
+          &:last-child {
+            margin-bottom: 0;
+          }
+        }
+      }
+
+      &__dismiss {
+        font-size: 11px;
+        padding: 4px 10px;
+        border: 1px solid $border;
+        border-radius: 4px;
+        background: $parchment;
+        color: $ink-mid;
+        cursor: pointer;
+
+        &:hover {
+          border-color: $ink-mid;
+          color: $ink;
+        }
+      }
+    }
+
     .skills-assign-hint-adventure {
       margin: 0 10px 8px;
       padding: 8px 10px;

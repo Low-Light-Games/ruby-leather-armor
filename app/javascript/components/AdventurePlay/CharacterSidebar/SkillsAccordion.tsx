@@ -17,6 +17,8 @@ export interface SkillsAccordionProps {
   pointsSummary: { spent: number; total: number; remaining: number } | null
   handleRankDelta: (skillName: string, delta: 1 | -1) => void | Promise<void>
   rankSaving: boolean
+  rankErrors: string[]
+  dismissRankErrors: () => void
   rollSkill: (skillName: string, total: number) => void
 }
 
@@ -30,9 +32,28 @@ const SkillsAccordion: React.FC<SkillsAccordionProps> = ({
   pointsSummary,
   handleRankDelta,
   rankSaving,
+  rankErrors,
+  dismissRankErrors,
   rollSkill,
 }) => (
   <Accordion title="Skills" isOpen={isOpen} onToggle={onToggle}>
+    {rankErrors.length > 0 && (
+      <div className="skills-rank-errors" role="alert" aria-live="polite">
+        <p className="skills-rank-errors__title">Could not save skill ranks:</p>
+        <ul className="skills-rank-errors__list">
+          {rankErrors.map((line, i) => (
+            <li key={`${i}-${line.slice(0, 40)}`}>{line}</li>
+          ))}
+        </ul>
+        <button
+          type="button"
+          className="skills-rank-errors__dismiss"
+          onClick={dismissRankErrors}
+        >
+          Dismiss
+        </button>
+      </div>
+    )}
     {!sheet.character_class && (
       <p className="skills-assign-hint-adventure">Choose a class to assign skill ranks.</p>
     )}
