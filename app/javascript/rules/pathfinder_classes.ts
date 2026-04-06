@@ -43,6 +43,8 @@ export interface ClassDefinition {
   hitDie: number;
   bab: BABProgression;
   goodSaves: ('fort' | 'ref' | 'will')[];
+  /** Skill points per level (Pathfinder class skill rank table, before Int mod). */
+  skillPointsBase: number;
   /** Omitted for non-casters (barbarian, fighter, monk, rogue). */
   spellcasting?: SpellcastingInfo;
 }
@@ -102,9 +104,9 @@ const BARD_SPELLS_KNOWN: number[][] = [
 // ─── Class Data ──────────────────────────────────────────────
 
 export const PATHFINDER_CLASSES: ClassDefinition[] = [
-  { id: 'barbarian', name: 'Barbarian', hitDie: 12, bab: 'full',  goodSaves: ['fort'] },
+  { id: 'barbarian', name: 'Barbarian', hitDie: 12, bab: 'full', goodSaves: ['fort'], skillPointsBase: 4 },
   {
-    id: 'bard', name: 'Bard', hitDie: 8, bab: '3/4', goodSaves: ['ref', 'will'],
+    id: 'bard', name: 'Bard', hitDie: 8, bab: '3/4', goodSaves: ['ref', 'will'], skillPointsBase: 6,
     spellcasting: {
       type: 'spontaneous', ability: 'charisma', style: 'spontaneous',
       progression: [1, 1, 4, 7, 10, 13, 16],
@@ -112,38 +114,38 @@ export const PATHFINDER_CLASSES: ClassDefinition[] = [
     },
   },
   {
-    id: 'cleric', name: 'Cleric', hitDie: 8, bab: '3/4', goodSaves: ['fort', 'will'],
+    id: 'cleric', name: 'Cleric', hitDie: 8, bab: '3/4', goodSaves: ['fort', 'will'], skillPointsBase: 2,
     spellcasting: {
       type: 'prepared', ability: 'wisdom', style: 'prepared_list',
       progression: [1, 1, 3, 5, 7, 9, 11, 13, 15, 17],
     },
   },
   {
-    id: 'druid', name: 'Druid', hitDie: 8, bab: '3/4', goodSaves: ['fort', 'will'],
+    id: 'druid', name: 'Druid', hitDie: 8, bab: '3/4', goodSaves: ['fort', 'will'], skillPointsBase: 4,
     spellcasting: {
       type: 'prepared', ability: 'wisdom', style: 'prepared_list',
       progression: [1, 1, 3, 5, 7, 9, 11, 13, 15, 17],
     },
   },
-  { id: 'fighter', name: 'Fighter', hitDie: 10, bab: 'full',  goodSaves: ['fort'] },
-  { id: 'monk',    name: 'Monk',    hitDie: 8,  bab: '3/4',  goodSaves: ['fort', 'ref', 'will'] },
+  { id: 'fighter', name: 'Fighter', hitDie: 10, bab: 'full', goodSaves: ['fort'], skillPointsBase: 2 },
+  { id: 'monk', name: 'Monk', hitDie: 8, bab: '3/4', goodSaves: ['fort', 'ref', 'will'], skillPointsBase: 4 },
   {
-    id: 'paladin', name: 'Paladin', hitDie: 10, bab: 'full', goodSaves: ['fort', 'will'],
+    id: 'paladin', name: 'Paladin', hitDie: 10, bab: 'full', goodSaves: ['fort', 'will'], skillPointsBase: 2,
     spellcasting: {
       type: 'prepared', ability: 'charisma', style: 'prepared_list',
       progression: [null, 4, 7, 10, 13],
     },
   },
   {
-    id: 'ranger', name: 'Ranger', hitDie: 10, bab: 'full', goodSaves: ['fort', 'ref'],
+    id: 'ranger', name: 'Ranger', hitDie: 10, bab: 'full', goodSaves: ['fort', 'ref'], skillPointsBase: 6,
     spellcasting: {
       type: 'prepared', ability: 'wisdom', style: 'prepared_list',
       progression: [null, 4, 7, 10, 13],
     },
   },
-  { id: 'rogue', name: 'Rogue', hitDie: 8, bab: '3/4', goodSaves: ['ref'] },
+  { id: 'rogue', name: 'Rogue', hitDie: 8, bab: '3/4', goodSaves: ['ref'], skillPointsBase: 8 },
   {
-    id: 'sorcerer', name: 'Sorcerer', hitDie: 6, bab: '1/2', goodSaves: ['will'],
+    id: 'sorcerer', name: 'Sorcerer', hitDie: 6, bab: '1/2', goodSaves: ['will'], skillPointsBase: 2,
     spellcasting: {
       type: 'spontaneous', ability: 'charisma', style: 'spontaneous',
       progression: [1, 1, 4, 6, 8, 10, 12, 14, 16, 18],
@@ -151,7 +153,7 @@ export const PATHFINDER_CLASSES: ClassDefinition[] = [
     },
   },
   {
-    id: 'wizard', name: 'Wizard', hitDie: 6, bab: '1/2', goodSaves: ['will'],
+    id: 'wizard', name: 'Wizard', hitDie: 6, bab: '1/2', goodSaves: ['will'], skillPointsBase: 2,
     spellcasting: {
       type: 'prepared', ability: 'intelligence', style: 'spellbook',
       progression: [1, 1, 3, 5, 7, 9, 11, 13, 15, 17],

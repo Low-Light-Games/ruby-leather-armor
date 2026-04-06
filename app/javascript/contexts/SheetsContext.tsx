@@ -8,6 +8,7 @@ import {
 import type { Dispatch, SetStateAction } from 'react';
 import { Sheet, AttributeType } from '../types';
 import type { OwnedItem, Currency } from '../rules/pathfinder_items_types';
+import type { SkillRanksMap } from '../rules/pathfinder_skill_ranks';
 import { EMPTY_CURRENCY } from '../rules/pathfinder_items';
 import { getRaceById, computeRacialModifiers } from '../rules/pathfinder_races';
 
@@ -52,6 +53,9 @@ interface SheetsContextType {
   /** Current currency (all denominations) */
   currentCurrency: Currency;
   setCurrentCurrency: Dispatch<SetStateAction<Currency>>;
+  /** Pathfinder skill ranks (stored in `sheets.skill_ranks`). */
+  skillRanks: SkillRanksMap;
+  setSkillRanks: Dispatch<SetStateAction<SkillRanksMap>>;
 }
 
 const SheetsContext = createContext<SheetsContextType | undefined>(
@@ -70,6 +74,7 @@ export const SheetsProvider = ({ children }: { children: ReactNode }) => {
   const [selectedSpells, setSelectedSpells] = useState<string[]>([]);
   const [selectedItems, setSelectedItems] = useState<OwnedItem[]>([]);
   const [currentCurrency, setCurrentCurrency] = useState<Currency>({ ...EMPTY_CURRENCY });
+  const [skillRanks, setSkillRanks] = useState<SkillRanksMap>({});
 
   const race = useMemo(() => currentRace ? getRaceById(currentRace) : undefined, [currentRace]);
 
@@ -111,6 +116,8 @@ export const SheetsProvider = ({ children }: { children: ReactNode }) => {
     setSelectedItems,
     currentCurrency,
     setCurrentCurrency,
+    skillRanks,
+    setSkillRanks,
   };
 
   return (

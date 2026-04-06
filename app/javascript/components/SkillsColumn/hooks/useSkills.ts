@@ -4,6 +4,8 @@ import type { RaceDefinition } from '../../../rules/pathfinder_races';
 import type { EquipmentSkillBonuses } from '../../../rules/pathfinder_items_types';
 import { PATHFINDER_SKILLS, abilityModifier } from '../../../rules/pathfinder_skills';
 import { ABILITY_ABBR } from '../../../utils/formatting';
+import type { SkillRanksMap } from '../../../rules/pathfinder_skill_ranks';
+import { effectiveRanksStored, maxRanksForSkill, rankPointCost } from '../../../rules/pathfinder_skill_ranks';
 
 // ── Public types ──────────────────────────────────────────────────
 
@@ -18,6 +20,14 @@ export interface CalculatedSkill {
   featBonus: number;
   equipBonus: number;
   acpPenalty: number;
+  /** Ranks applied to the check (after max-rank cap). */
+  rankRanks: number;
+  /** Ranks as stored on the sheet (editor stepper). */
+  rankStored: number;
+  /** Max ranks investable in this skill at current level/class. */
+  rankMax: number;
+  /** Skill points to buy one more rank (1 class / 2 cross-class). */
+  rankNextCost: number;
   total: number;
 }
 
@@ -32,6 +42,9 @@ interface UseSkillsParams {
   equipSkillBonuses: EquipmentSkillBonuses;
   /** Total armor check penalty (equipment + encumbrance) */
   totalACP: number;
+  skillRanks: SkillRanksMap;
+  classId: string | null;
+  level: number;
 }
 
 // ── Hook result ──────────────────────────────────────────────────
@@ -49,6 +62,9 @@ export function useSkills({
   featSkillBonuses,
   equipSkillBonuses,
   totalACP,
+  skillRanks,
+  classId,
+  level,
 }: UseSkillsParams): UseSkillsResult {
   // Racial skill bonuses
   const racialSkillBonuses = useMemo(() => {
@@ -70,7 +86,11 @@ export function useSkills({
       const featBonus = featSkillBonuses[skill.name] || 0;
       const equipBonus = equipSkillBonuses[skill.name] || 0;
       const acpPenalty = skill.armorCheckPenalty ? totalACP : 0;
-      const total = abilityMod + racialBonus + featBonus + equipBonus + acpPenalty;
+      const rankStored = Math.max(0, Math.floor(skillRanks[skill.name] ?? 0));
+      const rankRanks = effectiveRanksStored(rankStored, skill.name, classId, level);
+      const rankMax = maxRanksForSkill(skill.name, classId, level);
+      const rankNextCost = classId ? rankPointCost(skill.name, classId) : 2;
+      const total = abilityMod + racialBonus + featBonus + equipBonus + acpPenalty + rankRanks;
       return {
         ...skill,
         abilityAbbr: ABILITY_ABBR[skill.keyAbility],
@@ -79,10 +99,14 @@ export function useSkills({
         featBonus,
         equipBonus,
         acpPenalty,
+        rankRanks,
+        rankStored,
+        rankMax,
+        rankNextCost,
         total,
       };
     });
-  }, [finalAttributes, racialSkillBonuses, featSkillBonuses, equipSkillBonuses, totalACP]);
+  }, [finalAttributes, racialSkillBonuses, featSkillBonuses, equipSkillBonuses, totalACP, skillRanks, classId, level]);
 
   return { calculatedSkills, racialSkillBonuses };
 }

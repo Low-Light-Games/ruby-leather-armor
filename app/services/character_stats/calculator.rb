@@ -14,17 +14,17 @@ module CharacterStats
     # ── Class data (OGC mechanical tables) ────────────────────────
 
     CLASS_DATA = {
-      "barbarian"  => { hit_die: 12, bab: "full",  good_saves: %w[fort] },
-      "bard"       => { hit_die: 8,  bab: "3/4",   good_saves: %w[ref will] },
-      "cleric"     => { hit_die: 8,  bab: "3/4",   good_saves: %w[fort will] },
-      "druid"      => { hit_die: 8,  bab: "3/4",   good_saves: %w[fort will] },
-      "fighter"    => { hit_die: 10, bab: "full",   good_saves: %w[fort] },
-      "monk"       => { hit_die: 8,  bab: "3/4",   good_saves: %w[fort ref will] },
-      "paladin"    => { hit_die: 10, bab: "full",   good_saves: %w[fort will] },
-      "ranger"     => { hit_die: 10, bab: "full",   good_saves: %w[fort ref] },
-      "rogue"      => { hit_die: 8,  bab: "3/4",   good_saves: %w[ref] },
-      "sorcerer"   => { hit_die: 6,  bab: "1/2",   good_saves: %w[will] },
-      "wizard"     => { hit_die: 6,  bab: "1/2",   good_saves: %w[will] },
+      "barbarian"  => { hit_die: 12, bab: "full",  good_saves: %w[fort], skill_points: 4 },
+      "bard"       => { hit_die: 8,  bab: "3/4",   good_saves: %w[ref will], skill_points: 6 },
+      "cleric"     => { hit_die: 8,  bab: "3/4",   good_saves: %w[fort will], skill_points: 2 },
+      "druid"      => { hit_die: 8,  bab: "3/4",   good_saves: %w[fort will], skill_points: 4 },
+      "fighter"    => { hit_die: 10, bab: "full",   good_saves: %w[fort], skill_points: 2 },
+      "monk"       => { hit_die: 8,  bab: "3/4",   good_saves: %w[fort ref will], skill_points: 4 },
+      "paladin"    => { hit_die: 10, bab: "full",   good_saves: %w[fort will], skill_points: 2 },
+      "ranger"     => { hit_die: 10, bab: "full",   good_saves: %w[fort ref], skill_points: 6 },
+      "rogue"      => { hit_die: 8,  bab: "3/4",   good_saves: %w[ref], skill_points: 8 },
+      "sorcerer"   => { hit_die: 6,  bab: "1/2",   good_saves: %w[will], skill_points: 2 },
+      "wizard"     => { hit_die: 6,  bab: "1/2",   good_saves: %w[will], skill_points: 2 },
     }.freeze
 
     # ── Race data (OGC mechanical tables) ─────────────────────────
@@ -317,6 +317,15 @@ module CharacterStats
         ref_breakdown: ref_breakdown,
         will_breakdown: will_breakdown,
       }
+    end
+
+    # Intelligence modifier after racial + optional flex bonus (matches client skill-point budget).
+    def self.intelligence_modifier_for_skill_budget(source)
+      calc = new(source)
+      race_info = RACE_DATA[source.race] || RACE_DATA["human"]
+      racial = calc.send(:compute_racial_mods, race_info)
+      final = calc.send(:compute_final_scores, racial)
+      calc.send(:compute_ability_mods, final)["intelligence"] || 0
     end
 
     private
@@ -732,6 +741,7 @@ module CharacterStats
 
     def compute_skills(mods, race_info, feat_skill_bonuses, equip_skill_bonuses = {}, total_acp = 0)
       racial_skills = race_info[:skill_bonuses] || {}
+      ranks_map     = skill_ranks_raw
 
       SKILLS.map do |skill|
         ability_mod  = mods[skill[:key]] || 0
@@ -739,7 +749,8 @@ module CharacterStats
         feat_bonus   = feat_skill_bonuses[skill[:name]] || 0
         equip_bonus  = equip_skill_bonuses[skill[:name]] || 0
         acp_penalty  = skill[:acp] ? total_acp : 0  # total_acp is already negative
-        total        = ability_mod + racial_bonus + feat_bonus + equip_bonus + acp_penalty
+        rank_bonus   = effective_rank_bonus(skill[:name], ranks_map)
+        total        = ability_mod + racial_bonus + feat_bonus + equip_bonus + acp_penalty + rank_bonus
 
         {
           name: skill[:name],
@@ -750,9 +761,40 @@ module CharacterStats
           feat_bonus: feat_bonus,
           equip_bonus: equip_bonus,
           acp_penalty: acp_penalty,
+          rank_bonus: rank_bonus,
           total: total,
         }
       end
+    end
+
+    # Skill rank caps, point costs, and budget checks are mirrored client-side in
+    # app/javascript/rules/pathfinder_skill_ranks.ts (e.g. maxRanksForSkill, rankPointCost,
+    # spentSkillPoints, tryAdjustSkillRank). Client validates for responsive UI; these methods
+    # enforce the same rules on the server.
+
+    def skill_ranks_raw
+      raw = @src.try(:skill_ranks)
+      return {} unless raw.is_a?(Hash)
+
+      raw.transform_keys(&:to_s).transform_values { |v| v.to_i }
+    end
+
+    def effective_rank_bonus(skill_name, ranks_map)
+      cid   = @src.character_class
+      level = @src.level.to_i
+      level = 1 if level < 1
+      cap   = max_ranks_cap(skill_name, cid, level)
+      ranks_map.fetch(skill_name, 0).clamp(0, cap)
+    end
+
+    # Max ranks investable in this skill at this level (class vs cross-class).
+    def max_ranks_cap(skill_name, class_id, level)
+      per_level_cap = level + 3
+      return (per_level_cap / 2) if class_id.blank?
+
+      list = ClassSkillsData::LISTS[class_id]
+      is_class = list&.include?(skill_name)
+      is_class ? per_level_cap : (per_level_cap / 2)
     end
   end
 end

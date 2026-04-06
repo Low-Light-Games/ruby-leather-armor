@@ -12,7 +12,7 @@ module Adventures
     end
 
     def call
-      adv_sheet = @adventure.adventure_sheets.create!(
+      attrs = {
         sheet:                  @sheet,
         name:                   @sheet.name,
         description:            @sheet.description,
@@ -32,8 +32,16 @@ module Adventures
         hp:                     @max_hp,
         max_hp:                 @max_hp,
         items:                  nil,
-        effects:                nil
-      )
+        effects:                nil,
+      }
+      if AdventureSheet.column_names.include?("skill_ranks")
+        attrs[:skill_ranks] = if Sheet.column_names.include?("skill_ranks")
+          (@sheet.skill_ranks || {}).deep_dup
+        else
+          {}
+        end
+      end
+      adv_sheet = @adventure.adventure_sheets.create!(attrs)
 
       copy_feats(adv_sheet)
       copy_spells(adv_sheet)

@@ -10,6 +10,7 @@ import { useAdventure } from './hooks/useAdventure';
 import { useRolls } from './hooks/useRolls';
 import { useSpellbook } from './hooks/useSpellbook';
 import { useInventory } from './hooks/useInventory';
+import { useAdventureSkillRanks } from './hooks/useAdventureSkillRanks';
 import './AdventurePlay.scss';
 
 type MobileTab = 'character' | 'play' | 'story';
@@ -26,6 +27,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const rolls = useRolls(ds, advSheet);
   const spellbook = useSpellbook(adventure, ds, setAdventure);
   const inventory = useInventory(adventure, setAdventure);
+  const skillRanks = useAdventureSkillRanks(adventure, setAdventure);
   const [mobileTab, setMobileTab] = useState<MobileTab>('play');
 
   // ── Early returns (loading / auth / error) ─────────────────────
@@ -125,6 +127,10 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           toggleEquip={inventory.toggleEquip}
           equipSaving={inventory.equipSaving}
           equipError={inventory.equipError}
+          patchSkillRanks={skillRanks.patchSkillRanks}
+          rankSaving={skillRanks.rankSaving}
+          rankErrors={skillRanks.rankErrors}
+          dismissRankErrors={skillRanks.dismissRankErrors}
         />
 
         {/* MIDDLE COLUMN — Chat */}

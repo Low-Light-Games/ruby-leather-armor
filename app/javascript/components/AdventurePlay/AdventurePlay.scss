@@ -515,6 +515,82 @@
       }
     }
 
+    .skills-rank-errors {
+      margin: 0 10px 10px;
+      padding: 10px 12px;
+      background: #fff5f5;
+      border: 1px solid #ffcdd2;
+      border-radius: 6px;
+      color: $ink;
+
+      &__title {
+        margin: 0 0 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: $red-ink;
+      }
+
+      &__list {
+        margin: 0 0 10px;
+        padding-left: 1.15rem;
+        font-size: 11px;
+        line-height: 1.45;
+        color: $ink-mid;
+
+        li {
+          margin-bottom: 4px;
+
+          &:last-child {
+            margin-bottom: 0;
+          }
+        }
+      }
+
+      &__dismiss {
+        font-size: 11px;
+        padding: 4px 10px;
+        border: 1px solid $border;
+        border-radius: 4px;
+        background: $parchment;
+        color: $ink-mid;
+        cursor: pointer;
+
+        &:hover {
+          border-color: $ink-mid;
+          color: $ink;
+        }
+      }
+    }
+
+    .skills-assign-hint-adventure {
+      margin: 0 10px 8px;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: $ink-mid;
+      background: $parchment-mid;
+      border-radius: 4px;
+    }
+
+    .skills-points-bar-adventure {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 0 10px 6px;
+      padding: 4px 8px;
+      font-family: $font-mono;
+      font-size: 10px;
+      color: $ink-light;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      border-bottom: 1px solid $border-light;
+
+      .skills-points-remaining {
+        text-transform: none;
+        letter-spacing: normal;
+        color: $ink-faint;
+      }
+    }
+
     .skills-list-adventure {
       display: flex;
       flex-direction: column;
@@ -538,6 +614,10 @@
           .roll-dice-btn { opacity: 0.7; }
         }
 
+        &.skill-row-adventure-skills {
+          gap: 6px;
+        }
+
         .skill-name {
           display: flex;
           align-items: center;
@@ -559,6 +639,45 @@
             font-weight: 700;
             flex-shrink: 0;
           }
+        }
+
+        .skill-rank-cell-adventure {
+          flex-shrink: 0;
+        }
+
+        .skill-rank-stepper {
+          display: inline-flex;
+          align-items: center;
+          gap: 2px;
+          font-family: $font-mono;
+        }
+
+        .skill-rank-btn {
+          width: 20px;
+          height: 20px;
+          padding: 0;
+          border: 1px solid $border-light;
+          border-radius: 3px;
+          background: $parchment;
+          color: $ink;
+          font-size: 12px;
+          line-height: 1;
+          cursor: pointer;
+
+          &:hover:not(:disabled) {
+            background: $parchment-dk;
+          }
+          &:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+          }
+        }
+
+        .skill-rank-value {
+          min-width: 16px;
+          text-align: center;
+          font-size: 11px;
+          font-weight: 600;
         }
 
         .skill-mod {

@@ -185,6 +185,31 @@
   }
 
   /* ===== Skills ===== */
+  .skills-assign-hint {
+    margin: 0;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: $ink-mid;
+    background: $parchment-mid;
+    border-bottom: 1px solid $border-light;
+  }
+
+  .skills-points-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    font-family: $font-mono;
+    font-size: 11px;
+    color: $ink-light;
+    border-bottom: 1px solid $border-light;
+    background: $parchment;
+
+    .skills-points-label { text-transform: uppercase; letter-spacing: 0.04em; }
+    .skills-points-values { color: $ink; }
+    .skills-points-remaining { color: $ink-faint; }
+  }
+
   .skills-header {
     display: flex;
     align-items: center;
@@ -197,8 +222,9 @@
     letter-spacing: 0.05em;
 
     .skills-header-name   { flex: 1; }
-    .skills-header-ability { width: 42px; text-align: center; }
-    .skills-header-mod     { width: 38px; text-align: center; }
+    .skills-header-ability { width: 42px; text-align: center; flex-shrink: 0; }
+    .skills-header-ranks   { width: 88px; text-align: center; flex-shrink: 0; }
+    .skills-header-mod     { width: 38px; text-align: center; flex-shrink: 0; }
   }
 
   .skills-list {
@@ -221,6 +247,52 @@
     &:last-child { border-bottom: none; }
 
     &.trained-only .skill-name { color: $ink-light; }
+
+    &.skill-row-with-ranks .skill-name { min-width: 0; }
+  }
+
+  .skill-rank-cell {
+    width: 88px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+  }
+
+  .skill-rank-stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-family: $font-mono;
+  }
+
+  .skill-rank-btn {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid $border-light;
+    border-radius: 3px;
+    background: $parchment;
+    color: $ink;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: $parchment-mid;
+      border-color: $ink-faint;
+    }
+    &:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+  }
+
+  .skill-rank-value {
+    min-width: 18px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: $ink;
   }
 
   .skill-name {
