@@ -335,6 +335,25 @@
       gap: 8px;
       margin-bottom: 10px;
 
+      /* StatTooltip wraps each save in .stat-tooltip-wrapper (inline-block globally);
+         flex children must be the wrappers so they grow; inner button fills. */
+      > .stat-tooltip-wrapper {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+      }
+
+      > .stat-tooltip-wrapper > .save-item {
+        flex: 1;
+        width: 100%;
+      }
+
+      /* No breakdown: StatTooltip renders children only */
+      > .save-item {
+        flex: 1;
+        min-width: 0;
+      }
+
       .save-item {
         flex: 1;
         display: flex;
