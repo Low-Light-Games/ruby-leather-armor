@@ -263,6 +263,16 @@
       position: relative;
       display: inline-block;
       cursor: help;
+
+      /* Ensure buttons inside wrapper maintain their functionality */
+      > button {
+        cursor: pointer;
+      }
+
+      /* Maintain div styling */
+      > .combat-stat {
+        cursor: help;
+      }
     }
 
     .damage-tiles {

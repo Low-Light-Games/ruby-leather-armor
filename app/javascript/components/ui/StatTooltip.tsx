@@ -101,7 +101,7 @@ const StatTooltip: React.FC<StatTooltipProps> = ({ children, label, total, break
   )
 
   return (
-    <span
+    <div
       className="stat-tooltip-wrapper"
       ref={anchorRef}
       onMouseEnter={show}
@@ -112,7 +112,7 @@ const StatTooltip: React.FC<StatTooltipProps> = ({ children, label, total, break
     >
       {children}
       {typeof document !== 'undefined' && popup ? createPortal(popup, document.body) : null}
-    </span>
+    </div>
   )
 }
 
