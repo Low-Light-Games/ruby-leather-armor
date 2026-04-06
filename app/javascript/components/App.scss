@@ -16,6 +16,15 @@
     flex-direction: row;
     gap: 24px;
 
+    .attribute-modifier {
+      font-size: 18px;
+      font-weight: 700;
+
+      &.positive { color: $green-ink; }
+      &.negative { color: $red-ink; }
+      &.zero { color: $ink-mid; }
+    }
+
     .column-editor  { flex: 1 1 0; min-width: 300px; }
     .column-skills  { flex: 1 1 0; min-width: 280px; }
     .column-list    { flex: 1 1 0; min-width: 200px; }
@@ -64,8 +73,6 @@
     }
   }
 
-  input[type="text"] { width: 260px; }
-
   textarea {
     width: 100%;
     max-width: 400px;
@@ -98,6 +105,28 @@
     border-left: 3px solid $red-ink;
     padding: 10px 16px;
     font-size: 14px;
+  }
+
+  /* ── Race & class (character sheet) ── */
+  .sheet-race-class-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+    align-items: start;
+
+    .form-field {
+      margin-bottom: 0;
+    }
+
+    select {
+      max-width: 100%;
+      width: 100%;
+    }
+
+    @media (max-width: 520px) {
+      grid-template-columns: 1fr;
+    }
   }
 
   /* ── Race info ── */

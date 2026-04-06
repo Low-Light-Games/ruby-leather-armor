@@ -1,8 +1,18 @@
-import React from 'react';
-import type { OwnedItem, ItemDefinition, EquipmentSlot, Currency } from '../../../rules/pathfinder_items_types';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useModal } from '../../../hooks/useModal';
+import type {
+  ItemDefinition,
+  EquipmentSlot,
+  CarryCapacity,
+  EncumbranceTier,
+} from '../../../rules/pathfinder_items_types';
 import { EQUIPMENT_SLOTS } from '../../../rules/pathfinder_items';
 import { Picker } from '../../ui/Picker';
-import { useEquipment } from '../hooks/useEquipment';
+import type { UseEquipmentResult } from '../hooks/useEquipment';
+import type { CombatGlossaryKey } from '../combatGlossary/types';
+import type { CombatStatCalculation } from '../combatHelp/combatCalcTypes';
+import { EncumbranceBarPanel } from '../combatHelp/EncumbranceBarPanel';
+import { CombatStatHelpModal } from '../combatHelp/CombatStatHelpModal';
 
 // ── View helpers ─────────────────────────────────────────────────
 
@@ -16,14 +26,6 @@ const ITEM_TYPE_LABELS: Record<string, string> = {
   wondrous: 'Wondrous',
 };
 
-const DENOM_ORDER: (keyof Currency)[] = ['platinum', 'gold', 'silver', 'copper'];
-const DENOM_LABELS: Record<keyof Currency, string> = {
-  platinum: 'pp',
-  gold: 'gp',
-  silver: 'sp',
-  copper: 'cp',
-};
-
 function formatGp(amount: number): string {
   return amount % 1 === 0 ? `${amount}` : amount.toFixed(2);
 }
@@ -33,64 +35,166 @@ function slotLabel(slot: EquipmentSlot): string {
   return entry ? entry.label : slot;
 }
 
+/** Picker header by item-type filter (must match type-filter option values). */
+function equipmentPickerModalTitle(typeFilter: string): string {
+  switch (typeFilter) {
+    case 'armor':
+      return 'Armor';
+    case 'shield':
+      return 'Shields';
+    case 'weapon':
+      return 'Weapons';
+    case 'gear':
+      return 'Gear';
+    case 'ammunition':
+      return 'Ammunition';
+    default:
+      return 'Equipment';
+  }
+}
+
 // ── Props ────────────────────────────────────────────────────────
 
-interface EquipmentSectionProps {
-  selectedItems: OwnedItem[];
-  setSelectedItems: React.Dispatch<React.SetStateAction<OwnedItem[]>>;
-  currentCurrency: Currency;
-  setCurrentCurrency: React.Dispatch<React.SetStateAction<Currency>>;
-  currentClass: string | null;
+export interface EquipmentEncumbranceProps {
+  totalWeight: number;
+  encumbranceTier: EncumbranceTier;
+  carryCapacity: CarryCapacity;
 }
+
+type EquipmentSectionProps = UseEquipmentResult & {
+  currentClass: string | null;
+  encumbrance: EquipmentEncumbranceProps;
+  encumbranceCalculation: CombatStatCalculation;
+};
 
 // ── Component ────────────────────────────────────────────────────
 
-export const EquipmentSection: React.FC<EquipmentSectionProps> = (props) => {
-  const {
-    search, setSearch,
-    typeFilter, setTypeFilter,
-    startingGold, totalCost, currentGpValue, remainingGp,
-    setCurrencyDenom, applyStartingGold,
-    addItem, removeItem, toggleEquip, changeQuantity,
-    filteredItems, selectedWithDefs,
-  } = useEquipment(props);
+export const EquipmentSection: React.FC<EquipmentSectionProps> = ({
+  currentClass,
+  search,
+  setSearch,
+  typeFilter,
+  setTypeFilter,
+  startingGold,
+  totalCost,
+  currentGpValue,
+  remainingGp,
+  setGoldGp,
+  addItem,
+  removeItem,
+  toggleEquip,
+  changeQuantity,
+  filteredItems,
+  selectedWithDefs,
+  encumbrance,
+  encumbranceCalculation,
+}) => {
+  const encGlossary = useModal<CombatGlossaryKey>();
+  const [customGoldEditOpen, setCustomGoldEditOpen] = useState(false);
+  const [customGoldDraft, setCustomGoldDraft] = useState('');
+
+  const closeEncGlossary = encGlossary.close;
+  const openEncGlossary = useCallback((key: CombatGlossaryKey) => encGlossary.open(key), [encGlossary.open]);
+
+  useEffect(() => {
+    setCustomGoldEditOpen(false);
+  }, [currentClass]);
+
+  const openCustomGoldEdit = useCallback(() => {
+    setCustomGoldDraft(formatGp(currentGpValue));
+    setCustomGoldEditOpen(true);
+  }, [currentGpValue]);
+
+  const saveCustomGold = useCallback(() => {
+    const parsed = parseFloat(customGoldDraft.replace(',', '.'));
+    setGoldGp(Number.isFinite(parsed) ? parsed : 0);
+    setCustomGoldEditOpen(false);
+  }, [customGoldDraft, setGoldGp]);
+
+  const cancelCustomGold = useCallback(() => {
+    setCustomGoldEditOpen(false);
+  }, []);
+
+  const spentAllGold =
+    currentGpValue > 0 && remainingGp <= 0.001;
+  const overBudget = remainingGp < -0.001;
 
   return (
     <div className="picker-section equipment-section">
-      {/* ── Currency management ── */}
-      <div className="currency-row">
-        {DENOM_ORDER.map(denom => (
-          <label key={denom} className="currency-input-group">
-            <input
-              type="number"
-              className="currency-input"
-              min={0}
-              value={props.currentCurrency[denom]}
-              onChange={e => setCurrencyDenom(denom, parseInt(e.target.value, 10) || 0)}
-            />
-            <span className="currency-label">{DENOM_LABELS[denom]}</span>
-          </label>
-        ))}
-        {startingGold > 0 && (
-          <button
-            type="button"
-            className="starting-gold-btn"
-            onClick={applyStartingGold}
-            title={`Set currency to class average (${startingGold} gp)`}
-          >
-            Class avg: {startingGold} gp
-          </button>
-        )}
-      </div>
+      <EncumbranceBarPanel
+        totalWeight={encumbrance.totalWeight}
+        encumbranceTier={encumbrance.encumbranceTier}
+        carryCapacity={encumbrance.carryCapacity}
+        onOpenGlossary={openEncGlossary}
+      />
 
-      {/* ── Cost summary ── */}
-      <div className="cost-summary">
-        <span>Wealth: <strong>{formatGp(currentGpValue)} gp</strong></span>
-        <span>Spent: <strong>{formatGp(totalCost)} gp</strong></span>
-        <span className={remainingGp < 0 ? 'overspent' : ''}>
-          Remaining: <strong>{formatGp(remainingGp)} gp</strong>
-        </span>
-      </div>
+      <CombatStatHelpModal
+        activeKey={encGlossary.data}
+        onClose={closeEncGlossary}
+        calculation={
+          encGlossary.data === 'encumbrance' ? encumbranceCalculation : undefined
+        }
+      />
+
+      {/* ── Gold (class required) ── */}
+      {!currentClass ? (
+        <p className="gold-class-hint">Choose a class to calculate your gold.</p>
+      ) : (
+        <div className="gold-budget-block">
+          <div className="gold-budget-row">
+            <div className="gold-gp-label">
+              <span>Gold (gp)</span>
+              {customGoldEditOpen ? (
+                <div className="gold-custom-edit">
+                  <input
+                    type="number"
+                    className="gold-gp-input"
+                    min={0}
+                    step="any"
+                    autoFocus
+                    value={customGoldDraft}
+                    onChange={e => setCustomGoldDraft(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') saveCustomGold();
+                      if (e.key === 'Escape') cancelCustomGold();
+                    }}
+                  />
+                  <div className="gold-custom-edit-actions">
+                    <button type="button" className="gold-custom-save-btn" onClick={saveCustomGold}>
+                      Save
+                    </button>
+                    <button type="button" className="gold-custom-cancel-btn" onClick={cancelCustomGold}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="gold-gp-readout-row">
+                  <span className="gold-gp-readout">{formatGp(currentGpValue)} gp</span>
+                  <button
+                    type="button"
+                    className="gold-own-starting-btn"
+                    onClick={openCustomGoldEdit}
+                  >
+                    Set your own starting gold
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className={`gold-usage${overBudget ? ' gold-usage--over' : ''}`}>
+            <span className="gold-usage-fraction">
+              {formatGp(totalCost)} / {formatGp(currentGpValue)} gp
+            </span>
+            {spentAllGold && <span className="gold-usage-note">You spent all your gold.</span>}
+            {overBudget && (
+              <span className="gold-usage-note gold-usage-note--warn">
+                Equipment costs more than your gold.
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Selected items ── */}
       {selectedWithDefs.length > 0 ? (
@@ -108,7 +212,7 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = (props) => {
                     onClick={() => toggleEquip(oi.itemId)}
                     title={oi.equipped ? `Unequip (${slotLabel(def.slot)})` : `Equip → ${slotLabel(def.slot)}`}
                   >
-                    {oi.equipped ? 'E' : '○'}
+                    {oi.equipped ? 'Equipped' : 'Equip'}
                   </button>
                 )}
 
@@ -165,6 +269,7 @@ export const EquipmentSection: React.FC<EquipmentSectionProps> = (props) => {
       {/* ── Search + type filter ── */}
       <div className="equip-search-row">
         <Picker<ItemDefinition>
+          modalTitle={equipmentPickerModalTitle(typeFilter)}
           search={search}
           onSearchChange={setSearch}
           placeholder="Search items…"

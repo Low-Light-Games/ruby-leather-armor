@@ -9,18 +9,27 @@ module PivotSync
   private
 
   # Replace all feats on the given relation.
-  # Entries may be compound ("feat_id::choice") or simple ("feat_id").
+  # Entries: "feat_id", "feat_id::choice", or "pool_id|feat_id" / "pool_id|feat_id::choice".
+  # Legacy entries without "|" use pool "general".
   def sync_feats!(feat_relation, feat_entries)
     return unless feat_entries
 
     feat_relation.destroy_all
     feat_entries.each do |entry|
-      parts   = entry.split("::", 2)
+      entry = entry.to_s
+      pool = SheetFeat::DEFAULT_POOL
+      raw  = entry
+      if entry.include?("|")
+        pool_part, rest = entry.split("|", 2)
+        pool = pool_part.presence || SheetFeat::DEFAULT_POOL
+        raw = rest.to_s
+      end
+      parts   = raw.split("::", 2)
       feat_id = parts[0]
       choice  = parts[1]
       next unless FeatDefinition.exists?(feat_id)
 
-      feat_relation.create!(feat_id: feat_id, choice: choice)
+      feat_relation.create!(feat_id: feat_id, choice: choice, pool: pool)
     end
   end
 

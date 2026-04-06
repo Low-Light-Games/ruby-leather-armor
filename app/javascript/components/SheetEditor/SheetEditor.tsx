@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import { AttributeRow } from './components/AttributeRow'
 import { NameField } from './components/NameField'
 import FlashMessage from '../FlashMessage'
@@ -19,6 +19,9 @@ export const SheetEditor = () => {
     currentFlexibleBonus, setCurrentFlexibleBonus,
     currentClass, setCurrentClass,
     currentLevel, setCurrentLevel,
+    registerSheetDirtySource,
+    syncSheetPristine,
+    markSheetDirty,
   } = ctx;
 
   // ── Hooks ──────────────────────────────────────────────────────
@@ -27,8 +30,17 @@ export const SheetEditor = () => {
   const {
     name, setName, description, setDescription,
     currentSheetId, feedback, dismissFeedback,
-    saveSheet, resetToNew, setDirty,
+    saveSheet, resetToNew, setDirty, isPristine,
   } = persistence;
+
+  useEffect(() => {
+    registerSheetDirtySource(setDirty);
+    return () => registerSheetDirtySource(null);
+  }, [registerSheetDirtySource, setDirty]);
+
+  useEffect(() => {
+    syncSheetPristine(isPristine);
+  }, [syncSheetPristine, isPristine]);
 
   const pointBuy = usePointBuy({ attributes, setAttributes, onDirty: setDirty });
   const { spentPoints, canIncrease, canDecrease, changeAttribute, clearPoints, isDefault } = pointBuy;
@@ -65,36 +77,59 @@ export const SheetEditor = () => {
           onDismiss={dismissFeedback}
         />
       )}
-      <h2>Points spent: {spentPoints} / {AVAILABLE_POINTS}</h2>
-
       <div className="form-field">
         <label htmlFor="character-name">Character Name:</label>
-        <NameField name={name} onChange={setName} />
+        <NameField
+          name={name}
+          onChange={v => {
+            markSheetDirty();
+            setName(v);
+          }}
+        />
       </div>
       <div className="form-field">
         <label htmlFor="character-description">Character Description (optional):</label>
         <textarea
           id="character-description"
           value={description}
-          onChange={e => setDescription(e.target.value)}
+          onChange={e => {
+            markSheetDirty();
+            setDescription(e.target.value);
+          }}
           rows={3}
           placeholder="Describe your character..."
         />
       </div>
 
-      {/* Race selector */}
-      <div className="form-field">
-        <label htmlFor="race-select">Race:</label>
-        <select
-          id="race-select"
-          value={currentRace || ''}
-          onChange={e => handleRaceChange(e.target.value)}
-        >
-          <option value="">— Select Race —</option>
-          {PATHFINDER_RACES.map(r => (
-            <option key={r.id} value={r.id}>{r.name}</option>
-          ))}
-        </select>
+      <div className="sheet-race-class-row">
+        <div className="form-field">
+          <label htmlFor="race-select">Race:</label>
+          <select
+            id="race-select"
+            value={currentRace || ''}
+            onChange={e => handleRaceChange(e.target.value)}
+          >
+            <option value="">— Select Race —</option>
+            {PATHFINDER_RACES.map(r => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="form-field">
+          <label htmlFor="class-select">Class:</label>
+          <select
+            id="class-select"
+            value={currentClass || ''}
+            onChange={e => handleClassChange(e.target.value)}
+          >
+            <option value="">— Select Class —</option>
+            {PATHFINDER_CLASSES.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name} (d{c.hitDie})
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Flexible racial bonus selector */}
@@ -106,7 +141,10 @@ export const SheetEditor = () => {
           <select
             id="flex-bonus-select"
             value={currentFlexibleBonus || ''}
-            onChange={e => setCurrentFlexibleBonus((e.target.value as AttributeType) || null)}
+            onChange={e => {
+              markSheetDirty();
+              setCurrentFlexibleBonus((e.target.value as AttributeType) || null);
+            }}
           >
             <option value="">— Choose Ability —</option>
             {ATTRIBUTE_ORDER.map(attr => (
@@ -134,7 +172,7 @@ export const SheetEditor = () => {
           )}
         </div>
       )}
-
+      <h3>Points spent: {spentPoints} / {AVAILABLE_POINTS}</h3>
       {/* Ability score rows */}
       {ATTRIBUTE_ORDER.map(attribute => (
         <AttributeRow
@@ -148,23 +186,6 @@ export const SheetEditor = () => {
         />
       ))}
 
-      {/* Class selector */}
-      <div className="form-field">
-        <label htmlFor="class-select">Class:</label>
-        <select
-          id="class-select"
-          value={currentClass || ''}
-          onChange={e => handleClassChange(e.target.value)}
-        >
-          <option value="">— Select Class —</option>
-          {PATHFINDER_CLASSES.map(c => (
-            <option key={c.id} value={c.id}>
-              {c.name} (d{c.hitDie})
-            </option>
-          ))}
-        </select>
-      </div>
-
       {/* Level selector */}
       <div className="form-field">
         <label htmlFor="level-select">Level:</label>
@@ -175,8 +196,11 @@ export const SheetEditor = () => {
           max={20}
           value={currentLevel}
           onChange={e => {
-            const val = parseInt(e.target.value, 10)
-            if (!isNaN(val) && val >= 1 && val <= 20) setCurrentLevel(val)
+            const val = parseInt(e.target.value, 10);
+            if (!isNaN(val) && val >= 1 && val <= 20) {
+              markSheetDirty();
+              setCurrentLevel(val);
+            }
           }}
         />
       </div>

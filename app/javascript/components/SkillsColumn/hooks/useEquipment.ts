@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useLayoutEffect, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { OwnedItem, ItemDefinition, Currency } from '../../../rules/pathfinder_items_types';
 import {
@@ -18,6 +18,7 @@ interface UseEquipmentParams {
   currentCurrency: Currency;
   setCurrentCurrency: Dispatch<SetStateAction<Currency>>;
   currentClass: string | null;
+  onSheetDirty?: () => void;
 }
 
 export interface SelectedItemRow {
@@ -36,9 +37,8 @@ export interface UseEquipmentResult {
   totalCost: number;
   currentGpValue: number;
   remainingGp: number;
-  // Currency editing
-  setCurrencyDenom: (denom: keyof Currency, value: number) => void;
-  applyStartingGold: () => void;
+  /** Set gold when using “Set your own starting gold” (normalizes to gp-only currency). */
+  setGoldGp: (gp: number) => void;
   // Item CRUD
   addItem: (itemId: string) => void;
   removeItem: (itemId: string) => void;
@@ -57,6 +57,7 @@ export function useEquipment({
   currentCurrency,
   setCurrentCurrency,
   currentClass,
+  onSheetDirty,
 }: UseEquipmentParams): UseEquipmentResult {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
@@ -68,18 +69,41 @@ export function useEquipment({
   const currentGpValue = totalGpValue(currentCurrency);
   const remainingGp = currentGpValue - totalCost;
 
-  // ── Currency editing ──
+  /** Tracks class we’ve already synced so we only auto-fill on first equip / class change. */
+  const goldSyncClassRef = useRef<string | null | undefined>(undefined);
 
-  const setCurrencyDenom = useCallback(
-    (denom: keyof Currency, value: number) => {
-      setCurrentCurrency(prev => ({ ...prev, [denom]: Math.max(0, value) }));
+  useLayoutEffect(() => {
+    if (!currentClass) {
+      goldSyncClassRef.current = null;
+      return;
+    }
+
+    const prev = goldSyncClassRef.current;
+
+    if (prev === undefined) {
+      goldSyncClassRef.current = currentClass;
+      setCurrentCurrency(curr => {
+        if (totalGpValue(curr) > 0.0001) return curr;
+        if (startingGold > 0) return currencyFromGold(startingGold);
+        return curr;
+      });
+      return;
+    }
+
+    if (prev !== currentClass) {
+      goldSyncClassRef.current = currentClass;
+      setCurrentCurrency(currencyFromGold(startingGold));
+    }
+  }, [currentClass, startingGold, setCurrentCurrency]);
+
+  const setGoldGp = useCallback(
+    (gp: number) => {
+      const n = Number.isFinite(gp) ? gp : 0;
+      setCurrentCurrency(currencyFromGold(Math.max(0, n)));
+      onSheetDirty?.();
     },
-    [setCurrentCurrency],
+    [setCurrentCurrency, onSheetDirty],
   );
-
-  const applyStartingGold = useCallback(() => {
-    setCurrentCurrency(currencyFromGold(startingGold));
-  }, [startingGold, setCurrentCurrency]);
 
   // ── Item CRUD ──
 
@@ -88,35 +112,45 @@ export function useEquipment({
       setSelectedItems(prev => {
         const existing = prev.find(i => i.itemId === itemId && !i.equipped);
         if (existing) {
+          onSheetDirty?.();
           return prev.map(i =>
             i === existing ? { ...i, quantity: i.quantity + 1 } : i,
           );
         }
+        onSheetDirty?.();
         return [...prev, { itemId, quantity: 1, equipped: false, slotOverride: null }];
       });
       setSearch('');
     },
-    [setSelectedItems],
+    [setSelectedItems, onSheetDirty],
   );
 
   const removeItem = useCallback(
     (itemId: string) => {
-      setSelectedItems(prev => prev.filter(i => i.itemId !== itemId));
+      setSelectedItems(prev => {
+        const next = prev.filter(i => i.itemId !== itemId);
+        if (next.length !== prev.length) onSheetDirty?.();
+        return next;
+      });
     },
-    [setSelectedItems],
+    [setSelectedItems, onSheetDirty],
   );
 
   const toggleEquip = useCallback(
     (itemId: string) => {
-      setSelectedItems(prev =>
-        prev.map(i => (i.itemId === itemId ? { ...i, equipped: !i.equipped } : i)),
-      );
+      setSelectedItems(prev => {
+        const idx = prev.findIndex(i => i.itemId === itemId);
+        if (idx < 0) return prev;
+        onSheetDirty?.();
+        return prev.map(i => (i.itemId === itemId ? { ...i, equipped: !i.equipped } : i));
+      });
     },
-    [setSelectedItems],
+    [setSelectedItems, onSheetDirty],
   );
 
   const changeQuantity = useCallback(
     (itemId: string, delta: number) => {
+      onSheetDirty?.();
       setSelectedItems(prev =>
         prev
           .map(i => {
@@ -127,7 +161,7 @@ export function useEquipment({
           .filter(i => i.quantity > 0),
       );
     },
-    [setSelectedItems],
+    [setSelectedItems, onSheetDirty],
   );
 
   // ── Dropdown search results ──
@@ -150,7 +184,8 @@ export function useEquipment({
     }
 
     return pool.slice(0, 20);
-  }, [search, typeFilter]);
+    // getItemDefinitions() cache is filled after fetch; length must be a dep to avoid stale empty lists.
+  }, [search, typeFilter, getItemDefinitions().length]);
 
   // ── Selected items with resolved definitions ──
 
@@ -159,7 +194,7 @@ export function useEquipment({
       selectedItems
         .map(oi => ({ oi, def: getItemById(oi.itemId) }))
         .filter((x): x is SelectedItemRow => x.def != null),
-    [selectedItems],
+    [selectedItems, getItemDefinitions().length],
   );
 
   return {
@@ -171,8 +206,7 @@ export function useEquipment({
     totalCost,
     currentGpValue,
     remainingGp,
-    setCurrencyDenom,
-    applyStartingGold,
+    setGoldGp,
     addItem,
     removeItem,
     toggleEquip,
