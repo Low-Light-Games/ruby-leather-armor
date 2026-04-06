@@ -41,8 +41,12 @@ class AdventuresController < ApplicationController
     max_hp  = stats.starting_hp
     ctx     = Adventures::ContextInitializer.new(story)
 
-    directed_dm = ActiveModel::Type::Boolean.new.cast(params[:directed_dm])
-    skip_world_sanity_check = (current_user.paid? || current_user.admin) && ActiveModel::Type::Boolean.new.cast(params[:skip_world_sanity_check])
+    directed_dm = ActiveModel::Type::Boolean.new.cast(params.fetch(:directed_dm, false))
+    # `users.admin` is nullable: (paid? || admin) can be nil (e.g. false || nil), then nil && … => nil
+    # and violates NOT NULL on adventures.skip_world_sanity_check.
+    can_opt_out_world_sanity = current_user.paid? || current_user.admin == true
+    skip_world_sanity_check = !!(can_opt_out_world_sanity &&
+      ActiveModel::Type::Boolean.new.cast(params.fetch(:skip_world_sanity_check, false)))
 
     start_loc = story.starting_location
     seed = story.initial_contexts || {}
