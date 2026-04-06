@@ -101,19 +101,35 @@ export const SheetEditor = () => {
         />
       </div>
 
-      {/* Race selector */}
-      <div className="form-field">
-        <label htmlFor="race-select">Race:</label>
-        <select
-          id="race-select"
-          value={currentRace || ''}
-          onChange={e => handleRaceChange(e.target.value)}
-        >
-          <option value="">— Select Race —</option>
-          {PATHFINDER_RACES.map(r => (
-            <option key={r.id} value={r.id}>{r.name}</option>
-          ))}
-        </select>
+      <div className="sheet-race-class-row">
+        <div className="form-field">
+          <label htmlFor="race-select">Race:</label>
+          <select
+            id="race-select"
+            value={currentRace || ''}
+            onChange={e => handleRaceChange(e.target.value)}
+          >
+            <option value="">— Select Race —</option>
+            {PATHFINDER_RACES.map(r => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="form-field">
+          <label htmlFor="class-select">Class:</label>
+          <select
+            id="class-select"
+            value={currentClass || ''}
+            onChange={e => handleClassChange(e.target.value)}
+          >
+            <option value="">— Select Class —</option>
+            {PATHFINDER_CLASSES.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name} (d{c.hitDie})
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Flexible racial bonus selector */}
@@ -169,23 +185,6 @@ export const SheetEditor = () => {
           canDecrease={canDecrease(attribute)}
         />
       ))}
-
-      {/* Class selector */}
-      <div className="form-field">
-        <label htmlFor="class-select">Class:</label>
-        <select
-          id="class-select"
-          value={currentClass || ''}
-          onChange={e => handleClassChange(e.target.value)}
-        >
-          <option value="">— Select Class —</option>
-          {PATHFINDER_CLASSES.map(c => (
-            <option key={c.id} value={c.id}>
-              {c.name} (d{c.hitDie})
-            </option>
-          ))}
-        </select>
-      </div>
 
       {/* Level selector */}
       <div className="form-field">

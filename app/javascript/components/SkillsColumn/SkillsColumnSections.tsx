@@ -79,7 +79,11 @@ export const SkillsColumnSections: React.FC<SkillsColumnSectionsProps> = ({
   onAdjustRank,
 }) => (
   <>
-    <Accordion title="Skills" isOpen={openSections.skills} onToggle={() => onToggleSection('skills')}>
+    <Accordion
+      title={currentClass ? 'Skills' : 'Skills (select a class to assign ranks)'}
+      isOpen={openSections.skills}
+      onToggle={() => onToggleSection('skills')}
+    >
       <SkillsSection
         skills={calculatedSkills}
         racialBonuses={racialSkillBonuses}
@@ -87,6 +91,7 @@ export const SkillsColumnSections: React.FC<SkillsColumnSectionsProps> = ({
         canAssignRanks={canAssignRanks}
         pointsSummary={pointsSummary}
         onAdjustRank={onAdjustRank}
+        selectedClassName={classDef?.name ?? null}
       />
     </Accordion>
 

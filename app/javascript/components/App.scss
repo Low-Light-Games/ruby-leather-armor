@@ -107,6 +107,28 @@
     font-size: 14px;
   }
 
+  /* ── Race & class (character sheet) ── */
+  .sheet-race-class-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+    align-items: start;
+
+    .form-field {
+      margin-bottom: 0;
+    }
+
+    select {
+      max-width: 100%;
+      width: 100%;
+    }
+
+    @media (max-width: 520px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
   /* ── Race info ── */
   .race-info {
     display: flex;

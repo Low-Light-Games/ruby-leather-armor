@@ -289,6 +289,14 @@
   }
 
   /* ===== Skills ===== */
+  .skills-accordion-inner--no-class {
+    opacity: 0.52;
+    filter: grayscale(0.35);
+    pointer-events: none;
+    background: $parchment-mid;
+    transition: opacity 0.2s ease, filter 0.2s ease;
+  }
+
   .skills-assign-hint {
     margin: 0;
     padding: 10px 12px;
@@ -296,6 +304,11 @@
     color: $ink-mid;
     background: $parchment-mid;
     border-bottom: 1px solid $border-light;
+
+    strong {
+      color: $ink;
+      font-weight: 600;
+    }
   }
 
   .skills-points-bar {
@@ -353,6 +366,10 @@
     &.trained-only .skill-name { color: $ink-light; }
 
     &.skill-row-with-ranks .skill-name { min-width: 0; }
+
+    &.skill-row--class-skill {
+      box-shadow: inset 3px 0 0 0 $red-ink;
+    }
   }
 
   .skill-rank-cell {
@@ -410,6 +427,7 @@
     text-overflow: ellipsis;
   }
 
+  .class-skill-badge,
   .trained-badge,
   .racial-skill-badge,
   .feat-skill-badge {
@@ -424,6 +442,7 @@
     flex-shrink: 0;
   }
 
+  .class-skill-badge   { background-color: $red-ink-lt;    color: $red-ink; }
   .trained-badge       { background-color: $parchment-mid; color: $ink-light; }
   .racial-skill-badge  { background-color: $green-ink-lt;  color: $green-ink; }
   .feat-skill-badge    { background-color: $blue-ink-lt;   color: $blue-ink; }

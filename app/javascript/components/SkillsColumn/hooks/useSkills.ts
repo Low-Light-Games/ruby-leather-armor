@@ -6,6 +6,7 @@ import { PATHFINDER_SKILLS, abilityModifier } from '../../../rules/pathfinder_sk
 import { ABILITY_ABBR } from '../../../utils/formatting';
 import type { SkillRanksMap } from '../../../rules/pathfinder_skill_ranks';
 import { effectiveRanksStored, maxRanksForSkill, rankPointCost } from '../../../rules/pathfinder_skill_ranks';
+import { isClassSkill as skillIsClassSkill } from '../../../rules/pathfinder_class_skills';
 
 // ── Public types ──────────────────────────────────────────────────
 
@@ -28,6 +29,8 @@ export interface CalculatedSkill {
   rankMax: number;
   /** Skill points to buy one more rank (1 class / 2 cross-class). */
   rankNextCost: number;
+  /** Whether this skill is on the selected class list (updates when class changes). */
+  isClassSkill: boolean;
   total: number;
 }
 
@@ -90,6 +93,7 @@ export function useSkills({
       const rankRanks = effectiveRanksStored(rankStored, skill.name, classId, level);
       const rankMax = maxRanksForSkill(skill.name, classId, level);
       const rankNextCost = classId ? rankPointCost(skill.name, classId) : 2;
+      const isClassSkill = skillIsClassSkill(skill.name, classId);
       const total = abilityMod + racialBonus + featBonus + equipBonus + acpPenalty + rankRanks;
       return {
         ...skill,
@@ -103,6 +107,7 @@ export function useSkills({
         rankStored,
         rankMax,
         rankNextCost,
+        isClassSkill,
         total,
       };
     });
