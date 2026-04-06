@@ -34,6 +34,73 @@
   display: none;
 }
 
+/* StatTooltip renders via portal on document.body — must not live under .character-column overflow */
+.stat-tooltip-popup {
+  /* Shrink to content while still static in body — avoids full-viewport width before fixed + clamp run */
+  display: inline-block;
+  width: max-content;
+  max-width: calc(100vw - 16px);
+  box-sizing: border-box;
+  visibility: hidden;
+  background: $ink;
+  color: $parchment;
+  border-radius: 4px;
+  padding: 8px 10px;
+  min-width: 150px;
+  z-index: 200;
+  pointer-events: none;
+  font-family: $font-mono;
+  font-size: 11px;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: $ink;
+  }
+
+  .stat-tooltip-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 700;
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid $border;
+    font-size: 12px;
+  }
+
+  .stat-tooltip-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .stat-tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+
+    &.condition-entry {
+      .stat-tooltip-label { color: $red-ink-lt; font-style: italic; }
+      .stat-tooltip-value { color: $red-ink-lt; }
+    }
+  }
+
+  .stat-tooltip-label {
+    white-space: nowrap;
+  }
+
+  .stat-tooltip-value {
+    font-weight: 600;
+    text-align: right;
+
+    &.negative { color: $red-ink-lt; }
+  }
+}
+
 .adventure-play {
   display: flex;
   gap: 16px;
@@ -191,74 +258,20 @@
       }
     }
 
-    /* ── StatTooltip popup ── */
+    /* ── StatTooltip anchor (popup is portaled to body) ── */
     .stat-tooltip-wrapper {
       position: relative;
       display: inline-block;
       cursor: help;
 
-      .stat-tooltip-popup {
-        position: absolute;
-        bottom: calc(100% + 8px);
-        left: 50%;
-        transform: translateX(-50%);
-        background: $ink;
-        color: $parchment;
-        border-radius: 4px;
-        padding: 8px 10px;
-        min-width: 150px;
-        z-index: 200;
-        pointer-events: none;
-        font-family: $font-mono;
-        font-size: 11px;
+      /* Ensure buttons inside wrapper maintain their functionality */
+      > button {
+        cursor: pointer;
+      }
 
-        &::after {
-          content: '';
-          position: absolute;
-          top: 100%;
-          left: 50%;
-          transform: translateX(-50%);
-          border: 5px solid transparent;
-          border-top-color: $ink;
-        }
-
-        .stat-tooltip-header {
-          display: flex;
-          justify-content: space-between;
-          font-weight: 700;
-          margin-bottom: 6px;
-          padding-bottom: 4px;
-          border-bottom: 1px solid $border;
-          font-size: 12px;
-        }
-
-        .stat-tooltip-rows {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
-
-        .stat-tooltip-row {
-          display: flex;
-          justify-content: space-between;
-          gap: 12px;
-
-          &.condition-entry {
-            .stat-tooltip-label { color: $red-ink-lt; font-style: italic; }
-            .stat-tooltip-value { color: $red-ink-lt; }
-          }
-        }
-
-        .stat-tooltip-label {
-          white-space: nowrap;
-        }
-
-        .stat-tooltip-value {
-          font-weight: 600;
-          text-align: right;
-
-          &.negative { color: $red-ink-lt; }
-        }
+      /* Maintain div styling */
+      > .combat-stat {
+        cursor: help;
       }
     }
 
@@ -321,6 +334,25 @@
       display: flex;
       gap: 8px;
       margin-bottom: 10px;
+
+      /* StatTooltip wraps each save in .stat-tooltip-wrapper (inline-block globally);
+         flex children must be the wrappers so they grow; inner button fills. */
+      > .stat-tooltip-wrapper {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+      }
+
+      > .stat-tooltip-wrapper > .save-item {
+        flex: 1;
+        width: 100%;
+      }
+
+      /* No breakdown: StatTooltip renders children only */
+      > .save-item {
+        flex: 1;
+        min-width: 0;
+      }
 
       .save-item {
         flex: 1;

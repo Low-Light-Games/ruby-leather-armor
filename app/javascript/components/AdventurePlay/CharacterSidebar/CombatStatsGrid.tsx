@@ -28,12 +28,12 @@ const CombatStatsGrid = ({
 }: CombatStatsGridProps) => (
   <>
     <div className="combat-stats">
-      <div className="combat-stat">
-        <span className="stat-label">AC</span>
-        <StatTooltip label="AC" total={ds.ac} breakdown={ds.ac_breakdown}>
+      <StatTooltip label="AC" total={ds.ac} breakdown={ds.ac_breakdown}>
+        <div className="combat-stat">
+          <span className="stat-label">AC</span>
           <span className={`stat-value${hasConditionEntry(ds.ac_breakdown) ? ' condition-affected' : ''}`}>{ds.ac}</span>
-        </StatTooltip>
-      </div>
+        </div>
+      </StatTooltip>
       <div className="combat-stat"><span className="stat-label">Touch AC</span><span className="stat-value">{ds.touch_ac}</span></div>
       <div className="combat-stat"><span className="stat-label">Flat-Foot</span><span className="stat-value">{ds.flat_footed_ac}</span></div>
       <div className="combat-stat"><span className="stat-label">HP</span><span className="stat-value">{sheet.hp} / {ds.max_hp}</span></div>
@@ -44,27 +44,27 @@ const CombatStatsGrid = ({
     </div>
 
     <div className="saves-row">
-      <button className="save-item rollable" onClick={rollFort} title="Roll Fortitude Save">
-        <span className="save-label">Fort</span>
-        <StatTooltip label="Fortitude" total={formatMod(ds.fort)} breakdown={ds.fort_breakdown}>
+      <StatTooltip label="Fortitude" total={formatMod(ds.fort)} breakdown={ds.fort_breakdown}>
+        <button className="save-item rollable" onClick={rollFort} title="Roll Fortitude Save">
+          <span className="save-label">Fort</span>
           <span className={`save-value${hasConditionEntry(ds.fort_breakdown) ? ' condition-affected' : ''}`}>{formatMod(ds.fort)}</span>
-        </StatTooltip>
-        <span className="roll-dice-hint">🎲</span>
-      </button>
-      <button className="save-item rollable" onClick={rollRef} title="Roll Reflex Save">
-        <span className="save-label">Ref</span>
-        <StatTooltip label="Reflex" total={formatMod(ds.ref)} breakdown={ds.ref_breakdown}>
+          <span className="roll-dice-hint">🎲</span>
+        </button>
+      </StatTooltip>
+      <StatTooltip label="Reflex" total={formatMod(ds.ref)} breakdown={ds.ref_breakdown}>
+        <button className="save-item rollable" onClick={rollRef} title="Roll Reflex Save">
+          <span className="save-label">Ref</span>
           <span className={`save-value${hasConditionEntry(ds.ref_breakdown) ? ' condition-affected' : ''}`}>{formatMod(ds.ref)}</span>
-        </StatTooltip>
-        <span className="roll-dice-hint">🎲</span>
-      </button>
-      <button className="save-item rollable" onClick={rollWill} title="Roll Will Save">
-        <span className="save-label">Will</span>
-        <StatTooltip label="Will" total={formatMod(ds.will)} breakdown={ds.will_breakdown}>
+          <span className="roll-dice-hint">🎲</span>
+        </button>
+      </StatTooltip>
+      <StatTooltip label="Will" total={formatMod(ds.will)} breakdown={ds.will_breakdown}>
+        <button className="save-item rollable" onClick={rollWill} title="Roll Will Save">
+          <span className="save-label">Will</span>
           <span className={`save-value${hasConditionEntry(ds.will_breakdown) ? ' condition-affected' : ''}`}>{formatMod(ds.will)}</span>
-        </StatTooltip>
-        <span className="roll-dice-hint">🎲</span>
-      </button>
+          <span className="roll-dice-hint">🎲</span>
+        </button>
+      </StatTooltip>
     </div>
 
     <div className="damage-tiles">
