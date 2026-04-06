@@ -2,6 +2,8 @@
 
 module CharacterStats
   # Pathfinder 1e class skill lists (Core Rulebook / SRD). Keys match Calculator skill names.
+  #
+  # Client mirror (keep identical): app/javascript/rules/pathfinder_class_skills.ts (`CLASS_SKILLS_BY_ID`).
   class ClassSkillsData
     LISTS = {
       "barbarian" => [

@@ -1,3 +1,10 @@
+/**
+ * Client-side skill rank math (budget, per-rank cost, max ranks, stepper validation) for UX.
+ *
+ * Server enforcement mirrors this logic in CharacterStats::Calculator — see
+ * `#effective_rank_bonus` and `#max_ranks_cap` in app/services/character_stats/calculator.rb.
+ * Update both when rules change.
+ */
 import { isClassSkill } from './pathfinder_class_skills';
 
 export type SkillRanksMap = Record<string, number>;

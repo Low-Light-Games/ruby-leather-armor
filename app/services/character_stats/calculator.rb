@@ -758,6 +758,11 @@ module CharacterStats
       end
     end
 
+    # Skill rank caps, point costs, and budget checks are mirrored client-side in
+    # app/javascript/rules/pathfinder_skill_ranks.ts (e.g. maxRanksForSkill, rankPointCost,
+    # spentSkillPoints, tryAdjustSkillRank). Client validates for responsive UI; these methods
+    # enforce the same rules on the server.
+
     def skill_ranks_raw
       raw = @src.try(:skill_ranks)
       return {} unless raw.is_a?(Hash)

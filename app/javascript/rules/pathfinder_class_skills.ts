@@ -1,6 +1,8 @@
 /**
- * Pathfinder 1e class skill lists (Core / SRD). Keys must match `PATHFINDER_SKILLS` names
- * and stay in sync with `CharacterStats::ClassSkillsData::LISTS` on the server.
+ * Pathfinder 1e class skill lists (Core / SRD). Keys must match `PATHFINDER_SKILLS` names.
+ *
+ * Server mirror (keep identical): app/services/character_stats/class_skills_data.rb
+ * (`CharacterStats::ClassSkillsData::LISTS`).
  */
 export const CLASS_SKILLS_BY_ID: Record<string, readonly string[]> = {
   barbarian: [

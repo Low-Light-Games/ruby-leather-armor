@@ -1,13 +1,11 @@
 import React, { useState, useMemo, useCallback } from 'react'
-import { Accordion } from '../ui/Accordion'
 import type { AdventureSheet, AttributeType, DerivedStats } from '../../types'
 import type { ItemDefinition } from '../../rules/pathfinder_items_types'
 import type { SpellDefinition } from '../../rules/pathfinder_spells_types'
 import type { SpellbookSearchResult } from './hooks/useSpellbook'
 import type { SkillRanksMap } from '../../rules/pathfinder_skill_ranks'
-import { formatMod, ABILITY_ABBR, ATTRIBUTE_ORDER } from '../../utils/formatting'
 import { getItemById } from '../../rules/pathfinder_items'
-import { getFeatById, featDisplayName } from '../../rules/pathfinder_feats'
+import { getFeatById } from '../../rules/pathfinder_feats'
 import { getClassById } from '../../rules/pathfinder_classes'
 import { abilityModifier } from '../../rules/pathfinder_skills'
 import {
@@ -15,16 +13,16 @@ import {
   tryAdjustSkillRank,
   spentSkillPoints,
   totalSkillPoints,
-  maxRanksForSkill,
-  rankPointCost,
 } from '../../rules/pathfinder_skill_ranks'
-import { getCastingStyle } from '../../rules/pathfinder_spells'
-import { getWeaponAttackMod } from '../../rules/damage'
-import { SkillRankStepper } from '../SkillsColumn/skills/SkillRankStepper'
 import CombatStatsGrid from './CharacterSidebar/CombatStatsGrid'
 import ConditionsBadges from './CharacterSidebar/ConditionsBadges'
 import SpellsSection from './CharacterSidebar/SpellsSection'
 import CharacterActions from './CharacterSidebar/CharacterActions'
+import AttributesAccordion from './CharacterSidebar/AttributesAccordion'
+import SkillsAccordion from './CharacterSidebar/SkillsAccordion'
+import WeaponsAccordion from './CharacterSidebar/WeaponsAccordion'
+import InventoryAccordion from './CharacterSidebar/InventoryAccordion'
+import FeatsAccordion from './CharacterSidebar/FeatsAccordion'
 
 interface CharacterSidebarProps {
   sheet: AdventureSheet
@@ -107,7 +105,7 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
       })
       if (next) await patchSkillRanks(next)
     },
-    [classDef, ds.final_scores.intelligence, patchSkillRanks, ranksMap, sheet.character_class, sheet.level],
+    [classDef, ds.final_scores.intelligence, patchSkillRanks, ranksMap, sheet.character_class, sheet.level, sheet.race],
   )
 
   const equippedWeapons: { item: ItemDefinition; id: string }[] = useMemo(() => {
@@ -161,165 +159,46 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
       />
 
       <div className="collapsible-sections">
-        <Accordion title="Attributes" isOpen={openSections.attributes} onToggle={() => toggleSection('attributes')}>
-          <div className="attributes-list">
-            {ATTRIBUTE_ORDER.map(attr => {
-              const base = sheet[attr]
-              const final = ds.final_scores[attr] ?? base
-              const racial = final - base
-              const mod = ds.mods[attr] ?? 0
-              return (
-                <div key={attr} className="attribute-item">
-                  <span className="attr-label">{ABILITY_ABBR[attr]}</span>
-                  <span className="attr-score">
-                    {base}
-                    {racial !== 0 && (
-                      <span className={`racial ${racial > 0 ? 'pos' : 'neg'}`}>
-                        {racial > 0 ? '+' : ''}{racial}
-                      </span>
-                    )}
-                    {' = '}
-                    <strong>{final}</strong>
-                  </span>
-                  <span className="attr-mod">{formatMod(mod)}</span>
-                  <button className="roll-dice-btn" onClick={() => rollAbility(attr)}
-                    title={`Roll ${ABILITY_ABBR[attr]} Check`} aria-label={`Roll ${ABILITY_ABBR[attr]} Check`}>
-                    🎲
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        </Accordion>
-
-        <Accordion title="Skills" isOpen={openSections.skills} onToggle={() => toggleSection('skills')}>
-          {!sheet.character_class && (
-            <p className="skills-assign-hint-adventure">Choose a class to assign skill ranks.</p>
-          )}
-          {sheet.character_class && classDef && pointsSummary && (
-            <div className="skills-points-bar-adventure" role="status">
-              <span>Skill points</span>
-              <span>
-                {pointsSummary.spent} / {pointsSummary.total}
-                {pointsSummary.remaining > 0 && (
-                  <span className="skills-points-remaining"> ({pointsSummary.remaining} left)</span>
-                )}
-              </span>
-            </div>
-          )}
-          <div className="skills-list-adventure">
-            {ds.skills.map(skill => {
-              const rankStored = ranksMap[skill.name] ?? 0
-              const rankMax = maxRanksForSkill(skill.name, sheet.character_class, sheet.level)
-              const nextCost = sheet.character_class ? rankPointCost(skill.name, sheet.character_class) : 2
-              const showRanks = Boolean(sheet.character_class && classDef)
-              return (
-                <div key={skill.name} className={`skill-row skill-row-adventure-skills ${skill.trained_only ? 'trained-only' : ''}`}>
-                  <span className="skill-name">
-                    {skill.name}
-                    {skill.trained_only && <span className="badge-t">T</span>}
-                  </span>
-                  {showRanks && (
-                    <span className="skill-rank-cell-adventure">
-                      <SkillRankStepper
-                        value={rankStored}
-                        onDelta={d => { void handleRankDelta(skill.name, d) }}
-                        disabledMinus={rankStored <= 0 || rankSaving}
-                        disabledPlus={
-                          rankSaving ||
-                          rankStored >= rankMax ||
-                          !pointsSummary ||
-                          pointsSummary.remaining < nextCost
-                        }
-                      />
-                    </span>
-                  )}
-                  <span className={`skill-mod ${skill.total >= 0 ? 'positive' : 'negative'}`}>
-                    {formatMod(skill.total)}
-                  </span>
-                  <button className="roll-dice-btn" onClick={() => rollSkill(skill.name, skill.total)}
-                    title={`Roll ${skill.name} Check`} aria-label={`Roll ${skill.name} Check`}>
-                    🎲
-                  </button>
-                </div>
-              )
-            })}
-          </div>
-        </Accordion>
-
-        <Accordion title={`Weapons (${equippedWeapons.length})`} isOpen={openSections.weapons} onToggle={() => toggleSection('weapons')}>
-          <div className="weapons-list">
-            {equippedWeapons.length === 0 ? (
-              <p className="empty-hint">No weapons equipped.</p>
-            ) : (
-              equippedWeapons.map(({ item, id }) => {
-                const atkMod = getWeaponAttackMod(item, ds, featDefs)
-                const isBash = item.itemType === 'shield'
-                return (
-                  <div key={id} className="weapon-row" title={item.summary ?? undefined}>
-                    <div className="weapon-info">
-                      <span className="weapon-name">{item.name}{isBash ? ' (bash)' : ''}</span>
-                      <span className="weapon-stats">
-                        {item.damageDice} {item.damageType}{' | '}Atk {formatMod(atkMod.total)}
-                      </span>
-                    </div>
-                    <button className="roll-dice-btn" onClick={() => rollWeaponDamage(id)}
-                      title={`Roll ${item.name} Damage`} aria-label={`Roll ${item.name} Damage`}>
-                      🎲
-                    </button>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </Accordion>
-
-        <Accordion title={`Inventory (${allItems.length})`} isOpen={openSections.inventory} onToggle={() => toggleSection('inventory')}>
-          <div className="inventory-list">
-            {equipError && <p className="equip-error">{equipError}</p>}
-            {allItems.length === 0 ? (
-              <p className="empty-hint">No items.</p>
-            ) : (
-              allItems.map(({ item, id, quantity, equipped }) => (
-                <div key={id} className={`inventory-row ${equipped ? 'is-equipped' : ''}`} title={item.summary ?? undefined}>
-                  <span className="inventory-name">
-                    {item.name}
-                    {quantity > 1 && <span className="inventory-qty"> x{quantity}</span>}
-                  </span>
-                  <span className="inventory-meta">
-                    <span className={`inventory-type type-${item.itemType}`}>{item.itemType}</span>
-                    <button className={`equip-toggle ${equipped ? 'equipped' : 'unequipped'}`}
-                      onClick={() => toggleEquip(id)} disabled={equipSaving}
-                      title={equipped ? 'Unequip' : 'Equip'}>
-                      {equipped ? 'Unequip' : 'Equip'}
-                    </button>
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </Accordion>
-
-        <Accordion title={`Feats (${feats.length})`} isOpen={openSections.feats} onToggle={() => toggleSection('feats')}>
-          <div className="feats-spells-list">
-            {feats.length === 0 ? (
-              <p className="empty-hint">No feats selected.</p>
-            ) : (
-              feats.map(entry => {
-                const feat = getFeatById(entry)
-                if (!feat) return null
-                const displayName = featDisplayName(entry)
-                return (
-                  <div key={entry} className="fs-item" title={feat.summary}>
-                    <span className="fs-name">{displayName}</span>
-                    <span className={`fs-tag cat-${feat.category}`}>{feat.category}</span>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        </Accordion>
-
+        <AttributesAccordion
+          isOpen={openSections.attributes}
+          onToggle={() => toggleSection('attributes')}
+          sheet={sheet}
+          ds={ds}
+          rollAbility={rollAbility}
+        />
+        <SkillsAccordion
+          isOpen={openSections.skills}
+          onToggle={() => toggleSection('skills')}
+          sheet={sheet}
+          ds={ds}
+          classDef={classDef}
+          ranksMap={ranksMap}
+          pointsSummary={pointsSummary}
+          handleRankDelta={handleRankDelta}
+          rankSaving={rankSaving}
+          rollSkill={rollSkill}
+        />
+        <WeaponsAccordion
+          isOpen={openSections.weapons}
+          onToggle={() => toggleSection('weapons')}
+          equippedWeapons={equippedWeapons}
+          ds={ds}
+          featDefs={featDefs}
+          rollWeaponDamage={rollWeaponDamage}
+        />
+        <InventoryAccordion
+          isOpen={openSections.inventory}
+          onToggle={() => toggleSection('inventory')}
+          allItems={allItems}
+          equipError={equipError}
+          toggleEquip={toggleEquip}
+          equipSaving={equipSaving}
+        />
+        <FeatsAccordion
+          isOpen={openSections.feats}
+          onToggle={() => toggleSection('feats')}
+          feats={feats}
+        />
         <SpellsSection
           sheet={sheet}
           isOpen={openSections.spells}
