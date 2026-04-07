@@ -8,12 +8,13 @@ module DungeonMaster
   # (DungeonMasterService) is responsible for those side effects.
   #
   # Flow:
-  #   run_prompt          -> intake -> dm_query_flow | orchestrate_actions
-  #   orchestrate_actions -> sequencer -> [ for each action: CoreResolver.resolve ] -> output_phase
-  #                          output_phase: per-action narrative streamed immediately (action_queue setting)
-  #                            "progressive"             — no prior context injected
-  #                            "progressive_continuity"  — prior action outcomes fed into beacon/mech_eval/narrate
-  #   run_rolls           -> CoreResolver.finish_resolution -> continue queue if remaining -> output_phase
+  #   run_prompt          -> MAIN_PROMPT_PHASES (see pipeline/phases/*):
+  #                           IntakeDangerGate -> DmQueryBranch -> OrchestrateCompoundActions
+  #                         OrchestrateCompoundActions: run_sequencer -> ActionQueueRunner
+  #                           -> per action: CoreResolver.resolve -> run_accumulated_narrative_phase
+  #                           (aka narrative/output phase via Stagehand)
+  #                         Per-action narrative when action_queue is progressive / progressive_continuity
+  #   run_rolls           -> CoreResolver.finish_resolution -> continue queue if remaining -> narrative phase
   #
   class Pipeline
     include Steps::Helpers
@@ -34,6 +35,15 @@ module DungeonMaster
     include CoreResolver
     include Mutations
 
+    # Outer `run_prompt` phase order — reorder or add entries here (see docs/pipeline_steps.md).
+    MAIN_PROMPT_PHASES = [
+      Phases::IntakeDangerGate,
+      Phases::DmQueryBranch,
+      Phases::OrchestrateCompoundActions
+    ].freeze
+
+    attr_reader :adventure, :config, :log, :ai, :sheet, :loop
+
     def initialize(adventure:, config:, ai:, log:, sheet:, on_progress: nil, on_sheet_update: nil, on_narrative: nil)
       @adventure        = adventure
       @config           = config
@@ -50,20 +60,13 @@ module DungeonMaster
     # Returns a hash with :action key describing the outcome.
     # @param mode [String, nil] "dm_query" when the player explicitly toggled Ask DM mode
     def run_prompt(player_input, mode: nil)
-      intake_result = run_intake(player_input)
-
-      if intake_result[:danger_score] >= @config.danger_threshold
-        @log.play_log!("intake_rejection", "Rejected (danger: #{intake_result[:danger_score]}): #{intake_result[:reason]}")
-        return { action: :rejected, reason: intake_result[:reason], danger: intake_result[:danger_score] }
+      state = { player_input: player_input, mode: mode }
+      MAIN_PROMPT_PHASES.each do |phase|
+        out = phase.call(self, state)
+        state.merge!(out.except(:halt, :result))
+        return out[:result] if out[:halt]
       end
-
-      clean_input = intake_result[:sanitized_input]
-
-      if mode == "dm_query" || intake_result[:is_dm_query]
-        return run_dm_query_flow(clean_input)
-      end
-
-      orchestrate_actions(clean_input)
+      raise "Pipeline MAIN_PROMPT_PHASES ended without a terminal result"
     end
 
     # Resumption entry point: player submitted initiative roll.
@@ -136,6 +139,8 @@ module DungeonMaster
     # Flow branches
     # ----------------------------------------------------------------
 
+    # Assumes: clean_input from intake; @adventure, @log, @ai; optional plot data for chronicler stub.
+    # Prompts: resolve_plot (conditional), run_dm_query.
     def run_dm_query_flow(clean_input)
       intent_stub = { intention: clean_input, affected_contexts: [], macro_significant: false }
       plot_result = resolve_plot(intent_stub)
@@ -146,103 +151,8 @@ module DungeonMaster
       { action: :dm_query, answer: result[:answer] }
     end
 
-    # Outer orchestrator: sequencer → action queue loop → output phase.
-    def orchestrate_actions(clean_input)
-      actions = run_sequencer(clean_input)
-      total = actions.size
-      accumulated = []
-      use_per_action = per_action_narration? && total > 1
-      action_narratives = []
-
-      actions.each_with_index do |action_text, idx|
-        set_action_label(idx, total)
-        @loop = create_adventure_loop(action_text, idx)
-        result = resolve(action_text)
-
-        case result[:status]
-        when :rejected
-          @loop&.batch_update!(new_status: "errored",
-            timeline_entry: tl("rejected", result[:reason]))
-          return { action: :rejected, reason: result[:reason], dm_message: result[:dm_message] }
-
-        when :awaiting_rolls
-          @loop&.batch_update!(new_status: "paused",
-            timeline_entry: tl("awaiting_rolls", "Paused for player rolls"))
-          run_context_updates_at_pause(result[:intent], result[:merged])
-          remaining = actions[(idx + 1)..]
-          log_queue_pause(idx, total, remaining)
-          return {
-            action: :awaiting_rolls, intent: result[:intent], merged: result[:merged],
-            remaining_actions: remaining
-          }
-
-        when :awaiting_initiative
-          @loop&.batch_update!(new_status: "paused",
-            new_tags: { "combat_started" => true },
-            timeline_entry: tl("awaiting_initiative", "Paused for player initiative"))
-          run_context_updates_at_encounter_pause(result[:mutations])
-          remaining = actions[(idx + 1)..]
-          log_queue_pause(idx, total, remaining)
-          return {
-            action: :awaiting_initiative,
-            intent: result[:intent],
-            creature_data: result[:creature_data],
-            mutations: result[:mutations],
-            remaining_actions: remaining
-          }
-
-        when :encounter
-          @loop&.batch_update!(new_status: "encounter",
-            timeline_entry: tl("encounter", "Encounter triggered"))
-          accumulated << result
-          log_queue_interrupt(idx, total, actions[(idx + 1)..], reason: "encounter")
-          break
-
-        when :social_scene
-          @loop&.batch_update!(new_status: "social_scene",
-            timeline_entry: tl("social_scene", "Social scene triggered"))
-          accumulated << result
-          log_queue_interrupt(idx, total, actions[(idx + 1)..], reason: "social_scene")
-          break
-
-        when :resolved
-          @loop&.batch_update!(new_status: "resolved",
-            timeline_entry: tl("resolved", "Action resolved"))
-          if use_per_action
-            action_narratives << run_single_action_narrative_phase(result, idx, total)
-            run_inter_action_context_update(result) if idx < actions.size - 1
-          else
-            accumulated << result
-            run_inter_action_context_update(result) if idx < actions.size - 1
-          end
-        end
-      end
-
-      clear_action_label
-      log_queue_completed(total) if total > 1
-
-      if use_per_action && action_narratives.any?
-        if accumulated.any?
-          # An encounter or social scene broke the loop after some resolved actions.
-          # Narrate the encounter via the accumulated path; if it needs initiative
-          # that takes priority and the per-action narratives are discarded.
-          final = run_accumulated_narrative_phase(accumulated)
-          return final unless final[:action] == :narrated
-          action_narratives << {
-            narrative: final[:narrative],
-            adventure_complete: final[:adventure_complete],
-            sequence_index: action_narratives.size,
-            total_actions: total,
-            action_text: nil
-          }
-        end
-        { action: :narrated_sequence, narratives: action_narratives }
-      else
-        run_accumulated_narrative_phase(accumulated)
-      end
-    end
-
     # Continue the action queue after a roll pause or from a mid-queue resume.
+    # :rejected on an action skips that action (next); fresh orchestration aborts the whole turn instead.
     def run_remaining_queue(remaining, accumulated_intents: [], accumulated_mutations: [])
       processed_count = AdventureLoop.for_pipeline(@log.pipeline_run_id).count
       total_original = processed_count + remaining.size
@@ -251,68 +161,14 @@ module DungeonMaster
         { status: :resolved, intent: intent, mutations: accumulated_mutations[i] }
       end
 
-      remaining.each_with_index do |action_text, idx|
-        action_idx = base_idx + idx
-        set_action_label(action_idx, total_original)
-        @loop = create_adventure_loop(action_text, action_idx)
-        result = resolve(action_text)
-
-        case result[:status]
-        when :rejected
-          @loop&.batch_update!(new_status: "errored",
-            timeline_entry: tl("rejected", result[:reason]))
-          next
-
-        when :awaiting_rolls
-          @loop&.batch_update!(new_status: "paused",
-            timeline_entry: tl("awaiting_rolls", "Paused for player rolls"))
-          run_context_updates_at_pause(result[:intent], result[:merged])
-          new_remaining = remaining[(idx + 1)..]
-          log_queue_pause(action_idx, total_original, new_remaining)
-          return {
-            action: :awaiting_rolls, intent: result[:intent], merged: result[:merged],
-            remaining_actions: new_remaining
-          }
-
-        when :awaiting_initiative
-          @loop&.batch_update!(new_status: "paused",
-            new_tags: { "combat_started" => true },
-            timeline_entry: tl("awaiting_initiative", "Paused for player initiative"))
-          run_context_updates_at_encounter_pause(result[:mutations])
-          new_remaining = remaining[(idx + 1)..]
-          log_queue_pause(action_idx, total_original, new_remaining)
-          return {
-            action: :awaiting_initiative,
-            intent: result[:intent],
-            creature_data: result[:creature_data],
-            mutations: result[:mutations],
-            remaining_actions: new_remaining
-          }
-
-        when :encounter
-          @loop&.batch_update!(new_status: "encounter",
-            timeline_entry: tl("encounter", "Encounter triggered"))
-          accumulated << result
-          log_queue_interrupt(action_idx, total_original, remaining[(idx + 1)..], reason: "encounter")
-          break
-
-        when :social_scene
-          @loop&.batch_update!(new_status: "social_scene",
-            timeline_entry: tl("social_scene", "Social scene triggered"))
-          accumulated << result
-          log_queue_interrupt(action_idx, total_original, remaining[(idx + 1)..], reason: "social_scene")
-          break
-
-        when :resolved
-          @loop&.batch_update!(new_status: "resolved",
-            timeline_entry: tl("resolved", "Action resolved"))
-          accumulated << result
-          run_inter_action_context_update(result) if idx < remaining.size - 1
-        end
-      end
-
-      clear_action_label
-      run_accumulated_narrative_phase(accumulated)
+      ActionQueueRunner.new(self).run(
+        action_strings: remaining,
+        base_sequence_index: base_idx,
+        total_for_logging: total_original,
+        abort_on_rejected: false,
+        initial_accumulated: accumulated,
+        per_action_narration: false
+      )
     end
 
     # ----------------------------------------------------------------

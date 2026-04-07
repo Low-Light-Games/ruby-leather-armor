@@ -4,7 +4,7 @@ module DungeonMaster
   # Inner pipeline: resolves a single player action from dispatch through time_keeper.
   #
   # Extracted from Pipeline's run_action_flow / run_resolution_flow so the
-  # outer orchestrator (orchestrate_actions) can loop over queued actions
+  # outer ActionQueueRunner can loop over queued actions
   # without duplicating resolution logic.
   #
   # Returns a standardized result hash with :status indicating the outcome:
