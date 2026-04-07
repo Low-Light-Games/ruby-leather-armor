@@ -33,10 +33,13 @@ module DungeonMaster
         prompts << sanity_checker_capability_evaluator_prompt(intent) if @sheet
 
         results = call_evaluator!("#{evaluator_url}/fan_out", prompts, text, phase: "sanity_gate")
+        by_step = evaluator_fan_out_results_by_step(results)
 
-        world = parse_world_from_evaluator_result(results[0])
+        world = parse_world_from_evaluator_result(
+          evaluator_fan_out_result!(by_step, "sanity_checker_world", "sanity_gate"))
         capability = if @sheet
-                       parse_capability_from_evaluator_result(results[1])
+                       parse_capability_from_evaluator_result(
+                         evaluator_fan_out_result!(by_step, "sanity_checker", "sanity_gate"))
                      else
                        { allowed: true, reason: nil }
                      end

@@ -8,6 +8,27 @@ module DungeonMaster
     module EvaluatorTransport
       private
 
+      # POST /fan_out returns one result per prompt in the same order as the request body
+      # (see evaluator/src/index.js — results are pushed in index order, not completion order).
+      # We still index by meta["step"] so callers do not rely on array position alone.
+      def evaluator_fan_out_results_by_step(results)
+        Array(results).each_with_object({}) do |r, h|
+          step = r.dig("meta", "step").to_s
+          if step.blank?
+            raise AiError, "Evaluator fan_out returned a result without meta.step"
+          end
+          if h.key?(step)
+            raise AiError, "Evaluator fan_out returned duplicate meta.step #{step.inspect}"
+          end
+
+          h[step] = r
+        end
+      end
+
+      def evaluator_fan_out_result!(by_step, step, phase)
+        by_step[step] || raise(AiError, "Evaluator #{phase} fan_out missing result for meta.step #{step.inspect}")
+      end
+
       def call_evaluator!(url, prompts, intention, phase:)
         uri  = URI(url)
         http = Net::HTTP.new(uri.host, uri.port)

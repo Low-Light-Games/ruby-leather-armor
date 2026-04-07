@@ -54,18 +54,20 @@ module DungeonMaster
 
         results = call_evaluator!("#{evaluator_url}/fan_out", prompts, seed, phase: "narrative_phase")
 
-        by_step = results.each_with_object({}) { |r, h| h[r.dig("meta", "step")] = r }
+        # All prompts are built on the main thread before this single HTTP call; Node runs
+        # LLM calls concurrently but returns results in request order — see evaluator index.js.
+        by_step = evaluator_fan_out_results_by_step(results)
 
-        micro_parsed = (by_step["micro_context_update"] || {})["parsed_response"] || {}
+        micro_parsed = evaluator_fan_out_result!(by_step, "micro_context_update", "narrative_phase")["parsed_response"] || {}
         macro_parsed = if intent[:macro_significant]
-                         (by_step["macro_narrative_update"] || {})["parsed_response"] || {}
+                         evaluator_fan_out_result!(by_step, "macro_narrative_update", "narrative_phase")["parsed_response"] || {}
                        else
                          {}
                        end
 
         apply_context_update_results(micro_parsed, macro_parsed, macro_significant: intent[:macro_significant])
 
-        narrative_from_evaluator_result(by_step["narrate"])
+        narrative_from_evaluator_result(evaluator_fan_out_result!(by_step, "narrate", "narrative_phase"))
       end
 
       def run_subjugated_narrative(intent, pipeline:, mutations:)

@@ -46,8 +46,9 @@ module DungeonMaster
           macro_context_evaluator_prompt(what_happened)
         ]
         results = call_evaluator!("#{evaluator_url}/fan_out", prompts, what_happened, phase: "context_update")
-        micro_parsed = results[0]["parsed_response"] || {}
-        macro_parsed = results[1]["parsed_response"] || {}
+        by_step = evaluator_fan_out_results_by_step(results)
+        micro_parsed = evaluator_fan_out_result!(by_step, "micro_context_update", "context_update")["parsed_response"] || {}
+        macro_parsed = evaluator_fan_out_result!(by_step, "macro_narrative_update", "context_update")["parsed_response"] || {}
         [micro_parsed, macro_parsed]
       end
 
