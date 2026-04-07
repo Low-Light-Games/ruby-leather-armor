@@ -55,5 +55,12 @@ jobs:
       - name: Load schema
         run: bundle exec rails db:schema:load
 
+      - name: Forbid Thread.new in app/ (use Node fan_out or Sidekiq)
+        run: |
+          if grep -rE 'Thread\.new[[:space:]]+do|Thread\.new[[:space:]]*\{' app --include='*.rb' -q; then
+            grep -rEn 'Thread\.new[[:space:]]+do|Thread\.new[[:space:]]*\{' app --include='*.rb'
+            exit 1
+          fi
+
       - name: Run RSpec
         run: bundle exec rspec
