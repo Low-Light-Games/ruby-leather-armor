@@ -68,6 +68,10 @@ if ENV["STUB_OPENAI"].present?
   end
 
   # ── Node evaluator HTTP stubs ──────────────────────────────────────────────
+  # POST /moderate   — synchronous moderation for non-trusted users (see
+  #                    DungeonMasterService#execute_prompt); without this stub,
+  #                    Playwright would be the only flow that opens a real TCP
+  #                    socket to EVALUATOR_URL before fan_out/sequential.
   # POST /fan_out  — beacons (all 6 domains in parallel) and roll_qualifier
   # POST /sequential — mech_eval (only affected domains, sequentially)
   #
@@ -75,6 +79,17 @@ if ENV["STUB_OPENAI"].present?
   # Disable Device DC 15 roll for the exploration domain.
 
   evaluator_base = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
+
+  WebMock.stub_request(:post, "#{evaluator_base}/moderate")
+         .to_return(
+           status: 200,
+           body: {
+             "flagged" => false,
+             "categories" => {},
+             "category_scores" => {}
+           }.to_json,
+           headers: { "Content-Type" => "application/json" }
+         )
 
   # Helper: build one evaluator result envelope.
   build_entry = lambda do |step, domain, parsed|
