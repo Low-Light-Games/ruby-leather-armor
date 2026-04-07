@@ -17,14 +17,19 @@ load Rails.root.join("db", "seeds", "encounter_tables.rb")
 # Only bootstrap local development — production admin accounts should be
 # created through a secure out-of-band process.
 if Rails.env.development? || Rails.env.staging? || Rails.env.playwright?
+  # Skip the character-onboarding wizard for seeded accounts so Playwright (and
+  # local smoke tests) land on /adventures/new with story/sheet picks. New users
+  # still get onboarding_state "new" from the schema default.
   admin = User.find_or_initialize_by(email: 'admin@example.com')
   admin.admin = true
   admin.password = 'admin123'
+  admin.onboarding_state = "in_progress"
   admin.save!
 
   test_user = User.find_or_initialize_by(email: 'test@example.com')
   test_user.admin = false
   test_user.password = 'test123'
+  test_user.onboarding_state = "in_progress"
   test_user.save!
 
   puts "Created/updated admin user: #{admin.email} (password: admin123)"
