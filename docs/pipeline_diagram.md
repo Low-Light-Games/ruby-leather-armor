@@ -2,6 +2,8 @@
 
 High-level flow of the AI DM pipeline. For per-step prompt/model detail see [Pipeline Steps](pipeline_steps.md).
 
+**Outer shell:** `DungeonMaster::Pipeline#run_prompt` runs `MAIN_PROMPT_PHASES` in order ([`pipeline.rb`](../app/services/dungeon_master/pipeline.rb) — `Phases::IntakeDangerGate`, `Phases::DmQueryBranch`, `Phases::OrchestrateCompoundActions`). Compound actions use **`Pipeline::ActionQueueRunner`** for the per-action loop shared with `run_remaining_queue` (fresh queue aborts on `:rejected`; resume skips rejected actions). The narrative/output path is **`run_accumulated_narrative_phase`** → **`run_narrative_phase`** (Stagehand). See [Outer orchestration](pipeline_steps.md#outer-orchestration-pipeline-class) in pipeline_steps.md.
+
 ---
 
 ## Main flow (run_prompt)
@@ -49,7 +51,7 @@ flowchart TB
 
     SEQN & SEQ2 --> ACTION_LOOP
 
-    subgraph action_loop["Action loop — for each action"]
+    subgraph action_loop["Action loop — ActionQueueRunner (each action)"]
         ACTION_LOOP[Create AdventureLoop record] --> RESOLVE[CoreResolver.resolve]
     end
 
@@ -144,7 +146,7 @@ flowchart TB
 
     BREAK_ENC & BREAK_SOC & MECH_RESOLVED & NM_RESOLVED2 --> OUTPUT_PHASE
 
-    subgraph output_phase["Output phase — run_accumulated_output_phase"]
+    subgraph output_phase["Narrative phase — run_accumulated_narrative_phase → run_narrative_phase"]
         OUTPUT_PHASE --> CHRON{story has plot data?}
         CHRON -->|yes| CHRONICLER[run_chronicler  ☆ AI]
         CHRONICLER --> CHRON_OUT[dm_brief + forbidden_elements + plot_state updates]
@@ -189,7 +191,7 @@ flowchart LR
         RR3 --> RR4["NPC rolls → Mechanic ☆ AI → apply_mutations → TimeKeeper"]
         RR4 --> RR5{More actions in queue?}
         RR5 -->|yes| RR6[run_remaining_queue]
-        RR5 -->|no| RR7[run_accumulated_output_phase]
+        RR5 -->|no| RR7[run_accumulated_narrative_phase]
         RR6 --> PHASE[Output phase]
         RR7 --> PHASE
     end
@@ -199,7 +201,7 @@ flowchart LR
         II1 --> II2[set turn order by initiative]
         II2 --> II3{More actions in queue?}
         II3 -->|yes| II4[run_remaining_queue]
-        II3 -->|no| II5[run_accumulated_output_phase]
+        II3 -->|no| II5[run_accumulated_narrative_phase]
         II4 --> PHASE
         II5 --> PHASE
     end
@@ -504,9 +506,9 @@ After `CoreResolver.resolve` returns, the action loop dispatches on `result[:sta
 
 ---
 
-### Output phase — run_accumulated_output_phase
+### Narrative phase — `run_accumulated_narrative_phase` → `run_narrative_phase`
 
-After all actions complete (or the queue breaks), the output phase runs.
+After all actions complete (or the queue breaks), `run_accumulated_narrative_phase` merges results and calls Stagehand’s **`run_narrative_phase`** (chronicler, combat check, narrate, context updates).
 
 Multiple resolved/encounter/social_scene results are **merged**: intentions concatenated with "; ", affected contexts unioned, `macro_significant` or-ed. The combined narration seed is assembled by querying all `AdventureLoop` rows for the current `pipeline_run_id` in `sequence_index` order and joining their `pipeline_outcome` fields with `"\n\nThen: "`.
 
@@ -555,14 +557,14 @@ Has a special fallback: if the model returns raw text instead of JSON, the text 
 2. `tag_roll_resolution!` — tags the loop with `took_20`, `took_10`, or `rolled`.
 3. `restore_from_metadata` — reconstructs `intent` and `merged` from the `roll_request` message metadata.
 4. `finish_resolution` — runs NPC actions → Mechanic → mutations → TimeKeeper.
-5. If more actions were in the queue (`remaining_actions`), runs `run_remaining_queue` (same loop logic as `orchestrate_actions`). Otherwise, runs `run_accumulated_output_phase`.
+5. If more actions were in the queue (`remaining_actions`), runs `run_remaining_queue` (same `ActionQueueRunner` loop as the fresh compound-action path). Otherwise, runs `run_accumulated_narrative_phase`.
 
 **Initiative resumption (`run_initiative`):**
 
 1. `restore_paused_loop!` — finds the paused loop.
 2. `Warmaster.finalize_combat!` — writes `adventure.combat_context` with player + creature initiatives, sorted turn order.
 3. Reconstructs intent, mutations, and remaining actions from metadata.
-4. If more actions in queue → `run_remaining_queue`. Otherwise → `run_accumulated_output_phase`.
+4. If more actions in queue → `run_remaining_queue`. Otherwise → `run_accumulated_narrative_phase`.
 
 In both resumptions, the output phase reads `pipeline_outcome` from all `AdventureLoop` rows for the current `pipeline_run_id` — no in-memory seed accumulation is needed across the pause boundary.
 

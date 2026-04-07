@@ -12,6 +12,24 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md).
 
 ---
 
+## Outer orchestration (Pipeline class)
+
+The **AI step mixins** (Intake, Sequencer, CoreResolver, Narrate, …) implement individual prompts; the **`DungeonMaster::Pipeline`** class wires the **player turn** and **action queue**. Reorder or extend the main line by editing **`Pipeline::MAIN_PROMPT_PHASES`** in [`app/services/dungeon_master/pipeline.rb`](../app/services/dungeon_master/pipeline.rb).
+
+| Phase / component | Role | Source |
+|-------------------|------|--------|
+| **`MAIN_PROMPT_PHASES`** | Ordered list: intake + danger gate → DM query branch → sequencer + compound-action loop | `pipeline.rb` |
+| **`Phases::IntakeDangerGate`** | `run_intake`; danger threshold → `:rejected` | [`pipeline/phases/intake_danger_gate.rb`](../app/services/dungeon_master/pipeline/phases/intake_danger_gate.rb) |
+| **`Phases::DmQueryBranch`** | Ask DM mode / `is_dm_query` → `run_dm_query_flow` | [`pipeline/phases/dm_query_branch.rb`](../app/services/dungeon_master/pipeline/phases/dm_query_branch.rb) |
+| **`Phases::OrchestrateCompoundActions`** | `run_sequencer` then **`ActionQueueRunner`** | [`pipeline/phases/orchestrate_compound_actions.rb`](../app/services/dungeon_master/pipeline/phases/orchestrate_compound_actions.rb) |
+| **`Pipeline::ActionQueueRunner`** | For each queued action: `AdventureLoop` + `CoreResolver#resolve`; dispatches on `:status`; **abort** whole turn on `:rejected` (fresh) vs **skip** action (resume). Ends in **`run_accumulated_narrative_phase`** / `:narrated_sequence`. | [`pipeline/action_queue_runner.rb`](../app/services/dungeon_master/pipeline/action_queue_runner.rb) |
+
+**Per-class contracts** (what must be set on the pipeline before the step, what mutates, prompt inputs) live in the file header comments on each phase and on `ActionQueueRunner`.
+
+**Adding a conditional outer step:** insert a phase class in `pipeline/phases/`, implement `.call(pipeline, state)` returning `{ halt: true, result: ... }` to stop the chain or `{ halt: false, ... }` to merge keys into `state`, then add the class to **`MAIN_PROMPT_PHASES`** in the desired order.
+
+---
+
 ## Design Decisions
 
 Architectural choices that shaped the pipeline, why each alternative was
@@ -858,8 +876,8 @@ computes the numeric values from the character sheet.
 ### 36. `AdventureLoop#pipeline_outcome` as the authoritative narration seed
 
 **Decision:** every `CoreResolver` terminal writes the action's narration seed into
-`AdventureLoop#data["pipeline_outcome"]` via `batch_update!`. The output phase
-(`run_accumulated_output_phase`) assembles the combined seed by querying all
+`AdventureLoop#data["pipeline_outcome"]` via `batch_update!`. The narrative phase
+(`run_accumulated_narrative_phase`) assembles the combined seed by querying all
 `AdventureLoop` rows for the current `pipeline_run_id` in `sequence_index` order
 and joining their `pipeline_outcome` values with `"\n\nThen: "`. The old
 `narrate_seed` field is removed from result hashes and from `AdventureMessage`
@@ -901,6 +919,8 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 
 | # | Step | Type | Source |
 |---|------|------|--------|
+| — | **`MAIN_PROMPT_PHASES` + phases** | Code (orchestration) | `app/services/dungeon_master/pipeline.rb`, `app/services/dungeon_master/pipeline/phases/*.rb` |
+| — | **`ActionQueueRunner`** | Code (queued actions) | `app/services/dungeon_master/pipeline/action_queue_runner.rb` |
 | 0 | **Moderation gate** | Code + Node evaluator `POST /moderate` | `app/services/dungeon_master/moderation_service.rb`, `app/jobs/moderation_check_job.rb`, `evaluator/src/index.js` |
 | 1 | **Intake** | AI | `app/services/dungeon_master/steps/intake.rb` |
 | 1c | **DM Query** | AI (fast path) | `app/services/dungeon_master/steps/dm_query.rb` |
