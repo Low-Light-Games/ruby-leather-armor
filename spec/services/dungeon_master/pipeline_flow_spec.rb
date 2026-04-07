@@ -51,17 +51,14 @@ RSpec.describe "DungeonMaster::Pipeline — full prompt flow", type: :service do
       expect(ai_spy).to have_received(:chat).with(hash_including(step_name: "intake"))
     end
 
-    it "calls the narrate step (via the already-stubbed AiClient)" do
-      steps_called = []
-      allow_any_instance_of(DungeonMaster::AiClient).to receive(:chat) do |instance, **kwargs|
-        steps_called << kwargs[:step_name].to_s
-        instance.instance_variable_set(:@last_parse_status, "success")
-        instance.instance_variable_set(:@last_model_used, "gpt-4o-mini-test")
-        instance.instance_variable_set(:@last_usage, {})
-        AI_STEP_RESPONSES.fetch(kwargs[:step_name].to_s, '{"result":"ok"}')
+    it "runs narrate via Node fan_out (narrative_phase)" do
+      fan_out_phases = []
+      allow_any_instance_of(DungeonMaster::Pipeline).to receive(:call_evaluator!).and_wrap_original do |orig, url, prompts, intention, phase:|
+        fan_out_phases << phase.to_s if url.to_s.end_with?("/fan_out")
+        orig.call(url, prompts, intention, phase: phase)
       end
-      result
-      expect(steps_called).to include("narrate")
+      pipeline.run_prompt("I open the door carefully.")
+      expect(fan_out_phases).to include("narrative_phase")
     end
   end
 
