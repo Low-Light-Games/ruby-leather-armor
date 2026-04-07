@@ -9,7 +9,7 @@ module DungeonMaster
     #   1. Check if combat signal from UnifiedEvaluation warrants Warmaster (Path B)
     #   2. Run ContextUpdate before any awaiting_initiative early return (Path B)
     #   3. Orchestrate Narrate + ContextUpdate based on narration_mode config:
-    #        "parallel"   — both run simultaneously (default)
+    #        "parallel"   — both via Node POST /fan_out (default)
     #        "subjugated" — context updates run first, then narrate sees fresh DB state
     module Stagehand
       private
@@ -43,23 +43,31 @@ module DungeonMaster
       end
 
       def run_parallel_narrative(intent, pipeline:, mutations:)
-        narration = nil
+        seed = pipeline.combined_seed
+        evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
 
-        narrate_thread = Thread.new do
-          ActiveRecord::Base.connection_pool.with_connection do
-            narration = run_narrate(pipeline)
-          end
-        end
-        ctx_thread = Thread.new do
-          ActiveRecord::Base.connection_pool.with_connection do
-            run_context_updates(pipeline.combined_seed, mutations,
-                                macro_significant: intent[:macro_significant])
-          end
-        end
+        broadcast_progress("Writing the story...")
+        broadcast_progress("Remembering the world...")
 
-        narrate_thread.value
-        ctx_thread.value
-        narration
+        prompts = [narrate_evaluator_prompt(pipeline), micro_context_evaluator_prompt(seed, mutations)]
+        prompts << macro_context_evaluator_prompt(seed) if intent[:macro_significant]
+
+        results = call_evaluator!("#{evaluator_url}/fan_out", prompts, seed, phase: "narrative_phase")
+
+        # All prompts are built on the main thread before this single HTTP call; Node runs
+        # LLM calls concurrently but returns results in request order — see evaluator index.js.
+        by_step = evaluator_fan_out_results_by_step(results)
+
+        micro_parsed = evaluator_fan_out_result!(by_step, "micro_context_update", "narrative_phase")["parsed_response"] || {}
+        macro_parsed = if intent[:macro_significant]
+                         evaluator_fan_out_result!(by_step, "macro_narrative_update", "narrative_phase")["parsed_response"] || {}
+                       else
+                         {}
+                       end
+
+        apply_context_update_results(micro_parsed, macro_parsed, macro_significant: intent[:macro_significant])
+
+        narrative_from_evaluator_result(evaluator_fan_out_result!(by_step, "narrate", "narrative_phase"))
       end
 
       def run_subjugated_narrative(intent, pipeline:, mutations:)

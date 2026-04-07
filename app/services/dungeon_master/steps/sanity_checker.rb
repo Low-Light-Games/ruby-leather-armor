@@ -19,8 +19,84 @@ module DungeonMaster
     #      objects the player references actually exist in the current scene.
     #      AI-only for the same reason: scene state lives in prose context.
     #      Runs ALWAYS (via full gate or standalone).
+    #
+    # When both run together (full gate with sheet), they use Node POST /fan_out
+    # — no Ruby Thread.new.
     module SanityChecker
       private
+
+      # World + capability in one evaluator round-trip (CoreResolver#run_sanity_gate).
+      def run_sanity_gate_fan_out(intent)
+        evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
+        text = intent[:intention]
+        prompts = [sanity_checker_world_evaluator_prompt(intent)]
+        prompts << sanity_checker_capability_evaluator_prompt(intent) if @sheet
+
+        results = call_evaluator!("#{evaluator_url}/fan_out", prompts, text, phase: "sanity_gate")
+        by_step = evaluator_fan_out_results_by_step(results)
+
+        world = parse_world_from_evaluator_result(
+          evaluator_fan_out_result!(by_step, "sanity_checker_world", "sanity_gate"))
+        capability = if @sheet
+                       parse_capability_from_evaluator_result(
+                         evaluator_fan_out_result!(by_step, "sanity_checker", "sanity_gate"))
+                     else
+                       { allowed: true, reason: nil }
+                     end
+        [world, capability]
+      end
+
+      def sanity_checker_world_evaluator_prompt(intent)
+        micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
+        npc_names = @adventure.story.story_npcs.pluck(:name)
+
+        system_prompt = PromptRenderer.render("sanity_checker_world",
+          scene_summary: @adventure.scene_summary,
+          scene_history: Array(@adventure.scene_history),
+          micro_contexts: micro_contexts,
+          npc_names: npc_names)
+
+        {
+          system_prompt: system_prompt,
+          user_message:  intent[:intention],
+          model:         @config.model_for("sanity_checker_world"),
+          max_tokens:    @config.token_budget_for("sanity_checker_world"),
+          meta:          { step: "sanity_checker_world" }
+        }
+      end
+
+      def sanity_checker_capability_evaluator_prompt(intent)
+        char_block = CharacterBlock.full(@sheet)
+        ds = @sheet.derived_stats || {}
+        restrictions = Array(ds["condition_restrictions"])
+
+        system_prompt = PromptRenderer.render("sanity_checker",
+          character_block: char_block,
+          condition_restrictions: restrictions)
+
+        {
+          system_prompt: system_prompt,
+          user_message:  intent[:intention],
+          model:         @config.model_for("sanity_checker"),
+          max_tokens:    @config.token_budget_for("sanity_checker"),
+          meta:          { step: "sanity_checker" }
+        }
+      end
+
+      def parse_world_from_evaluator_result(result)
+        parsed = result["parsed_response"] || {}
+        {
+          consistent: parsed["consistent"] != false,
+          reason: parsed["reason"],
+          dm_message: parsed["dm_message"],
+          referenced_entities: Array(parsed["referenced_entities"])
+        }
+      end
+
+      def parse_capability_from_evaluator_result(result)
+        parsed = result["parsed_response"] || {}
+        { allowed: parsed["allowed"] != false, reason: parsed["reason"] }
+      end
 
       # ------------------------------------------------------------------
       # Sub-task A: Capability Check (spells / feats / items vs sheet)

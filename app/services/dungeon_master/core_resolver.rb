@@ -214,22 +214,9 @@ module DungeonMaster
       }
     end
 
-    # Parallel world + capability checks without mech eval.
+    # World + capability via Node fan_out (no Ruby threads).
     def run_sanity_gate(intent)
-      world = nil
-      capability = nil
-
-      world_thread = Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection { world = run_world_consistency_check(intent) }
-      end
-      cap_thread = Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection { capability = run_capability_check(intent) }
-      end
-
-      world_thread.value
-      cap_thread.value
-
-      [world, capability]
+      run_sanity_gate_fan_out(intent)
     end
 
     def store_pipeline_outcome!(text)

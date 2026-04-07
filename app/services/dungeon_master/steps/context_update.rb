@@ -5,7 +5,7 @@ module DungeonMaster
     # Pipeline Step 6a/6b: Context updates.
     # 6a — Micro context update (self-directed: reads outcome, decides which domains changed)
     # 6b — Macro narrative update (story summary)
-    # Run in parallel; 6b is conditional on macro_significant.
+    # When macro_significant, 6a+6b run via Node POST /fan_out (no Ruby threads).
     #
     # ContextUpdate is the sole writer of all Adventure context fields.
     # It receives what_happened (the full outcome text) and decides independently
@@ -16,27 +16,78 @@ module DungeonMaster
 
       def run_context_updates(what_happened, mutations, macro_significant: false)
         broadcast_progress("Remembering the world...")
-        micro_thread = Thread.new do
-          ActiveRecord::Base.connection_pool.with_connection { run_micro_context_update(what_happened, mutations) }
-        end
-        macro_thread = if macro_significant
-                         Thread.new do
-                           ActiveRecord::Base.connection_pool.with_connection { run_macro_narrative_update(what_happened) }
-                         end
-                       end
+        micro_result, macro_result = if macro_significant
+                                       run_context_updates_fan_out(what_happened, mutations)
+                                     else
+                                       [run_micro_context_update(what_happened, mutations), {}]
+                                     end
 
-        micro_result = micro_thread.value
+        apply_context_update_results(micro_result, macro_result, macro_significant: macro_significant)
+      rescue => e
+        pipeline_error!("context_updates", e)
+      end
+
+      # Used by Stagehand parallel narrative (narrate + context in one fan_out).
+      def apply_context_update_results(micro_result, macro_result, macro_significant:)
         persist_micro_contexts(micro_result)
         persist_scene_summary(micro_result["scene_summary"])
         handle_new_creatures(micro_result["new_creatures"]) if micro_result["new_creatures"].present?
         handle_context_wishes(micro_result["context_wishes"]) if micro_result["context_wishes"].present?
 
-        if macro_thread
-          macro_result = macro_thread.value
-          @adventure.update!(story_summary: macro_result["story_summary"]) if macro_result["story_summary"].present?
+        if macro_significant && macro_result["story_summary"].present?
+          @adventure.update!(story_summary: macro_result["story_summary"])
         end
-      rescue => e
-        pipeline_error!("context_updates", e)
+      end
+
+      def run_context_updates_fan_out(what_happened, mutations)
+        evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
+        prompts = [
+          micro_context_evaluator_prompt(what_happened, mutations),
+          macro_context_evaluator_prompt(what_happened)
+        ]
+        results = call_evaluator!("#{evaluator_url}/fan_out", prompts, what_happened, phase: "context_update")
+        by_step = evaluator_fan_out_results_by_step(results)
+        micro_parsed = evaluator_fan_out_result!(by_step, "micro_context_update", "context_update")["parsed_response"] || {}
+        macro_parsed = evaluator_fan_out_result!(by_step, "macro_narrative_update", "context_update")["parsed_response"] || {}
+        [micro_parsed, macro_parsed]
+      end
+
+      def micro_context_evaluator_prompt(what_happened, mutations)
+        micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
+        context_schemas = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, h|
+          h[field] = PromptRenderer.load_schema("contexts/#{field}_context")
+        end
+
+        system_prompt, user_msg = PromptRenderer.render_with_user_message("micro_context_update",
+          micro_contexts: micro_contexts,
+          context_fields: PromptHelpers::CONTEXT_FIELDS,
+          context_schemas: context_schemas,
+          what_happened: what_happened,
+          mutations_json: mutations.present? ? mutations.to_json : nil,
+          canonical_hp: build_canonical_hp)
+
+        {
+          system_prompt: system_prompt,
+          user_message:  user_msg,
+          model:         @config.model_for("micro_context_update"),
+          max_tokens:    @config.token_budget_for("micro_context_update"),
+          meta:          { step: "micro_context_update" }
+        }
+      end
+
+      def macro_context_evaluator_prompt(what_happened)
+        system_prompt, user_msg = PromptRenderer.render_with_user_message("macro_narrative_update",
+          story_intro: @adventure.story.preview,
+          story_summary: @adventure.story_summary,
+          what_happened: what_happened)
+
+        {
+          system_prompt: system_prompt,
+          user_message:  user_msg,
+          model:         @config.model_for("macro_narrative_update"),
+          max_tokens:    @config.token_budget_for("macro_narrative_update"),
+          meta:          { step: "macro_narrative_update" }
+        }
       end
 
       def run_micro_context_update(what_happened, mutations)

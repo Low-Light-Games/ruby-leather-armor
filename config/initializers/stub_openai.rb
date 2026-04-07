@@ -68,6 +68,10 @@ if ENV["STUB_OPENAI"].present?
   end
 
   # ── Node evaluator HTTP stubs ──────────────────────────────────────────────
+  # POST /moderate   — synchronous moderation for non-trusted users (see
+  #                    DungeonMasterService#execute_prompt); without this stub,
+  #                    Playwright would be the only flow that opens a real TCP
+  #                    socket to EVALUATOR_URL before fan_out/sequential.
   # POST /fan_out  — beacons (all 6 domains in parallel) and roll_qualifier
   # POST /sequential — mech_eval (only affected domains, sequentially)
   #
@@ -75,6 +79,17 @@ if ENV["STUB_OPENAI"].present?
   # Disable Device DC 15 roll for the exploration domain.
 
   evaluator_base = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
+
+  WebMock.stub_request(:post, "#{evaluator_base}/moderate")
+         .to_return(
+           status: 200,
+           body: {
+             "flagged" => false,
+             "categories" => {},
+             "category_scores" => {}
+           }.to_json,
+           headers: { "Content-Type" => "application/json" }
+         )
 
   # Helper: build one evaluator result envelope.
   build_entry = lambda do |step, domain, parsed|
@@ -91,15 +106,15 @@ if ENV["STUB_OPENAI"].present?
 
   WebMock.stub_request(:post, "#{evaluator_base}/fan_out")
          .to_return do |request|
-    body     = JSON.parse(request.body) rescue []
-    step     = body.dig(0, "meta", "step").to_s
-    user_msg = body.dig(0, "user_message").to_s.downcase
-    is_lock  = user_msg.include?("lock")
+    body       = JSON.parse(request.body) rescue []
+    first_step = body.dig(0, "meta", "step").to_s
+    user_msg   = body.dig(0, "user_message").to_s.downcase
+    is_lock    = user_msg.include?("lock")
 
-    results = if step == "roll_qualifier"
+    results = if first_step == "roll_qualifier"
       body.map { |p| build_entry.call("roll_qualifier", p.dig("meta", "domain"),
                                       "qualifications" => []) }
-    else
+    elsif first_step == "beacon"
       body.map do |p|
         domain     = p.dig("meta", "domain")
         needs_mech = is_lock && domain == "exploration"
@@ -112,6 +127,36 @@ if ENV["STUB_OPENAI"].present?
                          "destination"       => nil,
                          "combatants"        => [],
                          "reasoning"         => domain == "exploration" ? "Exploration" : "Not affected")
+      end
+    else
+      body.map do |p|
+        st = p.dig("meta", "step").to_s
+        case st
+        when "sanity_checker_world"
+          build_entry.call("sanity_checker_world", nil,
+                           "consistent" => true, "reason" => nil, "dm_message" => nil)
+        when "sanity_checker"
+          build_entry.call("sanity_checker", nil, "allowed" => true, "reason" => nil)
+        when "micro_context_update"
+          build_entry.call("micro_context_update", nil, "context_updates" => {})
+        when "macro_narrative_update"
+          build_entry.call("macro_narrative_update", nil, "story_summary" => "Stub summary.")
+        when "narrate"
+          build_entry.call("narrate", nil,
+                           "narrative" => "The adventurer moves with purpose through the dungeon.")
+        else
+          domain     = p.dig("meta", "domain")
+          needs_mech = is_lock && domain == "exploration"
+          build_entry.call("beacon", domain,
+                           "affected"          => domain == "exploration",
+                           "needs_mechanics"   => needs_mech,
+                           "macro_significant" => false,
+                           "expand_scene"      => false,
+                           "transition"        => nil,
+                           "destination"       => nil,
+                           "combatants"        => [],
+                           "reasoning"         => domain == "exploration" ? "Exploration" : "Not affected")
+        end
       end
     end
 

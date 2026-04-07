@@ -1,4 +1,5 @@
 require "rails_helper"
+require "webmock/rspec"
 
 RSpec.describe DungeonMaster::ModerationService, type: :service do
   let(:user) { create(:user) }
@@ -26,7 +27,7 @@ RSpec.describe DungeonMaster::ModerationService, type: :service do
       it "returns a non-flagged result without calling the evaluator" do
         result = described_class.call(player_input, user: user)
         expect(result.flagged?).to be false
-        expect(WebMock).not_to have_requested(:post, moderate_url)
+        expect(a_request(:post, moderate_url)).not_to have_been_made
       end
     end
 

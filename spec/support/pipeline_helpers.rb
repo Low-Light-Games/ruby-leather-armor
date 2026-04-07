@@ -132,22 +132,21 @@ shared_context "with evaluator stubs" do
 
     WebMock.stub_request(:post, "#{evaluator_base}/fan_out")
            .to_return do |request|
-      body     = JSON.parse(request.body)
-      step     = body.dig(0, "meta", "step").to_s
-      user_msg = body.dig(0, "user_message").to_s.downcase
-      is_lock  = user_msg.include?("lock")
+      body       = JSON.parse(request.body)
+      first_step = body.dig(0, "meta", "step").to_s
+      user_msg   = body.dig(0, "user_message").to_s.downcase
+      is_lock    = user_msg.include?("lock")
 
-      results = if step == "roll_qualifier"
+      results = if first_step == "roll_qualifier"
         body.map do |p|
           domain = p.dig("meta", "domain")
           evaluator_entry("roll_qualifier", domain,
                           "parsed_response" => { "qualifications" => [] })
         end
-      else
-        # beacons
+      elsif first_step == "beacon"
         body.map do |p|
-          domain      = p.dig("meta", "domain")
-          needs_mech  = is_lock && domain == "exploration"
+          domain     = p.dig("meta", "domain")
+          needs_mech = is_lock && domain == "exploration"
           evaluator_entry("beacon", domain,
                           "parsed_response" => {
                             "affected"          => domain == "exploration",
@@ -159,6 +158,42 @@ shared_context "with evaluator stubs" do
                             "combatants"        => [],
                             "reasoning"         => domain == "exploration" ? "Exploration action" : "Not affected"
                           })
+        end
+      else
+        # sanity_gate, context_update, narrative_phase — each item by meta.step
+        body.map do |p|
+          st = p.dig("meta", "step").to_s
+          case st
+          when "sanity_checker_world"
+            evaluator_entry("sanity_checker_world", nil,
+                            "parsed_response" => JSON.parse(AI_STEP_RESPONSES["sanity_checker_world"]))
+          when "sanity_checker"
+            evaluator_entry("sanity_checker", nil,
+                            "parsed_response" => { "allowed" => true, "reason" => nil })
+          when "micro_context_update"
+            evaluator_entry("micro_context_update", nil,
+                            "parsed_response" => JSON.parse(AI_STEP_RESPONSES["micro_context_update"]))
+          when "macro_narrative_update"
+            evaluator_entry("macro_narrative_update", nil,
+                            "parsed_response" => JSON.parse(AI_STEP_RESPONSES["macro_narrative_update"]))
+          when "narrate"
+            evaluator_entry("narrate", nil,
+                            "parsed_response" => JSON.parse(AI_STEP_RESPONSES["narrate"]))
+          else
+            domain     = p.dig("meta", "domain")
+            needs_mech = is_lock && domain == "exploration"
+            evaluator_entry("beacon", domain,
+                            "parsed_response" => {
+                              "affected"          => domain == "exploration",
+                              "needs_mechanics"   => needs_mech,
+                              "macro_significant" => false,
+                              "expand_scene"      => false,
+                              "transition"        => nil,
+                              "destination"       => nil,
+                              "combatants"        => [],
+                              "reasoning"         => domain == "exploration" ? "Exploration action" : "Not affected"
+                            })
+          end
         end
       end
 

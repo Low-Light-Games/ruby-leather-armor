@@ -40,6 +40,13 @@ async function chat({ systemPrompt, userMessage, model, maxTokens, meta = {} }) 
   let parsedResponse = null;
   let parseStatus = "success";
 
+  const stripFences = (s) =>
+    s
+      .trim()
+      .replace(/^\s*```(?:json)?\s*/i, "")
+      .replace(/\s*```\s*$/, "")
+      .trim();
+
   try {
     // Try the full content first (handles well-formed responses).
     parsedResponse = JSON.parse(rawContent);
@@ -52,6 +59,15 @@ async function chat({ systemPrompt, userMessage, model, maxTokens, meta = {} }) 
       else parseStatus = "parse_error";
     } catch {
       parseStatus = "parse_error";
+    }
+  }
+
+  // Mirrors Rails AiClient#parse_json(fallback_as: :dm_response) for narrate.
+  if (parseStatus === "parse_error" && meta.parse_fallback === "dm_response") {
+    const cleaned = stripFences(rawContent);
+    if (cleaned) {
+      parsedResponse = { narrative: cleaned };
+      parseStatus = "parse_fallback";
     }
   }
 

@@ -17,6 +17,7 @@ module DungeonMaster
   #
   class Pipeline
     include Steps::Helpers
+    include Steps::EvaluatorTransport
     include Steps::Intake
     include Steps::DmQuery
     include Steps::Sequencer
