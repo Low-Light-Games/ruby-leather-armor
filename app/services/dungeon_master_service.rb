@@ -59,7 +59,7 @@ class DungeonMasterService
 
   def execute_prompt(player_input, player_message_id:, mode: nil)
     enforce_usage_limit!
-    maybe_log_abandoned_pipeline
+    @log.log_abandoned_pipeline_if_needed!
     auto_finalize_pending_initiative!
 
     if @user&.trusted?
@@ -78,73 +78,34 @@ class DungeonMasterService
     result = run_timed_pipeline { pipeline.run_prompt(player_input, mode: mode) }
     messages_for(result)
   rescue UsageLimitExceeded => e
-    [persist_message(role: "system", content: e.message, message_type: "usage_limit")]
+    execute_rescue_usage_limit(e)
   rescue SanitizationRejected => e
     @log.error_pipeline_run!
     [persist_message(role: "system", content: e.message, message_type: "sanitization_fail")]
   rescue AiError, StandardError => e
-    capture_pipeline_error(e)
-    @log.error_pipeline_run!
-    [persist_message(
-      role: "system",
-      content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
-      message_type: "narrative")]
+    execute_rescue_pipeline_error(e)
   end
 
   def execute_rolls(roll_results_text, player_message_id:)
-    enforce_usage_limit!
-
-    @log.player_message_id = player_message_id
-    metadata = latest_roll_metadata
-    resume_or_start_pipeline!(metadata, roll_results_text)
-
-    result = run_timed_pipeline { pipeline.run_rolls(roll_results_text, metadata) }
-    messages_for(result)
-  rescue UsageLimitExceeded => e
-    [persist_message(role: "system", content: e.message, message_type: "usage_limit")]
-  rescue AiError, StandardError => e
-    capture_pipeline_error(e)
-    @log.error_pipeline_run!
-    [persist_message(
-      role: "system",
-      content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
-      message_type: "narrative")]
+    execute_player_resume(player_message_id) do
+      metadata = latest_roll_metadata
+      resume_or_start_pipeline!(metadata, roll_results_text)
+      run_timed_pipeline { pipeline.run_rolls(roll_results_text, metadata) }
+    end
   end
 
   def execute_initiative(player_initiative, player_message_id:)
-    enforce_usage_limit!
-
-    @log.player_message_id = player_message_id
-    metadata = latest_initiative_metadata
-    resume_or_start_pipeline!(metadata, "Initiative: #{player_initiative}")
-
-    result = run_timed_pipeline { pipeline.run_initiative(player_initiative.to_i, metadata) }
-    messages_for(result)
-  rescue UsageLimitExceeded => e
-    [persist_message(role: "system", content: e.message, message_type: "usage_limit")]
-  rescue AiError, StandardError => e
-    capture_pipeline_error(e)
-    @log.error_pipeline_run!
-    [persist_message(
-      role: "system",
-      content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(e)})",
-      message_type: "narrative")]
+    execute_player_resume(player_message_id) do
+      metadata = latest_initiative_metadata
+      resume_content = "Initiative: #{player_initiative}"
+      resume_or_start_pipeline!(metadata, resume_content)
+      run_timed_pipeline { pipeline.run_initiative(player_initiative.to_i, metadata) }
+    end
   end
 
   # Serialize a message for JSON broadcast / API response.
   def self.message_json(message, admin: false)
-    json = {
-      id: message.id,
-      role: message.role,
-      content: message.content,
-      message_type: message.message_type,
-      metadata: message.metadata,
-      created_at: message.created_at
-    }
-    if admin && message.role != "player"
-      json[:pipeline_run_id] = message.metadata&.dig("pipeline_run_id")
-    end
-    json
+    DungeonMaster::AdventurePlay::MessageSerializer.as_json(message, admin: admin)
   end
 
   private
@@ -196,21 +157,18 @@ class DungeonMasterService
       role: "dm",
       content: narrative_entry[:narrative],
       message_type: "narrative",
-      metadata: {
-        sequence_index: narrative_entry[:sequence_index],
-        total_actions:  narrative_entry[:total_actions],
-        action_text:    narrative_entry[:action_text]
-      }
+      metadata: DungeonMaster::AdventurePlay::ProgressiveNarrativeMetadata.for_entry(narrative_entry)
     )
 
-    to_broadcast = [ DungeonMasterService.message_json(msg, admin: @user&.admin?) ]
+    admin = @user&.admin?
+    to_broadcast = [DungeonMaster::AdventurePlay::MessageSerializer.as_json(msg, admin: admin)]
 
     if narrative_entry[:adventure_complete]
       complete_msg = persist_message(
         role: "system",
         content: "The adventure has reached its conclusion.",
         message_type: "adventure_complete")
-      to_broadcast << DungeonMasterService.message_json(complete_msg, admin: @user&.admin?)
+      to_broadcast << DungeonMaster::AdventurePlay::MessageSerializer.as_json(complete_msg, admin: admin)
     end
 
     AdventureChannel.broadcast_to(@adventure, { type: "pipeline_action_result", messages: to_broadcast })
@@ -236,28 +194,20 @@ class DungeonMasterService
       [persist_message(role: "dm", content: result[:answer], message_type: "dm_query")]
 
     when :awaiting_rolls
-      meta = {
-        roll_requests: result[:merged][:player_rolls],
-        pending_npc_actions: result[:merged][:npc_actions],
-        pending_consequences: result[:merged][:consequences],
-        mechanical_summaries: result[:merged][:mechanical_summaries],
+      meta = DungeonMaster::Rolls::RollRequestMetadata.build_persist_metadata(
+        merged: result[:merged],
         intent: result[:intent],
-        show_dc: @adventure.effective_dm_setting("show_roll_dc"),
+        adventure: @adventure,
         remaining_actions: result[:remaining_actions]
-      }
+      )
       [persist_message(
         role: "dm",
-        content: roll_explanation(result[:merged][:mechanical_summaries]),
+        content: DungeonMaster::Rolls::RollExplanation.from_summaries(result[:merged][:mechanical_summaries]),
         message_type: "roll_request",
         metadata: meta)]
 
     when :awaiting_initiative
-      meta = {
-        creature_data: result[:creature_data],
-        intent: result[:intent],
-        mutations: result[:mutations],
-        remaining_actions: result[:remaining_actions]
-      }
+      meta = DungeonMaster::AdventurePlay::InitiativeRequestMetadata.for_awaiting_initiative(result)
       encounter_intro = AdventureLoop.for_pipeline(@log.pipeline_run_id)
                                       .paused.order(:created_at).last
                                       &.get("pipeline_outcome")
@@ -279,17 +229,43 @@ class DungeonMasterService
       msgs
 
     when :narrated_sequence
-      # Each narrative was already persisted and broadcast individually via the
-      # on_narrative callback (handle_progressive_narrative) as pipeline_action_result
-      # events. Return an empty array so the job broadcasts an empty pipeline_result,
-      # which the frontend uses as a "done" signal to remove the thinking indicator.
-      []
+      signal_done_to_the_frontend
     end
   end
 
   # ----------------------------------------------------------------
   # Helpers
   # ----------------------------------------------------------------
+
+  # Progressive narration already emitted each chunk; an empty `pipeline_result` tells
+  # the client to clear the thinking state.
+  def signal_done_to_the_frontend
+    []
+  end
+
+  def execute_player_resume(player_message_id)
+    enforce_usage_limit!
+    @log.player_message_id = player_message_id
+    result = yield
+    messages_for(result)
+  rescue UsageLimitExceeded => e
+    execute_rescue_usage_limit(e)
+  rescue AiError, StandardError => e
+    execute_rescue_pipeline_error(e)
+  end
+
+  def execute_rescue_usage_limit(error)
+    [persist_message(role: "system", content: error.message, message_type: "usage_limit")]
+  end
+
+  def execute_rescue_pipeline_error(error)
+    @log.capture_pipeline_exception!(error)
+    @log.error_pipeline_run!
+    [persist_message(
+      role: "system",
+      content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(error)})",
+      message_type: "narrative")]
+  end
 
   def resume_or_start_pipeline!(metadata, message_content)
     original_run_id = metadata&.dig("pipeline_run_id")
@@ -301,45 +277,21 @@ class DungeonMasterService
   end
 
   def latest_roll_metadata
-    last_roll_msg = @adventure.adventure_messages
-                              .where(message_type: "roll_request")
-                              .order(created_at: :desc).first
-    last_roll_msg&.metadata || {}
+    @adventure.adventure_messages.for_message_types(["roll_request"]).newest_first.first&.metadata || {}
   end
 
   def latest_initiative_metadata
-    last_init_msg = @adventure.adventure_messages
-                              .where(message_type: "initiative_request")
-                              .order(created_at: :desc).first
-    last_init_msg&.metadata || {}
-  end
-
-  def maybe_log_abandoned_pipeline
-    last_request = @adventure.adventure_messages
-                             .where(message_type: %w[roll_request initiative_request])
-                             .order(created_at: :desc).first
-    return unless last_request&.metadata&.dig("intent")
-
-    last_player_msg = @adventure.adventure_messages
-                                .where(role: "player")
-                                .order(created_at: :desc).first
-    return if last_player_msg&.message_type.in?(%w[roll_result initiative_result])
-
-    intent_summary = last_request.metadata.dig("intent", "intention").to_s.truncate(80)
-    @log.play_log!("pipeline_abandoned", "Previous pipeline abandoned (#{last_request.message_type}): player sent new input. " \
-                   "Original intent: #{intent_summary}")
+    @adventure.adventure_messages.for_message_types(["initiative_request"]).newest_first.first&.metadata || {}
   end
 
   def auto_finalize_pending_initiative!
-    last_init_msg = @adventure.adventure_messages
-                              .where(message_type: "initiative_request")
-                              .order(created_at: :desc).first
+    msgs = @adventure.adventure_messages
+    last_init_msg = msgs.for_message_types(["initiative_request"]).newest_first.first
     return unless last_init_msg&.metadata&.dig("creature_data")
 
-    last_player_response = @adventure.adventure_messages
-                                     .where(role: "player")
-                                     .where("created_at > ?", last_init_msg.created_at)
-                                     .order(created_at: :desc).first
+    last_player_response = msgs.from_players
+                               .where("created_at > ?", last_init_msg.created_at)
+                               .newest_first.first
     return unless last_player_response
     return if last_player_response.message_type == "initiative_result"
 
@@ -364,19 +316,6 @@ class DungeonMasterService
     else
       error.message
     end
-  end
-
-  def capture_pipeline_error(error)
-    Sentry.capture_exception(error) if defined?(Sentry)
-  end
-
-  def roll_explanation(ruling_summaries)
-    return "The DM awaits your rolls..." if ruling_summaries.blank?
-
-    ruling_summaries
-      .map { |s| s.sub(/\A\[\w+\]\s*/, "") }
-      .join(" ")
-      .presence || "The DM awaits your rolls..."
   end
 
   def persist_message(role:, content:, message_type:, metadata: {})

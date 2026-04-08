@@ -613,7 +613,7 @@ six raw context objects.
 message now contains the evaluation summaries as human-readable content
 rather than the static placeholder "The DM awaits your rolls..."
 
-**How:** `DungeonMasterService#roll_explanation` strips `[DOMAIN]`
+**How:** `DungeonMaster::Rolls::RollExplanation.from_summaries` strips `[DOMAIN]`
 prefixes from the mechanical evaluation summaries and joins them into a
 paragraph. The summaries explain the mechanical reasoning behind the
 requested rolls.
