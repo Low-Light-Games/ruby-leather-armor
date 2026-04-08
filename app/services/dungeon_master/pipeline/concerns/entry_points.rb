@@ -7,8 +7,11 @@ module DungeonMaster
       module EntryPoints
         def run_prompt(player_input, mode: nil)
           state = { player_input: player_input, mode: mode }
-          return r if (r = apply_prompt_phase(Phases::IntakeDangerGate, state))
-          return r if (r = apply_prompt_phase(Phases::DmQueryBranch, state))
+          # Assign then return — avoid `return r if (r = …)` (parses as `return (r if …)` and can raise NameError on `r`).
+          result = apply_prompt_phase(Phases::IntakeDangerGate, state)
+          return result if result
+          result = apply_prompt_phase(Phases::DmQueryBranch, state)
+          return result if result
           apply_prompt_phase(Phases::OrchestrateCompoundActions, state) || raise("run_prompt: terminal phase did not halt")
         end
 
