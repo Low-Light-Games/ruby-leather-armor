@@ -60,7 +60,7 @@ module DungeonMaster
               timeline_entry: p.send(:tl, "awaiting_rolls", "Paused for player rolls"))
             ContextUpdatePause.run(pipeline: p, intent: result[:intent], merged: result[:merged])
             remaining = action_strings[(idx + 1)..]
-            qlog.log_pause(action_idx, total, remaining)
+            qlog.log_pause(action_idx, total, remaining, reason: "awaiting rolls")
             qlog.clear_action_label
             return {
               action: :awaiting_rolls, intent: result[:intent], merged: result[:merged],
@@ -73,7 +73,7 @@ module DungeonMaster
               timeline_entry: p.send(:tl, "awaiting_initiative", "Paused for player initiative"))
             p.send(:run_context_updates_at_encounter_pause, result[:mutations])
             remaining = action_strings[(idx + 1)..]
-            qlog.log_pause(action_idx, total, remaining)
+            qlog.log_pause(action_idx, total, remaining, reason: "awaiting initiative")
             qlog.clear_action_label
             return {
               action: :awaiting_initiative,
@@ -83,18 +83,13 @@ module DungeonMaster
               remaining_actions: remaining
             }
 
-          when :encounter
-            p.loop&.batch_update!(new_status: "encounter",
-              timeline_entry: p.send(:tl, "encounter", "Encounter triggered"))
+          when :encounter, :social_scene
+            label = result[:status].to_s
+            summary = (result[:status] == :encounter) ? "Encounter triggered" : "Social scene triggered"
+            p.loop&.batch_update!(new_status: label,
+              timeline_entry: p.send(:tl, label, summary))
             accumulated << result
-            qlog.log_interrupt(action_idx, total, action_strings[(idx + 1)..], reason: "encounter")
-            break
-
-          when :social_scene
-            p.loop&.batch_update!(new_status: "social_scene",
-              timeline_entry: p.send(:tl, "social_scene", "Social scene triggered"))
-            accumulated << result
-            qlog.log_interrupt(action_idx, total, action_strings[(idx + 1)..], reason: "social_scene")
+            qlog.log_interrupt(action_idx, total, action_strings[(idx + 1)..], reason: label)
             break
 
           when :resolved

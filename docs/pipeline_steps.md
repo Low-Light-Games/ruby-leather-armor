@@ -681,9 +681,8 @@ scene summary, scene history, and story NPCs.
 **Optional bypass:** when the adventure's `skip_world_sanity_check` boolean
 attribute is `true` (set at adventure creation via the toggle in the
 adventure creation form), the world consistency check is skipped on **both**
-paths. On the mechanics path, `run_sanity_gate` (which runs world +
-capability in parallel) is replaced by a direct `run_capability_check` call
-so no unnecessary thread is spawned. On the non-mechanics path the standalone
+paths. On the mechanics path, `run_sanity_gate_fan_out` (world + capability
+in one evaluator round-trip) is replaced by a direct `run_capability_check` call. On the non-mechanics path the standalone
 `run_world_consistency_check` call is bypassed entirely. The capability check
 is unaffected and still runs.
 

@@ -25,7 +25,7 @@ module DungeonMaster
     module SanityChecker
       private
 
-      # World + capability in one evaluator round-trip (AdventureLoopResolution#run_sanity_gate).
+      # World + capability in one evaluator round-trip (`AdventureLoopResolution#resolve` → here).
       def run_sanity_gate_fan_out(intent)
         evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
         text = intent[:intention]

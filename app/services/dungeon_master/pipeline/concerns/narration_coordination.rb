@@ -6,6 +6,8 @@ module DungeonMaster
       # Wires Narrative::*Assembly + Stagehand narrate; progressive +on_narrative+ payloads.
       # See also Pipeline::Concerns::EntryPoints and action_queue_runner.rb.
       module NarrationCoordination
+        PROGRESSIVE_QUEUE_MODES = %w[progressive progressive_continuity].freeze
+
         private
 
         def run_accumulated_narrative_phase(results)
@@ -44,7 +46,7 @@ module DungeonMaster
         end
 
         def per_action_narration?
-          %w[progressive progressive_continuity].include?(action_queue_mode)
+          PROGRESSIVE_QUEUE_MODES.include?(action_queue_mode)
         end
 
         def action_queue_continuity?

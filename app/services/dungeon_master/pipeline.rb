@@ -18,18 +18,9 @@ module DungeonMaster
   # Orchestration is split across Pipeline::Concerns — see pipeline/concerns/*.rb.
   #
   class Pipeline
-    # Step mixins add private methods to this instance. They do not run in list order here.
-    #
-    # **Outer turn** (visible in `#run_prompt` + pipeline/action_queue_runner.rb):
-    #   Intake, DmQuery, Sequencer — then each queued line calls `resolve` (AdventureLoopResolution).
-    #
-    # **Inner resolution** (one AdventureLoop row — see adventure_loop_resolution.rb `#resolve`):
-    #   ParallelEvaluation runs beacon + *AI* mechanical_evaluation (Node /sequential) +
-    #   roll_qualifier; then, when `needs_mechanics`, SanityChecker →
-    #   MechanicalEvaluation (`merge_mechanical_evaluations` + `merge_mechanical_evaluations_and_prepare_rolls`) →
-    #   Mechanic / TimeKeeper / … as the path continues.
-    #
-    # The named AI step `mechanical_evaluation` is invoked from Steps::ParallelEvaluation.
+    # Step mixins add private methods; order here is not execution order. Outer turn: phases →
+    # ActionQueueRunner → `AdventureLoopResolution#resolve` per queued line. Inner path: ParallelEvaluation
+    # → (optional) SanityChecker + MechanicalEvaluation roll prep → Mechanic / TimeKeeper / …
     include Steps::Helpers
     include Steps::EvaluatorTransport
     include Steps::Intake

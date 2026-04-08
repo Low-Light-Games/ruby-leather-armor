@@ -16,7 +16,7 @@ module DungeonMaster
         encounter_triggered = results.any? { |r| r[:status] == :encounter }
         social_scene_triggered = results.any? { |r| r[:status] == :social_scene }
 
-        combined_seed = all_outcomes.compact.join("\n\nThen: ").presence
+        combined_seed = all_outcomes.join("\n\nThen: ").presence
         combined_mutations = all_mutations.compact.reduce({}) do |acc, m|
           Utilities::HashMerge.deep_merge_presence(acc, m)
         end

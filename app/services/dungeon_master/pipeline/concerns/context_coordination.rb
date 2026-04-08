@@ -8,8 +8,8 @@ module DungeonMaster
         private
 
         def run_inter_action_context_update(result)
-          outcome = @loop&.get("pipeline_outcome")
-          return unless outcome.present?
+          outcome = current_loop_pipeline_outcome
+          return if outcome.blank?
 
           run_context_updates(outcome, result[:mutations])
           @adventure.reload
@@ -17,17 +17,18 @@ module DungeonMaster
             timeline_entry: tl("inter_action_ctx", "Micro contexts updated between actions"))
         end
 
-        # Roll-request pauses: see DungeonMaster::ContextUpdatePause.
-
-        # Run ContextUpdate before an initiative-pause from a Harbinger encounter.
-        # The encounter scene is the outcome — contexts reflect combat beginning
-        # before the player rolls initiative.
+        # Encounter → initiative pause: refresh contexts from the encounter outcome (see ContextUpdatePause).
         def run_context_updates_at_encounter_pause(mutations)
-          encounter_outcome = @loop&.get("pipeline_outcome")
-          return unless encounter_outcome.present?
-          run_context_updates(encounter_outcome, mutations)
+          outcome = current_loop_pipeline_outcome
+          return if outcome.blank?
+
+          run_context_updates(outcome, mutations)
         rescue => e
           @log.log!(:warn, "[encounter_pause_ctx_update] #{e.class}: #{e.message}")
+        end
+
+        def current_loop_pipeline_outcome
+          @loop&.get("pipeline_outcome")
         end
       end
     end

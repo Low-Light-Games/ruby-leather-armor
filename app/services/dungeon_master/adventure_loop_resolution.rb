@@ -32,7 +32,7 @@ module DungeonMaster
                      @loop&.log_step("sanity_checker", "World: skipped (player opt-out)")
                      run_capability_check(intent)
                    else
-                     world, cap = run_sanity_gate(intent)
+                     world, cap = run_sanity_gate_fan_out(intent)
                      return world_check_rejection(intent, world) unless world[:consistent]
 
                      @loop&.log_step("sanity_checker", "World: consistent")
@@ -162,11 +162,6 @@ module DungeonMaster
       {
         status: :social_scene, intent: intent
       }
-    end
-
-    # World + capability via Node fan_out (no Ruby threads).
-    def run_sanity_gate(intent)
-      run_sanity_gate_fan_out(intent)
     end
 
     def store_pipeline_outcome!(text)

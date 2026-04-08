@@ -5,9 +5,6 @@ module DungeonMaster
     module Concerns
       # Public resume/run API, prompt phase chain, DM-query branch, mid-queue continuation.
       module EntryPoints
-        # Main entry point: player typed something.
-        # Returns a hash with :action key describing the outcome.
-        # @param mode [String, nil] "dm_query" when the player explicitly toggled Ask DM mode
         def run_prompt(player_input, mode: nil)
           state = { player_input: player_input, mode: mode }
           return r if (r = apply_prompt_phase(Phases::IntakeDangerGate, state))
@@ -15,7 +12,6 @@ module DungeonMaster
           apply_prompt_phase(Phases::OrchestrateCompoundActions, state) || raise("run_prompt: terminal phase did not halt")
         end
 
-        # Resumption entry point: player submitted initiative roll.
         def run_initiative(player_initiative, metadata)
           restore_paused_loop!
           @loop&.batch_update!(new_status: "resolved",
@@ -30,27 +26,17 @@ module DungeonMaster
           raise AiError, "Initiative metadata missing intent — state integrity failure" unless intent
           base_mutations = metadata["mutations"] || {}
           mutations = base_mutations.merge("combat_initialization" => combat_data)
-          remaining = metadata["remaining_actions"] || []
-
-          if remaining.any?
-            run_remaining_queue(remaining,
-              accumulated_intents: [intent],
-              accumulated_mutations: [mutations].compact)
-          else
-            run_accumulated_narrative_phase(
-              [{ status: :encounter, intent: intent, mutations: mutations }])
-          end
+          continue_or_narrate_after_resume(
+            metadata,
+            accumulated_row: { status: :encounter, intent: intent, mutations: mutations })
         end
 
-        # Resumption entry point: player submitted roll results.
         def run_rolls(roll_results, metadata)
           restore_paused_loop!
           Rolls::PlayerRolls.tag_roll_resolution!(@loop, roll_results)
 
           intent, merged = restore_roll_pause_inputs(metadata)
           result = finish_resolution(intent, merged, roll_results)
-
-          remaining = metadata["remaining_actions"] || []
 
           if result[:status] == :awaiting_initiative
             @loop&.batch_update!(new_status: "paused",
@@ -62,7 +48,7 @@ module DungeonMaster
               intent: result[:intent],
               creature_data: result[:creature_data],
               mutations: result[:mutations],
-              remaining_actions: remaining
+              remaining_actions: remaining_actions_from(metadata)
             }
           end
 
@@ -70,19 +56,30 @@ module DungeonMaster
           @loop&.batch_update!(new_status: final_status,
             timeline_entry: tl("rolls_resolved", "Rolls submitted, status: #{final_status}"))
 
-          if result[:status] == :resolved && remaining.any?
-            run_remaining_queue(remaining,
-              accumulated_intents: [result[:intent]],
-              accumulated_mutations: [result[:mutations]])
-          else
-            run_accumulated_narrative_phase([result])
-          end
+          continue_or_narrate_after_resume(metadata, accumulated_row: result, only_continue_if_resolved: true)
         end
 
         private
 
-        # Runs one outer `run_prompt` phase; merges non-terminal keys into +state+.
-        # @return [Hash] result when +out[:halt]+; +nil+ to continue the chain
+        def remaining_actions_from(metadata)
+          metadata["remaining_actions"] || []
+        end
+
+        # After rolls/initiative resume: either run the rest of the queue or one accumulated narrate pass.
+        def continue_or_narrate_after_resume(metadata, accumulated_row:, only_continue_if_resolved: false)
+          remaining = remaining_actions_from(metadata)
+          status = accumulated_row[:status]
+          intent = accumulated_row[:intent]
+          mutations = accumulated_row[:mutations]
+          if remaining.any? && (!only_continue_if_resolved || status == :resolved)
+            run_remaining_queue(remaining,
+              accumulated_intents: [intent],
+              accumulated_mutations: [mutations].compact)
+          else
+            run_accumulated_narrative_phase([accumulated_row])
+          end
+        end
+
         def apply_prompt_phase(phase, state)
           out = phase.call(self, state)
           state.merge!(out.except(:halt, :result))

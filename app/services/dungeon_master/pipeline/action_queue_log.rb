@@ -17,9 +17,9 @@ module DungeonMaster
         @log.action_label = nil
       end
 
-      def log_pause(idx, total, remaining)
+      def log_pause(idx, total, remaining, reason: "paused mid-queue")
         return unless total > 1
-        @log.play_log!("queue_paused", "Action queue paused at action #{idx + 1}/#{total} (awaiting rolls). Remaining: #{remaining.inspect}")
+        @log.play_log!("queue_paused", "Action queue paused at action #{idx + 1}/#{total} (#{reason}). Remaining: #{remaining.inspect}")
       end
 
       def log_interrupt(idx, total, remaining, reason: "encounter")
