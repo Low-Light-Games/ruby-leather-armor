@@ -81,7 +81,7 @@ Player input
 The system separates concerns into three layers:
 
 - **DungeonMasterService** — thin entry point that persists messages, handles errors, and delegates to the pipeline.
-- **DungeonMaster::Pipeline** — pure orchestration logic: step sequencing, branching, parallelism, and pause/resume for dice rolls.
+- **DungeonMaster::PipelineEngine** — pure orchestration logic: step sequencing, branching, parallelism, and pause/resume for dice rolls.
 - **Step modules** (`DungeonMaster::Steps::*`) — each step is an isolated module with its own ERB prompt template and structured output contract.
 
 Each AI step can be configured independently (model, token budget, on/off toggle) through `DmConfig`, an admin-editable settings object.

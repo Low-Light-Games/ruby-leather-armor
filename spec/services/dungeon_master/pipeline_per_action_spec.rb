@@ -8,7 +8,7 @@ require "rails_helper"
 #   3. "push the door open"  — never reached in run_prompt; processed in run_rolls resume
 #
 # The evaluator stubs detect "lock" in the user_message to trigger mechanics.
-RSpec.describe "DungeonMaster::Pipeline — per-action narration", type: :service do
+RSpec.describe "DungeonMaster::PipelineEngine — per-action narration", type: :service do
   include_context "with mocked ai"
   include_context "with evaluator stubs"
 

@@ -8,16 +8,16 @@ module DungeonMaster
   # (DungeonMasterService) is responsible for those side effects.
   #
   # Flow:
-  #   run_prompt          -> Concerns::EntryPoints + phases (see pipeline/phases/*):
+  #   run_prompt          -> Concerns::EntryPoints + phases (see pipeline_engine/phases/*):
   #                           IntakeDangerGate -> DmQueryBranch -> OrchestrateCompoundActions
   #                         OrchestrateCompoundActions: run_sequencer -> ActionQueueRunner
   #                           -> per loop row: AdventureLoopResolution#resolve -> narrate (Concerns::NarrationCoordination)
   #                         Per-step narrative when action_queue is progressive / progressive_continuity
   #   run_rolls           -> AdventureLoopResolution#finish_resolution -> continue queue if remaining -> narrative phase
   #
-  # Orchestration is split across Pipeline::Concerns — see pipeline/concerns/*.rb.
+  # Orchestration is split across PipelineEngine::Concerns — see pipeline_engine/concerns/*.rb.
   #
-  class Pipeline
+  class PipelineEngine
     # Step mixins add private methods; order here is not execution order. Outer turn: phases →
     # ActionQueueRunner → `AdventureLoopResolution#resolve` per queued line. Inner path: ParallelEvaluation
     # → (optional) SanityChecker + MechanicalEvaluation roll prep → Mechanic / TimeKeeper / …
@@ -43,18 +43,32 @@ module DungeonMaster
     include Concerns::ContextCoordination
     include Concerns::EntryPoints
 
-    attr_reader :adventure, :config, :log, :ai, :sheet, :loop
+    attr_reader :adventure, :config, :log, :ai, :sheet, :loop, :run_pipeline
 
-    def initialize(adventure:, config:, ai:, log:, sheet:, on_progress: nil, on_sheet_update: nil, on_narrative: nil)
+    def initialize(adventure:, config:, ai:, log:, sheet:, run_pipeline: nil,
+      on_progress: nil, on_sheet_update: nil, on_narrative: nil)
       @adventure        = adventure
       @config           = config
       @ai               = ai
       @log              = log
       @sheet            = sheet
       @loop             = nil
+      @run_pipeline     = run_pipeline
       @on_progress      = on_progress
       @on_sheet_update  = on_sheet_update
       @on_narrative     = on_narrative
+    end
+
+    def attach_run_pipeline!(record)
+      @run_pipeline = record
+    end
+
+    def bind_current_loop!(adventure_loop)
+      @loop = adventure_loop
+    end
+
+    def clear_current_loop!
+      @loop = nil
     end
 
     private
@@ -80,19 +94,23 @@ module DungeonMaster
     # ----------------------------------------------------------------
 
     def create_adventure_loop(action_text, sequence_index)
-      AdventureLoop.create!(
-        adventure: @adventure,
+      attrs = {
+        adventure:           @adventure,
         registry_entry_uuid: @log.registry_entry_uuid,
-        sequence_index: sequence_index,
-        raw_action: action_text&.truncate(500),
-        player_intent: action_text&.truncate(500),
-        status: "pending"
-      )
+        sequence_index:      sequence_index,
+        raw_action:          action_text&.truncate(500),
+        player_intent:       action_text&.truncate(500),
+        status:              "pending"
+      }
+      attrs[:pipeline] = @run_pipeline if @run_pipeline
+      AdventureLoop.create!(attrs)
     end
 
     def restore_paused_loop!
       return unless @log.registry_entry_uuid
-      @loop = AdventureLoop.for_registry_entry(@log.registry_entry_uuid).paused.order(:created_at).last
+      bind_current_loop!(
+        AdventureLoop.for_registry_entry(@log.registry_entry_uuid).paused.order(:created_at).last
+      )
     end
 
     def tl(step, summary)

@@ -267,7 +267,7 @@ module PipelineHelpers
     log = build_nulled_logger(adventure)
     sheet = DungeonMaster::CharacterBlock.load_sheet(adventure)
 
-    DungeonMaster::Pipeline.new(
+    DungeonMaster::PipelineEngine.new(
       adventure:    adventure,
       config:       config,
       ai:           ai,

@@ -4,7 +4,7 @@ require "rails_helper"
 # All AI calls are mocked. Exercises the complete step chain:
 # intake → sequencer → player_interpreter → beacon → world_check →
 # time_keeper → momentum → narrate
-RSpec.describe "DungeonMaster::Pipeline — full prompt flow", type: :service do
+RSpec.describe "DungeonMaster::PipelineEngine — full prompt flow", type: :service do
   include_context "with mocked ai"
   include_context "with evaluator stubs"
 
@@ -53,7 +53,7 @@ RSpec.describe "DungeonMaster::Pipeline — full prompt flow", type: :service do
 
     it "runs narrate via Node fan_out (narrative_phase)" do
       fan_out_phases = []
-      allow_any_instance_of(DungeonMaster::Pipeline).to receive(:call_evaluator!).and_wrap_original do |orig, url, prompts, intention, phase:|
+      allow_any_instance_of(DungeonMaster::PipelineEngine).to receive(:call_evaluator!).and_wrap_original do |orig, url, prompts, intention, phase:|
         fan_out_phases << phase.to_s if url.to_s.end_with?("/fan_out")
         orig.call(url, prompts, intention, phase: phase)
       end

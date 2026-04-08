@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  class Pipeline
+  class PipelineEngine
     # Per-action labels and play_log entries while processing a multi-action queue.
     # Wraps the pipeline's log object (AiLog / similar) — not Rails.logger.
     class ActionQueueLog

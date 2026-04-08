@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  class Pipeline
+  class PipelineEngine
     module Concerns
       # Steps::ContextUpdate orchestration between queued actions and at encounter → initiative pause.
       module ContextCoordination

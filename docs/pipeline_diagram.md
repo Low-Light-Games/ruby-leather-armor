@@ -2,7 +2,7 @@
 
 High-level flow of the AI DM pipeline. For per-step prompt/model detail see [Pipeline Steps](pipeline_steps.md).
 
-**Outer shell:** `DungeonMaster::Pipeline#run_prompt` runs three explicit phases in order ([`pipeline.rb`](../app/services/dungeon_master/pipeline.rb) — `Phases::IntakeDangerGate`, `Phases::DmQueryBranch`, `Phases::OrchestrateCompoundActions`). Compound actions use **`Pipeline::ActionQueueRunner`** for the per-action loop shared with `run_remaining_queue` (fresh queue aborts on `:rejected`; resume skips rejected actions). The narrative/output path is **`run_accumulated_narrative_phase`** → **`run_narrative_phase`** (Stagehand). See [Outer orchestration](pipeline_steps.md#outer-orchestration-pipeline-class) in pipeline_steps.md.
+**Outer shell:** `DungeonMaster::PipelineEngine#run_prompt` runs three explicit phases in order ([`pipeline_engine.rb`](../app/services/dungeon_master/pipeline_engine.rb) — `Phases::IntakeDangerGate`, `Phases::DmQueryBranch`, `Phases::OrchestrateCompoundActions`). Compound actions use **`PipelineEngine::ActionQueueRunner`** for the per-action loop shared with `run_remaining_queue` (fresh queue aborts on `:rejected`; resume skips rejected actions). The narrative/output path is **`run_accumulated_narrative_phase`** → **`run_narrative_phase`** (Stagehand). See [Outer orchestration](pipeline_steps.md#outer-orchestration-pipeline-class) in pipeline_steps.md.
 
 ---
 

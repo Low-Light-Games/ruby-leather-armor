@@ -7,14 +7,14 @@ module DungeonMaster
     class SingleActionAssembly
       Result = Struct.new(:intent, :pipeline_context, :mutations, keyword_init: true)
 
-      def self.call(pipeline:, result:, progressive_continuity:)
-        loop = pipeline.loop
+      def self.call(pipeline_engine:, result:, progressive_continuity:)
+        loop = pipeline_engine.loop
         outcome = loop&.get("pipeline_outcome")
-        plot_result = pipeline.send(:resolve_plot, result[:intent], verdict_outcome: outcome)
+        plot_result = pipeline_engine.send(:resolve_plot, result[:intent], verdict_outcome: outcome)
 
         prior = if progressive_continuity
                   AdventureLoop.prior_pipeline_outcomes_before(
-                    registry_entry_uuid: pipeline.log.registry_entry_uuid,
+                    registry_entry_uuid: pipeline_engine.log.registry_entry_uuid,
                     current_loop: loop)
                 else
                   []

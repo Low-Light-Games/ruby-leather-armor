@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_08_180000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_09_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -27,8 +27,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_08_180000) do
     t.jsonb "timeline", default: [], null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "pipeline_id"
     t.index ["adventure_id", "created_at"], name: "index_adventure_loops_on_adventure_id_and_created_at"
     t.index ["adventure_id"], name: "index_adventure_loops_on_adventure_id"
+    t.index ["pipeline_id"], name: "index_adventure_loops_on_pipeline_id"
     t.index ["registry_entry_uuid", "sequence_index"], name: "idx_on_registry_entry_uuid_sequence_index_658caad47b"
     t.index ["registry_entry_uuid", "status"], name: "index_adventure_loops_on_registry_entry_uuid_and_status"
     t.index ["registry_entry_uuid"], name: "index_adventure_loops_on_registry_entry_uuid"
@@ -396,7 +398,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_08_180000) do
     t.bigint "player_message_id"
     t.string "status", default: "running", null: false
     t.integer "active_duration_ms", default: 0, null: false
-    t.integer "step_count", default: 0, null: false
     t.datetime "started_at", null: false
     t.datetime "finished_at"
     t.datetime "created_at", null: false
@@ -405,6 +406,15 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_08_180000) do
     t.index ["adventure_id"], name: "index_pipeline_registry_entries_on_adventure_id"
     t.index ["registry_entry_uuid"], name: "index_pipeline_registry_entries_on_registry_entry_uuid", unique: true
     t.index ["started_at"], name: "index_pipeline_registry_entries_on_started_at"
+  end
+
+  create_table "pipelines", force: :cascade do |t|
+    t.bigint "adventure_id", null: false
+    t.bigint "player_message_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_id"], name: "index_pipelines_on_adventure_id"
+    t.index ["player_message_id"], name: "index_pipelines_on_player_message_id"
   end
 
   create_table "play_logs", force: :cascade do |t|
@@ -612,6 +622,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_08_180000) do
   end
 
   add_foreign_key "adventure_loops", "adventures", on_delete: :nullify
+  add_foreign_key "adventure_loops", "pipelines"
   add_foreign_key "adventure_messages", "adventures"
   add_foreign_key "adventure_sheet_feats", "adventure_sheets"
   add_foreign_key "adventure_sheet_feats", "feat_definitions", column: "feat_id"
@@ -637,6 +648,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_08_180000) do
   add_foreign_key "location_connections", "story_locations", column: "from_location_id"
   add_foreign_key "location_connections", "story_locations", column: "to_location_id"
   add_foreign_key "moderation_events", "users"
+  add_foreign_key "pipelines", "adventure_messages", column: "player_message_id"
+  add_foreign_key "pipelines", "adventures"
   add_foreign_key "play_logs", "adventure_messages", column: "player_message_id", on_delete: :nullify
   add_foreign_key "play_logs", "adventures", on_delete: :nullify
   add_foreign_key "play_logs", "ai_usage_records", on_delete: :nullify

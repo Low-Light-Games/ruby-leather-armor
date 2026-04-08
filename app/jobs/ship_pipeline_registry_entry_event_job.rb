@@ -20,7 +20,6 @@ class ShipPipelineRegistryEntryEventJob < ApplicationJob
       adventure_id:         entry.adventure_id,
       status:               entry.status,
       active_duration_ms:   entry.active_duration_ms,
-      step_count:           entry.step_count,
       started_at:           entry.started_at&.utc&.iso8601(3),
       finished_at:          entry.finished_at&.utc&.iso8601(3),
       app_version:          entry.app_version,

@@ -7,7 +7,7 @@
 #   - DungeonMaster::AdventurePlay::PipelineMessenger — persist messages, map results,
 #     progressive narration broadcasts
 #
-# See DungeonMaster::Pipeline for the step-by-step flow.
+# See DungeonMaster::PipelineEngine for the step-by-step flow.
 #
 class DungeonMasterService
   SanitizationRejected     = DungeonMaster::SanitizationRejected
@@ -72,8 +72,9 @@ class DungeonMasterService
 
     @log.player_message_id = player_message_id
     @log.start_registry_entry!(player_input)
+    ensure_run_pipeline!
 
-    result = DungeonMaster::PipelineTiming.run(@log) { pipeline.run_prompt(player_input, mode: mode) }
+    result = DungeonMaster::PipelineTiming.run(@log) { pipeline_engine.run_prompt(player_input, mode: mode) }
     @messenger.messages_for(result)
   rescue UsageLimitExceeded => e
     @messenger.usage_limit_rejection_messages(e)
@@ -87,7 +88,8 @@ class DungeonMasterService
     execute_player_resume(player_message_id) do
       metadata = DungeonMaster::Rolls::AdventureMechanicalState.latest_roll_metadata(@adventure)
       resume_or_start_pipeline!(metadata, roll_results_text)
-      DungeonMaster::PipelineTiming.run(@log) { pipeline.run_rolls(roll_results_text, metadata) }
+      ensure_run_pipeline!
+      DungeonMaster::PipelineTiming.run(@log) { pipeline_engine.run_rolls(roll_results_text, metadata) }
     end
   end
 
@@ -96,7 +98,8 @@ class DungeonMasterService
       metadata = DungeonMaster::Rolls::AdventureMechanicalState.latest_initiative_metadata(@adventure)
       resume_content = "Initiative: #{player_initiative}"
       resume_or_start_pipeline!(metadata, resume_content)
-      DungeonMaster::PipelineTiming.run(@log) { pipeline.run_initiative(player_initiative.to_i, metadata) }
+      ensure_run_pipeline!
+      DungeonMaster::PipelineTiming.run(@log) { pipeline_engine.run_initiative(player_initiative.to_i, metadata) }
     end
   end
 
@@ -111,8 +114,8 @@ class DungeonMasterService
     raise UsageLimitExceeded unless AdventurePolicy.new(@user, @adventure).pipeline?
   end
 
-  def pipeline
-    @pipeline ||= DungeonMaster::Pipeline.new(
+  def pipeline_engine
+    @pipeline_engine ||= DungeonMaster::PipelineEngine.new(
       adventure: @adventure, config: @config, ai: @ai, log: @log, sheet: @sheet,
       on_progress: method(:broadcast_pipeline_progress),
       on_sheet_update: method(:broadcast_sheet_update),
@@ -145,5 +148,19 @@ class DungeonMasterService
     else
       @log.start_registry_entry!(message_content)
     end
+  end
+
+  # Domain Pipeline AR (through-line for loops) — separate from PipelineRegistryEntry.
+  def ensure_run_pipeline!
+    uuid = @log.registry_entry_uuid
+    return if uuid.blank?
+
+    existing_id = AdventureLoop.where(registry_entry_uuid: uuid).where.not(pipeline_id: nil).limit(1).pick(:pipeline_id)
+    pl = if existing_id
+           Pipeline.find_by(id: existing_id)
+         else
+           Pipeline.create!(adventure: @adventure, player_message_id: @log.player_message_id)
+         end
+    pipeline_engine.attach_run_pipeline!(pl) if pl
   end
 end

@@ -2,6 +2,7 @@
 
 class AdventureLoop < ApplicationRecord
   belongs_to :adventure, optional: true
+  belongs_to :pipeline, optional: true
 
   STATUSES = %w[pending resolving paused resolved encounter social_scene errored].freeze
 

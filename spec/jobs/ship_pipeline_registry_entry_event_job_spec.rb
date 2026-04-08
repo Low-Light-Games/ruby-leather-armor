@@ -17,7 +17,6 @@ RSpec.describe ShipPipelineRegistryEntryEventJob, type: :job do
       started_at: started_at,
       finished_at: Time.current.utc,
       active_duration_ms: 1200,
-      step_count: 6,
       app_version: "1.0.0"
     )
   end
@@ -43,7 +42,6 @@ RSpec.describe ShipPipelineRegistryEntryEventJob, type: :job do
             adventure_id:         adventure.id,
             status:               "completed",
             active_duration_ms:   1200,
-            step_count:           6,
             app_version:          "1.0.0",
             event_kind:           "pipeline_registry_entry"
           )

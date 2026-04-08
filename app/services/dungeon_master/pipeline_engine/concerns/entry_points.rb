@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  class Pipeline
+  class PipelineEngine
     module Concerns
       # Public resume/run API, prompt phase chain, DM-query branch, mid-queue continuation.
       module EntryPoints

@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  class Pipeline
+  class PipelineEngine
     module Concerns
       # Wires Narrative::*Assembly + Stagehand narrate; progressive +on_narrative+ payloads.
-      # See also Pipeline::Concerns::EntryPoints and action_queue_runner.rb.
+      # See also PipelineEngine::Concerns::EntryPoints and action_queue_runner.rb.
       module NarrationCoordination
         PROGRESSIVE_QUEUE_MODES = %w[progressive progressive_continuity].freeze
 
@@ -13,21 +13,21 @@ module DungeonMaster
         def run_accumulated_narrative_phase(results)
           return { action: :narrated, narrative: "", adventure_complete: false } if results.empty?
 
-          narration_inputs = Narrative::AccumulatedAssembly.call(pipeline: self, results: results)
+          narration_inputs = Narrative::AccumulatedAssembly.call(pipeline_engine: self, results: results)
           run_narrative_phase(narration_inputs.merged_intent,
-            pipeline: narration_inputs.pipeline_context,
+            narration_context: narration_inputs.pipeline_context,
             mutations: narration_inputs.mutations,
             extra: narration_inputs.extra)
         end
 
         def run_single_action_narrative_phase(result, sequence_index, total_actions)
           narration_inputs = Narrative::SingleActionAssembly.call(
-            pipeline: self,
+            pipeline_engine: self,
             result: result,
             progressive_continuity: action_queue_continuity?)
 
           phase = run_narrative_phase(narration_inputs.intent,
-            pipeline: narration_inputs.pipeline_context,
+            narration_context: narration_inputs.pipeline_context,
             mutations: narration_inputs.mutations)
 
           entry = Narrative::ProgressiveEntry.from_narrative_phase(

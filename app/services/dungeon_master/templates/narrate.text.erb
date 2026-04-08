@@ -3,47 +3,48 @@ Your ONLY job is to narrative the events that just happened for the player.
 You do NOT adjudicate rules, track state, or request rolls — that has already been done.
 Do not lean overly verbose or poetic. This is a narrative, not a story.
 
-<% if @pipeline.dm_brief.present? -%>
+<% v = @narrate_view -%>
+<% if v.dm_brief.present? -%>
 === INSTRUCTIONS ===
-DM Brief (follow these instructions carefully): <%= @pipeline.dm_brief %>
+DM Brief (follow these instructions carefully): <%= v.dm_brief %>
 <% end -%>
-<%= @pacing_text %>
+<%= v.pacing_text %>
 
-<% if @time_context.present? -%>
+<% if v.time_context.present? -%>
 === TIME OF DAY ===
-Day <%= @time_context["adventure_day"] || 1 %>, Hour <%= @time_context["current_hour"] || 8 %> (<%= @time_context["light_conditions"] || "day" %>)
+Day <%= v.time_context["adventure_day"] || 1 %>, Hour <%= v.time_context["current_hour"] || 8 %> (<%= v.time_context["light_conditions"] || "day" %>)
 <% end -%>
 
-<% if @loop&.get("journey_data") -%>
+<% if v.loop&.get("journey_data") -%>
 === JOURNEY ===
-Origin: <%= @loop.get("journey_data")["origin"] %> | Destination: <%= @loop.get("journey_data")["destination"] %>
-Distance: <%= @loop.get("journey_data")["distance_miles"] %> miles | Terrain: <%= @loop.get("journey_data")["terrain_type"] || "unknown" %>
-Speed: <%= @loop.get("journey_data")["speed_mph"] %> mph | Estimated travel: <%= @loop.get("journey_data")["estimated_hours"] %> hours
+Origin: <%= v.loop.get("journey_data")["origin"] %> | Destination: <%= v.loop.get("journey_data")["destination"] %>
+Distance: <%= v.loop.get("journey_data")["distance_miles"] %> miles | Terrain: <%= v.loop.get("journey_data")["terrain_type"] || "unknown" %>
+Speed: <%= v.loop.get("journey_data")["speed_mph"] %> mph | Estimated travel: <%= v.loop.get("journey_data")["estimated_hours"] %> hours
 <% end -%>
 
-<% _prior = PromptRenderer.render_partial("partials/prior_outcomes", outcomes: @pipeline.prior_outcomes) -%>
+<% _prior = PromptRenderer.render_partial("partials/prior_outcomes", outcomes: v.prior_outcomes) -%>
 <% if _prior.present? -%>
 <%= _prior %>
 
 <% end -%>
-<% if @pipeline.player_action.present? -%>
+<% if v.player_action.present? -%>
 === WHAT THE PLAYER DID (make sure to link this to what happened) ===
-<%= @pipeline.player_action %>
+<%= v.player_action %>
 
 <% end -%>
 === WHAT HAPPENED (make sure the link between what the player did and this is clear) ===
-<%= @pipeline.combined_seed %>
+<%= v.combined_seed %>
 
-<% if @loop&.get("encounter_scene") -%>
+<% if v.loop&.get("encounter_scene") -%>
 === NEW EVENT (just occurred in addition to what happened above) ===
-<%= @loop.get("encounter_scene") %>
-<% if @loop.get("encounter_new_elements").present? -%>
-New elements just introduced: <%= @loop.get("encounter_new_elements").join(", ") %>
+<%= v.loop.get("encounter_scene") %>
+<% if v.loop.get("encounter_new_elements").present? -%>
+New elements just introduced: <%= v.loop.get("encounter_new_elements").join(", ") %>
 These did NOT exist before — describe them as fresh discoveries.
 <% end -%>
 <% end -%>
 
-<%= @directed_play_text %>
+<%= v.directed_play_text %>
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {

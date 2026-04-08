@@ -8,9 +8,9 @@ module DungeonMaster
     class AccumulatedAssembly
       Result = Struct.new(:merged_intent, :pipeline_context, :mutations, :extra, keyword_init: true)
 
-      def self.call(pipeline:, results:)
+      def self.call(pipeline_engine:, results:)
         merged_intent = merge_result_intents(results)
-        all_loops = AdventureLoop.for_registry_entry(pipeline.log.registry_entry_uuid).order(:sequence_index)
+        all_loops = AdventureLoop.for_registry_entry(pipeline_engine.log.registry_entry_uuid).order(:sequence_index)
         all_outcomes = all_loops.filter_map { |l| l.get("pipeline_outcome") }
         all_mutations = results.filter_map { |r| r[:mutations] }
         encounter_triggered = results.any? { |r| r[:status] == :encounter }
@@ -21,7 +21,7 @@ module DungeonMaster
           Utilities::HashMerge.deep_merge_presence(acc, m)
         end
 
-        plot_result = pipeline.send(:resolve_plot, merged_intent, verdict_outcome: combined_seed,
+        plot_result = pipeline_engine.send(:resolve_plot, merged_intent, verdict_outcome: combined_seed,
           encounter_triggered: encounter_triggered)
 
         ctx = PipelineContext.new(

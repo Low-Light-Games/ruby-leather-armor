@@ -14,19 +14,19 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md).
 
 ## Outer orchestration (Pipeline class)
 
-The **AI step mixins** (Intake, Sequencer, Narrate, …) implement individual prompts; **`AdventureLoopResolution`** (also mixed into `Pipeline`) drives evaluation → sanity → mechanics for each **AdventureLoop** row; the **`DungeonMaster::Pipeline`** class wires the **player turn** and **action queue**. Reorder or extend the main line by editing **`#run_prompt`** in [`app/services/dungeon_master/pipeline.rb`](../app/services/dungeon_master/pipeline.rb) (three explicit `apply_prompt_phase` calls).
+The **AI step mixins** (Intake, Sequencer, Narrate, …) implement individual prompts; **`AdventureLoopResolution`** (also mixed into `PipelineEngine`) drives evaluation → sanity → mechanics for each **AdventureLoop** row; the **`DungeonMaster::PipelineEngine`** class wires the **player turn** and **action queue**. Reorder or extend the main line by editing **`#run_prompt`** in [`app/services/dungeon_master/pipeline_engine.rb`](../app/services/dungeon_master/pipeline_engine.rb) (three explicit `apply_prompt_phase` calls).
 
 | Phase / component | Role | Source |
 |-------------------|------|--------|
 | **`#run_prompt` + `#apply_prompt_phase`** | Ordered calls: intake + danger gate → DM query branch → sequencer + compound-action loop | `pipeline.rb` |
-| **`Phases::IntakeDangerGate`** | `run_intake`; danger threshold → `:rejected` | [`pipeline/phases/intake_danger_gate.rb`](../app/services/dungeon_master/pipeline/phases/intake_danger_gate.rb) |
-| **`Phases::DmQueryBranch`** | Ask DM mode / `is_dm_query` → `run_dm_query_flow` | [`pipeline/phases/dm_query_branch.rb`](../app/services/dungeon_master/pipeline/phases/dm_query_branch.rb) |
-| **`Phases::OrchestrateCompoundActions`** | `run_sequencer` then **`ActionQueueRunner`** | [`pipeline/phases/orchestrate_compound_actions.rb`](../app/services/dungeon_master/pipeline/phases/orchestrate_compound_actions.rb) |
-| **`Pipeline::Concerns::EntryPoints`** | `run_prompt` / `run_initiative` / `run_rolls`, phase chain (`apply_prompt_phase`), `run_dm_query_flow`, `run_remaining_queue`. | [`pipeline/concerns/entry_points.rb`](../app/services/dungeon_master/pipeline/concerns/entry_points.rb) |
-| **`Pipeline::Concerns::NarrationCoordination`** | `run_accumulated_narrative_phase`, `run_single_action_narrative_phase`, action-queue mode helpers (`per_action_narration?`, …). | [`pipeline/concerns/narration_coordination.rb`](../app/services/dungeon_master/pipeline/concerns/narration_coordination.rb) |
-| **`Pipeline::Concerns::ContextCoordination`** | `run_inter_action_context_update`, `run_context_updates_at_encounter_pause`. | [`pipeline/concerns/context_coordination.rb`](../app/services/dungeon_master/pipeline/concerns/context_coordination.rb) |
-| **`Pipeline::ActionQueueRunner`** | For each queued action: `AdventureLoop` + `AdventureLoopResolution#resolve`; dispatches on `:status`; **abort** whole turn on `:rejected` (fresh) vs **skip** action (resume). Ends in **`run_accumulated_narrative_phase`** / `:narrated_sequence`. | [`pipeline/action_queue_runner.rb`](../app/services/dungeon_master/pipeline/action_queue_runner.rb) |
-| **`Pipeline::ActionQueueLog`** | Per-action `action_label` on the pipeline log + `play_log!` for queue pause / interrupt / completed. | [`pipeline/action_queue_log.rb`](../app/services/dungeon_master/pipeline/action_queue_log.rb) |
+| **`Phases::IntakeDangerGate`** | `run_intake`; danger threshold → `:rejected` | [`pipeline_engine/phases/intake_danger_gate.rb`](../app/services/dungeon_master/pipeline_engine/phases/intake_danger_gate.rb) |
+| **`Phases::DmQueryBranch`** | Ask DM mode / `is_dm_query` → `run_dm_query_flow` | [`pipeline_engine/phases/dm_query_branch.rb`](../app/services/dungeon_master/pipeline_engine/phases/dm_query_branch.rb) |
+| **`Phases::OrchestrateCompoundActions`** | `run_sequencer` then **`ActionQueueRunner`** | [`pipeline_engine/phases/orchestrate_compound_actions.rb`](../app/services/dungeon_master/pipeline_engine/phases/orchestrate_compound_actions.rb) |
+| **`PipelineEngine::Concerns::EntryPoints`** | `run_prompt` / `run_initiative` / `run_rolls`, phase chain (`apply_prompt_phase`), `run_dm_query_flow`, `run_remaining_queue`. | [`pipeline_engine/concerns/entry_points.rb`](../app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb) |
+| **`PipelineEngine::Concerns::NarrationCoordination`** | `run_accumulated_narrative_phase`, `run_single_action_narrative_phase`, action-queue mode helpers (`per_action_narration?`, …). | [`pipeline_engine/concerns/narration_coordination.rb`](../app/services/dungeon_master/pipeline_engine/concerns/narration_coordination.rb) |
+| **`PipelineEngine::Concerns::ContextCoordination`** | `run_inter_action_context_update`, `run_context_updates_at_encounter_pause`. | [`pipeline_engine/concerns/context_coordination.rb`](../app/services/dungeon_master/pipeline_engine/concerns/context_coordination.rb) |
+| **`PipelineEngine::ActionQueueRunner`** | For each queued action: `AdventureLoop` + `AdventureLoopResolution#resolve`; dispatches on `:status`; **abort** whole turn on `:rejected` (fresh) vs **skip** action (resume). Ends in **`run_accumulated_narrative_phase`** / `:narrated_sequence`. | [`pipeline_engine/action_queue_runner.rb`](../app/services/dungeon_master/pipeline_engine/action_queue_runner.rb) |
+| **`PipelineEngine::ActionQueueLog`** | Per-action `action_label` on the pipeline log + `play_log!` for queue pause / interrupt / completed. | [`pipeline_engine/action_queue_log.rb`](../app/services/dungeon_master/pipeline_engine/action_queue_log.rb) |
 | **`Narrative::AccumulatedAssembly`** | Merges resolver results + `AdventureLoop` `pipeline_outcome` rows into `PipelineContext` / mutations / `extra` for **`#run_accumulated_narrative_phase`**. | [`narrative/accumulated_assembly.rb`](../app/services/dungeon_master/narrative/accumulated_assembly.rb) |
 | **`Narrative::SingleActionAssembly`** | One-loop `PipelineContext` for progressive per-action narration (`prior_outcomes` when `progressive_continuity`). | [`narrative/single_action_assembly.rb`](../app/services/dungeon_master/narrative/single_action_assembly.rb) |
 | **`Narrative::ProgressiveEntry`** | Value object (`Data`) for each progressive narration payload: DM text, `adventure_complete`, queue indices, `action_text`. Built after `run_narrative_phase`; `#to_h` is passed to `on_narrative` and into `:narratives` on `:narrated_sequence`. | [`narrative/progressive_entry.rb`](../app/services/dungeon_master/narrative/progressive_entry.rb) |
@@ -314,7 +314,7 @@ template rendering is sub-millisecond compared to the AI call it feeds.
 
 ### 11. Pipeline class separated from the service
 
-**Decision:** `DungeonMaster::Pipeline` encapsulates pure pipeline logic
+**Decision:** `DungeonMaster::PipelineEngine` encapsulates pure pipeline logic
 (step sequencing, branching, data flow). `DungeonMasterService` handles
 only message persistence and error handling.
 
@@ -925,8 +925,8 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 
 | # | Step | Type | Source |
 |---|------|------|--------|
-| — | **`#run_prompt` outer phases** | Code (orchestration) | `app/services/dungeon_master/pipeline.rb`, `app/services/dungeon_master/pipeline/phases/*.rb` |
-| — | **`ActionQueueRunner`** | Code (queued actions) | `app/services/dungeon_master/pipeline/action_queue_runner.rb` |
+| — | **`#run_prompt` outer phases** | Code (orchestration) | `app/services/dungeon_master/pipeline_engine.rb`, `app/services/dungeon_master/pipeline_engine/phases/*.rb` |
+| — | **`ActionQueueRunner`** | Code (queued actions) | `app/services/dungeon_master/pipeline_engine/action_queue_runner.rb` |
 | 0 | **Moderation gate** | Code + Node evaluator `POST /moderate` | `app/services/dungeon_master/moderation_service.rb`, `app/jobs/moderation_check_job.rb`, `evaluator/src/index.js` |
 | 1 | **Intake** | AI | `app/services/dungeon_master/steps/intake.rb` |
 | 1c | **DM Query** | AI (fast path) | `app/services/dungeon_master/steps/dm_query.rb` |

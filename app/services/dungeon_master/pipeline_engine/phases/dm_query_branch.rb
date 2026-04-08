@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  class Pipeline
+  class PipelineEngine
     module Phases
       # Routes Ask DM mode / classified DM queries to the fast DM answer path.
       #
@@ -16,13 +16,13 @@ module DungeonMaster
       class DmQueryBranch
         # @param state [Hash] must include :clean_input, :intake_result; optional :mode
         # @return [Hash] :halt => true, :result => dm_query hash — or — :halt => false
-        def self.call(pipeline, state)
+        def self.call(pipeline_engine, state)
           clean_input = state.fetch(:clean_input)
           mode = state[:mode]
           intake_result = state.fetch(:intake_result)
 
           if mode == "dm_query" || intake_result[:is_dm_query]
-            return({ halt: true, result: pipeline.send(:run_dm_query_flow, clean_input) })
+            return({ halt: true, result: pipeline_engine.send(:run_dm_query_flow, clean_input) })
           end
 
           { halt: false }

@@ -13,7 +13,7 @@ module DungeonMaster
       :total_actions,
       :action_text
     ) do
-      # @param phase [Hash] return value of Pipeline#run_narrative_phase
+      # @param phase [Hash] return value of PipelineEngine#run_narrative_phase
       def self.from_narrative_phase(phase, sequence_index:, total_actions:, action_text:)
         new(
           narrative: phase[:narrative],

@@ -1,16 +1,16 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  class Pipeline
+  class PipelineEngine
     # Centralizes the per-action resolve loop + `case result[:status]` that
     # previously duplicated `orchestrate_actions` and `run_remaining_queue`.
     #
     # Assumes:
     #   - `pipeline` has @adventure, @log, @config, @ai, @sheet and mixin-provided
-    #     private helpers: create_adventure_loop, resolve, tl, plus Pipeline::Concerns
+    #     private helpers: create_adventure_loop, resolve, tl, plus PipelineEngine::Concerns
     #     NarrationCoordination (per-action + accumulated narrate), ContextCoordination
     #     (inter-action + encounter-pause context updates).
-    #   - Action-queue log lines use Pipeline::ActionQueueLog (see action_queue_log.rb).
+    #   - Action-queue log lines use PipelineEngine::ActionQueueLog (see action_queue_log.rb).
     #   - Before each `resolve`, @loop is bound to the AdventureLoop for that
     #     action index (this runner assigns it).
     #
@@ -25,14 +25,14 @@ module DungeonMaster
     #   - `abort_on_rejected: true` — first :rejected returns immediately (fresh queue).
     #   - `abort_on_rejected: false` — :rejected marks loop errored and continues (resume queue).
     class ActionQueueRunner
-      def initialize(pipeline)
-        @pipeline = pipeline
+      def initialize(pipeline_engine)
+        @pipeline_engine = pipeline_engine
       end
 
       # @param per_action_narration [Boolean] orchestrate path only; ignored for resume.
       def run(action_strings:, base_sequence_index:, total_for_logging:, abort_on_rejected:,
         initial_accumulated: [], per_action_narration: false)
-        p = @pipeline
+        p = @pipeline_engine
         qlog = ActionQueueLog.new(p.log)
         accumulated = initial_accumulated.dup
         action_narratives = []
@@ -58,7 +58,7 @@ module DungeonMaster
           when :awaiting_rolls
             p.loop&.batch_update!(new_status: "paused",
               timeline_entry: p.send(:tl, "awaiting_rolls", "Paused for player rolls"))
-            ContextUpdatePause.run(pipeline: p, intent: result[:intent], merged: result[:merged])
+            ContextUpdatePause.run(pipeline_engine: p, intent: result[:intent], merged: result[:merged])
             remaining = action_strings[(idx + 1)..]
             qlog.log_pause(action_idx, total, remaining, reason: "awaiting rolls")
             qlog.clear_action_label
@@ -113,7 +113,7 @@ module DungeonMaster
       private
 
       def bind_loop!(adventure_loop)
-        @pipeline.instance_variable_set(:@loop, adventure_loop)
+        @pipeline_engine.bind_current_loop!(adventure_loop)
       end
 
       def finish_orchestrated(pipeline, queue_log, accumulated, action_narratives, use_per_action, total, action_count,

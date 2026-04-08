@@ -11,15 +11,17 @@ module DungeonMaster
 
       # Payload for Node POST /fan_out (parallel with context updates in Stagehand).
       # meta.parse_fallback matches Rails AiClient#parse_json(fallback_as: :dm_response).
-      def narrate_evaluator_prompt(pipeline)
-        system_prompt = PromptRenderer.render("narrate",
-          loop: @loop,
-          pipeline: pipeline,
-          time_context: @adventure.time_context || {},
-          pacing_text: PromptHelpers.pacing_instructions(@config),
-          directed_play_text: PromptHelpers.directed_play_instructions(@adventure))
+      def narrate_evaluator_prompt(pipeline_context)
+        narrate_view = Narrative::NarratePromptView.new(
+          pipeline_context: pipeline_context,
+          loop:               @loop,
+          time_context:       @adventure.time_context || {},
+          pacing_text:        PromptHelpers.pacing_instructions(@config),
+          directed_play_text: PromptHelpers.directed_play_instructions(@adventure)
+        )
+        system_prompt = PromptRenderer.render("narrate", narrate_view: narrate_view)
 
-        unless pipeline.combined_seed
+        unless pipeline_context.combined_seed
           @log&.play_log!("pipeline_error", "Narrate step reached without an outcome — nothing to narrate",
                           parsed_response: { encounter_scene: @loop&.get("encounter_scene"),
                                              verdict_outcome: @loop&.get("verdict_outcome") }.compact)
@@ -28,7 +30,7 @@ module DungeonMaster
 
         {
           system_prompt: system_prompt,
-          user_message:  pipeline.combined_seed,
+          user_message:  pipeline_context.combined_seed,
           model:         @config.model_for("narrate"),
           max_tokens:    @config.token_budget_for("narrate"),
           meta:          { step: "narrate", parse_fallback: "dm_response" }
@@ -42,28 +44,30 @@ module DungeonMaster
         { narrative: parsed["narrative"] }
       end
 
-      def run_narrate(pipeline)
+      def run_narrate(pipeline_context)
         broadcast_progress("Writing the story...")
         prompt_summary = "Narrate"
 
-        system_prompt = PromptRenderer.render("narrate",
-          loop: @loop,
-          pipeline: pipeline,
-          time_context: @adventure.time_context || {},
-          pacing_text: PromptHelpers.pacing_instructions(@config),
-          directed_play_text: PromptHelpers.directed_play_instructions(@adventure))
+        narrate_view = Narrative::NarratePromptView.new(
+          pipeline_context: pipeline_context,
+          loop:               @loop,
+          time_context:       @adventure.time_context || {},
+          pacing_text:        PromptHelpers.pacing_instructions(@config),
+          directed_play_text: PromptHelpers.directed_play_instructions(@adventure)
+        )
+        system_prompt = PromptRenderer.render("narrate", narrate_view: narrate_view)
 
-        unless pipeline.combined_seed
+        unless pipeline_context.combined_seed
           @log&.play_log!("pipeline_error", "Narrate step reached without an outcome — nothing to narrate",
                           parsed_response: { encounter_scene: @loop&.get("encounter_scene"),
                                              verdict_outcome: @loop&.get("verdict_outcome") }.compact)
           raise AiError, "Narrate step reached without an outcome — nothing to narrate"
         end
 
-        request_body = { system_prompt: system_prompt, user_message: pipeline.combined_seed }
+        request_body = { system_prompt: system_prompt, user_message: pipeline_context.combined_seed }
 
         parsed = timed_ai_call("narrate", prompt_summary, request_body) do
-          raw = @ai.chat(system_prompt: system_prompt, user_message: pipeline.combined_seed,
+          raw = @ai.chat(system_prompt: system_prompt, user_message: pipeline_context.combined_seed,
                           max_tokens: @config.token_budget_for("narrate"), step_name: "narrate",
                           model: @config.model_for("narrate"))
           # fallback_as: :dm_response is the only surviving parse fallback.
