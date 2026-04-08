@@ -155,6 +155,28 @@ module DungeonMaster
       text.length > length ? "#{text.first(length)}…" : text
     end
 
+    # Sentry (and similar) for unhandled pipeline exceptions — never raises.
+    def capture_pipeline_exception!(exception)
+      Sentry.capture_exception(exception) if defined?(Sentry)
+    end
+
+    # When the player starts a new prompt while a roll/initiative request is still pending.
+    def log_abandoned_pipeline_if_needed!
+      msgs = @adventure.adventure_messages
+      last_request = msgs.for_message_types(%w[roll_request initiative_request]).newest_first.first
+      return unless last_request&.metadata&.dig("intent")
+
+      last_player_msg = msgs.from_players.newest_first.first
+      return if last_player_msg&.message_type.in?(%w[roll_result initiative_result])
+
+      intent_summary = last_request.metadata.dig("intent", "intention").to_s.truncate(80)
+      play_log!(
+        "pipeline_abandoned",
+        "Previous pipeline abandoned (#{last_request.message_type}): player sent new input. " \
+        "Original intent: #{intent_summary}"
+      )
+    end
+
     private
 
     def attach_usage_record!(play_log, model_used, usage)
