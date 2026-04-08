@@ -14,7 +14,7 @@ module DungeonMaster
           return { action: :narrated, narrative: "", adventure_complete: false } if results.empty?
 
           narration_inputs = Narrative::AccumulatedAssembly.call(pipeline_engine: self, results: results)
-          run_narrative_phase(narration_inputs.merged_intent,
+          run_narrative_phase(narration_inputs.intent,
             narration_context: narration_inputs.pipeline_context,
             mutations: narration_inputs.mutations,
             extra: narration_inputs.extra)

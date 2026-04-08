@@ -6,8 +6,6 @@ module DungeonMaster
     # +pipeline_outcome+, optional prior outcomes when the engine’s action queue is
     # +progressive_continuity+, and plot brief.
     class SingleActionAssembly
-      Result = Struct.new(:intent, :pipeline_context, :mutations, keyword_init: true)
-
       def self.call(pipeline_engine:, result:)
         loop = pipeline_engine.loop
         outcome = loop&.get("pipeline_outcome")
@@ -28,7 +26,7 @@ module DungeonMaster
           prior_outcomes: prior
         )
 
-        Result.new(
+        NarrationPhaseInputs.new(
           intent: result[:intent],
           pipeline_context: ctx,
           mutations: result[:mutations]

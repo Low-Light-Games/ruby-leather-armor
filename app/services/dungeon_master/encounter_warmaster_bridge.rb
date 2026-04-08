@@ -5,7 +5,16 @@ module DungeonMaster
   # run Warmaster, update the loop, and produce the resolver return payload. Does not write
   # +pipeline_outcome+ — AdventureLoopResolution calls +store_pipeline_outcome!+ with +pipeline_outcome+.
   class EncounterWarmasterBridge
-    Result = Struct.new(:payload, :pipeline_outcome, keyword_init: true)
+    # Return value from EncounterWarmasterBridge.call: resolver payload (status, intent, etc.)
+    # and the string stored as the loop +pipeline_outcome+ narration seed.
+    class Result
+      attr_reader :payload, :pipeline_outcome
+
+      def initialize(payload:, pipeline_outcome:)
+        @payload          = payload
+        @pipeline_outcome = pipeline_outcome
+      end
+    end
 
     def self.call(loop:, adventure:, sheet:, log:, config:, ai:, intent:, time_result:, mutations:)
       entry_id = loop&.get("encounter_entry_id")

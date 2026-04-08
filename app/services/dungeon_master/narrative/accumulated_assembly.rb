@@ -6,8 +6,6 @@ module DungeonMaster
     # resolver result rows and AdventureLoop +pipeline_outcome+ rows for one accumulated
     # narration pass (multi-action queue, encounter tail, etc.).
     class AccumulatedAssembly
-      Result = Struct.new(:merged_intent, :pipeline_context, :mutations, :extra, keyword_init: true)
-
       def self.call(pipeline_engine:, results:)
         merged_intent = merge_result_intents(results)
         all_loops = AdventureLoop.for_registry_entry(pipeline_engine.log.registry_entry_uuid).order(:sequence_index)
@@ -34,8 +32,8 @@ module DungeonMaster
         extra[:encounter_triggered] = true if encounter_triggered
         extra[:social_scene_triggered] = true if social_scene_triggered
 
-        Result.new(
-          merged_intent: merged_intent,
+        NarrationPhaseInputs.new(
+          intent: merged_intent,
           pipeline_context: ctx,
           mutations: combined_mutations.presence,
           extra: extra
