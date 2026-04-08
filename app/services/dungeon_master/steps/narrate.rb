@@ -12,21 +12,9 @@ module DungeonMaster
       # Payload for Node POST /fan_out (parallel with context updates in Stagehand).
       # meta.parse_fallback matches Rails AiClient#parse_json(fallback_as: :dm_response).
       def narrate_evaluator_prompt(pipeline_context)
-        narrate_view = Narrative::NarratePromptView.new(
-          pipeline_context: pipeline_context,
-          loop:               @loop,
-          time_context:       @adventure.time_context || {},
-          pacing_text:        PromptHelpers.pacing_instructions(@config),
-          directed_play_text: PromptHelpers.directed_play_instructions(@adventure)
-        )
+        narrate_view = Narrative::NarratePromptView.for_narrate(self, pipeline_context)
         system_prompt = PromptRenderer.render("narrate", narrate_view: narrate_view)
-
-        unless pipeline_context.combined_seed
-          @log&.play_log!("pipeline_error", "Narrate step reached without an outcome — nothing to narrate",
-                          parsed_response: { encounter_scene: @loop&.get("encounter_scene"),
-                                             verdict_outcome: @loop&.get("verdict_outcome") }.compact)
-          raise AiError, "Narrate step reached without an outcome — nothing to narrate"
-        end
+        assert_narration_combined_seed!(pipeline_context)
 
         {
           system_prompt: system_prompt,
@@ -48,21 +36,9 @@ module DungeonMaster
         broadcast_progress("Writing the story...")
         prompt_summary = "Narrate"
 
-        narrate_view = Narrative::NarratePromptView.new(
-          pipeline_context: pipeline_context,
-          loop:               @loop,
-          time_context:       @adventure.time_context || {},
-          pacing_text:        PromptHelpers.pacing_instructions(@config),
-          directed_play_text: PromptHelpers.directed_play_instructions(@adventure)
-        )
+        narrate_view = Narrative::NarratePromptView.for_narrate(self, pipeline_context)
         system_prompt = PromptRenderer.render("narrate", narrate_view: narrate_view)
-
-        unless pipeline_context.combined_seed
-          @log&.play_log!("pipeline_error", "Narrate step reached without an outcome — nothing to narrate",
-                          parsed_response: { encounter_scene: @loop&.get("encounter_scene"),
-                                             verdict_outcome: @loop&.get("verdict_outcome") }.compact)
-          raise AiError, "Narrate step reached without an outcome — nothing to narrate"
-        end
+        assert_narration_combined_seed!(pipeline_context)
 
         request_body = { system_prompt: system_prompt, user_message: pipeline_context.combined_seed }
 
@@ -79,6 +55,15 @@ module DungeonMaster
         raise AiError, "Narrate step returned no narrative — model produced: #{parsed.inspect.truncate(200)}" unless parsed["narrative"].present?
 
         { narrative: parsed["narrative"] }
+      end
+
+      def assert_narration_combined_seed!(pipeline_context)
+        return if pipeline_context.combined_seed
+
+        @log&.play_log!("pipeline_error", "Narrate step reached without an outcome — nothing to narrate",
+                        parsed_response: { encounter_scene: @loop&.get("encounter_scene"),
+                                           verdict_outcome: @loop&.get("verdict_outcome") }.compact)
+        raise AiError, "Narrate step reached without an outcome — nothing to narrate"
       end
     end
   end

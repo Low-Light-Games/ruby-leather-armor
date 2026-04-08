@@ -23,8 +23,7 @@ module DungeonMaster
         def run_single_action_narrative_phase(result, sequence_index, total_actions)
           narration_inputs = Narrative::SingleActionAssembly.call(
             pipeline_engine: self,
-            result: result,
-            progressive_continuity: action_queue_continuity?)
+            result: result)
 
           phase = run_narrative_phase(narration_inputs.intent,
             narration_context: narration_inputs.pipeline_context,

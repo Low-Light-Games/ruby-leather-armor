@@ -3,16 +3,17 @@
 module DungeonMaster
   module Narrative
     # Builds PipelineContext for progressive (per-action) narration: one AdventureLoop row’s
-    # +pipeline_outcome+, optional prior outcomes for +progressive_continuity+, and plot brief.
+    # +pipeline_outcome+, optional prior outcomes when the engine’s action queue is
+    # +progressive_continuity+, and plot brief.
     class SingleActionAssembly
       Result = Struct.new(:intent, :pipeline_context, :mutations, keyword_init: true)
 
-      def self.call(pipeline_engine:, result:, progressive_continuity:)
+      def self.call(pipeline_engine:, result:)
         loop = pipeline_engine.loop
         outcome = loop&.get("pipeline_outcome")
         plot_result = pipeline_engine.send(:resolve_plot, result[:intent], verdict_outcome: outcome)
 
-        prior = if progressive_continuity
+        prior = if pipeline_engine.send(:action_queue_continuity?)
                   AdventureLoop.prior_pipeline_outcomes_before(
                     registry_entry_uuid: pipeline_engine.log.registry_entry_uuid,
                     current_loop: loop)
