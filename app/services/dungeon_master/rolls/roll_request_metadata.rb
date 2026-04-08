@@ -3,7 +3,7 @@
 module DungeonMaster
   module Rolls
     # Shape of `adventure_messages.metadata` when message_type is "roll_request"
-    # (persisted from DungeonMasterService#messages_for on :awaiting_rolls).
+    # (persisted via #build_persist_metadata when the pipeline halts on :awaiting_rolls).
     #
     # When the player submits roll results, the pipeline reloads that JSON and must
     # rebuild the same `intent` + `merged` hash that AdventureLoopResolution#finish_resolution
@@ -11,6 +11,19 @@ module DungeonMaster
     # metadata — they arrive as `roll_results` and are merged via Rolls::PlayerRolls.
     module RollRequestMetadata
       class << self
+        # Persisted metadata for a new roll_request message (symmetric to #resume_inputs).
+        def build_persist_metadata(merged:, intent:, adventure:, remaining_actions:)
+          {
+            roll_requests: merged[:player_rolls],
+            pending_npc_actions: merged[:npc_actions],
+            pending_consequences: merged[:consequences],
+            mechanical_summaries: merged[:mechanical_summaries],
+            intent: intent,
+            show_dc: adventure.effective_dm_setting("show_roll_dc"),
+            remaining_actions: remaining_actions
+          }
+        end
+
         # @param metadata [Hash] string-keyed JSON from the roll_request message
         # @return [Array<(Hash, Hash)>] [intent, merged] for finish_resolution
         def resume_inputs(metadata)
