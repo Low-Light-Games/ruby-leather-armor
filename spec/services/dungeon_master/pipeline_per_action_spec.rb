@@ -164,8 +164,8 @@ RSpec.describe "DungeonMaster::Pipeline — per-action narration", type: :servic
 
     it "writes pipeline_outcome to the paused AdventureLoop after resolution" do
       resume_result
-      run_id = pipeline.instance_variable_get(:@log).pipeline_run_id
-      lock_loop = AdventureLoop.for_pipeline(run_id)
+      run_id = pipeline.instance_variable_get(:@log).registry_entry_uuid
+      lock_loop = AdventureLoop.for_registry_entry(run_id)
                                .find_by(raw_action: "pick the lock")
       expect(lock_loop&.get("pipeline_outcome")).to be_present
     end

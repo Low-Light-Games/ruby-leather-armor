@@ -16,7 +16,7 @@ module DungeonMaster
           created_at: message.created_at
         }
         if admin && message.role != "player"
-          json[:pipeline_run_id] = message.metadata&.dig("pipeline_run_id")
+          json[:registry_entry_uuid] = message.metadata&.dig("registry_entry_uuid")
         end
         json
       end

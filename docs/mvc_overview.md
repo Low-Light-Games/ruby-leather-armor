@@ -87,7 +87,7 @@ Each sheet type has its own set of join tables for feats, spells, and items:
 
 | Model           | Description                                                                          |
 | --------------- | ------------------------------------------------------------------------------------ |
-| `PipelineRun`   | Tracks a single AI pipeline execution with status and timing                         |
+| `PipelineRegistryEntry` | Tracks a single AI pipeline execution (correlation id, status, timing)        |
 | `AdventureLoop` | Persistent cross-step pipeline context; holds tags, data store, timeline, and status |
 | `DmLog`         | Records Dungeon Master activity with step-level granularity                          |
 | `AiLog`         | Records individual AI API calls with token counts and response status                |
@@ -187,6 +187,6 @@ Located in `app/views/`. The application is primarily a JSON API; HTML views are
 - **API + SPA hybrid**: Controllers respond with JSON for API calls and render ERB shells to boot the React frontend.
 - **Policy-based authorization**: All controllers use Pundit-style policy objects; `ApplicationController` enforces authorization.
 - **Join table pattern**: Many-to-many relationships (feats, spells, items) are managed through explicit join-table models to support adventure-scoped snapshots.
-- **AI pipeline**: `AdventureMessagesController` triggers an async multi-step pipeline tracked by `PipelineRun` and `AdventureLoop`; results are streamed back via Action Cable.
+- **AI pipeline**: `AdventureMessagesController` triggers an async multi-step pipeline tracked by `PipelineRegistryEntry` and `AdventureLoop`; results are streamed back via Action Cable.
 - **Singleton config**: `DmConfig` holds a single global configuration record accessed by pipeline steps for model and budget decisions.
 

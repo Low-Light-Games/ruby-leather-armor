@@ -884,7 +884,7 @@ computes the numeric values from the character sheet.
 **Decision:** every `AdventureLoopResolution` terminal writes the action's narration seed into
 `AdventureLoop#data["pipeline_outcome"]` via `batch_update!`. The narrative phase
 (`run_accumulated_narrative_phase`) assembles the combined seed by querying all
-`AdventureLoop` rows for the current `pipeline_run_id` in `sequence_index` order
+`AdventureLoop` rows for the current `registry_entry_uuid` in `sequence_index` order
 and joining their `pipeline_outcome` values with `"\n\nThen: "`. The old
 `narrate_seed` field is removed from result hashes and from `AdventureMessage`
 metadata entirely.
@@ -902,7 +902,7 @@ hash and carried `prior_narrate_seeds` across pause boundaries (serialised into
   was nil for every terminal that didn't manually populate it.
 
 `AdventureLoop` rows are already created for each action in a pipeline run and
-indexed on `pipeline_run_id`. Querying them adds one cheap indexed read and
+indexed on `registry_entry_uuid`. Querying them adds one cheap indexed read and
 replaces the entire in-memory accumulation pattern. Any terminal that writes to
 the row automatically participates in the combined seed without changes to the
 caller.

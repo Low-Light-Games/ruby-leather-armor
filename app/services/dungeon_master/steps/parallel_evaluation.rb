@@ -379,10 +379,10 @@ module DungeonMaster
       end
 
       def continuity_prior_outcomes
-        return [] unless action_queue_continuity? && @loop && @log&.pipeline_run_id
+        return [] unless action_queue_continuity? && @loop && @log&.registry_entry_uuid
 
         AdventureLoop.prior_pipeline_outcomes_before(
-          pipeline_run_id: @log.pipeline_run_id,
+          registry_entry_uuid: @log.registry_entry_uuid,
           current_loop: @loop)
       end
     end

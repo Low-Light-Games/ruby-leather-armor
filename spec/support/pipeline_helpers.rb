@@ -282,19 +282,19 @@ module PipelineHelpers
   # A logger double that accepts every call and returns safe defaults.
   # We use a real Logging object but stub the methods that make DB writes or
   # external calls — the test DB can handle AdventureLoop creates, but we
-  # skip PlayLog / PipelineRun to keep specs lean.
+  # skip PlayLog / PipelineRegistryEntry to keep specs lean.
   def build_nulled_logger(adventure)
     log = DungeonMaster::Logging.new(adventure: adventure, user: adventure.user)
-    # Pre-set pipeline_run_id so AdventureLoop.create! passes its presence validation.
-    # DungeonMasterService normally calls start_pipeline_run! before the pipeline runs,
+    # Pre-set registry_entry_uuid so AdventureLoop.create! passes its presence validation.
+    # DungeonMasterService normally calls start_registry_entry! before the pipeline runs,
     # but in unit tests we skip that service layer entirely.
-    log.pipeline_run_id = SecureRandom.uuid
-    allow(log).to receive(:start_pipeline_run!) { }
-    allow(log).to receive(:resume_pipeline_run!) { }
+    log.registry_entry_uuid = SecureRandom.uuid
+    allow(log).to receive(:start_registry_entry!) { }
+    allow(log).to receive(:resume_registry_entry!) { }
     allow(log).to receive(:finish_pipeline_segment!) { }
-    allow(log).to receive(:pause_pipeline_run!) { }
-    allow(log).to receive(:complete_pipeline_run!) { }
-    allow(log).to receive(:error_pipeline_run!) { }
+    allow(log).to receive(:pause_registry_entry!) { }
+    allow(log).to receive(:complete_registry_entry!) { }
+    allow(log).to receive(:error_registry_entry!) { }
     allow(log).to receive(:ai_log!) { }
     allow(log).to receive(:ai_log_error!) { }
     allow(log).to receive(:play_log!) { }

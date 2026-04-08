@@ -26,7 +26,7 @@
           <% is_retry = run[:retry_of].present? %>
           <tr class="pipeline-row pipeline-<%= status %><%= ' pipeline-retry' if is_retry %>">
             <td class="col-time">
-              <a href="<%= pipeline_admin_play_logs_path(run[:pipeline_run_id]) %>" class="filter-link">
+              <a href="<%= pipeline_admin_play_logs_path(run[:registry_entry_uuid]) %>" class="filter-link">
                 <%= run[:first_at].strftime('%b %d %H:%M:%S') %>
               </a>
               <% if is_retry %>
@@ -58,7 +58,7 @@
               <span class="pipeline-status-badge pipeline-<%= status %>"><%= status.capitalize %></span>
             </td>
             <td class="col-duration">
-              <% pr = run[:pipeline_run] %>
+              <% pr = run[:registry_entry] %>
               <% if pr && pr.active_duration_ms > 0 %>
                 <span class="duration"><%= format_duration_ms(pr.active_duration_ms) %></span>
               <% elsif run[:first_at] && run[:last_at] %>

@@ -9,7 +9,7 @@ class AdventureMessagesController < ApplicationController
     messages = @adventure.adventure_messages.chronological
     render json: {
       messages: messages.map { |m| message_json(m) },
-      pipeline_running: PipelineRun.active_for?(@adventure)
+      pipeline_running: PipelineRegistryEntry.active_for?(@adventure)
     }
   end
 

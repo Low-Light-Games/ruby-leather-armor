@@ -82,7 +82,7 @@ module DungeonMaster
     def create_adventure_loop(action_text, sequence_index)
       AdventureLoop.create!(
         adventure: @adventure,
-        pipeline_run_id: @log.pipeline_run_id,
+        registry_entry_uuid: @log.registry_entry_uuid,
         sequence_index: sequence_index,
         raw_action: action_text&.truncate(500),
         player_intent: action_text&.truncate(500),
@@ -91,8 +91,8 @@ module DungeonMaster
     end
 
     def restore_paused_loop!
-      return unless @log.pipeline_run_id
-      @loop = AdventureLoop.for_pipeline(@log.pipeline_run_id).paused.order(:created_at).last
+      return unless @log.registry_entry_uuid
+      @loop = AdventureLoop.for_registry_entry(@log.registry_entry_uuid).paused.order(:created_at).last
     end
 
     def tl(step, summary)

@@ -20,10 +20,10 @@ RSpec.describe DungeonMasterService, type: :service do
       .and_return({ action: :narrated, narrative: "stub", adventure_complete: false })
 
     # Suppress logging side effects.
-    allow_any_instance_of(DungeonMaster::Logging).to receive(:start_pipeline_run!) { }
+    allow_any_instance_of(DungeonMaster::Logging).to receive(:start_registry_entry!) { }
     allow_any_instance_of(DungeonMaster::Logging).to receive(:finish_pipeline_segment!) { }
-    allow_any_instance_of(DungeonMaster::Logging).to receive(:complete_pipeline_run!) { }
-    allow_any_instance_of(DungeonMaster::Logging).to receive(:error_pipeline_run!) { }
+    allow_any_instance_of(DungeonMaster::Logging).to receive(:complete_registry_entry!) { }
+    allow_any_instance_of(DungeonMaster::Logging).to receive(:error_registry_entry!) { }
     allow_any_instance_of(DungeonMaster::Logging).to receive(:play_log!) { }
     allow_any_instance_of(DungeonMaster::Logging).to receive(:log!) { }
 

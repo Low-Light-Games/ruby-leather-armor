@@ -510,7 +510,7 @@ After `AdventureLoopResolution.resolve` returns, the action loop dispatches on `
 
 After all actions complete (or the queue breaks), `run_accumulated_narrative_phase` merges results and calls Stagehand’s **`run_narrative_phase`** (chronicler, combat check, narrate, context updates).
 
-Multiple resolved/encounter/social_scene results are **merged**: intentions concatenated with "; ", affected contexts unioned, `macro_significant` or-ed. The combined narration seed is assembled by querying all `AdventureLoop` rows for the current `pipeline_run_id` in `sequence_index` order and joining their `pipeline_outcome` fields with `"\n\nThen: "`.
+Multiple resolved/encounter/social_scene results are **merged**: intentions concatenated with "; ", affected contexts unioned, `macro_significant` or-ed. The combined narration seed is assembled by querying all `AdventureLoop` rows for the current `registry_entry_uuid` in `sequence_index` order and joining their `pipeline_outcome` fields with `"\n\nThen: "`.
 
 #### Chronicler (AI, conditional)
 
@@ -537,7 +537,7 @@ Controlled by `DmConfig["narration_mode"]`:
 
 #### Narrate (AI)
 
-The prose generator. Receives: story title/hook, story summary, all micro contexts, time context (current hour, adventure day, light conditions), `what_happened` (from `@loop.verdict_outcome`), the combined narration seed (assembled from `pipeline_outcome` across all loop rows for this pipeline run), dm_brief, forbidden_elements, journey data, encounter scene/creatures, pacing instructions, and directed play instructions.
+The prose generator. Receives: story title/hook, story summary, all micro contexts, time context (current hour, adventure day, light conditions), `what_happened` (from `@loop.verdict_outcome`), the combined narration seed (assembled from `pipeline_outcome` across all loop rows sharing this `registry_entry_uuid`), dm_brief, forbidden_elements, journey data, encounter scene/creatures, pacing instructions, and directed play instructions.
 
 Has a special fallback: if the model returns raw text instead of JSON, the text is treated as the narrative directly (`fallback_as: :dm_response`).
 
@@ -553,7 +553,7 @@ Has a special fallback: if the model returns raw text instead of JSON, the text 
 
 **Roll resumption (`run_rolls`):**
 
-1. `restore_paused_loop!` — finds the most recent paused `AdventureLoop` for this pipeline run.
+1. `restore_paused_loop!` — finds the most recent paused `AdventureLoop` for this registry entry (`registry_entry_uuid`).
 2. `Rolls::PlayerRolls.tag_roll_resolution!` — tags the loop with `took_20`, `took_10`, or `rolled`.
 3. `Rolls::RollRequestMetadata.resume_inputs` (via `restore_roll_pause_inputs`) — reconstructs `intent` and `merged` from the `roll_request` message metadata.
 4. `finish_resolution` — runs NPC actions → Mechanic → mutations → TimeKeeper.
@@ -566,7 +566,7 @@ Has a special fallback: if the model returns raw text instead of JSON, the text 
 3. Reconstructs intent, mutations, and remaining actions from metadata.
 4. If more actions in queue → `run_remaining_queue`. Otherwise → `run_accumulated_narrative_phase`.
 
-In both resumptions, the output phase reads `pipeline_outcome` from all `AdventureLoop` rows for the current `pipeline_run_id` — no in-memory seed accumulation is needed across the pause boundary.
+In both resumptions, the output phase reads `pipeline_outcome` from all `AdventureLoop` rows for the current `registry_entry_uuid` — no in-memory seed accumulation is needed across the pause boundary.
 
 ---
 

@@ -68,13 +68,13 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
 
     let(:roll_results) { "Disable Device: rolled 18 (total 22 vs DC 15) — success" }
 
-    # Build the pipeline once so we can read its pipeline_run_id and create the
+    # Build the pipeline once so we can read its registry_entry_uuid and create the
     # matching paused AdventureLoop row that restore_paused_loop! expects.
     let(:pipeline) { build_pipeline(adventure) }
     let!(:paused_loop) do
       AdventureLoop.create!(
-        adventure:        adventure,
-        pipeline_run_id:  pipeline.instance_variable_get(:@log).pipeline_run_id,
+        adventure:             adventure,
+        registry_entry_uuid:   pipeline.instance_variable_get(:@log).registry_entry_uuid,
         sequence_index:   0,
         raw_action:       "try to pick the lock",
         player_intent:    "try to pick the lock",
@@ -104,12 +104,12 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
     # from AdventureLoop#pipeline_outcome rows ordered by sequence_index.
 
     let(:pipeline) { build_pipeline(adventure) }
-    let(:run_id)   { pipeline.instance_variable_get(:@log).pipeline_run_id }
+    let(:run_id)   { pipeline.instance_variable_get(:@log).registry_entry_uuid }
 
     def make_loop(seq, outcome)
       AdventureLoop.create!(
-        adventure:       adventure,
-        pipeline_run_id: run_id,
+        adventure:           adventure,
+        registry_entry_uuid: run_id,
         sequence_index:  seq,
         raw_action:      "action #{seq}",
         player_intent:   "action #{seq}",

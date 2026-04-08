@@ -48,7 +48,7 @@ class ShipPlayLogJob < ApplicationJob
     event = {
       _time:                  log.created_at.utc.iso8601(3),
       play_log_id:            log.id,
-      pipeline_run_id:        log.pipeline_run_id,
+      registry_entry_uuid:    log.registry_entry_uuid,
       adventure_id:           log.adventure_id,
       player_message_id:      log.player_message_id,
       player_message_content: log.player_message_content,

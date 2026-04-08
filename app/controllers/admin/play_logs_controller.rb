@@ -32,34 +32,34 @@ module Admin
 
     def pipelines
       @active_nav = :pipelines
-      runs = PlayLog.where.not(pipeline_run_id: [nil, ""])
-                    .select("pipeline_run_id, MIN(created_at) AS first_at, MAX(created_at) AS last_at, COUNT(*) AS step_count, MIN(adventure_id) AS adventure_id")
-                    .group(:pipeline_run_id)
+      runs = PlayLog.where.not(registry_entry_uuid: [nil, ""])
+                    .select("registry_entry_uuid, MIN(created_at) AS first_at, MAX(created_at) AS last_at, COUNT(*) AS step_count, MIN(adventure_id) AS adventure_id")
+                    .group(:registry_entry_uuid)
                     .order("first_at DESC")
 
       @page = [params[:page].to_i, 1].max
-      @total_count = PlayLog.where.not(pipeline_run_id: [nil, ""]).distinct.count(:pipeline_run_id)
+      @total_count = PlayLog.where.not(registry_entry_uuid: [nil, ""]).distinct.count(:registry_entry_uuid)
       @total_pages = (@total_count.to_f / PER_PAGE).ceil
       runs = runs.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
 
-      run_ids = runs.map(&:pipeline_run_id)
-      logs_by_run = PlayLog.where(pipeline_run_id: run_ids)
-                           .order(:created_at)
-                           .group_by(&:pipeline_run_id)
+      uuids = runs.map(&:registry_entry_uuid)
+      logs_by_uuid = PlayLog.where(registry_entry_uuid: uuids)
+                            .order(:created_at)
+                            .group_by(&:registry_entry_uuid)
 
-      pipeline_run_records = PipelineRun.where(pipeline_run_id: run_ids).index_by(&:pipeline_run_id)
+      registry_entries = PipelineRegistryEntry.where(registry_entry_uuid: uuids).index_by(&:registry_entry_uuid)
 
-      msg_ids = logs_by_run.values.flatten.filter_map(&:player_message_id).uniq
+      msg_ids = logs_by_uuid.values.flatten.filter_map(&:player_message_id).uniq
       messages = AdventureMessage.where(id: msg_ids).index_by(&:id)
 
       @pipeline_runs = runs.map do |run|
-        logs = logs_by_run[run.pipeline_run_id] || []
+        logs = logs_by_uuid[run.registry_entry_uuid] || []
         first_log = logs.first
         msg = first_log && messages[first_log.player_message_id]
-        pr = pipeline_run_records[run.pipeline_run_id]
+        entry = registry_entries[run.registry_entry_uuid]
 
-        status = if pr
-                   pr.status
+        status = if entry
+                   entry.status
                  else
                    step_types = logs.map(&:event_type)
                    has_error = logs.any? { |l| l.status.in?(ERROR_STATUSES) }
@@ -72,7 +72,7 @@ module Admin
                  end
 
         {
-          pipeline_run_id: run.pipeline_run_id,
+          registry_entry_uuid: run.registry_entry_uuid,
           adventure_id: run.adventure_id,
           first_at: run.first_at,
           last_at: run.last_at,
@@ -80,7 +80,7 @@ module Admin
           message_content: msg&.content || first_log&.player_message_content,
           logs: logs,
           status: status,
-          pipeline_run: pr
+          registry_entry: entry
         }
       end
 
@@ -95,7 +95,7 @@ module Admin
       includes = [:adventure]
       includes << :ai_usage_record if @show_usage
 
-      @logs = PlayLog.where(pipeline_run_id: params[:pipeline_run_id])
+      @logs = PlayLog.where(registry_entry_uuid: params[:registry_entry_uuid])
                      .order(:created_at)
                      .includes(*includes)
       if @logs.empty?
@@ -106,15 +106,15 @@ module Admin
       first_log = @logs.first
       @player_message = first_log.player_message
       @player_message_content = @player_message&.content || first_log.player_message_content
-      @pipeline_run_id = params[:pipeline_run_id]
-      @pipeline_run = PipelineRun.find_by(pipeline_run_id: @pipeline_run_id)
+      @registry_entry_uuid = params[:registry_entry_uuid]
+      @registry_entry = PipelineRegistryEntry.find_by(registry_entry_uuid: @registry_entry_uuid)
 
       render layout: 'admin'
     end
 
     def export_pipeline
-      @pipeline_run_id = params[:pipeline_run_id]
-      @logs = PlayLog.where(pipeline_run_id: @pipeline_run_id)
+      @registry_entry_uuid = params[:registry_entry_uuid]
+      @logs = PlayLog.where(registry_entry_uuid: @registry_entry_uuid)
                      .order(:created_at)
                      .includes(:ai_usage_record)
 
@@ -123,12 +123,12 @@ module Admin
         return
       end
 
-      @pipeline_run = PipelineRun.find_by(pipeline_run_id: @pipeline_run_id)
+      @registry_entry = PipelineRegistryEntry.find_by(registry_entry_uuid: @registry_entry_uuid)
       @adventure = @logs.first&.adventure
       @player_message_content = @logs.first&.player_message&.content || @logs.first&.player_message_content
 
       send_data render_to_string("pipeline_export", formats: [:text], layout: false),
-                filename: "pipeline-#{@pipeline_run_id}.log",
+                filename: "pipeline-#{@registry_entry_uuid}.log",
                 type: "text/plain",
                 disposition: "attachment"
     end
@@ -152,7 +152,7 @@ module Admin
         next unless run[:message_content].present? && prev[:message_content].present?
         next unless run[:message_content].strip == prev[:message_content].strip
 
-        run[:retry_of] = prev[:retry_of] || prev[:pipeline_run_id]
+        run[:retry_of] = prev[:retry_of] || prev[:registry_entry_uuid]
       end
     end
   end

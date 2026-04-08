@@ -6,7 +6,7 @@ RSpec.describe ShipPlayLogJob, type: :job do
   include ActiveJob::TestHelper
 
   let(:adventure) { create(:adventure) }
-  let(:pipeline_run_id) { SecureRandom.uuid }
+  let(:registry_entry_uuid) { SecureRandom.uuid }
 
   let!(:play_log) do
     PlayLog.create!(
@@ -20,7 +20,7 @@ RSpec.describe ShipPlayLogJob, type: :job do
       dm_service: "standard",
       model_used: "gpt-4o-mini",
       duration_ms: 320,
-      pipeline_run_id: pipeline_run_id,
+      registry_entry_uuid: registry_entry_uuid,
       player_message_content: "I open the door",
       app_version: "1.0.0"
     )
@@ -85,7 +85,7 @@ RSpec.describe ShipPlayLogJob, type: :job do
             model_used:             "gpt-4o-mini",
             duration_ms:            320,
             prompt_summary:         "Player opened a door",
-            pipeline_run_id:        pipeline_run_id,
+            registry_entry_uuid:    registry_entry_uuid,
             adventure_id:           adventure.id,
             app_version:            "1.0.0"
           )

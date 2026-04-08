@@ -71,7 +71,7 @@ class DungeonMasterService
     end
 
     @log.player_message_id = player_message_id
-    @log.start_pipeline_run!(player_input)
+    @log.start_registry_entry!(player_input)
 
     result = DungeonMaster::PipelineTiming.run(@log) { pipeline.run_prompt(player_input, mode: mode) }
     @messenger.messages_for(result)
@@ -139,11 +139,11 @@ class DungeonMasterService
   end
 
   def resume_or_start_pipeline!(metadata, message_content)
-    original_run_id = metadata&.dig("pipeline_run_id")
-    if original_run_id.present?
-      @log.resume_pipeline_run!(original_run_id, message_content)
+    original_uuid = metadata&.dig("registry_entry_uuid")
+    if original_uuid.present?
+      @log.resume_registry_entry!(original_uuid, message_content)
     else
-      @log.start_pipeline_run!(message_content)
+      @log.start_registry_entry!(message_content)
     end
   end
 end

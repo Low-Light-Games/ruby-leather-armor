@@ -39,7 +39,7 @@ module DungeonMaster
 
         ExperienceSuggestion.create!(
           adventure: @adventure,
-          pipeline_run_id: @log.pipeline_run_id,
+          registry_entry_uuid: @log.registry_entry_uuid,
           category: "new_context",
           source_step: "intake",
           details: {

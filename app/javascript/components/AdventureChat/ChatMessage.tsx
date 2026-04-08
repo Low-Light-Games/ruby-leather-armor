@@ -41,15 +41,15 @@ const ChatMessage = ({ msg, isAdmin, onRetry }: ChatMessageProps) => {
             {sequenceIndex + 1} / {totalActions}
           </span>
         )}
-        {isAdmin && msg.pipeline_run_id && (
+        {isAdmin && msg.registry_entry_uuid && (
           <a
-            href={`/admin/play_logs/pipelines/${msg.pipeline_run_id}`}
+            href={`/admin/play_logs/pipelines/${msg.registry_entry_uuid}`}
             className="pipeline-id-link"
             target="_blank"
             rel="noopener noreferrer"
             title="View pipeline run"
           >
-            {msg.pipeline_run_id.slice(0, 8)}…
+            {msg.registry_entry_uuid.slice(0, 8)}…
           </a>
         )}
       </div>

@@ -66,8 +66,8 @@ module Admin
                      .order("day DESC")
 
       # Averages
-      pipeline_count = scope.where.not(pipeline_run_id: [nil, ""])
-                            .distinct.count(:pipeline_run_id)
+      pipeline_count = scope.where.not(registry_entry_uuid: [nil, ""])
+                            .distinct.count(:registry_entry_uuid)
       total_cost = @totals[5]
       @avg_per_pipeline = pipeline_count > 0 ? (total_cost.to_f / pipeline_count).round : 0
       @pipeline_count = pipeline_count

@@ -1,15 +1,17 @@
 # frozen_string_literal: true
 
-class PipelineRun < ApplicationRecord
+# Registry row for one async DM pipeline execution: correlation id, status, timing,
+# and links to related play logs and adventure loops. Not the in-memory pipeline engine.
+class PipelineRegistryEntry < ApplicationRecord
   belongs_to :adventure
   belongs_to :player_message, class_name: "AdventureMessage", optional: true
 
-  has_many :play_logs, primary_key: :pipeline_run_id, foreign_key: :pipeline_run_id
-  has_many :adventure_loops, primary_key: :pipeline_run_id, foreign_key: :pipeline_run_id
+  has_many :play_logs, primary_key: :registry_entry_uuid, foreign_key: :registry_entry_uuid
+  has_many :adventure_loops, primary_key: :registry_entry_uuid, foreign_key: :registry_entry_uuid
 
   STATUSES = %w[running paused completed errored].freeze
 
-  validates :pipeline_run_id, presence: true, uniqueness: true
+  validates :registry_entry_uuid, presence: true, uniqueness: true
   validates :status, presence: true, inclusion: { in: STATUSES }
   validates :started_at, presence: true
 
@@ -20,6 +22,4 @@ class PipelineRun < ApplicationRecord
       .where("started_at > ?", 15.minutes.ago)
       .exists?
   end
-
-
 end

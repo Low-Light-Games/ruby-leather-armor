@@ -447,14 +447,15 @@ gameplay, rather than silently spawning one creature instead of four.
 
 ## 16. AdventureLoop: semantic layer over the pipeline
 
-`PipelineRun` is the mechanical/operational record — it tracks timing,
-status transitions, and AI call logs. `AdventureLoop` is the semantic
+`PipelineRegistryEntry` is the mechanical/operational record — it tracks timing,
+status transitions, and AI call logs for one async DM pipeline execution (keyed by
+`registry_entry_uuid`). `AdventureLoop` is the semantic
 record — it captures what happened from the player's perspective for a
 single sequenced action.
 
 **Key design:**
-- `PipelineRun` 1:N `AdventureLoop` — one loop per sequenced action
-  within a pipeline run
+- `PipelineRegistryEntry` 1:N `AdventureLoop` — one loop per sequenced action
+  within the same registry entry
 - Each loop carries `tags` (boolean flags like `took_20`,
   `encounter_triggered`), `data` (structured key-value pairs like
   `encounter_entry_id`, `hours_elapsed`), and a `timeline` (ordered

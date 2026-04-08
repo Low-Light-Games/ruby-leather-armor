@@ -14,7 +14,7 @@ class AiUsageRecord < ApplicationRecord
   scope :by_model, ->(model_id) { where(model_id: model_id) }
   scope :for_adventure, ->(adventure_id) { where(adventure_id: adventure_id) }
   scope :for_user, ->(user_id) { where(user_id: user_id) }
-  scope :for_pipeline, ->(pipeline_run_id) { where(pipeline_run_id: pipeline_run_id) }
+  scope :for_registry_entry, ->(uuid) { where(registry_entry_uuid: uuid) }
   scope :in_period, ->(start_date, end_date) {
     where(created_at: start_date.beginning_of_day..end_date.end_of_day)
   }

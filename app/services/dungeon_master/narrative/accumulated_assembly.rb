@@ -10,7 +10,7 @@ module DungeonMaster
 
       def self.call(pipeline:, results:)
         merged_intent = merge_result_intents(results)
-        all_loops = AdventureLoop.for_pipeline(pipeline.log.pipeline_run_id).order(:sequence_index)
+        all_loops = AdventureLoop.for_registry_entry(pipeline.log.registry_entry_uuid).order(:sequence_index)
         all_outcomes = all_loops.filter_map { |l| l.get("pipeline_outcome") }
         all_mutations = results.filter_map { |r| r[:mutations] }
         encounter_triggered = results.any? { |r| r[:status] == :encounter }

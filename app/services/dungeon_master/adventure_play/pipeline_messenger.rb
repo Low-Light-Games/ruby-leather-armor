@@ -11,8 +11,8 @@ module DungeonMaster
       end
 
       def persist_message(role:, content:, message_type:, metadata: {})
-        if role != "player" && @log.pipeline_run_id
-          metadata = metadata.merge("pipeline_run_id" => @log.pipeline_run_id)
+        if role != "player" && @log.registry_entry_uuid
+          metadata = metadata.merge("registry_entry_uuid" => @log.registry_entry_uuid)
         end
         @adventure.adventure_messages.create!(
           role: role, content: content,
@@ -44,7 +44,7 @@ module DungeonMaster
 
         when :awaiting_initiative
           meta = InitiativeRequestMetadata.for_awaiting_initiative(result)
-          encounter_intro = AdventureLoop.for_pipeline(@log.pipeline_run_id)
+          encounter_intro = AdventureLoop.for_registry_entry(@log.registry_entry_uuid)
                                           .paused.order(:created_at).last
                                           &.get("pipeline_outcome")
           initiative_content = [encounter_intro.presence, "Roll for initiative!"].compact.join("\n\n")
@@ -97,13 +97,13 @@ module DungeonMaster
       end
 
       def sanitization_failure_messages(error)
-        @log.error_pipeline_run!
+        @log.error_registry_entry!
         [persist_message(role: "system", content: error.message, message_type: "sanitization_fail")]
       end
 
       def pipeline_exception_messages(error)
         @log.capture_pipeline_exception!(error)
-        @log.error_pipeline_run!
+        @log.error_registry_entry!
         [persist_message(
           role: "system",
           content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(error)})",

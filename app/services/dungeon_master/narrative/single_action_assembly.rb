@@ -14,7 +14,7 @@ module DungeonMaster
 
         prior = if progressive_continuity
                   AdventureLoop.prior_pipeline_outcomes_before(
-                    pipeline_run_id: pipeline.log.pipeline_run_id,
+                    registry_entry_uuid: pipeline.log.registry_entry_uuid,
                     current_loop: loop)
                 else
                   []

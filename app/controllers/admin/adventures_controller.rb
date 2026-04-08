@@ -27,10 +27,10 @@ module Admin
       @npcs = StoryNpc.for_adventure(@adventure).includes(:location).order(:name)
       @clues = StoryClue.for_adventure(@adventure).includes(:location, :npc).order(:title)
       @recent_messages = @adventure.adventure_messages.order(created_at: :desc).limit(20)
-      @pipeline_run_ids = PlayLog.where(adventure_id: @adventure.id)
-                               .where.not(pipeline_run_id: nil)
+      @registry_entry_uuids = PlayLog.where(adventure_id: @adventure.id)
+                               .where.not(registry_entry_uuid: nil)
                                .order(created_at: :desc)
-                               .pluck(:pipeline_run_id)
+                               .pluck(:registry_entry_uuid)
                                .uniq
                                .first(5)
     end

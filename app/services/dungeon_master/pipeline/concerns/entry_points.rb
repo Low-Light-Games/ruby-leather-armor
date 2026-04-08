@@ -104,7 +104,7 @@ module DungeonMaster
         # Continue the action queue after a roll pause or from a mid-queue resume.
         # :rejected on an action skips that action (next); fresh orchestration aborts the whole turn instead.
         def run_remaining_queue(remaining, accumulated_intents: [], accumulated_mutations: [])
-          processed_count = AdventureLoop.for_pipeline(@log.pipeline_run_id).count
+          processed_count = AdventureLoop.for_registry_entry(@log.registry_entry_uuid).count
           total_original = processed_count + remaining.size
           base_idx = processed_count
           accumulated = accumulated_intents.each_with_index.map do |intent, i|

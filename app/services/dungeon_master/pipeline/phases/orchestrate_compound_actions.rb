@@ -6,7 +6,7 @@ module DungeonMaster
       # Sequencer → action queue loop (ActionQueueRunner) → narrative phase.
       #
       # Assumes:
-      #   - clean_input string; pipeline mixins for Sequencer + AdventureLoopResolution; @log.pipeline_run_id.
+      #   - clean_input string; pipeline mixins for Sequencer + AdventureLoopResolution; @log.registry_entry_uuid.
       #
       # Sets:
       #   - @loop per action inside runner; AdventureLoops; final return from narrative phase.

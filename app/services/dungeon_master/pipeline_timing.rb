@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  # Wraps a pipeline yield: wall-clock segment for PipelineRun, then pause vs complete
+  # Wraps a pipeline yield: wall-clock segment for PipelineRegistryEntry, then pause vs complete
   # from the halt action (rolls / initiative vs terminal outcomes).
   module PipelineTiming
     module_function
@@ -15,9 +15,9 @@ module DungeonMaster
       log.finish_pipeline_segment!(segment_ms)
 
       if result[:action].in?(PAUSED_ACTIONS)
-        log.pause_pipeline_run!
-      else
-        log.complete_pipeline_run!
+        log.pause_registry_entry!
+    else
+        log.complete_registry_entry!
       end
 
       result

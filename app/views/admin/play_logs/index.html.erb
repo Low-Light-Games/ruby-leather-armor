@@ -81,9 +81,9 @@
               <% end %>
             </td>
             <td class="col-message">
-              <% if log.pipeline_run_id.present? %>
+              <% if log.registry_entry_uuid.present? %>
                 <% tooltip = log.player_message&.content&.truncate(200) || log.player_message_content&.truncate(200) %>
-                <a href="<%= pipeline_admin_play_logs_path(log.pipeline_run_id) %>" class="msg-link" title="<%= tooltip %>">
+                <a href="<%= pipeline_admin_play_logs_path(log.registry_entry_uuid) %>" class="msg-link" title="<%= tooltip %>">
                   pipeline
                 </a>
               <% else %>
