@@ -14,19 +14,26 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md).
 
 ## Outer orchestration (Pipeline class)
 
-The **AI step mixins** (Intake, Sequencer, CoreResolver, Narrate, …) implement individual prompts; the **`DungeonMaster::Pipeline`** class wires the **player turn** and **action queue**. Reorder or extend the main line by editing **`Pipeline::MAIN_PROMPT_PHASES`** in [`app/services/dungeon_master/pipeline.rb`](../app/services/dungeon_master/pipeline.rb).
+The **AI step mixins** (Intake, Sequencer, Narrate, …) implement individual prompts; **`AdventureLoopResolution`** (also mixed into `Pipeline`) drives evaluation → sanity → mechanics for each **AdventureLoop** row; the **`DungeonMaster::Pipeline`** class wires the **player turn** and **action queue**. Reorder or extend the main line by editing **`#run_prompt`** in [`app/services/dungeon_master/pipeline.rb`](../app/services/dungeon_master/pipeline.rb) (three explicit `apply_prompt_phase` calls).
 
 | Phase / component | Role | Source |
 |-------------------|------|--------|
-| **`MAIN_PROMPT_PHASES`** | Ordered list: intake + danger gate → DM query branch → sequencer + compound-action loop | `pipeline.rb` |
+| **`#run_prompt` + `#apply_prompt_phase`** | Ordered calls: intake + danger gate → DM query branch → sequencer + compound-action loop | `pipeline.rb` |
 | **`Phases::IntakeDangerGate`** | `run_intake`; danger threshold → `:rejected` | [`pipeline/phases/intake_danger_gate.rb`](../app/services/dungeon_master/pipeline/phases/intake_danger_gate.rb) |
 | **`Phases::DmQueryBranch`** | Ask DM mode / `is_dm_query` → `run_dm_query_flow` | [`pipeline/phases/dm_query_branch.rb`](../app/services/dungeon_master/pipeline/phases/dm_query_branch.rb) |
 | **`Phases::OrchestrateCompoundActions`** | `run_sequencer` then **`ActionQueueRunner`** | [`pipeline/phases/orchestrate_compound_actions.rb`](../app/services/dungeon_master/pipeline/phases/orchestrate_compound_actions.rb) |
-| **`Pipeline::ActionQueueRunner`** | For each queued action: `AdventureLoop` + `CoreResolver#resolve`; dispatches on `:status`; **abort** whole turn on `:rejected` (fresh) vs **skip** action (resume). Ends in **`run_accumulated_narrative_phase`** / `:narrated_sequence`. | [`pipeline/action_queue_runner.rb`](../app/services/dungeon_master/pipeline/action_queue_runner.rb) |
+| **`Pipeline::Concerns::EntryPoints`** | `run_prompt` / `run_initiative` / `run_rolls`, phase chain (`apply_prompt_phase`), `run_dm_query_flow`, `run_remaining_queue`. | [`pipeline/concerns/entry_points.rb`](../app/services/dungeon_master/pipeline/concerns/entry_points.rb) |
+| **`Pipeline::Concerns::NarrationCoordination`** | `run_accumulated_narrative_phase`, `run_single_action_narrative_phase`, action-queue mode helpers (`per_action_narration?`, …). | [`pipeline/concerns/narration_coordination.rb`](../app/services/dungeon_master/pipeline/concerns/narration_coordination.rb) |
+| **`Pipeline::Concerns::ContextCoordination`** | `run_inter_action_context_update`, `run_context_updates_at_encounter_pause`. | [`pipeline/concerns/context_coordination.rb`](../app/services/dungeon_master/pipeline/concerns/context_coordination.rb) |
+| **`Pipeline::ActionQueueRunner`** | For each queued action: `AdventureLoop` + `AdventureLoopResolution#resolve`; dispatches on `:status`; **abort** whole turn on `:rejected` (fresh) vs **skip** action (resume). Ends in **`run_accumulated_narrative_phase`** / `:narrated_sequence`. | [`pipeline/action_queue_runner.rb`](../app/services/dungeon_master/pipeline/action_queue_runner.rb) |
+| **`Pipeline::ActionQueueLog`** | Per-action `action_label` on the pipeline log + `play_log!` for queue pause / interrupt / completed. | [`pipeline/action_queue_log.rb`](../app/services/dungeon_master/pipeline/action_queue_log.rb) |
+| **`Narrative::AccumulatedAssembly`** | Merges resolver results + `AdventureLoop` `pipeline_outcome` rows into `PipelineContext` / mutations / `extra` for **`#run_accumulated_narrative_phase`**. | [`narrative/accumulated_assembly.rb`](../app/services/dungeon_master/narrative/accumulated_assembly.rb) |
+| **`Narrative::SingleActionAssembly`** | One-loop `PipelineContext` for progressive per-action narration (`prior_outcomes` when `progressive_continuity`). | [`narrative/single_action_assembly.rb`](../app/services/dungeon_master/narrative/single_action_assembly.rb) |
+| **`Narrative::ProgressiveEntry`** | Value object (`Data`) for each progressive narration payload: DM text, `adventure_complete`, queue indices, `action_text`. Built after `run_narrative_phase`; `#to_h` is passed to `on_narrative` and into `:narratives` on `:narrated_sequence`. | [`narrative/progressive_entry.rb`](../app/services/dungeon_master/narrative/progressive_entry.rb) |
 
 **Per-class contracts** (what must be set on the pipeline before the step, what mutates, prompt inputs) live in the file header comments on each phase and on `ActionQueueRunner`.
 
-**Adding a conditional outer step:** insert a phase class in `pipeline/phases/`, implement `.call(pipeline, state)` returning `{ halt: true, result: ... }` to stop the chain or `{ halt: false, ... }` to merge keys into `state`, then add the class to **`MAIN_PROMPT_PHASES`** in the desired order.
+**Adding a conditional outer step:** insert a phase class in `pipeline/phases/`, implement `.call(pipeline, state)` returning `{ halt: true, result: ... }` to stop the chain or `{ halt: false, ... }` to merge keys into `state`, then add **`return r if (r = apply_prompt_phase(Phases::YourPhase, state))`** (or equivalent) in **`#run_prompt`** in the desired order.
 
 ---
 
@@ -169,7 +176,7 @@ UnifiedEvaluation (a single AI call handling all 6 domains in one pass) was intr
 
 However, maintaining two parallel code paths (unified and parallel) created ongoing maintenance overhead and a growing divergence in prompt quality. ParallelEvaluation, which offloads concurrency to a dedicated Node.js microservice via `Promise.all`, had caught up in quality while providing per-domain observability, per-phase model selection, and smaller per-domain prompts. The unified path was retired.
 
-`Steps::ParallelEvaluation` (via `EVALUATOR_URL`, default `http://evaluator:3001`) is now the only evaluation route. `CoreResolver#resolve` calls it unconditionally.
+`Steps::ParallelEvaluation` (via `EVALUATOR_URL`, default `http://evaluator:3001`) is now the only evaluation route. `AdventureLoopResolution#resolve` calls it unconditionally.
 
 #### action_queue: the three narration delivery modes
 
@@ -651,7 +658,7 @@ no domain logic. All prompts are rendered in Rails (ERB templates); model and to
 travel inline per request from `DmConfig`. Requires `EVALUATOR_URL` (default:
 `http://evaluator:3001`).
 
-`ParallelEvaluation` is now the **only** evaluation path. `CoreResolver#resolve` calls it
+`ParallelEvaluation` is now the **only** evaluation path. `AdventureLoopResolution#resolve` calls it
 unconditionally.
 
 ### 26. SanityChecker (capability + world consistency validation)
@@ -750,7 +757,7 @@ and confrontations deserve an immersive NPC scene where the player chooses
 how to respond — the same way encounters get expanded into scenes before
 combat.
 
-**How:** the Social Beacon flags `expand_scene: true`, CoreResolver calls a
+**How:** the Social Beacon flags `expand_scene: true`; `AdventureLoopResolution` runs the
 Social Expander AI step instead of TimeKeeper+Momentum, the scene is
 returned as `:social_scene` status which breaks the queue like encounters.
 The player's response enters a normal new pipeline run.
@@ -875,7 +882,7 @@ computes the numeric values from the character sheet.
 
 ### 36. `AdventureLoop#pipeline_outcome` as the authoritative narration seed
 
-**Decision:** every `CoreResolver` terminal writes the action's narration seed into
+**Decision:** every `AdventureLoopResolution` terminal writes the action's narration seed into
 `AdventureLoop#data["pipeline_outcome"]` via `batch_update!`. The narrative phase
 (`run_accumulated_narrative_phase`) assembles the combined seed by querying all
 `AdventureLoop` rows for the current `pipeline_run_id` in `sequence_index` order
@@ -919,13 +926,13 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 
 | # | Step | Type | Source |
 |---|------|------|--------|
-| — | **`MAIN_PROMPT_PHASES` + phases** | Code (orchestration) | `app/services/dungeon_master/pipeline.rb`, `app/services/dungeon_master/pipeline/phases/*.rb` |
+| — | **`#run_prompt` outer phases** | Code (orchestration) | `app/services/dungeon_master/pipeline.rb`, `app/services/dungeon_master/pipeline/phases/*.rb` |
 | — | **`ActionQueueRunner`** | Code (queued actions) | `app/services/dungeon_master/pipeline/action_queue_runner.rb` |
 | 0 | **Moderation gate** | Code + Node evaluator `POST /moderate` | `app/services/dungeon_master/moderation_service.rb`, `app/jobs/moderation_check_job.rb`, `evaluator/src/index.js` |
 | 1 | **Intake** | AI | `app/services/dungeon_master/steps/intake.rb` |
 | 1c | **DM Query** | AI (fast path) | `app/services/dungeon_master/steps/dm_query.rb` |
 | 1d | **Sequencer** | AI (toggled) | `app/services/dungeon_master/steps/sequencer.rb` |
-| -- | **CoreResolver** (module) | Code orchestration | `app/services/dungeon_master/core_resolver.rb` |
+| -- | **AdventureLoopResolution** (module) | Code orchestration | `app/services/dungeon_master/adventure_loop_resolution.rb` |
 | 3 | **ParallelEvaluation** | Code + 3 HTTP phases to Node evaluator | `app/services/dungeon_master/steps/parallel_evaluation.rb` — requires `EVALUATOR_URL` |
 | 3-i | **↳ beacon** | AI ×6, parallel (Node) | `evaluator/src/index.js` `/fan_out` + `templates/beacon.text.erb` |
 | 3-ii | **↳ mechanical_evaluation** | AI ×N, sequential (Node) | `evaluator/src/index.js` `/sequential` + `templates/mechanical_evaluation.text.erb` |
@@ -934,7 +941,7 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | 5 | **Mechanic** | AI (mechanical path) | `app/services/dungeon_master/steps/mechanic.rb` |
 | 5a | **Momentum** | AI (non-mechanical path) | `app/services/dungeon_master/steps/momentum.rb` |
 | 5b | **TimeKeeper** | Code-first, AI fallback | `app/services/dungeon_master/steps/time_keeper.rb` |
-| 5c | **Social Expansion** | AI (conditional) | `app/services/dungeon_master/core_resolver.rb` (`resolve_social_scene`) |
+| 5c | **Social Expansion** | AI (conditional) | `app/services/dungeon_master/adventure_loop_resolution.rb` (`resolve_social_scene`) |
 | -- | **Harbinger** (utility) | Code + optional AI | `app/services/dungeon_master/utilities/harbinger.rb` |
 | -- | **Warmaster** (utility) | Code + optional AI | `app/services/dungeon_master/utilities/warmaster.rb` |
 | -- | **GameClock** (utility) | Code-only | `app/services/dungeon_master/utilities/game_clock.rb` |
@@ -1017,8 +1024,8 @@ through two entry paths:
 
 ```
 TimeKeeper → Harbinger (roll encounter) → encounter_entry found
-  → CoreResolver#maybe_warmaster_for_encounter
-    → Warmaster.initialize_from_encounter!
+  → AdventureLoopResolution#dispatch_encounter_warmaster
+    → EncounterWarmasterBridge.call → Warmaster.initialize_from_encounter!
       → spawn creatures (manifest or fuzzy bestiary + dynamic fallback)
       → roll creature initiative
       → return :awaiting_initiative
@@ -1071,7 +1078,7 @@ into an immersive NPC scene rather than auto-resolving via Momentum.
 
 ```
 ParallelEvaluation (social beacon) → expand_scene: true
-  → CoreResolver#resolve_social_scene
+  → AdventureLoopResolution#resolve_social_scene
     → Social Expander AI call (social_expansion template)
     → Scene data written to @loop
     → return :social_scene

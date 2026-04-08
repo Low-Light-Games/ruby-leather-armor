@@ -74,7 +74,7 @@ Player input
 | **Warmaster** | Initializes combat: creates creature sheets, rolls NPC initiative, sets turn order |
 | **Stagehand** | Orchestrates the final output shape — decides what gets sent back to the player |
 | **NPC Roll Resolution** | Rolls dice on behalf of NPCs during mechanical evaluation |
-| **CoreResolver** | Inner loop that sequences Beacon → Mechanics → Verdict → TimeKeeper for a single action |
+| **AdventureLoopResolution** | Resolves one AdventureLoop row: Beacon → Mechanics → Verdict → TimeKeeper (mixed into Pipeline) |
 
 ## Architecture
 

@@ -44,7 +44,7 @@ jobs:
 
             ## Changes that require a docs update
 
-            - New, removed, or renamed pipeline steps (files under `app/services/dungeon_master/steps/` or `core_resolver.rb`, `pipeline.rb`)
+            - New, removed, or renamed pipeline steps (files under `app/services/dungeon_master/steps/` or `adventure_loop_resolution.rb`, `pipeline.rb`)
             - Changes to step behavior: what a step does, what it returns, when it runs, what it skips
             - New or changed early-exit / pause conditions (new `:rejected`, `:awaiting_rolls`, `:awaiting_initiative` paths)
             - New or changed DmConfig keys / toggles (`dm_config.rb`, `step_registry.rb`)

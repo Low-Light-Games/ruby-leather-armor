@@ -2,7 +2,7 @@
 
 High-level flow of the AI DM pipeline. For per-step prompt/model detail see [Pipeline Steps](pipeline_steps.md).
 
-**Outer shell:** `DungeonMaster::Pipeline#run_prompt` runs `MAIN_PROMPT_PHASES` in order ([`pipeline.rb`](../app/services/dungeon_master/pipeline.rb) — `Phases::IntakeDangerGate`, `Phases::DmQueryBranch`, `Phases::OrchestrateCompoundActions`). Compound actions use **`Pipeline::ActionQueueRunner`** for the per-action loop shared with `run_remaining_queue` (fresh queue aborts on `:rejected`; resume skips rejected actions). The narrative/output path is **`run_accumulated_narrative_phase`** → **`run_narrative_phase`** (Stagehand). See [Outer orchestration](pipeline_steps.md#outer-orchestration-pipeline-class) in pipeline_steps.md.
+**Outer shell:** `DungeonMaster::Pipeline#run_prompt` runs three explicit phases in order ([`pipeline.rb`](../app/services/dungeon_master/pipeline.rb) — `Phases::IntakeDangerGate`, `Phases::DmQueryBranch`, `Phases::OrchestrateCompoundActions`). Compound actions use **`Pipeline::ActionQueueRunner`** for the per-action loop shared with `run_remaining_queue` (fresh queue aborts on `:rejected`; resume skips rejected actions). The narrative/output path is **`run_accumulated_narrative_phase`** → **`run_narrative_phase`** (Stagehand). See [Outer orchestration](pipeline_steps.md#outer-orchestration-pipeline-class) in pipeline_steps.md.
 
 ---
 
@@ -52,10 +52,10 @@ flowchart TB
     SEQN & SEQ2 --> ACTION_LOOP
 
     subgraph action_loop["Action loop — ActionQueueRunner (each action)"]
-        ACTION_LOOP[Create AdventureLoop record] --> RESOLVE[CoreResolver.resolve]
+        ACTION_LOOP[Create AdventureLoop record] --> RESOLVE[AdventureLoopResolution.resolve]
     end
 
-    subgraph resolve["CoreResolver.resolve — evaluation + sanity gate"]
+    subgraph resolve["AdventureLoopResolution.resolve — evaluation + sanity gate"]
         subgraph parallel_eval["ParallelEvaluation: Node microservice — 3 HTTP phases"]
             RESOLVE --> PE1["Phase 1: POST /fan_out — beacon ×6  ☆ AI ×6"]
             PE1 --> PE1B["converge_beacons — code"]
@@ -185,8 +185,8 @@ flowchart TB
 ```mermaid
 flowchart LR
     subgraph roll_resume["Roll result submitted — run_rolls"]
-        RR[restore_paused_loop!] --> RR1[tag_roll_resolution! — code]
-        RR1 --> RR2[restore_from_metadata — rebuild intent + merged]
+        RR[restore_paused_loop!] --> RR1[Rolls::PlayerRolls.tag_roll_resolution! — code]
+        RR1 --> RR2[Rolls::RollRequestMetadata.resume_inputs — rebuild intent + merged]
         RR2 --> RR3[finish_resolution]
         RR3 --> RR4["NPC rolls → Mechanic ☆ AI → apply_mutations → TimeKeeper"]
         RR4 --> RR5{More actions in queue?}
@@ -316,14 +316,14 @@ The resulting `actions` array drives the **action queue loop**.
 The outer orchestration loop: for each action in the queue:
 
 1. Creates an `AdventureLoop` record (tracks status, timeline events, raw outcome).
-2. Calls **CoreResolver.resolve** — the inner pipeline (detailed below), passing the sanitized action text directly.
+2. Calls **AdventureLoopResolution.resolve** — the inner pipeline (detailed below), passing the sanitized action text directly.
 3. Dispatches on the result status (see "Outcomes" section).
 
 **Inter-action context update:** When an action resolves (`:resolved` status) and there are more actions still in the queue, a `run_micro_context_update` call runs immediately before the next action. This updates the adventure's context JSONB fields so the next action's evaluation sees the freshest world state.
 
 ---
 
-### Step 5 — CoreResolver.resolve
+### Step 5 — AdventureLoopResolution.resolve
 
 The inner pipeline entry point. Always uses `Steps::ParallelEvaluation` (Node microservice). Requires `EVALUATOR_URL` to be set (default: `http://evaluator:3001`).
 
@@ -493,7 +493,7 @@ The pipeline pauses, saves creature data + intent + mutations + remaining queue 
 
 ### Action queue outcomes
 
-After `CoreResolver.resolve` returns, the action loop dispatches on `result[:status]`:
+After `AdventureLoopResolution.resolve` returns, the action loop dispatches on `result[:status]`:
 
 | Status | Behavior |
 |--------|----------|
@@ -554,8 +554,8 @@ Has a special fallback: if the model returns raw text instead of JSON, the text 
 **Roll resumption (`run_rolls`):**
 
 1. `restore_paused_loop!` — finds the most recent paused `AdventureLoop` for this pipeline run.
-2. `tag_roll_resolution!` — tags the loop with `took_20`, `took_10`, or `rolled`.
-3. `restore_from_metadata` — reconstructs `intent` and `merged` from the `roll_request` message metadata.
+2. `Rolls::PlayerRolls.tag_roll_resolution!` — tags the loop with `took_20`, `took_10`, or `rolled`.
+3. `Rolls::RollRequestMetadata.resume_inputs` (via `restore_roll_pause_inputs`) — reconstructs `intent` and `merged` from the `roll_request` message metadata.
 4. `finish_resolution` — runs NPC actions → Mechanic → mutations → TimeKeeper.
 5. If more actions were in the queue (`remaining_actions`), runs `run_remaining_queue` (same `ActionQueueRunner` loop as the fresh compound-action path). Otherwise, runs `run_accumulated_narrative_phase`.
 

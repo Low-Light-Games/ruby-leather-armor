@@ -371,7 +371,7 @@ Social Expansion, TimeKeeper, Chronicler, Narrate, Intake, DM Query.
 **Code-only steps get role/object names** — functional, clearly
 non-creative, conveying "no AI judgment here."
 
-Current code-only names: Stagehand, CoreResolver, GameClock, Harbinger,
+Current code-only names: Stagehand, AdventureLoopResolution, GameClock, Harbinger,
 Mutations.
 
 **Why this matters:** when debugging a pipeline, the name tells you
