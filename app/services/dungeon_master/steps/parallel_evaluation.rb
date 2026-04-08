@@ -79,7 +79,7 @@ module DungeonMaster
       # ----------------------------------------------------------------
 
       def build_beacon_prompts(intention)
-        prior = action_queue_continuity? ? prior_action_outcomes : []
+        prior = continuity_prior_outcomes
         DOMAINS.map do |domain|
           char_data    = CharacterBlock.for(@sheet, category: domain)
           domain_ctx   = @adventure.send("#{domain}_context")
@@ -165,7 +165,7 @@ module DungeonMaster
       # ----------------------------------------------------------------
 
       def build_mech_eval_prompts(ordered_domains, intention, intent)
-        prior = action_queue_continuity? ? prior_action_outcomes : []
+        prior = continuity_prior_outcomes
         ordered_domains.map do |domain|
           char_block    = CharacterBlock.for(@sheet, category: domain)
           micro_ctx     = @adventure.send("#{domain}_context")
@@ -278,7 +278,7 @@ module DungeonMaster
       # ----------------------------------------------------------------
 
       def compute_take_values(evaluation)
-        skills_lookup = build_skills_lookup
+        skills_lookup = Rolls::PlayerRolls.skills_lookup_from_sheet(@sheet)
 
         qualified_rolls = evaluation[:player_rolls].map do |roll|
           base = roll.dup
@@ -376,6 +376,14 @@ module DungeonMaster
             "summary" => rolls_desc.presence || "No rolls",
             "at"      => Time.current.iso8601
           })
+      end
+
+      def continuity_prior_outcomes
+        return [] unless action_queue_continuity? && @loop && @log&.pipeline_run_id
+
+        AdventureLoop.prior_pipeline_outcomes_before(
+          pipeline_run_id: @log.pipeline_run_id,
+          current_loop: @loop)
       end
     end
   end

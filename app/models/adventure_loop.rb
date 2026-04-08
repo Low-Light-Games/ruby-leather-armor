@@ -11,6 +11,16 @@ class AdventureLoop < ApplicationRecord
   scope :for_pipeline, ->(run_id) { where(pipeline_run_id: run_id) }
   scope :paused, -> { where(status: "paused") }
 
+  # Prior actions in the same pipeline run (lower sequence_index), for progressive_continuity prompts.
+  def self.prior_pipeline_outcomes_before(pipeline_run_id:, current_loop:)
+    return [] if pipeline_run_id.blank? || current_loop.nil?
+
+    for_pipeline(pipeline_run_id)
+      .where("sequence_index < ?", current_loop.sequence_index)
+      .order(:sequence_index)
+      .filter_map { |l| l.get("pipeline_outcome") }
+  end
+
   # ---- Tag helpers (boolean flags) ----
 
   def tagged?(name)

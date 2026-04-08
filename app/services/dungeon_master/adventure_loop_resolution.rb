@@ -1,92 +1,77 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  # Inner pipeline: resolves a single player action from dispatch through time_keeper.
+  # Resolves a single **AdventureLoop** step in the current pipeline run: parallel evaluation,
+  # sanity gate, mechanical path (rolls / mechanic / verdict), time keeper, encounter dispatch,
+  # social scene, and `pipeline_outcome` persistence.
   #
-  # Extracted from Pipeline's run_action_flow / run_resolution_flow so the
-  # outer ActionQueueRunner can loop over queued actions
-  # without duplicating resolution logic.
+  # Mixed into `Pipeline`. `ActionQueueRunner` calls `#resolve` once per queued player line;
+  # `run_rolls` resumes via `#finish_resolution`.
   #
   # Returns a standardized result hash with :status indicating the outcome:
-  #   :resolved             — action fully resolved, mutations available
+  #   :resolved             — loop step fully resolved, mutations available
   #   :awaiting_rolls       — rolls needed, intent and merged available for resumption
   #   :awaiting_initiative  — combat starting, waiting for player initiative roll
-  #   :encounter            — Harbinger triggered an encounter mid-action
+  #   :encounter            — Harbinger triggered an encounter mid-step
   #   :social_scene         — social scene expanded, pipeline_outcome written to loop
-  #   :rejected             — SanityChecker rejected the action
-  module CoreResolver
+  #   :rejected             — SanityChecker rejected the intent
+  module AdventureLoopResolution
     private
 
     # Full resolution: evaluation → sanity gate → [verdict + mutations + time_keeper]
     # Always uses Steps::ParallelEvaluation (Node microservice: beacon + mech_eval + roll_qualifier).
     def resolve(intention)
       intent, evaluations = run_parallel_evaluation(intention)
+      return resolve_with_mechanics(intent, evaluations) if intent[:needs_mechanics]
 
-      if intent[:needs_mechanics]
-        if @adventure.skip_world_sanity_check? && (@adventure.user.paid? || @adventure.user.admin)
-          capability = run_capability_check(intent)
-          @loop&.log_step("sanity_checker", "World: skipped (player opt-out)")
-        else
-          world, capability = run_sanity_gate(intent)
+      resolve_without_mechanics(intent)
+    end
 
-          unless world[:consistent]
-            @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
-            @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
-            return { status: :rejected, intent: intent, reason: world[:reason], dm_message: world[:dm_message] }
-          end
+    def resolve_with_mechanics(intent, evaluations)
+      capability = if skip_world_sanity_for_privileged_player?
+                     @loop&.log_step("sanity_checker", "World: skipped (player opt-out)")
+                     run_capability_check(intent)
+                   else
+                     world, cap = run_sanity_gate(intent)
+                     return world_check_rejection(intent, world) unless world[:consistent]
 
-          @loop&.log_step("sanity_checker", "World: consistent")
-        end
+                     @loop&.log_step("sanity_checker", "World: consistent")
+                     cap
+                   end
 
-        unless capability[:allowed]
-          @log.play_log!("capability_rejection", "SanityChecker capability check failed: #{capability[:reason]}")
-          @loop&.log_step("sanity_checker", "Capability check FAILED: #{capability[:reason].to_s.truncate(100)}")
-          return { status: :rejected, intent: intent, reason: capability[:reason] }
-        end
+      return capability_check_rejection(intent, capability) unless capability[:allowed]
 
-        merged = merge_mechanical_evaluations(evaluations)
-        deduplicate_rolls!(merged)
-        rolls_desc = merged[:player_rolls].map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]} (#{r[:domain]})" }.join(", ")
-        @loop&.log_step("mech_eval", rolls_desc.presence || "No rolls")
-        filter_auto_success_rolls!(merged)
+      merged = merge_mechanical_evaluations_and_prepare_rolls(evaluations)
+      return { status: :awaiting_rolls, intent: intent, merged: merged } if merged[:player_rolls].any?
 
-        if merged[:player_rolls].any?
-          return { status: :awaiting_rolls, intent: intent, merged: merged }
-        end
+      finish_resolution(intent, merged, Rolls::PlayerRolls.auto_success_roll_message(merged))
+    end
 
-        return finish_resolution(intent, merged, auto_success_roll_message(merged))
-      end
-
-      if @adventure.skip_world_sanity_check? && (@adventure.user.paid? || @adventure.user.admin)
+    def resolve_without_mechanics(intent)
+      if skip_world_sanity_for_privileged_player?
         @loop&.log_step("sanity_checker", "World: skipped (player opt-out, no mechanics)")
       else
         world = run_world_consistency_check(intent)
-        unless world[:consistent]
-          @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
-          @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
-          return { status: :rejected, intent: intent, reason: world[:reason], dm_message: world[:dm_message] }
-        end
+        return world_check_rejection(intent, world) unless world[:consistent]
 
         @loop&.log_step("sanity_checker", "World: consistent (no mechanics)")
       end
 
-      if intent[:expand_scene]
-        return resolve_social_scene(intent)
-      end
+      return resolve_social_scene(intent) if intent[:expand_scene]
 
       time_result = run_time_keeper(intent, nil)
-
-      if time_result[:encounter]
-        return maybe_warmaster_for_encounter(intent, time_result, mutations: nil)
-      end
+      return dispatch_encounter_warmaster(intent, time_result, mutations: nil) if time_result[:encounter]
 
       momentum_result = run_momentum(intent)
-
       {
         status: :resolved, intent: intent,
         mutations: momentum_result[:mutations].presence,
         time_result: time_result
       }
+    end
+
+    def skip_world_sanity_for_privileged_player?
+      @adventure.skip_world_sanity_check? && (@adventure.user.paid? || @adventure.user.admin)
     end
 
     # Post-roll completion: verdict → mutations → time_keeper
@@ -101,7 +86,7 @@ module DungeonMaster
       time_result = run_time_keeper(intent, verdict_result)
 
       if time_result[:encounter]
-        return maybe_warmaster_for_encounter(intent, time_result, mutations: verdict_result[:mutations])
+        return dispatch_encounter_warmaster(intent, time_result, mutations: verdict_result[:mutations])
       end
 
       store_pipeline_outcome!(verdict_result[:outcome])
@@ -113,48 +98,13 @@ module DungeonMaster
       }
     end
 
-    # Call Warmaster when Harbinger triggers an encounter (Path A).
-    # Encounter data is read exclusively from @loop — set by Harbinger during TimeKeeper.
-    def maybe_warmaster_for_encounter(intent, time_result, mutations:)
-      entry_id = @loop&.get("encounter_entry_id")
-      encounter_entry = EncounterTableEntry.find_by(id: entry_id) if entry_id
-
-      if encounter_entry
-        creatures_data = @loop&.get("encounter_creatures")
-        warmaster_result = Utilities::Warmaster.initialize_from_encounter!(
-          adventure: @adventure, encounter_entry: encounter_entry,
-          creatures_data: creatures_data,
-          sheet: @sheet, log: @log, config: @config, ai: @ai)
-
-        if warmaster_result[:status] == :awaiting_initiative
-          @loop&.batch_update!(
-            new_tags: { "combat_started" => true },
-            new_data: { "creature_count" => warmaster_result[:creature_data]&.size },
-            timeline_entry: { "step" => "warmaster", "summary" => "Combat: #{warmaster_result[:creature_data]&.size} creature(s)", "at" => Time.current.iso8601 })
-
-          encounter_scene = @loop&.get("encounter_scene")
-          combined = [encounter_scene, @loop&.get("verdict_outcome")].compact.join("\n\n").presence
-          store_pipeline_outcome!(combined)
-
-          return {
-            status: :awaiting_initiative, intent: intent,
-            creature_data: warmaster_result[:creature_data],
-            mutations: mutations, time_result: time_result
-          }
-        end
-      end
-
-      encounter_scene = @loop&.get("encounter_scene")
-      combined = [encounter_scene, @loop&.get("verdict_outcome")].compact.join("\n\n").presence
-      store_pipeline_outcome!(combined)
-
-      { status: :encounter, intent: intent,
-        mutations: mutations, time_result: time_result }
-    end
-
-    def auto_success_roll_message(merged)
-      descs = (merged[:auto_successes] || []).map { |s| "AUTO-SUCCESS: #{s}" }
-      descs.any? ? descs.join("\n") : nil
+    # Harbinger Path A: delegate loop + warmaster glue, then persist narration seed here.
+    def dispatch_encounter_warmaster(intent, time_result, mutations:)
+      result = EncounterWarmasterBridge.call(
+        loop: @loop, adventure: @adventure, sheet: @sheet, log: @log, config: @config, ai: @ai,
+        intent: intent, time_result: time_result, mutations: mutations)
+      store_pipeline_outcome!(result.pipeline_outcome)
+      result.payload
     end
 
     # Social scene expansion: creates an immersive NPC interaction scene that

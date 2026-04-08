@@ -7,11 +7,10 @@ module DungeonMaster
     #
     # Assumes:
     #   - `pipeline` has @adventure, @log, @config, @ai, @sheet and mixin-provided
-    #     private helpers: create_adventure_loop, resolve, set_action_label,
-    #     clear_action_label, run_single_action_narrative_phase,
-    #     run_inter_action_context_update, run_context_updates_at_pause,
-    #     run_context_updates_at_encounter_pause, log_queue_pause,
-    #     log_queue_interrupt, log_queue_completed, run_accumulated_narrative_phase, tl.
+    #     private helpers: create_adventure_loop, resolve, tl, plus Pipeline::Concerns
+    #     NarrationCoordination (per-action + accumulated narrate), ContextCoordination
+    #     (inter-action + encounter-pause context updates).
+    #   - Action-queue log lines use Pipeline::ActionQueueLog (see action_queue_log.rb).
     #   - Before each `resolve`, @loop is bound to the AdventureLoop for that
     #     action index (this runner assigns it).
     #
@@ -20,7 +19,7 @@ module DungeonMaster
     #   - AdventureLoop rows and timeline entries via batch_update! as today.
     #
     # Prompts:
-    #   - None directly; `resolve` delegates to CoreResolver / step mixins.
+    #   - None directly; `resolve` delegates to AdventureLoopResolution / step mixins.
     #
     # Semantics:
     #   - `abort_on_rejected: true` — first :rejected returns immediately (fresh queue).
@@ -34,6 +33,7 @@ module DungeonMaster
       def run(action_strings:, base_sequence_index:, total_for_logging:, abort_on_rejected:,
         initial_accumulated: [], per_action_narration: false)
         p = @pipeline
+        qlog = ActionQueueLog.new(p.log)
         accumulated = initial_accumulated.dup
         action_narratives = []
         use_per_action = per_action_narration && action_strings.size > 1
@@ -41,7 +41,7 @@ module DungeonMaster
 
         action_strings.each_with_index do |action_text, idx|
           action_idx = base_sequence_index + idx
-          p.send(:set_action_label, action_idx, total)
+          qlog.set_action_label(action_idx, total)
           bind_loop!(p.send(:create_adventure_loop, action_text, action_idx))
           result = p.send(:resolve, action_text)
 
@@ -50,7 +50,7 @@ module DungeonMaster
             p.loop&.batch_update!(new_status: "errored",
               timeline_entry: p.send(:tl, "rejected", result[:reason]))
             if abort_on_rejected
-              p.send(:clear_action_label)
+              qlog.clear_action_label
               return { action: :rejected, reason: result[:reason], dm_message: result[:dm_message] }
             end
             next
@@ -58,10 +58,10 @@ module DungeonMaster
           when :awaiting_rolls
             p.loop&.batch_update!(new_status: "paused",
               timeline_entry: p.send(:tl, "awaiting_rolls", "Paused for player rolls"))
-            p.send(:run_context_updates_at_pause, result[:intent], result[:merged])
+            ContextUpdatePause.run(pipeline: p, intent: result[:intent], merged: result[:merged])
             remaining = action_strings[(idx + 1)..]
-            p.send(:log_queue_pause, action_idx, total, remaining)
-            p.send(:clear_action_label)
+            qlog.log_pause(action_idx, total, remaining)
+            qlog.clear_action_label
             return {
               action: :awaiting_rolls, intent: result[:intent], merged: result[:merged],
               remaining_actions: remaining
@@ -73,8 +73,8 @@ module DungeonMaster
               timeline_entry: p.send(:tl, "awaiting_initiative", "Paused for player initiative"))
             p.send(:run_context_updates_at_encounter_pause, result[:mutations])
             remaining = action_strings[(idx + 1)..]
-            p.send(:log_queue_pause, action_idx, total, remaining)
-            p.send(:clear_action_label)
+            qlog.log_pause(action_idx, total, remaining)
+            qlog.clear_action_label
             return {
               action: :awaiting_initiative,
               intent: result[:intent],
@@ -87,14 +87,14 @@ module DungeonMaster
             p.loop&.batch_update!(new_status: "encounter",
               timeline_entry: p.send(:tl, "encounter", "Encounter triggered"))
             accumulated << result
-            p.send(:log_queue_interrupt, action_idx, total, action_strings[(idx + 1)..], reason: "encounter")
+            qlog.log_interrupt(action_idx, total, action_strings[(idx + 1)..], reason: "encounter")
             break
 
           when :social_scene
             p.loop&.batch_update!(new_status: "social_scene",
               timeline_entry: p.send(:tl, "social_scene", "Social scene triggered"))
             accumulated << result
-            p.send(:log_queue_interrupt, action_idx, total, action_strings[(idx + 1)..], reason: "social_scene")
+            qlog.log_interrupt(action_idx, total, action_strings[(idx + 1)..], reason: "social_scene")
             break
 
           when :resolved
@@ -110,8 +110,8 @@ module DungeonMaster
           end
         end
 
-        p.send(:clear_action_label)
-        finish_orchestrated(p, accumulated, action_narratives, use_per_action, total, action_strings.size,
+        qlog.clear_action_label
+        finish_orchestrated(p, qlog, accumulated, action_narratives, use_per_action, total, action_strings.size,
           abort_on_rejected: abort_on_rejected)
       end
 
@@ -121,21 +121,20 @@ module DungeonMaster
         @pipeline.instance_variable_set(:@loop, adventure_loop)
       end
 
-      def finish_orchestrated(pipeline, accumulated, action_narratives, use_per_action, total, action_count,
+      def finish_orchestrated(pipeline, queue_log, accumulated, action_narratives, use_per_action, total, action_count,
         abort_on_rejected:)
-        pipeline.send(:log_queue_completed, total) if abort_on_rejected && total > 1
+        queue_log.log_completed(total) if abort_on_rejected && total > 1
 
         if abort_on_rejected && use_per_action && action_narratives.any?
           if accumulated.any?
             final = pipeline.send(:run_accumulated_narrative_phase, accumulated)
             return final unless final[:action] == :narrated
-            action_narratives << {
-              narrative: final[:narrative],
-              adventure_complete: final[:adventure_complete],
+            action_narratives << Narrative::ProgressiveEntry.from_narrative_phase(
+              final,
               sequence_index: action_narratives.size,
               total_actions: action_count,
               action_text: nil
-            }
+            ).to_h
           end
           { action: :narrated_sequence, narratives: action_narratives }
         else
