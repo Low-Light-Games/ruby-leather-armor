@@ -7,6 +7,13 @@ class AdventurePolicy < ApplicationPolicy
     admin? || owner?
   end
 
+  # AI pipeline (prompt, rolls, initiative): same access as show, plus room under the user's usage cap.
+  def pipeline?
+    return false unless show?
+
+    !user.usage_limit_reached?
+  end
+
   def create?
     true # All authenticated users can create adventures
   end

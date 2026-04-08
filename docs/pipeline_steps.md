@@ -472,7 +472,7 @@ writing to the same JSONB field with different assumptions. Warmaster
 computes deterministic combat data and returns it as a hash; ContextUpdate
 writes it verbatim to `combat_context` via a `combat_initialization` key in
 mutations. No other step, utility, or service (except emergency recovery in
-`DungeonMasterService#auto_finalize_pending_initiative!`) writes directly to
+`DungeonMaster::Rolls::AdventureMechanicalState.auto_finalize_pending_initiative!`) writes directly to
 Adventure context fields.
 
 **Runs before every player-facing message:** ContextUpdate executes before
@@ -1046,7 +1046,7 @@ ParallelEvaluation (combat beacon) → transition: "combat_started", combatants:
 ### Initiative Resolution
 
 1. Player submits initiative → `finalize_combat!` → `combat_context` populated → pipeline continues
-2. Player ignores prompt and sends new action → `auto_finalize_pending_initiative!` →
+2. Player ignores prompt and sends new action → `DungeonMaster::Rolls::AdventureMechanicalState.auto_finalize_pending_initiative!` →
    auto-roll (d20 + DEX mod) → `finalize_combat!` → new action processed in combat context
 
 ### Guards

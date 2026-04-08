@@ -101,8 +101,32 @@ RSpec.describe "AI usage limit enforcement", type: :service do
     end
   end
 
-  describe "DungeonMasterService#enforce_usage_limit!" do
-    it "raises UsageLimitExceeded when user has hit the limit" do
+  describe "AdventurePolicy#pipeline?" do
+    let(:policy) { AdventurePolicy.new(user, adventure) }
+
+    it "is true when the user may view the adventure and is under the usage limit" do
+      expect(policy.pipeline?).to be true
+    end
+
+    it "is false when the user has hit the usage limit" do
+      limit = User::TIER_LIMITS["free"]
+      user.ai_usage_records.create!(
+        model_id: "gpt-4o-mini",
+        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
+        input_cost_microdollars: limit,
+        output_cost_microdollars: 0,
+        total_cost_microdollars: limit
+      )
+
+      expect(policy.pipeline?).to be false
+    end
+
+    it "is false when the user does not own the adventure (and is not admin)" do
+      other = create(:user)
+      expect(AdventurePolicy.new(other, adventure).pipeline?).to be false
+    end
+
+    it "raises UsageLimitExceeded from DungeonMasterService when pipeline? is false" do
       limit = User::TIER_LIMITS["free"]
       user.ai_usage_records.create!(
         model_id: "gpt-4o-mini",
@@ -113,15 +137,10 @@ RSpec.describe "AI usage limit enforcement", type: :service do
       )
 
       service = DungeonMasterService.new(adventure, user: user)
-      expect { service.send(:enforce_usage_limit!) }.to raise_error(DungeonMaster::UsageLimitExceeded)
+      expect { service.send(:enforce_pipeline_policy!) }.to raise_error(DungeonMaster::UsageLimitExceeded)
     end
 
-    it "does not raise when user is under the limit" do
-      service = DungeonMasterService.new(adventure, user: user)
-      expect { service.send(:enforce_usage_limit!) }.not_to raise_error
-    end
-
-    it "returns a player-friendly message in the exception" do
+    it "includes a player-friendly message on UsageLimitExceeded from enforce_pipeline_policy!" do
       limit = User::TIER_LIMITS["free"]
       user.ai_usage_records.create!(
         model_id: "gpt-4o-mini",
@@ -133,7 +152,7 @@ RSpec.describe "AI usage limit enforcement", type: :service do
 
       service = DungeonMasterService.new(adventure, user: user)
       begin
-        service.send(:enforce_usage_limit!)
+        service.send(:enforce_pipeline_policy!)
         fail "Expected UsageLimitExceeded"
       rescue DungeonMaster::UsageLimitExceeded => e
         expect(e.message).to include("monthly usage limit")

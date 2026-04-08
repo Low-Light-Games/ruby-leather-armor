@@ -1,6 +1,7 @@
 class AdventureMessagesController < ApplicationController
   before_action :set_adventure
   before_action -> { authorize(@adventure, :show?) }
+  before_action -> { authorize(@adventure, :pipeline?) }, only: %i[create initiative roll]
   before_action :check_ban
 
   # GET /adventures/:adventure_id/messages
@@ -68,7 +69,7 @@ class AdventureMessagesController < ApplicationController
     service = dm_service
 
     roll_msg = service.prepare_roll(rolls)
-    roll_text = service.send(:format_roll_results, rolls)
+    roll_text = DungeonMaster::Rolls::RollResultsText.format(rolls)
     RollPipelineJob.perform_later(@adventure.id, roll_msg.id, roll_text, current_user.id)
     render json: { async: true, messages: [message_json(roll_msg)] }, status: :accepted
   end

@@ -552,7 +552,7 @@ reliable to reason about.
 **Single-writer principle:** ContextUpdate is the sole entity that writes to
 Adventure context fields. No pipeline step, utility class, or service writes
 to those JSONB fields directly (except emergency recovery in
-`DungeonMasterService#auto_finalize_pending_initiative!`). Deterministic
+`DungeonMaster::Rolls::AdventureMechanicalState.auto_finalize_pending_initiative!`). Deterministic
 utilities like Warmaster compute and return data; ContextUpdate receives it
 as structured mutations and writes it verbatim. This eliminates a class of
 race conditions and drift bugs where two different code paths each write

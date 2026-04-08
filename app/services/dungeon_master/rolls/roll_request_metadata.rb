@@ -12,15 +12,17 @@ module DungeonMaster
     module RollRequestMetadata
       class << self
         # Persisted metadata for a new roll_request message (symmetric to #resume_inputs).
-        def build_persist_metadata(merged:, intent:, adventure:, remaining_actions:)
+        # +result+ is the pipeline halt hash for +:awaiting_rolls+ (:merged, :intent, :remaining_actions).
+        def build_persist_metadata(result, adventure)
+          merged = result[:merged]
           {
             roll_requests: merged[:player_rolls],
             pending_npc_actions: merged[:npc_actions],
             pending_consequences: merged[:consequences],
             mechanical_summaries: merged[:mechanical_summaries],
-            intent: intent,
+            intent: result[:intent],
             show_dc: adventure.effective_dm_setting("show_roll_dc"),
-            remaining_actions: remaining_actions
+            remaining_actions: result[:remaining_actions]
           }
         end
 
