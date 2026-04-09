@@ -21,7 +21,7 @@ FactoryBot.define do
       role         { "dm" }
       message_type { "roll_request" }
       content      { "Roll Perception DC 12." }
-      metadata     { { "rolls" => [{ "type" => "perception", "dc" => 12 }], "pipeline_run_id" => "test-run-id" } }
+      metadata     { { "rolls" => [{ "type" => "perception", "dc" => 12 }], "registry_entry_uuid" => "test-run-id" } }
     end
 
     trait :system do

@@ -3,7 +3,7 @@ require "rails_helper"
 # Tests the roll pause → resume flow.
 # Phase 1: run_prompt with a mechanical action → :awaiting_rolls
 # Phase 2: run_rolls with submitted values → :narrated
-RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :service do
+RSpec.describe "DungeonMaster::PipelineEngine — roll pause and resume", type: :service do
   include_context "with mocked ai"
   # Evaluator stubs intercept /fan_out and /sequential. "lock" in the action
   # text causes the exploration beacon to flag needs_mechanics: true and
@@ -68,13 +68,13 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
 
     let(:roll_results) { "Disable Device: rolled 18 (total 22 vs DC 15) — success" }
 
-    # Build the pipeline once so we can read its pipeline_run_id and create the
+    # Build the pipeline once so we can read its registry_entry_uuid and create the
     # matching paused AdventureLoop row that restore_paused_loop! expects.
     let(:pipeline) { build_pipeline(adventure) }
     let!(:paused_loop) do
       AdventureLoop.create!(
-        adventure:        adventure,
-        pipeline_run_id:  pipeline.instance_variable_get(:@log).pipeline_run_id,
+        adventure:             adventure,
+        registry_entry_uuid:   pipeline.instance_variable_get(:@log).registry_entry_uuid,
         sequence_index:   0,
         raw_action:       "try to pick the lock",
         player_intent:    "try to pick the lock",
@@ -104,12 +104,12 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
     # from AdventureLoop#pipeline_outcome rows ordered by sequence_index.
 
     let(:pipeline) { build_pipeline(adventure) }
-    let(:run_id)   { pipeline.instance_variable_get(:@log).pipeline_run_id }
+    let(:run_id)   { pipeline.instance_variable_get(:@log).registry_entry_uuid }
 
     def make_loop(seq, outcome)
       AdventureLoop.create!(
-        adventure:       adventure,
-        pipeline_run_id: run_id,
+        adventure:           adventure,
+        registry_entry_uuid: run_id,
         sequence_index:  seq,
         raw_action:      "action #{seq}",
         player_intent:   "action #{seq}",
@@ -123,7 +123,7 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
 
       it "passes the outcome as the narration seed" do
         narrate_calls = []
-        allow_any_instance_of(DungeonMaster::Pipeline).to receive(:narrate_evaluator_prompt).and_wrap_original do |original, pipeline_ctx|
+        allow_any_instance_of(DungeonMaster::PipelineEngine).to receive(:narrate_evaluator_prompt).and_wrap_original do |original, pipeline_ctx|
           narrate_calls << pipeline_ctx.combined_seed
           original.call(pipeline_ctx)
         end
@@ -144,7 +144,7 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
 
       it "joins outcomes in sequence_index order with 'Then:' separator" do
         narrate_calls = []
-        allow_any_instance_of(DungeonMaster::Pipeline).to receive(:narrate_evaluator_prompt).and_wrap_original do |original, pipeline_ctx|
+        allow_any_instance_of(DungeonMaster::PipelineEngine).to receive(:narrate_evaluator_prompt).and_wrap_original do |original, pipeline_ctx|
           narrate_calls << pipeline_ctx.combined_seed
           original.call(pipeline_ctx)
         end
@@ -166,7 +166,7 @@ RSpec.describe "DungeonMaster::Pipeline — roll pause and resume", type: :servi
 
       it "passes nil seed (narrate will raise, which is expected behaviour)" do
         narrate_calls = []
-        allow_any_instance_of(DungeonMaster::Pipeline).to receive(:narrate_evaluator_prompt).and_wrap_original do |original, pipeline_ctx|
+        allow_any_instance_of(DungeonMaster::PipelineEngine).to receive(:narrate_evaluator_prompt).and_wrap_original do |original, pipeline_ctx|
           narrate_calls << pipeline_ctx.combined_seed
           original.call(pipeline_ctx)
         end

@@ -16,14 +16,14 @@ RSpec.describe DungeonMasterService, type: :service do
 
   before do
     # Prevent real pipeline from running; only the moderation check is under test.
-    allow_any_instance_of(DungeonMaster::Pipeline).to receive(:run_prompt)
+    allow_any_instance_of(DungeonMaster::PipelineEngine).to receive(:run_prompt)
       .and_return({ action: :narrated, narrative: "stub", adventure_complete: false })
 
     # Suppress logging side effects.
-    allow_any_instance_of(DungeonMaster::Logging).to receive(:start_pipeline_run!) { }
+    allow_any_instance_of(DungeonMaster::Logging).to receive(:start_registry_entry!) { }
     allow_any_instance_of(DungeonMaster::Logging).to receive(:finish_pipeline_segment!) { }
-    allow_any_instance_of(DungeonMaster::Logging).to receive(:complete_pipeline_run!) { }
-    allow_any_instance_of(DungeonMaster::Logging).to receive(:error_pipeline_run!) { }
+    allow_any_instance_of(DungeonMaster::Logging).to receive(:complete_registry_entry!) { }
+    allow_any_instance_of(DungeonMaster::Logging).to receive(:error_registry_entry!) { }
     allow_any_instance_of(DungeonMaster::Logging).to receive(:play_log!) { }
     allow_any_instance_of(DungeonMaster::Logging).to receive(:log!) { }
 
@@ -51,7 +51,7 @@ RSpec.describe DungeonMasterService, type: :service do
 
         it "does not call the pipeline" do
           service.execute_prompt(player_input, player_message_id: player_msg.id)
-          expect_any_instance_of(DungeonMaster::Pipeline).not_to receive(:run_prompt)
+          expect_any_instance_of(DungeonMaster::PipelineEngine).not_to receive(:run_prompt)
         end
       end
 
@@ -64,7 +64,7 @@ RSpec.describe DungeonMasterService, type: :service do
         end
 
         it "proceeds to the pipeline" do
-          expect_any_instance_of(DungeonMaster::Pipeline).to receive(:run_prompt)
+          expect_any_instance_of(DungeonMaster::PipelineEngine).to receive(:run_prompt)
             .and_return({ action: :narrated, narrative: "stub", adventure_complete: false })
 
           service.execute_prompt(player_input, player_message_id: player_msg.id)
@@ -88,7 +88,7 @@ RSpec.describe DungeonMasterService, type: :service do
 
       it "proceeds to the pipeline regardless" do
         allow(ModerationCheckJob).to receive(:perform_later)
-        expect_any_instance_of(DungeonMaster::Pipeline).to receive(:run_prompt)
+        expect_any_instance_of(DungeonMaster::PipelineEngine).to receive(:run_prompt)
           .and_return({ action: :narrated, narrative: "stub", adventure_complete: false })
 
         service.execute_prompt(player_input, player_message_id: player_msg.id)

@@ -11,7 +11,16 @@ module DungeonMaster
   # admin UI (token budgets, model selection). Non-pipeline steps (enricher,
   # embellisher) are logged but not configurable per-run.
   module StepRegistry
-    Entry = Data.define(:token_budget, :model_hint, :pipeline)
+    # One row in STEPS: token budget, admin UI model hint, and whether the step is pipeline-configurable.
+    class Entry
+      attr_reader :token_budget, :model_hint, :pipeline
+
+      def initialize(token_budget:, model_hint:, pipeline:)
+        @token_budget = token_budget
+        @model_hint   = model_hint
+        @pipeline     = pipeline
+      end
+    end
 
     STEPS = {
       "intake" => Entry.new(

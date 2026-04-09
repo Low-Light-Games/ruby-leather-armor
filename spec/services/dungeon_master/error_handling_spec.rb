@@ -68,7 +68,7 @@ RSpec.describe "DungeonMaster pipeline error handling", type: :service do
 
   describe "narrate step returns no narrative" do
     before do
-      allow_any_instance_of(DungeonMaster::Pipeline).to receive(:narrative_from_evaluator_result).and_raise(
+      allow_any_instance_of(DungeonMaster::PipelineEngine).to receive(:narrative_from_evaluator_result).and_raise(
         DungeonMaster::AiError.new("Narrate step returned no narrative — model produced: {}")
       )
     end

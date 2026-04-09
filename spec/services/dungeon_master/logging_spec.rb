@@ -99,47 +99,47 @@ RSpec.describe DungeonMaster::Logging, type: :service do
     end
   end
 
-  # ── pipeline run lifecycle ─────────────────────────────────────────────────
+  # ── pipeline registry entry lifecycle ───────────────────────────────────────
 
-  describe "#start_pipeline_run!" do
-    it "enqueues ShipPipelineRunEventJob" do
+  describe "#start_registry_entry!" do
+    it "enqueues ShipPipelineRegistryEntryEventJob" do
       expect {
-        logging.start_pipeline_run!("Hello")
-      }.to have_enqueued_job(ShipPipelineRunEventJob)
+        logging.start_registry_entry!("Hello")
+      }.to have_enqueued_job(ShipPipelineRegistryEntryEventJob)
     end
 
-    it "passes the pipeline_run_id to the job" do
-      logging.start_pipeline_run!("Hello")
-      expect(ShipPipelineRunEventJob).to have_been_enqueued.with(logging.pipeline_run_id)
+    it "passes the registry_entry_uuid to the job" do
+      logging.start_registry_entry!("Hello")
+      expect(ShipPipelineRegistryEntryEventJob).to have_been_enqueued.with(logging.registry_entry_uuid)
     end
 
     it "does not raise when the enqueue fails" do
-      allow(ShipPipelineRunEventJob).to receive(:perform_later).and_raise(RuntimeError, "Redis down")
-      expect { logging.start_pipeline_run!("Hello") }.not_to raise_error
+      allow(ShipPipelineRegistryEntryEventJob).to receive(:perform_later).and_raise(RuntimeError, "Redis down")
+      expect { logging.start_registry_entry!("Hello") }.not_to raise_error
     end
   end
 
-  describe "#complete_pipeline_run!" do
-    before { logging.start_pipeline_run!("Hello") }
+  describe "#complete_registry_entry!" do
+    before { logging.start_registry_entry!("Hello") }
 
-    it "enqueues ShipPipelineRunEventJob" do
-      expect { logging.complete_pipeline_run! }.to have_enqueued_job(ShipPipelineRunEventJob)
+    it "enqueues ShipPipelineRegistryEntryEventJob" do
+      expect { logging.complete_registry_entry! }.to have_enqueued_job(ShipPipelineRegistryEntryEventJob)
     end
   end
 
-  describe "#error_pipeline_run!" do
-    before { logging.start_pipeline_run!("Hello") }
+  describe "#error_registry_entry!" do
+    before { logging.start_registry_entry!("Hello") }
 
-    it "enqueues ShipPipelineRunEventJob" do
-      expect { logging.error_pipeline_run! }.to have_enqueued_job(ShipPipelineRunEventJob)
+    it "enqueues ShipPipelineRegistryEntryEventJob" do
+      expect { logging.error_registry_entry! }.to have_enqueued_job(ShipPipelineRegistryEntryEventJob)
     end
   end
 
-  describe "#pause_pipeline_run!" do
-    before { logging.start_pipeline_run!("Hello") }
+  describe "#pause_registry_entry!" do
+    before { logging.start_registry_entry!("Hello") }
 
-    it "enqueues ShipPipelineRunEventJob" do
-      expect { logging.pause_pipeline_run! }.to have_enqueued_job(ShipPipelineRunEventJob)
+    it "enqueues ShipPipelineRegistryEntryEventJob" do
+      expect { logging.pause_registry_entry! }.to have_enqueued_job(ShipPipelineRegistryEntryEventJob)
     end
   end
 end

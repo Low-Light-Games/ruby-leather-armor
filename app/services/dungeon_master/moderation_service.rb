@@ -16,7 +16,16 @@ module DungeonMaster
   #   result.flagged?       # => true / false
   #   result.response_text  # => default_response string (only meaningful when flagged)
   class ModerationService
-    Result = Struct.new(:flagged, :response_text, keyword_init: true) do
+    # Outcome of ModerationService.call: whether input was flagged and the safe response
+    # text to return when blocking the pipeline (+response_text+ is nil when not flagged).
+    class Result
+      attr_reader :flagged, :response_text
+
+      def initialize(flagged:, response_text:)
+        @flagged        = flagged
+        @response_text  = response_text
+      end
+
       def flagged? = flagged
     end
 

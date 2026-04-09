@@ -4,7 +4,7 @@
     <a href="<%= pipelines_admin_play_logs_path %>" class="back-link">← Back to Pipeline Logs</a>
     <div class="header-actions">
       <h1>Pipeline Run</h1>
-      <a href="<%= export_pipeline_admin_play_logs_path(@pipeline_run_id) %>" class="export-link">↓ Export .log</a>
+      <a href="<%= export_pipeline_admin_play_logs_path(@registry_entry_uuid) %>" class="export-link">↓ Export .log</a>
     </div>
   </div>
 
@@ -23,7 +23,7 @@
   </div>
 
   <% if @logs.any? %>
-    <% pr = @pipeline_run %>
+    <% pr = @registry_entry %>
     <div class="pipeline-summary">
       <div class="ps-item">
         <span class="ps-label">Steps</span>
@@ -76,9 +76,9 @@
       <% end %>
       <div class="ps-item ps-toggle">
         <% if @show_usage %>
-          <a href="<%= pipeline_admin_play_logs_path(@pipeline_run_id, request.query_parameters.except(:show_usage)) %>" class="usage-toggle">Hide usage</a>
+          <a href="<%= pipeline_admin_play_logs_path(@registry_entry_uuid, request.query_parameters.except(:show_usage)) %>" class="usage-toggle">Hide usage</a>
         <% else %>
-          <a href="<%= pipeline_admin_play_logs_path(@pipeline_run_id, request.query_parameters.merge(show_usage: "1")) %>" class="usage-toggle">Show usage</a>
+          <a href="<%= pipeline_admin_play_logs_path(@registry_entry_uuid, request.query_parameters.merge(show_usage: "1")) %>" class="usage-toggle">Show usage</a>
         <% end %>
       </div>
     </div>

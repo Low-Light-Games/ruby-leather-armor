@@ -25,7 +25,7 @@ module DungeonMaster
     module SanityChecker
       private
 
-      # World + capability in one evaluator round-trip (CoreResolver#run_sanity_gate).
+      # World + capability in one evaluator round-trip (`AdventureLoopResolution#resolve` → here).
       def run_sanity_gate_fan_out(intent)
         evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
         text = intent[:intention]
@@ -96,6 +96,22 @@ module DungeonMaster
       def parse_capability_from_evaluator_result(result)
         parsed = result["parsed_response"] || {}
         { allowed: parsed["allowed"] != false, reason: parsed["reason"] }
+      end
+
+      # ------------------------------------------------------------------
+      # Rejection payloads (AdventureLoopResolution orchestration — logging + result hash)
+      # ------------------------------------------------------------------
+
+      def world_check_rejection(intent, world)
+        @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
+        @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
+        { status: :rejected, intent: intent, reason: world[:reason], dm_message: world[:dm_message] }
+      end
+
+      def capability_check_rejection(intent, capability)
+        @log.play_log!("capability_rejection", "SanityChecker capability check failed: #{capability[:reason]}")
+        @loop&.log_step("sanity_checker", "Capability check FAILED: #{capability[:reason].to_s.truncate(100)}")
+        { status: :rejected, intent: intent, reason: capability[:reason] }
       end
 
       # ------------------------------------------------------------------

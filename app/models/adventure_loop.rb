@@ -2,14 +2,25 @@
 
 class AdventureLoop < ApplicationRecord
   belongs_to :adventure, optional: true
+  belongs_to :pipeline, optional: true
 
   STATUSES = %w[pending resolving paused resolved encounter social_scene errored].freeze
 
-  validates :pipeline_run_id, presence: true
+  validates :registry_entry_uuid, presence: true
   validates :status, presence: true, inclusion: { in: STATUSES }
 
-  scope :for_pipeline, ->(run_id) { where(pipeline_run_id: run_id) }
+  scope :for_registry_entry, ->(uuid) { where(registry_entry_uuid: uuid) }
   scope :paused, -> { where(status: "paused") }
+
+  # Prior actions in the same registry entry (lower sequence_index), for progressive_continuity prompts.
+  def self.prior_pipeline_outcomes_before(registry_entry_uuid:, current_loop:)
+    return [] if registry_entry_uuid.blank? || current_loop.nil?
+
+    for_registry_entry(registry_entry_uuid)
+      .where("sequence_index < ?", current_loop.sequence_index)
+      .order(:sequence_index)
+      .filter_map { |l| l.get("pipeline_outcome") }
+  end
 
   # ---- Tag helpers (boolean flags) ----
 

@@ -5,68 +5,68 @@ module DungeonMaster
   # and structured Rails.logger output for errors.
   # Every write is rescue'd so a logging failure never breaks gameplay.
   class Logging
-    attr_accessor :player_message_id, :pipeline_run_id, :player_message_content, :action_label
+    attr_accessor :player_message_id, :registry_entry_uuid, :player_message_content, :action_label
 
     def initialize(adventure:, user:, dm_service: "standard")
       @adventure = adventure
       @user = user
       @dm_service = dm_service
       @player_message_id = nil
-      @pipeline_run_id = nil
+      @registry_entry_uuid = nil
       @player_message_content = nil
     end
 
-    def start_pipeline_run!(message_content)
-      @pipeline_run_id = SecureRandom.uuid
+    def start_registry_entry!(message_content)
+      @registry_entry_uuid = SecureRandom.uuid
       @player_message_content = message_content&.truncate(500)
-      PipelineRun.create!(
-        pipeline_run_id: @pipeline_run_id,
+      PipelineRegistryEntry.create!(
+        registry_entry_uuid: @registry_entry_uuid,
         adventure: @adventure,
         player_message_id: @player_message_id,
         status: "running",
         started_at: Time.current,
         app_version: APP_VERSION
       )
-      enqueue_pipeline_run_event!
+      enqueue_registry_entry_event!
     rescue => e
-      report_error(e, context: { method: "start_pipeline_run!" })
+      report_error(e, context: { method: "start_registry_entry!" })
     end
 
-    def resume_pipeline_run!(existing_run_id, message_content)
-      @pipeline_run_id = existing_run_id
+    def resume_registry_entry!(existing_uuid, message_content)
+      @registry_entry_uuid = existing_uuid
       @player_message_content = message_content&.truncate(500)
-      pipeline_run_record&.update!(status: "running")
+      registry_entry_record&.update!(status: "running")
     rescue => e
-      report_error(e, context: { method: "resume_pipeline_run!" })
+      report_error(e, context: { method: "resume_registry_entry!" })
     end
 
     def finish_pipeline_segment!(duration_ms)
-      pr = pipeline_run_record
+      pr = registry_entry_record
       return unless pr
       pr.update!(active_duration_ms: pr.active_duration_ms + duration_ms)
     rescue => e
       report_error(e, context: { method: "finish_pipeline_segment!" })
     end
 
-    def pause_pipeline_run!
-      pipeline_run_record&.update!(status: "paused")
-      enqueue_pipeline_run_event!
+    def pause_registry_entry!
+      registry_entry_record&.update!(status: "paused")
+      enqueue_registry_entry_event!
     rescue => e
-      report_error(e, context: { method: "pause_pipeline_run!" })
+      report_error(e, context: { method: "pause_registry_entry!" })
     end
 
-    def complete_pipeline_run!
-      pipeline_run_record&.update!(status: "completed", finished_at: Time.current)
-      enqueue_pipeline_run_event!
+    def complete_registry_entry!
+      registry_entry_record&.update!(status: "completed", finished_at: Time.current)
+      enqueue_registry_entry_event!
     rescue => e
-      report_error(e, context: { method: "complete_pipeline_run!" })
+      report_error(e, context: { method: "complete_registry_entry!" })
     end
 
-    def error_pipeline_run!
-      pipeline_run_record&.update!(status: "errored", finished_at: Time.current)
-      enqueue_pipeline_run_event!
+    def error_registry_entry!
+      registry_entry_record&.update!(status: "errored", finished_at: Time.current)
+      enqueue_registry_entry_event!
     rescue => e
-      report_error(e, context: { method: "error_pipeline_run!" })
+      report_error(e, context: { method: "error_registry_entry!" })
     end
 
     # Write a structured pipeline event (sanity rejections, queue state, etc.)
@@ -81,7 +81,7 @@ module DungeonMaster
         status: "pipeline_event",
         dm_service: @dm_service,
         player_message_id: @player_message_id,
-        pipeline_run_id: @pipeline_run_id,
+        registry_entry_uuid: @registry_entry_uuid,
         player_message_content: @player_message_content,
         app_version: APP_VERSION
       )
@@ -94,7 +94,7 @@ module DungeonMaster
     # Vendor SDKs (Sentry, Datadog, etc.) absorb this automatically.
     def log!(level, message)
       Rails.logger.public_send(level,
-        "[DM adventure=#{@adventure&.id} run=#{@pipeline_run_id}] #{message}")
+        "[DM adventure=#{@adventure&.id} registry=#{@registry_entry_uuid}] #{message}")
     end
 
     # Write a full AI exchange record (visible in Admin -> Play Logs).
@@ -112,7 +112,7 @@ module DungeonMaster
         dm_service: @dm_service,
         model_used: model_used,
         player_message_id: @player_message_id,
-        pipeline_run_id: @pipeline_run_id,
+        registry_entry_uuid: @registry_entry_uuid,
         player_message_content: @player_message_content,
         duration_ms: duration_ms,
         app_version: APP_VERSION
@@ -139,7 +139,7 @@ module DungeonMaster
         dm_service: @dm_service,
         model_used: model_used,
         player_message_id: @player_message_id,
-        pipeline_run_id: @pipeline_run_id,
+        registry_entry_uuid: @registry_entry_uuid,
         player_message_content: @player_message_content,
         duration_ms: duration_ms,
         app_version: APP_VERSION
@@ -153,6 +153,28 @@ module DungeonMaster
 
     def truncate(text, length: 200)
       text.length > length ? "#{text.first(length)}…" : text
+    end
+
+    # Sentry (and similar) for unhandled pipeline exceptions — never raises.
+    def capture_pipeline_exception!(exception)
+      Sentry.capture_exception(exception) if defined?(Sentry)
+    end
+
+    # When the player starts a new prompt while a roll/initiative request is still pending.
+    def log_abandoned_pipeline_if_needed!
+      msgs = @adventure.adventure_messages
+      last_request = msgs.for_message_types(%w[roll_request initiative_request]).newest_first.first
+      return unless last_request&.metadata&.dig("intent")
+
+      last_player_msg = msgs.from_players.newest_first.first
+      return if last_player_msg&.message_type.in?(%w[roll_result initiative_result])
+
+      intent_summary = last_request.metadata.dig("intent", "intention").to_s.truncate(80)
+      play_log!(
+        "pipeline_abandoned",
+        "Previous pipeline abandoned (#{last_request.message_type}): player sent new input. " \
+        "Original intent: #{intent_summary}"
+      )
     end
 
     private
@@ -171,7 +193,7 @@ module DungeonMaster
         ai_log_id: play_log.id,
         adventure_id: @adventure&.id,
         user_id: @user&.id,
-        pipeline_run_id: @pipeline_run_id,
+        registry_entry_uuid: @registry_entry_uuid,
         model_id: model_used,
         event_type: play_log.event_type,
         input_tokens: usage[:input_tokens] || 0,
@@ -186,9 +208,10 @@ module DungeonMaster
       report_error(e, context: { method: "attach_usage_record!", play_log_id: play_log&.id })
     end
 
-    def pipeline_run_record
-      return nil unless @pipeline_run_id
-      PipelineRun.find_by(pipeline_run_id: @pipeline_run_id)
+    def registry_entry_record
+      return nil unless @registry_entry_uuid
+
+      PipelineRegistryEntry.find_by(registry_entry_uuid: @registry_entry_uuid)
     end
 
     def enqueue_play_log_event!(log)
@@ -197,16 +220,17 @@ module DungeonMaster
       report_error(e, context: { method: "enqueue_play_log_event!", play_log_id: log&.id })
     end
 
-    def enqueue_pipeline_run_event!
-      return unless @pipeline_run_id
-      ShipPipelineRunEventJob.perform_later(@pipeline_run_id)
+    def enqueue_registry_entry_event!
+      return unless @registry_entry_uuid
+
+      ShipPipelineRegistryEntryEventJob.perform_later(@registry_entry_uuid)
     rescue => e
-      report_error(e, context: { method: "enqueue_pipeline_run_event!", pipeline_run_id: @pipeline_run_id })
+      report_error(e, context: { method: "enqueue_registry_entry_event!", registry_entry_uuid: @registry_entry_uuid })
     end
 
     def report_error(exception, context: {})
       full_context = {
-        pipeline_run_id: @pipeline_run_id,
+        registry_entry_uuid: @registry_entry_uuid,
         adventure_id: @adventure&.id,
         player_message_id: @player_message_id
       }.merge(context)
@@ -227,7 +251,7 @@ module DungeonMaster
         error_message: original_error.message,
         dm_service: @dm_service,
         player_message_id: @player_message_id,
-        pipeline_run_id: @pipeline_run_id,
+        registry_entry_uuid: @registry_entry_uuid,
         player_message_content: @player_message_content
       )
     rescue => inner

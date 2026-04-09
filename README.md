@@ -74,14 +74,14 @@ Player input
 | **Warmaster** | Initializes combat: creates creature sheets, rolls NPC initiative, sets turn order |
 | **Stagehand** | Orchestrates the final output shape — decides what gets sent back to the player |
 | **NPC Roll Resolution** | Rolls dice on behalf of NPCs during mechanical evaluation |
-| **CoreResolver** | Inner loop that sequences Beacon → Mechanics → Verdict → TimeKeeper for a single action |
+| **AdventureLoopResolution** | Resolves one AdventureLoop row: Beacon → Mechanics → Verdict → TimeKeeper (mixed into Pipeline) |
 
 ## Architecture
 
 The system separates concerns into three layers:
 
 - **DungeonMasterService** — thin entry point that persists messages, handles errors, and delegates to the pipeline.
-- **DungeonMaster::Pipeline** — pure orchestration logic: step sequencing, branching, parallelism, and pause/resume for dice rolls.
+- **DungeonMaster::PipelineEngine** — pure orchestration logic: step sequencing, branching, parallelism, and pause/resume for dice rolls.
 - **Step modules** (`DungeonMaster::Steps::*`) — each step is an isolated module with its own ERB prompt template and structured output contract.
 
 Each AI step can be configured independently (model, token budget, on/off toggle) through `DmConfig`, an admin-editable settings object.

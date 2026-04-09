@@ -330,6 +330,6 @@ export interface AdventureMessage {
     action_text?: string | null
     [key: string]: unknown
   }
-  pipeline_run_id?: string | null
+  registry_entry_uuid?: string | null
   created_at: string
 }

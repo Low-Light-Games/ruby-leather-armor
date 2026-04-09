@@ -371,7 +371,7 @@ Social Expansion, TimeKeeper, Chronicler, Narrate, Intake, DM Query.
 **Code-only steps get role/object names** — functional, clearly
 non-creative, conveying "no AI judgment here."
 
-Current code-only names: Stagehand, CoreResolver, GameClock, Harbinger,
+Current code-only names: Stagehand, AdventureLoopResolution, GameClock, Harbinger,
 Mutations.
 
 **Why this matters:** when debugging a pipeline, the name tells you
@@ -447,14 +447,15 @@ gameplay, rather than silently spawning one creature instead of four.
 
 ## 16. AdventureLoop: semantic layer over the pipeline
 
-`PipelineRun` is the mechanical/operational record — it tracks timing,
-status transitions, and AI call logs. `AdventureLoop` is the semantic
+`PipelineRegistryEntry` is the mechanical/operational record — it tracks timing,
+status transitions, and AI call logs for one async DM pipeline execution (keyed by
+`registry_entry_uuid`). `AdventureLoop` is the semantic
 record — it captures what happened from the player's perspective for a
 single sequenced action.
 
 **Key design:**
-- `PipelineRun` 1:N `AdventureLoop` — one loop per sequenced action
-  within a pipeline run
+- `PipelineRegistryEntry` 1:N `AdventureLoop` — one loop per sequenced action
+  within the same registry entry
 - Each loop carries `tags` (boolean flags like `took_20`,
   `encounter_triggered`), `data` (structured key-value pairs like
   `encounter_entry_id`, `hours_elapsed`), and a `timeline` (ordered
@@ -552,7 +553,7 @@ reliable to reason about.
 **Single-writer principle:** ContextUpdate is the sole entity that writes to
 Adventure context fields. No pipeline step, utility class, or service writes
 to those JSONB fields directly (except emergency recovery in
-`DungeonMasterService#auto_finalize_pending_initiative!`). Deterministic
+`DungeonMaster::Rolls::AdventureMechanicalState.auto_finalize_pending_initiative!`). Deterministic
 utilities like Warmaster compute and return data; ContextUpdate receives it
 as structured mutations and writes it verbatim. This eliminates a class of
 race conditions and drift bugs where two different code paths each write

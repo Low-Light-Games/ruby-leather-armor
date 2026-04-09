@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Renamed `PipelineRun` to `PipelineRegistryEntry`; correlation id is `registry_entry_uuid` on `play_logs`, `adventure_loops`, `ai_usage_records`, `experience_suggestions`, and related admin routes / message metadata. Axiom shipper keys and the lifecycle job were renamed accordingly.
+- Renamed `DungeonMaster::CoreResolver` to `DungeonMaster::AdventureLoopResolution` (file `adventure_loop_resolution.rb`) for clarity: one module resolves a single `AdventureLoop` row per pipeline run, not the whole compound queue.
+
 ---
 
 ## [0.1.0] - 2026-03-18

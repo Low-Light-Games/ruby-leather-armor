@@ -8,7 +8,7 @@ require "rails_helper"
 #   3. "push the door open"  — never reached in run_prompt; processed in run_rolls resume
 #
 # The evaluator stubs detect "lock" in the user_message to trigger mechanics.
-RSpec.describe "DungeonMaster::Pipeline — per-action narration", type: :service do
+RSpec.describe "DungeonMaster::PipelineEngine — per-action narration", type: :service do
   include_context "with mocked ai"
   include_context "with evaluator stubs"
 
@@ -164,8 +164,8 @@ RSpec.describe "DungeonMaster::Pipeline — per-action narration", type: :servic
 
     it "writes pipeline_outcome to the paused AdventureLoop after resolution" do
       resume_result
-      run_id = pipeline.instance_variable_get(:@log).pipeline_run_id
-      lock_loop = AdventureLoop.for_pipeline(run_id)
+      run_id = pipeline.instance_variable_get(:@log).registry_entry_uuid
+      lock_loop = AdventureLoop.for_registry_entry(run_id)
                                .find_by(raw_action: "pick the lock")
       expect(lock_loop&.get("pipeline_outcome")).to be_present
     end

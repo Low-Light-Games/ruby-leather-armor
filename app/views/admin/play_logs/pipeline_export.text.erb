@@ -1,5 +1,5 @@
-=== PIPELINE RUN: <%= @pipeline_run_id %> ===
-Adventure: <%= @adventure&.id || "unknown" %><% if @pipeline_run %> | Status: <%= @pipeline_run.status %> | Duration: <%= @pipeline_run.active_duration_ms %>ms<% end %>
+=== PIPELINE RUN: <%= @registry_entry_uuid %> ===
+Adventure: <%= @adventure&.id || "unknown" %><% if @registry_entry %> | Status: <%= @registry_entry.status %> | Duration: <%= @registry_entry.active_duration_ms %>ms<% end %>
 Player: "<%= @player_message_content %>"
 Exported: <%= Time.current.utc.iso8601 %>
 ================================================================

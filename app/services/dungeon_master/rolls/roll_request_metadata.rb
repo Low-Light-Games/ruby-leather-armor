@@ -1,0 +1,55 @@
+# frozen_string_literal: true
+
+module DungeonMaster
+  module Rolls
+    # Shape of `adventure_messages.metadata` when message_type is "roll_request"
+    # (persisted via #build_persist_metadata when the pipeline halts on :awaiting_rolls).
+    #
+    # When the player submits roll results, the pipeline reloads that JSON and must
+    # rebuild the same `intent` + `merged` hash that AdventureLoopResolution#finish_resolution
+    # had in memory before the pause. Player roll rows are not rehydrated from
+    # metadata — they arrive as `roll_results` and are merged via Rolls::PlayerRolls.
+    module RollRequestMetadata
+      class << self
+        # Persisted metadata for a new roll_request message (symmetric to #resume_inputs).
+        # +result+ is the pipeline halt hash for +:awaiting_rolls+ (:merged, :intent, :remaining_actions).
+        def build_persist_metadata(result, adventure)
+          merged = result[:merged]
+          {
+            roll_requests: merged[:player_rolls],
+            pending_npc_actions: merged[:npc_actions],
+            pending_consequences: merged[:consequences],
+            mechanical_summaries: merged[:mechanical_summaries],
+            intent: result[:intent],
+            show_dc: adventure.effective_dm_setting("show_roll_dc"),
+            remaining_actions: result[:remaining_actions]
+          }
+        end
+
+        # @param metadata [Hash] string-keyed JSON from the roll_request message
+        # @return [Array<(Hash, Hash)>] [intent, merged] for finish_resolution
+        def resume_inputs(metadata)
+          intent = metadata["intent"]&.deep_symbolize_keys
+          unless intent
+            raise AiError, "Roll-request message metadata missing intent — state integrity failure"
+          end
+
+          merged = {
+            player_rolls: [],
+            npc_actions: deep_symbolize_array(metadata["pending_npc_actions"]),
+            consequences: deep_symbolize_array(metadata["pending_consequences"]),
+            mechanical_summaries: metadata["mechanical_summaries"] || []
+          }
+
+          [intent, merged]
+        end
+
+        private
+
+        def deep_symbolize_array(value)
+          Array(value).map(&:deep_symbolize_keys)
+        end
+      end
+    end
+  end
+end

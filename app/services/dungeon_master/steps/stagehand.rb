@@ -14,12 +14,12 @@ module DungeonMaster
     module Stagehand
       private
 
-      def run_narrative_phase(intent, pipeline:, mutations:, extra: {})
+      def run_narrative_phase(intent, narration_context:, mutations:, extra: {})
         warmaster_result = maybe_initialize_combat(intent)
         if warmaster_result && warmaster_result[:status] == :awaiting_initiative
           # ContextUpdate runs before the initiative prompt goes to the player so
           # contexts reflect combat beginning at pause time, not only after the roll.
-          run_context_updates(pipeline.combined_seed, mutations)
+          run_context_updates(narration_context.combined_seed, mutations)
           return {
             action: :awaiting_initiative,
             intent: intent,
@@ -31,9 +31,9 @@ module DungeonMaster
         narration_mode = @config.get("narration_mode") || "parallel"
 
         if narration_mode == "subjugated"
-          run_subjugated_narrative(intent, pipeline: pipeline, mutations: mutations)
+          run_subjugated_narrative(intent, narration_context: narration_context, mutations: mutations)
         else
-          run_parallel_narrative(intent, pipeline: pipeline, mutations: mutations)
+          run_parallel_narrative(intent, narration_context: narration_context, mutations: mutations)
         end => narration
 
         adventure_complete = @loop&.get("adventure_complete") == true
@@ -42,14 +42,14 @@ module DungeonMaster
           adventure_complete: adventure_complete }.merge(extra)
       end
 
-      def run_parallel_narrative(intent, pipeline:, mutations:)
-        seed = pipeline.combined_seed
+      def run_parallel_narrative(intent, narration_context:, mutations:)
+        seed = narration_context.combined_seed
         evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
 
         broadcast_progress("Writing the story...")
         broadcast_progress("Remembering the world...")
 
-        prompts = [narrate_evaluator_prompt(pipeline), micro_context_evaluator_prompt(seed, mutations)]
+        prompts = [narrate_evaluator_prompt(narration_context), micro_context_evaluator_prompt(seed, mutations)]
         prompts << macro_context_evaluator_prompt(seed) if intent[:macro_significant]
 
         results = call_evaluator!("#{evaluator_url}/fan_out", prompts, seed, phase: "narrative_phase")
@@ -70,11 +70,11 @@ module DungeonMaster
         narrative_from_evaluator_result(evaluator_fan_out_result!(by_step, "narrate", "narrative_phase"))
       end
 
-      def run_subjugated_narrative(intent, pipeline:, mutations:)
-        run_context_updates(pipeline.combined_seed, mutations,
+      def run_subjugated_narrative(intent, narration_context:, mutations:)
+        run_context_updates(narration_context.combined_seed, mutations,
                             macro_significant: intent[:macro_significant])
 
-        run_narrate(pipeline)
+        run_narrate(narration_context)
       end
 
       def maybe_initialize_combat(intent)

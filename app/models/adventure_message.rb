@@ -9,4 +9,7 @@ class AdventureMessage < ApplicationRecord
   }
 
   scope :chronological, -> { order(created_at: :asc) }
+  scope :newest_first, -> { order(created_at: :desc) }
+  scope :from_players, -> { where(role: "player") }
+  scope :for_message_types, ->(types) { where(message_type: types) }
 end

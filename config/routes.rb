@@ -38,8 +38,8 @@ Rails.application.routes.draw do
     resources :play_logs, only: [:index, :show] do
       collection do
         get :pipelines
-        get "pipelines/:pipeline_run_id", action: :pipeline, as: :pipeline
-        get "pipelines/:pipeline_run_id/export", action: :export_pipeline, as: :export_pipeline
+        get "pipelines/:registry_entry_uuid", action: :pipeline, as: :pipeline
+        get "pipelines/:registry_entry_uuid/export", action: :export_pipeline, as: :export_pipeline
       end
     end
     resources :feature_flags, only: [:index] do

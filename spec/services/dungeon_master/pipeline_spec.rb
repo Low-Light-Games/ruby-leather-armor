@@ -1,12 +1,12 @@
 require "rails_helper"
 
-# Pipeline specs exercise the real DungeonMaster::Pipeline code with all
+# Pipeline specs exercise the real DungeonMaster::PipelineEngine code with all
 # OpenAI calls stubbed at the AiClient#chat boundary. This catches parse
 # errors, broken step interfaces, and data-flow regressions without
 # touching external services.
 #
 # Type :service triggers the PipelineHelpers module (see support/pipeline_helpers.rb).
-RSpec.describe DungeonMaster::Pipeline, type: :service do
+RSpec.describe DungeonMaster::PipelineEngine, type: :service do
   include_context "with mocked ai"
   include_context "with evaluator stubs"
 
