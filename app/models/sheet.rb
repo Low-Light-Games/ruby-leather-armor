@@ -22,26 +22,7 @@ class Sheet < ApplicationRecord
 
   validate :skill_ranks_within_pathfinder_rules
 
-  # ── Currency helpers ─────────────────────────────────────────
-  # The DB column `currency` is a JSONB hash:
-  #   { "gold" => 0, "silver" => 0, "copper" => 0, "platinum" => 0 }
-
-  CURRENCY_KEYS = %w[gold silver copper platinum].freeze
-
-  def total_coins
-    return 0 unless currency.is_a?(Hash)
-    currency.values_at(*CURRENCY_KEYS).compact.sum(&:to_i)
-  end
-
-  # Total value expressed in gold pieces (for cost comparison)
-  def total_gp_value
-    return 0.0 unless currency.is_a?(Hash)
-    pp = (currency["platinum"] || 0).to_f * 10
-    gp = (currency["gold"]     || 0).to_f
-    sp = (currency["silver"]   || 0).to_f / 10
-    cp = (currency["copper"]   || 0).to_f / 100
-    pp + gp + sp + cp
-  end
+  include SheetCurrency
 
   # Recompute derived stats after any save. Called explicitly after feat/spell
   # sync operations as well.

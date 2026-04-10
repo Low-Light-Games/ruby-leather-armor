@@ -21,21 +21,7 @@ class CreatureSheet < ApplicationRecord
   validates :strength, :dexterity, :constitution, :intelligence, :wisdom, :charisma, presence: true
   validates :level, numericality: { only_integer: true, greater_than: 0 }
 
-  CURRENCY_KEYS = %w[gold silver copper platinum].freeze
-
-  def total_coins
-    return 0 unless currency.is_a?(Hash)
-    currency.values_at(*CURRENCY_KEYS).compact.sum(&:to_i)
-  end
-
-  def total_gp_value
-    return 0.0 unless currency.is_a?(Hash)
-    pp = (currency["platinum"] || 0).to_f * 10
-    gp = (currency["gold"]     || 0).to_f
-    sp = (currency["silver"]   || 0).to_f / 10
-    cp = (currency["copper"]   || 0).to_f / 100
-    pp + gp + sp + cp
-  end
+  include SheetCurrency
 
   def recompute_derived_stats!
     stats = CharacterStats::Calculator.new(self).compute
