@@ -54,7 +54,9 @@ RSpec.describe DungeonMaster::CreatureFactory, type: :service do
     end
 
     context "when no bestiary entry and fallback is disabled" do
-      before { allow(config).to receive(:get).with("creature_creation_fallback").and_return(nil) }
+      # nil defaults to "ai" via the `|| "ai"` guard; any other unknown value
+      # hits the `else nil` branch and disables dynamic creation.
+      before { allow(config).to receive(:get).with("creature_creation_fallback").and_return("disabled") }
 
       it "returns nil and logs a warning" do
         expect(log).to receive(:log!).with(:warn, /No bestiary match/)
