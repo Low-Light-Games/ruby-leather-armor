@@ -1,34 +1,35 @@
 # frozen_string_literal: true
 
 module Admin
-  # Builds the presentation hash for a single pipeline run in the
+  # Builds the presentation hash for a single PipelineRegistryEntry in the
   # Admin::PlayLogsController#pipelines view.
   #
-  # Accepts the raw AR result row (grouped aggregate), the logs for that run,
-  # the first player message, and the optional PipelineRegistryEntry record,
-  # then derives the human-readable status and assembles the hash.
-  class PipelineRunPresenter
+  # Accepts the grouped SQL aggregate row (summary stats across play logs),
+  # the ordered logs for that entry, the triggering player message, and the
+  # optional PipelineRegistryEntry record, then derives human-readable status
+  # and assembles the hash.
+  class RegistryEntryPresenter
     TERMINAL_STEPS = %w[narrate dm_query].freeze
     ERROR_STATUSES = %w[api_error parse_error token_budget_exceeded logging_error].freeze
 
-    # @param run             [ActiveRecord::Result] grouped aggregate row
-    # @param logs            [Array<PlayLog>]       all logs for this run in order
+    # @param log_aggregate   [ActiveRecord::Result] grouped aggregate row (first_at, last_at, step_count, …)
+    # @param logs            [Array<PlayLog>]       all logs for this entry in order
     # @param player_message  [AdventureMessage, nil]
     # @param registry_entry  [PipelineRegistryEntry, nil]
-    def initialize(run, logs:, player_message:, registry_entry:)
-      @run             = run
-      @logs            = logs
-      @player_message  = player_message
-      @registry_entry  = registry_entry
+    def initialize(log_aggregate, logs:, player_message:, registry_entry:)
+      @log_aggregate  = log_aggregate
+      @logs           = logs
+      @player_message = player_message
+      @registry_entry = registry_entry
     end
 
     def as_hash
       {
-        registry_entry_uuid: @run.registry_entry_uuid,
-        adventure_id:        @run.adventure_id,
-        first_at:            @run.first_at,
-        last_at:             @run.last_at,
-        step_count:          @run.step_count,
+        registry_entry_uuid: @log_aggregate.registry_entry_uuid,
+        adventure_id:        @log_aggregate.adventure_id,
+        first_at:            @log_aggregate.first_at,
+        last_at:             @log_aggregate.last_at,
+        step_count:          @log_aggregate.step_count,
         message_content:     @player_message&.content || @logs.first&.player_message_content,
         logs:                @logs,
         status:              resolved_status,

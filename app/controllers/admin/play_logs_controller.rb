@@ -55,7 +55,7 @@ module Admin
         msg   = logs.first && messages[logs.first.player_message_id]
         entry = registry_entries[run.registry_entry_uuid]
 
-        Admin::PipelineRunPresenter.new(run, logs: logs, player_message: msg, registry_entry: entry).as_hash
+        Admin::RegistryEntryPresenter.new(run, logs: logs, player_message: msg, registry_entry: entry).as_hash
       end
 
       detect_retries!(@pipeline_runs)
