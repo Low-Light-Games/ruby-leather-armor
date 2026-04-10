@@ -5,42 +5,10 @@ module SheetJsonSerialization
 
   private
 
-  # Builds a JSON-ready hash for any sheet-like record, merging feat/spell/item
-  # pivot data into the details hash for backward compatibility with the frontend.
-  #
-  # Accepts the three pivot relations so callers can pass either Sheet or
-  # AdventureSheet associations without the concern knowing the difference.
+  # Delegates to SheetPresenter to build a JSON-ready hash for any sheet-like
+  # record, merging feat/spell/item pivot data into the details hash for
+  # backward compatibility with the frontend.
   def serialize_sheet_json(sheet, feat_rel:, spell_rel:, item_rel:)
-    base = sheet.as_json
-
-    feats = feat_rel.map { |sf|
-      entry = sf.choice ? "#{sf.feat_id}::#{sf.choice}" : sf.feat_id
-      pool = sf.respond_to?(:pool) ? (sf.pool.presence || SheetFeat::DEFAULT_POOL) : SheetFeat::DEFAULT_POOL
-      pool == SheetFeat::DEFAULT_POOL ? entry : "#{pool}|#{entry}"
-    }
-
-    known_spells    = spell_rel.where(storage_type: "known").pluck(:spell_id)
-    spellbook_spells = spell_rel.where(storage_type: "spellbook").pluck(:spell_id)
-
-    items = item_rel.includes(:item_definition).map { |si|
-      {
-        itemId: si.item_definition_id,
-        quantity: si.quantity,
-        equipped: si.equipped,
-        slotOverride: si.slot_override,
-        definition: si.item_definition&.as_json,
-      }
-    }
-
-    details = (base["details"] || {}).dup
-    details.merge!(
-      "feats"       => feats,
-      "knownSpells" => known_spells,
-      "spellbook"   => spellbook_spells,
-      "items"       => items
-    )
-    base["details"] = details
-
-    base
+    SheetPresenter.new(sheet, feat_rel: feat_rel, spell_rel: spell_rel, item_rel: item_rel).as_json
   end
 end
