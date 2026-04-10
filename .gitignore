@@ -53,4 +53,4 @@ evaluator/node_modules/
 /loveable
 
 # Cursor
-.cursor/rules/docker-commands.mdc
+/.cursor
