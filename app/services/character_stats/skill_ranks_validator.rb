@@ -4,7 +4,7 @@ module CharacterStats
   # Server-side Pathfinder 1e skill rank rules (budget, per-rank cost, max ranks per skill).
   # Mirrors app/javascript/rules/pathfinder_skill_ranks.ts — keep in sync.
   class SkillRanksValidator
-    VALID_SKILL_NAMES = Calculator::SKILLS.map { |s| s[:name] }.freeze
+    VALID_SKILL_NAMES = GameRules::SKILLS.map { |s| s[:name] }.freeze
 
     class << self
       def errors_for(source)
@@ -18,7 +18,7 @@ module CharacterStats
           return ["Choose a character class before assigning skill ranks."]
         end
 
-        skill_points_base = Calculator::CLASS_DATA[class_id]&.fetch(:skill_points, nil)
+        skill_points_base = GameRules::CLASS_DATA[class_id]&.fetch(:skill_points, nil)
         if skill_points_base.nil?
           return ["Unknown character class — cannot validate skill ranks."]
         end
@@ -33,7 +33,6 @@ module CharacterStats
         int_mod = Calculator.intelligence_modifier_for_skill_budget(source)
         budget = total_skill_points(level, int_mod, skill_points_base, source.race)
 
-        calc = Calculator.new(source)
         spent = 0
         ranks.each do |skill_name, raw_n|
           n = raw_n.to_i
@@ -41,7 +40,7 @@ module CharacterStats
             errors << "Skill ranks cannot be negative (#{skill_name})."
             next
           end
-          cap = calc.send(:max_ranks_cap, skill_name, class_id, level)
+          cap = max_ranks_cap(skill_name, class_id, level)
           if n > cap
             errors << "#{skill_name} has #{n} ranks but the maximum at level #{level} is #{cap}."
           end
@@ -71,6 +70,14 @@ module CharacterStats
 
         list = ClassSkillsData::LISTS[class_id]
         list&.include?(skill_name) ? 1 : 2
+      end
+
+      def max_ranks_cap(skill_name, class_id, level)
+        per_level_cap = level + 3
+        return (per_level_cap / 2) if class_id.blank?
+
+        list = ClassSkillsData::LISTS[class_id]
+        list&.include?(skill_name) ? per_level_cap : (per_level_cap / 2)
       end
 
       def total_skill_points(level, int_mod, skill_points_base, race_id)
