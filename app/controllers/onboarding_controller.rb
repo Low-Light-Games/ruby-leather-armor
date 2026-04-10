@@ -49,45 +49,13 @@ class OnboardingController < ApplicationController
   end
 
   def build_adventure!(story, sheet)
-    stats   = Adventures::StartingStats.new(sheet)
-    max_hp  = stats.starting_hp
-    ctx     = Adventures::ContextInitializer.new(story)
-    start_loc = story.starting_location
-    seed = story.initial_contexts || {}
-
-    adventure = Adventure.create!(
-      user:                   current_user,
-      story:                  story,
-      dm_mode:                "standard",
-      directed_dm:            true,
-      skip_world_sanity_check: false,
-      current_location:       start_loc,
-      traversal_context:      (seed["traversal_context"] || {}).deep_merge(ctx.build_traversal(start_loc)),
-      combat_context:         seed["combat_context"] || {},
-      social_context:         seed["social_context"] || {},
-      exploration_context:    seed["exploration_context"] || {},
-      rest_context:           seed["rest_context"] || {},
-      inventory_context:      seed["inventory_context"] || {},
-      time_context:           ctx.build_time_context,
-      story_summary:          story.initial_summary,
-    )
-
-    Adventures::SheetCopier.new(
-      adventure, sheet, max_hp: max_hp, currency: stats.remaining_currency
+    Adventures::Bootstrap.new(
+      story:                   story,
+      sheet:                   sheet,
+      user:                    current_user,
+      directed_dm:             true,
+      skip_world_sanity_check: false
     ).call
-
-    adventure.update!(plot_state: {
-      "discovered_clues"  => [],
-      "attempted_clues"   => [],
-      "reached_milestones" => [],
-      "npc_met"           => [],
-      "npc_attitudes"     => {},
-      "custom_facts"      => [],
-    })
-
-    run_embellisher(adventure)
-    ensure_opening_message(adventure)
-    adventure.reload
   end
 
   def resolve_feat_ids(feat_names)
@@ -123,19 +91,4 @@ class OnboardingController < ApplicationController
     end
   end
 
-  def run_embellisher(adventure)
-    DungeonMaster::Embellisher.new(adventure, user: current_user).run
-  rescue DungeonMaster::AiError, DungeonMaster::TokenBudgetExceededError => e
-    Rails.logger.error("[OnboardingController] Embellisher failed: #{e.message}")
-  end
-
-  def ensure_opening_message(adventure)
-    return if adventure.adventure_messages.exists?
-
-    adventure.adventure_messages.create!(
-      role:         "dm",
-      content:      adventure.story.preview,
-      message_type: "narrative",
-    )
-  end
 end
