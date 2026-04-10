@@ -2,11 +2,11 @@
 <div class="pipelines-index">
   <div class="pipelines-header">
     <h1>Pipeline Logs</h1>
-    <span class="total-count"><%= @total_count %> pipeline runs</span>
+    <span class="total-count"><%= @total_count %> pipeline entries</span>
   </div>
 
-  <% if @pipeline_runs.empty? %>
-    <p class="empty-msg">No pipeline runs recorded yet. Pipeline logs appear once AI logs are linked to player messages.</p>
+  <% if @registry_entry_summaries.empty? %>
+    <p class="empty-msg">No pipeline entries recorded yet. Pipeline logs appear once AI logs are linked to player messages.</p>
   <% else %>
     <table class="pipelines-table">
       <thead>
@@ -21,35 +21,35 @@
         </tr>
       </thead>
       <tbody>
-        <% @pipeline_runs.each do |run| %>
-          <% status = run[:status] %>
-          <% is_retry = run[:retry_of].present? %>
+        <% @registry_entry_summaries.each do |summary| %>
+          <% status = summary[:status] %>
+          <% is_retry = summary[:retry_of].present? %>
           <tr class="pipeline-row pipeline-<%= status %><%= ' pipeline-retry' if is_retry %>">
             <td class="col-time">
-              <a href="<%= pipeline_admin_play_logs_path(run[:registry_entry_uuid]) %>" class="filter-link">
-                <%= run[:first_at].strftime('%b %d %H:%M:%S') %>
+              <a href="<%= pipeline_admin_play_logs_path(summary[:registry_entry_uuid]) %>" class="filter-link">
+                <%= summary[:first_at].strftime('%b %d %H:%M:%S') %>
               </a>
               <% if is_retry %>
                 <span class="retry-label">retry</span>
               <% end %>
             </td>
             <td class="col-adv">
-              <% if run[:adventure_id] %>
-                <a href="<%= admin_play_logs_path(adventure_id: run[:adventure_id]) %>" class="filter-link">#<%= run[:adventure_id] %></a>
+              <% if summary[:adventure_id] %>
+                <a href="<%= admin_play_logs_path(adventure_id: summary[:adventure_id]) %>" class="filter-link">#<%= summary[:adventure_id] %></a>
               <% else %>
                 <span class="empty-cell">—</span>
               <% end %>
             </td>
             <td class="col-message">
-              <% if run[:message_content].present? %>
-                <span class="player-msg-text"><%= truncate(run[:message_content], length: 80) %></span>
+              <% if summary[:message_content].present? %>
+                <span class="player-msg-text"><%= truncate(summary[:message_content], length: 80) %></span>
               <% else %>
                 <span class="empty-cell">—</span>
               <% end %>
             </td>
             <td class="col-steps">
               <div class="step-badges">
-                <% run[:logs].each do |log| %>
+                <% summary[:logs].each do |log| %>
                   <span class="type-badge type-mini <%= ai_log_type_badge_class(log.event_type) %> <%= 'step-error' if log.status.in?(PlayLog::STATUSES.reject { |s| s.in?(%w[success parse_fallback]) }) %>"><%= log.event_type.gsub('_', ' ').split.map { |w| w[0..2] }.join(' ') %></span>
                 <% end %>
               </div>
@@ -58,16 +58,16 @@
               <span class="pipeline-status-badge pipeline-<%= status %>"><%= status.capitalize %></span>
             </td>
             <td class="col-duration">
-              <% pr = run[:registry_entry] %>
-              <% if pr && pr.active_duration_ms > 0 %>
-                <span class="duration"><%= format_duration_ms(pr.active_duration_ms) %></span>
-              <% elsif run[:first_at] && run[:last_at] %>
-                <% duration_ms = ((run[:last_at].to_f - run[:first_at].to_f) * 1000).round %>
+              <% registry_entry = summary[:registry_entry] %>
+              <% if registry_entry && registry_entry.active_duration_ms > 0 %>
+                <span class="duration"><%= format_duration_ms(registry_entry.active_duration_ms) %></span>
+              <% elsif summary[:first_at] && summary[:last_at] %>
+                <% duration_ms = ((summary[:last_at].to_f - summary[:first_at].to_f) * 1000).round %>
                 <span class="duration"><%= format_duration_ms(duration_ms) %></span>
               <% end %>
             </td>
             <td class="col-models">
-              <span class="models-text"><%= run[:logs].filter_map(&:model_used).uniq.join(', ') %></span>
+              <span class="models-text"><%= summary[:logs].filter_map(&:model_used).uniq.join(', ') %></span>
             </td>
           </tr>
         <% end %>

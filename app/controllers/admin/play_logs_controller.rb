@@ -73,10 +73,10 @@ module Admin
                      .order(:created_at)
                      .includes(*includes)
       if @logs.empty?
-        redirect_to pipelines_admin_play_logs_path, alert: "Pipeline run not found"
-        return
-      end
-      @adventure = @logs.first&.adventure
+        redirect_to pipelines_admin_play_logs_path, alert: "Pipeline entry not found"
+      return
+    end
+    @adventure = @logs.first&.adventure
       first_log = @logs.first
       @player_message = first_log.player_message
       @player_message_content = @player_message&.content || first_log.player_message_content
@@ -93,7 +93,7 @@ module Admin
                      .includes(:ai_usage_record)
 
       if @logs.empty?
-        redirect_to pipelines_admin_play_logs_path, alert: "Pipeline run not found"
+        redirect_to pipelines_admin_play_logs_path, alert: "Pipeline entry not found"
         return
       end
 
