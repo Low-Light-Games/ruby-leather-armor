@@ -2,8 +2,6 @@ module Admin
   class PlayLogsController < BaseController
 
     PER_PAGE = 50
-    TERMINAL_STEPS = %w[narrate dm_query].freeze
-    ERROR_STATUSES = %w[api_error parse_error token_budget_exceeded logging_error].freeze
     RETRY_WINDOW = 5.minutes
 
     def index
@@ -53,35 +51,11 @@ module Admin
       messages = AdventureMessage.where(id: msg_ids).index_by(&:id)
 
       @pipeline_runs = runs.map do |run|
-        logs = logs_by_uuid[run.registry_entry_uuid] || []
-        first_log = logs.first
-        msg = first_log && messages[first_log.player_message_id]
+        logs  = logs_by_uuid[run.registry_entry_uuid] || []
+        msg   = logs.first && messages[logs.first.player_message_id]
         entry = registry_entries[run.registry_entry_uuid]
 
-        status = if entry
-                   entry.status
-                 else
-                   step_types = logs.map(&:event_type)
-                   has_error = logs.any? { |l| l.status.in?(ERROR_STATUSES) }
-                   has_terminal = step_types.any? { |t| TERMINAL_STEPS.include?(t) }
-                   if has_error && !has_terminal then "errored"
-                   elsif has_error                then "partial"
-                   elsif has_terminal             then "complete"
-                   else                                "incomplete"
-                   end
-                 end
-
-        {
-          registry_entry_uuid: run.registry_entry_uuid,
-          adventure_id: run.adventure_id,
-          first_at: run.first_at,
-          last_at: run.last_at,
-          step_count: run.step_count,
-          message_content: msg&.content || first_log&.player_message_content,
-          logs: logs,
-          status: status,
-          registry_entry: entry
-        }
+        Admin::PipelineRunPresenter.new(run, logs: logs, player_message: msg, registry_entry: entry).as_hash
       end
 
       detect_retries!(@pipeline_runs)
