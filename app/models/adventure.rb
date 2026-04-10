@@ -16,6 +16,8 @@ class Adventure < ApplicationRecord
   has_many :story_npcs, dependent: :destroy
   has_many :story_clues, dependent: :destroy
 
+  include Contextable
+
   scope :kept,      -> { where(discarded_at: nil) }
   scope :discarded, -> { where.not(discarded_at: nil) }
 
