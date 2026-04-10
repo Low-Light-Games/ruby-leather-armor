@@ -37,59 +37,24 @@ class AdventuresController < ApplicationController
     story = Story.kept.find(params[:story_id])
     sheet = policy_scope(Sheet).find(params[:sheet_id])
 
-    stats   = Adventures::StartingStats.new(sheet)
-    max_hp  = stats.starting_hp
-    ctx     = Adventures::ContextInitializer.new(story)
-
     directed_dm = ActiveModel::Type::Boolean.new.cast(params.fetch(:directed_dm, false))
-    # `users.admin` is nullable: (paid? || admin) can be nil (e.g. false || nil), then nil && … => nil
-    # and violates NOT NULL on adventures.skip_world_sanity_check.
+    # `users.admin` is nullable: (paid? || admin) can be nil (false || nil => nil)
+    # and would violate NOT NULL on adventures.skip_world_sanity_check.
     can_opt_out_world_sanity = current_user.paid? || current_user.admin == true
-    skip_world_sanity_check = !!(can_opt_out_world_sanity &&
+    skip_world_sanity_check  = !!(can_opt_out_world_sanity &&
       ActiveModel::Type::Boolean.new.cast(params.fetch(:skip_world_sanity_check, false)))
 
-    start_loc = story.starting_location
-    seed = story.initial_contexts || {}
+    @adventure = Adventures::Bootstrap.new(
+      story:                   story,
+      sheet:                   sheet,
+      user:                    current_user,
+      directed_dm:             directed_dm,
+      skip_world_sanity_check: skip_world_sanity_check
+    ).call
 
-    @adventure = Adventure.new(
-      user: current_user,
-      story: story,
-      dm_mode: "standard",
-      directed_dm: directed_dm,
-      skip_world_sanity_check: skip_world_sanity_check,
-      current_location: start_loc,
-      traversal_context: (seed["traversal_context"] || {}).deep_merge(ctx.build_traversal(start_loc)),
-      combat_context: seed["combat_context"] || {},
-      social_context: seed["social_context"] || {},
-      exploration_context: seed["exploration_context"] || {},
-      rest_context: seed["rest_context"] || {},
-      inventory_context: seed["inventory_context"] || {},
-      time_context: ctx.build_time_context,
-      story_summary: story.initial_summary
-    )
-
-    if @adventure.save
-      Adventures::SheetCopier.new(
-        @adventure, sheet, max_hp: max_hp, currency: stats.remaining_currency
-      ).call
-
-      @adventure.update!(plot_state: {
-        "discovered_clues" => [],
-        "attempted_clues" => [],
-        "reached_milestones" => [],
-        "npc_met" => [],
-        "npc_attitudes" => {},
-        "custom_facts" => [],
-      })
-
-      run_embellisher(@adventure)
-      ensure_opening_message(@adventure)
-
-      @adventure.reload
-      render json: adventure_json(@adventure), status: :created
-    else
-      render json: { errors: @adventure.errors.full_messages }, status: :unprocessable_entity
-    end
+    render json: adventure_json(@adventure), status: :created
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
   end
 
   # DELETE /adventures/:id - soft-deletes the adventure
@@ -151,18 +116,4 @@ class AdventuresController < ApplicationController
     )
   end
 
-  def run_embellisher(adventure)
-    DungeonMaster::Embellisher.new(adventure, user: current_user).run
-  rescue DungeonMaster::AiError, DungeonMaster::TokenBudgetExceededError => e
-    Rails.logger.error("[AdventuresController] Embellisher failed: #{e.message}")
-  end
-
-  def ensure_opening_message(adventure)
-    return if adventure.adventure_messages.exists?
-    adventure.adventure_messages.create!(
-      role: "dm",
-      content: adventure.story.preview,
-      message_type: "narrative"
-    )
-  end
 end
