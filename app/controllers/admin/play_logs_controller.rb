@@ -30,17 +30,17 @@ module Admin
 
     def pipelines
       @active_nav = :pipelines
-      runs = PlayLog.where.not(registry_entry_uuid: [nil, ""])
-                    .select("registry_entry_uuid, MIN(created_at) AS first_at, MAX(created_at) AS last_at, COUNT(*) AS step_count, MIN(adventure_id) AS adventure_id")
-                    .group(:registry_entry_uuid)
-                    .order("first_at DESC")
+      aggregates = PlayLog.where.not(registry_entry_uuid: [nil, ""])
+                          .select("registry_entry_uuid, MIN(created_at) AS first_at, MAX(created_at) AS last_at, COUNT(*) AS step_count, MIN(adventure_id) AS adventure_id")
+                          .group(:registry_entry_uuid)
+                          .order("first_at DESC")
 
       @page = [params[:page].to_i, 1].max
       @total_count = PlayLog.where.not(registry_entry_uuid: [nil, ""]).distinct.count(:registry_entry_uuid)
       @total_pages = (@total_count.to_f / PER_PAGE).ceil
-      runs = runs.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
+      aggregates = aggregates.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
 
-      uuids = runs.map(&:registry_entry_uuid)
+      uuids = aggregates.map(&:registry_entry_uuid)
       logs_by_uuid = PlayLog.where(registry_entry_uuid: uuids)
                             .order(:created_at)
                             .group_by(&:registry_entry_uuid)
@@ -50,15 +50,15 @@ module Admin
       msg_ids = logs_by_uuid.values.flatten.filter_map(&:player_message_id).uniq
       messages = AdventureMessage.where(id: msg_ids).index_by(&:id)
 
-      @pipeline_runs = runs.map do |run|
-        logs  = logs_by_uuid[run.registry_entry_uuid] || []
+      @registry_entry_summaries = aggregates.map do |aggregate|
+        logs  = logs_by_uuid[aggregate.registry_entry_uuid] || []
         msg   = logs.first && messages[logs.first.player_message_id]
-        entry = registry_entries[run.registry_entry_uuid]
+        entry = registry_entries[aggregate.registry_entry_uuid]
 
-        Admin::RegistryEntryPresenter.new(run, logs: logs, player_message: msg, registry_entry: entry).as_hash
+        Admin::RegistryEntryPresenter.new(aggregate, logs: logs, player_message: msg, registry_entry: entry).as_hash
       end
 
-      detect_retries!(@pipeline_runs)
+      detect_retries!(@registry_entry_summaries)
 
       render layout: 'admin'
     end
@@ -115,18 +115,18 @@ module Admin
       end
     end
 
-    def detect_retries!(pipeline_runs)
-      sorted = pipeline_runs.sort_by { |r| r[:first_at] }
-      sorted.each_with_index do |run, idx|
-        run[:retry_of] = nil
+    def detect_retries!(summaries)
+      sorted = summaries.sort_by { |s| s[:first_at] }
+      sorted.each_with_index do |summary, idx|
+        summary[:retry_of] = nil
         next if idx == 0
         prev = sorted[idx - 1]
-        next unless run[:adventure_id] && run[:adventure_id] == prev[:adventure_id]
-        next unless run[:first_at] - prev[:first_at] < RETRY_WINDOW
-        next unless run[:message_content].present? && prev[:message_content].present?
-        next unless run[:message_content].strip == prev[:message_content].strip
+        next unless summary[:adventure_id] && summary[:adventure_id] == prev[:adventure_id]
+        next unless summary[:first_at] - prev[:first_at] < RETRY_WINDOW
+        next unless summary[:message_content].present? && prev[:message_content].present?
+        next unless summary[:message_content].strip == prev[:message_content].strip
 
-        run[:retry_of] = prev[:retry_of] || prev[:registry_entry_uuid]
+        summary[:retry_of] = prev[:retry_of] || prev[:registry_entry_uuid]
       end
     end
   end
