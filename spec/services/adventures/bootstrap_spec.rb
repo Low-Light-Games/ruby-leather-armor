@@ -50,7 +50,11 @@ RSpec.describe Adventures::Bootstrap, type: :service do
 
     it "does not create a second opening message if one already exists" do
       adventure = bootstrap.call
-      expect { bootstrap.call }.not_to(change { AdventureMessage.count })
+      # bootstrap.call always creates a new adventure, so we test the guard
+      # directly: calling ensure_opening_message on an adventure that already
+      # has a message must be a no-op.
+      expect { bootstrap.send(:ensure_opening_message, adventure) }
+        .not_to change { AdventureMessage.count }
     end
 
     context "with directed_dm: true" do
