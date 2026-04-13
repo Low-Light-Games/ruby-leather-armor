@@ -26,7 +26,10 @@ module DungeonMaster
       def roll_damage_expression(expr)
         s = expr.to_s.strip.downcase.gsub(/\s+/, "")
         m = s.match(/\A(\d+)d(\d+)([+-]\d+)?\z/i)
-        return rand(1..4) unless m
+        unless m
+          Rails.logger.warn("[CombatDice] Unrecognized damage expression #{expr.inspect}, defaulting to 1d4")
+          return rand(1..4)
+        end
 
         count = m[1].to_i
         sides = m[2].to_i
