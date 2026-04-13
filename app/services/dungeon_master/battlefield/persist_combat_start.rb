@@ -13,17 +13,25 @@ module DungeonMaster
           Adventure.transaction do
             adventure.lock!
 
-            existing = adventure.adventure_battlefields.where(status: "active").order(:id).first
-            ref = if existing
-                    { "id" => existing.id, "version" => existing.version, "topology" => existing.topology }
+            desired_tokens = build_tokens_from_participants(data["participants"])
+            actives = adventure.adventure_battlefields.where(status: "active").order(:id).to_a
+            matching = actives.find { |bf| token_sets_match?(bf.tokens, desired_tokens) }
+
+            ref = if matching
+                    (actives - [matching]).each(&:archive!)
+                    {
+                      "id" => matching.id,
+                      "version" => matching.version,
+                      "topology" => matching.topology
+                    }
                   else
-                    tokens = build_tokens_from_participants(data["participants"])
+                    actives.each(&:archive!)
                     bf = adventure.adventure_battlefields.create!(
                       status: "active",
                       topology: "square",
                       world: default_world,
-                      tokens: tokens,
-                      viewport: viewport_for_tokens(tokens),
+                      tokens: desired_tokens,
+                      viewport: viewport_for_tokens(desired_tokens),
                       version: 1
                     )
                     { "id" => bf.id, "version" => bf.version, "topology" => bf.topology }
@@ -40,6 +48,15 @@ module DungeonMaster
         end
 
         private
+
+        # Reuse an active row only when its token ids match this encounter's participants.
+        # Otherwise archive stale rows and create a fresh grid so a new fight never inherits
+        # another encounter's map state.
+        def token_sets_match?(stored_tokens, desired_tokens)
+          sk = stored_tokens.is_a?(Hash) ? stored_tokens.keys.map(&:to_s).sort : []
+          dk = desired_tokens.keys.map(&:to_s).sort
+          sk == dk && dk.any?
+        end
 
         def default_world
           { "cells" => {}, "note" => "Sparse square grid; diagonal moves cost 1.5 squares (half-square units in engine)." }

@@ -60,6 +60,10 @@ module DungeonMaster
           adventure.reload
         end
 
+        # Only these keys may appear on a cell payload (besides x/y). Everything else is rejected
+        # so model typos cannot desync narrative from persisted battlefield state.
+        ALLOWED_CELL_ATTRS = %w[terrain difficult cover light obstacle note labels].freeze
+
         private
 
         def apply_op!(data, op)
@@ -84,13 +88,26 @@ module DungeonMaster
             world = (data["world"] ||= {})
             cells = (world["cells"] ||= {})
             Array(h["cells"]).each do |c|
-              next unless c.is_a?(Hash)
+              raise DungeonMaster::AiError, "set_cells: each cell must be a Hash" unless c.is_a?(Hash)
+
               c = c.stringify_keys
+              unless c.key?("x") && c.key?("y")
+                raise DungeonMaster::AiError, "set_cells: each cell requires integer x and y"
+              end
+
+              payload = c.except("x", "y")
+              bad = payload.keys - ALLOWED_CELL_ATTRS
+              if bad.any?
+                raise DungeonMaster::AiError,
+                      "set_cells: disallowed cell attribute(s) #{bad.inspect} — allowed: #{ALLOWED_CELL_ATTRS.join(', ')}"
+              end
+
               key = "#{c['x']},#{c['y']}"
-              cells[key] = c.except("x", "y")
+              cells[key] = payload.slice(*ALLOWED_CELL_ATTRS)
             end
           else
-            Rails.logger.info("[Battlefield::ApplyPatches] unknown op #{h['op'].inspect} — skipped")
+            raise DungeonMaster::AiError,
+                  "battlefield patch: unknown op #{h['op'].inspect} (supported: move_token, shift_viewport, set_cells)"
           end
         end
       end

@@ -36,12 +36,16 @@ RSpec.describe DungeonMaster::Battlefield::EnsureForActiveCombat, type: :service
   end
 
   it "reattaches to an existing active row when battlefield_ref is missing" do
+    # Token ids must match PersistCombatStart.build_tokens_from_participants for these participants.
     bf = adventure.adventure_battlefields.create!(
       adventure: adventure,
       status: "active",
       topology: "square",
       world: { "cells" => {} },
-      tokens: { "player" => { "label" => "P", "x" => 0, "y" => 0 } },
+      tokens: {
+        "player" => { "label" => "Player", "x" => 0, "y" => 0 },
+        "token_1_goblin" => { "label" => "Goblin", "x" => 2, "y" => 0 }
+      },
       viewport: { "min_x" => 0, "min_y" => 0, "width" => 40, "height" => 40 },
       version: 1
     )
@@ -71,7 +75,7 @@ RSpec.describe DungeonMaster::Battlefield::EnsureForActiveCombat, type: :service
       status: "active",
       topology: "square",
       world: { "cells" => {} },
-      tokens: {},
+      tokens: { "player" => { "label" => "Player", "x" => 0, "y" => 0 } },
       viewport: { "min_x" => 0, "min_y" => 0, "width" => 40, "height" => 40 },
       version: 1
     )
@@ -80,7 +84,7 @@ RSpec.describe DungeonMaster::Battlefield::EnsureForActiveCombat, type: :service
       status: "active",
       topology: "square",
       world: { "cells" => {} },
-      tokens: {},
+      tokens: { "player" => { "label" => "Player", "x" => 99, "y" => 99 } },
       viewport: { "min_x" => 0, "min_y" => 0, "width" => 40, "height" => 40 },
       version: 1
     )
@@ -102,6 +106,39 @@ RSpec.describe DungeonMaster::Battlefield::EnsureForActiveCombat, type: :service
     expect(adventure.adventure_battlefields.where(status: "active").count).to eq(1)
     expect(adventure.adventure_battlefields.where(status: "archived").count).to eq(1)
     expect(adventure.combat_context["battlefield_ref"]["id"]).to eq(bf1.id)
+  end
+
+  it "dedupes duplicate active rows even when battlefield_ref already points at an active row" do
+    combat_data = {
+      "active" => true,
+      "round" => 1,
+      "current_turn" => "Player",
+      "turn_order" => ["Player"],
+      "participants" => [
+        { "name" => "Player", "type" => "player", "hp" => 10, "max_hp" => 10, "initiative" => 10, "conditions" => [] }
+      ],
+      "terrain_notes" => nil,
+      "active_effects" => []
+    }
+    DungeonMaster::Battlefield::PersistCombatStart.call(adventure: adventure, combat_data: combat_data, sheet: sheet)
+    adventure.reload
+    target_id = adventure.combat_context["battlefield_ref"]["id"]
+
+    adventure.adventure_battlefields.create!(
+      adventure: adventure,
+      status: "active",
+      topology: "square",
+      world: { "cells" => {} },
+      tokens: { "player" => { "label" => "Player", "x" => 0, "y" => 0 } },
+      viewport: { "min_x" => 0, "min_y" => 0, "width" => 40, "height" => 40 },
+      version: 1
+    )
+
+    described_class.call(adventure: adventure.reload, sheet: sheet)
+    adventure.reload
+    expect(adventure.adventure_battlefields.where(status: "active").count).to eq(1)
+    expect(adventure.adventure_battlefields.where(status: "archived").count).to eq(1)
+    expect(adventure.combat_context["battlefield_ref"]["id"]).to eq(target_id)
   end
 
   it "is a no-op when an active battlefield row already exists" do

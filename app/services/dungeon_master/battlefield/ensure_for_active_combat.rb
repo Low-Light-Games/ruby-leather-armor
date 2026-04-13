@@ -18,16 +18,22 @@ module DungeonMaster
             next unless Array(ctx["participants"]).any?
 
             ref = ctx["battlefield_ref"]
-            if ref.is_a?(Hash) && ref["id"].present?
-              bf = adventure.adventure_battlefields.find_by(id: ref["id"])
-              next if bf&.status == "active"
-            end
+            ref_id = ref["id"].to_i if ref.is_a?(Hash) && ref["id"].present?
 
             actives = adventure.adventure_battlefields.where(status: "active").order(:id).to_a
             if actives.many?
-              actives.drop(1).each(&:archive!)
+              keeper = actives.find { |b| b.id == ref_id } if ref_id&.positive?
+              keeper ||= actives.first
+              (actives - [keeper]).each(&:archive!)
+              adventure.reload
             end
-            keeper = actives.first
+
+            if ref_id&.positive?
+              bf = adventure.adventure_battlefields.find_by(id: ref_id)
+              next if bf&.status == "active"
+            end
+
+            keeper = adventure.adventure_battlefields.where(status: "active").order(:id).first
 
             if keeper
               ctx2 = ctx.deep_dup.deep_stringify_keys

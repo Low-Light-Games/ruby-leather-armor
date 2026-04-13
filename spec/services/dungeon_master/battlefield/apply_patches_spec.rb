@@ -65,6 +65,43 @@ RSpec.describe DungeonMaster::Battlefield::ApplyPatches, type: :service do
     expect(bf.tokens["player"]["x"]).not_to eq(99)
   end
 
+  it "raises AiError on unknown patch op" do
+    expect do
+      described_class.call(
+        adventure: adventure,
+        patches: [{ "op" => "teleport_all", "id" => "player" }],
+        log: nil
+      )
+    end.to raise_error(DungeonMaster::AiError, /unknown op/)
+  end
+
+  it "raises AiError when set_cells uses a disallowed attribute" do
+    expect do
+      described_class.call(
+        adventure: adventure,
+        patches: [{
+          "op" => "set_cells",
+          "cells" => [{ "x" => 1, "y" => 2, "custom_hazard" => true }]
+        }],
+        log: nil
+      )
+    end.to raise_error(DungeonMaster::AiError, /disallowed cell attribute/)
+  end
+
+  it "applies set_cells with allowlisted attributes" do
+    described_class.call(
+      adventure: adventure,
+      patches: [{
+        "op" => "set_cells",
+        "cells" => [{ "x" => 3, "y" => 4, "terrain" => "rubble", "cover" => "partial" }]
+      }],
+      log: nil
+    )
+    adventure.reload
+    bf = adventure.adventure_battlefields.find(adventure.combat_context["battlefield_ref"]["id"])
+    expect(bf.world["cells"]["3,4"]).to eq("terrain" => "rubble", "cover" => "partial")
+  end
+
   it "keeps other combat_context keys from the locked snapshot when syncing battlefield_ref" do
     ctx = adventure.combat_context.deep_dup
     ctx["action_economy"] = { "move_available" => false, "standard_available" => true }

@@ -48,4 +48,23 @@ RSpec.describe DungeonMaster::Battlefield::PersistCombatStart, type: :service do
     expect(adventure.adventure_battlefields.where(status: "active").count).to eq(1)
     expect(adventure.combat_context["battlefield_ref"]["id"]).to eq(first_id)
   end
+
+  it "archives a stale active row when participant token set changes, then creates a fresh battlefield" do
+    described_class.call(adventure: adventure, combat_data: combat_data, sheet: sheet)
+    stale_id = adventure.reload.combat_context["battlefield_ref"]["id"]
+
+    two_party = combat_data.merge(
+      "participants" => [
+        { "name" => "Player", "type" => "player", "hp" => 10, "max_hp" => 10, "initiative" => 10, "conditions" => [] },
+        { "name" => "Goblin", "type" => "npc", "hp" => 5, "max_hp" => 5, "initiative" => 8, "conditions" => [] }
+      ],
+      "turn_order" => %w[Player Goblin]
+    )
+    described_class.call(adventure: adventure.reload, combat_data: two_party, sheet: sheet)
+    adventure.reload
+
+    expect(adventure.adventure_battlefields.find(stale_id).status).to eq("archived")
+    expect(adventure.adventure_battlefields.where(status: "active").count).to eq(1)
+    expect(adventure.combat_context["battlefield_ref"]["id"]).not_to eq(stale_id)
+  end
 end
