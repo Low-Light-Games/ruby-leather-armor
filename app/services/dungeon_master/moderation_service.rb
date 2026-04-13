@@ -46,7 +46,7 @@ module DungeonMaster
 
       api_result = call_evaluator!
 
-      if api_result["flagged"]
+      if api_result["flagged"] && meaningful_violation?(api_result["categories"])
         handle_flagged!(api_result["categories"])
         Result.new(flagged: true, response_text: @config.default_response)
       else
@@ -97,6 +97,15 @@ module DungeonMaster
           @user.update!(banned: true, banned_at: Time.current, trusted: false)
         end
       end
+    end
+
+    # Returns true only when at least one flagged category is NOT on the ignore list.
+    # An input that only triggers ignored categories (e.g. violence in an RPG) passes through.
+    def meaningful_violation?(categories)
+      return false if categories.blank?
+
+      flagged_cats = categories.select { |_cat, flagged| flagged }.keys
+      (flagged_cats - @config.ignored_categories).any?
     end
 
     def should_auto_ban?
