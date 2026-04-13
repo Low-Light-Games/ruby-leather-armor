@@ -940,6 +940,8 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | 4 | **SanityChecker** | AI (parallel, mechanical path) | `app/services/dungeon_master/steps/sanity_checker.rb` |
 | 5 | **Mechanic** | AI (mechanical path) | `app/services/dungeon_master/steps/mechanic.rb` |
 | 5a | **Momentum** | AI (non-mechanical path) | `app/services/dungeon_master/steps/momentum.rb` |
+| 5a.5 | **World Turn** | Code orchestration | `app/services/dungeon_master/steps/world_turn.rb`, `app/services/dungeon_master/world_turn/*.rb` |
+| 5a.5-i | **↳ npc_action** | AI ×N (sequentially orchestrated, Node transport) | `app/services/dungeon_master/steps/world_turn.rb`, `app/services/dungeon_master/world_turn/npc_action_prompt.rb` |
 | 5b | **TimeKeeper** | Code-first, AI fallback | `app/services/dungeon_master/steps/time_keeper.rb` |
 | 5c | **Social Expansion** | AI (conditional) | `app/services/dungeon_master/adventure_loop_resolution.rb` (`resolve_social_scene`) |
 | -- | **Harbinger** (utility) | Code + optional AI | `app/services/dungeon_master/utilities/harbinger.rb` |
@@ -958,6 +960,52 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 - **`"progressive_continuity"`:** same streaming behaviour, plus prior action `pipeline_outcome` values are read from `AdventureLoop` and injected into beacon/mech_eval/narrate prompts so each action is evaluated with awareness of what earlier actions in the same turn produced.
 
 Interrupted queues (encounter, social scene, roll request) fall back to the accumulated path for the interrupting event regardless of mode.
+
+## What is AI vs. what is code
+
+| Component | AI? | Notes |
+|---|---|---|
+| ParallelEvaluation (beacon) | ✅ AI ×6 | Per-domain intent classification via Node `/fan_out` |
+| ParallelEvaluation (mechanical_evaluation) | ✅ AI ×N | Sequential per-domain mechanical resolution via Node `/sequential` |
+| ParallelEvaluation (roll_qualifier) | ✅ AI ×N | Per-domain Take 10/20 eligibility + situational modifiers via Node `/fan_out` |
+| Mechanic | ✅ AI | Post-roll arbitration + structured mutations |
+| Momentum | ✅ AI | Non-mechanical outcome |
+| World Turn (orchestration) | ❌ Code | Sequential NPC turn orchestration, live-state refresh, mutation application, combat advancement, and combat-end handling |
+| NPC Action (individual decisions) | ✅ AI ×N | Per-NPC combat action decisions via the Node evaluator transport; issued sequentially so each actor sees updated combat state |
+| TimeKeeper (journey / combat / rest / take_20) | ❌ Code | Deterministic formulas |
+| TimeKeeper (fallback freeform estimate) | ✅ AI | Used only when no code rule applies |
+| Harbinger / GameClock / Warmaster turn ordering | ❌ Code | Encounter math, clock math, and deterministic combat state transitions |
+| Narrate / ContextUpdate / Chronicler | ✅ AI | Prose, context writing, and plot synthesis |
+
+### 5. World Turn after player resolution in active combat
+
+**Decision:** after a player's action resolves in active combat, the pipeline runs a
+code-owned **World Turn** phase before narration. World Turn computes which NPCs
+act, asks each acting NPC what they do, applies those consequences immediately,
+and emits deterministic `combat_state_advancement` for ContextUpdate to write.
+
+**Why:** the previous combat flow treated combat like any other action: one
+player message in, one outcome out. That left three correctness gaps:
+
+- NPCs never took proper initiative-ordered turns
+- `current_turn` / `round` advancement depended on AI inference from prose
+- player-facing damage from NPC turns had no deterministic owner
+
+World Turn fixes that by separating **combat orchestration** from **individual NPC
+judgment**. Code decides who acts and when; AI decides what a given NPC tries to
+do on its turn.
+
+**Why NPC actions are sequential, not parallel:** parallel NPC calls are cheaper
+in wall-clock time, but mechanically wrong once later actors need to see earlier
+actors' consequences. If Wolf A drops the player to 0 HP, Wolf B should not pick
+an action against a stale snapshot where the player is still standing. We accept
+the extra latency of sequential orchestration to preserve initiative-order
+honesty.
+
+**Trade-off accepted:** a typical combat round is slower than a pure fan-out
+design, but the resulting state is trustworthy. The Node evaluator transport is
+still used for the `npc_action` prompts; the pipeline simply issues those calls
+one at a time so each prompt sees refreshed live combat state.
 
 ---
 
