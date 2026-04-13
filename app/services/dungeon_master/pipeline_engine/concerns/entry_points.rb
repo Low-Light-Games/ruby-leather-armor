@@ -29,11 +29,37 @@ module DungeonMaster
 
           intent = metadata["intent"]&.deep_symbolize_keys
           raise AiError, "Initiative metadata missing intent — state integrity failure" unless intent
+
+          # Write combat_context directly — same justified exception as auto_finalize_pending_initiative!.
+          # The encounter scene was already delivered inside the initiative_request message; re-running
+          # a full narrative pass here (to apply combat_initialization via ContextUpdate) narrates
+          # the same encounter a second time. The data is fully deterministic, so no AI is needed.
+          @adventure.update!(combat_context: combat_data)
+          @adventure.reload
+
           base_mutations = metadata["mutations"] || {}
-          mutations = base_mutations.merge("combat_initialization" => combat_data)
-          continue_or_narrate_after_resume(
-            metadata,
-            accumulated_row: { status: :encounter, intent: intent, mutations: mutations })
+          result = { status: :resolved, intent: intent, mutations: base_mutations }
+
+          # If any NPC outrolled the player on initiative, they act now — before the player's
+          # first move. World turn handles its own combat-end check and sets :player_death /
+          # :player_incapacitated on the result when needed.
+          npcs_go_first = combat_data["current_turn"] != Utilities::CombatTurnCalculator::PLAYER_NAME
+          result = maybe_run_world_turn(result) if npcs_go_first
+
+          remaining = remaining_actions_from(metadata)
+          if remaining.any?
+            run_remaining_queue(remaining,
+              accumulated_intents: [intent],
+              accumulated_mutations: [base_mutations].compact)
+          elsif npcs_go_first
+            # World turn appended NPC action prose to pipeline_outcome; narrate it so
+            # the player sees what the enemies did before their first move.
+            run_accumulated_narrative_phase([result])
+          else
+            # Player has the first move. The initiative_request message already introduced
+            # the encounter — no new narrative is needed. Return silently.
+            { action: :combat_initialized }.merge(result.slice(:player_death, :player_incapacitated))
+          end
         end
 
         def run_rolls(roll_results, metadata)

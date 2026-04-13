@@ -96,6 +96,20 @@ module DungeonMaster
               player_sheet: @sheet, adventure: @adventure)
             lines.concat(res[:lines])
 
+            @log.play_log!(
+              "world_turn_resolution",
+              "World turn: #{npc.name} — #{res[:lines].join(' | ').truncate(200)}",
+              parsed_response: {
+                npc: npc.name,
+                action: parsed[:action],
+                attack_modifier: parsed[:attack_modifier],
+                damage_dice: parsed[:damage_dice],
+                player_hp_delta: res[:player_hp_delta],
+                npc_mutations: res[:npc_muts],
+                lines: res[:lines]
+              }
+            )
+
             apply_world_turn_step_mutations!(res[:player_hp_delta].to_i, res[:npc_muts])
 
             reload_world_turn_records!

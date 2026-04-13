@@ -76,7 +76,11 @@ module DungeonMaster
 
     # Post-roll completion: verdict → mutations → time_keeper
     def finish_resolution(intent, merged, roll_results)
-      npc_results = resolve_npc_actions(merged[:npc_actions])
+      # In active combat, world turn resolves all NPC actions in initiative order.
+      # Strip npc_actions from the mechanic step to prevent the same attack being
+      # evaluated twice (once here, once by world turn with actual dice + HP mutation).
+      effective_npc_actions = combat_active? ? [] : Array(merged[:npc_actions])
+      npc_results = resolve_npc_actions(effective_npc_actions)
       verdict_result = run_mechanic(intent, merged, roll_results: roll_results, npc_results: npc_results)
       @loop&.batch_update!(
         new_data: { "verdict_outcome" => verdict_result[:outcome].to_s.truncate(500) },

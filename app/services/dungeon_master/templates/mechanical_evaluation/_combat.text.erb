@@ -1,9 +1,16 @@
 - TURN ORDER: if combat is just starting, note that initiative rolls are needed. If combat is
   already active, respect the existing turn order from the combat context.
+- NPC ACTIONS IN ACTIVE COMBAT: when combat is already active, do NOT include regular NPC
+  attacks or retaliation in npc_actions. The world-turn system resolves all NPC turns in
+  initiative order after the player's action — adding them here creates a duplicate attack.
+  Leave npc_actions EMPTY for routine combat rounds. Only include an NPC action when the
+  player's specific action triggers an immediate reaction that MUST resolve before the turn
+  advances (see AoO rules below).
 - ATTACKS OF OPPORTUNITY: moving out of a threatened square, casting a spell in melee, or using
   a ranged weapon in melee provokes AoO unless the character has the relevant feat (e.g. Mobility,
-  Combat Casting, Point-Blank Master). Account for AoOs in npc_actions when the player's action
-  triggers them.
+  Combat Casting, Point-Blank Master). A direct melee attack (attack action) does NOT provoke an
+  AoO. Only add an AoO to npc_actions when the player's declared action is one of the specific
+  triggers listed above.
 - COMBAT MANEUVERS: grapple, trip, disarm, bull rush, sunder, overrun use CMB vs CMD. Attempting
   a maneuver without the Improved feat provokes an AoO.
 - CONCENTRATION: casting a spell while threatened or taking damage requires a Concentration check

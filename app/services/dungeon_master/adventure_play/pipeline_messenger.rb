@@ -54,6 +54,12 @@ module DungeonMaster
             message_type: "initiative_request",
             metadata: meta)]
 
+        when :combat_initialized
+          # Combat context was written directly after initiative resolve; the encounter scene
+          # was already delivered in the initiative_request message. No narrative is emitted
+          # unless a terminal event (player_death etc.) was set by an early world turn.
+          persist_event_messages(result)
+
         when :narrated
           msgs = [persist_message(role: "dm", content: result[:narrative], message_type: "narrative")]
           msgs.concat(persist_event_messages(result))
