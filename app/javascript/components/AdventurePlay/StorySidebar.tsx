@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiFetch } from '../../utils/api';
 import type { Story } from '../../types';
+import type { BattlefieldSnapshot } from '../../types';
+import { TacticalMapRail } from './TacticalMapRail';
 
 const CATEGORY_LABELS: Record<string, { label: string; className: string }> = {
   combat: { label: 'Combat', className: 'cat-combat' },
@@ -15,6 +17,7 @@ const CATEGORY_LABELS: Record<string, { label: string; className: string }> = {
 interface StorySidebarProps {
   story: Story;
   adventureId: number;
+  battlefield?: BattlefieldSnapshot | null;
   traversalContext: Record<string, unknown> | null;
   combatContext: Record<string, unknown> | null;
   socialContext: Record<string, unknown> | null;
@@ -151,6 +154,7 @@ function formatGameHour(timeContext: Record<string, unknown> | null): string {
 export const StorySidebar: React.FC<StorySidebarProps> = ({
   story,
   adventureId,
+  battlefield,
   traversalContext,
   combatContext,
   socialContext,
@@ -184,6 +188,8 @@ export const StorySidebar: React.FC<StorySidebarProps> = ({
     <div className="adventure-column story-column">
       <h2>{story.title}</h2>
       <p className="story-premise">{story.preview}</p>
+
+      <TacticalMapRail combatContext={combatContext} battlefield={battlefield ?? null} />
 
       <div className="context-section">
         <div className="context-header">

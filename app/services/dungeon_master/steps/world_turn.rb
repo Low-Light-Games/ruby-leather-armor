@@ -112,6 +112,10 @@ module DungeonMaster
 
             apply_world_turn_step_mutations!(res[:player_hp_delta].to_i, res[:npc_muts])
 
+            if res[:battlefield_patches].present?
+              Battlefield::ApplyPatches.call(adventure: @adventure, patches: res[:battlefield_patches], log: @log)
+            end
+
             reload_world_turn_records!
             if @sheet && @sheet.hp == 0 && !Array(@sheet.conditions).include?("disabled")
               apply_player_mutations({ conditions_add: ["disabled"] })

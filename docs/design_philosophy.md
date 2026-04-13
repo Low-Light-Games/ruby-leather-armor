@@ -550,14 +550,17 @@ narrative for turn 80 has the same clean, bounded input as one generating
 narrative for turn 1. Long adventures do not become harder or less
 reliable to reason about.
 
-**Single-writer principle:** ContextUpdate is the sole entity that writes to
-Adventure context fields. No pipeline step, utility class, or service writes
-to those JSONB fields directly (except emergency recovery in
-`DungeonMaster::Rolls::AdventureMechanicalState.auto_finalize_pending_initiative!`). Deterministic
-utilities like Warmaster compute and return data; ContextUpdate receives it
-as structured mutations and writes it verbatim. This eliminates a class of
-race conditions and drift bugs where two different code paths each write
-partial context with different assumptions.
+**Single-writer principle (JSONB micro-contexts):** ContextUpdate is the primary writer for the six `*_context` JSONB fields. Documented exceptions and co-writers must stay explicit so drift stays observable:
+
+- **Combat start:** `DungeonMaster::Battlefield::PersistCombatStart` writes `combat_context` in one transaction with a new `adventure_battlefields` row and `battlefield_ref` (used by `run_initiative` and `AdventureMechanicalState.auto_finalize_pending_initiative!`).
+- **Mid-combat / missing map (just-in-time):** `DungeonMaster::Battlefield::EnsureForActiveCombat` creates the row + ref the first time something needs a battlefield while `combat_context.active` is true (no batch rake). Invoked from serializers, roll metadata, and patch application so stories can start in combat without initiative.
+- **Combat resolution:** `DungeonMaster::Battlefield::ApplyPatches` bumps the battlefield row and syncs `combat_context["battlefield_ref"]["version"]` after Combat GM / world-turn patches. `apply_mutations` may merge `action_economy_delta` into `combat_context` when the Combat GM emits spends.
+- **Combat end:** `DungeonMaster::Battlefield::ArchiveCombatEnd` archives the row and updates `last_battlefield_ref` / clears `battlefield_ref`, invoked when micro-context persistence detects `active: true → false`.
+- **Adventure UI (combat):** direct sheet endpoints (e.g. equip toggle) may atomically adjust `action_economy` when `combat_active?` — server-authoritative, no AI.
+
+`ContextUpdate` applies **deep merge** for `combat` when persisting micro-context output so partial `combat_state_advancement` payloads do not drop `battlefield_ref`, `last_battlefield_ref`, or `action_economy` by accident.
+
+Deterministic utilities like Warmaster still compute hashes; ContextUpdate receives structured mutations for narrative-driven updates. This pattern limits races where two writers each assume they own the full document.
 
 **Runs before every pause:** ContextUpdate executes before any pipeline
 early return that presents a message to the player — initiative prompts,

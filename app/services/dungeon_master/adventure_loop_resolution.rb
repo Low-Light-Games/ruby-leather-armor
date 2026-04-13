@@ -81,10 +81,15 @@ module DungeonMaster
       # evaluated twice (once here, once by world turn with actual dice + HP mutation).
       effective_npc_actions = combat_active? ? [] : Array(merged[:npc_actions])
       npc_results = resolve_npc_actions(effective_npc_actions)
-      verdict_result = run_mechanic(intent, merged, roll_results: roll_results, npc_results: npc_results)
+      verdict_result = if combat_active?
+                         run_combat_gm(intent, merged, roll_results: roll_results, npc_results: npc_results)
+                       else
+                         run_mechanic(intent, merged, roll_results: roll_results, npc_results: npc_results)
+                       end
+      verdict_step = combat_active? ? "combat_gm" : "mechanic"
       @loop&.batch_update!(
         new_data: { "verdict_outcome" => verdict_result[:outcome].to_s.truncate(500) },
-        timeline_entry: { "step" => "mechanic", "summary" => verdict_result[:outcome].to_s.truncate(120), "at" => Time.current.iso8601 })
+        timeline_entry: { "step" => verdict_step, "summary" => verdict_result[:outcome].to_s.truncate(120), "at" => Time.current.iso8601 })
       apply_mutations(verdict_result[:mutations])
 
       time_result = run_time_keeper(intent, verdict_result)

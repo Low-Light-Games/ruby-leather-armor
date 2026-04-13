@@ -12,7 +12,7 @@ interface StatTooltipProps {
 const StatTooltip: React.FC<StatTooltipProps> = ({ children, label, total, breakdown }) => {
   const [visible, setVisible] = useState(false)
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({})
-  const anchorRef = useRef<HTMLSpanElement>(null)
+  const anchorRef = useRef<HTMLDivElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
 
   const show = useCallback(() => setVisible(true), [])

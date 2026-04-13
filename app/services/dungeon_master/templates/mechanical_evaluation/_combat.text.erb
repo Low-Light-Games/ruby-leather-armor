@@ -1,29 +1,3 @@
-- TURN ORDER: if combat is just starting, note that initiative rolls are needed. If combat is
-  already active, respect the existing turn order from the combat context.
-- NPC ACTIONS IN ACTIVE COMBAT: when combat is already active, do NOT include regular NPC
-  attacks or retaliation in npc_actions. The world-turn system resolves all NPC turns in
-  initiative order after the player's action — adding them here creates a duplicate attack.
-  Leave npc_actions EMPTY for routine combat rounds. Only include an NPC action when the
-  player's specific action triggers an immediate reaction that MUST resolve before the turn
-  advances (see AoO rules below).
-- ATTACKS OF OPPORTUNITY: moving out of a threatened square, casting a spell in melee, or using
-  a ranged weapon in melee provokes AoO unless the character has the relevant feat (e.g. Mobility,
-  Combat Casting, Point-Blank Master). A direct melee attack (attack action) does NOT provoke an
-  AoO. Only add an AoO to npc_actions when the player's declared action is one of the specific
-  triggers listed above.
-- COMBAT MANEUVERS: grapple, trip, disarm, bull rush, sunder, overrun use CMB vs CMD. Attempting
-  a maneuver without the Improved feat provokes an AoO.
-- CONCENTRATION: casting a spell while threatened or taking damage requires a Concentration check
-  (DC 15 + spell level for casting defensively, DC 10 + damage dealt + spell level if damaged).
-- FLANKING AND COVER: two allies threatening the same enemy grant flanking (+2 to hit). Cover
-  provides +4 AC; improved cover +8. Partial cover +2.
-- DAMAGE TYPES: note if the attack deals a specific damage type (slashing, piercing, bludgeoning,
-  fire, cold, etc.) as this may interact with DR or resistances.
-- FULL ATTACK vs STANDARD: if the player has multiple attacks (BAB +6 or higher, TWF, etc.),
-  determine whether the action allows a full attack or only a standard action attack.
-- POWER ATTACK: the player may declare Power Attack before rolling, taking -1 to all attack rolls
-  to gain +2 to melee damage (+3 with a two-handed weapon), up to a maximum penalty equal to BAB.
-  Must be declared before the roll. Does not apply to ranged attacks.
-- TWO-WEAPON FIGHTING: without the feat, penalties are -4 main hand / -8 off-hand. With the TWF
-  feat: -2 main hand / -2 off-hand. A light weapon in the off-hand reduces each penalty by 2.
-  Both attacks are made in the same action economy as a full attack.
+- ACTIVE COMBAT — MECHANICAL EVALUATION SCOPE: Identify only which dice rolls (if any) this domain requires for the player's declared action (attack rolls, saves, skill checks, concentration, etc.). Do not fully adjudicate hits, damage, flanking, AoO geometry, full-attack sequencing, or multi-target spell resolution here — the Combat GM step owns that synthesis when combat is active.
+- Leave npc_actions EMPTY during routine combat rounds. World turn resolves NPC initiative actions after the player. Only include an npc_action here when the player's action triggers an immediate reaction that must be queued before rolls resolve (extremely rare).
+- Reference combat context for turn order and participant names only as needed to phrase roll requests.

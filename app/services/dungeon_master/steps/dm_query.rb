@@ -12,11 +12,13 @@ module DungeonMaster
         prompt_summary = "DM Query: \"#{@log.truncate(sanitized_input)}\""
 
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
+        battlefield_slice = Battlefield::PromptSerializer.slice_for_adventure(@adventure)
 
         system_prompt = PromptRenderer.render("dm_query",
           story_title: @adventure.story.title,
           story_summary: @adventure.story_summary,
           contexts_text: PromptHelpers.format_contexts(micro_contexts),
+          battlefield_slice: battlefield_slice.presence || "(no tactical map loaded)",
           guidance: Rules.guidance_for("dm_query"),
           dm_brief: dm_brief,
           forbidden_elements: Array(forbidden_elements))

@@ -157,6 +157,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
         <StorySidebar
           story={story}
           adventureId={adventureId}
+          battlefield={adventure.battlefield ?? null}
           traversalContext={adventure.traversal_context}
           combatContext={adventure.combat_context}
           socialContext={adventure.social_context}

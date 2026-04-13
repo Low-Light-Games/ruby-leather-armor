@@ -90,6 +90,7 @@ class AdventuresController < ApplicationController
       id: adventure.id,
       adventure_sheet: adventure_sheet_json(adv_sheet),
       story: adventure.story,
+      battlefield: DungeonMaster::Battlefield::ApiSnapshot.for_adventure(adventure),
       traversal_context: adventure.traversal_context,
       combat_context: adventure.combat_context,
       social_context: adventure.social_context,

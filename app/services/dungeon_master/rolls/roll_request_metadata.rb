@@ -15,7 +15,7 @@ module DungeonMaster
         # +result+ is the pipeline halt hash for +:awaiting_rolls+ (:merged, :intent, :remaining_actions).
         def build_persist_metadata(result, adventure)
           merged = result[:merged]
-          {
+          meta = {
             roll_requests: merged[:player_rolls],
             pending_npc_actions: merged[:npc_actions],
             pending_consequences: merged[:consequences],
@@ -24,6 +24,16 @@ module DungeonMaster
             show_dc: adventure.effective_dm_setting("show_roll_dc"),
             remaining_actions: result[:remaining_actions]
           }
+          if adventure.combat_active?
+            ::DungeonMaster::Battlefield::EnsureForActiveCombat.call(adventure: adventure)
+            adventure.reload
+            ref = adventure.combat_context["battlefield_ref"]
+            if ref.is_a?(Hash)
+              meta["battlefield_id"] = ref["id"]
+              meta["battlefield_version"] = ref["version"]
+            end
+          end
+          meta
         end
 
         # @param metadata [Hash] string-keyed JSON from the roll_request message

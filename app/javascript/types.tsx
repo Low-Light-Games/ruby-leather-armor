@@ -264,10 +264,21 @@ export interface AdventureSheet {
   effects: string | null
 }
 
+/** Active combat tactical snapshot; null when not in combat. */
+export interface BattlefieldSnapshot {
+  id: number
+  version: number
+  topology: string
+  tokens: Record<string, Record<string, unknown>>
+  viewport: Record<string, unknown>
+  world: Record<string, unknown>
+}
+
 export interface Adventure {
   id: number
   adventure_sheet: AdventureSheet
   story: Story
+  battlefield?: BattlefieldSnapshot | null
   traversal_context: Record<string, unknown> | null
   combat_context: Record<string, unknown> | null
   social_context: Record<string, unknown> | null
@@ -319,7 +330,7 @@ export interface AdventureMessage {
     | 'player_incapacitated'
     | 'roll_request' | 'roll_result'
     | 'initiative_request' | 'initiative_result'
-    | 'dm_query' | 'usage_limit'
+    | 'dm_query' | 'usage_limit' | 'system_notice' | 'moderation_flagged'
   metadata: {
     roll_request?: RollRequest
     roll_requests?: RollRequest[]

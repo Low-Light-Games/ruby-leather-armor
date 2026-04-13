@@ -135,11 +135,30 @@ module DungeonMaster
       end
 
       def persist_micro_contexts(parsed)
+        prev_combat = @adventure.combat_context
+        prev_active = prev_combat.is_a?(Hash) ? prev_combat["active"] : nil
+
         updates = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, h|
           key = "#{field}_context"
-          h[key.to_sym] = parsed[key] if parsed[key].present?
+          next unless parsed[field].present?
+
+          val = parsed[field]
+          if field == "combat" && val.is_a?(Hash)
+            existing = (@adventure.public_send(key) || {}).deep_stringify_keys
+            val = existing.deep_merge(val.deep_stringify_keys)
+          end
+          h[key.to_sym] = val
         end
         @adventure.update!(updates) if updates.any?
+
+        if updates.key?(:combat_context)
+          @adventure.reload
+          ctx = @adventure.combat_context
+          if ctx.is_a?(Hash) && prev_active == true && ctx["active"] == false
+            Battlefield::ArchiveCombatEnd.call(adventure: @adventure)
+          end
+        end
+
         snapshot_contexts_to_loop
       end
 

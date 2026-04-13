@@ -10,6 +10,7 @@ class PlayLog < ApplicationRecord
     auto_success_filter duplicate_roll_warning
     pipeline_abandoned
     harbinger warmaster
+    battlefield_version_mismatch
     pipeline_error
   ].freeze
 

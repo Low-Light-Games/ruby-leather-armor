@@ -1113,6 +1113,28 @@
       font-size: 13px;
     }
 
+    .tactical-map-rail {
+      .tactical-map-version {
+        font-size: 10px;
+        font-family: $font-mono;
+        color: $ink-light;
+      }
+
+      .tactical-map-topology {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: $ink-mid;
+      }
+
+      .tactical-token-list {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: $ink;
+      }
+    }
+
     .context-section {
       margin-bottom: 16px;
       padding: 12px;

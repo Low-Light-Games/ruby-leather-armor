@@ -30,11 +30,8 @@ module DungeonMaster
           intent = metadata["intent"]&.deep_symbolize_keys
           raise AiError, "Initiative metadata missing intent — state integrity failure" unless intent
 
-          # Write combat_context directly — same justified exception as auto_finalize_pending_initiative!.
-          # The encounter scene was already delivered inside the initiative_request message; re-running
-          # a full narrative pass here (to apply combat_initialization via ContextUpdate) narrates
-          # the same encounter a second time. The data is fully deterministic, so no AI is needed.
-          @adventure.update!(combat_context: combat_data)
+          # Atomic combat start: battlefield row + battlefield_ref + action_economy in one transaction.
+          Battlefield::PersistCombatStart.call(adventure: @adventure, combat_data: combat_data, sheet: @sheet)
           @adventure.reload
 
           base_mutations = metadata["mutations"] || {}
@@ -64,6 +61,25 @@ module DungeonMaster
 
         def run_rolls(roll_results, metadata)
           restore_paused_loop!
+
+          if battlefield_roll_version_mismatch?(metadata)
+            ref = @adventure.combat_context.is_a?(Hash) ? @adventure.combat_context["battlefield_ref"] : nil
+            row = ref.present? ? @adventure.adventure_battlefields.find_by(id: ref["id"]) : nil
+            @log.play_log!(
+              "battlefield_version_mismatch",
+              "Roll request battlefield snapshot stale — metadata v#{metadata['battlefield_version']} vs row v#{row&.version}",
+              parsed_response: {
+                battlefield_id: metadata["battlefield_id"],
+                expected_version: metadata["battlefield_version"],
+                actual_version: row&.version
+              }
+            )
+            return {
+              action: :battlefield_version_mismatch,
+              message: "Combat map changed since these rolls were requested. Submit again using the updated prompt."
+            }
+          end
+
           Rolls::PlayerRolls.tag_roll_resolution!(@loop, roll_results)
 
           intent, merged = restore_roll_pause_inputs(metadata)
@@ -91,6 +107,17 @@ module DungeonMaster
         end
 
         private
+
+        # Fail closed when roll_request carried a battlefield snapshot that no longer matches the row.
+        def battlefield_roll_version_mismatch?(metadata)
+          return false unless @adventure.combat_active?
+          return false if metadata["battlefield_id"].blank?
+
+          bid = metadata["battlefield_id"].to_i
+          row = @adventure.adventure_battlefields.find_by(id: bid)
+          return true unless row
+          metadata["battlefield_version"].to_i != row.version.to_i
+        end
 
         def remaining_actions_from(metadata)
           metadata["remaining_actions"] || []

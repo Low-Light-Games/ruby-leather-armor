@@ -13,10 +13,34 @@ module DungeonMaster
       return unless mutations.is_a?(Hash)
 
       mutations = mutations.deep_symbolize_keys
+      apply_battlefield_patches_from_mutations!(mutations)
+      apply_action_economy_delta_from_mutations!(mutations)
       apply_player_mutations(mutations[:player])
       apply_npc_mutations(mutations[:npcs])
       apply_inventory_mutations(mutations[:inventory])
       @on_sheet_update&.call
+    end
+
+    def apply_battlefield_patches_from_mutations!(mutations)
+      patches = mutations[:battlefield_patches]
+      return if patches.blank?
+
+      Battlefield::ApplyPatches.call(adventure: @adventure, patches: patches, log: @log)
+    end
+
+    def apply_action_economy_delta_from_mutations!(mutations)
+      delta = mutations[:action_economy_delta]
+      return if delta.blank?
+
+      ctx = @adventure.combat_context
+      return unless ctx.is_a?(Hash)
+
+      econ = ctx["action_economy"] || ctx[:action_economy]
+      merged_econ = Battlefield::ActionEconomy.apply_delta!(econ, delta)
+      new_ctx = ctx.deep_stringify_keys.merge("action_economy" => merged_econ)
+      @adventure.update!(combat_context: new_ctx)
+    rescue ArgumentError => e
+      @log.log!(:warn, "[action_economy_delta] #{e.message}")
     end
 
     def resolve_npc_actions(npc_actions)

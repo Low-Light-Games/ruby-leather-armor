@@ -938,7 +938,8 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | 3-ii | **↳ mechanical_evaluation** | AI ×N, sequential (Node) | `evaluator/src/index.js` `/sequential` + `templates/mechanical_evaluation.text.erb` |
 | 3-iii | **↳ roll_qualifier** | AI ×N, parallel (Node) | `evaluator/src/index.js` `/fan_out` + `templates/roll_qualifier.text.erb` |
 | 4 | **SanityChecker** | AI (parallel, mechanical path) | `app/services/dungeon_master/steps/sanity_checker.rb` |
-| 5 | **Mechanic** | AI (mechanical path) | `app/services/dungeon_master/steps/mechanic.rb` |
+| 5 | **Mechanic** | AI (mechanical path, non-combat or inactive combat) | `app/services/dungeon_master/steps/mechanic.rb` |
+| 5′ | **Combat GM** | AI (mechanical path, **active combat** — `combat_active?`) | `app/services/dungeon_master/steps/combat_gm.rb`, `templates/combat_gm.text.erb` |
 | 5a | **Momentum** | AI (non-mechanical path) | `app/services/dungeon_master/steps/momentum.rb` |
 | 5a.5 | **World Turn** | Code orchestration | `app/services/dungeon_master/steps/world_turn.rb`, `app/services/dungeon_master/world_turn/*.rb` |
 | 5a.5-i | **↳ npc_action** | AI ×N (parallel `/fan_out`; code applies sequentially) | `app/services/dungeon_master/steps/world_turn.rb`, `app/services/dungeon_master/world_turn/npc_action_prompt.rb` |
@@ -968,7 +969,8 @@ Interrupted queues (encounter, social scene, roll request) fall back to the accu
 | ParallelEvaluation (beacon) | ✅ AI ×6 | Per-domain intent classification via Node `/fan_out` |
 | ParallelEvaluation (mechanical_evaluation) | ✅ AI ×N | Sequential per-domain mechanical resolution via Node `/sequential` |
 | ParallelEvaluation (roll_qualifier) | ✅ AI ×N | Per-domain Take 10/20 eligibility + situational modifiers via Node `/fan_out` |
-| Mechanic | ✅ AI | Post-roll arbitration + structured mutations |
+| Mechanic | ✅ AI | Post-roll arbitration + structured mutations when combat is not active |
+| Combat GM | ✅ AI | Same role as Mechanic during **active combat** (battlefield slice + PF1e combat guidance); emits `battlefield_patches` + `action_economy_delta` |
 | Momentum | ✅ AI | Non-mechanical outcome |
 | World Turn (orchestration) | ❌ Code | Shared-snapshot NPC turn orchestration, sequential dice + mutation application in initiative order, combat advancement, and combat-end handling |
 | NPC Action (individual decisions) | ✅ AI ×N | One Node `/fan_out` batch (parallel AI) against the same live combat snapshot; code resolves and applies per NPC in order |
@@ -1048,7 +1050,7 @@ Every AI call produces an `AiLog` record containing:
 
 | Field | Description |
 |---|---|
-| `step` | Pipeline step name (intake, beacon, mechanical_evaluation, roll_qualifier, sanity_checker, sanity_checker_world, mechanic, momentum, social_expansion, chronicler, narrate, micro_context_update, macro_narrative_update) |
+| `step` | Pipeline step name (intake, beacon, mechanical_evaluation, roll_qualifier, sanity_checker, sanity_checker_world, mechanic, combat_gm, momentum, social_expansion, chronicler, narrate, micro_context_update, macro_narrative_update) |
 | `prompt_summary` | Truncated description of what was asked |
 | `raw_response` | The complete API response |
 | `parsed_response` | The parsed JSON |

@@ -54,7 +54,7 @@ module DungeonMaster
         pipeline: true,
       ),
       "combat_gm" => Entry.new(
-        token_budget: nil,
+        token_budget: 900,
         model_hint: "➡️ Capable model required for active combat adjudication (battlefield + PF1e) — e.g. o3-mini, gpt-5-mini.",
         pipeline: true,
       ),

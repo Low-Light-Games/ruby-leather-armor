@@ -10,9 +10,24 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_09_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_13_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "adventure_battlefields", force: :cascade do |t|
+    t.bigint "adventure_id", null: false
+    t.string "status", default: "active", null: false
+    t.string "topology", default: "square", null: false
+    t.jsonb "world", default: {}, null: false
+    t.jsonb "tokens", default: {}, null: false
+    t.jsonb "viewport", default: {}, null: false
+    t.integer "version", default: 1, null: false
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_id", "status"], name: "index_adventure_battlefields_on_adventure_id_and_status"
+    t.index ["adventure_id"], name: "index_adventure_battlefields_on_adventure_id"
+  end
 
   create_table "adventure_loops", force: :cascade do |t|
     t.bigint "adventure_id"
@@ -621,6 +636,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_09_120000) do
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true, where: "(provider IS NOT NULL)"
   end
 
+  add_foreign_key "adventure_battlefields", "adventures"
   add_foreign_key "adventure_loops", "adventures", on_delete: :nullify
   add_foreign_key "adventure_loops", "pipelines"
   add_foreign_key "adventure_messages", "adventures"

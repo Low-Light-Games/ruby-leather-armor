@@ -20,7 +20,7 @@ module DungeonMaster
   class PipelineEngine
     # Step mixins add private methods; order here is not execution order. Outer turn: phases →
     # ActionQueueRunner → `AdventureLoopResolution#resolve` per queued line. Inner path: ParallelEvaluation
-    # → (optional) SanityChecker + MechanicalEvaluation roll prep → Mechanic / TimeKeeper / …
+    # → (optional) SanityChecker + MechanicalEvaluation roll prep → Combat GM or Mechanic / TimeKeeper / …
     include Steps::Helpers
     include Steps::EvaluatorTransport
     include Steps::Intake
@@ -30,6 +30,7 @@ module DungeonMaster
     include Steps::SanityChecker
     include Steps::ParallelEvaluation
     include Steps::Mechanic
+    include Steps::CombatGm
     include Steps::Momentum
     include Steps::TimeKeeper
     include Steps::Stagehand

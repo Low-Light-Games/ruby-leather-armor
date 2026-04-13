@@ -7,6 +7,9 @@ Creature sheet (stats): <%= @creature_block %>
 === COMBAT ===
 <%= @combat_summary %>
 
+=== TACTICAL BATTLEFIELD ===
+<%= @battlefield_text %>
+
 === RECENT OUTCOME ===
 <%= @last_outcome %>
 
@@ -15,6 +18,8 @@ Choose one action for this NPC's turn: attack (melee or ranged against a valid t
 - Target must be "Player" or another participant name listed in combat.
 - For attack: provide attack modifier and damage dice (e.g. "1d6+2").
 - flee / surrender: set action accordingly; no damage.
+- If this NPC moves on the grid or shifts the scene, include `battlefield_patches` (same ops as Combat GM: move_token, shift_viewport, set_cells). Otherwise use an empty array.
+- Optional `slot_spends` (schema v2): when present, lists actions used this turn for logging / future Ruby validation — e.g. { "standard": true, "move": false }.
 
 Respond ONLY with valid JSON (no markdown):
 {
@@ -22,6 +27,8 @@ Respond ONLY with valid JSON (no markdown):
   "target": "Player or participant name or null",
   "attack_modifier": 0,
   "damage_dice": "1d6+1",
+  "battlefield_patches": [],
+  "slot_spends": {},
   "reasoning": "One short sentence"
 }
 ---USER_MESSAGE---

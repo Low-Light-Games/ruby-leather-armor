@@ -25,10 +25,12 @@ module DungeonMaster
 
         combat_summary = combat_ctx.except("participants").to_json
         participants_line = Array(combat_ctx["participants"]).map { |x| x["name"] }.join(", ")
+        battlefield_text = Battlefield::PromptSerializer.slice_for_adventure(adventure)
         system_prompt, user_msg = PromptRenderer.render_with_user_message("npc_action",
           npc_name: npc.name,
           creature_block: creature_block,
           combat_summary: "#{combat_summary}\nParticipants: #{participants_line}",
+          battlefield_text: battlefield_text.presence || "(no battlefield slice)",
           last_outcome: last_outcome.presence || "(none)")
 
         key = meta_step(npc, slot)

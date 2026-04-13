@@ -30,7 +30,9 @@ module DungeonMaster
             lines << "#{npc.name} takes no decisive action."
           end
 
-          { lines: lines, npc_muts: npc_muts, player_hp_delta: player_hp }
+          bf_patches = Array(parsed[:battlefield_patches]).map { |p| p.is_a?(Hash) ? p.deep_stringify_keys : p }
+
+          { lines: lines, npc_muts: npc_muts, player_hp_delta: player_hp, battlefield_patches: bf_patches }
         end
 
         private

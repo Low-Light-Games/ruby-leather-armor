@@ -13,6 +13,7 @@ class Adventure < ApplicationRecord
   has_many :pipeline_registry_entries, dependent: :destroy
   has_many :pipelines, dependent: :destroy
   has_many :creature_sheets, dependent: :destroy
+  has_many :adventure_battlefields, dependent: :destroy
   has_many :story_npcs, dependent: :destroy
   has_many :story_clues, dependent: :destroy
 
@@ -35,6 +36,10 @@ class Adventure < ApplicationRecord
 
   def skip_world_sanity_check?
     skip_world_sanity_check == true
+  end
+
+  def combat_active?
+    combat_context.is_a?(Hash) && combat_context["active"] == true
   end
 
   def effective_dm_setting(key)

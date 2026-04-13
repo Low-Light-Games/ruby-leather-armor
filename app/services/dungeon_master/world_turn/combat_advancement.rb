@@ -21,15 +21,27 @@ module DungeonMaster
         ctx = original_ctx.deep_stringify_keys
         ns = (next_state_slice || {}).deep_stringify_keys
         participants = Array(ctx["participants"]).map { |p| rebuild_participant_row(p, adventure: adventure, sheet: sheet) }
-        {
+        current_turn = ns.key?("current_turn") ? ns["current_turn"] : ctx["current_turn"]
+        active = ns.key?("active") ? ns["active"] : (ctx["active"] != false)
+        out = {
           "turn_order" => ctx["turn_order"],
           "terrain_notes" => ctx["terrain_notes"],
           "active_effects" => ctx["active_effects"],
           "participants" => participants,
           "round" => ns.key?("round") ? ns["round"] : ctx["round"],
-          "current_turn" => ns.key?("current_turn") ? ns["current_turn"] : ctx["current_turn"],
-          "active" => ns.key?("active") ? ns["active"] : (ctx["active"] != false)
+          "current_turn" => current_turn,
+          "active" => active
         }
+        out["battlefield_ref"] = ctx["battlefield_ref"] if ctx["battlefield_ref"].present?
+        out["last_battlefield_ref"] = ctx["last_battlefield_ref"] if ctx["last_battlefield_ref"].present?
+        if active && current_turn.present?
+          out["action_economy"] = DungeonMaster::Battlefield::ActionEconomy.build_for_turn_holder(
+            current_turn, combat_ctx: out.merge(ctx.slice("turn_order")), adventure: adventure, sheet: sheet
+          )
+        elsif ctx["action_economy"].present?
+          out["action_economy"] = ctx["action_economy"]
+        end
+        out
       end
 
       def build_full(adventure:, sheet:, overrides: {})
@@ -44,6 +56,9 @@ module DungeonMaster
           "terrain_notes" => ctx["terrain_notes"],
           "active_effects" => ctx["active_effects"]
         }
+        base["battlefield_ref"] = ctx["battlefield_ref"] if ctx["battlefield_ref"].present?
+        base["last_battlefield_ref"] = ctx["last_battlefield_ref"] if ctx["last_battlefield_ref"].present?
+        base["action_economy"] = ctx["action_economy"] if ctx["action_economy"].present?
         Utilities::HashMerge.deep_merge_presence(base, overrides.deep_stringify_keys)
       end
 

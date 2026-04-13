@@ -34,6 +34,12 @@ module DungeonMaster
         when :dm_query
           [persist_message(role: "dm", content: result[:answer], message_type: "dm_query")]
 
+        when :battlefield_version_mismatch
+          [persist_message(
+            role: "system",
+            content: result[:message].presence || "Combat map changed since these rolls were requested. Submit again using the updated prompt.",
+            message_type: "system_notice")]
+
         when :awaiting_rolls
           meta = DungeonMaster::Rolls::RollRequestMetadata.build_persist_metadata(result, @adventure)
           [persist_message(

@@ -85,8 +85,11 @@ flowchart TB
     ROLLCHECK -->|no| FINISH_RES
 
     subgraph finish_res["finish_resolution — after rolls or auto-success"]
-        FINISH_RES[resolve_npc_actions  — code] --> MECHANIC[run_mechanic  ☆ AI]
-        MECHANIC --> APPLY_MUT[apply_mutations  — code]
+        FINISH_RES[resolve_npc_actions  — code] --> CGM{combat_active?}
+        CGM -->|yes| COMBAT_GM[run_combat_gm  ☆ AI]
+        CGM -->|no| MECHANIC[run_mechanic  ☆ AI]
+        COMBAT_GM --> APPLY_MUT[apply_mutations  — code]
+        MECHANIC --> APPLY_MUT
         APPLY_MUT --> TK_MECH[run_time_keeper]
     end
 
