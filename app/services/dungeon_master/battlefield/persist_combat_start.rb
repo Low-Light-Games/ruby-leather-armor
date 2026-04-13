@@ -22,7 +22,7 @@ module DungeonMaster
             bf = adventure.adventure_battlefields.create!(
               status: "active",
               topology: "square",
-              world: default_world,
+              world: default_world(adventure),
               tokens: desired_tokens,
               viewport: viewport_for_tokens(desired_tokens),
               version: 1
@@ -53,8 +53,13 @@ module DungeonMaster
           sk == dk && dk.any?
         end
 
-        def default_world
-          { "cells" => {}, "note" => "Sparse square grid; diagonal moves cost 1.5 squares (half-square units in engine)." }
+        def default_world(adventure = nil)
+          note_parts = ["Sparse square grid; diagonal moves cost 1.5 squares (half-square units in engine)."]
+          if adventure
+            note_parts << "Location: #{adventure.current_location&.name}." if adventure.current_location&.name.present?
+            note_parts << "Scene: #{adventure.scene_summary}." if adventure.scene_summary.present?
+          end
+          { "cells" => {}, "note" => note_parts.join(" ") }
         end
 
         def default_viewport

@@ -27,12 +27,6 @@ module DungeonMaster
       Presenters::AdventureSheetPromptPresenter.new(sheet).full
     end
 
-    def combat(sheet)
-      raise ArgumentError, "CharacterBlock requires a sheet" unless sheet
-
-      Presenters::AdventureSheetPromptPresenter.new(sheet).combat
-    end
-
     def social(sheet)
       raise ArgumentError, "CharacterBlock requires a sheet" unless sheet
 

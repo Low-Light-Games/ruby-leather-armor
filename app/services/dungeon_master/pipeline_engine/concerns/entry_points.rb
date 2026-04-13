@@ -4,6 +4,20 @@ module DungeonMaster
   class PipelineEngine
     module Concerns
       # Public resume/run API, prompt phase chain, DM-query branch, mid-queue continuation.
+      #
+      # run_initiative notes:
+      #   - PersistCombatStart atomically archives stale battlefields and creates a fresh one.
+      #   - When NPCs outroll the player (current_turn != "Player"), maybe_run_world_turn fires
+      #     before any remaining actions. result[:mutations] is enriched by world turn.
+      #   - The remaining queue is skipped entirely when result[:player_death] or
+      #     result[:player_incapacitated] — terminal_combat_result? guards both branches.
+      #   - Post-world-turn mutations (result[:mutations]) are always forwarded to
+      #     run_remaining_queue; never the pre-world-turn base_mutations.
+      #
+      # run_rolls notes:
+      #   - continue_or_narrate_after_resume also checks terminal_combat_result? before
+      #     running the remaining queue, so run_rolls cannot continue a queue after a lethal
+      #     world turn triggered by finish_resolution.
       module EntryPoints
         def run_prompt(player_input, mode: nil)
           state = { player_input: player_input, mode: mode }
@@ -38,17 +52,18 @@ module DungeonMaster
           result = { status: :resolved, intent: intent, mutations: base_mutations }
 
           # If any NPC outrolled the player on initiative, they act now — before the player's
-          # first move. World turn handles its own combat-end check and sets :player_death /
-          # :player_incapacitated on the result when needed.
+          # first move. World turn enriches result[:mutations] with combat advancement and sets
+          # :player_death / :player_incapacitated on the result when needed.
           npcs_go_first = combat_data["current_turn"] != Utilities::CombatTurnCalculator::PLAYER_NAME
           result = maybe_run_world_turn(result) if npcs_go_first
 
           remaining = remaining_actions_from(metadata)
-          if remaining.any?
+          if remaining.any? && !terminal_combat_result?(result)
+            # Use post-world-turn mutations so combat advancement carries through the queue.
             run_remaining_queue(remaining,
               accumulated_intents: [intent],
-              accumulated_mutations: [base_mutations].compact)
-          elsif npcs_go_first
+              accumulated_mutations: [result[:mutations]].compact)
+          elsif npcs_go_first || terminal_combat_result?(result)
             # World turn appended NPC action prose to pipeline_outcome; narrate it so
             # the player sees what the enemies did before their first move.
             run_accumulated_narrative_phase([result])
@@ -123,18 +138,26 @@ module DungeonMaster
         end
 
         # After rolls/initiative resume: either run the rest of the queue or one accumulated narrate pass.
+        # Never continues the queue when the player is dead or incapacitated — terminal state wins.
         def continue_or_narrate_after_resume(metadata, accumulated_row:, only_continue_if_resolved: false)
           remaining = remaining_actions_from(metadata)
           status = accumulated_row[:status]
           intent = accumulated_row[:intent]
           mutations = accumulated_row[:mutations]
-          if remaining.any? && (!only_continue_if_resolved || status == :resolved)
+          queue_allowed = remaining.any? &&
+                          (!only_continue_if_resolved || status == :resolved) &&
+                          !terminal_combat_result?(accumulated_row)
+          if queue_allowed
             run_remaining_queue(remaining,
               accumulated_intents: [intent],
               accumulated_mutations: [mutations].compact)
           else
             run_accumulated_narrative_phase([accumulated_row])
           end
+        end
+
+        def terminal_combat_result?(result)
+          result[:player_death] || result[:player_incapacitated]
         end
 
         def apply_prompt_phase(phase, state)

@@ -203,19 +203,24 @@ flowchart LR
         RR1 --> RR2[Rolls::RollRequestMetadata.resume_inputs — rebuild intent + merged]
         RR2 --> RR3[finish_resolution]
         RR3 --> RR4["NPC rolls → Mechanic ☆ AI → apply_mutations → TimeKeeper"]
-        RR4 --> RR5{More actions in queue?}
-        RR5 -->|yes| RR6[run_remaining_queue]
-        RR5 -->|no| RR7[run_accumulated_narrative_phase]
+        RR4 --> RR5{"More actions in queue?\n(skipped if player_death/incapacitated)"}
+        RR5 -->|"yes — player alive"| RR6[run_remaining_queue]
+        RR5 -->|"no, or terminal"| RR7[run_accumulated_narrative_phase]
         RR6 --> PHASE[Output phase]
         RR7 --> PHASE
     end
 
     subgraph init_resume["Initiative submitted — run_initiative"]
-        II[restore_paused_loop!] --> II1[Warmaster.finalize_combat!  — code]
-        II1 --> II2[set turn order by initiative]
-        II2 --> II3{More actions in queue?}
-        II3 -->|yes| II4[run_remaining_queue]
-        II3 -->|no| II5[run_accumulated_narrative_phase]
+        II[restore_paused_loop!] --> II1[PersistCombatStart — atomic bf row + context]
+        II1 --> II2["npcs_go_first? — code (compare current_turn)"]
+        II2 -->|"yes — NPCs outrolled player"| II_WT["maybe_run_world_turn — NPC actions before player's first move\n(sets :player_death / :player_incapacitated on result)"]
+        II_WT --> II3
+        II2 -->|no| II3
+        II3{"player_death / incapacitated\n or remaining_actions?"}
+        II3 -->|"terminal (death/incap)"| II5[run_accumulated_narrative_phase]
+        II3 -->|"remaining actions (alive)"| II4["run_remaining_queue\n(uses post-world-turn mutations)"]
+        II3 -->|"npcs acted, no queue"| II5
+        II3 -->|"player first, no queue"| II_SILENT[Return :combat_initialized]
         II4 --> PHASE
         II5 --> PHASE
     end
@@ -576,9 +581,9 @@ Has a special fallback: if the model returns raw text instead of JSON, the text 
 **Initiative resumption (`run_initiative`):**
 
 1. `restore_paused_loop!` — finds the paused loop.
-2. `Warmaster.finalize_combat!` — writes `adventure.combat_context` with player + creature initiatives, sorted turn order.
-3. Reconstructs intent, mutations, and remaining actions from metadata.
-4. If more actions in queue → `run_remaining_queue`. Otherwise → `run_accumulated_narrative_phase`.
+2. `Battlefield::PersistCombatStart.call` — atomic: archives any stale active battlefield rows, creates a fresh battlefield row seeded with `scene_summary` + `current_location`, writes `combat_context` with sorted turn order + `battlefield_ref`.
+3. **NPCs-go-first check:** if `current_turn != "Player"` (NPCs outrolled the player on initiative), `maybe_run_world_turn` runs immediately — NPC actions resolve before the player's first move. World turn enriches `result[:mutations]` and sets `:player_death` / `:player_incapacitated` on the result if needed.
+4. If remaining actions exist and the player is alive → `run_remaining_queue` with **post-world-turn** `result[:mutations]` (not the pre-world-turn base). If the player is dead/incapacitated → `run_accumulated_narrative_phase` regardless of queue. If no remaining actions → `run_accumulated_narrative_phase` (when NPCs acted) or silent `:combat_initialized` return (when player goes first).
 
 In both resumptions, the output phase reads `pipeline_outcome` from all `AdventureLoop` rows for the current `registry_entry_uuid` — no in-memory seed accumulation is needed across the pause boundary.
 

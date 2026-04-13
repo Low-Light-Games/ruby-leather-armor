@@ -2,9 +2,19 @@
 
 module DungeonMaster
   module Battlefield
-    # Just-in-time battlefield row for adventures that enter combat without going through
-    # initiative (e.g. stories starting mid-fight, admin-seeded combat_context, or legacy saves).
-    # Idempotent: no-op when an active row already matches battlefield_ref.
+    # Bootstrap / repair helper: ensures exactly one active battlefield row whose token set
+    # matches the current combat participants, and that combat_context.battlefield_ref points to it.
+    #
+    # Used by DM query, roll-pause metadata, and prompt serialisation — i.e., any path that reads
+    # battlefield state without going through PersistCombatStart (initiative flow).
+    #
+    # Resolution order (all inside with_lock):
+    #   1. Archive active rows whose token set doesn't match current participants.
+    #   2. If multiple matching active rows remain, keep the one battlefield_ref points at
+    #      (or the oldest) and archive the rest.
+    #   3. If battlefield_ref already points at the surviving active+matching row → no-op.
+    #   4. If a surviving matching row exists but battlefield_ref is stale/missing → reattach ref.
+    #   5. If no matching active row survives → call PersistCombatStart to create a fresh one.
     class EnsureForActiveCombat
       class << self
         def call(adventure:, sheet: nil)

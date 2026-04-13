@@ -84,6 +84,14 @@ module DungeonMaster
           # Code resolution applies mutations in initiative order against live DB state.
           # reload_player_sheet! before resolve; reload_world_turn_records! after apply so HP clamps per hit and combat-end sees fresh creatures.
           acting_npcs.each_with_index do |npc, idx|
+            # Re-check liveness from DB before resolving — a prior NPC action in this round
+            # could have incapacitated this NPC (e.g. via a reaction or AoO patch).
+            live_sheet = @adventure.creature_sheets.find_by(id: npc.creature_sheet_id)
+            if live_sheet.nil? || live_sheet.hp <= 0 ||
+                (Array(live_sheet.conditions) & %w[dead fled surrendered]).any?
+              next
+            end
+
             reload_player_sheet!
             entry = evaluator_fan_out_result!(by_step, step_keys[idx], "npc_action")
             parsed = (entry["parsed_response"] || {}).deep_symbolize_keys

@@ -19,7 +19,7 @@ RSpec.describe DungeonMaster::CharacterBlock, type: :model do
     end
 
     it "does not include Active Conditions line in combat block" do
-      text = described_class.combat(sheet)
+      text = described_class.for(sheet, category: "combat")
       expect(text).not_to include("Active Conditions")
     end
 
@@ -43,7 +43,7 @@ RSpec.describe DungeonMaster::CharacterBlock, type: :model do
     end
 
     it "includes Active Conditions in combat block" do
-      text = described_class.combat(sheet)
+      text = described_class.for(sheet, category: "combat")
       expect(text).to include("Active Conditions: fatigued")
     end
 

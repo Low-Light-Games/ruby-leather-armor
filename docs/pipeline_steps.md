@@ -74,24 +74,7 @@ We accepted this because correctness and debuggability matter more than
 speed for a turn-based game, and per-step model selection recovers most
 of the cost overhead by using cheap models on cheap steps.
 
-**Standard path:** UnifiedEvaluation collapses the evaluation phase
-(domain intent classification + mechanical roll determination + Take 10/20
-eligibility) into a single AI call, while preserving the rest of the
-pipeline (sanity checks, verdict, time keeping, narration, context updates
-as separate steps). One model handles all 6 domains in one pass, delivering
-better coherence and eliminating roll duplication without sacrificing
-debugging granularity for the non-evaluation steps.
-
-| | Unified Evaluation |
-|---|---|
-| Evaluation calls | 1 |
-| Other steps | Separate |
-| Per-domain model selection | No (one model for eval) |
-| Cross-domain coherence | High (single context) |
-| Roll deduplication | AI avoids duplicates natively |
-| Prompt size | Large (all contexts + rules) |
-| Recommended model | gpt-5-mini (floor: gpt-4.1-mini, o4-mini) |
-| Toggle | always active |
+**Current path:** `Steps::ParallelEvaluation` (via `EVALUATOR_URL`, default `http://evaluator:3001`) is the **only** evaluation route. `AdventureLoopResolution#resolve` calls it unconditionally. UnifiedEvaluation has been retired — see Decision 4.
 
 ### 2. Six micro-contexts instead of a single context blob
 
@@ -326,7 +309,7 @@ to understand any single part.
 
 The separation means:
 - `Pipeline#run_prompt` reads like a linear script: intake,
-  then branch, then player_interpreter, then beacon, then mechanics gate, etc.
+  then branch, then beacon, then mechanics gate, etc.
   A developer can read the full flow in ~40 lines.
 - The service's `process_player_prompt` is equally clear: persist the
   player message, run the pipeline, map the result to messages, catch
@@ -355,7 +338,7 @@ cheap steps or under-serving expensive ones. Per-step selection lets you
 put the budget where it matters.
 
 This also future-proofs for fine-tuning: steps with consistent schemas
-(intake, player_interpreter, beacon, context updates) are strong
+(intake, beacon, context updates) are strong
 fine-tuning candidates. You can fine-tune a cheap model on logged examples
 and slot it in for one step without affecting others.
 
@@ -1021,7 +1004,7 @@ All AI steps follow the same error handling pattern:
    returns `finish_reason: length`. This is a hard error for critical
    steps -- even truncated non-empty responses are rejected. The error is
    logged with `status: "token_budget_exceeded"` and re-raised (for
-   intake, player_interpreter, mechanical evaluation, mechanic, momentum, narrate) or
+   intake, mechanical evaluation, mechanic, momentum, narrate) or
    swallowed with an empty result (for context updates and capability
    guardrail, which are non-critical).
 
