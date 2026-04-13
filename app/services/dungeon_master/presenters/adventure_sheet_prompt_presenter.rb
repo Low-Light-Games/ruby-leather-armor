@@ -37,56 +37,49 @@ module DungeonMaster
       end
 
       def full_text
-        ds = @sheet.derived_stats
-        parts = []
-        parts << identity_line
-        parts << conditions_line
-        parts << ability_scores_line
-        parts << "HP: #{@sheet.hp}/#{@sheet.max_hp}  |  Currency: #{format_currency(@sheet.currency)}"
-        parts << derived_combat_block(ds)
-        parts << skills_block
-        parts << feats_block
-        parts << spells_block
-        parts << items_block
-        parts.reject(&:blank?).join("\n")
+        compose([
+          *base_parts,
+          ability_scores_line,
+          hp_currency_line,
+          derived_combat_block,
+          skills_block,
+          feats_block,
+          spells_block,
+          items_block
+        ])
       end
 
       def combat_text
-        ds = @sheet.derived_stats
-        parts = []
-        parts << identity_line
-        parts << conditions_line
-        parts << ability_scores_line
-        parts << "HP: #{@sheet.hp}/#{@sheet.max_hp}  |  Currency: #{format_currency(@sheet.currency)}"
-        parts << derived_combat_block(ds)
-        parts << feats_block(categories: %w[combat general])
-        parts << spells_block
-        parts << items_block(types: COMBAT_ITEM_TYPES, equipped_only: true)
-        parts.reject(&:blank?).join("\n")
+        compose([
+          *base_parts,
+          ability_scores_line,
+          hp_currency_line,
+          derived_combat_block,
+          feats_block(categories: %w[combat general]),
+          spells_block,
+          items_block(types: COMBAT_ITEM_TYPES, equipped_only: true)
+        ])
       end
 
       def social_text
-        parts = []
-        parts << identity_line
-        parts << conditions_line
-        parts << "CHA: #{@sheet.charisma}, WIS: #{@sheet.wisdom}, INT: #{@sheet.intelligence}  |  Level: #{@sheet.level}"
-        parts << skills_block(filter: SOCIAL_SKILLS)
-        parts << feats_block
-        parts << items_block(types: %w[wondrous], equipped_only: true)
-        parts.reject(&:blank?).join("\n")
+        compose([
+          *base_parts,
+          "CHA: #{@sheet.charisma}, WIS: #{@sheet.wisdom}, INT: #{@sheet.intelligence}  |  Level: #{@sheet.level}",
+          skills_block(filter: SOCIAL_SKILLS),
+          feats_block,
+          items_block(types: %w[wondrous], equipped_only: true)
+        ])
       end
 
       def traversal_text
-        ds = @sheet.derived_stats
-        parts = []
-        parts << identity_line
-        parts << conditions_line
-        parts << "STR: #{@sheet.strength}, DEX: #{@sheet.dexterity}, CON: #{@sheet.constitution}, WIS: #{@sheet.wisdom}  |  Level: #{@sheet.level}"
-        parts << "Speed: #{ds['speed'] || 30} ft  |  Encumbrance: #{ds['encumbrance'] || 'light'}  |  Carry: #{format_carry(ds)}"
-        parts << skills_block(filter: TRAVERSAL_SKILLS)
-        parts << feats_block
-        parts << items_block
-        parts.reject(&:blank?).join("\n")
+        compose([
+          *base_parts,
+          "STR: #{@sheet.strength}, DEX: #{@sheet.dexterity}, CON: #{@sheet.constitution}, WIS: #{@sheet.wisdom}  |  Level: #{@sheet.level}",
+          traversal_movement_line,
+          skills_block(filter: TRAVERSAL_SKILLS),
+          feats_block,
+          items_block
+        ])
       end
 
       alias full full_text
@@ -96,8 +89,25 @@ module DungeonMaster
 
       private
 
-      def identity_line
-        identity
+      def base_parts
+        [identity, conditions_line]
+      end
+
+      def compose(parts)
+        parts.reject(&:blank?).join("\n")
+      end
+
+      def derived_stats
+        @derived_stats ||= @sheet.derived_stats
+      end
+
+      def hp_currency_line
+        "HP: #{@sheet.hp}/#{@sheet.max_hp}  |  Currency: #{format_currency(@sheet.currency)}"
+      end
+
+      def traversal_movement_line
+        ds = derived_stats
+        "Speed: #{ds['speed'] || 30} ft  |  Encumbrance: #{ds['encumbrance'] || 'light'}  |  Carry: #{format_carry(ds)}"
       end
 
       def conditions_line
@@ -111,7 +121,8 @@ module DungeonMaster
           "INT: #{@sheet.intelligence}, WIS: #{@sheet.wisdom}, CHA: #{@sheet.charisma}"
       end
 
-      def derived_combat_block(ds)
+      def derived_combat_block
+        ds = derived_stats
         return "" if ds.blank?
 
         <<~STATS.strip
@@ -124,7 +135,7 @@ module DungeonMaster
       end
 
       def skills_block(filter: nil)
-        ds = @sheet.derived_stats
+        ds = derived_stats
         return "" if ds.blank? || ds["skills"].blank?
 
         skills = ds["skills"]
@@ -136,16 +147,14 @@ module DungeonMaster
 
       def feats_block(categories: nil)
         feats = @sheet.adventure_sheet_feats.includes(:feat_definition).to_a
-        if categories
-          feats = feats.select { |f| f.feat_definition && categories.include?(f.feat_definition.category) }
-        end
+        feats = feats.select { |f| f.feat_definition && categories.include?(f.feat_definition.category) } if categories
         return "" if feats.empty?
 
-        lines = feats.map do |f|
+        lines = feats.filter_map do |f|
           fd = f.feat_definition
-          next nil unless fd
+          next unless fd
           f.choice.present? ? "#{fd.name} (#{f.choice})" : fd.name
-        end.compact
+        end
 
         "Feats: #{lines.join(', ')}"
       end
@@ -154,7 +163,7 @@ module DungeonMaster
         spells = @sheet.adventure_sheet_spells.includes(:spell_definition).to_a
         return "" if spells.empty?
 
-        lines = spells.map { |s| s.spell_definition&.name }.compact
+        lines = spells.filter_map { |s| s.spell_definition&.name }
         "Spells:\n" + lines.map { |name| "  - #{name}" }.join("\n")
       end
 
@@ -164,13 +173,13 @@ module DungeonMaster
         items = items.select { |i| i.item_definition && types.include?(i.item_definition.item_type) } if types
         return "" if items.empty?
 
-        lines = items.map do |i|
-          next nil unless i.item_definition
+        lines = items.filter_map do |i|
+          next unless i.item_definition
           line = i.item_definition.name
           line += " (x#{i.quantity})" if i.quantity && i.quantity > 1
           line += " [equipped]" if i.equipped?
           line
-        end.compact
+        end
 
         "Items: #{lines.join(', ')}"
       end
