@@ -7,9 +7,6 @@ module DungeonMaster
       module_function
 
       def slice_for_adventure(adventure)
-        EnsureForActiveCombat.call(adventure: adventure)
-        adventure.reload
-
         ctx = adventure.combat_context
         return nil unless ctx.is_a?(Hash)
 

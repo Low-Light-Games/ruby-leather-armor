@@ -12,6 +12,8 @@ module DungeonMaster
 
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
         raise AiError, "Combat GM reached without a character sheet — cannot resolve combat" unless @sheet
+        Battlefield::EnsureForActiveCombat.call(adventure: @adventure, sheet: @sheet)
+        @adventure.reload
 
         char_block = CharacterBlock.full(@sheet)
         all_roll_results = [roll_results, npc_results].reject(&:blank?).join("\n\n")
