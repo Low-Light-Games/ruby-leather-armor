@@ -6,7 +6,7 @@ module DungeonMaster
     module ActionEconomy
       module_function
 
-      def build_for_turn_holder(holder_name, combat_ctx:, adventure:, sheet:)
+      def build_for_turn_holder(holder_name, combat_ctx:)
         h = holder_name.to_s
         {
           "round" => combat_ctx["round"].to_i,

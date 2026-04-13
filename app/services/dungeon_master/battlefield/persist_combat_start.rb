@@ -31,9 +31,7 @@ module DungeonMaster
 
             data["battlefield_ref"] = ref
             holder = data["current_turn"].presence || DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME
-            data["action_economy"] ||= ActionEconomy.build_for_turn_holder(
-              holder, combat_ctx: data, adventure: adventure, sheet: sheet
-            )
+            data["action_economy"] ||= ActionEconomy.build_for_turn_holder(holder, combat_ctx: data)
             adventure.update!(combat_context: data)
           end
           adventure.reload

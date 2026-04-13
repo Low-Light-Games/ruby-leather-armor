@@ -36,7 +36,7 @@ module DungeonMaster
         out["last_battlefield_ref"] = ctx["last_battlefield_ref"] if ctx["last_battlefield_ref"].present?
         if active && current_turn.present?
           out["action_economy"] = DungeonMaster::Battlefield::ActionEconomy.build_for_turn_holder(
-            current_turn, combat_ctx: out.merge(ctx.slice("turn_order")), adventure: adventure, sheet: sheet
+            current_turn, combat_ctx: out.merge(ctx.slice("turn_order"))
           )
         elsif ctx["action_economy"].present?
           out["action_economy"] = ctx["action_economy"]
