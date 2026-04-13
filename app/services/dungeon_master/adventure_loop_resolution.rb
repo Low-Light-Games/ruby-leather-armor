@@ -136,8 +136,10 @@ module DungeonMaster
       system_prompt = PromptRenderer.render("social_expansion",
         loop: @loop,
         location: @adventure.current_location&.name || "the area",
+        location_description: @adventure.current_location&.description,
+        traversal_context: @adventure.traversal_context,
         social_context: @adventure.social_context,
-        character_block: CharacterBlock.full(@sheet),
+        character_block: CharacterBlock.social(@sheet),
         npc_names: npc_names,
         domain_interpretation: social_beacon[:domain_interpretation] || intent[:intention])
 
