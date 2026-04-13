@@ -12,6 +12,8 @@ module DungeonMaster
     # which of the six domains to update. No upstream affected_contexts signal is
     # used — the AI reads the outcome and makes that judgment itself.
     module ContextUpdate
+      DEEP_MERGE_CONTEXT_FIELDS = %w[combat].freeze
+
       private
 
       def run_context_updates(what_happened, mutations, macro_significant: false)
@@ -144,7 +146,7 @@ module DungeonMaster
           next unless raw.present?
 
           val = raw
-          if field == "combat" && val.is_a?(Hash)
+          if DEEP_MERGE_CONTEXT_FIELDS.include?(field) && val.is_a?(Hash)
             existing = (@adventure.public_send(key) || {}).deep_stringify_keys
             val = existing.deep_merge(val.deep_stringify_keys)
           end
