@@ -35,6 +35,75 @@ RSpec.describe DungeonMaster::Battlefield::EnsureForActiveCombat, type: :service
     expect(adventure.adventure_battlefields.where(status: "active").count).to eq(1)
   end
 
+  it "reattaches to an existing active row when battlefield_ref is missing" do
+    bf = adventure.adventure_battlefields.create!(
+      adventure: adventure,
+      status: "active",
+      topology: "square",
+      world: { "cells" => {} },
+      tokens: { "player" => { "label" => "P", "x" => 0, "y" => 0 } },
+      viewport: { "min_x" => 0, "min_y" => 0, "width" => 40, "height" => 40 },
+      version: 1
+    )
+
+    adventure.update!(combat_context: {
+      "active" => true,
+      "round" => 1,
+      "current_turn" => "Player",
+      "turn_order" => ["Player", "Goblin"],
+      "participants" => [
+        { "name" => "Player", "type" => "player", "hp" => 10, "max_hp" => 10, "initiative" => 15, "conditions" => [] },
+        { "name" => "Goblin", "type" => "npc", "hp" => 5, "max_hp" => 5, "initiative" => 10, "conditions" => [] }
+      ],
+      "terrain_notes" => nil,
+      "active_effects" => []
+    })
+
+    described_class.call(adventure: adventure.reload, sheet: sheet)
+    adventure.reload
+    expect(adventure.combat_context["battlefield_ref"]["id"]).to eq(bf.id)
+    expect(adventure.adventure_battlefields.where(status: "active").count).to eq(1)
+  end
+
+  it "dedupes multiple active rows, keeps oldest, and attaches ref" do
+    bf1 = adventure.adventure_battlefields.create!(
+      adventure: adventure,
+      status: "active",
+      topology: "square",
+      world: { "cells" => {} },
+      tokens: {},
+      viewport: { "min_x" => 0, "min_y" => 0, "width" => 40, "height" => 40 },
+      version: 1
+    )
+    adventure.adventure_battlefields.create!(
+      adventure: adventure,
+      status: "active",
+      topology: "square",
+      world: { "cells" => {} },
+      tokens: {},
+      viewport: { "min_x" => 0, "min_y" => 0, "width" => 40, "height" => 40 },
+      version: 1
+    )
+
+    adventure.update!(combat_context: {
+      "active" => true,
+      "round" => 1,
+      "current_turn" => "Player",
+      "turn_order" => ["Player"],
+      "participants" => [
+        { "name" => "Player", "type" => "player", "hp" => 10, "max_hp" => 10, "initiative" => 10, "conditions" => [] }
+      ],
+      "terrain_notes" => nil,
+      "active_effects" => []
+    })
+
+    described_class.call(adventure: adventure.reload, sheet: sheet)
+    adventure.reload
+    expect(adventure.adventure_battlefields.where(status: "active").count).to eq(1)
+    expect(adventure.adventure_battlefields.where(status: "archived").count).to eq(1)
+    expect(adventure.combat_context["battlefield_ref"]["id"]).to eq(bf1.id)
+  end
+
   it "is a no-op when an active battlefield row already exists" do
     combat_data = {
       "active" => true,

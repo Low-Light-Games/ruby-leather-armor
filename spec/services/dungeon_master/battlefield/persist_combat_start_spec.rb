@@ -38,4 +38,14 @@ RSpec.describe DungeonMaster::Battlefield::PersistCombatStart, type: :service do
     expect(bf.version).to eq(1)
     expect(bf.tokens).to have_key("player")
   end
+
+  it "reuses the active battlefield row on a second call (idempotent combat start)" do
+    described_class.call(adventure: adventure, combat_data: combat_data, sheet: sheet)
+    first_id = adventure.reload.combat_context["battlefield_ref"]["id"]
+
+    described_class.call(adventure: adventure.reload, combat_data: combat_data, sheet: sheet)
+    adventure.reload
+    expect(adventure.adventure_battlefields.where(status: "active").count).to eq(1)
+    expect(adventure.combat_context["battlefield_ref"]["id"]).to eq(first_id)
+  end
 end

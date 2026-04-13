@@ -23,6 +23,23 @@ module DungeonMaster
               next if bf&.status == "active"
             end
 
+            actives = adventure.adventure_battlefields.where(status: "active").order(:id).to_a
+            if actives.many?
+              actives.drop(1).each(&:archive!)
+            end
+            keeper = actives.first
+
+            if keeper
+              ctx2 = ctx.deep_dup.deep_stringify_keys
+              ctx2["battlefield_ref"] = {
+                "id" => keeper.id,
+                "version" => keeper.version,
+                "topology" => keeper.topology
+              }
+              adventure.update!(combat_context: ctx2)
+              next
+            end
+
             data = ctx.deep_dup.deep_stringify_keys
             data.delete("battlefield_ref")
             PersistCombatStart.call(adventure: adventure, combat_data: data, sheet: sheet)

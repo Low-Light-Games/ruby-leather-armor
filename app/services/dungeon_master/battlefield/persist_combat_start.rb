@@ -11,16 +11,24 @@ module DungeonMaster
           raise ArgumentError, "combat_data must be a Hash" unless data.is_a?(Hash)
 
           Adventure.transaction do
-            tokens = build_tokens_from_participants(data["participants"])
-            bf = adventure.adventure_battlefields.create!(
-              status: "active",
-              topology: "square",
-              world: default_world,
-              tokens: tokens,
-              viewport: viewport_for_tokens(tokens),
-              version: 1
-            )
-            ref = { "id" => bf.id, "version" => bf.version, "topology" => bf.topology }
+            adventure.lock!
+
+            existing = adventure.adventure_battlefields.where(status: "active").order(:id).first
+            ref = if existing
+                    { "id" => existing.id, "version" => existing.version, "topology" => existing.topology }
+                  else
+                    tokens = build_tokens_from_participants(data["participants"])
+                    bf = adventure.adventure_battlefields.create!(
+                      status: "active",
+                      topology: "square",
+                      world: default_world,
+                      tokens: tokens,
+                      viewport: viewport_for_tokens(tokens),
+                      version: 1
+                    )
+                    { "id" => bf.id, "version" => bf.version, "topology" => bf.topology }
+                  end
+
             data["battlefield_ref"] = ref
             holder = data["current_turn"].presence || DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME
             data["action_economy"] ||= ActionEconomy.build_for_turn_holder(
