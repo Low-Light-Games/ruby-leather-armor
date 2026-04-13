@@ -63,15 +63,7 @@ module DungeonMaster
       end
 
       def rebuild_participant_row(p, adventure:, sheet:)
-        c = Utilities::Combatant.from_context_hash(p)
-        if c.player? && sheet
-          Utilities::Combatant.from_player_sheet(sheet, initiative: c.initiative).to_context_hash
-        elsif c.creature_sheet_id.present?
-          cs = adventure.creature_sheets.find_by(id: c.creature_sheet_id)
-          cs ? Utilities::Combatant.from_creature_sheet(cs, initiative: c.initiative).to_context_hash : c.to_context_hash
-        else
-          c.to_context_hash
-        end
+        Utilities::Combatant.refresh_from_live_sources(p, adventure: adventure, sheet: sheet)
       end
     end
   end

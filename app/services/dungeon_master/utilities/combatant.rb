@@ -113,6 +113,19 @@ module DungeonMaster
           position: h["position"]
         )
       end
+
+      def self.refresh_from_live_sources(hash, adventure:, sheet:)
+        combatant = from_context_hash(hash)
+
+        if combatant.player? && sheet
+          from_player_sheet(sheet, initiative: combatant.initiative).to_context_hash
+        elsif combatant.creature_sheet_id.present?
+          creature = adventure.creature_sheets.find_by(id: combatant.creature_sheet_id)
+          creature ? from_creature_sheet(creature, initiative: combatant.initiative).to_context_hash : combatant.to_context_hash
+        else
+          combatant.to_context_hash
+        end
+      end
     end
   end
 end
