@@ -39,14 +39,15 @@ RSpec.describe DungeonMaster::Battlefield::PersistCombatStart, type: :service do
     expect(bf.tokens).to have_key("player")
   end
 
-  it "reuses the active battlefield row on a second call (idempotent combat start)" do
+  it "archives the prior active row and creates a fresh battlefield on each combat start" do
     described_class.call(adventure: adventure, combat_data: combat_data, sheet: sheet)
     first_id = adventure.reload.combat_context["battlefield_ref"]["id"]
 
     described_class.call(adventure: adventure.reload, combat_data: combat_data, sheet: sheet)
     adventure.reload
     expect(adventure.adventure_battlefields.where(status: "active").count).to eq(1)
-    expect(adventure.combat_context["battlefield_ref"]["id"]).to eq(first_id)
+    expect(adventure.combat_context["battlefield_ref"]["id"]).not_to eq(first_id)
+    expect(adventure.adventure_battlefields.find(first_id).status).to eq("archived")
   end
 
   it "archives a stale active row when participant token set changes, then creates a fresh battlefield" do

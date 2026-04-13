@@ -19,6 +19,14 @@ module DungeonMaster
 
             ref = ctx["battlefield_ref"]
             ref_id = ref["id"].to_i if ref.is_a?(Hash) && ref["id"].present?
+            participants = Array(ctx["participants"])
+            token_match = ->(bf) { PersistCombatStart.same_token_set_as_participants?(bf.tokens, participants) }
+
+            actives = adventure.adventure_battlefields.where(status: "active").order(:id).to_a
+            actives.each do |bf|
+              bf.archive! unless token_match.call(bf)
+            end
+            adventure.reload
 
             actives = adventure.adventure_battlefields.where(status: "active").order(:id).to_a
             if actives.many?
@@ -30,12 +38,12 @@ module DungeonMaster
 
             if ref_id&.positive?
               bf = adventure.adventure_battlefields.find_by(id: ref_id)
-              next if bf&.status == "active"
+              next if bf&.status == "active" && token_match.call(bf)
             end
 
             keeper = adventure.adventure_battlefields.where(status: "active").order(:id).first
 
-            if keeper
+            if keeper && token_match.call(keeper)
               ctx2 = ctx.deep_dup.deep_stringify_keys
               ctx2["battlefield_ref"] = {
                 "id" => keeper.id,

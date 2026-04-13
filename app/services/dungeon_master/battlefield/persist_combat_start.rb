@@ -14,28 +14,20 @@ module DungeonMaster
             adventure.lock!
 
             desired_tokens = build_tokens_from_participants(data["participants"])
-            actives = adventure.adventure_battlefields.where(status: "active").order(:id).to_a
-            matching = actives.find { |bf| token_sets_match?(bf.tokens, desired_tokens) }
+            # Always start from a new row: never reuse an active map (terrain/viewport/token
+            # positions) even when token ids match — rematches, retries, and missed archives
+            # would otherwise inherit the previous encounter's spatial state.
+            adventure.adventure_battlefields.where(status: "active").find_each(&:archive!)
 
-            ref = if matching
-                    (actives - [matching]).each(&:archive!)
-                    {
-                      "id" => matching.id,
-                      "version" => matching.version,
-                      "topology" => matching.topology
-                    }
-                  else
-                    actives.each(&:archive!)
-                    bf = adventure.adventure_battlefields.create!(
-                      status: "active",
-                      topology: "square",
-                      world: default_world,
-                      tokens: desired_tokens,
-                      viewport: viewport_for_tokens(desired_tokens),
-                      version: 1
-                    )
-                    { "id" => bf.id, "version" => bf.version, "topology" => bf.topology }
-                  end
+            bf = adventure.adventure_battlefields.create!(
+              status: "active",
+              topology: "square",
+              world: default_world,
+              tokens: desired_tokens,
+              viewport: viewport_for_tokens(desired_tokens),
+              version: 1
+            )
+            ref = { "id" => bf.id, "version" => bf.version, "topology" => bf.topology }
 
             data["battlefield_ref"] = ref
             holder = data["current_turn"].presence || DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME
@@ -47,11 +39,16 @@ module DungeonMaster
           adventure.reload
         end
 
+        # True when an active battlefield's token ids match the roster in +participants+
+        # (same ids PersistCombatStart would build). Used by EnsureForActiveCombat to avoid
+        # binding a combat to an unrelated stray row.
+        def same_token_set_as_participants?(bf_tokens, participants)
+          desired = build_tokens_from_participants(Array(participants))
+          token_sets_match?(bf_tokens, desired)
+        end
+
         private
 
-        # Reuse an active row only when its token ids match this encounter's participants.
-        # Otherwise archive stale rows and create a fresh grid so a new fight never inherits
-        # another encounter's map state.
         def token_sets_match?(stored_tokens, desired_tokens)
           sk = stored_tokens.is_a?(Hash) ? stored_tokens.keys.map(&:to_s).sort : []
           dk = desired_tokens.keys.map(&:to_s).sort

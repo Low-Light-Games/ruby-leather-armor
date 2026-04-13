@@ -15,6 +15,38 @@ RSpec.describe DungeonMaster::Battlefield::EnsureForActiveCombat, type: :service
 
   before { sheet }
 
+  it "archives a stray active row whose tokens do not match participants, then creates a matching battlefield" do
+    adventure.adventure_battlefields.create!(
+      adventure: adventure,
+      status: "active",
+      topology: "square",
+      world: { "cells" => {} },
+      tokens: { "player" => { "label" => "Player", "x" => 0, "y" => 0 } },
+      viewport: { "min_x" => 0, "min_y" => 0, "width" => 40, "height" => 40 },
+      version: 1
+    )
+
+    adventure.update!(combat_context: {
+      "active" => true,
+      "round" => 1,
+      "current_turn" => "Player",
+      "turn_order" => %w[Player Goblin],
+      "participants" => [
+        { "name" => "Player", "type" => "player", "hp" => 10, "max_hp" => 10, "initiative" => 15, "conditions" => [] },
+        { "name" => "Goblin", "type" => "npc", "hp" => 5, "max_hp" => 5, "initiative" => 10, "conditions" => [] }
+      ],
+      "terrain_notes" => nil,
+      "active_effects" => []
+    })
+
+    described_class.call(adventure: adventure.reload, sheet: sheet)
+    adventure.reload
+    expect(adventure.adventure_battlefields.where(status: "active").count).to eq(1)
+    expect(adventure.combat_context["battlefield_ref"]).to be_present
+    bf = adventure.adventure_battlefields.find(adventure.combat_context["battlefield_ref"]["id"])
+    expect(bf.tokens.keys.sort).to eq(%w[player token_1_goblin].sort)
+  end
+
   it "creates battlefield_ref when combat is active but ref is missing" do
     adventure.update!(combat_context: {
       "active" => true,
