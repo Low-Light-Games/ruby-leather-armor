@@ -12,13 +12,15 @@ module DungeonMaster
     #
     # During combat, +pipeline_outcome+ is a full-round narration seed; see AccumulatedAssembly.
     module WorldTurn
+      PIPELINE_OUTCOME_TRUNCATE = 2000
+      NPC_ACTION_LAST_OUTCOME_TRUNCATE = 800
+
       private
 
       def maybe_run_world_turn(result)
         return result unless combat_active?
 
-        @adventure.reload
-        @sheet&.reload
+        reload_world_turn_records!
 
         intent = result[:intent] || {}
         return apply_player_flee_combat(result) if intent[:combat_ending]
@@ -32,7 +34,7 @@ module DungeonMaster
         cur = @loop&.get("pipeline_outcome").to_s
         chunk = text.to_s.strip
         merged = cur.present? ? "#{cur}\n\nWorld — #{chunk}" : chunk
-        @loop&.batch_update!(new_data: { "pipeline_outcome" => merged.truncate(2000) })
+        @loop&.batch_update!(new_data: { "pipeline_outcome" => merged.truncate(PIPELINE_OUTCOME_TRUNCATE) })
       end
 
       def apply_player_flee_combat(result)
@@ -52,8 +54,7 @@ module DungeonMaster
         lines = []
         early_stop = false
 
-        @adventure.reload
-        @sheet&.reload
+        # Fresh records after maybe_run_world_turn (already reloaded); no second reload here.
 
         working_ctx = DungeonMaster::WorldTurn::LiveContext.merge_live_participants(base_ctx, adventure: @adventure, sheet: @sheet)
         # Rows from live merge (same initiative order as calc); not the raw CombatTurnCalculator objects.
@@ -68,7 +69,7 @@ module DungeonMaster
         if acting_npcs.any?
           evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
           intention = result[:intent].is_a?(Hash) ? result[:intent][:intention].to_s : ""
-          last_outcome = @loop&.get("pipeline_outcome").to_s.truncate(800)
+          last_outcome = @loop&.get("pipeline_outcome").to_s.truncate(NPC_ACTION_LAST_OUTCOME_TRUNCATE)
 
           payloads = acting_npcs.each_with_index.map do |npc, slot|
             DungeonMaster::WorldTurn::NpcActionPrompt.evaluator_payload(
@@ -81,9 +82,9 @@ module DungeonMaster
 
           # AI decisions were made against working_ctx (frozen snapshot).
           # Code resolution applies mutations in initiative order against live DB state.
-          # Reload @sheet each step so {Mutations#apply_player_mutations} clamps HP per hit (not one summed delta).
+          # reload_player_sheet! before resolve; reload_world_turn_records! after apply so HP clamps per hit and combat-end sees fresh creatures.
           acting_npcs.each_with_index do |npc, idx|
-            @sheet&.reload
+            reload_player_sheet!
             entry = evaluator_fan_out_result!(by_step, step_keys[idx], "npc_action")
             parsed = (entry["parsed_response"] || {}).deep_symbolize_keys
 
@@ -94,13 +95,12 @@ module DungeonMaster
 
             apply_world_turn_step_mutations!(res[:player_hp_delta].to_i, res[:npc_muts])
 
-            @sheet&.reload
+            reload_world_turn_records!
             if @sheet && @sheet.hp == 0 && !Array(@sheet.conditions).include?("disabled")
               apply_player_mutations({ conditions_add: ["disabled"] })
             end
 
-            end_info = Utilities::CombatEndResolver.check_combat_end(
-              adventure: @adventure.reload, sheet: @sheet)
+            end_info = Utilities::CombatEndResolver.check_combat_end(adventure: @adventure, sheet: @sheet)
             if !end_info[:combat][:combat_active] ||
                 end_info.dig(:interaction, :player_death) ||
                 end_info.dig(:interaction, :player_incapacitated)
@@ -112,8 +112,7 @@ module DungeonMaster
 
         @on_sheet_update&.call
 
-        @adventure.reload
-        @sheet&.reload
+        reload_world_turn_records!
 
         prose = lines.join("\n")
         append_pipeline_outcome!(prose) if prose.present?
@@ -143,6 +142,15 @@ module DungeonMaster
           apply_player_mutations({ hp_change: player_hp_delta.to_i })
         end
         apply_npc_mutations(npc_muts) if npc_muts.any?
+      end
+
+      def reload_world_turn_records!
+        @adventure.reload
+        @sheet&.reload
+      end
+
+      def reload_player_sheet!
+        @sheet&.reload
       end
     end
   end

@@ -47,13 +47,13 @@ module DungeonMaster
 
           if target == PLAYER
             ac = player_sheet.derived_stats.fetch("ac").to_i
-            atk = Rolls::CombatDice.d20_attack_vs_ac(modifier: mod, ac: ac)
-            if atk[:hit]
-              dmg = Rolls::CombatDice.roll_damage_expression(dice)
-              lines << "#{npc.name} attacks Player: #{atk[:d20]}+#{mod}=#{atk[:total]} vs AC #{ac} — HIT for #{dmg}."
+            roll = attack_roll_vs_ac(mod:, dice:, ac:)
+            if roll[:atk][:hit]
+              dmg = roll[:damage]
+              lines << "#{npc.name} attacks Player: #{roll[:atk][:d20]}+#{mod}=#{roll[:atk][:total]} vs AC #{ac} — HIT for #{dmg}."
               player_hp -= dmg
             else
-              lines << "#{npc.name} attacks Player: #{atk[:d20]}+#{mod}=#{atk[:total]} vs AC #{ac} — miss."
+              lines << "#{npc.name} attacks Player: #{roll[:atk][:d20]}+#{mod}=#{roll[:atk][:total]} vs AC #{ac} — miss."
             end
           else
             ac = ParticipantLookup.ac_for_name(target, combat_ctx: combat_ctx,
@@ -61,9 +61,9 @@ module DungeonMaster
             if ac.nil?
               lines << "#{npc.name} attacks #{target} — invalid target."
             else
-              atk = Rolls::CombatDice.d20_attack_vs_ac(modifier: mod, ac: ac)
-              if atk[:hit]
-                dmg = Rolls::CombatDice.roll_damage_expression(dice)
+              roll = attack_roll_vs_ac(mod:, dice:, ac: ac)
+              if roll[:atk][:hit]
+                dmg = roll[:damage]
                 lines << "#{npc.name} attacks #{target}: hit for #{dmg}."
                 tid = ParticipantLookup.creature_sheet_id_for_name(target, combat_ctx)
                 npc_muts << { creature_sheet_id: tid, name: target, hp_change: -dmg } if tid.present?
@@ -74,6 +74,13 @@ module DungeonMaster
           end
 
           { lines: lines, npc_muts: npc_muts, player_hp_delta: player_hp }
+        end
+
+        # @return [Hash] :atk => d20_attack_vs_ac result, :damage => Integer or nil if miss
+        def attack_roll_vs_ac(mod:, dice:, ac:)
+          atk = Rolls::CombatDice.d20_attack_vs_ac(modifier: mod, ac: ac)
+          damage = atk[:hit] ? Rolls::CombatDice.roll_damage_expression(dice) : nil
+          { atk: atk, damage: damage }
         end
       end
     end
