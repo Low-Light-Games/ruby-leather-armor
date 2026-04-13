@@ -16,7 +16,6 @@ module DungeonMaster
 
       def maybe_run_world_turn(result)
         return result unless combat_active?
-        return result unless world_turn_enabled?
 
         @adventure.reload
         @sheet&.reload
@@ -25,11 +24,6 @@ module DungeonMaster
         return apply_player_flee_combat(result) if intent[:combat_ending]
 
         run_world_turn(result)
-      end
-
-      def world_turn_enabled?
-        v = @config.get("world_turn")
-        v != false && v.to_s.downcase != "disabled"
       end
 
       def append_pipeline_outcome!(text)

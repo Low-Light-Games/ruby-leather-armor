@@ -9,7 +9,7 @@ module DungeonMaster
 
       class << self
         # @return [Hash] :npc_turns => Array<Combatant>, :next_state => Hash of string keys
-        def call(combat_context:, adventure: nil)
+        def call(combat_context:)
           ctx = combat_context.deep_stringify_keys
           return default_skip unless ctx["active"] == true
 

@@ -41,7 +41,6 @@ class DmConfig < ApplicationRecord
     "scene_history_depth" => 10,
     "chronicler_tone_direction" => false,
     "creature_creation_fallback" => "ai",
-    "world_turn" => true,
     "terrain_speed_modifiers" => {
       "road" => 1.0, "trail" => 0.75, "urban" => 1.0, "coast" => 0.75,
       "forest" => 0.5, "swamp" => 0.5, "desert" => 0.75, "river" => 0.5,
