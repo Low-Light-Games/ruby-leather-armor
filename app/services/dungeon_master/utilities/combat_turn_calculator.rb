@@ -56,14 +56,9 @@ module DungeonMaster
           end
 
           npc_turns = []
-          if p_idx < turn_order.length - 1
-            ((p_idx + 1)...turn_order.length).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
-            new_round = round + 1
-            (0...p_idx).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
-          else
-            new_round = round + 1
-            (0...p_idx).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
-          end
+          ((p_idx + 1)...turn_order.length).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
+          new_round = round + 1
+          (0...p_idx).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
 
           {
             npc_turns: npc_turns,
