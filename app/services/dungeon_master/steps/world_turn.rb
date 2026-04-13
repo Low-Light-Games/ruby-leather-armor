@@ -62,10 +62,7 @@ module DungeonMaster
           bleed_result = apply_dying_bleed!(result)
           return bleed_result if bleed_result
         end
-
-        reload_world_turn_records!
-
-        # Fresh records after maybe_run_world_turn (already reloaded); no second reload here.
+        # Fresh records were already loaded by maybe_run_world_turn before entering this method.
 
         working_ctx = DungeonMaster::WorldTurn::LiveContext.merge_live_participants(base_ctx, adventure: @adventure, sheet: @sheet)
         # Rows from live merge (same initiative order as calc); not the raw CombatTurnCalculator objects.
