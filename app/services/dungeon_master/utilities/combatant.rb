@@ -24,6 +24,13 @@ module DungeonMaster
         hp <= 0 || conditions.include?("dead")
       end
 
+      # Out of the fight for good (not merely stunned/paralyzed this round).
+      def eliminated_from_encounter?
+        defeated? ||
+          conditions.include?("fled") ||
+          conditions.include?("surrendered")
+      end
+
       def can_act?
         !defeated? &&
           !conditions.include?("fled") &&

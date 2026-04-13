@@ -135,6 +135,18 @@
         border-color: $green-ink;
         .msg-role { color: $green-ink; }
       }
+
+      &.msg-type-player_death {
+        background-color: $red-ink-lt;
+        border-color: $red-ink;
+        .msg-role { color: $red-ink; }
+      }
+
+      &.msg-type-player_incapacitated {
+        background-color: rgba($ink-mid, 0.12);
+        border-color: $border-light;
+        .msg-role { color: $ink-mid; }
+      }
     }
 
     /* ===== Thinking indicator ===== */

@@ -68,6 +68,12 @@ module DungeonMaster
               content: "Your character has died.",
               message_type: "player_death")
           end
+          if result[:player_incapacitated]
+            msgs << persist_message(
+              role: "system",
+              content: "You are unconscious and dying. The scene continues — seek help or narrate what happens next.",
+              message_type: "player_incapacitated")
+          end
           msgs
 
         when :narrated_sequence
@@ -101,6 +107,14 @@ module DungeonMaster
             content: "Your character has died.",
             message_type: "player_death")
           to_broadcast << MessageSerializer.as_json(death_msg, admin: admin)
+        end
+
+        if narrative_entry[:player_incapacitated]
+          inc_msg = persist_message(
+            role: "system",
+            content: "You are unconscious and dying. The scene continues — seek help or narrate what happens next.",
+            message_type: "player_incapacitated")
+          to_broadcast << MessageSerializer.as_json(inc_msg, admin: admin)
         end
 
         AdventureChannel.broadcast_to(@adventure, { type: "pipeline_action_result", messages: to_broadcast })

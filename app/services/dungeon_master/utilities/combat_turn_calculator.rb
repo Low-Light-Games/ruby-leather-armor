@@ -21,7 +21,9 @@ module DungeonMaster
           round = 1 if round < 1
 
           npcs = participants.select(&:npc?)
-          if npcs.all? { |n| n.defeated? || !n.can_act? }
+          # Combat ends only when every NPC is eliminated (dead/0 HP) or has left (flee/surrender).
+          # Paralyzed, petrified, dazed, etc. are "cannot act this round", not encounter over.
+          if npcs.all?(&:eliminated_from_encounter?)
             return {
               npc_turns: [],
               next_state: {

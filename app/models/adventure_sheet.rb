@@ -19,6 +19,13 @@ class AdventureSheet < ApplicationRecord
 
   include SheetCurrency
 
+  # Primary sheet for prompts / pipeline (eager-loads associations CharacterBlock presenters need).
+  def self.for_adventure(adventure)
+    adventure.adventure_sheets
+      .includes(:feat_definitions, :spell_definitions, adventure_sheet_items: :item_definition)
+      .first
+  end
+
   # Recompute derived stats after any save. Called explicitly after feat/spell
   # sync operations as well.
   def recompute_derived_stats!

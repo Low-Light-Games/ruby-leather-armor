@@ -41,6 +41,15 @@ RSpec.describe DungeonMaster::Utilities::Combatant, type: :service do
     end
   end
 
+  describe "#eliminated_from_encounter?" do
+    it "is true when fled or surrendered, not when only paralyzed" do
+      base = { name: "A", creature_sheet_id: 1, type: "npc", initiative: 1, hp: 5, max_hp: 5 }
+      expect(described_class.new(**base, conditions: ["paralyzed"]).eliminated_from_encounter?).to be false
+      expect(described_class.new(**base, conditions: ["fled"]).eliminated_from_encounter?).to be true
+      expect(described_class.new(**base, conditions: ["surrendered"]).eliminated_from_encounter?).to be true
+    end
+  end
+
   describe "#can_act?" do
     it "is false when fled, surrendered, paralyzed, or petrified" do
       base = { name: "A", creature_sheet_id: 1, type: "npc", initiative: 1, hp: 5, max_hp: 5 }

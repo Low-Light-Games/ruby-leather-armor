@@ -24,12 +24,10 @@ module DungeonMaster
 
       player_ac = @sheet.derived_stats.fetch("ac")
       results = npc_actions.map do |action|
-        roll     = rand(1..20)
         modifier = (action[:modifier] || 0).to_i
-        total    = roll + modifier
-        hit      = total >= player_ac
-        "#{action[:actor]} #{action[:action]} -> rolled #{roll} + #{modifier} = #{total} " \
-          "vs AC #{player_ac}: #{hit ? 'HIT' : 'MISS'}"
+        atk = Rolls::CombatDice.d20_attack_vs_ac(modifier: modifier, ac: player_ac)
+        "#{action[:actor]} #{action[:action]} -> rolled #{atk[:d20]} + #{modifier} = #{atk[:total]} " \
+          "vs AC #{player_ac}: #{atk[:hit] ? 'HIT' : 'MISS'}"
       end
 
       results.join("\n")

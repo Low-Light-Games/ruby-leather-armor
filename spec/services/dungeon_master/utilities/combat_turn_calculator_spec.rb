@@ -52,6 +52,20 @@ RSpec.describe DungeonMaster::Utilities::CombatTurnCalculator, type: :service do
     expect(out[:next_state]["active"]).to be false
   end
 
+  it "does not end combat when every NPC is paralyzed (still in the encounter)" do
+    paralyzed = wolf_a.merge("conditions" => ["paralyzed"])
+    ctx = {
+      "active" => true,
+      "round" => 1,
+      "current_turn" => "Player",
+      "turn_order" => ["Wolf A", "Player"],
+      "participants" => [paralyzed, player]
+    }
+    out = described_class.call(combat_context: ctx)
+    expect(out[:next_state]["active"]).to be true
+    expect(out[:npc_turns]).to be_empty
+  end
+
   it "skips NPCs that cannot act" do
     fled = wolf_b.merge("conditions" => ["fled"])
     ctx = {
