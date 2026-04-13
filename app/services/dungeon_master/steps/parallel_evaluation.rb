@@ -32,11 +32,10 @@ module DungeonMaster
 
       def run_parallel_evaluation(intention)
         broadcast_progress("Reading the situation...")
-        evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
 
-        # Phase 1 — Beacons
+        # Phase 1 — Beacons (raw array; converge_beacons reads result order, not step keys)
         beacon_results = call_evaluator!(
-          "#{evaluator_url}/fan_out",
+          "#{evaluator_base_url}/fan_out",
           build_beacon_prompts(intention),
           intention,
           phase: "beacons"
@@ -53,8 +52,7 @@ module DungeonMaster
           ordered_domains = DOMAIN_PRIORITY.select { |d| affected.include?(d) } +
                             (affected - DOMAIN_PRIORITY)
 
-          mech_results = call_evaluator!(
-            "#{evaluator_url}/sequential",
+          mech_results = evaluator_sequential!(
             build_mech_eval_prompts(ordered_domains, intention, intent),
             intention,
             phase: "mech_eval"
@@ -62,12 +60,12 @@ module DungeonMaster
 
           evaluations = parse_mech_eval_results(mech_results, ordered_domains)
 
-          # Phase 3 — Roll Qualifier
+          # Phase 3 — Roll Qualifier (raw array; apply_qualifier_results reads result order)
           domains_with_rolls = evaluations.select { |e| e[:player_rolls].any? }
 
           if domains_with_rolls.any?
             qual_results = call_evaluator!(
-              "#{evaluator_url}/fan_out",
+              "#{evaluator_base_url}/fan_out",
               build_roll_qualifier_prompts(domains_with_rolls, intention),
               intention,
               phase: "roll_qualifier"

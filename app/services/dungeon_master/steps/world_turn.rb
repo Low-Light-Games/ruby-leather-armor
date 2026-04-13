@@ -54,6 +54,17 @@ module DungeonMaster
         lines = []
         early_stop = false
 
+        # Apply per-round dying bleed-out before NPC actions. Skipped once the player
+        # stabilizes. If the bleed kills the player this round, short-circuit NPC resolution.
+        if @sheet &&
+            Utilities::CombatEndResolver.check_player_status(@sheet) == :dying &&
+            !Array(@sheet.conditions).include?("stabilized")
+          bleed_result = apply_dying_bleed!(result)
+          return bleed_result if bleed_result
+        end
+
+        reload_world_turn_records!
+
         # Fresh records after maybe_run_world_turn (already reloaded); no second reload here.
 
         working_ctx = DungeonMaster::WorldTurn::LiveContext.merge_live_participants(base_ctx, adventure: @adventure, sheet: @sheet)
@@ -67,18 +78,10 @@ module DungeonMaster
         end
 
         if acting_npcs.any?
-          evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
           intention = result[:intent].is_a?(Hash) ? result[:intent][:intention].to_s : ""
           last_outcome = @loop&.get("pipeline_outcome").to_s.truncate(NPC_ACTION_LAST_OUTCOME_TRUNCATE)
 
-          payloads = acting_npcs.each_with_index.map do |npc, slot|
-            DungeonMaster::WorldTurn::NpcActionPrompt.evaluator_payload(
-              npc: npc, combat_ctx: working_ctx, slot: slot, config: @config,
-              adventure: @adventure, last_outcome: last_outcome)
-          end
-          step_keys = payloads.map { |p| p.delete(:step_key) }
-          raw = call_evaluator!("#{evaluator_url}/fan_out", payloads, intention, phase: "npc_action")
-          by_step = evaluator_fan_out_results_by_step(raw)
+          step_keys, by_step = request_npc_actions(acting_npcs, working_ctx, intention, last_outcome)
 
           # AI decisions were made against working_ctx (frozen snapshot).
           # Code resolution applies mutations in initiative order against live DB state.
@@ -142,6 +145,49 @@ module DungeonMaster
           apply_player_mutations({ hp_change: player_hp_delta.to_i })
         end
         apply_npc_mutations(npc_muts) if npc_muts.any?
+      end
+
+      # PF1e dying bleed-out: −1 HP per round + DC 10 CON stabilization roll.
+      # Returns a completed result hash if the player dies this round; nil to continue.
+      def apply_dying_bleed!(result)
+        apply_player_mutations({ hp_change: -1 })
+        @sheet&.reload
+
+        if Utilities::CombatEndResolver.check_player_status(@sheet) == :dead
+          lines = ["#{@sheet&.name || 'The player'} has bled out and died."]
+          append_pipeline_outcome!(lines.join)
+
+          advancement = DungeonMaster::WorldTurn::CombatAdvancement.build_full(
+            adventure: @adventure, sheet: @sheet, overrides: { "active" => false })
+          result[:mutations] = DungeonMaster::WorldTurn::CombatAdvancement.merge_into_mutations(result[:mutations], advancement)
+          result[:player_death] = true
+          return result
+        end
+
+        # DC 10 CON stabilization roll (d20 + CON modifier).
+        con_mod = ((@sheet.constitution.to_i - 10) / 2.0).floor
+        roll = Rolls::CombatDice.roll_d20
+        if roll + con_mod >= 10
+          apply_player_mutations({ conditions_add: ["stabilized"] })
+          append_pipeline_outcome!("#{@sheet&.name || 'The player'} stabilizes (CON check: #{roll}+#{con_mod}).")
+        else
+          append_pipeline_outcome!("#{@sheet&.name || 'The player'} continues to bleed (CON check: #{roll}+#{con_mod}, HP now #{@sheet&.hp}).")
+        end
+
+        nil
+      end
+
+      # Builds one evaluator payload per acting NPC, fans them out in a single HTTP
+      # request, and returns [step_keys, by_step] for initiative-order resolution.
+      # step_keys is the authoritative ordered list; by_step is keyed by meta["step"].
+      def request_npc_actions(acting_npcs, working_ctx, intention, last_outcome)
+        payloads = acting_npcs.each_with_index.map do |npc, slot|
+          DungeonMaster::WorldTurn::NpcActionPrompt.evaluator_payload(
+            npc: npc, combat_ctx: working_ctx, slot: slot, config: @config,
+            adventure: @adventure, last_outcome: last_outcome)
+        end
+        step_keys = payloads.map { |p| p.delete(:step_key) }
+        [step_keys, evaluator_fan_out!(payloads, intention, phase: "npc_action")]
       end
 
       def reload_world_turn_records!

@@ -27,13 +27,11 @@ module DungeonMaster
 
       # World + capability in one evaluator round-trip (`AdventureLoopResolution#resolve` → here).
       def run_sanity_gate_fan_out(intent)
-        evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
         text = intent[:intention]
         prompts = [sanity_checker_world_evaluator_prompt(intent)]
         prompts << sanity_checker_capability_evaluator_prompt(intent) if @sheet
 
-        results = call_evaluator!("#{evaluator_url}/fan_out", prompts, text, phase: "sanity_gate")
-        by_step = evaluator_fan_out_results_by_step(results)
+        by_step = evaluator_fan_out!(prompts, text, phase: "sanity_gate")
 
         world = parse_world_from_evaluator_result(
           evaluator_fan_out_result!(by_step, "sanity_checker_world", "sanity_gate"))

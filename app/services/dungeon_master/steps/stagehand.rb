@@ -47,7 +47,6 @@ module DungeonMaster
 
       def run_parallel_narrative(intent, narration_context:, mutations:)
         seed = narration_context.combined_seed
-        evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
 
         broadcast_progress("Writing the story...")
         broadcast_progress("Remembering the world...")
@@ -55,11 +54,9 @@ module DungeonMaster
         prompts = [narrate_evaluator_prompt(narration_context), micro_context_evaluator_prompt(seed, mutations)]
         prompts << macro_context_evaluator_prompt(seed) if intent[:macro_significant]
 
-        results = call_evaluator!("#{evaluator_url}/fan_out", prompts, seed, phase: "narrative_phase")
-
         # All prompts are built on the main thread before this single HTTP call; Node runs
         # LLM calls concurrently but returns results in request order — see evaluator index.js.
-        by_step = evaluator_fan_out_results_by_step(results)
+        by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
 
         micro_parsed = evaluator_fan_out_result!(by_step, "micro_context_update", "narrative_phase")["parsed_response"] || {}
         macro_parsed = if intent[:macro_significant]

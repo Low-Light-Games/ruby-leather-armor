@@ -29,6 +29,22 @@ module DungeonMaster
         by_step[step] || raise(AiError, "Evaluator #{phase} fan_out missing result for meta.step #{step.inspect}")
       end
 
+      # POST /fan_out — returns results indexed by meta["step"].
+      # Use this instead of wiring evaluator_base_url + call_evaluator! + evaluator_fan_out_results_by_step.
+      def evaluator_fan_out!(payloads, intention, phase:)
+        evaluator_fan_out_results_by_step(
+          call_evaluator!("#{evaluator_base_url}/fan_out", payloads, intention, phase: phase))
+      end
+
+      # POST /sequential — results returned in request order (no step indexing).
+      def evaluator_sequential!(payloads, intention, phase:)
+        call_evaluator!("#{evaluator_base_url}/sequential", payloads, intention, phase: phase)
+      end
+
+      def evaluator_base_url
+        ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
+      end
+
       def call_evaluator!(url, prompts, intention, phase:)
         uri  = URI(url)
         http = Net::HTTP.new(uri.host, uri.port)
