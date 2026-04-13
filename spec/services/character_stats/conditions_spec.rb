@@ -6,7 +6,7 @@ RSpec.describe CharacterStats::Conditions do
       expected = %w[
         fatigued exhausted shaken frightened panicked sickened nauseated
         entangled prone blinded staggered paralyzed stunned dazed poisoned grappled
-        fled surrendered dead disabled petrified
+        fled surrendered dead disabled petrified stabilized
       ]
       expect(described_class::VALID_CONDITIONS).to match_array(expected)
     end

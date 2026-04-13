@@ -56,25 +56,7 @@ module DungeonMaster
 
         when :narrated
           msgs = [persist_message(role: "dm", content: result[:narrative], message_type: "narrative")]
-          if result[:adventure_complete]
-            msgs << persist_message(
-              role: "system",
-              content: "The adventure has reached its conclusion.",
-              message_type: "adventure_complete")
-          end
-          if result[:player_death]
-            msgs << persist_message(
-              role: "system",
-              content: "Your character has died.",
-              message_type: "player_death")
-          end
-          if result[:player_incapacitated]
-            msgs << persist_message(
-              role: "system",
-              content: "You are unconscious and dying. The scene continues — seek help or narrate what happens next.",
-              message_type: "player_incapacitated")
-          end
-          msgs
+          msgs.concat(persist_event_messages(result))
 
         when :narrated_sequence
           signal_done_to_the_frontend
@@ -93,28 +75,8 @@ module DungeonMaster
         admin = @user&.admin?
         to_broadcast = [MessageSerializer.as_json(msg, admin: admin)]
 
-        if narrative_entry[:adventure_complete]
-          complete_msg = persist_message(
-            role: "system",
-            content: "The adventure has reached its conclusion.",
-            message_type: "adventure_complete")
-          to_broadcast << MessageSerializer.as_json(complete_msg, admin: admin)
-        end
-
-        if narrative_entry[:player_death]
-          death_msg = persist_message(
-            role: "system",
-            content: "Your character has died.",
-            message_type: "player_death")
-          to_broadcast << MessageSerializer.as_json(death_msg, admin: admin)
-        end
-
-        if narrative_entry[:player_incapacitated]
-          inc_msg = persist_message(
-            role: "system",
-            content: "You are unconscious and dying. The scene continues — seek help or narrate what happens next.",
-            message_type: "player_incapacitated")
-          to_broadcast << MessageSerializer.as_json(inc_msg, admin: admin)
+        persist_event_messages(narrative_entry).each do |event_msg|
+          to_broadcast << MessageSerializer.as_json(event_msg, admin: admin)
         end
 
         AdventureChannel.broadcast_to(@adventure, { type: "pipeline_action_result", messages: to_broadcast })
@@ -139,6 +101,31 @@ module DungeonMaster
       end
 
       private
+
+      # Persists system messages for terminal narrative events (adventure_complete,
+      # player_death, player_incapacitated). Returns the persisted objects in order.
+      def persist_event_messages(entry)
+        msgs = []
+        if entry[:adventure_complete]
+          msgs << persist_message(
+            role: "system",
+            content: "The adventure has reached its conclusion.",
+            message_type: "adventure_complete")
+        end
+        if entry[:player_death]
+          msgs << persist_message(
+            role: "system",
+            content: "Your character has died.",
+            message_type: "player_death")
+        end
+        if entry[:player_incapacitated]
+          msgs << persist_message(
+            role: "system",
+            content: "Your character is unconscious and dying. Without aid, death follows.",
+            message_type: "player_incapacitated")
+        end
+        msgs
+      end
 
       # Progressive narration already emitted each chunk; an empty `pipeline_result` tells
       # the client to clear the thinking state.

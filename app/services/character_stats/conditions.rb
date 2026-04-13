@@ -82,6 +82,8 @@ module CharacterStats
       "petrified" => {
         restrictions: %w[cannot_act deny_dex_to_ac],
       },
+      # Dying stabilization flag: character stopped losing HP but is still at negative HP.
+      "stabilized" => {},
     }.freeze
 
     VALID_CONDITIONS = DEFINITIONS.keys.freeze

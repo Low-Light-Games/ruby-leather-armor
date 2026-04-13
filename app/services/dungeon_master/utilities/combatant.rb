@@ -24,15 +24,27 @@ module DungeonMaster
         hp <= 0 || conditions.include?("dead")
       end
 
+      # PF1e dying: player at negative HP, not yet at −CON. CON threshold is checked by
+      # CombatEndResolver against the live sheet; this is purely HP-sign based.
+      def dying?
+        hp < 0 && !conditions.include?("dead")
+      end
+
       # Out of the fight for good (not merely stunned/paralyzed this round).
+      # NPCs are eliminated at 0 HP; players must reach the "dead" condition (−CON) to
+      # leave the encounter — a dying player is incapacitated but still in the fight.
       def eliminated_from_encounter?
+        return conditions.include?("dead") ||
+               conditions.include?("fled") ||
+               conditions.include?("surrendered") if player?
+
         defeated? ||
           conditions.include?("fled") ||
           conditions.include?("surrendered")
       end
 
       def can_act?
-        !defeated? &&
+        hp > 0 &&
           !conditions.include?("fled") &&
           !conditions.include?("surrendered") &&
           !conditions.include?("paralyzed") &&

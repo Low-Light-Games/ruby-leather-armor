@@ -17,6 +17,10 @@ module DungeonMaster
       # @param adventure [Adventure]
       # @param sheet [Sheet] player character sheet
       # @return [Hash] :combat, :interaction, :player_status
+      #
+      # Combat ends only when the player is **dead** or every NPC is eliminated.
+      # A *dying* player (negative HP, not yet at −CON) keeps combat active so that
+      # the world turn can apply per-round bleed-out and stabilization rolls.
       def check_combat_end(adventure:, sheet:)
         player_status = check_player_status(sheet)
         npc_ids = combat_npc_sheet_ids(adventure)
@@ -30,21 +34,15 @@ module DungeonMaster
                           end
                         end
 
-        combat = if player_status.in?(%i[dead dying]) || all_npcs_down
-                   reason = if all_npcs_down
-                              :all_npcs_defeated
-                            elsif player_status == :dead
-                              :player_death
-                            else
-                              :player_dying
-                            end
+        combat = if player_status == :dead || all_npcs_down
+                   reason = all_npcs_down ? :all_npcs_defeated : :player_death
                    { combat_active: false, combat_end_reason: reason }
                  else
                    { combat_active: true, combat_end_reason: nil }
                  end
 
         interaction = {
-          player_death: player_status == :dead,
+          player_death:         player_status == :dead,
           player_incapacitated: player_status == :dying
         }
 

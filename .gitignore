@@ -55,5 +55,6 @@ evaluator/node_modules/
 # Cursor
 /.cursor
 
-.claude/
+# Claude
+/.claude
 .codex
