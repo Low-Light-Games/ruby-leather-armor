@@ -128,13 +128,12 @@ flowchart TB
     MECH_RESOLVED & NM_RESOLVED2 --> WT_CHECK
 
     subgraph world_turn["World Turn — combat-only post-resolution phase"]
-        WT_CHECK{combat active\nand world_turn enabled?}
+        WT_CHECK{combat active?}
         WT_CHECK -->|yes| WORLD_TURN["maybe_run_world_turn — code"]
-        WORLD_TURN --> WT_ORCH["Sequential NPC orchestration — code"]
-        WT_ORCH --> NPC_ACTION["npc_action ×N — AI (Node /fan_out transport)"]
-        NPC_ACTION --> WT_DICE["CombatDice + NPC action resolution — code"]
-        WT_DICE --> WT_APPLY["apply world-turn mutations — code"]
-        WT_APPLY --> WT_ADV["combat_state_advancement + combat end check — code"]
+        WORLD_TURN --> WT_ORCH["Shared-snapshot world-turn orchestration — code"]
+        WT_ORCH --> NPC_ACTION["npc_action ×N — AI parallel /fan_out"]
+        NPC_ACTION --> WT_DICE["Sequential code: dice + mutations in initiative order"]
+        WT_DICE --> WT_ADV["combat_state_advancement + combat end check — code"]
         WT_ADV --> LOOP_OUTCOME
         WT_CHECK -->|no| LOOP_OUTCOME
     end
@@ -597,8 +596,8 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | Momentum | ✅ AI | Non-mechanical outcome |
 | Social Expansion | ✅ AI | NPC scene generation |
 | Mechanic | ✅ AI | Post-roll arbitration + mutations |
-| World Turn (orchestration) | ❌ Code | Sequential NPC action orchestration, mutation application, combat advancement, and combat-end handling after a player action resolves in active combat |
-| npc_action | ✅ AI ×N | Per-NPC combat action decisions during world turn. Calls travel through Node `/fan_out`, but are orchestrated sequentially so each actor sees the updated live combat state |
+| World Turn (orchestration) | ❌ Code | Shared-snapshot NPC orchestration, sequential code resolution (dice + mutations), combat advancement, and combat-end handling after a player action resolves in active combat |
+| npc_action | ✅ AI ×N | Per-NPC combat action decisions during world turn. All acting NPCs are evaluated in one parallel Node `/fan_out` batch against the same live combat snapshot; code then resolves and applies in initiative order (early-stop if combat ends) |
 | TimeKeeper (journey, combat, rest, take_20) | ❌ Code | Deterministic formulas |
 | TimeKeeper (freeform) | ✅ AI | Fallback when no code rule matches |
 | Harbinger | ❌ Code + optional AI | Dice rolls against table; AI for scene expansion only |
@@ -656,8 +655,8 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | **Momentum** | AI | Non-mechanical outcome: what happened + affected contexts + optional mutations. |
 | **Social Expansion** | AI | Immersive NPC scene for significant social interactions (`expand_scene` from evaluation). Skips TimeKeeper. |
 | **Mechanic** | AI | Post-roll arbitration: factual outcome + structured mutations from rolls + NPC results. |
-| **World Turn** | Code orchestration + sequential Node calls | In active combat after a player action resolves: rebuild live combat state, ask each acting NPC what they do, apply combat dice + mutations, and compute `combat_state_advancement`. |
-| **↳ npc_action** | AI ×N (Node transport, sequentially orchestrated) | Per-NPC combat action decision during world turn. Uses the Node evaluator transport, but later actors run only after earlier actors' consequences are applied. |
+| **World Turn** | Code orchestration + batched Node call | In active combat after a player action resolves: rebuild one live combat snapshot, parallel `/fan_out` for all acting NPCs, then sequential code (dice + mutations per NPC, early-stop on player death/incapacitation or combat end), then `combat_state_advancement`. |
+| **↳ npc_action** | AI ×N (parallel, Node) | Per-NPC combat action decision during world turn. Prompts run together via Node `/fan_out` against the same shared snapshot; application is sequential in code. |
 | **TimeKeeper** | Code + AI | Estimate time (code-first: journey/combat/rest/take_20, then AI) → consult Harbinger → advance GameClock → apply fatigue. |
 | **Harbinger** | Code + AI | Segment-based encounter check against table. AI expands encounter scene if entry is non-fixed. |
 | **GameClock** | Code | Advance current_hour, adventure_day, light_conditions, hours_since_last_rest, hours_since_last_encounter_check. |

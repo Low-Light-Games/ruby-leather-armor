@@ -941,7 +941,7 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | 5 | **Mechanic** | AI (mechanical path) | `app/services/dungeon_master/steps/mechanic.rb` |
 | 5a | **Momentum** | AI (non-mechanical path) | `app/services/dungeon_master/steps/momentum.rb` |
 | 5a.5 | **World Turn** | Code orchestration | `app/services/dungeon_master/steps/world_turn.rb`, `app/services/dungeon_master/world_turn/*.rb` |
-| 5a.5-i | **↳ npc_action** | AI ×N (sequentially orchestrated, Node transport) | `app/services/dungeon_master/steps/world_turn.rb`, `app/services/dungeon_master/world_turn/npc_action_prompt.rb` |
+| 5a.5-i | **↳ npc_action** | AI ×N (parallel `/fan_out`; code applies sequentially) | `app/services/dungeon_master/steps/world_turn.rb`, `app/services/dungeon_master/world_turn/npc_action_prompt.rb` |
 | 5b | **TimeKeeper** | Code-first, AI fallback | `app/services/dungeon_master/steps/time_keeper.rb` |
 | 5c | **Social Expansion** | AI (conditional) | `app/services/dungeon_master/adventure_loop_resolution.rb` (`resolve_social_scene`) |
 | -- | **Harbinger** (utility) | Code + optional AI | `app/services/dungeon_master/utilities/harbinger.rb` |
@@ -970,8 +970,8 @@ Interrupted queues (encounter, social scene, roll request) fall back to the accu
 | ParallelEvaluation (roll_qualifier) | ✅ AI ×N | Per-domain Take 10/20 eligibility + situational modifiers via Node `/fan_out` |
 | Mechanic | ✅ AI | Post-roll arbitration + structured mutations |
 | Momentum | ✅ AI | Non-mechanical outcome |
-| World Turn (orchestration) | ❌ Code | Sequential NPC turn orchestration, live-state refresh, mutation application, combat advancement, and combat-end handling |
-| NPC Action (individual decisions) | ✅ AI ×N | Per-NPC combat action decisions via the Node evaluator transport; issued sequentially so each actor sees updated combat state |
+| World Turn (orchestration) | ❌ Code | Shared-snapshot NPC turn orchestration, sequential dice + mutation application in initiative order, combat advancement, and combat-end handling |
+| NPC Action (individual decisions) | ✅ AI ×N | One Node `/fan_out` batch (parallel AI) against the same live combat snapshot; code resolves and applies per NPC in order |
 | TimeKeeper (journey / combat / rest / take_20) | ❌ Code | Deterministic formulas |
 | TimeKeeper (fallback freeform estimate) | ✅ AI | Used only when no code rule applies |
 | Harbinger / GameClock / Warmaster turn ordering | ❌ Code | Encounter math, clock math, and deterministic combat state transitions |
@@ -981,8 +981,10 @@ Interrupted queues (encounter, social scene, roll request) fall back to the accu
 
 **Decision:** after a player's action resolves in active combat, the pipeline runs a
 code-owned **World Turn** phase before narration. World Turn computes which NPCs
-act, asks each acting NPC what they do, applies those consequences immediately,
-and emits deterministic `combat_state_advancement` for ContextUpdate to write.
+act, asks all acting NPCs what they do from the same live combat snapshot (one
+parallel `/fan_out`), then applies dice and mutations **in initiative order** in
+code (stopping early if the player dies, is incapacitated, or combat ends), and
+emits deterministic `combat_state_advancement` for ContextUpdate to write.
 
 **Why:** the previous combat flow treated combat like any other action: one
 player message in, one outcome out. That left three correctness gaps:
@@ -995,17 +997,17 @@ World Turn fixes that by separating **combat orchestration** from **individual N
 judgment**. Code decides who acts and when; AI decides what a given NPC tries to
 do on its turn.
 
-**Why NPC actions are sequential, not parallel:** parallel NPC calls are cheaper
-in wall-clock time, but mechanically wrong once later actors need to see earlier
-actors' consequences. If Wolf A drops the player to 0 HP, Wolf B should not pick
-an action against a stale snapshot where the player is still standing. We accept
-the extra latency of sequential orchestration to preserve initiative-order
-honesty.
+**Why NPC actions are parallelized from one shared snapshot:** the desired combat
+model is that all NPCs choose their actions for the round "at once" with respect
+to AI judgment, then code resolves the resulting dice and mutations. This keeps
+the Node `/fan_out` latency win (one batch instead of N sequential evaluator
+round-trips).
 
-**Trade-off accepted:** a typical combat round is slower than a pure fan-out
-design, but the resulting state is trustworthy. The Node evaluator transport is
-still used for the `npc_action` prompts; the pipeline simply issues those calls
-one at a time so each prompt sees refreshed live combat state.
+**Trade-off accepted:** NPC prompts do not see each other's *chosen* actions—only
+the shared pre-turn snapshot. Code still applies outcomes in initiative order and
+stops applying further NPC consequences if combat ends or the player is
+dead/incapacitated mid-round, so later NPCs do not keep damaging a resolved
+encounter.
 
 ---
 

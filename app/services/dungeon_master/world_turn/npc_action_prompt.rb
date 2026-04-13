@@ -13,7 +13,8 @@ module DungeonMaster
       end
 
       # @param last_outcome [String] truncated pipeline_outcome seed for the loop
-      # @return [Hash] evaluator fan_out item (symbol keys for :meta)
+      # @return [Hash] evaluator fan_out item (:system_prompt, :user_message, :model, :max_tokens, :meta)
+      #   plus :step_key — same string as meta[:step]; callers must strip :step_key before JSON POST.
       def evaluator_payload(npc:, combat_ctx:, slot:, config:, adventure:, last_outcome:)
         creature_sheet = adventure.creature_sheets.find_by(id: npc.creature_sheet_id)
         creature_block = if creature_sheet
@@ -30,12 +31,14 @@ module DungeonMaster
           combat_summary: "#{combat_summary}\nParticipants: #{participants_line}",
           last_outcome: last_outcome.presence || "(none)")
 
+        key = meta_step(npc, slot)
         {
           system_prompt: system_prompt,
           user_message: user_msg || "Decide action.",
           model: config.model_for("npc_action"),
           max_tokens: config.token_budget_for("npc_action"),
-          meta: { step: meta_step(npc, slot) }
+          meta: { step: key },
+          step_key: key
         }
       end
     end
