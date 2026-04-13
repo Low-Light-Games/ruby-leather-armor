@@ -61,6 +61,7 @@ RSpec.describe DungeonMaster::ModerationService, type: :service do
         allow(ModerationConfig.instance).to receive(:enabled?).and_return(true)
         allow(ModerationConfig.instance).to receive(:max_strikes).and_return(3)
         allow(ModerationConfig.instance).to receive(:default_response).and_return("You recollect yourself.")
+        allow(ModerationConfig.instance).to receive(:ignored_categories).and_return([])
         stub_moderate(flagged: true, categories: categories)
       end
 
