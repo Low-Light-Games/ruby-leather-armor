@@ -39,7 +39,8 @@ class Adventure < ApplicationRecord
   end
 
   def combat_active?
-    combat_context.is_a?(Hash) && combat_context["active"] == true
+    ctx = combat_context
+    ctx.is_a?(Hash) && ctx["active"] == true && Array(ctx["participants"]).any?
   end
 
   def effective_dm_setting(key)

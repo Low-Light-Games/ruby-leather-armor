@@ -54,8 +54,7 @@ module DungeonMaster
 
       # Shared with TimeKeeper, Sequencer, WorldTurn, resolve_plot skips, etc.
       def combat_active?
-        ctx = @adventure.combat_context
-        ctx.is_a?(Hash) && ctx["active"] == true && Array(ctx["participants"]).any?
+        @adventure.combat_active?
       end
     end
   end
