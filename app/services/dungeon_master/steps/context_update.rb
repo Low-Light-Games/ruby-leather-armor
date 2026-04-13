@@ -140,9 +140,10 @@ module DungeonMaster
 
         updates = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, h|
           key = "#{field}_context"
-          next unless parsed[field].present?
+          raw = parsed[key] || parsed[key.to_sym]
+          next unless raw.present?
 
-          val = parsed[field]
+          val = raw
           if field == "combat" && val.is_a?(Hash)
             existing = (@adventure.public_send(key) || {}).deep_stringify_keys
             val = existing.deep_merge(val.deep_stringify_keys)

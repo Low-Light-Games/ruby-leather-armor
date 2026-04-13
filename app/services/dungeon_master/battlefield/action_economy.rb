@@ -39,6 +39,9 @@ module DungeonMaster
         end
         if truthy?(d["spend_full_round"])
           raise ArgumentError, "full-round already claimed" if truthy?(out["full_round_claimed"])
+          unless truthy?(out["standard_available"]) && truthy?(out["move_available"])
+            raise ArgumentError, "full-round requires both standard and move actions to still be available"
+          end
           out["full_round_claimed"] = true
           out["standard_available"] = false
           out["move_available"] = false

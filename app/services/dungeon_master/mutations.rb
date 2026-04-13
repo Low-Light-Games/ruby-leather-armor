@@ -13,8 +13,8 @@ module DungeonMaster
       return unless mutations.is_a?(Hash)
 
       mutations = mutations.deep_symbolize_keys
-      apply_battlefield_patches_from_mutations!(mutations)
       apply_action_economy_delta_from_mutations!(mutations)
+      apply_battlefield_patches_from_mutations!(mutations)
       apply_player_mutations(mutations[:player])
       apply_npc_mutations(mutations[:npcs])
       apply_inventory_mutations(mutations[:inventory])
@@ -40,7 +40,8 @@ module DungeonMaster
       new_ctx = ctx.deep_stringify_keys.merge("action_economy" => merged_econ)
       @adventure.update!(combat_context: new_ctx)
     rescue ArgumentError => e
-      @log.log!(:warn, "[action_economy_delta] #{e.message}")
+      @log.log!(:warn, "[action_economy_delta] rejected: #{e.message}")
+      raise AiError, "Invalid action economy for this turn: #{e.message}"
     end
 
     def resolve_npc_actions(npc_actions)
