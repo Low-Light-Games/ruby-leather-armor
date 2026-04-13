@@ -57,4 +57,6 @@ evaluator/node_modules/
 
 # Claude
 /.claude
-.codex
+
+# Codex
+/.codex
