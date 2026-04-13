@@ -29,7 +29,7 @@ module DungeonMaster
         estimated = estimate_time(intent, verdict_result)
         @log.log!(:info, "TimeKeeper: estimated=#{estimated[:hours].round(4)}h, source=#{estimated[:source]}")
 
-        unless estimated[:source].in?(%i[ai ai_fallback])
+        unless estimated[:source] == :ai
           @log.play_log!("time_keeper", "#{estimated[:hours].round(4)}h (#{estimated[:source]})",
                          parsed_response: { source: estimated[:source],
                                             hours: estimated[:hours].round(4),
@@ -203,9 +203,6 @@ module DungeonMaster
             speed_factors: { source: "ai_estimate" }
           } : nil
         }
-      rescue TokenBudgetExceededError, AiError
-        { hours: 0.0017, source: :ai_fallback, terrain: nil, is_journey: false,
-          speed_mph: nil, journey_data: nil }
       end
 
       # ── Fatigue condition management ─────────────────────────────

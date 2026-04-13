@@ -46,4 +46,38 @@ RSpec.describe DungeonMaster::Battlefield::ApplyPatches, type: :service do
     expect(bf.tokens["player"]["y"]).to eq(30)
     expect(adventure.combat_context["battlefield_ref"]["version"]).to eq(bf.version)
   end
+
+  it "raises AiError on version drift and does not apply patches (all environments)" do
+    ctx = adventure.combat_context.deep_dup
+    ctx["battlefield_ref"] = ctx["battlefield_ref"].merge("version" => 0)
+    adventure.update!(combat_context: ctx)
+
+    expect do
+      described_class.call(
+        adventure: adventure.reload,
+        patches: [{ "op" => "move_token", "id" => "player", "x" => 99, "y" => 99 }],
+        log: nil
+      )
+    end.to raise_error(DungeonMaster::AiError, /version drift/)
+
+    adventure.reload
+    bf = adventure.adventure_battlefields.find(adventure.combat_context["battlefield_ref"]["id"])
+    expect(bf.tokens["player"]["x"]).not_to eq(99)
+  end
+
+  it "keeps other combat_context keys from the locked snapshot when syncing battlefield_ref" do
+    ctx = adventure.combat_context.deep_dup
+    ctx["action_economy"] = { "move_available" => false, "standard_available" => true }
+    adventure.update!(combat_context: ctx)
+
+    described_class.call(
+      adventure: adventure.reload,
+      patches: [{ "op" => "move_token", "id" => "player", "x" => 12, "y" => 14 }],
+      log: nil
+    )
+    adventure.reload
+    expect(adventure.combat_context["action_economy"]).to eq(
+      "move_available" => false, "standard_available" => true
+    )
+  end
 end

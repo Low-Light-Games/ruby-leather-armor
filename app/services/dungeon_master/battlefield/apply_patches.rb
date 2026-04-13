@@ -9,28 +9,28 @@ module DungeonMaster
           return if patches.blank?
 
           EnsureForActiveCombat.call(adventure: adventure)
-          adventure.reload
 
-          ctx = adventure.combat_context
-          return unless ctx.is_a?(Hash)
-
-          ref = ctx["battlefield_ref"] || ctx[:battlefield_ref]
-          return if ref.blank?
-
-          bf_id = ref["id"] || ref[:id]
           Adventure.transaction do
+            adventure.lock!
+            adventure.reload
+
+            ctx = adventure.combat_context
+            return unless ctx.is_a?(Hash)
+
+            ref = ctx["battlefield_ref"] || ctx[:battlefield_ref]
+            return if ref.blank?
+
+            bf_id = ref["id"] || ref[:id]
             bf = adventure.adventure_battlefields.lock.find_by(id: bf_id, status: "active")
             unless bf
               log&.log!(:warn, "[Battlefield::ApplyPatches] No active battlefield id=#{bf_id}")
-              next
+              return
             end
 
             expected = ref["version"] || ref[:version]
             if expected.present? && expected.to_i != bf.version.to_i
-              if Rails.env.development? || Rails.env.test?
-                raise DungeonMaster::AiError, "battlefield version drift: combat_context has #{expected}, row has #{bf.version}"
-              end
-              log&.log!(:warn, "[Battlefield::ApplyPatches] version drift before apply ctx=#{expected} row=#{bf.version}")
+              raise DungeonMaster::AiError,
+                    "battlefield version drift: combat_context has #{expected}, row has #{bf.version}"
             end
 
             data = {
@@ -48,14 +48,14 @@ module DungeonMaster
             )
             bf.save!
 
-            new_ctx = ctx.deep_stringify_keys
-            new_ref = (new_ctx["battlefield_ref"] || {}).merge(
+            merged = ctx.deep_stringify_keys.deep_dup
+            new_ref = (merged["battlefield_ref"] || {}).merge(
               "id" => bf.id,
               "version" => bf.version,
               "topology" => bf.topology
             )
-            new_ctx["battlefield_ref"] = new_ref
-            adventure.update!(combat_context: new_ctx)
+            merged["battlefield_ref"] = new_ref
+            adventure.update!(combat_context: merged)
           end
           adventure.reload
         end

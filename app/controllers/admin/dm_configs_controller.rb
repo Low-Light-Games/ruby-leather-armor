@@ -87,6 +87,7 @@ module Admin
         .select { |id| OpenaiModelCatalog.chat_model?(id) }
         .sort
     rescue StandardError => e
+      ApplicationErrorReporter.notify(e, context: { source: "dm_configs_fetch_openai_models" })
       Rails.logger.error("[DmConfigsController] Failed to fetch OpenAI models: #{e.message}")
       [DmConfig::DEFAULTS["model"]]
     end

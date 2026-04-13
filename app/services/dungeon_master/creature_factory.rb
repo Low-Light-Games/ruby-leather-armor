@@ -68,6 +68,7 @@ module DungeonMaster
       when "template" then create_from_template(name, party_level)
       end
     rescue => e
+      ApplicationErrorReporter.notify(e, context: { source: "creature_factory_resolve_dynamic", creature_name: name })
       @log.log!(:error, "dynamic_creature failed for '#{name}': #{e.message}")
       nil
     end

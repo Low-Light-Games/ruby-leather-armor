@@ -53,6 +53,7 @@ module Admin
       result = enricher.enrich
       render json: result
     rescue DungeonMaster::AiError => e
+      ApplicationErrorReporter.notify(e, context: { source: "admin_stories_enrich", story_id: @story.id })
       render json: { error: e.message }, status: :unprocessable_entity
     end
 

@@ -63,8 +63,7 @@ module DungeonMaster
           restore_paused_loop!
 
           if battlefield_roll_version_mismatch?(metadata)
-            ref = @adventure.combat_context.is_a?(Hash) ? @adventure.combat_context["battlefield_ref"] : nil
-            row = ref.present? ? @adventure.adventure_battlefields.find_by(id: ref["id"]) : nil
+            row = @adventure.adventure_battlefields.find_by(id: metadata["battlefield_id"].to_i)
             @log.play_log!(
               "battlefield_version_mismatch",
               "Roll request battlefield snapshot stale — metadata v#{metadata['battlefield_version']} vs row v#{row&.version}",
@@ -108,9 +107,9 @@ module DungeonMaster
 
         private
 
-        # Fail closed when roll_request carried a battlefield snapshot that no longer matches the row.
+        # Fail closed when roll_request metadata carries a battlefield snapshot that no longer matches the row.
+        # Uses the persisted snapshot only — not combat_active?, so stale roll resumes still guard after combat ends or context desync.
         def battlefield_roll_version_mismatch?(metadata)
-          return false unless @adventure.combat_active?
           return false if metadata["battlefield_id"].blank?
 
           bid = metadata["battlefield_id"].to_i

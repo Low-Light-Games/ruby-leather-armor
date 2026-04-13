@@ -35,8 +35,6 @@ module DungeonMaster
         end
 
         actions
-      rescue TokenBudgetExceededError, AiError
-        [sanitized_input]
       end
     end
   end

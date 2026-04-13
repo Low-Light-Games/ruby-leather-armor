@@ -84,6 +84,7 @@ module Adventures
     def run_embellisher(adventure)
       DungeonMaster::Embellisher.new(adventure, user: @user).run
     rescue DungeonMaster::AiError, DungeonMaster::TokenBudgetExceededError => e
+      ApplicationErrorReporter.notify(e, context: { source: "adventures_bootstrap_embellisher", adventure_id: adventure.id })
       Rails.logger.error("[Adventures::Bootstrap] Embellisher failed: #{e.message}")
     end
 
