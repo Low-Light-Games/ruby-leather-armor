@@ -143,6 +143,18 @@ shared_context "with evaluator stubs" do
           evaluator_entry("roll_qualifier", domain,
                           "parsed_response" => { "qualifications" => [] })
         end
+      elsif first_step.start_with?("npc_action")
+        body.map do |p|
+          st = p.dig("meta", "step").to_s
+          evaluator_entry(st, nil,
+                          "parsed_response" => {
+                            "action" => "attack",
+                            "target" => "Player",
+                            "attack_modifier" => 5,
+                            "damage_dice" => "1d4",
+                            "reasoning" => "stub npc turn"
+                          })
+        end
       elsif first_step == "beacon"
         body.map do |p|
           domain     = p.dig("meta", "domain")

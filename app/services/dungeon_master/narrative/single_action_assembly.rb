@@ -26,10 +26,15 @@ module DungeonMaster
           prior_outcomes: prior
         )
 
+        extra = {}
+        extra[:player_death] = true if result[:player_death]
+        extra[:player_incapacitated] = true if result[:player_incapacitated]
+
         NarrationPhaseInputs.new(
           intent: result[:intent],
           pipeline_context: ctx,
-          mutations: result[:mutations]
+          mutations: result[:mutations],
+          extra: extra
         )
       end
     end

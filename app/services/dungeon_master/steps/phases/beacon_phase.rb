@@ -78,6 +78,10 @@ module DungeonMaster
 
           expand_scene = domain_results.dig("social", :expand_scene) == true
 
+          combat_ending = ParallelEvaluation::DOMAINS.any? do |domain|
+            by_domain[domain]&.dig(:transition).to_s == "combat_ended"
+          end
+
           {
             intention:         intention,
             needs_mechanics:   needs_mechanics,
@@ -86,6 +90,7 @@ module DungeonMaster
             affected_contexts: affected.keys,
             transition:        transition,
             macro_significant: macro_significant,
+            combat_ending:     combat_ending,
             domain_results:    domain_results
           }
         end

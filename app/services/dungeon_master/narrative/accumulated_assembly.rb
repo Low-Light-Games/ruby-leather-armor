@@ -31,6 +31,8 @@ module DungeonMaster
         extra = {}
         extra[:encounter_triggered] = true if encounter_triggered
         extra[:social_scene_triggered] = true if social_scene_triggered
+        extra[:player_death] = true if results.any? { |r| r[:player_death] }
+        extra[:player_incapacitated] = true if results.any? { |r| r[:player_incapacitated] }
 
         NarrationPhaseInputs.new(
           intent: merged_intent,

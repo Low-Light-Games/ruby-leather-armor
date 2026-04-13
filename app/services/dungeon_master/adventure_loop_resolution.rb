@@ -63,11 +63,11 @@ module DungeonMaster
       return dispatch_encounter_warmaster(intent, time_result, mutations: nil) if time_result[:encounter]
 
       momentum_result = run_momentum(intent)
-      {
+      maybe_run_world_turn(
         status: :resolved, intent: intent,
         mutations: momentum_result[:mutations].presence,
         time_result: time_result
-      }
+      )
     end
 
     def skip_world_sanity_for_privileged_player?
@@ -91,11 +91,11 @@ module DungeonMaster
 
       store_pipeline_outcome!(verdict_result[:outcome])
 
-      {
+      maybe_run_world_turn(
         status: :resolved, intent: intent,
         mutations: verdict_result[:mutations],
         time_result: time_result
-      }
+      )
     end
 
     # Harbinger Path A: delegate loop + warmaster glue, then persist narration seed here.

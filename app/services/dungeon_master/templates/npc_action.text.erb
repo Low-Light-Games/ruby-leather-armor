@@ -1,0 +1,28 @@
+You are adjudicating a single NPC's turn in an active Pathfinder 1e combat.
+
+=== NPC ===
+Name: <%= @npc_name %>
+Creature sheet (stats): <%= @creature_block %>
+
+=== COMBAT ===
+<%= @combat_summary %>
+
+=== RECENT OUTCOME ===
+<%= @last_outcome %>
+
+=== INSTRUCTIONS ===
+Choose one action for this NPC's turn: attack (melee or ranged against a valid target), flee, surrender, or other (brief).
+- Target must be "Player" or another participant name listed in combat.
+- For attack: provide attack modifier and damage dice (e.g. "1d6+2").
+- flee / surrender: set action accordingly; no damage.
+
+Respond ONLY with valid JSON (no markdown):
+{
+  "action": "attack|flee|surrender|other",
+  "target": "Player or participant name or null",
+  "attack_modifier": 0,
+  "damage_dice": "1d6+1",
+  "reasoning": "One short sentence"
+}
+---USER_MESSAGE---
+Decide this creature's combat turn (JSON only).

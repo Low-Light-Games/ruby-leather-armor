@@ -54,19 +54,33 @@ module DungeonMaster
       # Pure computation — does NOT write to the adventure record.
       # Returns a hash suitable for passing as combat_initialization in mutations,
       # which ContextUpdate will write verbatim to adventure.combat_context.
-      def compute_combat_initialization(creature_data:, player_initiative:)
-        participants = creature_data.map do |c|
-          { "name" => c[:name], "creature_sheet_id" => c[:creature_sheet_id],
-            "initiative" => c[:initiative], "type" => "npc" }
-        end
-        participants << { "name" => "Player", "initiative" => player_initiative.to_i, "type" => "player" }
+      #
+      # +adventure+ and +player_sheet+ are required to load canonical HP/conditions from sheets.
+      def compute_combat_initialization(adventure:, player_sheet:, creature_data:, player_initiative:)
+        raise ArgumentError, "player_sheet required for combat initialization" unless player_sheet
 
-        turn_order = participants.sort_by { |p| -p["initiative"] }.map { |p| p["name"] }
+        npc_combatants = creature_data.map do |c|
+          c = c.deep_symbolize_keys
+          sheet = adventure.creature_sheets.find_by(id: c[:creature_sheet_id])
+          next nil unless sheet
+
+          Combatant.from_creature_sheet(sheet, initiative: c[:initiative].to_i)
+        end.compact
+
+        player_combatant = Combatant.from_player_sheet(player_sheet, initiative: player_initiative.to_i)
+        all_ordered = (npc_combatants + [player_combatant]).sort_by { |p| -p.initiative }
+        turn_order = all_ordered.map(&:name)
+        current_turn = turn_order.first
+
+        participants = all_ordered.map(&:to_context_hash)
 
         {
-          "active" => true, "round" => 1,
-          "participants" => participants,
+          "active" => true,
+          "round" => 1,
+          "current_turn" => current_turn,
           "turn_order" => turn_order,
+          "participants" => participants,
+          "terrain_notes" => nil,
           "active_effects" => []
         }
       end

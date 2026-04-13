@@ -38,6 +38,7 @@ module DungeonMaster
     include Steps::ContextUpdate
     include AdventureLoopResolution
     include Mutations
+    include Steps::WorldTurn
 
     include Concerns::NarrationCoordination
     include Concerns::ContextCoordination
@@ -85,6 +86,8 @@ module DungeonMaster
 
     def resolve_plot(intent, verdict_outcome: nil, encounter_triggered: false)
       return unless story_has_plot_data?
+      # v1 latency: skip Chronicler while combat is active (revisit if combat rounds gain plot beats).
+      return if combat_active?
 
       run_chronicler(intent, verdict_outcome: verdict_outcome, encounter_triggered: encounter_triggered)
     end

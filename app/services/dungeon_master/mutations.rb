@@ -70,8 +70,7 @@ module DungeonMaster
     def apply_npc_mutations(npc_muts)
       Array(npc_muts).each do |npc_mut|
         npc_mut  = npc_mut.deep_symbolize_keys if npc_mut.is_a?(Hash)
-        name     = npc_mut[:name]
-        creature = @adventure.creature_sheets.find_by(name: name)
+        creature = resolve_creature_sheet_for_npc_mutation(npc_mut)
         next unless creature
 
         hp_change = npc_mut[:hp_change]
@@ -88,6 +87,15 @@ module DungeonMaster
 
         conditions_changed = apply_conditions(creature, npc_mut[:conditions_add], npc_mut[:conditions_remove])
         creature.recompute_derived_stats! if conditions_changed
+      end
+    end
+
+    def resolve_creature_sheet_for_npc_mutation(npc_mut)
+      sid = npc_mut[:creature_sheet_id]
+      if sid.present?
+        @adventure.creature_sheets.find_by(id: sid.to_i)
+      elsif npc_mut[:name].present?
+        @adventure.creature_sheets.find_by(name: npc_mut[:name].to_s)
       end
     end
 

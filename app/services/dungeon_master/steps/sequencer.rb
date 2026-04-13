@@ -14,6 +14,8 @@ module DungeonMaster
           return [sanitized_input]
         end
 
+        return [sanitized_input] if combat_active?
+
         prompt_summary = "Sequencer: \"#{@log.truncate(sanitized_input)}\""
         system_prompt = PromptRenderer.render("sequencer")
         request_body = { system_prompt: system_prompt, user_message: sanitized_input }

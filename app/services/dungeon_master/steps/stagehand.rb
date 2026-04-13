@@ -28,6 +28,9 @@ module DungeonMaster
           }.merge(extra)
         end
 
+        # v1 latency: combat rounds are never macro-significant; skip macro context LLM cost.
+        intent = intent.merge(macro_significant: false) if stagehand_combat_active?
+
         narration_mode = @config.get("narration_mode") || "parallel"
 
         if narration_mode == "subjugated"

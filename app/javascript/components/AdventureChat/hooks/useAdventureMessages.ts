@@ -65,7 +65,8 @@ export function useAdventureMessages({
 
     if (onDmResponse) onDmResponse()
     const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
-    if (completeMsg && onAdventureComplete) onAdventureComplete()
+    const deathMsg = data.messages.find(m => m.message_type === 'player_death')
+    if ((completeMsg || deathMsg) && onAdventureComplete) onAdventureComplete()
   }, [activatePendingRolls, onDmResponse, onAdventureComplete])
 
   const handleAsyncResponse = useCallback((data: { messages: AdventureMessage[] }) => {
@@ -90,7 +91,8 @@ export function useAdventureMessages({
         : [...rest, ...data.messages]
     })
     const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
-    if (completeMsg && onAdventureComplete) onAdventureComplete()
+    const deathMsg = data.messages.find(m => m.message_type === 'player_death')
+    if ((completeMsg || deathMsg) && onAdventureComplete) onAdventureComplete()
   }, [onAdventureComplete])
 
   const handleError = useCallback((errorPrefix: string, err: any) => {
@@ -183,7 +185,8 @@ export function useAdventureMessages({
               lastSentRef.current = null
               if (h.onDmResponse) h.onDmResponse()
               const completeMsg = msgs.find(m => m.message_type === 'adventure_complete')
-              if (completeMsg && h.onAdventureComplete) h.onAdventureComplete()
+              const deathMsg = msgs.find(m => m.message_type === 'player_death')
+              if ((completeMsg || deathMsg) && h.onAdventureComplete) h.onAdventureComplete()
             })
             .catch(() => {})
         },

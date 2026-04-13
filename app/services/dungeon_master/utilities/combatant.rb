@@ -1,0 +1,99 @@
+# frozen_string_literal: true
+
+module DungeonMaster
+  module Utilities
+    # Value object for one participant in a combat encounter (player or NPC).
+    # Used by Warmaster, CombatTurnCalculator, WorldTurn, and combat_context serialization.
+    class Combatant
+      attr_reader :name, :creature_sheet_id, :type, :initiative,
+                  :hp, :max_hp, :conditions, :position
+
+      def initialize(name:, creature_sheet_id:, type:, initiative:,
+        hp:, max_hp:, conditions: [], position: nil)
+        @name = name.to_s
+        @creature_sheet_id = creature_sheet_id
+        @type = type.to_s
+        @initiative = initiative.to_i
+        @hp = hp.to_i
+        @max_hp = max_hp.to_i
+        @conditions = Array(conditions).map(&:to_s)
+        @position = position
+      end
+
+      def defeated?
+        hp <= 0 || conditions.include?("dead")
+      end
+
+      def can_act?
+        !defeated? &&
+          !conditions.include?("fled") &&
+          !conditions.include?("surrendered") &&
+          !conditions.include?("paralyzed") &&
+          !conditions.include?("petrified")
+      end
+
+      def player?
+        type == "player"
+      end
+
+      def npc?
+        type == "npc"
+      end
+
+      def to_context_hash
+        h = {
+          "name" => name,
+          "type" => type,
+          "initiative" => initiative,
+          "hp" => hp,
+          "max_hp" => max_hp,
+          "conditions" => conditions,
+          "position" => position
+        }
+        h["creature_sheet_id"] = creature_sheet_id if creature_sheet_id.present?
+        h
+      end
+
+      def self.from_creature_sheet(sheet, initiative:)
+        new(
+          name: sheet.name,
+          creature_sheet_id: sheet.id,
+          type: "npc",
+          initiative: initiative,
+          hp: sheet.hp,
+          max_hp: sheet.max_hp,
+          conditions: Array(sheet.conditions),
+          position: nil
+        )
+      end
+
+      def self.from_player_sheet(sheet, initiative:)
+        new(
+          name: "Player",
+          creature_sheet_id: nil,
+          type: "player",
+          initiative: initiative,
+          hp: sheet.hp,
+          max_hp: sheet.max_hp,
+          conditions: Array(sheet.conditions),
+          position: nil
+        )
+      end
+
+      # Deserialize from combat_context participant hash (string keys).
+      def self.from_context_hash(hash)
+        h = hash.stringify_keys
+        new(
+          name: h["name"],
+          creature_sheet_id: h["creature_sheet_id"],
+          type: h["type"] || "npc",
+          initiative: h["initiative"].to_i,
+          hp: h["hp"].to_i,
+          max_hp: (h["max_hp"] || h["hp"]).to_i,
+          conditions: Array(h["conditions"]),
+          position: h["position"]
+        )
+      end
+    end
+  end
+end

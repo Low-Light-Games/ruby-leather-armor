@@ -29,8 +29,14 @@ module DungeonMaster
         player_init = Utilities::Warmaster.auto_roll_player_initiative(sheet)
         creature_data = last_init_msg.metadata["creature_data"].map(&:deep_symbolize_keys)
 
+        # Principle 18 single-writer: ContextUpdate normally owns combat_context. This path is the
+        # documented emergency exception (see docs/design_philosophy.md) — auto-finalize before a
+        # new player message runs the pipeline without a ContextUpdate pass.
         combat_data = Utilities::Warmaster.compute_combat_initialization(
-          creature_data: creature_data, player_initiative: player_init)
+          adventure: adventure,
+          player_sheet: sheet,
+          creature_data: creature_data,
+          player_initiative: player_init)
         adventure.update!(combat_context: combat_data)
 
         log.log!(:info, "Auto-rolled player initiative (#{player_init}) — player ignored initiative prompt")

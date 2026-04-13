@@ -287,11 +287,6 @@ module DungeonMaster
         (modifiers[terrain.to_s] || 1.0).to_f
       end
 
-      def combat_active?
-        ctx = @adventure.combat_context
-        ctx.is_a?(Hash) && ctx["active"] == true &&
-          Array(ctx["participants"]).any?
-      end
     end
   end
 end

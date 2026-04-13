@@ -1,0 +1,10 @@
+{
+  "description": "One NPC combat turn decision.",
+  "fields": {
+    "action": "attack | flee | surrender | other",
+    "target": "string or null",
+    "attack_modifier": "integer — bonus on d20 attack vs AC",
+    "damage_dice": "string — e.g. 1d6+2, used on hit",
+    "reasoning": "brief"
+  }
+}

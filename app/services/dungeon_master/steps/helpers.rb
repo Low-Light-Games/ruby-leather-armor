@@ -51,6 +51,12 @@ module DungeonMaster
       def broadcast_progress(message)
         @on_progress&.call(message)
       end
+
+      # Shared with TimeKeeper, Sequencer, WorldTurn, resolve_plot skips, etc.
+      def combat_active?
+        ctx = @adventure.combat_context
+        ctx.is_a?(Hash) && ctx["active"] == true && Array(ctx["participants"]).any?
+      end
     end
   end
 end

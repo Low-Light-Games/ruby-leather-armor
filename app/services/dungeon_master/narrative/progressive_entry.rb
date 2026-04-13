@@ -7,11 +7,12 @@ module DungeonMaster
     # contract for PipelineEngine#on_narrative and for each element of :narratives on
     # :narrated_sequence when the queue aborts after partial per-action output.
     class ProgressiveEntry
-      attr_reader :narrative, :adventure_complete, :sequence_index, :total_actions, :action_text
+      attr_reader :narrative, :adventure_complete, :player_death, :sequence_index, :total_actions, :action_text
 
-      def initialize(narrative:, adventure_complete:, sequence_index:, total_actions:, action_text:)
+      def initialize(narrative:, adventure_complete:, player_death: false, sequence_index:, total_actions:, action_text:)
         @narrative          = narrative
         @adventure_complete = adventure_complete
+        @player_death       = player_death
         @sequence_index     = sequence_index
         @total_actions      = total_actions
         @action_text        = action_text
@@ -22,6 +23,7 @@ module DungeonMaster
         new(
           narrative: phase[:narrative],
           adventure_complete: phase[:adventure_complete],
+          player_death: phase[:player_death] == true,
           sequence_index: sequence_index,
           total_actions: total_actions,
           action_text: action_text
@@ -32,6 +34,7 @@ module DungeonMaster
         {
           narrative: narrative,
           adventure_complete: adventure_complete,
+          player_death: player_death,
           sequence_index: sequence_index,
           total_actions: total_actions,
           action_text: action_text

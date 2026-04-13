@@ -315,7 +315,7 @@ export interface AdventureMessage {
   id: number
   role: 'player' | 'dm' | 'system'
   content: string
-  message_type: 'narrative' | 'sanitization_fail' | 'adventure_complete'
+  message_type: 'narrative' | 'sanitization_fail' | 'adventure_complete' | 'player_death'
     | 'roll_request' | 'roll_result'
     | 'initiative_request' | 'initiative_result'
     | 'dm_query' | 'usage_limit'

@@ -11,6 +11,7 @@
   },
   "notes": [
     "When combat_initialization is present in mutations, write it verbatim without modification.",
+    "When combat_state_advancement is present in mutations, merge/write it verbatim into combat_context without modification (same rule as combat_initialization).",
     "HP values must always come from canonical_hp when provided — never calculate or estimate.",
     "Set active to false when the outcome describes all enemies defeated, fled, or surrendered.",
     "Do not clear this context immediately after combat ends — preserve the post-combat state for scene continuity."

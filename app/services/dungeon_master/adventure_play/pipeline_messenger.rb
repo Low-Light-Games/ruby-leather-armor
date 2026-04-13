@@ -62,6 +62,12 @@ module DungeonMaster
               content: "The adventure has reached its conclusion.",
               message_type: "adventure_complete")
           end
+          if result[:player_death]
+            msgs << persist_message(
+              role: "system",
+              content: "Your character has died.",
+              message_type: "player_death")
+          end
           msgs
 
         when :narrated_sequence
@@ -87,6 +93,14 @@ module DungeonMaster
             content: "The adventure has reached its conclusion.",
             message_type: "adventure_complete")
           to_broadcast << MessageSerializer.as_json(complete_msg, admin: admin)
+        end
+
+        if narrative_entry[:player_death]
+          death_msg = persist_message(
+            role: "system",
+            content: "Your character has died.",
+            message_type: "player_death")
+          to_broadcast << MessageSerializer.as_json(death_msg, admin: admin)
         end
 
         AdventureChannel.broadcast_to(@adventure, { type: "pipeline_action_result", messages: to_broadcast })
