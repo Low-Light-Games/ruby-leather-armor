@@ -5,7 +5,8 @@ class AdventureMessage < ApplicationRecord
   validates :content, presence: true
   validates :message_type, presence: true, inclusion: {
     in: %w[narrative sanitization_fail adventure_complete player_death player_incapacitated roll_request roll_result
-           initiative_request initiative_result dm_query moderation_flagged usage_limit system_notice]
+           initiative_request initiative_result dm_query moderation_flagged usage_limit system_notice
+           combat_log action_result]
   }
 
   scope :chronological, -> { order(created_at: :asc) }

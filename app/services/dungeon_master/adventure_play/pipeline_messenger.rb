@@ -64,10 +64,13 @@ module DungeonMaster
           # Combat context was written directly after initiative resolve; the encounter scene
           # was already delivered in the initiative_request message. No narrative is emitted
           # unless a terminal event (player_death etc.) was set by an early world turn.
-          persist_event_messages(result)
+          msgs = persist_combat_log_messages(result[:world_turn_lines])
+          msgs.concat(persist_event_messages(result))
+          msgs
 
         when :narrated
           msgs = [persist_message(role: "dm", content: result[:narrative], message_type: "narrative")]
+          msgs.concat(persist_combat_log_messages(result[:world_turn_lines]))
           msgs.concat(persist_event_messages(result))
 
         when :narrated_sequence
@@ -113,6 +116,16 @@ module DungeonMaster
       end
 
       private
+
+      # Persists each NPC world-turn action line as a discrete combat_log message.
+      # Returns the persisted objects (empty array when lines is blank).
+      def persist_combat_log_messages(lines)
+        Array(lines).filter_map do |line|
+          next if line.blank?
+
+          persist_message(role: "dm", content: line, message_type: "combat_log")
+        end
+      end
 
       # Persists system messages for terminal narrative events (adventure_complete,
       # player_death, player_incapacitated). Returns the persisted objects in order.

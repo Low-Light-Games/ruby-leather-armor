@@ -143,6 +143,10 @@ module DungeonMaster
         prose = lines.join("\n")
         append_pipeline_outcome!(prose) if prose.present?
 
+        # Surface raw action lines so PipelineMessenger can persist them as discrete
+        # combat_log messages in the player-facing chat history.
+        result[:world_turn_lines] = lines.dup if lines.any?
+
         next_slice = if early_stop
                        {
                          "current_turn" => Utilities::CombatTurnCalculator::PLAYER_NAME,
