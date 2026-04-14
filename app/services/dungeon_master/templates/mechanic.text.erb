@@ -43,9 +43,15 @@ determine the factual outcome and produce structured mutations.
   confirmation roll also hits, apply the weapon's crit multiplier to damage
   (x2 most weapons, x3 for axes/bows/picks, x4 for scythes). Note "critical hit"
   in the outcome field.
+<% if @no_auto_hit_miss %>
+- ATTACK ROLLS: Use total (d20 + modifier) vs AC only. Natural 1 is not an automatic miss;
+  natural 20 is not an automatic hit. No fumbles, no guaranteed crits from die face alone —
+  the math decides. A well-armored character is genuinely unhittable by a weak attacker.
+<% else %>
 - FUMBLES: A natural 1 on an attack roll always misses regardless of modifiers.
   Note "natural 1 — automatic miss" in the outcome. Do not apply fumble effects
   beyond the miss unless the adventure config specifies house rules.
+<% end %>
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {

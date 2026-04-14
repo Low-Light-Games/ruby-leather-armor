@@ -31,7 +31,9 @@ module DungeonMaster
           creature_stats: creature_stats,
           battlefield_text: battlefield_text,
           action_economy_json: action_economy.present? ? action_economy.to_json : "(none)",
-          combat_rules: combat_rules.presence || "(see core PF1e CRB combat chapter)")
+          combat_rules: combat_rules.presence || "(see core PF1e CRB combat chapter)",
+          no_auto_hit_miss: @config.no_auto_hit_miss?,
+          instant_death: @config.instant_death?)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
 

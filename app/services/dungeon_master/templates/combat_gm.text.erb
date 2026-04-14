@@ -35,6 +35,20 @@ Your job is to resolve combat consequences accurately (hits, damage, conditions,
 - Viewport is a fixed world-space window until patched: if movement would leave the tactical picture misleading, include `shift_viewport` (or recenters) in `battlefield_patches`.
 - `battlefield_patches` ops are strict: only `move_token`, `shift_viewport`, and `set_cells`. For `set_cells`, each cell needs `x` and `y` plus only these optional keys: `terrain`, `difficult`, `cover`, `light`, `obstacle`, `note`, `labels`. Any other op or cell key causes the patch to fail (no silent ignore).
 
+<% if @no_auto_hit_miss || @instant_death %>
+=== HOUSE RULES (active — these override standard PF1e) ===
+<% if @no_auto_hit_miss %>
+- No automatic miss on natural 1 and no automatic hit on natural 20.
+  Use only total (d20 + modifier) vs AC. A character with sufficiently high AC
+  is unhittable by a weak attacker regardless of die result.
+<% end %>
+<% if @instant_death %>
+- HP reaching 0 means immediate death. There is no dying/bleed window and no
+  stabilization roll. Emit the hp_change that the hit warrants; the engine
+  enforces the death outcome when HP reaches 0.
+<% end %>
+
+<% end %>
 === INSTRUCTIONS ===
 - Determine factual mechanical outcomes from the rolls and battlefield (hits, crits, damage, saves, conditions).
 - Apply PF1e accurately: threatened squares, attacks of opportunity (only when the declared action provokes), reach, soft cover approximations from terrain text.
