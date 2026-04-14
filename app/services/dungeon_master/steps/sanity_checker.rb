@@ -62,12 +62,16 @@ module DungeonMaster
       def sanity_checker_world_evaluator_prompt(intent)
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
         npc_names = @adventure.story.story_npcs.pluck(:name)
+        combat_ctx = @adventure.combat_context || {}
+        combat_active = combat_ctx["active"] == true
 
         system_prompt = PromptRenderer.render("sanity_checker_world",
-          scene_summary: @adventure.scene_summary,
-          scene_history: Array(@adventure.scene_history),
-          micro_contexts: micro_contexts,
-          npc_names: npc_names)
+          scene_summary:     @adventure.scene_summary,
+          scene_history:     Array(@adventure.scene_history),
+          micro_contexts:    micro_contexts,
+          npc_names:         npc_names,
+          combat_active:     combat_active,
+          combat_turn_order: combat_active ? Array(combat_ctx["turn_order"]) : [])
 
         {
           system_prompt: system_prompt,
@@ -217,12 +221,16 @@ module DungeonMaster
 
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
         npc_names = @adventure.story.story_npcs.pluck(:name)
+        combat_ctx = @adventure.combat_context || {}
+        combat_active = combat_ctx["active"] == true
 
         system_prompt = PromptRenderer.render("sanity_checker_world",
-          scene_summary: @adventure.scene_summary,
-          scene_history: Array(@adventure.scene_history),
-          micro_contexts: micro_contexts,
-          npc_names: npc_names)
+          scene_summary:     @adventure.scene_summary,
+          scene_history:     Array(@adventure.scene_history),
+          micro_contexts:    micro_contexts,
+          npc_names:         npc_names,
+          combat_active:     combat_active,
+          combat_turn_order: combat_active ? Array(combat_ctx["turn_order"]) : [])
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
 
