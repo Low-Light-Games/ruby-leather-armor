@@ -12,30 +12,34 @@ module DungeonMaster
         def build_beacon_prompts(intention)
           prior = continuity_prior_outcomes
           ParallelEvaluation::DOMAINS.map do |domain|
-            char_data    = CharacterBlock.for(@sheet, category: domain)
-            domain_ctx   = @adventure.send("#{domain}_context")
-            rules_mfst   = domain_rules_manifest(domain)
-            extra_ctx    = domain == "traversal" ? build_traversal_extra_context_pe : nil
-            instructions = PromptRenderer.render_partial("beacon/_#{domain}",
-                             domain_context: domain_ctx)
-
-            system_prompt = PromptRenderer.render("beacon",
-              domain:               domain,
-              character_data:       char_data,
-              domain_context:       domain_ctx,
-              rules_manifest:       rules_mfst,
-              extra_context:        extra_ctx,
-              domain_instructions:  instructions,
-              prior_outcomes:       prior)
-
+            domain_ctx = @adventure.send("#{domain}_context")
             {
-              system_prompt: system_prompt,
+              system_prompt: beacon_system_prompt(domain, domain_ctx, prior),
               user_message:  intention,
               model:         @config.model_for("beacon"),
               max_tokens:    @config.token_budget_for("beacon"),
               meta:          { step: "beacon", domain: domain }
             }
           end
+        end
+
+        def beacon_system_prompt(domain, domain_ctx, prior)
+          return PromptRenderer.render("combat_beacon",
+            domain_context: domain_ctx,
+            prior_outcomes: prior) if domain == "combat"
+
+          char_data    = CharacterBlock.for(@sheet, category: domain)
+          rules_mfst   = domain_rules_manifest(domain)
+          extra_ctx    = domain == "traversal" ? build_traversal_extra_context_pe : nil
+          instructions = PromptRenderer.render_partial("beacon/_#{domain}", domain_context: domain_ctx)
+          PromptRenderer.render("beacon",
+            domain:              domain,
+            character_data:      char_data,
+            domain_context:      domain_ctx,
+            rules_manifest:      rules_mfst,
+            extra_context:       extra_ctx,
+            domain_instructions: instructions,
+            prior_outcomes:      prior)
         end
 
         def converge_beacons(results, intention)
@@ -74,6 +78,14 @@ module DungeonMaster
             macro_significant  = true if d[:macro_significant] == true
             transition       ||= d[:transition]
             destination      ||= d[:destination] if domain == "traversal"
+          end
+
+          # If the combat beacon named combatants but forgot to set affected, force routing.
+          cr = domain_results["combat"]
+          if cr && !cr[:affected] && Array(cr[:combatants]).any? && cr[:transition].to_s.match?(/combat_started|_to_combat/)
+            domain_results["combat"] = cr.merge(affected: true, needs_mechanics: true)
+            affected["combat"] = true
+            needs_mechanics = true
           end
 
           expand_scene = domain_results.dig("social", :expand_scene) == true

@@ -1,0 +1,27 @@
+You are the COMBAT beacon for a Pathfinder 1e RPG.
+Is the player's action starting or directly involving combat? If starting, list every creature being fought.
+
+=== COMBAT STATE ===
+<%= @domain_context.present? ? @domain_context.to_json : "(none)" %>
+
+<% _prior = PromptRenderer.render_partial("partials/prior_outcomes", outcomes: @prior_outcomes) -%>
+<% if _prior.present? -%>
+<%= _prior %>
+
+<% end -%>
+- transition "combat_started" + combatants (singular lowercase bestiary names) when a new fight is initiated.
+- If combat is already active (COMBAT STATE active: true): affected true, transition null, combatants [].
+- If nothing combat-related: affected false.
+- affected and needs_mechanics are always the same value for combat.
+
+Output JSON only:
+{
+  "affected": false,
+  "needs_mechanics": false,
+  "macro_significant": false,
+  "expand_scene": false,
+  "transition": null,
+  "destination": null,
+  "combatants": [],
+  "reasoning": "1 sentence"
+}
