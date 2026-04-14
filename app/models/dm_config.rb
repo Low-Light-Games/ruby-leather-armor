@@ -47,7 +47,7 @@ class DmConfig < ApplicationRecord
       "mountain" => 0.25, "underground" => 0.5
     },
     "wait_messages" => WAIT_MESSAGES_DEFAULT,
-    "token_budgets" => DungeonMaster::StepRegistry.default_token_budgets,
+    "token_budgets" => {},
   }.freeze
 
   def self.instance
@@ -90,6 +90,7 @@ class DmConfig < ApplicationRecord
 
   def token_budget_for(step)
     budgets = get("token_budgets")
-    (budgets[step.to_s] || 500).to_i
+    val = budgets[step.to_s]
+    val.nil? ? nil : val.to_i
   end
 end

@@ -110,7 +110,6 @@
                     data-input-cost="<%= m["input_cost"] %>"
                     data-output-cost="<%= m["output_cost"] %>"
                     data-reasoning-model="<%= m["reasoning_model"] %>"
-                    data-default-budgets="<%= (m["default_token_budgets"] || {}).to_json %>"
                     <%= 'selected' if m["id"] == @config.model %>>
               <%= m["name"] %><%= " ⚙️" if m["reasoning_model"] %>
             </option>
@@ -138,7 +137,7 @@
         <p class="field-hint" style="margin-bottom: 12px;">
           Configure the model and token budget for each pipeline step.
           Steps with no model override use the default model above.
-          Reasoning models (⚙️) need higher budgets. Leave budget blank to use the model's suggested default.
+          Leave budget blank for no limit (recommended).
           Steps marked with ➡️ may benefit from a capable model.
           Steps marked with ⚠️ have baseline high context or reasoning needs — choose a capable model and consider a higher token budget.
         </p>
@@ -166,7 +165,6 @@
                   <option value="">(Default)</option>
                   <% @models_with_metadata.each do |m| %>
                     <option value="<%= m["id"] %>"
-                            data-default-budgets="<%= (m["default_token_budgets"] || {}).to_json %>"
                             data-reasoning-model="<%= m["reasoning_model"] %>"
                             data-input-cost="<%= m["input_cost"] %>"
                             data-output-cost="<%= m["output_cost"] %>"
@@ -322,49 +320,15 @@
     }
   });
 
-  function getDefaultModelBudgets() {
-    var select = document.getElementById('model-select');
-    var opt = select.options[select.selectedIndex];
-    if (!opt || !opt.dataset.defaultBudgets) return {};
-    try { return JSON.parse(opt.dataset.defaultBudgets); } catch(e) { return {}; }
-  }
-
   function getDefaultModelName() {
     var select = document.getElementById('model-select');
     var opt = select.options[select.selectedIndex];
     return opt ? opt.textContent.trim() : '';
   }
 
-  function getBudgetsForStepModel(stepSelect) {
-    var opt = stepSelect.options[stepSelect.selectedIndex];
-    if (!opt || !opt.value || !opt.dataset.defaultBudgets) return null;
-    try { return JSON.parse(opt.dataset.defaultBudgets); } catch(e) { return null; }
-  }
-
   function getModelNameForStep(stepSelect) {
     var opt = stepSelect.options[stepSelect.selectedIndex];
     return (opt && opt.value) ? opt.textContent.trim() : null;
-  }
-
-  function updateBudgetPlaceholders() {
-    var defaultBudgets = getDefaultModelBudgets();
-    var defaultName = getDefaultModelName();
-
-    document.querySelectorAll('.budget-input').forEach(function(input) {
-      var step = input.dataset.step;
-      var stepSelect = document.getElementById('step_models_' + step);
-      var stepBudgets = stepSelect ? getBudgetsForStepModel(stepSelect) : null;
-      var stepName = stepSelect ? getModelNameForStep(stepSelect) : null;
-
-      var budgets = stepBudgets || defaultBudgets;
-      var name = stepName || defaultName;
-
-      if (budgets[step]) {
-        input.placeholder = budgets[step] + ' (' + name + ')';
-      } else {
-        input.placeholder = '';
-      }
-    });
   }
 
   function getDefaultModelCosts() {
@@ -404,25 +368,21 @@
     });
   }
 
-  // Update placeholders and pricing when any step model changes
+  // Update pricing when any step model changes
   document.querySelectorAll('.step-model-select').forEach(function(select) {
     select.addEventListener('change', function() {
-      updateBudgetPlaceholders();
       updateStepPricing();
     });
   });
 
-  // Reset all step models to default and budgets to model defaults
+  // Reset all step models to default and clear budgets
   document.getElementById('reset-budgets-btn').addEventListener('click', function() {
     document.querySelectorAll('.step-model-select').forEach(function(select) {
       select.value = '';
     });
-    var budgets = getDefaultModelBudgets();
     document.querySelectorAll('.budget-input').forEach(function(input) {
-      var step = input.dataset.step;
-      input.value = budgets[step] || '';
+      input.value = '';
     });
-    updateBudgetPlaceholders();
     updateStepPricing();
   });
 
@@ -434,11 +394,8 @@
       var budgetInput = document.getElementById('token_budgets_' + step);
 
       stepSelect.value = '';
+      budgetInput.value = '';
 
-      var budgets = getDefaultModelBudgets();
-      budgetInput.value = budgets[step] || '';
-
-      updateBudgetPlaceholders();
       updateStepPricing();
     });
   });
@@ -463,7 +420,6 @@
       parts.push('<span class="md-cost">$' + inputCost + ' in · $' + outputCost + ' out <small>per 1M tokens</small></span>');
 
     panel.innerHTML = parts.join('');
-    updateBudgetPlaceholders();
     updateStepPricing();
   }
 

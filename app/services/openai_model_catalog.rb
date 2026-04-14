@@ -49,17 +49,12 @@ class OpenaiModelCatalog
     caps.fetch("reasoning_model", false)
   end
 
-  def self.default_token_budgets(model_id)
-    catalog.dig(normalize(model_id), "default_token_budgets") || DungeonMaster::StepRegistry.default_token_budgets
-  end
-
   def self.for_model(model_id)
     meta = catalog[normalize(model_id)] || {}
     { "id" => model_id, "name" => meta["name"] || model_id,
       "description" => meta["description"],
       "input_cost" => meta["input_cost"], "output_cost" => meta["output_cost"],
-      "reasoning_model" => reasoning_model?(model_id),
-      "default_token_budgets" => default_token_budgets(model_id) }
+      "reasoning_model" => reasoning_model?(model_id) }
   end
 
   def self.for_models(model_ids)

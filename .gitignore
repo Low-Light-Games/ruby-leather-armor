@@ -54,3 +54,6 @@ evaluator/node_modules/
 
 # Cursor
 /.cursor
+
+.claude/
+.codex
