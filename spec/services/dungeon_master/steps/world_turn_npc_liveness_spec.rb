@@ -54,7 +54,6 @@ RSpec.describe "DungeonMaster::Steps::WorldTurn — per-iteration NPC liveness",
           "initiative" => 10, "conditions" => [], "creature_sheet_id" => goblin_b.id }
       ],
       "terrain_notes" => nil,
-      "active_effects" => []
     })
 
     resolved_names = []

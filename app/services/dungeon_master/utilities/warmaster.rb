@@ -98,8 +98,7 @@ module DungeonMaster
           "current_turn" => current_turn,
           "turn_order" => turn_order,
           "participants" => participants,
-          "terrain_notes" => nil,
-          "active_effects" => []
+          "terrain_notes" => nil
         }
       end
 

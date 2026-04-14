@@ -26,7 +26,6 @@ module DungeonMaster
         out = {
           "turn_order" => ctx["turn_order"],
           "terrain_notes" => ctx["terrain_notes"],
-          "active_effects" => ctx["active_effects"],
           "participants" => participants,
           "round" => ns.key?("round") ? ns["round"] : ctx["round"],
           "current_turn" => current_turn,
@@ -53,8 +52,7 @@ module DungeonMaster
           "current_turn" => ctx["current_turn"],
           "turn_order" => ctx["turn_order"],
           "participants" => participants,
-          "terrain_notes" => ctx["terrain_notes"],
-          "active_effects" => ctx["active_effects"]
+          "terrain_notes" => ctx["terrain_notes"]
         }
         base["battlefield_ref"] = ctx["battlefield_ref"] if ctx["battlefield_ref"].present?
         base["last_battlefield_ref"] = ctx["last_battlefield_ref"] if ctx["last_battlefield_ref"].present?

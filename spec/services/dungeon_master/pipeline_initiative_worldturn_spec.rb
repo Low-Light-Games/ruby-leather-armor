@@ -66,7 +66,6 @@ RSpec.describe "DungeonMaster::PipelineEngine — initiative + world-turn termin
             "initiative" => 15, "conditions" => [] }
         ],
         "terrain_notes" => nil,
-        "active_effects" => []
       }
     end
 

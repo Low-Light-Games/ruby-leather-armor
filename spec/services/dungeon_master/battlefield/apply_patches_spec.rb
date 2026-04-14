@@ -25,7 +25,6 @@ RSpec.describe DungeonMaster::Battlefield::ApplyPatches, type: :service do
           { "name" => "Player", "type" => "player", "hp" => 10, "max_hp" => 10, "initiative" => 10, "conditions" => [] }
         ],
         "terrain_notes" => nil,
-        "active_effects" => []
       },
       sheet: sheet
     )

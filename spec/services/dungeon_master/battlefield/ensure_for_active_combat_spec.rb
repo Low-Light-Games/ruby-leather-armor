@@ -36,7 +36,6 @@ RSpec.describe DungeonMaster::Battlefield::EnsureForActiveCombat, type: :service
         { "name" => "Goblin", "type" => "npc", "hp" => 5, "max_hp" => 5, "initiative" => 10, "conditions" => [] }
       ],
       "terrain_notes" => nil,
-      "active_effects" => []
     })
 
     described_class.call(adventure: adventure.reload, sheet: sheet)
@@ -58,7 +57,6 @@ RSpec.describe DungeonMaster::Battlefield::EnsureForActiveCombat, type: :service
         { "name" => "Goblin", "type" => "npc", "hp" => 5, "max_hp" => 5, "initiative" => 10, "conditions" => [] }
       ],
       "terrain_notes" => nil,
-      "active_effects" => []
     })
 
     described_class.call(adventure: adventure.reload, sheet: sheet)
@@ -92,7 +90,6 @@ RSpec.describe DungeonMaster::Battlefield::EnsureForActiveCombat, type: :service
         { "name" => "Goblin", "type" => "npc", "hp" => 5, "max_hp" => 5, "initiative" => 10, "conditions" => [] }
       ],
       "terrain_notes" => nil,
-      "active_effects" => []
     })
 
     described_class.call(adventure: adventure.reload, sheet: sheet)
@@ -130,7 +127,6 @@ RSpec.describe DungeonMaster::Battlefield::EnsureForActiveCombat, type: :service
         { "name" => "Player", "type" => "player", "hp" => 10, "max_hp" => 10, "initiative" => 10, "conditions" => [] }
       ],
       "terrain_notes" => nil,
-      "active_effects" => []
     })
 
     described_class.call(adventure: adventure.reload, sheet: sheet)
@@ -150,7 +146,6 @@ RSpec.describe DungeonMaster::Battlefield::EnsureForActiveCombat, type: :service
         { "name" => "Player", "type" => "player", "hp" => 10, "max_hp" => 10, "initiative" => 10, "conditions" => [] }
       ],
       "terrain_notes" => nil,
-      "active_effects" => []
     }
     DungeonMaster::Battlefield::PersistCombatStart.call(adventure: adventure, combat_data: combat_data, sheet: sheet)
     adventure.reload
@@ -183,7 +178,6 @@ RSpec.describe DungeonMaster::Battlefield::EnsureForActiveCombat, type: :service
         { "name" => "Player", "type" => "player", "hp" => 10, "max_hp" => 10, "initiative" => 10, "conditions" => [] }
       ],
       "terrain_notes" => nil,
-      "active_effects" => []
     }
     DungeonMaster::Battlefield::PersistCombatStart.call(adventure: adventure, combat_data: combat_data, sheet: sheet)
     adventure.reload
