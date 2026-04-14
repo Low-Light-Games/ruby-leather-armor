@@ -160,6 +160,9 @@ module DungeonMaster
           speed_mph: nil, journey_data: nil }
       end
 
+      # AI errors (TokenBudgetExceededError, AiError) are intentionally allowed to
+      # propagate here — a wrong elapsed time silently pollutes the game clock, which
+      # is harder to diagnose than a visible pipeline failure. (See 46d182f.)
       def estimate_via_ai(intent, verdict_result)
         time_ctx = @adventure.time_context || {}
         outcome  = verdict_result&.dig(:outcome) || intent[:intention]
