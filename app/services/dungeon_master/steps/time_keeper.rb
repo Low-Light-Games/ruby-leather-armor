@@ -57,6 +57,7 @@ module DungeonMaster
         thresholds = Utilities::GameClock.check_thresholds(time_ctx)
 
         apply_fatigue_conditions(thresholds, time_ctx)
+        expire_elapsed_buffs(time_ctx)
 
         encounter = harbinger_result if harbinger_result[:stop_reason] == :encounter
 
@@ -231,6 +232,28 @@ module DungeonMaster
           @sheet.recompute_derived_stats!
           @log.log!(:info, "TimeKeeper: applied condition '#{t[:condition]}' (#{t[:hours_awake]}h awake)")
         end
+      end
+
+      # ── Buff expiry ───────────────────────────────────────────────
+
+      # Removes active_buffs entries whose expires_at_game_hours has passed
+      # after the clock advances. Deterministic — no AI involved.
+      def expire_elapsed_buffs(time_ctx)
+        return unless @sheet&.respond_to?(:active_buffs)
+
+        current_hour = (time_ctx["adventure_day"].to_i - 1) * 24.0 + time_ctx["current_hour"].to_f
+        current = Array(@sheet.active_buffs).map(&:deep_stringify_keys)
+
+        expired = current.select do |b|
+          b["expires_at_game_hours"] && b["expires_at_game_hours"].to_f <= current_hour
+        end
+
+        return if expired.empty?
+
+        remaining = current - expired
+        @sheet.update!(active_buffs: remaining)
+        @sheet.recompute_derived_stats!
+        @log.log!(:info, "TimeKeeper: expired buffs at game_hour #{current_hour.round(4)}: #{expired.map { _1['source'] }.join(', ')}")
       end
 
       # ── Harbinger consultation ────────────────────────────────────
