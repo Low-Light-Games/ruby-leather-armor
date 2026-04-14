@@ -26,12 +26,12 @@ module DungeonMaster
     # @param system_prompt [String]
     # @param user_message  [String, nil]  single user message (convenience)
     # @param messages       [Array, nil]   full message list (takes precedence)
-    # @param max_tokens     [Integer]      token budget for this step
+    # @param max_tokens     [Integer, nil] token budget for this step; nil means no limit
     # @param step_name      [String, nil]  pipeline step name for error messages
     # @param model          [String, nil]  per-step model override (falls back to default)
     # @return [String] raw content from the AI
     # @raise [DungeonMaster::AiError]
-    def chat(system_prompt:, user_message: nil, messages: nil, max_tokens: 500, step_name: nil, model: nil)
+    def chat(system_prompt:, user_message: nil, messages: nil, max_tokens: nil, step_name: nil, model: nil)
       @last_usage = nil
       effective_model = model || @default_model
       @last_model_used = effective_model
@@ -48,9 +48,9 @@ module DungeonMaster
       params = {
         model: effective_model,
         messages: chat_messages,
-        max_completion_tokens: max_tokens,
         response_format: { type: "json_object" }
       }
+      params[:max_completion_tokens] = max_tokens if max_tokens
       params[:temperature] = @config.temperature if supports_temp && @config.temperature != 1.0
 
       attempt = 0
