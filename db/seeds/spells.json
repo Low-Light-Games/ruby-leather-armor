@@ -26,10 +26,15 @@
         "type": "save_bonus",
         "save": "all",
         "bonus": 1,
-        "bonusType": "resistance"
+        "bonusType": "resistance",
+        "target": "saves"
       }
     ],
-    "summary": "Subject gains +1 resistance bonus on saves for 1 minute."
+    "summary": "Subject gains +1 resistance bonus on saves for 1 minute.",
+    "duration_formula": {
+      "unit": "minutes",
+      "fixed": 1
+    }
   },
   {
     "id": "alarm",
@@ -141,21 +146,27 @@
       {
         "type": "deflection_ac",
         "bonus": "2",
-        "bonusType": "deflection"
+        "bonusType": "deflection",
+        "target": "ac"
       },
       {
         "type": "save_bonus",
         "save": "all",
         "bonus": 2,
         "bonusType": "resistance",
-        "condition": "vs chaotic creatures"
+        "condition": "vs chaotic creatures",
+        "target": "saves"
       },
       {
         "type": "immunity",
         "target": "mental control (new save with +2 morale bonus) from chaotic creatures"
       }
     ],
-    "summary": "+2 deflection AC, +2 saves vs chaotic; blocks mental control from chaotic sources."
+    "summary": "+2 deflection AC, +2 saves vs chaotic; blocks mental control from chaotic sources.",
+    "duration_formula": {
+      "unit": "minutes",
+      "per_level": 1
+    }
   },
   {
     "id": "protection_from_evil",
@@ -185,21 +196,27 @@
       {
         "type": "deflection_ac",
         "bonus": "2",
-        "bonusType": "deflection"
+        "bonusType": "deflection",
+        "target": "ac"
       },
       {
         "type": "save_bonus",
         "save": "all",
         "bonus": 2,
         "bonusType": "resistance",
-        "condition": "vs evil creatures"
+        "condition": "vs evil creatures",
+        "target": "saves"
       },
       {
         "type": "immunity",
         "target": "mental control (new save with +2 morale bonus) from evil creatures"
       }
     ],
-    "summary": "+2 deflection AC, +2 saves vs evil; blocks mental control from evil sources."
+    "summary": "+2 deflection AC, +2 saves vs evil; blocks mental control from evil sources.",
+    "duration_formula": {
+      "unit": "minutes",
+      "per_level": 1
+    }
   },
   {
     "id": "protection_from_good",
@@ -228,21 +245,27 @@
       {
         "type": "deflection_ac",
         "bonus": "2",
-        "bonusType": "deflection"
+        "bonusType": "deflection",
+        "target": "ac"
       },
       {
         "type": "save_bonus",
         "save": "all",
         "bonus": 2,
         "bonusType": "resistance",
-        "condition": "vs good creatures"
+        "condition": "vs good creatures",
+        "target": "saves"
       },
       {
         "type": "immunity",
         "target": "mental control (new save with +2 morale bonus) from good creatures"
       }
     ],
-    "summary": "+2 deflection AC, +2 saves vs good; blocks mental control from good sources."
+    "summary": "+2 deflection AC, +2 saves vs good; blocks mental control from good sources.",
+    "duration_formula": {
+      "unit": "minutes",
+      "per_level": 1
+    }
   },
   {
     "id": "protection_from_law",
@@ -271,21 +294,27 @@
       {
         "type": "deflection_ac",
         "bonus": "2",
-        "bonusType": "deflection"
+        "bonusType": "deflection",
+        "target": "ac"
       },
       {
         "type": "save_bonus",
         "save": "all",
         "bonus": 2,
         "bonusType": "resistance",
-        "condition": "vs lawful creatures"
+        "condition": "vs lawful creatures",
+        "target": "saves"
       },
       {
         "type": "immunity",
         "target": "mental control (new save with +2 morale bonus) from lawful creatures"
       }
     ],
-    "summary": "+2 deflection AC, +2 saves vs lawful; blocks mental control from lawful sources."
+    "summary": "+2 deflection AC, +2 saves vs lawful; blocks mental control from lawful sources.",
+    "duration_formula": {
+      "unit": "minutes",
+      "per_level": 1
+    }
   },
   {
     "id": "remove_fear",
@@ -310,14 +339,19 @@
         "save": "all",
         "bonus": 4,
         "bonusType": "morale",
-        "condition": "vs fear effects"
+        "condition": "vs fear effects",
+        "target": "saves"
       },
       {
         "type": "special",
         "description": "If target is already under a fear effect, gets a new save with +4 morale bonus to suppress the fear."
       }
     ],
-    "summary": "+4 morale bonus vs fear. Suppresses existing fear effects (new save)."
+    "summary": "+4 morale bonus vs fear. Suppresses existing fear effects (new save).",
+    "duration_formula": {
+      "unit": "minutes",
+      "fixed": 10
+    }
   },
   {
     "id": "sanctuary",
@@ -365,14 +399,19 @@
       {
         "type": "ac_bonus",
         "bonus": 4,
-        "bonusType": "shield"
+        "bonusType": "shield",
+        "target": "ac"
       },
       {
         "type": "immunity",
         "target": "magic missiles"
       }
     ],
-    "summary": "+4 shield bonus to AC. Immune to magic missile."
+    "summary": "+4 shield bonus to AC. Immune to magic missile.",
+    "duration_formula": {
+      "unit": "minutes",
+      "per_level": 1
+    }
   },
   {
     "id": "shield_of_faith",
@@ -395,10 +434,20 @@
       {
         "type": "deflection_ac",
         "bonus": "+2 (increases by 1 per 6 CL, max +5)",
-        "bonusType": "deflection"
+        "bonusType": "deflection",
+        "target": "ac",
+        "bonus_formula": {
+          "base": 2,
+          "per_n_cl": 6,
+          "max": 5
+        }
       }
     ],
-    "summary": "+2 deflection bonus to AC (increases with caster level, max +5)."
+    "summary": "+2 deflection bonus to AC (increases with caster level, max +5).",
+    "duration_formula": {
+      "unit": "minutes",
+      "per_level": 1
+    }
   },
   {
     "id": "acid_splash",
@@ -608,10 +657,15 @@
       {
         "type": "ac_bonus",
         "bonus": 4,
-        "bonusType": "armor"
+        "bonusType": "armor",
+        "target": "ac"
       }
     ],
-    "summary": "+4 armor bonus to AC (force effect, no max DEX, no ACP, no ASF)."
+    "summary": "+4 armor bonus to AC (force effect, no max DEX, no ACP, no ASF).",
+    "duration_formula": {
+      "unit": "hours",
+      "per_level": 1
+    }
   },
   {
     "id": "mount",
@@ -1240,10 +1294,12 @@
         "type": "attack_bonus",
         "bonus": 20,
         "bonusType": "insight",
-        "condition": "on your next single attack roll (must be before end of next turn)"
+        "condition": "on your next single attack roll (must be before end of next turn)",
+        "target": "attack"
       }
     ],
-    "summary": "+20 insight bonus on your next attack roll."
+    "summary": "+20 insight bonus on your next attack roll.",
+    "duration_formula": null
   },
   {
     "id": "daze",
@@ -1308,10 +1364,15 @@
         "type": "save_bonus",
         "save": "all",
         "bonus": -2,
-        "condition": "vs sleep effects"
+        "condition": "vs sleep effects",
+        "target": "saves"
       }
     ],
-    "summary": "Target has -5 Perception and -2 saves vs sleep effects."
+    "summary": "Target has -5 Perception and -2 saves vs sleep effects.",
+    "duration_formula": {
+      "unit": "rounds",
+      "per_level": 1
+    }
   },
   {
     "id": "bane",
@@ -1375,17 +1436,23 @@
       {
         "type": "attack_bonus",
         "bonus": 1,
-        "bonusType": "morale"
+        "bonusType": "morale",
+        "target": "attack"
       },
       {
         "type": "save_bonus",
         "save": "all",
         "bonus": 1,
         "bonusType": "morale",
-        "condition": "vs fear effects"
+        "condition": "vs fear effects",
+        "target": "saves"
       }
     ],
-    "summary": "Allies gain +1 morale on attacks and +1 morale on saves vs fear."
+    "summary": "Allies gain +1 morale on attacks and +1 morale on saves vs fear.",
+    "duration_formula": {
+      "unit": "minutes",
+      "per_level": 1
+    }
   },
   {
     "id": "charm_animal",
@@ -1808,15 +1875,31 @@
       {
         "type": "attack_bonus",
         "bonus": "+1 per 3 CL (max +3)",
-        "bonusType": "luck"
+        "bonusType": "luck",
+        "target": "attack",
+        "bonus_formula": {
+          "base": 1,
+          "per_n_cl": 3,
+          "max": 3
+        }
       },
       {
         "type": "damage_bonus",
         "bonus": "+1 per 3 CL (max +3)",
-        "damageType": "luck"
+        "damageType": "luck",
+        "target": "damage",
+        "bonus_formula": {
+          "base": 1,
+          "per_n_cl": 3,
+          "max": 3
+        }
       }
     ],
-    "summary": "+1 luck bonus to attack and damage per 3 CL (max +3)."
+    "summary": "+1 luck bonus to attack and damage per 3 CL (max +3).",
+    "duration_formula": {
+      "unit": "minutes",
+      "fixed": 1
+    }
   },
   {
     "id": "floating_disk",
@@ -1903,7 +1986,8 @@
       {
         "type": "damage_bonus",
         "bonus": "+1 (or 2d6+2 vs undead)",
-        "damageType": "bludgeoning"
+        "damageType": "bludgeoning",
+        "target": "damage"
       }
     ],
     "summary": "Up to 3 pebbles gain +1 to attack/damage (2d6+2 vs undead)."
@@ -1932,15 +2016,21 @@
       {
         "type": "attack_bonus",
         "bonus": 1,
-        "bonusType": "enhancement"
+        "bonusType": "enhancement",
+        "target": "attack"
       },
       {
         "type": "damage_bonus",
         "bonus": "+1",
-        "damageType": "enhancement"
+        "damageType": "enhancement",
+        "target": "damage"
       }
     ],
-    "summary": "Weapon gains +1 enhancement bonus to attack and damage."
+    "summary": "Weapon gains +1 enhancement bonus to attack and damage.",
+    "duration_formula": {
+      "unit": "minutes",
+      "per_level": 1
+    }
   },
   {
     "id": "produce_flame",
@@ -2127,7 +2217,8 @@
       {
         "type": "skill_bonus",
         "skill": "Disguise",
-        "bonus": 10
+        "bonus": 10,
+        "target": "skill"
       },
       {
         "type": "utility",
@@ -2897,7 +2988,8 @@
         "type": "skill_bonus",
         "skill": "Acrobatics",
         "bonus": 10,
-        "bonusType": "enhancement"
+        "bonusType": "enhancement",
+        "target": "skill"
       },
       {
         "type": "special",
@@ -2955,16 +3047,22 @@
         "type": "attack_bonus",
         "bonus": 1,
         "bonusType": "enhancement",
-        "condition": "one natural weapon"
+        "condition": "one natural weapon",
+        "target": "attack"
       },
       {
         "type": "damage_bonus",
         "bonus": "+1",
         "damageType": "enhancement",
-        "condition": "one natural weapon"
+        "condition": "one natural weapon",
+        "target": "damage"
       }
     ],
-    "summary": "One natural weapon gains +1 enhancement to attack and damage."
+    "summary": "One natural weapon gains +1 enhancement to attack and damage.",
+    "duration_formula": {
+      "unit": "minutes",
+      "per_level": 1
+    }
   },
   {
     "id": "reduce_person",

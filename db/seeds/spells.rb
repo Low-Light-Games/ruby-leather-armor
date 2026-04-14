@@ -26,6 +26,7 @@ spells.each do |spell|
     sd.saving_throw       = spell["savingThrow"]
     sd.spell_resistance   = spell["spellResistance"] || false
     sd.effects            = spell["effects"] || []
+    sd.duration_formula   = spell["duration_formula"]
     sd.summary            = spell["summary"]
     sd.save!
   end

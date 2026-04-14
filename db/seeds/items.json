@@ -675,5 +675,47 @@
     "weight": 1,
     "costGp": 0.5,
     "summary": "A day's worth of dried food suitable for travel. Does not spoil easily."
+  },
+  {
+    "id": "potion_of_mage_armor",
+    "name": "Potion of Mage Armor",
+    "itemType": "potion",
+    "category": null,
+    "slot": "none",
+    "weight": 0.1,
+    "costGp": 50,
+    "armorBonus": 0,
+    "shieldBonus": 0,
+    "maxDexBonus": null,
+    "armorCheckPenalty": 0,
+    "arcaneSpellFailure": 0,
+    "properties": {
+      "duration_formula": { "unit": "hours", "fixed": 1 }
+    },
+    "effects": [
+      { "type": "ac_bonus", "bonusType": "armor", "target": "ac", "bonus": 4 }
+    ],
+    "summary": "Grants a +4 armor bonus to AC for 1 hour. Does not stack with worn armor."
+  },
+  {
+    "id": "potion_of_haste",
+    "name": "Potion of Haste",
+    "itemType": "potion",
+    "category": null,
+    "slot": "none",
+    "weight": 0.1,
+    "costGp": 750,
+    "armorBonus": 0,
+    "shieldBonus": 0,
+    "maxDexBonus": null,
+    "armorCheckPenalty": 0,
+    "arcaneSpellFailure": 0,
+    "properties": {
+      "duration_formula": { "unit": "rounds", "fixed": 10 }
+    },
+    "effects": [
+      { "type": "speed_bonus", "bonusType": "enhancement", "target": "speed", "bonus": 30 }
+    ],
+    "summary": "Grants a +30 ft enhancement bonus to speed for 10 rounds (1 minute)."
   }
 ]
