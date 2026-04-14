@@ -10,13 +10,13 @@ module DungeonMaster
         private
 
         def build_beacon_prompts(intention)
-          prior       = continuity_prior_outcomes
-          combat_live = @adventure.combat_context&.dig("active") == true
+          prior            = continuity_prior_outcomes
+          @beacon_combat_live = @adventure.combat_context&.dig("active") == true
 
           ParallelEvaluation::DOMAINS.filter_map do |domain|
             # During active combat: combat is injected deterministically in converge_beacons;
             # buff mutations are owned by CombatGM, not the buff beacon.
-            next if combat_live && domain.in?(%w[combat buff])
+            next if @beacon_combat_live && domain.in?(%w[combat buff])
 
             domain_ctx = domain == "buff" ? @sheet&.active_buffs : @adventure.send("#{domain}_context")
             {
@@ -53,16 +53,13 @@ module DungeonMaster
         end
 
         def build_extra_context_for(domain)
-          case domain
-          when "traversal"
-            parts = []
-            parts << build_traversal_extra_context_pe
-            combat_ctx = @adventure.combat_context
-            if combat_ctx&.dig("active") == true
-              parts << "=== COMBAT STATE ===\n#{combat_ctx.to_json}"
-            end
-            parts.compact.join("\n\n").presence
+          return unless domain == "traversal"
+
+          parts = [build_traversal_extra_context_pe]
+          if @beacon_combat_live
+            parts << "=== COMBAT STATE ===\n#{@adventure.combat_context.to_json}"
           end
+          parts.compact.join("\n\n").presence
         end
 
         def converge_beacons(results, intention)
@@ -104,7 +101,8 @@ module DungeonMaster
           end
 
           # During active combat the beacon was skipped — force routing deterministically.
-          if @adventure.combat_context&.dig("active") == true
+          # Use the same snapshot read at beacon-build time to avoid a second DB/cache access.
+          if @beacon_combat_live
             domain_results["combat"] = (domain_results["combat"] || {}).merge(
               domain:          "combat",
               affected:        true,

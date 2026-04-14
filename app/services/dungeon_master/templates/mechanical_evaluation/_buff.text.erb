@@ -4,5 +4,6 @@
 - Do NOT request any dice rolls. Set player_rolls to [].
 - Do NOT generate npc_actions. Set npc_actions to [].
 - Do NOT generate consequences. Set consequences to [].
-- The Mechanic step downstream will read the mechanical_summary and emit the buffs_add mutation.
-  Your job is only to identify the source and describe its effect accurately.
+- Name the source precisely — the Mechanic step will receive your mechanical_summary and use it
+  to decide what buffs_add mutation to emit. There is no automatic extraction; the downstream
+  model reads your summary and outputs the mutation explicitly.
