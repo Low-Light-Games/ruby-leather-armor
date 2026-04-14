@@ -192,7 +192,7 @@ module DungeonMaster
         end
 
         # DC 10 CON stabilization roll (d20 + CON modifier).
-        con_mod = ((@sheet.constitution.to_i - 10) / 2.0).floor
+        con_mod = @sheet.derived_stats.dig("mods", "constitution").to_i
         roll = Rolls::CombatDice.roll_d20
         if roll + con_mod >= 10
           apply_player_mutations({ conditions_add: ["stabilized"] })
