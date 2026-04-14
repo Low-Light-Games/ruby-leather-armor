@@ -4,6 +4,10 @@ module DungeonMaster
   # Path A after TimeKeeper: Harbinger left encounter ids on the AdventureLoop; optionally
   # run Warmaster, update the loop, and produce the resolver return payload. Does not write
   # +pipeline_outcome+ — AdventureLoopResolution calls +store_pipeline_outcome!+ with +pipeline_outcome+.
+  #
+  # Scene-enemy merging: after spawning encounter-table creatures, nearby hostile NPCs
+  # from traversal_context are merged in so pre-established scene enemies (e.g. goblins
+  # the player was already approaching) join the combat alongside the random encounter.
   class EncounterWarmasterBridge
     # Return value from EncounterWarmasterBridge.call: resolver payload (status, intent, etc.)
     # and the string stored as the loop +pipeline_outcome+ narration seed.
@@ -22,9 +26,11 @@ module DungeonMaster
 
       if encounter_entry
         creatures_data = loop&.get("encounter_creatures")
+        scene_enemy_names = extract_scene_enemy_names(adventure.traversal_context)
         warmaster_result = Utilities::Warmaster.initialize_from_encounter!(
           adventure: adventure, encounter_entry: encounter_entry,
           creatures_data: creatures_data,
+          scene_enemy_names: scene_enemy_names,
           sheet: sheet, log: log, config: config, ai: ai)
 
         if warmaster_result[:status] == :awaiting_initiative
@@ -117,6 +123,30 @@ module DungeonMaster
       "#{encounter_scene}\n\n#{verdict_outcome}"
     end
 
-    private_class_method :reconcile_encounter
+    # Words at the start of a nearby_npcs entry that indicate the NPC is not an
+    # immediate threat and should not be pulled into the encounter.
+    SCENE_ENEMY_PASSIVE_MARKERS = %w[distant far fleeing fled invisible hiding escaped dead].freeze
+
+    # Articles, determiners and number words to strip before extracting the creature name.
+    SCENE_ENEMY_SKIP_LEADING = %w[a an the one two three four five six several some many
+                                  group pack band patrol squad].freeze
+
+    # Extracts hostile NPC names from traversal_context["nearby_npcs"] for merging into
+    # a Harbinger-triggered combat. Filters out clearly distant or passive entries and
+    # returns up to 2 meaningful words per entry (enough for fuzzy bestiary matching).
+    def self.extract_scene_enemy_names(traversal_context)
+      nearby = Array(traversal_context&.dig("nearby_npcs") || traversal_context&.dig(:nearby_npcs))
+      nearby.filter_map do |entry|
+        str = entry.to_s.strip
+        lower = str.downcase
+        next if SCENE_ENEMY_PASSIVE_MARKERS.any? { |w| lower.start_with?(w) }
+
+        words = str.split.reject { |w| SCENE_ENEMY_SKIP_LEADING.include?(w.downcase) }
+        name = words.take(2).join(" ").gsub(/[^a-zA-Z\s'-]/, "").strip
+        name.presence
+      end.uniq
+    end
+
+    private_class_method :reconcile_encounter, :extract_scene_enemy_names
   end
 end

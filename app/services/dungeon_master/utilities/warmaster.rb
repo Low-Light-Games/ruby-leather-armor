@@ -21,9 +21,14 @@ module DungeonMaster
       module_function
 
       # Path A: from Harbinger encounter table roll
-      # creatures_data: optional structured array from encounter_expand AI (via AdventureLoop)
-      #   e.g. [{ "name" => "goblin", "count" => 4 }]
-      def initialize_from_encounter!(adventure:, encounter_entry:, sheet:, log:, config:, ai:, creatures_data: nil)
+      # creatures_data:    optional structured array from encounter_expand AI (via AdventureLoop)
+      #                    e.g. [{ "name" => "goblin", "count" => 4 }]
+      # scene_enemy_names: optional array of creature-type strings extracted from
+      #                    traversal_context["nearby_npcs"] by EncounterWarmasterBridge.
+      #                    These are merged in after the encounter-table creatures so that
+      #                    pre-established scene enemies join the combat.
+      def initialize_from_encounter!(adventure:, encounter_entry:, sheet:, log:, config:, ai:,
+                                     creatures_data: nil, scene_enemy_names: [])
         ctx = Context.new(adventure: adventure, sheet: sheet, log: log, config: config, ai: ai)
 
         creatures = if encounter_entry.has_manifest?
@@ -39,6 +44,19 @@ module DungeonMaster
                       log.log!(:warn, "Warmaster: no manifest or creatures_data for entry '#{encounter_entry.title}' — cannot spawn creatures")
                       []
                     end
+
+        # Merge scene enemies (hostile NPCs already established in traversal_context).
+        # Skip any whose creature-type name overlaps with an encounter creature already spawned
+        # to avoid doubling up (e.g. encounter already has orcs, nearby_npcs also says "orc patrol").
+        novel_scene_names = Array(scene_enemy_names).reject do |scene_name|
+          lower = scene_name.downcase
+          creatures.any? { |c| c[:name].downcase.include?(lower) || lower.include?(c[:name].downcase.split.first.to_s) }
+        end
+
+        if novel_scene_names.any?
+          log.log!(:info, "Warmaster: merging #{novel_scene_names.size} scene enemy type(s) from traversal context: #{novel_scene_names.inspect}")
+          creatures.concat(spawn_from_names(ctx, novel_scene_names))
+        end
 
         build_initiative_result(ctx, creatures)
       end
