@@ -1139,7 +1139,7 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `temperature` | `0.8` | All steps: creativity/randomness (non-reasoning models only) |
 | `model` | `gpt-4o-mini` | Default model for all steps |
 | `step_models[step]` | `{}` | Per-step model override |
-| `token_budgets[step]` | (see below) | Per-step max completion tokens |
+| `token_budgets[step]` | `nil` (no limit) | Per-step max completion tokens - defaults to no limit; set specific values only as safety kill switches |
 | `action_queue` | `"progressive"` | Controls action splitting and narrative delivery. `false` — no splitting; `"progressive"` — split compound inputs, stream each action's narrative immediately via `pipeline_action_result` WebSocket events; `"progressive_continuity"` — as progressive, plus each action is evaluated with prior action outcomes from `AdventureLoop` injected into beacon/mech_eval/narrate. Per-adventure override: `dm_settings["action_queue"]`. Requires `EVALUATOR_URL` (Node evaluator microservice) |
 | `guardrail_mode` | `"code"` | `"code"` (deterministic) or `"ai"` (prompt-based) |
 | `narration_mode` | `"parallel"` | `"parallel"` (concurrent) or `"subjugated"` (sequential) |
@@ -1147,27 +1147,13 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `scene_history_depth` | `10` | Number of scene summaries retained for world consistency checks |
 | `skip_world_sanity_check` _(per-adventure attribute)_ | `false` | Per-adventure toggle set at creation time. When on, the world consistency check is bypassed on both the mechanical and non-mechanical resolution paths. The capability check always runs. |
 
-### Default token budgets
+### Token budget configuration
 
-| Step | Budget | Mode |
-|---|---|---|
-| `intake` | 400 | Both |
-| `dm_query` | 300 | Both |
-| `player_interpreter` | 200 | Both |
-| `beacon` | 400 | Always |
-| `mechanical_evaluation` | 600 | Always |
-| `roll_qualifier` | 300 | Always |
-| `sanity_checker` | 300 | Both |
-| `sanity_checker_world` | 500 | Both |
-| `mechanic` | 600 | Both |
-| `momentum` | 500 | Both |
-| `social_expansion` | 500 | Both |
-| `time_keeper` | 300 | Both |
-| `chronicler` | 500 | Both |
-| `narrate` | 800 | Both |
-| `micro_context_update` | 1500 | Both |
-| `macro_narrative_update` | 500 | Both |
-| `creature_generation` | 600 | Both |
+All pipeline steps now default to **no token limits** (unlimited tokens). Token budgets are safety kill switches, not AI guidance - they prevent runaway costs but do not constrain model behavior.
+
+**Leave budget fields blank for no limits (recommended)**. Only set specific token limits if you need cost protection for a particular step.
+
+Previously, steps had specific default budgets, but these have been removed to allow unlimited token usage by default.
 
 ### Model tiers
 
