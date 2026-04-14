@@ -24,8 +24,10 @@ class AdventurePolicy < ApplicationPolicy
 
   class Scope < ApplicationPolicy::Scope
     def resolve
+      # Player routes use `Adventure.kept.find` on show; listing must not include
+      # discarded rows or admins see ghosts in /adventures that 404 on open.
       if user.admin?
-        scope.all
+        scope.kept
       else
         scope.kept.where(user_id: user.id)
       end
