@@ -16,21 +16,6 @@ module DungeonMaster
         ctx
       end
 
-      # Builds a canonical combat-context hash from component parts.
-      # +overrides+ keys take precedence over values read from +ctx+.
-      def build(ctx, participants, overrides = {})
-        base = {
-          "active"        => ctx["active"],
-          "round"         => ctx["round"],
-          "current_turn"  => ctx["current_turn"],
-          "turn_order"    => ctx["turn_order"],
-          "participants"  => participants,
-          "terrain_notes" => ctx["terrain_notes"]
-        }.merge(overrides)
-        base["battlefield_ref"]      = ctx["battlefield_ref"]      if ctx["battlefield_ref"].present?
-        base["last_battlefield_ref"] = ctx["last_battlefield_ref"] if ctx["last_battlefield_ref"].present?
-        base
-      end
     end
   end
 end

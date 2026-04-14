@@ -27,8 +27,8 @@ module DungeonMaster
 
         participants = Array(ctx["participants"]).map { |p| rebuild_participant_row(p, adventure: adventure, sheet: sheet) }
 
-        out = LiveContext.build(ctx, participants,
-          "active" => active, "round" => round, "current_turn" => current_turn)
+        out = CombatContext.build(ctx,
+          participants: participants, active: active, round: round, current_turn: current_turn)
 
         if active && current_turn.present?
           out["action_economy"] = DungeonMaster::Battlefield::ActionEconomy.build_for_turn_holder(
@@ -45,7 +45,7 @@ module DungeonMaster
         ctx          = adventure.combat_context.deep_stringify_keys
         participants = Array(ctx["participants"]).map { |p| rebuild_participant_row(p, adventure: adventure, sheet: sheet) }
 
-        base = LiveContext.build(ctx, participants)
+        base = CombatContext.build(ctx, participants: participants)
         base["action_economy"] = ctx["action_economy"] if ctx["action_economy"].present?
         Utilities::HashMerge.deep_merge_presence(base, overrides.deep_stringify_keys)
       end
