@@ -65,8 +65,7 @@ module DungeonMaster
       # ── Helpers ──────────────────────────────────────────────────────────
 
       def current_hours(adventure)
-        ctx = adventure.time_context || {}
-        (ctx["adventure_day"].to_i - 1) * 24.0 + ctx["current_hour"].to_f
+        Utilities::GameClock.absolute_hours(adventure.time_context)
       end
 
       def resolve_spell(source_id, sheet:, current_game_hours:)

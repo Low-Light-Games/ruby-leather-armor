@@ -67,6 +67,13 @@ module DungeonMaster
         alerts
       end
 
+      # Converts a time_context hash to an absolute monotonic game-hours value.
+      # Used by ActiveBuffResolver and TimeKeeper to compare expiry thresholds.
+      def absolute_hours(time_context)
+        ctx = time_context || {}
+        (ctx["adventure_day"].to_i - 1) * 24.0 + ctx["current_hour"].to_f
+      end
+
       def rest_action?(intent)
         return false unless intent.is_a?(Hash)
 

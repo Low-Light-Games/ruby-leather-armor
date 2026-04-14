@@ -244,7 +244,7 @@ module DungeonMaster
       def expire_elapsed_buffs(time_ctx)
         return unless @sheet&.respond_to?(:active_buffs)
 
-        current_hour = (time_ctx["adventure_day"].to_i - 1) * 24.0 + time_ctx["current_hour"].to_f
+        current_hour = Utilities::GameClock.absolute_hours(time_ctx)
         current = Array(@sheet.active_buffs).map(&:deep_stringify_keys)
 
         expired = current.select do |b|
