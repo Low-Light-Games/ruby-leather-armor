@@ -27,7 +27,7 @@ module DungeonMaster
 
         participants = Array(ctx["participants"]).map { |p| rebuild_participant_row(p, adventure: adventure, sheet: sheet) }
 
-        out = build_context_hash(ctx, participants,
+        out = LiveContext.build(ctx, participants,
           "active" => active, "round" => round, "current_turn" => current_turn)
 
         if active && current_turn.present?
@@ -45,7 +45,7 @@ module DungeonMaster
         ctx          = adventure.combat_context.deep_stringify_keys
         participants = Array(ctx["participants"]).map { |p| rebuild_participant_row(p, adventure: adventure, sheet: sheet) }
 
-        base = build_context_hash(ctx, participants)
+        base = LiveContext.build(ctx, participants)
         base["action_economy"] = ctx["action_economy"] if ctx["action_economy"].present?
         Utilities::HashMerge.deep_merge_presence(base, overrides.deep_stringify_keys)
       end
@@ -54,24 +54,6 @@ module DungeonMaster
         Utilities::Combatant.refresh_from_live_sources(p, adventure: adventure, sheet: sheet)
       end
 
-      private
-
-      # Builds the shared combat-context hash structure. +overrides+ keys take precedence
-      # over values read directly from +ctx+; used by build_after_world_turn to apply
-      # next_state_slice values without duplicating the assignment logic.
-      def build_context_hash(ctx, participants, overrides = {})
-        base = {
-          "active"       => ctx["active"],
-          "round"        => ctx["round"],
-          "current_turn" => ctx["current_turn"],
-          "turn_order"   => ctx["turn_order"],
-          "participants" => participants,
-          "terrain_notes" => ctx["terrain_notes"]
-        }.merge(overrides)
-        base["battlefield_ref"]      = ctx["battlefield_ref"]      if ctx["battlefield_ref"].present?
-        base["last_battlefield_ref"] = ctx["last_battlefield_ref"] if ctx["last_battlefield_ref"].present?
-        base
-      end
     end
   end
 end
