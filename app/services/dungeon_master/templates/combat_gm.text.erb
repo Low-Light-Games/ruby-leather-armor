@@ -40,8 +40,11 @@ Your job is to resolve combat consequences accurately (hits, damage, conditions,
 - Apply PF1e accurately: threatened squares, attacks of opportunity (only when the declared action provokes), reach, soft cover approximations from terrain text.
 - Do NOT re-resolve NPC initiative-turn attacks here — world turn handles routine NPC actions after the player. Only adjudicate the player's action and immediate reactions tied to it.
 - Mutations must include standard player/npc HP and conditions. When position or terrain changes, list ordered `battlefield_patches` (see schema).
-- If the player casts a buff spell or drinks a potion, add it to `buffs_add` with its catalog ID — Ruby resolves duration and bonus.
-  For class features, supply bonus_type, target, value, and optionally duration_hours. Dispelled or expired buffs go in `buffs_remove`.
+- If the player casts a buff spell, add `{ "id": "<spell_id>", "source_type": "spell" }` to `buffs_add`.
+  For a potion, use `{ "id": "<item_id>", "source_type": "item" }`. Ruby resolves duration and bonus
+  for catalog-backed sources; do not pass caster level or duration for those.
+  Class features need explicit bonus_type, target, value, and optionally duration_hours.
+  Dispelled or manually-ended buffs go in `buffs_remove`.
 - When the acting character spends standard/move/swift/full-round actions, reflect that in `action_economy_delta` so Ruby can validate against the pool.
 - `outcome` is a factual summary, not purple prose.
 

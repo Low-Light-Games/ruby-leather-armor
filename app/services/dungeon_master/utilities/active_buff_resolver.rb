@@ -80,7 +80,7 @@ module DungeonMaster
         duration_hours = compute_duration_hours(defn.duration_formula, level: caster_level)
         expires_at = duration_hours ? current_game_hours + duration_hours : nil
 
-        build_entries(source_id, Array(defn.effects), expires_at: expires_at)
+        build_entries(source_id, Array(defn.effects), expires_at: expires_at, caster_level: caster_level)
       end
 
       def resolve_item(source_id, current_game_hours:)
@@ -94,7 +94,7 @@ module DungeonMaster
         duration_hours = compute_duration_hours(formula, level: nil)
         expires_at = duration_hours ? current_game_hours + duration_hours : nil
 
-        build_entries(source_id, Array(defn.effects), expires_at: expires_at)
+        build_entries(source_id, Array(defn.effects), expires_at: expires_at, caster_level: nil)
       end
 
       def resolve_class_feature(source_id, explicit:, current_game_hours:)
@@ -138,7 +138,7 @@ module DungeonMaster
 
       # ── Effect building ───────────────────────────────────────────────────
 
-      def build_entries(source_id, effects, expires_at:)
+      def build_entries(source_id, effects, expires_at:, caster_level: nil)
         entries = []
 
         effects.each do |effect|
@@ -150,22 +150,35 @@ module DungeonMaster
           bonus_type = effect["bonusType"] || effect["bonus_type"]
           next unless bonus_type.present?
 
-          value = resolve_bonus_value(effect)
+          value = resolve_bonus_value(effect, caster_level: caster_level)
           next unless value && value.nonzero?
 
-          entries << {
+          # Persist all effect keys that are not already captured in the top-level
+          # entry. This lets future target handlers (saves, attacks, etc.) access
+          # conditional metadata (e.g. applies_vs, save_type, school) without
+          # requiring a migration or resolver rewrite.
+          reserved = %w[type bonusType bonus_type target bonus bonus_formula]
+          meta = effect.reject { |k, _| reserved.include?(k) }
+
+          entry = {
             "source"                => source_id,
             "bonus_type"            => bonus_type.to_s,
             "target"                => target.to_s,
             "value"                 => value,
             "expires_at_game_hours" => expires_at
           }
+          entry["meta"] = meta unless meta.empty?
+          entries << entry
         end
 
         entries
       end
 
-      def resolve_bonus_value(effect)
+      # Resolves the numeric bonus for a single effect.
+      # Evaluates bonus_formula when caster_level is available.
+      # Formula shape: { "base": N, "per_n_cl": D, "max": M }
+      #   value = base + floor(caster_level / per_n_cl), capped at max
+      def resolve_bonus_value(effect, caster_level: nil)
         raw = effect["bonus"]
 
         if raw.is_a?(Integer)
@@ -173,16 +186,15 @@ module DungeonMaster
         elsif raw.is_a?(Float)
           raw.to_i
         elsif effect["bonus_formula"].is_a?(Hash)
-          # e.g. shield_of_faith: { "base": 2, "per_n_cl": 6, "max": 5 }
-          # We resolve with the already-computed caster level that set the expires_at;
-          # however bonus_formula evaluation needs CL — we can't access sheet here.
-          # For now return the base value. The formula is stored on the effect in the
-          # spell definition for future evaluation if CL is threaded through.
-          # TODO: pass caster_level into build_entries to evaluate bonus_formula properly
           bf = effect["bonus_formula"]
-          bf["base"].to_i
+          base = bf["base"].to_i
+          if caster_level && bf["per_n_cl"].to_i > 0
+            bonus = base + (caster_level / bf["per_n_cl"].to_i)
+            bf["max"] ? [bonus, bf["max"].to_i].min : bonus
+          else
+            base
+          end
         elsif raw.is_a?(String)
-          # Attempt to parse a plain integer from a string like "+4"
           raw.to_i
         end
       end
