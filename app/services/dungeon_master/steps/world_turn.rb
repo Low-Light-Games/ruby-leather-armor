@@ -48,126 +48,125 @@ module DungeonMaster
         broadcast_progress("The world reacts...")
 
         base_ctx = (@adventure.combat_context || {}).deep_dup.deep_stringify_keys
-        calc = Utilities::CombatTurnCalculator.call(combat_context: base_ctx)
-        npc_turns = calc[:npc_turns]
+        calc     = Utilities::CombatTurnCalculator.call(combat_context: base_ctx)
 
-        lines = []
-        early_stop = false
-
-        # Apply per-round dying bleed-out before NPC actions. Skipped once the player
-        # stabilizes. If the bleed kills the player this round, short-circuit NPC resolution.
+        # Apply per-round dying bleed-out before NPC actions. Skipped once stabilized.
+        # Short-circuits if the player dies this round.
         if @sheet &&
             Utilities::CombatEndResolver.check_player_status(@sheet) == :dying &&
             !Array(@sheet.conditions).include?("stabilized")
           bleed_result = apply_dying_bleed!(result)
           return bleed_result if bleed_result
         end
-        # Fresh records were already loaded by maybe_run_world_turn before entering this method.
 
-        working_ctx = DungeonMaster::WorldTurn::LiveContext.merge_live_participants(base_ctx, adventure: @adventure, sheet: @sheet)
-        # Rows from live merge (same initiative order as calc); not the raw CombatTurnCalculator objects.
-        acting_npcs = npc_turns.filter_map do |npc|
-          fighter_row = working_ctx["participants"].find { |p| p["creature_sheet_id"].to_i == npc.creature_sheet_id.to_i }
-          next if fighter_row.blank?
+        working_ctx = DungeonMaster::WorldTurn::LiveContext.merge_live_participants(
+          base_ctx, adventure: @adventure, sheet: @sheet)
 
-          fighter = Utilities::Combatant.from_context_hash(fighter_row)
+        # Rows from live merge (same initiative order as calc); not raw CombatTurnCalculator objects.
+        acting_npcs = filter_acting_npcs(calc[:npc_turns], working_ctx)
+
+        lines, early_stop = resolve_npc_turns_in_order(acting_npcs, working_ctx, result)
+
+        @on_sheet_update&.call
+        reload_world_turn_records!
+
+        append_pipeline_outcome!(lines.join("\n")) if lines.any?
+        result[:world_turn_lines] = lines.dup if lines.any?
+
+        build_result_with_combat_advancement(result, calc, base_ctx, early_stop)
+      end
+
+      def filter_acting_npcs(npc_turns, working_ctx)
+        npc_turns.filter_map do |npc|
+          row = working_ctx["participants"].find { |p| p["creature_sheet_id"].to_i == npc.creature_sheet_id.to_i }
+          next if row.blank?
+
+          fighter = Utilities::Combatant.from_context_hash(row)
           fighter if !fighter.eliminated_from_encounter? && fighter.can_act?
         end
+      end
 
-        if acting_npcs.any?
-          intention = result[:intent].is_a?(Hash) ? result[:intent][:intention].to_s : ""
-          last_outcome = @loop&.get("pipeline_outcome").to_s.truncate(NPC_ACTION_LAST_OUTCOME_TRUNCATE)
+      # Fans out AI NPC action requests, then resolves them in initiative order against
+      # live DB state. Returns [lines, early_stop].
+      def resolve_npc_turns_in_order(acting_npcs, working_ctx, result)
+        lines      = []
+        early_stop = false
+        return [lines, early_stop] unless acting_npcs.any?
 
-          step_keys, by_step = request_npc_actions(acting_npcs, working_ctx, intention, last_outcome)
+        intention    = result[:intent].is_a?(Hash) ? result[:intent][:intention].to_s : ""
+        last_outcome = @loop&.get("pipeline_outcome").to_s.truncate(NPC_ACTION_LAST_OUTCOME_TRUNCATE)
+        step_keys, by_step = request_npc_actions(acting_npcs, working_ctx, intention, last_outcome)
 
-          # AI decisions were made against working_ctx (frozen snapshot).
-          # Code resolution applies mutations in initiative order against live DB state.
-          # reload_player_sheet! before resolve; reload_world_turn_records! after apply so HP clamps per hit and combat-end sees fresh creatures.
-          acting_npc_ids = acting_npcs.map(&:creature_sheet_id)
-          live_sheets = @adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id)
+        # AI decisions were made against working_ctx (frozen snapshot).
+        # Mutations are applied in initiative order against live DB state so each hit
+        # is HP-clamped before the next NPC acts.
+        acting_npc_ids = acting_npcs.map(&:creature_sheet_id)
+        live_sheets    = @adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id)
 
-          acting_npcs.each_with_index do |npc, idx|
-            # Liveness comes from the map rather than an individual find_by per iteration.
-            # The map is refreshed after each mutation cycle so a previous NPC's action
-            # that incapacitates this one is visible here.
-            live_sheet = live_sheets[npc.creature_sheet_id]
-            if live_sheet.nil? || live_sheet.hp <= 0 ||
-                (Array(live_sheet.conditions) & %w[dead fled surrendered]).any?
-              next
-            end
+        acting_npcs.each_with_index do |npc, idx|
+          # Liveness from the map; refreshed after each mutation cycle so a prior NPC's
+          # action that incapacitates this one is visible here.
+          live_sheet = live_sheets[npc.creature_sheet_id]
+          if live_sheet.nil? || live_sheet.hp <= 0 ||
+              (Array(live_sheet.conditions) & %w[dead fled surrendered]).any?
+            next
+          end
 
-            reload_player_sheet!
-            entry = evaluator_fan_out_result!(by_step, step_keys[idx], "npc_action")
-            parsed = (entry["parsed_response"] || {}).deep_symbolize_keys
+          reload_player_sheet!
+          entry  = evaluator_fan_out_result!(by_step, step_keys[idx], "npc_action")
+          parsed = (entry["parsed_response"] || {}).deep_symbolize_keys
 
-            res = DungeonMaster::WorldTurn::NpcActionResolver.resolve(
-              npc: npc, parsed: parsed, combat_ctx: working_ctx,
-              player_sheet: @sheet, adventure: @adventure)
-            lines.concat(res[:lines])
+          res = DungeonMaster::WorldTurn::NpcActionResolver.resolve(
+            npc: npc, parsed: parsed, combat_ctx: working_ctx,
+            player_sheet: @sheet, adventure: @adventure)
+          lines.concat(res[:lines])
 
-            @log.play_log!(
-              "world_turn_resolution",
-              "World turn: #{npc.name} — #{res[:lines].join(' | ').truncate(200)}",
-              parsed_response: {
-                npc: npc.name,
-                action: parsed[:action],
-                attack_modifier: parsed[:attack_modifier],
-                damage_dice: parsed[:damage_dice],
-                player_hp_delta: res[:player_hp_delta],
-                npc_mutations: res[:npc_muts],
-                lines: res[:lines]
-              }
-            )
+          @log.play_log!(
+            "world_turn_resolution",
+            "World turn: #{npc.name} — #{res[:lines].join(' | ').truncate(200)}",
+            parsed_response: {
+              npc: npc.name, action: parsed[:action],
+              attack_modifier: parsed[:attack_modifier], damage_dice: parsed[:damage_dice],
+              player_hp_delta: res[:player_hp_delta], npc_mutations: res[:npc_muts],
+              lines: res[:lines]
+            }
+          )
 
-            apply_world_turn_step_mutations!(res[:player_hp_delta].to_i, res[:npc_muts])
+          apply_world_turn_step_mutations!(res[:player_hp_delta].to_i, res[:npc_muts])
+          Battlefield::ApplyPatches.call(adventure: @adventure, patches: res[:battlefield_patches], log: @log) if res[:battlefield_patches].present?
 
-            if res[:battlefield_patches].present?
-              Battlefield::ApplyPatches.call(adventure: @adventure, patches: res[:battlefield_patches], log: @log)
-            end
+          reload_world_turn_records!
+          live_sheets.merge!(@adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id))
 
-            reload_world_turn_records!
-            live_sheets.merge!(@adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id))
-            if @sheet && @sheet.hp == 0 && !Array(@sheet.conditions).include?("disabled")
-              apply_player_mutations({ conditions_add: ["disabled"] })
-            end
+          apply_player_mutations({ conditions_add: ["disabled"] }) if @sheet && @sheet.hp == 0 && !Array(@sheet.conditions).include?("disabled")
 
-            end_info = Utilities::CombatEndResolver.check_combat_end(adventure: @adventure, sheet: @sheet)
-            if !end_info[:combat][:combat_active] ||
-                end_info.dig(:interaction, :player_death) ||
-                end_info.dig(:interaction, :player_incapacitated)
-              early_stop = true
-              break
-            end
+          end_info = Utilities::CombatEndResolver.check_combat_end(adventure: @adventure, sheet: @sheet)
+          if !end_info[:combat][:combat_active] ||
+              end_info.dig(:interaction, :player_death) ||
+              end_info.dig(:interaction, :player_incapacitated)
+            early_stop = true
+            break
           end
         end
 
-        @on_sheet_update&.call
+        [lines, early_stop]
+      end
 
-        reload_world_turn_records!
-
-        prose = lines.join("\n")
-        append_pipeline_outcome!(prose) if prose.present?
-
-        # Surface raw action lines so PipelineMessenger can persist them as discrete
-        # combat_log messages in the player-facing chat history.
-        result[:world_turn_lines] = lines.dup if lines.any?
-
+      def build_result_with_combat_advancement(result, calc, base_ctx, early_stop)
         next_slice = if early_stop
-                       {
-                         "current_turn" => Utilities::CombatTurnCalculator::PLAYER_NAME,
-                         "round" => base_ctx["round"].to_i
-                       }
+                       { "current_turn" => Utilities::CombatTurnCalculator::PLAYER_NAME,
+                         "round" => base_ctx["round"].to_i }
                      else
                        calc[:next_state]
                      end
 
         advancement = DungeonMaster::WorldTurn::CombatAdvancement.build_after_world_turn(
           next_slice, base_ctx, adventure: @adventure, sheet: @sheet)
-        end_info = Utilities::CombatEndResolver.check_combat_end(adventure: @adventure, sheet: @sheet)
+        end_info    = Utilities::CombatEndResolver.check_combat_end(adventure: @adventure, sheet: @sheet)
         advancement = DungeonMaster::WorldTurn::CombatAdvancement.merge_combat_end_into_advancement(advancement, end_info)
 
-        result[:mutations] = DungeonMaster::WorldTurn::CombatAdvancement.merge_into_mutations(result[:mutations], advancement)
-        result[:player_death] = true if end_info.dig(:interaction, :player_death)
+        result[:mutations]           = DungeonMaster::WorldTurn::CombatAdvancement.merge_into_mutations(result[:mutations], advancement)
+        result[:player_death]        = true if end_info.dig(:interaction, :player_death)
         result[:player_incapacitated] = true if end_info.dig(:interaction, :player_incapacitated)
         result
       end
