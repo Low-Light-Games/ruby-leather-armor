@@ -11,8 +11,9 @@ module DungeonMaster
         def build_mech_eval_prompts(ordered_domains, intention, intent)
           prior = continuity_prior_outcomes
           ordered_domains.map do |domain|
-            char_block     = CharacterBlock.for(@sheet, category: domain)
-            micro_ctx      = @adventure.send("#{domain}_context")
+            # buff: focused char block (spells + items only); context is active_buffs on the sheet.
+            char_block     = domain == "buff" ? CharacterBlock.buff(@sheet) : CharacterBlock.for(@sheet, category: domain)
+            micro_ctx      = domain == "buff" ? @sheet&.active_buffs : @adventure.send("#{domain}_context")
             creature_stats = CharacterBlock.creature_stats_for(@adventure)
             rules_text     = domain_rules_text_for(intent, domain)
             instructions   = PromptRenderer.render_partial("mechanical_evaluation/_#{domain}")

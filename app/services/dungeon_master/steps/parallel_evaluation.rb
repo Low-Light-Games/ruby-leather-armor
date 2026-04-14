@@ -25,8 +25,10 @@ module DungeonMaster
       include Phases::MechEvalPhase
       include Phases::RollQualifierPhase
 
-      DOMAINS        = PromptHelpers::CONTEXT_FIELDS.freeze
-      DOMAIN_PRIORITY = %w[combat social traversal exploration rest inventory].freeze
+      # CONTEXT_FIELDS drives micro-context columns on Adventure (traversal_context, etc.).
+      # DOMAINS adds "buff" which has no adventure column — its context is sheet.active_buffs.
+      DOMAINS        = (PromptHelpers::CONTEXT_FIELDS + %w[buff]).freeze
+      DOMAIN_PRIORITY = %w[combat buff social traversal exploration rest inventory].freeze
 
       private
 
@@ -118,6 +120,11 @@ module DungeonMaster
       end
 
       def build_qualifier_context_block(domain)
+        # buff always returns empty player_rolls so qualifier never runs for it;
+        # also, there is no adventure.buff_context column — be explicit rather than
+        # relying on the rescue nil fallback.
+        return nil if domain == "buff"
+
         ctx = @adventure.send("#{domain}_context") rescue nil
         ctx.present? ? "=== #{domain.upcase} CONTEXT ===\n#{ctx.to_json}" : nil
       end

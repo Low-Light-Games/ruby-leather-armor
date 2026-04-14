@@ -32,6 +32,7 @@ module DungeonMaster
         when "combat"    then combat_text
         when "social"    then social_text
         when "traversal" then traversal_text
+        when "buff"      then buff_text
         else                  full_text
         end
       end
@@ -82,10 +83,19 @@ module DungeonMaster
         ])
       end
 
+      def buff_text
+        compose([
+          *base_parts,
+          spells_block,
+          items_block(types: %w[potion wondrous])
+        ])
+      end
+
       alias full full_text
       alias combat combat_text
       alias social social_text
       alias traversal traversal_text
+      alias buff buff_text
 
       private
 

@@ -39,6 +39,12 @@ module DungeonMaster
       Presenters::AdventureSheetPromptPresenter.new(sheet).traversal
     end
 
+    def buff(sheet)
+      raise ArgumentError, "CharacterBlock requires a sheet" unless sheet
+
+      Presenters::AdventureSheetPromptPresenter.new(sheet).buff
+    end
+
     def creature_stats_for(adventure)
       Presenters::CreatureSheetPromptPresenter.stats_lines_for_adventure(adventure)
     end

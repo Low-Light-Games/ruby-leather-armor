@@ -1,0 +1,8 @@
+- BUFF DOMAIN — MECHANICAL EVALUATION SCOPE: Identify the buff source (spell name, item name,
+  or class feature name) from the player's declared action and emit a mechanical_summary
+  describing the effect (e.g. "Mage Armor grants +4 armor bonus to AC for 1 hour/level").
+- Do NOT request any dice rolls. Set player_rolls to [].
+- Do NOT generate npc_actions. Set npc_actions to [].
+- Do NOT generate consequences. Set consequences to [].
+- The Mechanic step downstream will read the mechanical_summary and emit the buffs_add mutation.
+  Your job is only to identify the source and describe its effect accurately.
