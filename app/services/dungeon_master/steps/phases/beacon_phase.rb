@@ -10,9 +10,15 @@ module DungeonMaster
         private
 
         def build_beacon_prompts(intention)
-          prior = continuity_prior_outcomes
-          ParallelEvaluation::DOMAINS.map do |domain|
-            domain_ctx = @adventure.send("#{domain}_context")
+          prior       = continuity_prior_outcomes
+          combat_live = @adventure.combat_context&.dig("active") == true
+
+          ParallelEvaluation::DOMAINS.filter_map do |domain|
+            # During active combat: combat is injected deterministically in converge_beacons;
+            # buff mutations are owned by CombatGM, not the buff beacon.
+            next if combat_live && domain.in?(%w[combat buff])
+
+            domain_ctx = domain == "buff" ? @sheet&.active_buffs : @adventure.send("#{domain}_context")
             {
               system_prompt: beacon_system_prompt(domain, domain_ctx, prior),
               user_message:  intention,
@@ -27,6 +33,10 @@ module DungeonMaster
           return PromptRenderer.render("combat_beacon",
             domain_context: domain_ctx,
             prior_outcomes: prior) if domain == "combat"
+
+          return PromptRenderer.render("buff_beacon",
+            domain_context: domain_ctx,
+            prior_outcomes: prior) if domain == "buff"
 
           char_data    = CharacterBlock.for(@sheet, category: domain)
           rules_mfst   = domain_rules_manifest(domain)
@@ -80,9 +90,19 @@ module DungeonMaster
             destination      ||= d[:destination] if domain == "traversal"
           end
 
-          # If the combat beacon named combatants but forgot to set affected, force routing.
-          cr = domain_results["combat"]
-          if cr && !cr[:affected] && Array(cr[:combatants]).any? && cr[:transition].to_s.match?(/combat_started|_to_combat/)
+          # During active combat the beacon was skipped — force routing deterministically.
+          if @adventure.combat_context&.dig("active") == true
+            domain_results["combat"] = (domain_results["combat"] || {}).merge(
+              domain:          "combat",
+              affected:        true,
+              needs_mechanics: true
+            )
+            affected["combat"] = true
+            needs_mechanics = true
+          # Combat just starting: beacon named combatants but may have forgotten affected.
+          elsif (cr = domain_results["combat"]) && !cr[:affected] &&
+                Array(cr[:combatants]).any? &&
+                cr[:transition].to_s.match?(/combat_started|_to_combat/)
             domain_results["combat"] = cr.merge(affected: true, needs_mechanics: true)
             affected["combat"] = true
             needs_mechanics = true
