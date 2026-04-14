@@ -80,7 +80,8 @@ module DungeonMaster
 
       hp_change = player_muts[:hp_change]
       if hp_change.to_i != 0
-        new_hp = (@sheet.hp + hp_change.to_i).clamp(-@sheet.constitution, @sheet.max_hp)
+        hp_floor = @config&.instant_death? ? 0 : -@sheet.constitution
+        new_hp = (@sheet.hp + hp_change.to_i).clamp(hp_floor, @sheet.max_hp)
         @sheet.update!(hp: new_hp)
       end
 

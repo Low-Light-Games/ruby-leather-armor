@@ -6,7 +6,8 @@ module DungeonMaster
     module CombatEndResolver
       module_function
 
-      def check_player_status(sheet)
+      def check_player_status(sheet, instant_death: false)
+        return :dead if instant_death && sheet.hp <= 0
         return :alive if sheet.hp > 0
         return :disabled if sheet.hp == 0
         return :dead if sheet.hp <= -sheet.constitution
@@ -21,8 +22,8 @@ module DungeonMaster
       # Combat ends only when the player is **dead** or every NPC is eliminated.
       # A *dying* player (negative HP, not yet at −CON) keeps combat active so that
       # the world turn can apply per-round bleed-out and stabilization rolls.
-      def check_combat_end(adventure:, sheet:)
-        player_status = check_player_status(sheet)
+      def check_combat_end(adventure:, sheet:, instant_death: false)
+        player_status = check_player_status(sheet, instant_death: instant_death)
         npc_ids = combat_npc_sheet_ids(adventure)
         npcs = adventure.creature_sheets.where(id: npc_ids)
 
@@ -43,7 +44,7 @@ module DungeonMaster
 
         interaction = {
           player_death:         player_status == :dead,
-          player_incapacitated: player_status == :dying
+          player_incapacitated: !instant_death && player_status == :dying
         }
 
         { combat: combat, interaction: interaction, player_status: player_status }

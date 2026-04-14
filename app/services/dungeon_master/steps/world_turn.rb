@@ -49,11 +49,20 @@ module DungeonMaster
 
         base_ctx = (@adventure.combat_context || {}).deep_dup.deep_stringify_keys
         calc     = Utilities::CombatTurnCalculator.call(combat_context: base_ctx)
+        instant_death = @config.instant_death?
+
+        # Short-circuit before NPC fan-out if the player is already dead.
+        # Covers both instant_death (HP 0 = dead) and standard PF1e (HP <= -CON from CombatGM).
+        if @sheet &&
+            Utilities::CombatEndResolver.check_player_status(@sheet, instant_death: instant_death) == :dead
+          return build_result_with_combat_advancement(result, calc, base_ctx, true)
+        end
 
         # Apply per-round dying bleed-out before NPC actions. Skipped once stabilized.
+        # Under instant_death, HP cannot go negative so :dying is never reached.
         # Short-circuits if the player dies this round.
         if @sheet &&
-            Utilities::CombatEndResolver.check_player_status(@sheet) == :dying &&
+            Utilities::CombatEndResolver.check_player_status(@sheet, instant_death: instant_death) == :dying &&
             !Array(@sheet.conditions).include?("stabilized")
           bleed_result = apply_dying_bleed!(result)
           return bleed_result if bleed_result
@@ -138,9 +147,11 @@ module DungeonMaster
           reload_world_turn_records!
           live_sheets.merge!(@adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id))
 
-          apply_player_mutations({ conditions_add: ["disabled"] }) if @sheet && @sheet.hp == 0 && !Array(@sheet.conditions).include?("disabled")
+          if @sheet && @sheet.hp == 0 && !instant_death && !Array(@sheet.conditions).include?("disabled")
+            apply_player_mutations({ conditions_add: ["disabled"] })
+          end
 
-          end_info = Utilities::CombatEndResolver.check_combat_end(adventure: @adventure, sheet: @sheet)
+          end_info = Utilities::CombatEndResolver.check_combat_end(adventure: @adventure, sheet: @sheet, instant_death: instant_death)
           if !end_info[:combat][:combat_active] ||
               end_info.dig(:interaction, :player_death) ||
               end_info.dig(:interaction, :player_incapacitated)
@@ -162,7 +173,7 @@ module DungeonMaster
 
         advancement = DungeonMaster::WorldTurn::CombatAdvancement.build_after_world_turn(
           next_slice, base_ctx, adventure: @adventure, sheet: @sheet)
-        end_info    = Utilities::CombatEndResolver.check_combat_end(adventure: @adventure, sheet: @sheet)
+        end_info    = Utilities::CombatEndResolver.check_combat_end(adventure: @adventure, sheet: @sheet, instant_death: @config.instant_death?)
         advancement = DungeonMaster::WorldTurn::CombatAdvancement.merge_combat_end_into_advancement(advancement, end_info)
 
         result[:mutations]           = DungeonMaster::WorldTurn::CombatAdvancement.merge_into_mutations(result[:mutations], advancement)
@@ -184,7 +195,7 @@ module DungeonMaster
         apply_player_mutations({ hp_change: -1 })
         @sheet&.reload
 
-        if Utilities::CombatEndResolver.check_player_status(@sheet) == :dead
+        if Utilities::CombatEndResolver.check_player_status(@sheet, instant_death: @config.instant_death?) == :dead
           lines = ["#{@sheet&.name || 'The player'} has bled out and died."]
           append_pipeline_outcome!(lines.join)
 
