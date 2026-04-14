@@ -90,7 +90,7 @@ module DungeonMaster
       private
 
       def base_parts
-        [identity, conditions_line]
+        [identity, conditions_line, active_buffs_line]
       end
 
       def compose(parts)
@@ -114,6 +114,28 @@ module DungeonMaster
         conds = Array(@sheet.try(:conditions))
         return nil if conds.empty?
         "Active Conditions: #{conds.join(', ')}"
+      end
+
+      def active_buffs_line
+        buffs = Array(@sheet.try(:active_buffs))
+        return nil if buffs.empty?
+
+        ctx = @sheet.try(:adventure)&.time_context || {}
+        current_hours = (ctx["adventure_day"].to_i - 1) * 24.0 + ctx["current_hour"].to_f
+
+        parts = buffs.map do |b|
+          label = "#{b['source']} (#{b['bonus_type']} +#{b['value']} → #{b['target']})"
+          if b["expires_at_game_hours"]
+            remaining_h = b["expires_at_game_hours"].to_f - current_hours
+            remaining_min = (remaining_h * 60).round
+            label += " [~#{remaining_min}m remaining]"
+          else
+            label += " [sustained]"
+          end
+          label
+        end
+
+        "Active Buffs: #{parts.join('; ')}"
       end
 
       def ability_scores_line

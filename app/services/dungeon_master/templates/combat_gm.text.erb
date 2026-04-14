@@ -40,6 +40,8 @@ Your job is to resolve combat consequences accurately (hits, damage, conditions,
 - Apply PF1e accurately: threatened squares, attacks of opportunity (only when the declared action provokes), reach, soft cover approximations from terrain text.
 - Do NOT re-resolve NPC initiative-turn attacks here — world turn handles routine NPC actions after the player. Only adjudicate the player's action and immediate reactions tied to it.
 - Mutations must include standard player/npc HP and conditions. When position or terrain changes, list ordered `battlefield_patches` (see schema).
+- If the player casts a buff spell or drinks a potion, add it to `buffs_add` with its catalog ID — Ruby resolves duration and bonus.
+  For class features, supply bonus_type, target, value, and optionally duration_hours. Dispelled or expired buffs go in `buffs_remove`.
 - When the acting character spends standard/move/swift/full-round actions, reflect that in `action_economy_delta` so Ruby can validate against the pool.
 - `outcome` is a factual summary, not purple prose.
 
@@ -48,7 +50,16 @@ Respond ONLY with valid JSON (no markdown, no code fences):
   "outcome": "Factual summary of combat resolution",
   "reasoning": "Brief rules rationale (1-3 sentences)",
   "mutations": {
-    "player": { "hp_change": 0, "conditions_add": [], "conditions_remove": [] },
+    "player": {
+      "hp_change": 0,
+      "conditions_add": [],
+      "conditions_remove": [],
+      "buffs_add": [
+        { "id": "mage_armor", "source_type": "spell" },
+        { "id": "potion_of_haste", "source_type": "item" }
+      ],
+      "buffs_remove": []
+    },
     "npcs": [
       { "name": "NPC Name", "creature_sheet_id": null, "hp_change": 0, "conditions_add": [], "conditions_remove": [] }
     ],

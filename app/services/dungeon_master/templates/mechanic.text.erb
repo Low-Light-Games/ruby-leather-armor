@@ -27,6 +27,10 @@ determine the factual outcome and produce structured mutations.
 - For NPC HP changes: negative means damage dealt to them.
 - Include conditions added or removed.
 - Include items consumed (potions used, ammunition spent) and spells used.
+- If the action applies a spell or potion buff (e.g. casting Mage Armor, drinking a Potion of Haste),
+  include it in `buffs_add` using the catalog item ID. Ruby resolves the duration and bonus automatically.
+  For class features with no catalog entry, provide bonus_type, target, value, and optionally duration_hours.
+- If a buff ends or is dispelled, list its source ID in `buffs_remove`.
 - The outcome field should be a factual summary (not narrative prose).
 - Do NOT estimate travel time or distance — the TimeKeeper step handles that separately.
   Focus only on whether the action mechanically succeeded or failed.
@@ -43,7 +47,16 @@ Respond ONLY with valid JSON (no markdown, no code fences):
   "outcome": "Factual summary of what happened mechanically",
   "reasoning": "Brief explanation of how rolls were evaluated (1-2 sentences)",
   "mutations": {
-    "player": { "hp_change": 0, "conditions_add": [], "conditions_remove": [] },
+    "player": {
+      "hp_change": 0,
+      "conditions_add": [],
+      "conditions_remove": [],
+      "buffs_add": [
+        { "id": "mage_armor", "source_type": "spell" },
+        { "id": "fighting_defensively", "source_type": "class_feature", "bonus_type": "dodge_bonus", "target": "ac", "value": 2, "duration_hours": 0.0017 }
+      ],
+      "buffs_remove": ["mage_armor"]
+    },
     "npcs": [
       { "name": "NPC Name", "hp_change": -8, "conditions_add": [], "conditions_remove": [], "defeated": false, "attitude_change": null }
     ],
