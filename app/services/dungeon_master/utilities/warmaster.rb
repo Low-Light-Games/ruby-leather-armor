@@ -77,13 +77,16 @@ module DungeonMaster
       def compute_combat_initialization(adventure:, player_sheet:, creature_data:, player_initiative:)
         raise ArgumentError, "player_sheet required for combat initialization" unless player_sheet
 
-        npc_combatants = creature_data.map do |c|
+        npc_combatants = creature_data.filter_map do |c|
           c = c.deep_symbolize_keys
           sheet = adventure.creature_sheets.find_by(id: c[:creature_sheet_id])
-          next nil unless sheet
+          unless sheet
+            Rails.logger.warn("[Warmaster] creature_sheet id=#{c[:creature_sheet_id]} not found — omitted from combat")
+            next
+          end
 
           Combatant.from_creature_sheet(sheet, initiative: c[:initiative].to_i)
-        end.compact
+        end
 
         player_combatant = Combatant.from_player_sheet(player_sheet, initiative: player_initiative.to_i)
         all_ordered = (npc_combatants + [player_combatant]).sort_by { |p| -p.initiative }
