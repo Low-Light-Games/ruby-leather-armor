@@ -85,7 +85,55 @@ module DungeonMaster
       end
 
       conditions_changed = apply_conditions(@sheet, player_muts[:conditions_add], player_muts[:conditions_remove])
-      @sheet.recompute_derived_stats! if conditions_changed
+      buffs_changed      = apply_buffs(@sheet, player_muts[:buffs_add], player_muts[:buffs_remove])
+      @sheet.recompute_derived_stats! if conditions_changed || buffs_changed
+    end
+
+    # ── Buff mutations ──────────────────────────────────────────────
+
+    # Applies buffs_add and buffs_remove to a sheet's active_buffs.
+    # buffs_add entries: { id:, source_type:, [bonus_type:, target:, value:, duration_hours:] }
+    # buffs_remove entries: array of source ID strings
+    # Returns true if anything changed.
+    def apply_buffs(sheet, add, remove)
+      return false unless sheet.respond_to?(:active_buffs)
+
+      current = Array(sheet.active_buffs).map(&:deep_stringify_keys)
+      changed = false
+
+      Array(remove).each do |source_id|
+        before = current.size
+        current.reject! { |e| e["source"] == source_id.to_s }
+        changed = true if current.size != before
+      end
+
+      Array(add).each do |buff_spec|
+        buff_spec = buff_spec.deep_stringify_keys if buff_spec.is_a?(Hash)
+        source_id   = buff_spec["id"]
+        source_type = buff_spec["source_type"]
+        next unless source_id.present? && source_type.present?
+
+        explicit = buff_spec.slice("bonus_type", "target", "value", "duration_hours")
+        entries  = Utilities::ActiveBuffResolver.resolve(
+          source_id:   source_id,
+          source_type: source_type,
+          adventure:   @adventure,
+          sheet:       sheet,
+          explicit:    explicit
+        )
+        next if entries.empty?
+
+        current.reject! { |e| e["source"] == source_id.to_s }
+        current.concat(entries)
+        changed = true
+      end
+
+      if changed
+        sheet.update!(active_buffs: current)
+        @log.log!(:info, "[buffs] updated active_buffs on sheet #{sheet.id}: #{current.map { _1['source'] }.join(', ')}")
+      end
+
+      changed
     end
 
     # ── NPC mutations ───────────────────────────────────────────────
