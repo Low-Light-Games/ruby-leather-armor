@@ -23,6 +23,13 @@ module DungeonMaster
     # When both run together (full gate with sheet), they use Node POST /fan_out
     # — no Ruby Thread.new.
     module SanityChecker
+      # Tactical phrases the extractor may mis-classify as named abilities.
+      # When a false rejection is observed in play logs, add the normalized
+      # lowercase name here instead of adjusting the prompt.
+      # The architecture guarantees this is the only place that ever needs
+      # to change for this class of problem.
+      TACTICAL_PHRASE_IGNORE = %w[].freeze
+
       private
 
       # World + capability in one evaluator round-trip (`AdventureLoopResolution#resolve` → here).
@@ -148,6 +155,11 @@ module DungeonMaster
 
       def check_extracted_abilities(ability_uses, condition_violated)
         return { allowed: false, reason: condition_violated } if condition_violated.present?
+
+        ability_uses = ability_uses.reject do |u|
+          TACTICAL_PHRASE_IGNORE.include?(u[:name].to_s.downcase.strip)
+        end
+
         return { allowed: true, reason: nil } if ability_uses.empty?
 
         lookup  = sheet_ability_lookup
