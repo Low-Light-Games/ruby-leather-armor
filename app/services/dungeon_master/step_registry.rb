@@ -113,14 +113,11 @@ module DungeonMaster
         model_hint: "Fast, cheap model. Determines Take 10/20 eligibility and situational modifiers. Run in parallel per domain via the Node evaluator microservice. e.g. gpt-4.1-nano, gpt-4o-mini.",
         pipeline: true,
       ),
-<<<<<<< Updated upstream
-=======
       "npc_action" => Entry.new(
         token_budget: nil,
         model_hint: "Fast, cheap model. Per-NPC combat action decision. Runs N in parallel via Node fan_out. e.g. gpt-4.1-nano, gpt-4o-mini.",
         pipeline: true,
       ),
->>>>>>> Stashed changes
       "encounter_expand" => Entry.new(
         token_budget: nil,
         model_hint: nil,
