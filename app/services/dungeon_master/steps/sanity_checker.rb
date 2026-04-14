@@ -28,7 +28,15 @@ module DungeonMaster
       # lowercase name here instead of adjusting the prompt.
       # The architecture guarantees this is the only place that ever needs
       # to change for this class of problem.
-      TACTICAL_PHRASE_IGNORE = %w[].freeze
+      TACTICAL_PHRASE_IGNORE = %w[
+        surprise\ attack
+        sneak\ up
+        ambush
+        backstab
+        feint
+        charging\ attack
+        flanking\ attack
+      ].freeze
 
       private
 
