@@ -83,10 +83,14 @@ module DungeonMaster
           # AI decisions were made against working_ctx (frozen snapshot).
           # Code resolution applies mutations in initiative order against live DB state.
           # reload_player_sheet! before resolve; reload_world_turn_records! after apply so HP clamps per hit and combat-end sees fresh creatures.
+          acting_npc_ids = acting_npcs.map(&:creature_sheet_id)
+          live_sheets = @adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id)
+
           acting_npcs.each_with_index do |npc, idx|
-            # Re-check liveness from DB before resolving — a prior NPC action in this round
-            # could have incapacitated this NPC (e.g. via a reaction or AoO patch).
-            live_sheet = @adventure.creature_sheets.find_by(id: npc.creature_sheet_id)
+            # Liveness comes from the map rather than an individual find_by per iteration.
+            # The map is refreshed after each mutation cycle so a previous NPC's action
+            # that incapacitates this one is visible here.
+            live_sheet = live_sheets[npc.creature_sheet_id]
             if live_sheet.nil? || live_sheet.hp <= 0 ||
                 (Array(live_sheet.conditions) & %w[dead fled surrendered]).any?
               next
@@ -122,6 +126,7 @@ module DungeonMaster
             end
 
             reload_world_turn_records!
+            live_sheets.merge!(@adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id))
             if @sheet && @sheet.hp == 0 && !Array(@sheet.conditions).include?("disabled")
               apply_player_mutations({ conditions_add: ["disabled"] })
             end
