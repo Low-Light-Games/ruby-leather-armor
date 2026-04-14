@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_14_100000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_14_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -61,6 +61,15 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_14_100000) do
     t.datetime "updated_at", null: false
     t.index ["adventure_id", "created_at"], name: "index_adventure_messages_on_adventure_id_and_created_at"
     t.index ["adventure_id"], name: "index_adventure_messages_on_adventure_id"
+  end
+
+  create_table "adventure_sheet_class_abilities", force: :cascade do |t|
+    t.bigint "adventure_sheet_id", null: false
+    t.string "class_ability_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_sheet_id", "class_ability_id"], name: "idx_adv_sheet_class_abilities_unique", unique: true
+    t.index ["adventure_sheet_id"], name: "index_adv_sheet_class_abilities_on_sheet_id"
   end
 
   create_table "adventure_sheet_feats", force: :cascade do |t|
@@ -216,6 +225,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_14_100000) do
     t.datetime "updated_at", null: false
     t.index ["cr"], name: "index_bestiary_entries_on_cr"
     t.index ["creature_type"], name: "index_bestiary_entries_on_creature_type"
+  end
+
+  create_table "class_ability_definitions", id: :string, force: :cascade do |t|
+    t.string "name", null: false
+    t.string "pf1e_class", null: false
+    t.text "summary"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_class_ability_definitions_on_name"
+    t.index ["pf1e_class"], name: "index_class_ability_definitions_on_pf1e_class"
   end
 
   create_table "creature_sheet_feats", force: :cascade do |t|
@@ -642,6 +661,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_14_100000) do
   add_foreign_key "adventure_loops", "adventures", on_delete: :nullify
   add_foreign_key "adventure_loops", "pipelines"
   add_foreign_key "adventure_messages", "adventures"
+  add_foreign_key "adventure_sheet_class_abilities", "adventure_sheets"
+  add_foreign_key "adventure_sheet_class_abilities", "class_ability_definitions", column: "class_ability_id"
   add_foreign_key "adventure_sheet_feats", "adventure_sheets"
   add_foreign_key "adventure_sheet_feats", "feat_definitions", column: "feat_id"
   add_foreign_key "adventure_sheet_items", "adventure_sheets"
@@ -666,7 +687,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_14_100000) do
   add_foreign_key "location_connections", "story_locations", column: "from_location_id"
   add_foreign_key "location_connections", "story_locations", column: "to_location_id"
   add_foreign_key "moderation_events", "users"
-  add_foreign_key "pipelines", "adventure_messages", column: "player_message_id"
+  add_foreign_key "pipelines", "adventure_messages", column: "player_message_id", on_delete: :nullify
   add_foreign_key "pipelines", "adventures"
   add_foreign_key "play_logs", "adventure_messages", column: "player_message_id", on_delete: :nullify
   add_foreign_key "play_logs", "adventures", on_delete: :nullify
