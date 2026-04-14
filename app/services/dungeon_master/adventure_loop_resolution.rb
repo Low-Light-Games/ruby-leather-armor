@@ -66,7 +66,8 @@ module DungeonMaster
       maybe_run_world_turn(
         status: :resolved, intent: intent,
         mutations: momentum_result[:mutations].presence,
-        time_result: time_result
+        time_result: time_result,
+        action_outcome: momentum_result[:outcome].to_s.presence
       )
     end
 
@@ -106,7 +107,8 @@ module DungeonMaster
       maybe_run_world_turn(
         status: :resolved, intent: intent,
         mutations: verdict_result[:mutations],
-        time_result: time_result
+        time_result: time_result,
+        action_outcome: verdict_result[:outcome].to_s.presence
       )
     end
 

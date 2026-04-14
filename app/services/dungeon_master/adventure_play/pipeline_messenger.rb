@@ -70,6 +70,7 @@ module DungeonMaster
 
         when :narrated
           msgs = [persist_message(role: "dm", content: result[:narrative], message_type: "narrative")]
+          msgs.concat(persist_action_result_messages(result[:action_outcomes]))
           msgs.concat(persist_combat_log_messages(result[:world_turn_lines]))
           msgs.concat(persist_event_messages(result))
 
@@ -116,6 +117,16 @@ module DungeonMaster
       end
 
       private
+
+      # Persists player action outcome strings (verdict/momentum outcomes) as discrete
+      # action_result messages. Returns the persisted objects (empty array when blank).
+      def persist_action_result_messages(outcomes)
+        Array(outcomes).filter_map do |outcome|
+          next if outcome.blank?
+
+          persist_message(role: "dm", content: outcome, message_type: "action_result")
+        end
+      end
 
       # Persists each NPC world-turn action line as a discrete combat_log message.
       # Returns the persisted objects (empty array when lines is blank).

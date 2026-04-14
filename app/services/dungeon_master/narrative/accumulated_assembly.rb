@@ -34,6 +34,14 @@ module DungeonMaster
         extra[:player_death] = true if results.any? { |r| r[:player_death] }
         extra[:player_incapacitated] = true if results.any? { |r| r[:player_incapacitated] }
 
+        # Aggregate per-action outcome strings and NPC world-turn lines so PipelineMessenger
+        # can persist them as discrete combat_log / action_result messages.
+        action_outcomes = results.filter_map { |r| r[:action_outcome] }
+        extra[:action_outcomes] = action_outcomes if action_outcomes.any?
+
+        all_world_turn_lines = results.flat_map { |r| Array(r[:world_turn_lines]) }
+        extra[:world_turn_lines] = all_world_turn_lines if all_world_turn_lines.any?
+
         NarrationPhaseInputs.new(
           intent: merged_intent,
           pipeline_context: ctx,
