@@ -40,7 +40,7 @@ module DungeonMaster
 
           char_data    = CharacterBlock.for(@sheet, category: domain)
           rules_mfst   = domain_rules_manifest(domain)
-          extra_ctx    = domain == "traversal" ? build_traversal_extra_context_pe : nil
+          extra_ctx    = build_extra_context_for(domain)
           instructions = PromptRenderer.render_partial("beacon/_#{domain}", domain_context: domain_ctx)
           PromptRenderer.render("beacon",
             domain:              domain,
@@ -50,6 +50,19 @@ module DungeonMaster
             extra_context:       extra_ctx,
             domain_instructions: instructions,
             prior_outcomes:      prior)
+        end
+
+        def build_extra_context_for(domain)
+          case domain
+          when "traversal"
+            parts = []
+            parts << build_traversal_extra_context_pe
+            combat_ctx = @adventure.combat_context
+            if combat_ctx&.dig("active") == true
+              parts << "=== COMBAT STATE ===\n#{combat_ctx.to_json}"
+            end
+            parts.compact.join("\n\n").presence
+          end
         end
 
         def converge_beacons(results, intention)
