@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_13_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_14_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -126,6 +126,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_13_120000) do
     t.jsonb "currency", default: {"gold"=>0, "copper"=>0, "silver"=>0, "platinum"=>0}, null: false
     t.jsonb "conditions", default: [], null: false
     t.jsonb "skill_ranks", default: {}, null: false
+    t.jsonb "active_buffs", default: [], null: false
     t.index ["adventure_id"], name: "index_adventure_sheets_on_adventure_id"
     t.index ["equipped_armor_id"], name: "index_adventure_sheets_on_equipped_armor_id"
     t.index ["equipped_shield_id"], name: "index_adventure_sheets_on_equipped_shield_id"
@@ -539,6 +540,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_13_120000) do
     t.text "summary"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "duration_formula"
     t.index ["class_levels"], name: "index_spell_definitions_on_class_levels", using: :gin
     t.index ["name"], name: "index_spell_definitions_on_name"
     t.index ["school"], name: "index_spell_definitions_on_school"
