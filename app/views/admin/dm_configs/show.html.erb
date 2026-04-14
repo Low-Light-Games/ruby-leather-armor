@@ -45,6 +45,35 @@
     </div>
 
     <div class="config-section">
+      <h2>Homebrew Rules</h2>
+
+      <div class="config-field toggle-field">
+        <label class="toggle-label" for="instant_death">
+          <%= check_box_tag :instant_death, "1", @config.instant_death?, id: "instant_death", class: "toggle-checkbox" %>
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">Instant Death</span>
+        </label>
+        <p class="field-hint">
+          When <strong>on</strong> (default), HP reaching 0 kills the character immediately — no PF1e dying/bleed window, no stabilization roll.
+          When <strong>off</strong>, standard PF1e rules apply: the player enters the dying state at negative HP and dies at &minus;CON.
+        </p>
+      </div>
+
+      <div class="config-field toggle-field">
+        <label class="toggle-label" for="no_auto_hit_miss">
+          <%= check_box_tag :no_auto_hit_miss, "1", @config.no_auto_hit_miss?, id: "no_auto_hit_miss", class: "toggle-checkbox" %>
+          <span class="toggle-switch"></span>
+          <span class="toggle-text">No Auto-Hit / Auto-Miss</span>
+        </label>
+        <p class="field-hint">
+          When <strong>on</strong> (default), natural 1 is not a guaranteed miss and natural 20 is not a guaranteed hit — use total (d20 + modifier) vs AC only.
+          A well-armored character is genuinely unhittable by a weak attacker.
+          When <strong>off</strong>, standard PF1e rules apply: natural 1 always misses, natural 20 always hits.
+        </p>
+      </div>
+    </div>
+
+    <div class="config-section">
       <h2>Pipeline</h2>
 
       <div class="config-field">
