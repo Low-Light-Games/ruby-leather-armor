@@ -64,6 +64,7 @@ module DungeonMaster
         npc_names = @adventure.story.story_npcs.pluck(:name)
         combat_ctx = @adventure.combat_context || {}
         combat_active = combat_ctx["active"] == true
+        combat_roster = combat_active ? Array(combat_ctx["participants"]).filter_map { |p| p["name"] } : []
 
         system_prompt = PromptRenderer.render("sanity_checker_world",
           scene_summary:     @adventure.scene_summary,
@@ -71,7 +72,7 @@ module DungeonMaster
           micro_contexts:    micro_contexts,
           npc_names:         npc_names,
           combat_active:     combat_active,
-          combat_turn_order: combat_active ? Array(combat_ctx["turn_order"]) : [])
+          combat_turn_order: combat_roster)
 
         {
           system_prompt: system_prompt,
@@ -223,6 +224,7 @@ module DungeonMaster
         npc_names = @adventure.story.story_npcs.pluck(:name)
         combat_ctx = @adventure.combat_context || {}
         combat_active = combat_ctx["active"] == true
+        combat_roster = combat_active ? Array(combat_ctx["participants"]).filter_map { |p| p["name"] } : []
 
         system_prompt = PromptRenderer.render("sanity_checker_world",
           scene_summary:     @adventure.scene_summary,
@@ -230,7 +232,7 @@ module DungeonMaster
           micro_contexts:    micro_contexts,
           npc_names:         npc_names,
           combat_active:     combat_active,
-          combat_turn_order: combat_active ? Array(combat_ctx["turn_order"]) : [])
+          combat_turn_order: combat_roster)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
 
