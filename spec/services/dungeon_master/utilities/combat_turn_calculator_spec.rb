@@ -79,4 +79,54 @@ RSpec.describe DungeonMaster::Utilities::CombatTurnCalculator, type: :service do
     expect(out[:npc_turns].map(&:name)).to eq(["Wolf A"])
     expect(out[:next_state]["round"]).to eq(2)
   end
+
+  context "when an NPC holds the turn (player acted before their initiative slot)" do
+    it "runs pre-player NPCs first, then post-player NPCs, completing the round" do
+      # Turn order: Wolf A (12) > Player (10) > Wolf B (8)
+      # Wolf A holds the turn — it should have gone before the player.
+      ctx = {
+        "active" => true,
+        "round" => 1,
+        "current_turn" => "Wolf A",
+        "turn_order" => ["Wolf A", "Player", "Wolf B"],
+        "participants" => [wolf_a, player, wolf_b]
+      }
+      out = described_class.call(combat_context: ctx)
+      expect(out[:npc_turns].map(&:name)).to eq(["Wolf A", "Wolf B"])
+      expect(out[:next_state]["round"]).to eq(2)
+      expect(out[:next_state]["current_turn"]).to eq("Player")
+    end
+
+    it "handles multiple pre-player NPCs" do
+      orc_high = {
+        "name" => "Orc High", "type" => "npc", "creature_sheet_id" => 3,
+        "initiative" => 15, "hp" => 9, "max_hp" => 9, "conditions" => [], "position" => nil
+      }
+      # Turn order: Orc High (15) > Wolf A (12) > Player (10) > Wolf B (8)
+      # Orc High holds the turn.
+      ctx = {
+        "active" => true,
+        "round" => 1,
+        "current_turn" => "Orc High",
+        "turn_order" => ["Orc High", "Wolf A", "Player", "Wolf B"],
+        "participants" => [orc_high, wolf_a, player, wolf_b]
+      }
+      out = described_class.call(combat_context: ctx)
+      expect(out[:npc_turns].map(&:name)).to eq(["Orc High", "Wolf A", "Wolf B"])
+      expect(out[:next_state]["round"]).to eq(2)
+    end
+
+    it "falls back to post-player + wrap when current_turn is not found in turn_order" do
+      ctx = {
+        "active" => true,
+        "round" => 1,
+        "current_turn" => "Unknown Creature",
+        "turn_order" => ["Wolf A", "Player", "Wolf B"],
+        "participants" => [wolf_a, player, wolf_b]
+      }
+      out = described_class.call(combat_context: ctx)
+      expect(out[:npc_turns].map(&:name)).to eq(["Wolf B", "Wolf A"])
+      expect(out[:next_state]["round"]).to eq(2)
+    end
+  end
 end

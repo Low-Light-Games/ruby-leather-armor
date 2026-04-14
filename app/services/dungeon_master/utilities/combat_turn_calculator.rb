@@ -35,17 +35,6 @@ module DungeonMaster
           end
 
           current_turn = ctx["current_turn"].presence || turn_order.first
-          # World turn runs immediately after the player's action; expect player's turn.
-          unless current_turn.to_s == PLAYER_NAME
-            return {
-              npc_turns: [],
-              next_state: {
-                "current_turn" => current_turn,
-                "round" => round,
-                "active" => true
-              }
-            }
-          end
 
           p_idx = turn_order.index(PLAYER_NAME)
           unless p_idx
@@ -56,15 +45,37 @@ module DungeonMaster
           end
 
           npc_turns = []
-          ((p_idx + 1)...turn_order.length).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
-          new_round = round + 1
-          (0...p_idx).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
+
+          if current_turn.to_s == PLAYER_NAME
+            # Normal case: player just completed their turn.
+            # Run NPCs after the player in the current round, then wrap to the NPCs before
+            # the player (they act first in the next round).
+            ((p_idx + 1)...turn_order.length).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
+            (0...p_idx).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
+          else
+            # Player acted while an NPC held the turn (e.g. after initiative setup placed a
+            # high-initiative enemy first). Run the NPCs that should have acted before the
+            # player, then the NPCs after the player — completing the full round.
+            current_idx = turn_order.index(current_turn.to_s)
+
+            if current_idx && current_idx < p_idx
+              # Pre-player NPCs: from the current holder up to (not including) the player.
+              (current_idx...p_idx).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
+              # Post-player NPCs: remainder of this round (no wrap — pre-player already handled).
+              ((p_idx + 1)...turn_order.length).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
+            else
+              # current_turn not found in order or is already past the player — fall back to
+              # the normal post-player + wrap path.
+              ((p_idx + 1)...turn_order.length).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
+              (0...p_idx).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
+            end
+          end
 
           {
             npc_turns: npc_turns,
             next_state: {
               "current_turn" => PLAYER_NAME,
-              "round" => new_round,
+              "round" => round + 1,
               "active" => true
             }
           }
