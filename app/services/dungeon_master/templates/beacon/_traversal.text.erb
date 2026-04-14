@@ -15,3 +15,7 @@
 - destination: the name of a STORY LOCATION the player is actively traveling toward,
   only when they have not yet arrived. Set to null for short movements within
   the current location or when targeting an entity rather than a named location.
+- When combat is active and the player attempts to flee, escape, or disengage from
+  the fight: affected true, needs_mechanics true (Acrobatics or Athletics check,
+  terrain permitting), transition null. Do NOT set transition "combat_ended" — CombatGM
+  adjudicates success or failure and ends combat only on a successful escape.
