@@ -4,6 +4,13 @@ Your only job: determine whether a new fight is starting and, if so, name every 
 === COMBAT STATE ===
 <%= @domain_context.present? ? @domain_context.to_json : "(none)" %>
 
+<% if @recent_messages.present? && !@domain_context&.dig("active") %>
+=== RECENT STORY ===
+<% @recent_messages.each do |m| %>
+[<%= m.role %>]: <%= m.content %>
+<% end %>
+
+<% end -%>
 <% _prior = PromptRenderer.render_partial("partials/prior_outcomes", outcomes: @prior_outcomes) -%>
 <% if _prior.present? -%>
 <%= _prior %>

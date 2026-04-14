@@ -31,8 +31,9 @@ module DungeonMaster
 
         def beacon_system_prompt(domain, domain_ctx, prior)
           return PromptRenderer.render("combat_beacon",
-            domain_context: domain_ctx,
-            prior_outcomes: prior) if domain == "combat"
+            domain_context:  domain_ctx,
+            recent_messages: recent_story_messages,
+            prior_outcomes:  prior) if domain == "combat"
 
           return PromptRenderer.render("buff_beacon",
             domain_context: domain_ctx,
@@ -50,6 +51,13 @@ module DungeonMaster
             extra_context:       extra_ctx,
             domain_instructions: instructions,
             prior_outcomes:      prior)
+        end
+
+        def recent_story_messages
+          @adventure.adventure_messages
+                    .where(message_type: %w[narrative action_result])
+                    .or(@adventure.adventure_messages.where(role: "player"))
+                    .newest_first.limit(4).reverse
         end
 
         def build_extra_context_for(domain)
