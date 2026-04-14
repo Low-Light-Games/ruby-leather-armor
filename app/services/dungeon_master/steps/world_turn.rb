@@ -68,6 +68,14 @@ module DungeonMaster
           return bleed_result if bleed_result
         end
 
+        # Under standard PF1e, HP 0 = disabled (not yet dying). Apply the condition
+        # here, before NPC fan-out, so it is always set regardless of whether any
+        # NPCs act this round. (Previously this only ran inside the per-NPC loop,
+        # meaning the condition was silently skipped on rounds with no acting NPCs.)
+        if @sheet && !instant_death && @sheet.hp == 0 && !Array(@sheet.conditions).include?("disabled")
+          apply_player_mutations({ conditions_add: ["disabled"] })
+        end
+
         working_ctx = DungeonMaster::WorldTurn::LiveContext.merge_live_participants(
           base_ctx, adventure: @adventure, sheet: @sheet)
 
@@ -146,10 +154,6 @@ module DungeonMaster
 
           reload_world_turn_records!
           live_sheets.merge!(@adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id))
-
-          if @sheet && @sheet.hp == 0 && !instant_death && !Array(@sheet.conditions).include?("disabled")
-            apply_player_mutations({ conditions_add: ["disabled"] })
-          end
 
           end_info = Utilities::CombatEndResolver.check_combat_end(adventure: @adventure, sheet: @sheet, instant_death: instant_death)
           if !end_info[:combat][:combat_active] ||
