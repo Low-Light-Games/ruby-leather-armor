@@ -5,7 +5,7 @@ module DungeonMaster
     # Resolves one NPC's structured npc_action JSON: flee / surrender / attack + {Rolls::CombatDice}.
     module NpcActionResolver
       class << self
-        PLAYER = Utilities::CombatTurnCalculator::PLAYER_NAME
+        PLAYER = Utilities::CombatTurnCalculator::PLAYER_NAME # canonical name — see CombatTurnCalculator::PLAYER_NAME
 
         # @return [Hash] :lines (Array<String>), :npc_muts, :player_hp_delta
         def resolve(npc:, parsed:, combat_ctx:, player_sheet:, adventure:)

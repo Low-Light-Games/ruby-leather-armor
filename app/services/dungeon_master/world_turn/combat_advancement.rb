@@ -38,6 +38,8 @@ module DungeonMaster
             current_turn, combat_ctx: out.merge(ctx.slice("turn_order"))
           )
         elsif ctx["action_economy"].present?
+          # Preserve existing economy even when active just became false so ContextUpdate
+          # receives a complete snapshot; callers clear it on the next fresh turn start.
           out["action_economy"] = ctx["action_economy"]
         end
         out

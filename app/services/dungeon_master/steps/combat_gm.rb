@@ -3,7 +3,7 @@
 module DungeonMaster
   module Steps
     # Dedicated combat adjudicator after rolls when combat is active.
-    # Replaces Mechanic for verdict + mutations; owns PF1e combat synthesis and battlefield patches.
+    # Replaces Mechanic in active combat for verdict + mutations; owns PF1e combat synthesis and battlefield patches.
     module CombatGm
       private
 
