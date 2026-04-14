@@ -7,13 +7,13 @@ module DungeonMaster
     # Two sub-checks under one umbrella:
     #
     #   A) Capability Check — validates that the player possesses the spells,
-    #      feats, or items they intend to *use*. Runs in parallel with
-    #      MechanicalEvaluation inside the full gate (needs_mechanics only).
-    #      AI-driven: the sheet is structured data, but understanding *intent*
-    #      is a natural-language problem. Regex/fuzzy-match cannot distinguish
-    #      "cast fireball" (requires the spell) from "buy a scroll of fireball"
-    #      (requires gold, not the spell). The model reads the sentence and the
-    #      sheet together.
+    #      feats, items, or class abilities they intend to *use*. Runs in parallel
+    #      with MechanicalEvaluation inside the full gate (needs_mechanics only).
+    #      Split responsibility: the AI extracts *what* is being used (NLP problem),
+    #      Ruby verifies *ownership* deterministically against the sheet (not AI).
+    #      This means prompt rules can never cause a false rejection — if the model
+    #      keeps mis-classifying a tactical phrase ("surprise attack"), the Ruby
+    #      lookup simply won't find it on the sheet and the fallback is allow.
     #
     #   B) World Consistency Check — validates that the entities, targets, or
     #      objects the player references actually exist in the current scene.
@@ -64,12 +64,10 @@ module DungeonMaster
       end
 
       def sanity_checker_capability_evaluator_prompt(intent)
-        char_block = CharacterBlock.full(@sheet)
         ds = @sheet.derived_stats || {}
         restrictions = Array(ds["condition_restrictions"])
 
         system_prompt = PromptRenderer.render("sanity_checker",
-          character_block: char_block,
           condition_restrictions: restrictions)
 
         {
@@ -93,7 +91,9 @@ module DungeonMaster
 
       def parse_capability_from_evaluator_result(result)
         parsed = result["parsed_response"] || {}
-        { allowed: parsed["allowed"] != false, reason: parsed["reason"] }
+        ability_uses      = Array(parsed["ability_uses"]).map(&:deep_symbolize_keys)
+        condition_violated = parsed["condition_violated"]
+        check_extracted_abilities(ability_uses, condition_violated)
       end
 
       # ------------------------------------------------------------------
@@ -120,12 +120,10 @@ module DungeonMaster
         return { allowed: true, reason: nil } unless @sheet
 
         prompt_summary = "SanityChecker/capability: \"#{@log.truncate(intent[:intention])}\""
-        char_block = CharacterBlock.full(@sheet)
         ds = @sheet.derived_stats || {}
         restrictions = Array(ds["condition_restrictions"])
 
         system_prompt = PromptRenderer.render("sanity_checker",
-          character_block: char_block,
           condition_restrictions: restrictions)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
@@ -138,7 +136,56 @@ module DungeonMaster
           [raw, @ai.parse_json(raw)]
         end
 
-        { allowed: parsed["allowed"] != false, reason: parsed["reason"] }
+        ability_uses       = Array(parsed["ability_uses"]).map(&:deep_symbolize_keys)
+        condition_violated = parsed["condition_violated"]
+        check_extracted_abilities(ability_uses, condition_violated)
+      end
+
+      # ------------------------------------------------------------------
+      # Deterministic capability verdict — called by both the fan-out and
+      # the direct AI call paths after parsing the extraction response.
+      # ------------------------------------------------------------------
+
+      def check_extracted_abilities(ability_uses, condition_violated)
+        return { allowed: false, reason: condition_violated } if condition_violated.present?
+        return { allowed: true, reason: nil } if ability_uses.empty?
+
+        lookup  = sheet_ability_lookup
+        missing = ability_uses.reject { |u| ability_on_sheet?(u[:name], u[:type], lookup) }
+        if missing.any?
+          names = missing.map { |u| u[:name] }.join(", ")
+          { allowed: false, reason: "#{names} not found on character sheet" }
+        else
+          { allowed: true, reason: nil }
+        end
+      end
+
+      def sheet_ability_lookup
+        {
+          spells:          @sheet.spell_definitions.map          { |s| s.name.downcase.strip },
+          feats:           @sheet.feat_definitions.map           { |f| f.name.downcase.strip },
+          items:           @sheet.item_definitions.map           { |i| i.name.downcase.strip },
+          class_abilities: @sheet.class_ability_definitions.map  { |a| a.name.downcase.strip },
+          class_ability_registry_seeded: ClassAbilityDefinition.exists?
+        }
+      end
+
+      def ability_on_sheet?(name, type, lookup)
+        n = name.to_s.downcase.strip
+        case type.to_s
+        when "spell"   then lookup[:spells].include?(n)
+        when "feat"    then lookup[:feats].include?(n)
+        when "item"    then lookup[:items].include?(n)
+        when "ability"
+          # Two distinct states:
+          #   - Global registry empty (data migration not yet run): permissive fallback.
+          #   - Registry seeded but this sheet has no matching class ability: reject.
+          return true unless lookup[:class_ability_registry_seeded]
+
+          lookup[:class_abilities].include?(n)
+        else
+          lookup[:spells].include?(n) || lookup[:feats].include?(n) || lookup[:items].include?(n)
+        end
       end
 
       # ------------------------------------------------------------------
