@@ -46,7 +46,8 @@ module DungeonMaster
         action_entries.each_with_index do |entry, idx|
           action_idx = base_sequence_index + idx
           if prerequisite_failed?(entry, action_idx, resolved_history)
-            accumulated << blocked_action_result(entry, resolved_history[action_idx - 1])
+            prior_result = action_idx.positive? ? resolved_history[action_idx - 1] : nil
+            accumulated << blocked_action_result(entry, prior_result)
             p.log.play_log!(
               "queue_action_blocked",
               "Blocked queued action #{action_idx + 1}/#{total} — #{entry_text(entry).inspect} (failed prerequisite #{entry_prerequisite(entry).inspect})"
