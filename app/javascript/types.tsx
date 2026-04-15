@@ -91,6 +91,17 @@ export interface DerivedSkill {
   total: number
 }
 
+export interface ActiveBuff {
+  source: string
+  bonus_type: string
+  target: string
+  value: number
+  expires_at_game_hours?: number | null
+  remaining_hours?: number | null
+  duration_label: string
+  meta?: Record<string, unknown>
+}
+
 export interface Sheet {
   id: number
   name: string
@@ -258,6 +269,7 @@ export interface AdventureSheet {
   currency: Currency
   /** Per-skill rank counts; adventure copy is independent from the source sheet. */
   skill_ranks?: Record<string, number>
+  active_buffs?: ActiveBuff[]
   hp: number
   max_hp: number
   items: string | null       // legacy text field

@@ -330,6 +330,86 @@
       }
     }
 
+    .active-buffs-section {
+      margin-bottom: 10px;
+      padding: 10px;
+      background: $parchment;
+      border: 1px solid $border-light;
+
+      .active-buffs-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+
+        h3 {
+          margin: 0;
+          font-size: 12px;
+          font-family: $font-mono;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          color: $ink-light;
+        }
+
+        .active-buffs-count {
+          min-width: 20px;
+          padding: 1px 6px;
+          font-size: 10px;
+          font-family: $font-mono;
+          text-align: center;
+          color: $blue-ink;
+          background: $blue-ink-lt;
+          border: 1px solid color.adjust($blue-ink, $alpha: -0.5);
+          border-radius: 999px;
+        }
+      }
+
+      .active-buffs-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .active-buff-row {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding-bottom: 8px;
+        border-bottom: 1px dashed $border-light;
+
+        &:last-child {
+          padding-bottom: 0;
+          border-bottom: none;
+        }
+      }
+
+      .active-buff-main {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .active-buff-source {
+        font-size: 12px;
+        font-family: $font-mono;
+        font-weight: 700;
+        color: $ink;
+      }
+
+      .active-buff-effect,
+      .active-buff-duration {
+        font-size: 11px;
+        color: $ink-mid;
+      }
+
+      .active-buff-duration {
+        font-family: $font-mono;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        color: $green-ink;
+      }
+    }
+
     .saves-row {
       display: flex;
       gap: 8px;
