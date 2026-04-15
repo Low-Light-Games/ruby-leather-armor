@@ -53,12 +53,14 @@ class AdventureMessagesController < ApplicationController
               Array(params[:rolls]).map do |r|
                 { roll_value: r[:roll_value].to_i,
                   roll_description: r[:roll_description]&.strip || "unknown check",
-                  resolution_method: r[:resolution_method]&.strip }
+                  resolution_method: r[:resolution_method]&.strip,
+                  request_id: r[:request_id]&.strip.presence }
               end
             else
               [{ roll_value: params[:roll_value].to_i,
                  roll_description: params[:roll_description]&.strip || "unknown check",
-                 resolution_method: params[:resolution_method]&.strip }]
+                 resolution_method: params[:resolution_method]&.strip,
+                 request_id: params[:request_id]&.strip.presence }]
             end
 
     invalid = rolls.find { |r| !(-100..100).include?(r[:roll_value]) }

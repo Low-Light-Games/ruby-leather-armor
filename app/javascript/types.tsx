@@ -309,12 +309,17 @@ export interface SituationalModifier {
 }
 
 export interface RollRequest {
+  request_id?: string
+  source_request_id?: string
   type: string
   skill?: string
   spell?: string
   dc?: number
   description: string
   domain?: string
+  damage?: string
+  damage_type?: string
+  target?: string
   take_10_eligible?: boolean
   take_20_eligible?: boolean
   take_10_value?: number | null
@@ -336,7 +341,7 @@ export interface AdventureMessage {
     roll_requests?: RollRequest[]
     roll_value?: number
     roll_description?: string
-    rolls?: Array<{ roll_value: number; roll_description: string }>
+    rolls?: Array<{ roll_value: number; roll_description: string; request_id?: string }>
     sequence_index?: number
     total_actions?: number
     action_text?: string | null

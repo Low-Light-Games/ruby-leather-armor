@@ -68,7 +68,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
     setRollModalTargetIdx(null)
   }
 
-  const allRollsFilled = pendingRolls?.entries.every(e => e.value != null && e.value >= 1) ?? false
+  const allRollsFilled = pendingRolls?.entries.every(e => e.value != null) ?? false
 
   const handleRollsSubmit = () => {
     if (!pendingRolls || !allRollsFilled) return
@@ -76,6 +76,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
     const rolls = pendingRolls.entries.map(e => ({
       roll_value: e.value!,
       roll_description: e.request.description,
+      request_id: e.request.request_id,
       resolution_method: e.resolution_method || 'manual',
     }))
 

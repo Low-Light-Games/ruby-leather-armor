@@ -35,7 +35,7 @@ export function useAdventureMessages({
 
   const lastSentRef = useRef<
     | { type: 'message'; text: string }
-    | { type: 'rolls'; rolls: Array<{ roll_value: number; roll_description: string }> }
+    | { type: 'rolls'; rolls: Array<{ roll_value: number; roll_description: string; request_id?: string; resolution_method?: string }> }
     | { type: 'initiative'; value: number }
     | null
   >(null)
@@ -289,7 +289,7 @@ export function useAdventureMessages({
     }
   }
 
-  const sendRolls = async (rolls: Array<{ roll_value: number; roll_description: string; resolution_method?: string }>) => {
+  const sendRolls = async (rolls: Array<{ roll_value: number; roll_description: string; request_id?: string; resolution_method?: string }>) => {
     setSending(true)
     lastSentRef.current = { type: 'rolls', rolls }
 

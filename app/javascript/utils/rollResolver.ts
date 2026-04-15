@@ -60,6 +60,10 @@ export function resolveRollRequest(req: RollRequest, ds: DerivedStats): Resolved
     return { modifier: ds.initiative, label: 'Initiative', modifierLabel: `Init ${formatMod(ds.initiative)}` }
   }
 
+  if (rollType === 'damage_roll' || rollType === 'damage') {
+    return null
+  }
+
   // Fallback: try skill match, then save, then ability
   return resolveSkillCheck(skillLower, skillName, ds)
     ?? resolveSave(skillLower, ds)
