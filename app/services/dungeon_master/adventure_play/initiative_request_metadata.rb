@@ -11,6 +11,7 @@ module DungeonMaster
           creature_data: result[:creature_data],
           intent: result[:intent],
           mutations: result[:mutations],
+          pending_opening_merged: result[:merged],
           remaining_actions: result[:remaining_actions]
         }
       end

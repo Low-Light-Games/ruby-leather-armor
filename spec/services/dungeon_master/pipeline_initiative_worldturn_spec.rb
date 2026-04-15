@@ -47,6 +47,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — initiative + world-turn termin
       },
       "mutations" => {},
       "creature_data" => [],
+      "pending_opening_merged" => nil,
       "remaining_actions" => []
     }.merge(overrides)
   end
@@ -157,6 +158,58 @@ RSpec.describe "DungeonMaster::PipelineEngine — initiative + world-turn termin
           mutations: {}
         },
         only_continue_if_resolved: true)
+    end
+  end
+
+  describe "combat-start opening action after initiative" do
+    let(:combat_data) do
+      {
+        "active" => true,
+        "round" => 1,
+        "current_turn" => "Player",
+        "turn_order" => ["Player", "Goblin"],
+        "participants" => [
+          { "name" => "Player", "type" => "player", "hp" => 10, "max_hp" => 10, "initiative" => 15, "conditions" => [] },
+          { "name" => "Goblin", "type" => "npc", "hp" => 5, "max_hp" => 5, "initiative" => 10, "conditions" => [], "creature_sheet_id" => 123 }
+        ],
+        "terrain_notes" => nil,
+      }
+    end
+
+    before do
+      allow(DungeonMaster::Utilities::Warmaster).to receive(:compute_combat_initialization)
+        .and_return(combat_data)
+    end
+
+    it "stores pending opening merged data in initiative request metadata" do
+      result = {
+        creature_data: [{ "name" => "Goblin", "creature_sheet_id" => 123, "initiative" => 10 }],
+        intent: { intention: "I cast Ray of Frost", affected_contexts: ["combat"], macro_significant: false, domain_results: {} },
+        mutations: {},
+        merged: { player_rolls: [{ type: "attack_roll", dc: 12 }], npc_actions: [], consequences: [], mechanical_summaries: ["attack"] },
+        remaining_actions: []
+      }
+
+      meta = DungeonMaster::AdventurePlay::InitiativeRequestMetadata.for_awaiting_initiative(result)
+      expect(meta["pending_opening_merged"] || meta[:pending_opening_merged]).to include(:player_rolls, :mechanical_summaries)
+    end
+
+    it "returns awaiting_rolls after initiative when an opening action still needs rolls" do
+      paused_loop_for(pipeline, "I cast Ray of Frost")
+      meta = base_initiative_metadata(
+        "pending_opening_merged" => {
+          "player_rolls" => [{ "type" => "attack_roll", "dc" => 12, "description" => "Ray of Frost vs goblin" }],
+          "npc_actions" => [],
+          "consequences" => [],
+          "mechanical_summaries" => ["Ray of Frost requires an attack roll."]
+        }
+      )
+
+      expect(pipeline).not_to receive(:maybe_run_world_turn)
+
+      result = pipeline.run_initiative(15, meta)
+      expect(result[:action]).to eq(:awaiting_rolls)
+      expect(result[:merged][:player_rolls]).not_to be_empty
     end
   end
 end

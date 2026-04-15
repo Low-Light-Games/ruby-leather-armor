@@ -42,6 +42,16 @@ module DungeonMaster
       return capability_check_rejection(intent, capability) unless capability[:allowed]
 
       merged = merge_mechanical_evaluations_and_prepare_rolls(evaluations)
+      if intent[:creature_data].present? && !combat_active?
+        return {
+          status: :awaiting_initiative,
+          intent: intent,
+          merged: merged,
+          creature_data: intent[:creature_data],
+          mutations: {}
+        }
+      end
+
       return { status: :awaiting_rolls, intent: intent, merged: merged } if merged[:player_rolls].any?
 
       finish_resolution(intent, merged, Rolls::PlayerRolls.auto_success_roll_message(merged))

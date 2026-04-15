@@ -78,6 +78,7 @@ module DungeonMaster
             return {
               action: :awaiting_initiative,
               intent: result[:intent],
+              merged: result[:merged],
               creature_data: result[:creature_data],
               mutations: result[:mutations],
               remaining_actions: remaining

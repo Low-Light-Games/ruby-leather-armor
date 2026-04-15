@@ -50,6 +50,24 @@ module DungeonMaster
 
           base_mutations = metadata["mutations"] || {}
           result = { status: :resolved, intent: intent, mutations: base_mutations }
+          opening_merged = restore_opening_action_merged(metadata)
+
+          if opening_merged
+            if opening_merged[:player_rolls].any?
+              @loop&.batch_update!(new_status: "paused",
+                timeline_entry: tl("awaiting_rolls", "Paused for player rolls"))
+              ContextUpdatePause.run(pipeline_engine: self, intent: intent, merged: opening_merged)
+              return {
+                action: :awaiting_rolls,
+                intent: intent,
+                merged: opening_merged,
+                remaining_actions: remaining_actions_from(metadata)
+              }
+            end
+
+            opening_result = finish_resolution(intent, opening_merged, Rolls::PlayerRolls.auto_success_roll_message(opening_merged))
+            return continue_or_narrate_after_resume(metadata, accumulated_row: opening_result, only_continue_if_resolved: true)
+          end
 
           # If any NPC outrolled the player on initiative, they act now — before the player's
           # first move. World turn enriches result[:mutations] with combat advancement and sets
@@ -135,6 +153,18 @@ module DungeonMaster
 
         def remaining_actions_from(metadata)
           metadata["remaining_actions"] || []
+        end
+
+        def restore_opening_action_merged(metadata)
+          raw = metadata["pending_opening_merged"]
+          return nil unless raw.is_a?(Hash)
+
+          {
+            player_rolls: Array(raw["player_rolls"] || raw[:player_rolls]).map(&:deep_symbolize_keys),
+            npc_actions: Array(raw["npc_actions"] || raw[:npc_actions]).map(&:deep_symbolize_keys),
+            consequences: Array(raw["consequences"] || raw[:consequences]).map(&:deep_symbolize_keys),
+            mechanical_summaries: raw["mechanical_summaries"] || raw[:mechanical_summaries] || []
+          }
         end
 
         # After rolls/initiative resume: either run the rest of the queue or one accumulated narrate pass.
