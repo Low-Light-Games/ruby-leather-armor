@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_14_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_15_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -167,8 +167,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_14_120000) do
     t.jsonb "scene_history", default: [], null: false
     t.datetime "discarded_at"
     t.boolean "skip_world_sanity_check", default: false, null: false
+    t.datetime "ended_at"
+    t.string "end_reason"
     t.index ["current_location_id"], name: "index_adventures_on_current_location_id"
     t.index ["discarded_at"], name: "index_adventures_on_discarded_at"
+    t.index ["ended_at"], name: "index_adventures_on_ended_at"
     t.index ["story_id"], name: "index_adventures_on_story_id"
     t.index ["user_id"], name: "index_adventures_on_user_id"
   end

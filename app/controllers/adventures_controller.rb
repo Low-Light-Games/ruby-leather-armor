@@ -101,6 +101,9 @@ class AdventuresController < ApplicationController
       story_summary: adventure.story_summary,
       scene_summary: adventure.scene_summary,
       current_category: adventure.current_category,
+      ended: adventure.ended?,
+      ended_at: adventure.ended_at,
+      end_reason: adventure.end_reason,
       directed_dm: adventure.directed_dm?,
       skip_world_sanity_check: adventure.skip_world_sanity_check?
     }

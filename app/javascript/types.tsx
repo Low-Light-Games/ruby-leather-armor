@@ -301,6 +301,9 @@ export interface Adventure {
   story_summary: string | null
   scene_summary: string | null
   current_category: string | null
+  ended: boolean
+  ended_at: string | null
+  end_reason: 'player_death' | 'adventure_complete' | null
   directed_dm: boolean
   skip_world_sanity_check: boolean
 }

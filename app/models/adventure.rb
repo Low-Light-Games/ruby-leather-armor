@@ -30,6 +30,19 @@ class Adventure < ApplicationRecord
     discarded_at.present?
   end
 
+  def ended?
+    ended_at.present?
+  end
+
+  def mark_ended!(reason:)
+    reason = reason.to_s
+    now = Time.current
+    updated = self.class.where(id: id, ended_at: nil)
+                        .update_all(ended_at: now, end_reason: reason, updated_at: now)
+    reload if updated.positive?
+    updated.positive?
+  end
+
   def directed_dm?
     directed_dm == true
   end
