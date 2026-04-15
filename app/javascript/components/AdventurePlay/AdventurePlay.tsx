@@ -147,6 +147,8 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
             adventureId={adventureId}
             derivedStats={ds}
             adventureSheet={advSheet}
+            adventureEnded={adventure.ended}
+            endReason={adventure.end_reason}
             onAdventureComplete={reload}
             onDmResponse={reload}
             onSheetUpdate={reload}

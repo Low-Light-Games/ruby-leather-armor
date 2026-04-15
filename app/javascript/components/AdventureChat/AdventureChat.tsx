@@ -13,12 +13,23 @@ interface AdventureChatProps {
   adventureId: number
   derivedStats?: DerivedStats | null
   adventureSheet?: AdventureSheet | null
+  adventureEnded?: boolean
+  endReason?: 'player_death' | 'adventure_complete' | null
   onAdventureComplete?: () => void
   onDmResponse?: () => void
   onSheetUpdate?: () => void
 }
 
-export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdventureComplete, onDmResponse, onSheetUpdate }: AdventureChatProps) => {
+export const AdventureChat = ({
+  adventureId,
+  derivedStats,
+  adventureSheet,
+  adventureEnded = false,
+  endReason = null,
+  onAdventureComplete,
+  onDmResponse,
+  onSheetUpdate,
+}: AdventureChatProps) => {
   const { user } = useAuth()
   const [input, setInput] = useState('')
   const [askDm, setAskDm] = useState(false)
@@ -41,7 +52,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
 
   const handleSend = () => {
     const text = input.trim()
-    if (!text || sending) return
+    if (!text || sending || adventureEnded) return
     const mode = askDm ? 'dm_query' : undefined
     setInput('')
     setAskDm(false)
@@ -71,7 +82,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
   const allRollsFilled = pendingRolls?.entries.every(e => e.value != null) ?? false
 
   const handleRollsSubmit = () => {
-    if (!pendingRolls || !allRollsFilled) return
+    if (!pendingRolls || !allRollsFilled || adventureEnded) return
 
     const rolls = pendingRolls.entries.map(e => ({
       roll_value: e.value!,
@@ -90,6 +101,10 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
       handleSend()
     }
   }
+
+  const terminalNotice = endReason === 'player_death'
+    ? 'Your character has died. This adventure has ended.'
+    : 'This adventure has reached its conclusion.'
 
   return (
     <div className="adventure-chat">
@@ -115,7 +130,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
         <div ref={messagesEndRef} />
       </div>
 
-      {pendingRolls && !sending && (
+      {pendingRolls && !sending && !adventureEnded && (
         <PendingRollsPanel
           pendingRolls={pendingRolls}
           derivedStats={derivedStats}
@@ -126,7 +141,7 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
         />
       )}
 
-      {pendingInitiative && !sending && (
+      {pendingInitiative && !sending && !adventureEnded && (
         <PendingInitiativePanel
           derivedStats={derivedStats}
           onSubmit={sendInitiative}
@@ -138,39 +153,45 @@ export const AdventureChat = ({ adventureId, derivedStats, adventureSheet, onAdv
         onClose={handleRollModalClose}
       />
 
-      <div className="chat-input-area">
-        <button
-          type="button"
-          className={`ask-dm-toggle ${askDm ? 'active' : ''}`}
-          onClick={() => setAskDm(prev => !prev)}
-          disabled={sending}
-          title="Toggle to ask the Game Master for help, rules clarifications, or information about the game world — without taking an action."
-        >
-          ❓ Ask GM
-        </button>
-        <div className="chat-input-wrapper">
-          <textarea
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={askDm ? 'Ask the GM a question...' : (pendingInitiative ? 'Roll for initiative above...' : (pendingRolls ? 'Submit your rolls above, or describe another action...' : 'What does your character do?'))}
-            disabled={sending}
-            rows={2}
-            maxLength={500}
-            className={`chat-input ${askDm ? 'ask-dm-mode' : ''}`}
-          />
-          <span className={`char-counter ${input.length > 450 ? 'near-limit' : ''} ${input.length >= 500 ? 'at-limit' : ''}`}>
-            {input.length}/500
-          </span>
+      {adventureEnded ? (
+        <div className="chat-ended-notice" role="status" aria-live="polite">
+          {terminalNotice}
         </div>
-        <button
-          onClick={handleSend}
-          disabled={sending || !input.trim()}
-          className="chat-send-btn"
-        >
-          ➤
-        </button>
-      </div>
+      ) : (
+        <div className="chat-input-area">
+          <button
+            type="button"
+            className={`ask-dm-toggle ${askDm ? 'active' : ''}`}
+            onClick={() => setAskDm(prev => !prev)}
+            disabled={sending}
+            title="Toggle to ask the Game Master for help, rules clarifications, or information about the game world — without taking an action."
+          >
+            ❓ Ask GM
+          </button>
+          <div className="chat-input-wrapper">
+            <textarea
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={askDm ? 'Ask the GM a question...' : (pendingInitiative ? 'Roll for initiative above...' : (pendingRolls ? 'Submit your rolls above, or describe another action...' : 'What does your character do?'))}
+              disabled={sending}
+              rows={2}
+              maxLength={500}
+              className={`chat-input ${askDm ? 'ask-dm-mode' : ''}`}
+            />
+            <span className={`char-counter ${input.length > 450 ? 'near-limit' : ''} ${input.length >= 500 ? 'at-limit' : ''}`}>
+              {input.length}/500
+            </span>
+          </div>
+          <button
+            onClick={handleSend}
+            disabled={sending || !input.trim()}
+            className="chat-send-btn"
+          >
+            ➤
+          </button>
+        </div>
+      )}
     </div>
   )
 }
