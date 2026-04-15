@@ -123,6 +123,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — prepared hostile opener flow",
     adventure.reload
 
     expect(result[:action]).to eq(:combat_initialized)
+    expect(result[:combat_start_message]).to include("It's your turn")
     expect(adventure.combat_context.dig("action_economy", "standard_available")).to eq(true)
     expect(adventure.combat_context.dig("action_economy", "move_available")).to eq(true)
   end

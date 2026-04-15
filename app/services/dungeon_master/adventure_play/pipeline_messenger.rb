@@ -64,9 +64,16 @@ module DungeonMaster
 
         when :combat_initialized
           # Combat context was written directly after initiative resolve; the encounter scene
-          # was already delivered in the initiative_request message. No narrative is emitted
-          # unless a terminal event (player_death etc.) was set by an early world turn.
-          msgs = persist_combat_log_messages(result[:world_turn_lines])
+          # was already delivered in the initiative_request message. When the player wins
+          # initiative, emit a lightweight turn-start note so the chat does not appear stalled.
+          msgs = []
+          if result[:combat_start_message].present?
+            msgs << persist_message(
+              role: "dm",
+              content: result[:combat_start_message],
+              message_type: "narrative")
+          end
+          msgs.concat(persist_combat_log_messages(result[:world_turn_lines]))
           msgs.concat(persist_event_messages(result))
           msgs
 

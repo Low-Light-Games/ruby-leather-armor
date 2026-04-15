@@ -36,4 +36,14 @@ RSpec.describe DungeonMaster::AdventurePlay::PipelineMessenger, type: :service d
     expect(messages.first.content).to include("did not happen automatically")
     expect(messages.last.content).to include("Roll for initiative!")
   end
+
+  it "persists a visible DM narrative when combat initializes on the player's turn" do
+    messages = messenger.messages_for(
+      action: :combat_initialized,
+      combat_start_message: "Combat begins. Turn order: Player, Goblin. It's your turn."
+    )
+
+    expect(messages.map(&:message_type)).to eq(["narrative"])
+    expect(messages.first.content).to include("It's your turn")
+  end
 end

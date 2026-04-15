@@ -84,9 +84,10 @@ module DungeonMaster
             # the player sees what the enemies did before their first move.
             run_accumulated_narrative_phase([result])
           else
-            # Player has the first move. The initiative_request message already introduced
-            # the encounter — no new narrative is needed. Return silently.
-            { action: :combat_initialized }.merge(result.slice(:player_death, :player_incapacitated))
+            {
+              action: :combat_initialized,
+              combat_start_message: player_turn_combat_start_message(combat_data)
+            }.merge(result.slice(:player_death, :player_incapacitated))
           end
         end
 
@@ -200,6 +201,15 @@ module DungeonMaster
 
         def terminal_combat_result?(result)
           result[:player_death] || result[:player_incapacitated]
+        end
+
+        def player_turn_combat_start_message(combat_data)
+          turn_order = Array(combat_data["turn_order"]).presence
+          if turn_order
+            "Combat begins. Turn order: #{turn_order.join(', ')}. It's your turn."
+          else
+            "Combat begins. It's your turn."
+          end
         end
 
         def apply_prompt_phase(phase, state)
