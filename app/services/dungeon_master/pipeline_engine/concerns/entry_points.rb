@@ -118,6 +118,18 @@ module DungeonMaster
             requested_rolls: restored_roll_requests,
             submitted_rolls: submitted_rolls)
 
+          if result[:status] == :awaiting_rolls
+            @loop&.batch_update!(new_status: "paused",
+              timeline_entry: tl("awaiting_rolls", "Paused for player rolls"))
+            ContextUpdatePause.run(pipeline_engine: self, intent: result[:intent], merged: result[:merged])
+            return {
+              action: :awaiting_rolls,
+              intent: result[:intent],
+              merged: result[:merged],
+              remaining_actions: result[:remaining_actions] || remaining_actions_from(metadata)
+            }
+          end
+
           if result[:status] == :awaiting_initiative
             @loop&.batch_update!(new_status: "paused",
               new_tags: { "combat_started" => true },

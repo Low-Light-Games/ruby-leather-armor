@@ -23,6 +23,7 @@ module DungeonMaster
             ),
             pending_consequences: merged[:consequences],
             mechanical_summaries: merged[:mechanical_summaries],
+            pending_roll_chain: merged[:roll_chain],
             intent: result[:intent],
             show_dc: adventure.effective_dm_setting("show_roll_dc"),
             remaining_actions: result[:remaining_actions]
@@ -51,7 +52,8 @@ module DungeonMaster
             player_rolls: [],
             npc_actions: deep_symbolize_array(metadata["pending_npc_actions"]),
             consequences: deep_symbolize_array(metadata["pending_consequences"]),
-            mechanical_summaries: metadata["mechanical_summaries"] || []
+            mechanical_summaries: metadata["mechanical_summaries"] || [],
+            roll_chain: metadata["pending_roll_chain"]&.deep_symbolize_keys
           }
 
           [intent, merged]

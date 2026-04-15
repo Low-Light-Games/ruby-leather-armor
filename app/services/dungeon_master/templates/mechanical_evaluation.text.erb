@@ -33,6 +33,10 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
   - Walking, riding a trained mount on a road, or other routine actions require NO roll.
   - Using an item, equipping gear, or other standard actions require NO roll unless rules say otherwise.
   If no rolls are needed, return an EMPTY player_rolls array. Do NOT invent rolls the rules don't call for.
+  When you request an attack_roll that deals variable damage on a hit, include the attack's
+  damage expression in a "damage" field so the pipeline can ask for the damage roll after
+  a successful hit instead of inventing damage itself. Include "damage_type" and "target"
+  when known.
   Every roll MUST include a numeric "dc" value. EXCEPTION: opposed checks (Bluff vs Sense Motive,
   contested grapples, etc.) use dc: 0 and note "opposed" in the description — the DC is the
   opponent's roll result and cannot be predetermined.
@@ -62,7 +66,8 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
   "player_rolls": [
-    { "type": "skill_check", "skill": "Swim", "dc": 10, "description": "Swim check to stay afloat" }
+    { "type": "skill_check", "skill": "Swim", "dc": 10, "description": "Swim check to stay afloat" },
+    { "type": "attack_roll", "dc": 16, "description": "Ray of Frost attack against the goblin", "damage": "1d3", "damage_type": "cold", "target": "goblin" }
   ],
   "npc_actions": [
     { "actor": "Goblin A", "action": "attack", "target": "player", "modifier": 3, "damage": "1d6+2" }

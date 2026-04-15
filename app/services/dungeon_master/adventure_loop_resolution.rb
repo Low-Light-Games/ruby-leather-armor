@@ -77,6 +77,13 @@ module DungeonMaster
 
     # Post-roll completion: verdict → mutations → time_keeper
     def finish_resolution(intent, merged, roll_results, requested_rolls: nil, submitted_rolls: nil)
+      current_roll_requests = Array(requested_rolls.presence || merged[:player_rolls]).map { |r| r.is_a?(Hash) ? r.deep_symbolize_keys : r }
+      if (damage_pause = maybe_pause_for_damage_roll(intent, merged, current_roll_requests, roll_results, submitted_rolls))
+        return damage_pause
+      end
+
+      roll_results, submitted_rolls = merge_roll_chain_results(merged, roll_results, submitted_rolls)
+
       # In active combat, world turn resolves routine NPC turns. Only immediate
       # reactions (see mechanical_evaluation/_combat) pass through here with the
       # player's rolls so AoO-style events resolve before the turn advances.
@@ -119,11 +126,85 @@ module DungeonMaster
         time_result: time_result,
         action_outcome: verdict_result[:outcome].to_s.presence,
         queue_resolution_context: {
-          player_rolls: Array(requested_rolls.presence || merged[:player_rolls]).map { |r| r.is_a?(Hash) ? r.deep_dup : r },
+          player_rolls: current_roll_requests.map { |r| r.is_a?(Hash) ? r.deep_dup : r },
           submitted_rolls: Array(submitted_rolls).map { |r| r.is_a?(Hash) ? r.deep_dup : r },
           roll_results: roll_results
         }
       )
+    end
+
+    def maybe_pause_for_damage_roll(intent, merged, current_roll_requests, roll_results, submitted_rolls)
+      return nil if merged[:roll_chain].is_a?(Hash)
+
+      hits = attack_rolls_requiring_damage(current_roll_requests, submitted_rolls)
+      return nil if hits.empty?
+
+      {
+        status: :awaiting_rolls,
+        intent: intent,
+        merged: merged.merge(
+          player_rolls: hits.map { |hit| build_damage_roll_request(hit) },
+          roll_chain: {
+            phase: "damage",
+            prior_roll_results: roll_results,
+            prior_submitted_rolls: Array(submitted_rolls).map { |r| r.is_a?(Hash) ? r.deep_dup : r }
+          }
+        )
+      }
+    end
+
+    def attack_rolls_requiring_damage(current_roll_requests, submitted_rolls)
+      attack_rolls = current_roll_requests.filter_map do |roll|
+        next unless roll.is_a?(Hash)
+        next unless roll[:type].to_s == "attack_roll"
+        next if roll[:damage].blank?
+
+        roll.deep_symbolize_keys
+      end
+      return [] if attack_rolls.empty?
+
+      submitted_by_label = Array(submitted_rolls).each_with_object({}) do |roll, acc|
+        next unless roll.is_a?(Hash)
+
+        acc[normalize_roll_label(roll[:roll_description])] = roll[:roll_value].to_i
+      end
+
+      attack_rolls.filter do |roll|
+        total = submitted_by_label[normalize_roll_label(roll[:description])]
+        total && total >= roll[:dc].to_i
+      end
+    end
+
+    def build_damage_roll_request(attack_roll)
+      attack_roll = attack_roll.deep_symbolize_keys
+      {
+        type: "damage_roll",
+        description: damage_roll_description_for(attack_roll),
+        damage: attack_roll[:damage],
+        damage_type: attack_roll[:damage_type],
+        target: attack_roll[:target],
+        domain: attack_roll[:domain]
+      }.compact
+    end
+
+    def damage_roll_description_for(attack_roll)
+      source = attack_roll[:description].presence || attack_roll[:spell].presence || "attack"
+      "Damage roll for #{source}"
+    end
+
+    def merge_roll_chain_results(merged, roll_results, submitted_rolls)
+      chain = merged[:roll_chain]
+      return [roll_results, submitted_rolls] unless chain.is_a?(Hash)
+
+      combined_results = [chain[:prior_roll_results], roll_results].reject(&:blank?).join("\n")
+      combined_submitted_rolls = Array(chain[:prior_submitted_rolls]).map { |r| r.is_a?(Hash) ? r.deep_dup : r } +
+                                 Array(submitted_rolls).map { |r| r.is_a?(Hash) ? r.deep_dup : r }
+
+      [combined_results, combined_submitted_rolls]
+    end
+
+    def normalize_roll_label(label)
+      label.to_s.downcase.gsub(/[^a-z0-9\s]/, " ").gsub(/\s+/, " ").strip
     end
 
     def prepared_hostile_combat_continues?(intent)
