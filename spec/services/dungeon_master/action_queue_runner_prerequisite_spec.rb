@@ -200,47 +200,11 @@ RSpec.describe "DungeonMaster::PipelineEngine::ActionQueueRunner prerequisite ga
     expect(runner.send(:stealth_approach_succeeded?, result)).to eq(true)
   end
 
-  it "marks a blocked stealth follow-up for combat handoff when nearby hostiles remain" do
+  it "does not inject a combat handoff when a blocked stealth follow-up fails" do
     adventure.update!(traversal_context: { "nearby_npcs" => ["two goblin scouts"] })
-
-    blocked = runner.send(:blocked_action_result, conditional_entry, failed_stealth_result)
-
-    expect(blocked.dig(:intent, :domain_results, "combat")).to include(
-      "transition" => "combat_started",
-      "combatants" => include("goblin scouts")
-    )
-  end
-
-  it "does not mark a blocked stealth follow-up for combat handoff without nearby hostiles" do
-    adventure.update!(traversal_context: { "nearby_npcs" => [] })
 
     blocked = runner.send(:blocked_action_result, conditional_entry, failed_stealth_result)
 
     expect(blocked.dig(:intent, :domain_results, "combat")).to be_nil
-  end
-
-  it "hands off into initiative after a failed stealth setup blocks a hostile opener near nearby hostiles" do
-    adventure.update!(traversal_context: { "nearby_npcs" => ["two goblin scouts"] })
-    allow(DungeonMaster::Utilities::Warmaster).to receive(:initialize_from_names!).and_return(
-      status: :awaiting_initiative,
-      creature_data: [{ name: "Goblin", creature_sheet_id: 123, initiative: 12 }]
-    )
-    allow(pipeline).to receive(:run_context_updates)
-
-    blocked = runner.send(:blocked_action_result, conditional_entry, failed_stealth_result)
-
-    result = pipeline.send(:run_accumulated_narrative_phase, [failed_stealth_result, blocked])
-
-    expect(result[:action]).to eq(:awaiting_initiative)
-    expect(result[:action_outcomes]).to include(blocked[:action_outcome])
-  end
-
-  it "does not hand off into initiative when the same blocked stealth follow-up has no nearby hostiles" do
-    adventure.update!(traversal_context: { "nearby_npcs" => [] })
-    blocked = runner.send(:blocked_action_result, conditional_entry, failed_stealth_result)
-
-    result = pipeline.send(:run_accumulated_narrative_phase, [failed_stealth_result, blocked])
-
-    expect(result[:action]).to eq(:narrated)
   end
 end

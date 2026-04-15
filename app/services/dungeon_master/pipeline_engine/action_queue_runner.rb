@@ -280,10 +280,6 @@ module DungeonMaster
         prerequisite = entry_prerequisite(entry)
         blocked_text = entry_text(entry)
         prior_intent = (prior_result && prior_result[:intent].is_a?(Hash)) ? prior_result[:intent].deep_dup : {}
-        domain_results = prior_intent[:domain_results].is_a?(Hash) ? prior_intent[:domain_results].deep_dup : {}
-        if (combat_handoff = blocked_follow_up_combat_handoff(entry, prerequisite))
-          domain_results["combat"] = combat_handoff
-        end
 
         {
           status: :resolved,
@@ -291,36 +287,11 @@ module DungeonMaster
             intention: blocked_text,
             affected_contexts: Array(prior_intent[:affected_contexts]),
             macro_significant: prior_intent[:macro_significant] == true,
-            domain_results: domain_results
+            domain_results: prior_intent[:domain_results].is_a?(Hash) ? prior_intent[:domain_results] : {}
           },
           mutations: {},
           action_outcome: blocked_action_outcome(blocked_text, prerequisite)
         }
-      end
-
-      def blocked_follow_up_combat_handoff(entry, prerequisite)
-        return nil unless prerequisite == "stealth_approach_succeeded"
-        return nil unless hostile_follow_up_action?(entry_text(entry))
-        return nil if @pipeline_engine.adventure.combat_active?
-
-        combatants = DungeonMaster::EncounterWarmasterBridge.scene_enemy_names_from_traversal_context(
-          @pipeline_engine.adventure.traversal_context
-        )
-        return nil if combatants.empty?
-
-        {
-          "affected" => true,
-          "needs_mechanics" => true,
-          "transition" => "combat_started",
-          "combatants" => combatants
-        }
-      end
-
-      def hostile_follow_up_action?(text)
-        normalized = text.to_s.downcase
-        return false if normalized.blank?
-
-        normalized.match?(/\b(attack|cast|shoot|strike|stab|slash|swing|fire|ray|charge|hit|smash)\b/)
       end
 
       def blocked_action_outcome(action_text, prerequisite)
