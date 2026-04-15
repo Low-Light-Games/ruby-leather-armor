@@ -82,6 +82,11 @@ module DungeonMaster
         return damage_pause
       end
 
+      current_roll_requests, merged = ensure_damage_metadata_for_active_hit!(intent, merged, current_roll_requests, submitted_rolls)
+      if (damage_pause = maybe_pause_for_damage_roll(intent, merged, current_roll_requests, roll_results, submitted_rolls))
+        return damage_pause
+      end
+
       roll_results, submitted_rolls = merge_roll_chain_results(merged, roll_results, submitted_rolls)
 
       # In active combat, world turn resolves routine NPC turns. Only immediate
@@ -163,14 +168,10 @@ module DungeonMaster
       end
       return [] if attack_rolls.empty?
 
-      submitted_by_label = Array(submitted_rolls).each_with_object({}) do |roll, acc|
-        next unless roll.is_a?(Hash)
-
-        acc[normalize_roll_label(roll[:roll_description])] = roll[:roll_value].to_i
-      end
+      submitted_by_id, submitted_by_label = submitted_roll_indexes(submitted_rolls)
 
       attack_rolls.filter do |roll|
-        total = submitted_by_label[normalize_roll_label(roll[:description])]
+        total = submitted_roll_total_for(roll, submitted_by_id, submitted_by_label)
         total && total >= roll[:dc].to_i
       end
     end
@@ -178,6 +179,8 @@ module DungeonMaster
     def build_damage_roll_request(attack_roll)
       attack_roll = attack_roll.deep_symbolize_keys
       {
+        request_id: derived_damage_request_id(attack_roll),
+        source_request_id: attack_roll[:request_id],
         type: "damage_roll",
         description: damage_roll_description_for(attack_roll),
         damage: attack_roll[:damage],
@@ -205,6 +208,107 @@ module DungeonMaster
 
     def normalize_roll_label(label)
       label.to_s.downcase.gsub(/[^a-z0-9\s]/, " ").gsub(/\s+/, " ").strip
+    end
+
+    def submitted_roll_indexes(submitted_rolls)
+      Array(submitted_rolls).each_with_object([{}, {}]) do |roll, (by_id, by_label)|
+        next unless roll.is_a?(Hash)
+
+        normalized = roll.deep_symbolize_keys
+        by_id[normalized[:request_id].to_s] = normalized[:roll_value].to_i if normalized[:request_id].present?
+        by_label[normalize_roll_label(normalized[:roll_description])] = normalized[:roll_value].to_i
+      end
+    end
+
+    def submitted_roll_total_for(roll, submitted_by_id, submitted_by_label)
+      request_id = roll[:request_id].to_s
+      return submitted_by_id[request_id] if request_id.present? && submitted_by_id.key?(request_id)
+
+      submitted_by_label[normalize_roll_label(roll[:description])]
+    end
+
+    def derived_damage_request_id(attack_roll)
+      base = attack_roll[:request_id].presence || SecureRandom.uuid
+      "#{base}:damage"
+    end
+
+    def ensure_damage_metadata_for_active_hit!(intent, merged, current_roll_requests, submitted_rolls)
+      return [current_roll_requests, merged] unless combat_active?
+
+      missing = attack_rolls_missing_damage_metadata(current_roll_requests, submitted_rolls)
+      return [current_roll_requests, merged] if missing.empty?
+
+      retried_rolls = retry_attack_damage_metadata(intent, current_roll_requests)
+      repaired_requests = merge_retried_roll_requests(current_roll_requests, retried_rolls)
+      still_missing = attack_rolls_missing_damage_metadata(repaired_requests, submitted_rolls)
+      return [repaired_requests, merged.merge(player_rolls: repaired_requests)] if still_missing.empty?
+
+      @log.play_log!(
+        "pipeline_error",
+        "Active-combat attack hit missing damage metadata after retry",
+        parsed_response: {
+          intention: intent[:intention],
+          missing_requests: still_missing
+        }
+      )
+      raise AiError, "Active-combat attack hit missing damage metadata after retry"
+    end
+
+    def attack_rolls_missing_damage_metadata(current_roll_requests, submitted_rolls)
+      attack_rolls = Array(current_roll_requests).filter_map do |roll|
+        next unless roll.is_a?(Hash)
+
+        sym = roll.deep_symbolize_keys
+        next unless sym[:type].to_s == "attack_roll"
+        next if sym[:damage].present?
+
+        sym
+      end
+      return [] if attack_rolls.empty?
+
+      submitted_by_id, submitted_by_label = submitted_roll_indexes(submitted_rolls)
+      attack_rolls.filter do |roll|
+        total = submitted_roll_total_for(roll, submitted_by_id, submitted_by_label)
+        total && total >= roll[:dc].to_i
+      end
+    end
+
+    def retry_attack_damage_metadata(intent, current_roll_requests)
+      prompts = build_mech_eval_prompts(["combat"], intent[:intention].to_s, intent)
+      prompts.each do |prompt|
+        prompt[:user_message] = <<~MSG
+          #{intent[:intention]}
+
+          Retry reason: an active-combat attack roll hit and still needs structural damage metadata.
+          Re-emit the combat attack_rolls with `damage`, and `damage_type` / `target` when known.
+          Existing attack roll requests:
+          #{Array(current_roll_requests).to_json}
+        MSG
+      end
+      results = evaluator_sequential!(prompts, intent[:intention].to_s, phase: "mech_eval_retry")
+      parse_mech_eval_results(results, ["combat"]).flat_map { |entry| entry[:player_rolls] }
+    end
+
+    def merge_retried_roll_requests(current_roll_requests, retried_rolls)
+      retried_by_label = Array(retried_rolls).each_with_object({}) do |roll, acc|
+        next unless roll.is_a?(Hash)
+
+        acc[normalize_roll_label(roll[:description])] = roll.deep_symbolize_keys
+      end
+
+      Array(current_roll_requests).map do |roll|
+        next roll unless roll.is_a?(Hash)
+
+        sym = roll.deep_symbolize_keys
+        retried = retried_by_label[normalize_roll_label(sym[:description])]
+        next sym unless retried
+
+        sym.merge(
+          damage: retried[:damage].presence || sym[:damage],
+          damage_type: retried[:damage_type].presence || sym[:damage_type],
+          target: retried[:target].presence || sym[:target]
+        )
+      end
     end
 
     def prepared_hostile_combat_continues?(intent)
