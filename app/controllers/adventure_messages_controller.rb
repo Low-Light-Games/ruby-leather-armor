@@ -3,6 +3,7 @@ class AdventureMessagesController < ApplicationController
   before_action -> { authorize(@adventure, :show?) }
   before_action -> { authorize(@adventure, :pipeline?) }, only: %i[create initiative roll]
   before_action :check_ban
+  before_action :reject_ended_adventure!, only: %i[create initiative roll]
 
   # GET /adventures/:adventure_id/messages
   def index
@@ -85,6 +86,15 @@ class AdventureMessagesController < ApplicationController
       banned: true,
       message: "Your account has been suspended. Contact appeals@leatheramor.io for assistance."
     }, status: :forbidden
+  end
+
+  def reject_ended_adventure!
+    return unless @adventure.ended?
+
+    render json: {
+      error: "This adventure has ended and can no longer continue.",
+      error_code: "adventure_ended"
+    }, status: 422
   end
 
   def set_adventure
