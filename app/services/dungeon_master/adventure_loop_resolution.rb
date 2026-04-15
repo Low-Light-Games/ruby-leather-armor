@@ -228,7 +228,15 @@ module DungeonMaster
     end
 
     def derived_damage_request_id(attack_roll)
-      base = attack_roll[:request_id].presence || SecureRandom.uuid
+      base = attack_roll[:request_id].presence
+      unless base.present?
+        base = SecureRandom.uuid
+        @log.play_log!(
+          "warn",
+          "Synthesized damage roll request_id without source request_id",
+          parsed_response: { attack_roll: attack_roll }
+        )
+      end
       "#{base}:damage"
     end
 
@@ -274,33 +282,36 @@ module DungeonMaster
     end
 
     def retry_attack_damage_metadata(intent, current_roll_requests)
-      prompts = build_mech_eval_prompts(["combat"], intent[:intention].to_s, intent)
-      prompts.each do |prompt|
-        prompt[:user_message] = <<~MSG
-          #{intent[:intention]}
+      retry_intention = <<~MSG
+        #{intent[:intention]}
 
-          Retry reason: an active-combat attack roll hit and still needs structural damage metadata.
-          Re-emit the combat attack_rolls with `damage`, and `damage_type` / `target` when known.
-          Existing attack roll requests:
-          #{Array(current_roll_requests).to_json}
-        MSG
-      end
-      results = evaluator_sequential!(prompts, intent[:intention].to_s, phase: "mech_eval_retry")
+        Retry reason: an active-combat attack roll hit and still needs structural damage metadata.
+        Re-emit the combat attack_rolls with `damage`, and `damage_type` / `target` when known.
+        Existing attack roll requests:
+        #{Array(current_roll_requests).to_json}
+      MSG
+      prompts = build_mech_eval_prompts(["combat"], retry_intention, intent)
+      results = evaluator_sequential!(prompts, retry_intention, phase: "mech_eval_retry")
       parse_mech_eval_results(results, ["combat"]).flat_map { |entry| entry[:player_rolls] }
     end
 
     def merge_retried_roll_requests(current_roll_requests, retried_rolls)
-      retried_by_label = Array(retried_rolls).each_with_object({}) do |roll, acc|
+      retried_by_id, retried_by_label = Array(retried_rolls).each_with_object([{}, {}]) do |roll, (by_id, by_label)|
         next unless roll.is_a?(Hash)
 
-        acc[normalize_roll_label(roll[:description])] = roll.deep_symbolize_keys
+        normalized = roll.deep_symbolize_keys
+        by_id[normalized[:request_id].to_s] = normalized if normalized[:request_id].present?
+        by_label[normalize_roll_label(normalized[:description])] = normalized
       end
 
       Array(current_roll_requests).map do |roll|
         next roll unless roll.is_a?(Hash)
 
         sym = roll.deep_symbolize_keys
-        retried = retried_by_label[normalize_roll_label(sym[:description])]
+        retried = if sym[:request_id].present?
+                    retried_by_id[sym[:request_id].to_s]
+                  end
+        retried ||= retried_by_label[normalize_roll_label(sym[:description])]
         next sym unless retried
 
         sym.merge(
