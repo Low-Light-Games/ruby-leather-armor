@@ -82,7 +82,7 @@ module DungeonMaster
         # Rows from live merge (same initiative order as calc); not raw CombatTurnCalculator objects.
         acting_npcs = filter_acting_npcs(calc[:npc_turns], working_ctx)
 
-        lines, early_stop = resolve_npc_turns_in_order(acting_npcs, working_ctx, result)
+        lines, early_stop = resolve_npc_turns_in_order(acting_npcs, working_ctx, result, instant_death: instant_death)
 
         @on_sheet_update&.call
         reload_world_turn_records!
@@ -105,7 +105,7 @@ module DungeonMaster
 
       # Fans out AI NPC action requests, then resolves them in initiative order against
       # live DB state. Returns [lines, early_stop].
-      def resolve_npc_turns_in_order(acting_npcs, working_ctx, result)
+      def resolve_npc_turns_in_order(acting_npcs, working_ctx, result, instant_death:)
         lines      = []
         early_stop = false
         return [lines, early_stop] unless acting_npcs.any?
