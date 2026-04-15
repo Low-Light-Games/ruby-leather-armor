@@ -131,8 +131,9 @@ module DungeonMaster
     SCENE_ENEMY_SKIP_LEADING = %w[a an the one two three four five six several some many
                                   group pack band patrol squad].freeze
 
-    # Extracts hostile NPC names from traversal_context["nearby_npcs"] for merging into
-    # a Harbinger-triggered combat. Filters out clearly distant or passive entries and
+    # Public helper used by both EncounterWarmasterBridge and ParallelEvaluation's
+    # eager combat bootstrap. Extracts hostile NPC names from traversal_context["nearby_npcs"]
+    # for merging into a combat roster. Filters out clearly distant or passive entries and
     # returns up to 2 meaningful words per entry (enough for fuzzy bestiary matching).
     def self.scene_enemy_names_from_traversal_context(traversal_context)
       nearby = Array(traversal_context&.dig("nearby_npcs") || traversal_context&.dig(:nearby_npcs))

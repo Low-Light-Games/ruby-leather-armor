@@ -10,6 +10,8 @@ module DungeonMaster
       rolls_desc = Array(merged[:player_rolls])
         .map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]}" }.join(", ")
       what_happened = "Player attempting: #{intent[:intention]}. Pending rolls: #{rolls_desc}."
+      # Roll-pause snapshots must never bootstrap a new combat from narrative inference;
+      # only deterministic combat_initialization may activate combat state.
       pipeline_engine.send(:run_context_updates, what_happened, nil, allow_combat_initialization: false)
     rescue StandardError => e
       ApplicationErrorReporter.notify(e, context: { source: "pause_ctx_update" })

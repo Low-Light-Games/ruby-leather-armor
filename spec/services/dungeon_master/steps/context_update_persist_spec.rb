@@ -43,7 +43,7 @@ RSpec.describe "DungeonMaster::Steps::ContextUpdate#persist_micro_contexts", typ
   end
 
   it "allows combat activation when combat_initialization is present" do
-    adventure.update!(combat_context: {})
+    adventure.update!(combat_context: { "active" => false, "legacy_key" => "old" })
     parsed = { "combat_context" => { "active" => true, "round" => 1, "turn_order" => ["Player", "Goblin"] } }
     mutations = { "combat_initialization" => parsed["combat_context"] }
 
@@ -52,5 +52,6 @@ RSpec.describe "DungeonMaster::Steps::ContextUpdate#persist_micro_contexts", typ
 
     expect(adventure.combat_context["active"]).to be true
     expect(adventure.combat_context["turn_order"]).to eq(["Player", "Goblin"])
+    expect(adventure.combat_context).not_to have_key("legacy_key")
   end
 end

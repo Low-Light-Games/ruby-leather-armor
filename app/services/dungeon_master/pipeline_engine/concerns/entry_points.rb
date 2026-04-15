@@ -159,12 +159,12 @@ module DungeonMaster
           raw = metadata["pending_opening_merged"]
           return nil unless raw.is_a?(Hash)
 
-          {
-            player_rolls: Array(raw["player_rolls"] || raw[:player_rolls]).map(&:deep_symbolize_keys),
-            npc_actions: Array(raw["npc_actions"] || raw[:npc_actions]).map(&:deep_symbolize_keys),
-            consequences: Array(raw["consequences"] || raw[:consequences]).map(&:deep_symbolize_keys),
-            mechanical_summaries: raw["mechanical_summaries"] || raw[:mechanical_summaries] || []
-          }
+          merged = raw.deep_symbolize_keys
+          merged[:player_rolls] = Array(merged[:player_rolls]).map(&:deep_symbolize_keys)
+          merged[:npc_actions] = Array(merged[:npc_actions]).map(&:deep_symbolize_keys)
+          merged[:consequences] = Array(merged[:consequences]).map(&:deep_symbolize_keys)
+          merged[:mechanical_summaries] = Array(merged[:mechanical_summaries])
+          merged
         end
 
         # After rolls/initiative resume: either run the rest of the queue or one accumulated narrate pass.

@@ -106,7 +106,7 @@ module DungeonMaster
       def combat_transition?(transition)
         return false if transition.blank?
 
-        transition == "combat_started" || transition.to_s.end_with?("_to_combat")
+        DungeonMaster::CombatTransitions.start?(transition)
       end
 
       def stagehand_combat_active?

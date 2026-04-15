@@ -186,12 +186,13 @@ RSpec.describe "DungeonMaster::PipelineEngine — initiative + world-turn termin
         creature_data: [{ "name" => "Goblin", "creature_sheet_id" => 123, "initiative" => 10 }],
         intent: { intention: "I cast Ray of Frost", affected_contexts: ["combat"], macro_significant: false, domain_results: {} },
         mutations: {},
-        merged: { player_rolls: [{ type: "attack_roll", dc: 12 }], npc_actions: [], consequences: [], mechanical_summaries: ["attack"] },
+        merged: { player_rolls: [{ type: "attack_roll", dc: 12 }], npc_actions: [], consequences: [], mechanical_summaries: ["attack"], bonus_context: { flank: false } },
         remaining_actions: []
       }
 
       meta = DungeonMaster::AdventurePlay::InitiativeRequestMetadata.for_awaiting_initiative(result)
-      expect(meta["pending_opening_merged"] || meta[:pending_opening_merged]).to include(:player_rolls, :mechanical_summaries)
+      stored = meta["pending_opening_merged"] || meta[:pending_opening_merged]
+      expect(stored).to include("player_rolls", "mechanical_summaries", "bonus_context")
     end
 
     it "returns awaiting_rolls after initiative when an opening action still needs rolls" do
@@ -210,6 +211,21 @@ RSpec.describe "DungeonMaster::PipelineEngine — initiative + world-turn termin
       result = pipeline.run_initiative(15, meta)
       expect(result[:action]).to eq(:awaiting_rolls)
       expect(result[:merged][:player_rolls]).not_to be_empty
+    end
+
+    it "round-trips extra merged keys through initiative metadata" do
+      meta = base_initiative_metadata(
+        "pending_opening_merged" => {
+          "player_rolls" => [],
+          "npc_actions" => [],
+          "consequences" => [],
+          "mechanical_summaries" => [],
+          "bonus_context" => { "flank" => false }
+        }
+      )
+
+      restored = pipeline.send(:restore_opening_action_merged, meta)
+      expect(restored[:bonus_context]).to eq({ flank: false })
     end
   end
 end

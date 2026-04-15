@@ -135,7 +135,7 @@ module DungeonMaster
 
         combat_result = intent.dig(:domain_results, "combat") || {}
         transition = combat_result[:transition].to_s
-        return intent unless transition == "combat_started" || transition.end_with?("_to_combat")
+        return intent unless DungeonMaster::CombatTransitions.start?(transition)
 
         combatant_names = Array(combat_result[:combatants]).map(&:to_s).reject(&:blank?)
         scene_enemy_names = EncounterWarmasterBridge.scene_enemy_names_from_traversal_context(@adventure.traversal_context)

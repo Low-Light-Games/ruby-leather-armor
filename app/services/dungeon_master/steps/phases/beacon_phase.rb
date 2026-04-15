@@ -121,7 +121,7 @@ module DungeonMaster
           # Combat just starting: beacon named combatants but may have forgotten affected.
           elsif (cr = domain_results["combat"]) && !cr[:affected] &&
                 Array(cr[:combatants]).any? &&
-                cr[:transition].to_s.match?(/combat_started|_to_combat/)
+                DungeonMaster::CombatTransitions.start?(cr[:transition])
             domain_results["combat"] = cr.merge(affected: true, needs_mechanics: true)
             affected["combat"] = true
             needs_mechanics = true
