@@ -10,7 +10,7 @@ module DungeonMaster
       rolls_desc = Array(merged[:player_rolls])
         .map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]}" }.join(", ")
       what_happened = "Player attempting: #{intent[:intention]}. Pending rolls: #{rolls_desc}."
-      pipeline_engine.send(:run_context_updates, what_happened, nil)
+      pipeline_engine.send(:run_context_updates, what_happened, nil, allow_combat_initialization: false)
     rescue StandardError => e
       ApplicationErrorReporter.notify(e, context: { source: "pause_ctx_update" })
       pipeline_engine.log.log!(:warn, "[pause_ctx_update] #{e.class}: #{e.message}")

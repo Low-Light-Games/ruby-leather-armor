@@ -31,4 +31,26 @@ RSpec.describe "DungeonMaster::Steps::ContextUpdate#persist_micro_contexts", typ
     expect(adventure.combat_context["active"]).to be true
     expect(adventure.combat_context["round"]).to eq(2)
   end
+
+  it "ignores synthetic combat activation without combat_initialization" do
+    adventure.update!(combat_context: {})
+    parsed = { "combat_context" => { "active" => true, "round" => 1, "turn_order" => ["Player", "Goblin"] } }
+
+    pipeline.send(:persist_micro_contexts, parsed)
+    adventure.reload
+
+    expect(adventure.combat_context).to eq({})
+  end
+
+  it "allows combat activation when combat_initialization is present" do
+    adventure.update!(combat_context: {})
+    parsed = { "combat_context" => { "active" => true, "round" => 1, "turn_order" => ["Player", "Goblin"] } }
+    mutations = { "combat_initialization" => parsed["combat_context"] }
+
+    pipeline.send(:persist_micro_contexts, parsed, mutations)
+    adventure.reload
+
+    expect(adventure.combat_context["active"]).to be true
+    expect(adventure.combat_context["turn_order"]).to eq(["Player", "Goblin"])
+  end
 end

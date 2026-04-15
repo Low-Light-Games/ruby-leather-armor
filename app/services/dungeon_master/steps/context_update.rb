@@ -16,22 +16,24 @@ module DungeonMaster
 
       private
 
-      def run_context_updates(what_happened, mutations, macro_significant: false)
+      def run_context_updates(what_happened, mutations, macro_significant: false, allow_combat_initialization: true)
         broadcast_progress("Remembering the world...")
         micro_result, macro_result = if macro_significant
-                                       run_context_updates_fan_out(what_happened, mutations)
+                                       run_context_updates_fan_out(what_happened, mutations, allow_combat_initialization: allow_combat_initialization)
                                      else
-                                       [run_micro_context_update(what_happened, mutations), {}]
+                                       [run_micro_context_update(what_happened, mutations, allow_combat_initialization: allow_combat_initialization), {}]
                                      end
 
-        apply_context_update_results(micro_result, macro_result, macro_significant: macro_significant)
+        apply_context_update_results(micro_result, macro_result,
+          macro_significant: macro_significant,
+          mutations: mutations)
       rescue => e
         pipeline_error!("context_updates", e)
       end
 
       # Used by Stagehand parallel narrative (narrate + context in one fan_out).
-      def apply_context_update_results(micro_result, macro_result, macro_significant:)
-        persist_micro_contexts(micro_result)
+      def apply_context_update_results(micro_result, macro_result, macro_significant:, mutations:)
+        persist_micro_contexts(micro_result, mutations)
         persist_scene_summary(micro_result["scene_summary"])
         handle_new_creatures(micro_result["new_creatures"]) if micro_result["new_creatures"].present?
         handle_context_wishes(micro_result["context_wishes"]) if micro_result["context_wishes"].present?
@@ -41,9 +43,9 @@ module DungeonMaster
         end
       end
 
-      def run_context_updates_fan_out(what_happened, mutations)
+      def run_context_updates_fan_out(what_happened, mutations, allow_combat_initialization:)
         prompts = [
-          micro_context_evaluator_prompt(what_happened, mutations),
+          micro_context_evaluator_prompt(what_happened, mutations, allow_combat_initialization: allow_combat_initialization),
           macro_context_evaluator_prompt(what_happened)
         ]
         by_step = evaluator_fan_out!(prompts, what_happened, phase: "context_update")
@@ -52,7 +54,7 @@ module DungeonMaster
         [micro_parsed, macro_parsed]
       end
 
-      def micro_context_evaluator_prompt(what_happened, mutations)
+      def micro_context_evaluator_prompt(what_happened, mutations, allow_combat_initialization: true)
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
         context_schemas = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, h|
           h[field] = PromptRenderer.load_schema("contexts/#{field}_context")
@@ -64,7 +66,8 @@ module DungeonMaster
           context_schemas: context_schemas,
           what_happened: what_happened,
           mutations_json: mutations.present? ? mutations.to_json : nil,
-          canonical_hp: build_canonical_hp)
+          canonical_hp: build_canonical_hp,
+          allow_combat_initialization: allow_combat_initialization)
 
         {
           system_prompt: system_prompt,
@@ -90,7 +93,7 @@ module DungeonMaster
         }
       end
 
-      def run_micro_context_update(what_happened, mutations)
+      def run_micro_context_update(what_happened, mutations, allow_combat_initialization: true)
         prompt_summary = "Micro context update"
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
 
@@ -104,7 +107,8 @@ module DungeonMaster
           context_schemas: context_schemas,
           what_happened: what_happened,
           mutations_json: mutations.present? ? mutations.to_json : nil,
-          canonical_hp: build_canonical_hp)
+          canonical_hp: build_canonical_hp,
+          allow_combat_initialization: allow_combat_initialization)
 
         request_body = { system_prompt: system_prompt, user_message: user_msg }
 
@@ -136,9 +140,12 @@ module DungeonMaster
         end
       end
 
-      def persist_micro_contexts(parsed)
+      def persist_micro_contexts(parsed, mutations = nil)
         prev_combat = @adventure.combat_context
         prev_active = prev_combat.is_a?(Hash) ? prev_combat["active"] : nil
+        mutations_hash = mutations.is_a?(Hash) ? mutations.deep_stringify_keys : {}
+        has_combat_initialization = mutations_hash["combat_initialization"].is_a?(Hash)
+        has_combat_advancement = mutations_hash["combat_state_advancement"].is_a?(Hash)
 
         updates = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, h|
           key = "#{field}_context"
@@ -147,8 +154,18 @@ module DungeonMaster
 
           val = raw
           if DEEP_MERGE_CONTEXT_FIELDS.include?(field) && val.is_a?(Hash)
-            existing = (@adventure.public_send(key) || {}).deep_stringify_keys
-            val = existing.deep_merge(val.deep_stringify_keys)
+            val = guard_combat_context_update(
+              val.deep_stringify_keys,
+              prev_active: prev_active,
+              has_combat_initialization: has_combat_initialization,
+              has_combat_advancement: has_combat_advancement
+            )
+            next unless val.present?
+
+            unless has_combat_initialization
+              existing = (@adventure.public_send(key) || {}).deep_stringify_keys
+              val = existing.deep_merge(val)
+            end
           end
           h[key.to_sym] = val
         end
@@ -163,6 +180,28 @@ module DungeonMaster
         end
 
         snapshot_contexts_to_loop
+      end
+
+      def guard_combat_context_update(val, prev_active:, has_combat_initialization:, has_combat_advancement:)
+        if has_combat_initialization
+          return val
+        end
+
+        if has_combat_advancement
+          return val if prev_active == true
+
+          @log.play_log!("combat_context_guard",
+            "Ignored combat_state_advancement while combat inactive")
+          return nil
+        end
+
+        if prev_active != true && val["active"] == true
+          @log.play_log!("combat_context_guard",
+            "Ignored synthetic combat activation without combat_initialization")
+          return nil
+        end
+
+        val
       end
 
       def snapshot_contexts_to_loop

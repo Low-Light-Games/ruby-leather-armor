@@ -40,6 +40,10 @@ Use them as a guide when writing or updating a domain.
 2. COMBAT INITIALIZATION: If mutations contain a "combat_initialization" key, write its value verbatim as combat_context. Do not modify or reinterpret it.
 
 2b. COMBAT STATE ADVANCEMENT: If mutations contain a "combat_state_advancement" key, merge only those key-value pairs into combat_context. Preserve every existing top-level key in combat_context that does not appear in the advancement object unchanged. Do not replace the entire combat_context with only the advancement object. Do not modify or reinterpret advancement values.
+<% unless @allow_combat_initialization %>
+
+2c. PAUSE SNAPSHOT RESTRICTION: You are updating contexts during a roll-pause snapshot, not a combat-start event. If mutations do NOT contain "combat_initialization", you MUST NOT create or activate combat_context from narrative text alone. When combat is currently inactive, return combat_context unchanged. Do not invent participants, turn_order, battlefield_ref, or action_economy for a new fight in this mode.
+<% end %>
 
 3. CANONICAL HP: If a "CANONICAL HP" section is present above, use those exact values for all participant hp fields. Do not calculate or estimate HP.
 

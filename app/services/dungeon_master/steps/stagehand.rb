@@ -65,7 +65,9 @@ module DungeonMaster
                          {}
                        end
 
-        apply_context_update_results(micro_parsed, macro_parsed, macro_significant: intent[:macro_significant])
+        apply_context_update_results(micro_parsed, macro_parsed,
+          macro_significant: intent[:macro_significant],
+          mutations: mutations)
 
         narrative_from_evaluator_result(evaluator_fan_out_result!(by_step, "narrate", "narrative_phase"))
       end
