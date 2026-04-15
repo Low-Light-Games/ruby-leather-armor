@@ -103,12 +103,12 @@ RSpec.describe "DungeonMaster::PipelineEngine — initiative + world-turn termin
 
         captured = nil
         allow(pipeline).to receive(:run_remaining_queue).and_wrap_original do |orig, remaining, **kwargs|
-          captured = kwargs[:accumulated_mutations]
+          captured = kwargs[:initial_accumulated]
           { action: :narrated, narrative: "stub" }
         end
 
         pipeline.run_initiative(15, meta)
-        expect(captured).to eq([enriched_mutations])
+        expect(captured).to eq([hash_including(mutations: enriched_mutations)])
       end
     end
   end
@@ -226,6 +226,36 @@ RSpec.describe "DungeonMaster::PipelineEngine — initiative + world-turn termin
 
       restored = pipeline.send(:restore_opening_action_merged, meta)
       expect(restored[:bonus_context]).to eq({ flank: false })
+    end
+
+    it "prefers the current result remaining_actions over stale roll metadata when pausing for initiative" do
+      paused_loop_for(pipeline, "I cast Ray of Frost")
+      allow(pipeline).to receive(:battlefield_roll_version_mismatch?).and_return(false)
+      allow(DungeonMaster::Rolls::PlayerRolls).to receive(:tag_roll_resolution!)
+
+      intent = { intention: "I cast Ray of Frost", affected_contexts: ["combat"], macro_significant: false, domain_results: {} }
+      merged = { player_rolls: [{ type: "attack_roll", dc: 12 }], npc_actions: [], consequences: [], mechanical_summaries: ["attack"] }
+      result = {
+        status: :awaiting_initiative,
+        intent: intent,
+        merged: merged,
+        pending_opening_merged: merged,
+        creature_data: [{ "name" => "Goblin", "creature_sheet_id" => 123, "initiative" => 10 }],
+        mutations: {},
+        remaining_actions: []
+      }
+
+      allow(pipeline).to receive(:restore_roll_pause_inputs).and_return([intent, merged])
+      allow(pipeline).to receive(:finish_resolution).and_return(result)
+      allow(pipeline).to receive(:run_context_updates_at_encounter_pause)
+
+      resumed = pipeline.run_rolls("Rolled 14 for: attack", {
+        "remaining_actions" => [{ "text" => "stale opener replay" }]
+      })
+
+      expect(resumed[:action]).to eq(:awaiting_initiative)
+      expect(resumed[:remaining_actions]).to eq([])
+      expect(resumed[:pending_opening_merged]).to include(:player_rolls, :mechanical_summaries)
     end
   end
 end

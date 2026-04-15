@@ -90,6 +90,7 @@ module DungeonMaster
               action: :awaiting_initiative,
               intent: result[:intent],
               merged: result[:merged],
+              pending_opening_merged: result[:pending_opening_merged] || result[:merged],
               creature_data: result[:creature_data],
               mutations: result[:mutations],
               remaining_actions: remaining

@@ -47,6 +47,7 @@ module DungeonMaster
           status: :awaiting_initiative,
           intent: intent,
           merged: merged,
+          pending_opening_merged: merged,
           creature_data: intent[:creature_data],
           mutations: {}
         }

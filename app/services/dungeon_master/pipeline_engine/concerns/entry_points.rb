@@ -124,8 +124,9 @@ module DungeonMaster
               action: :awaiting_initiative,
               intent: result[:intent],
               creature_data: result[:creature_data],
+              pending_opening_merged: result[:pending_opening_merged] || result[:merged],
               mutations: result[:mutations],
-              remaining_actions: remaining_actions_from(metadata)
+              remaining_actions: result[:remaining_actions] || remaining_actions_from(metadata)
             }
           end
 
