@@ -165,7 +165,7 @@ module DungeonMaster
 
       def domain_context_evaluator_prompt(field, what_happened, mutations, allow_combat_initialization:)
         key = "#{field}_context"
-        system_prompt, user_msg = PromptRenderer.render_with_user_message("micro_context_domain_update",
+        system_prompt = PromptRenderer.render("micro_context_domain_update",
           domain: field,
           context_key: key,
           current_context: @adventure.public_send(key),
@@ -179,7 +179,7 @@ module DungeonMaster
         step = "#{field}_context_update"
         {
           system_prompt: system_prompt,
-          user_message: user_msg,
+          user_message: what_happened,
           model: @config.model_for(step),
           max_tokens: @config.token_budget_for(step),
           meta: { step: step, domain: field }
@@ -187,14 +187,14 @@ module DungeonMaster
       end
 
       def meta_context_evaluator_prompt(what_happened)
-        system_prompt, user_msg = PromptRenderer.render_with_user_message("micro_context_meta_update",
+        system_prompt = PromptRenderer.render("micro_context_meta_update",
           what_happened: what_happened,
           scene_summary: @adventure.scene_summary,
           context_wishes: [])
 
         {
           system_prompt: system_prompt,
-          user_message: user_msg,
+          user_message: what_happened,
           model: @config.model_for(META_CONTEXT_STEP),
           max_tokens: @config.token_budget_for(META_CONTEXT_STEP),
           meta: { step: META_CONTEXT_STEP }

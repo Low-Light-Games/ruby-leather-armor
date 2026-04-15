@@ -60,6 +60,27 @@ RSpec.describe "DungeonMaster::PipelineEngine — full prompt flow", type: :serv
       pipeline.run_prompt("I open the door carefully.")
       expect(fan_out_phases).to include("narrative_phase")
     end
+
+    it "sends non-nil user messages for narrative-phase context fan-out prompts" do
+      captured_prompts = nil
+      allow_any_instance_of(DungeonMaster::PipelineEngine).to receive(:call_evaluator!).and_wrap_original do |orig, url, prompts, intention, phase:|
+        if url.to_s.end_with?("/fan_out") && phase.to_s == "narrative_phase"
+          captured_prompts = prompts
+        end
+        orig.call(url, prompts, intention, phase: phase)
+      end
+
+      pipeline.run_prompt("I open the door carefully.")
+
+      context_prompts = Array(captured_prompts).select do |prompt|
+        step = prompt.dig(:meta, :step).to_s
+        step.end_with?("_context_update") || step == "meta_context_update"
+      end
+
+      expect(context_prompts).not_to be_empty
+      expect(context_prompts).to all(include(user_message: a_kind_of(String)))
+      expect(context_prompts.map { |prompt| prompt[:user_message] }).to all(be_present)
+    end
   end
 
   describe "#run_prompt with action_queue disabled" do
