@@ -42,17 +42,6 @@ module DungeonMaster
       return capability_check_rejection(intent, capability) unless capability[:allowed]
 
       merged = merge_mechanical_evaluations_and_prepare_rolls(evaluations)
-      if intent[:creature_data].present? && !combat_active?
-        return {
-          status: :awaiting_initiative,
-          intent: intent,
-          merged: merged,
-          pending_opening_merged: merged,
-          creature_data: intent[:creature_data],
-          mutations: {}
-        }
-      end
-
       return { status: :awaiting_rolls, intent: intent, merged: merged } if merged[:player_rolls].any?
 
       finish_resolution(intent, merged, Rolls::PlayerRolls.auto_success_roll_message(merged))
@@ -115,6 +104,15 @@ module DungeonMaster
 
       store_pipeline_outcome!(verdict_result[:outcome])
 
+      if prepared_hostile_combat_continues?(intent)
+        return {
+          status: :awaiting_initiative,
+          intent: intent,
+          creature_data: intent[:creature_data],
+          mutations: verdict_result[:mutations]
+        }
+      end
+
       maybe_run_world_turn(
         status: :resolved, intent: intent,
         mutations: verdict_result[:mutations],
@@ -125,6 +123,20 @@ module DungeonMaster
           roll_results: roll_results
         }
       )
+    end
+
+    def prepared_hostile_combat_continues?(intent)
+      return false if combat_active?
+
+      prepared = Array(intent[:creature_data])
+      return false if prepared.empty?
+
+      creature_ids = prepared.map { |entry| (entry[:creature_sheet_id] || entry["creature_sheet_id"]).to_i }.reject(&:zero?)
+      return false if creature_ids.empty?
+
+      @adventure.creature_sheets.where(id: creature_ids).any? do |sheet|
+        sheet.hp.to_i > 0 && (Array(sheet.conditions) & %w[dead fled surrendered]).empty?
+      end
     end
 
     # Harbinger Path A: delegate loop + warmaster glue, then persist narration seed here.
