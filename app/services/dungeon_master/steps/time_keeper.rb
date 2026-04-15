@@ -138,7 +138,7 @@ module DungeonMaster
       end
 
       def try_combat_estimate
-        return nil unless combat_active?
+        return nil unless effective_combat_active_for_timekeeper?
 
         { hours: 0.0017, source: :combat_code, terrain: nil, is_journey: false,
           speed_mph: nil, journey_data: nil }
@@ -174,7 +174,7 @@ module DungeonMaster
           current_hour: time_ctx["current_hour"] || 8,
           adventure_day: time_ctx["adventure_day"] || 1,
           light_conditions: time_ctx["light_conditions"] || "day",
-          combat_active: combat_active?,
+          combat_active: effective_combat_active_for_timekeeper?,
           has_destination: intent[:destination].present?)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
@@ -265,7 +265,7 @@ module DungeonMaster
         no_op = { interrupted: false, stop_reason: :skipped, hours_granted: estimated[:hours],
                   distance_covered_miles: 0, encounter_entry: nil }
 
-        return no_op if combat_active?
+        return no_op if effective_combat_active_for_timekeeper?
         return no_op if estimated[:hours] < 0.01
 
         table = EncounterTable.table_for(@adventure.story)
@@ -287,6 +287,18 @@ module DungeonMaster
           ai: @ai, config: @config, log: @log,
           loop: @loop
         )
+      end
+
+      # TimeKeeper runs after canonical mutations apply but before context update
+      # refreshes combat_context, so it must consult live combat truth instead of
+      # the lagging combat cache when deciding elapsed time and encounters.
+      def effective_combat_active_for_timekeeper?
+        end_info = Utilities::CombatEndResolver.check_combat_end(
+          adventure: @adventure,
+          sheet: @sheet,
+          instant_death: @config.instant_death?
+        )
+        end_info.dig(:combat, :combat_active) == true
       end
 
       # ── Journey helpers ───────────────────────────────────────────
