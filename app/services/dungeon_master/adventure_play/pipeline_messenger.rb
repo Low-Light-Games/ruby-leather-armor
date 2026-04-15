@@ -150,12 +150,14 @@ module DungeonMaster
       def persist_event_messages(entry)
         msgs = []
         if entry[:adventure_complete]
+          @adventure.mark_ended!(reason: "adventure_complete")
           msgs << persist_message(
             role: "system",
             content: "The adventure has reached its conclusion.",
             message_type: "adventure_complete")
         end
         if entry[:player_death]
+          @adventure.mark_ended!(reason: "player_death")
           msgs << persist_message(
             role: "system",
             content: "Your character has died.",
