@@ -14,7 +14,8 @@ module DungeonMaster
         encounter_triggered = results.any? { |r| r[:status] == :encounter }
         social_scene_triggered = results.any? { |r| r[:status] == :social_scene }
 
-        combined_seed = all_outcomes.join("\n\nThen: ").presence
+        action_outcomes = results.filter_map { |r| r[:action_outcome] }
+        combined_seed = all_outcomes.join("\n\nThen: ").presence || action_outcomes.join("\n\nThen: ").presence
         combined_mutations = all_mutations.compact.reduce({}) do |acc, m|
           Utilities::HashMerge.deep_merge_presence(acc, m)
         end
@@ -25,7 +26,7 @@ module DungeonMaster
         ctx = PipelineContext.new(
           combined_seed: combined_seed,
           dm_brief: plot_result&.dig(:dm_brief),
-          player_action: all_loops.filter_map(&:player_intent).join("\nThen: ").presence
+          player_action: all_loops.filter_map(&:player_intent).join("\nThen: ").presence || merged_intent&.dig(:intention)
         )
 
         extra = {}
@@ -36,7 +37,6 @@ module DungeonMaster
 
         # Aggregate per-action outcome strings and NPC world-turn lines so PipelineMessenger
         # can persist them as discrete combat_log / action_result messages.
-        action_outcomes = results.filter_map { |r| r[:action_outcome] }
         extra[:action_outcomes] = action_outcomes if action_outcomes.any?
 
         all_world_turn_lines = results.flat_map { |r| Array(r[:world_turn_lines]) }

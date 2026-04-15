@@ -50,7 +50,11 @@ RSpec.describe "DungeonMaster::PipelineEngine::ActionQueueRunner prerequisite ga
   end
 
   it "blocks a conditional follow-up when the stealth approach failed" do
-    allow(pipeline).to receive(:run_accumulated_narrative_phase).and_return({ action: :narrated, narrative: "stub" })
+    captured = nil
+    allow(pipeline).to receive(:run_accumulated_narrative_phase) do |results|
+      captured = results
+      { action: :narrated, narrative: "stub", action_outcomes: results.filter_map { |r| r[:action_outcome] } }
+    end
     expect(pipeline).not_to receive(:resolve)
 
     result = runner.run(
@@ -63,6 +67,8 @@ RSpec.describe "DungeonMaster::PipelineEngine::ActionQueueRunner prerequisite ga
     )
 
     expect(result[:action]).to eq(:narrated)
+    expect(captured.last[:action_outcome]).to include("cast Ray of Frost on one of them")
+    expect(result[:action_outcomes].last).to include("cast Ray of Frost on one of them")
   end
 
   it "continues a conditional follow-up when the stealth approach succeeded" do

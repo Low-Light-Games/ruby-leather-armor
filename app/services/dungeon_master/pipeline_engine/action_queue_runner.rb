@@ -46,6 +46,7 @@ module DungeonMaster
         action_entries.each_with_index do |entry, idx|
           action_idx = base_sequence_index + idx
           if prerequisite_failed?(entry, action_idx, resolved_history)
+            accumulated << blocked_action_result(entry, resolved_history[action_idx - 1])
             p.log.play_log!(
               "queue_action_blocked",
               "Blocked queued action #{action_idx + 1}/#{total} — #{entry_text(entry).inspect} (failed prerequisite #{entry_prerequisite(entry).inspect})"
@@ -272,6 +273,33 @@ module DungeonMaster
 
       def normalize_roll_label(label)
         label.to_s.downcase.gsub(/[^a-z0-9\s]/, " ").gsub(/\s+/, " ").strip
+      end
+
+      def blocked_action_result(entry, prior_result)
+        prerequisite = entry_prerequisite(entry)
+        blocked_text = entry_text(entry)
+        prior_intent = (prior_result && prior_result[:intent].is_a?(Hash)) ? prior_result[:intent].deep_dup : {}
+
+        {
+          status: :resolved,
+          intent: {
+            intention: blocked_text,
+            affected_contexts: Array(prior_intent[:affected_contexts]),
+            macro_significant: prior_intent[:macro_significant] == true,
+            domain_results: prior_intent[:domain_results].is_a?(Hash) ? prior_intent[:domain_results] : {}
+          },
+          mutations: {},
+          action_outcome: blocked_action_outcome(blocked_text, prerequisite)
+        }
+      end
+
+      def blocked_action_outcome(action_text, prerequisite)
+        case prerequisite
+        when "stealth_approach_succeeded"
+          "#{action_text} did not happen automatically because you were not in the stealthy position that setup required."
+        else
+          "#{action_text} did not happen automatically because its setup condition was not met."
+        end
       end
 
       def finish_orchestrated(pipeline, queue_log, accumulated, action_narratives, use_per_action, total, action_count,
