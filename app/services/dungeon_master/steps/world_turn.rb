@@ -121,6 +121,15 @@ module DungeonMaster
         live_sheets    = @adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id)
 
         acting_npcs.each_with_index do |npc, idx|
+          if npc.creature_sheet_id.blank?
+            @log.play_log!(
+              "pipeline_error",
+              "World turn participant missing creature_sheet_id: #{npc.name}",
+              parsed_response: { npc: npc.name, combat_context: working_ctx }
+            )
+            raise AiError, "World turn participant missing creature_sheet_id for #{npc.name}"
+          end
+
           # Liveness from the map; refreshed after each mutation cycle so a prior NPC's
           # action that incapacitates this one is visible here.
           live_sheet = live_sheets[npc.creature_sheet_id]

@@ -79,6 +79,12 @@ AI_STEP_RESPONSES = {
     "context_updates" => {}
   }.to_json,
 
+  "meta_context_update" => {
+    "scene_summary" => "The adventurer opened a door.",
+    "new_creatures" => [],
+    "context_wishes" => []
+  }.to_json,
+
   "macro_narrative_update" => {
     "story_summary" => "The adventurer opened a door."
   }.to_json,
@@ -185,6 +191,16 @@ shared_context "with evaluator stubs" do
           when "micro_context_update"
             evaluator_entry("micro_context_update", nil,
                             "parsed_response" => JSON.parse(AI_STEP_RESPONSES["micro_context_update"]))
+          when "meta_context_update"
+            evaluator_entry("meta_context_update", nil,
+                            "parsed_response" => JSON.parse(AI_STEP_RESPONSES["meta_context_update"]))
+          when /\A[a-z]+_context_update\z/
+            domain = st.sub(/_context_update\z/, "")
+            evaluator_entry(st, domain,
+                            "parsed_response" => {
+                              "unchanged" => true,
+                              "context" => {}
+                            })
           when "macro_narrative_update"
             evaluator_entry("macro_narrative_update", nil,
                             "parsed_response" => JSON.parse(AI_STEP_RESPONSES["macro_narrative_update"]))

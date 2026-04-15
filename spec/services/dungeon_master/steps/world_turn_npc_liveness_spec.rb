@@ -115,4 +115,26 @@ RSpec.describe "DungeonMaster::Steps::WorldTurn — per-iteration NPC liveness",
       })
     end.not_to raise_error
   end
+
+  it "raises instead of silently skipping an acting npc whose participant identity is missing" do
+    adventure.update!(combat_context: {
+      "active" => true,
+      "round" => 1,
+      "current_turn" => "Player",
+      "turn_order" => ["Player", "Goblin A"],
+      "participants" => [
+        { "name" => "Player", "type" => "player", "hp" => 10, "max_hp" => 10, "initiative" => 20, "conditions" => [] },
+        { "name" => "Goblin A", "type" => "npc", "hp" => 5, "max_hp" => 5, "initiative" => 15, "conditions" => [] }
+      ],
+      "terrain_notes" => nil
+    })
+
+    expect do
+      pipeline.send(:run_world_turn, {
+        status: :resolved,
+        intent: { intention: "cast Ray of Frost", affected_contexts: ["combat"], macro_significant: false, domain_results: {} },
+        mutations: {}
+      })
+    end.to raise_error(DungeonMaster::AiError, /missing creature_sheet_id/i)
+  end
 end

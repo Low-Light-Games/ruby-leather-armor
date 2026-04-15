@@ -88,6 +88,41 @@ module DungeonMaster
         model_hint: "Mid-tier model. Structured JSON with moderate judgment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
         pipeline: true,
       ),
+      "traversal_context_update" => Entry.new(
+        token_budget: nil,
+        model_hint: "Mid-tier model. Domain-scoped traversal JSON update — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
+        pipeline: true,
+      ),
+      "combat_context_update" => Entry.new(
+        token_budget: nil,
+        model_hint: "Mid-tier model. Domain-scoped combat JSON update that must preserve canonical combat identity — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
+        pipeline: true,
+      ),
+      "social_context_update" => Entry.new(
+        token_budget: nil,
+        model_hint: "Mid-tier model. Domain-scoped social JSON update — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
+        pipeline: true,
+      ),
+      "exploration_context_update" => Entry.new(
+        token_budget: nil,
+        model_hint: "Mid-tier model. Domain-scoped exploration JSON update — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
+        pipeline: true,
+      ),
+      "rest_context_update" => Entry.new(
+        token_budget: nil,
+        model_hint: "Mid-tier model. Domain-scoped rest JSON update — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
+        pipeline: true,
+      ),
+      "inventory_context_update" => Entry.new(
+        token_budget: nil,
+        model_hint: "Mid-tier model. Domain-scoped inventory JSON update — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
+        pipeline: true,
+      ),
+      "meta_context_update" => Entry.new(
+        token_budget: nil,
+        model_hint: "Fast, cheap model. Scene summary and auxiliary context signals — e.g. gpt-4.1-nano, gpt-4o-mini, gpt-5-nano.",
+        pipeline: true,
+      ),
       "macro_narrative_update" => Entry.new(
         token_budget: nil,
         model_hint: "Mid-tier model. Judges narrative significance — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",

@@ -51,14 +51,15 @@ module DungeonMaster
         broadcast_progress("Writing the story...")
         broadcast_progress("Remembering the world...")
 
-        prompts = [narrate_evaluator_prompt(narration_context), micro_context_evaluator_prompt(seed, mutations)]
+        prompts = [narrate_evaluator_prompt(narration_context)]
+        prompts.concat(build_micro_context_updater_prompts(seed, mutations, allow_combat_initialization: true))
         prompts << macro_context_evaluator_prompt(seed) if intent[:macro_significant]
 
         # All prompts are built on the main thread before this single HTTP call; Node runs
         # LLM calls concurrently but returns results in request order — see evaluator index.js.
         by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
 
-        micro_parsed = evaluator_fan_out_result!(by_step, "micro_context_update", "narrative_phase")["parsed_response"] || {}
+        micro_parsed = aggregate_micro_context_results(by_step)
         macro_parsed = if intent[:macro_significant]
                          evaluator_fan_out_result!(by_step, "macro_narrative_update", "narrative_phase")["parsed_response"] || {}
                        else
