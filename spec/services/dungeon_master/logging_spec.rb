@@ -142,4 +142,38 @@ RSpec.describe DungeonMaster::Logging, type: :service do
       expect { logging.pause_registry_entry! }.to have_enqueued_job(ShipPipelineRegistryEntryEventJob)
     end
   end
+
+  describe "#log_abandoned_pipeline_if_needed!" do
+    let!(:roll_request) do
+      create(:adventure_message,
+        adventure: adventure,
+        role: "dm",
+        message_type: "roll_request",
+        metadata: { "intent" => { "intention" => "I sneak up to the goblins" } })
+    end
+
+    it "writes a pipeline_abandoned play log when a fresh prompt supersedes a pending roll request" do
+      create(:adventure_message,
+        adventure: adventure,
+        role: "player",
+        message_type: "narrative",
+        content: "Actually, I'll do something else.")
+
+      expect {
+        logging.log_abandoned_pipeline_if_needed!
+      }.to change { PlayLog.where(event_type: "pipeline_abandoned").count }.by(1)
+    end
+
+    it "does not log abandonment when the latest player response is a roll result" do
+      create(:adventure_message,
+        adventure: adventure,
+        role: "player",
+        message_type: "roll_result",
+        content: "Rolled 18 for: Stealth check")
+
+      expect {
+        logging.log_abandoned_pipeline_if_needed!
+      }.not_to change { PlayLog.where(event_type: "pipeline_abandoned").count }
+    end
+  end
 end

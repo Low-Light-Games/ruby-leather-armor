@@ -94,5 +94,34 @@ RSpec.describe DungeonMasterService, type: :service do
         service.execute_prompt(player_input, player_message_id: player_msg.id)
       end
     end
+
+    context "when a roll request is pending and the player sends a fresh prompt" do
+      let(:player_input) { "Actually, I'll do something else." }
+
+      before do
+        allow(DungeonMaster::ModerationService).to receive(:call)
+          .and_return(DungeonMaster::ModerationService::Result.new(
+            flagged: false, response_text: nil
+          ))
+
+        adventure.adventure_messages.create!(
+          role: "dm",
+          content: "Roll for Stealth.",
+          message_type: "roll_request",
+          metadata: {
+            "intent" => { "intention" => "I sneak up to the goblins" },
+            "roll_requests" => [{ "type" => "skill_check", "skill" => "Stealth", "dc" => 15 }]
+          }
+        )
+      end
+
+      it "starts a fresh prompt pipeline instead of resuming the pending roll" do
+        expect_any_instance_of(DungeonMaster::PipelineEngine).to receive(:run_prompt)
+          .with(player_input, mode: nil)
+          .and_return({ action: :narrated, narrative: "stub", adventure_complete: false })
+
+        service.execute_prompt(player_input, player_message_id: player_msg.id)
+      end
+    end
   end
 end

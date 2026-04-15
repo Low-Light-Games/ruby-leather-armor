@@ -56,6 +56,8 @@ class DungeonMasterService
 
   def execute_prompt(player_input, player_message_id:, mode: nil)
     enforce_pipeline_policy!
+    # A fresh prompt supersedes any pending roll request; only explicit roll submissions
+    # should resume the paused mechanical branch.
     @log.log_abandoned_pipeline_if_needed!
     DungeonMaster::Rolls::AdventureMechanicalState.auto_finalize_pending_initiative!(
       adventure: @adventure, sheet: @sheet, log: @log)
