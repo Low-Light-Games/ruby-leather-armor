@@ -61,9 +61,9 @@ class AdventureMessagesController < ApplicationController
                  resolution_method: params[:resolution_method]&.strip }]
             end
 
-    invalid = rolls.find { |r| !(1..100).include?(r[:roll_value]) }
+    invalid = rolls.find { |r| !(-100..100).include?(r[:roll_value]) }
     if invalid
-      return render json: { error: "Roll value must be between 1 and 100" }, status: :unprocessable_entity
+      return render json: { error: "Roll value must be between -100 and 100" }, status: :unprocessable_entity
     end
 
     service = dm_service

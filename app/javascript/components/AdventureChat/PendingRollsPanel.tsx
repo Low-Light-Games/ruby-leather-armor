@@ -94,7 +94,7 @@ const PendingRollsPanel = ({
                 <input
                   ref={i === 0 ? rollInputRef : undefined}
                   type="number"
-                  min="1"
+                  min="-100"
                   max="100"
                   placeholder="Roll result"
                   value={value ?? ''}
