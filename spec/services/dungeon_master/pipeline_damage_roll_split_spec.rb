@@ -213,6 +213,36 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
     }.to raise_error(DungeonMaster::AiError, /missing damage metadata/i)
   end
 
+  it "falls back to legacy description matching when a paused pre-request-id attack roll resumes" do
+    adventure.update!(
+      combat_context: {
+        "active" => true,
+        "participants" => [{ "name" => "Player" }, { "name" => "Goblin" }],
+        "turn_order" => ["Player", "Goblin"],
+        "current_turn" => "Player"
+      }
+    )
+    expect(pipeline).not_to receive(:run_combat_gm)
+
+    result = pipeline.send(
+      :finish_resolution,
+      { intention: "cast Ray of Frost on the goblin", affected_contexts: ["combat"], macro_significant: false, domain_results: {} },
+      {
+        player_rolls: [{ type: "attack_roll", dc: 16, description: "Ray of Frost against the goblin", damage: "1d3", damage_type: "cold", target: "goblin" }],
+        npc_actions: [],
+        consequences: [],
+        mechanical_summaries: ["Ray of Frost requires an attack roll and deals 1d3 cold damage on a hit."]
+      },
+      "Rolled 18 for: Ray of Frost against the goblin",
+      submitted_rolls: [{ roll_value: 18, roll_description: "Ray of Frost against the goblin" }]
+    )
+
+    expect(result[:status]).to eq(:awaiting_rolls)
+    expect(result[:merged][:player_rolls]).to contain_exactly(
+      include(type: "damage_roll", damage: "1d3", damage_type: "cold")
+    )
+  end
+
   it "resolves damage then surfaces goblin retaliation on the same active-combat pipeline" do
     adventure.update!(
       combat_context: {

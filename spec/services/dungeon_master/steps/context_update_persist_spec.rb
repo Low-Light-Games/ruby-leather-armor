@@ -91,6 +91,53 @@ RSpec.describe "DungeonMaster::Steps::ContextUpdate#persist_micro_contexts", typ
     expect(goblin_row["hp"]).to eq(4)
   end
 
+  it "repairs one dropped npc creature_sheet_id from existing combat participants before ambiguous name lookup" do
+    goblin_a = CreatureSheet.create!(
+      adventure: adventure, name: "Goblin", creature_type: "monster", origin: "template",
+      hp: 5, max_hp: 8, constitution: 10,
+      strength: 10, dexterity: 14, intelligence: 6, wisdom: 8, charisma: 8
+    )
+    goblin_b = CreatureSheet.create!(
+      adventure: adventure, name: "Goblin", creature_type: "monster", origin: "template",
+      hp: 7, max_hp: 8, constitution: 10,
+      strength: 10, dexterity: 14, intelligence: 6, wisdom: 8, charisma: 8
+    )
+    adventure.update!(
+      combat_context: {
+        "active" => true,
+        "participants" => [
+          { "name" => "Goblin", "type" => "npc", "creature_sheet_id" => goblin_a.id, "hp" => 5, "max_hp" => 8, "initiative" => 15, "conditions" => [] },
+          { "name" => "Goblin", "type" => "npc", "creature_sheet_id" => goblin_b.id, "hp" => 7, "max_hp" => 8, "initiative" => 10, "conditions" => [] },
+          { "name" => "Player", "type" => "player", "hp" => 10, "max_hp" => 10, "conditions" => [] }
+        ]
+      }
+    )
+
+    parsed = {
+      "combat_context" => {
+        "unchanged" => false,
+        "context" => {
+          "participants" => [
+            { "name" => "Goblin", "type" => "npc", "hp" => 4, "max_hp" => 8, "initiative" => 15, "conditions" => [] },
+            { "name" => "Goblin", "type" => "npc", "creature_sheet_id" => goblin_b.id, "hp" => 7, "max_hp" => 8, "initiative" => 10, "conditions" => [] },
+            { "name" => "Player", "type" => "player", "hp" => 10, "max_hp" => 10, "conditions" => [] }
+          ]
+        }
+      }
+    }
+
+    expect {
+      pipeline.send(:persist_micro_contexts, parsed)
+    }.not_to raise_error
+
+    adventure.reload
+    participants = adventure.combat_context.fetch("participants")
+    expect(participants.count { |p| p["name"] == "Goblin" }).to eq(2)
+    expect(participants.map { |p| p["creature_sheet_id"] }.compact).to include(goblin_a.id, goblin_b.id)
+    repaired = participants.find { |p| p["creature_sheet_id"] == goblin_a.id }
+    expect(repaired["hp"]).to eq(4)
+  end
+
   it "rejects active-combat participant identity loss when it cannot be repaired" do
     adventure.update!(
       combat_context: {
