@@ -56,12 +56,6 @@ module DungeonMaster
         [micro_parsed, macro_parsed]
       end
 
-      def micro_context_evaluator_prompt(what_happened, mutations, allow_combat_initialization: true)
-        by_step = run_micro_context_updates_fan_out(what_happened, mutations,
-          allow_combat_initialization: allow_combat_initialization)
-        aggregate_micro_context_results(by_step)
-      end
-
       def macro_context_evaluator_prompt(what_happened)
         system_prompt, user_msg = PromptRenderer.render_with_user_message("macro_narrative_update",
           story_intro: @adventure.story.preview,
@@ -114,8 +108,9 @@ module DungeonMaster
           key = "#{field}_context"
           domain_result = parsed[key] || parsed[key.to_sym]
           next unless domain_result.present?
-
-          domain_result = normalize_domain_context_result(field, domain_result)
+          domain_result = normalize_domain_context_result(field, domain_result) unless domain_result.is_a?(Hash) &&
+                                                                                (domain_result.key?("context") || domain_result.key?(:context) ||
+                                                                                 domain_result.key?("unchanged") || domain_result.key?(:unchanged))
           next if domain_result["unchanged"] == true
 
           val = domain_result["context"] || domain_result[:context]
@@ -195,7 +190,7 @@ module DungeonMaster
         system_prompt, user_msg = PromptRenderer.render_with_user_message("micro_context_meta_update",
           what_happened: what_happened,
           scene_summary: @adventure.scene_summary,
-          context_wishes: @adventure.respond_to?(:context_wishes) ? @adventure.context_wishes : [])
+          context_wishes: [])
 
         {
           system_prompt: system_prompt,
