@@ -67,8 +67,8 @@ RSpec.describe "DungeonMaster::PipelineEngine::ActionQueueRunner prerequisite ga
     )
 
     expect(result[:action]).to eq(:narrated)
-    expect(captured.last[:action_outcome]).to include("cast Ray of Frost on one of them")
-    expect(result[:action_outcomes].last).to include("cast Ray of Frost on one of them")
+    expect(captured.last[:action_outcome]).to include(conditional_entry["text"])
+    expect(result[:action_outcomes].last).to include(conditional_entry["text"])
   end
 
   it "continues a conditional follow-up when the stealth approach succeeded" do
