@@ -43,8 +43,16 @@ RSpec.describe "DungeonMaster::Steps::TimeKeeper — effective combat state", ty
   end
 
   it "does not use combat_code when canonical combat has already ended" do
+    # Stale-cache case: combat_context still says the goblin is alive/in-combat,
+    # but the canonical creature sheet already says the goblin is dead.
     estimate = pipeline.send(:estimate_time, { intention: "I take a short rest for 1 hour." }, nil)
     expect(estimate[:source]).to eq(:rest_code)
+  end
+
+  it "returns false when there is no active combat context at all" do
+    adventure.update!(combat_context: {})
+
+    expect(pipeline.send(:effective_combat_active_for_timekeeper?)).to eq(false)
   end
 
   it "passes combat_active false to the AI time keeper fallback when combat is only stale in context" do

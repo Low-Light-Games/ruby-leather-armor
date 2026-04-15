@@ -179,6 +179,8 @@ module DungeonMaster
         step = "#{field}_context_update"
         {
           system_prompt: system_prompt,
+          # We intentionally pass the same narrated seed to every domain updater;
+          # if we ever add domain-specific slicing, this is the seam to change.
           user_message: what_happened,
           model: @config.model_for(step),
           max_tokens: @config.token_budget_for(step),
@@ -194,6 +196,7 @@ module DungeonMaster
 
         {
           system_prompt: system_prompt,
+          # Meta context uses the same seed as the domain fan-out for consistency.
           user_message: what_happened,
           model: @config.model_for(META_CONTEXT_STEP),
           max_tokens: @config.token_budget_for(META_CONTEXT_STEP),

@@ -293,12 +293,18 @@ module DungeonMaster
       # refreshes combat_context, so it must consult live combat truth instead of
       # the lagging combat cache when deciding elapsed time and encounters.
       def effective_combat_active_for_timekeeper?
-        end_info = Utilities::CombatEndResolver.check_combat_end(
-          adventure: @adventure,
-          sheet: @sheet,
-          instant_death: @config.instant_death?
-        )
-        end_info.dig(:combat, :combat_active) == true
+        return @effective_combat_active_for_timekeeper if defined?(@effective_combat_active_for_timekeeper)
+
+        @effective_combat_active_for_timekeeper = if !combat_active? || @sheet.nil?
+                                                    false
+                                                  else
+                                                    end_info = Utilities::CombatEndResolver.check_combat_end(
+                                                      adventure: @adventure,
+                                                      sheet: @sheet,
+                                                      instant_death: @config.instant_death?
+                                                    )
+                                                    end_info.dig(:combat, :combat_active) == true
+                                                  end
       end
 
       # ── Journey helpers ───────────────────────────────────────────

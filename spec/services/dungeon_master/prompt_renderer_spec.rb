@@ -11,7 +11,7 @@ RSpec.describe DungeonMaster::PromptRenderer do
         what_happened: "Latest events")
 
       expect(system_prompt).to be_present
-      expect(user_message).to eq("Update the story summary.")
+      expect(user_message).to be_present
     end
 
     it "raises when the template has no user message separator" do

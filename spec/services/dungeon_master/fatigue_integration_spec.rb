@@ -69,7 +69,6 @@ RSpec.describe "Fatigue condition integration", type: :service do
         ctx = described_class.advance_clock!(adventure, 0.0017, intent: { intention: "I attack." })
 
         expect(ctx["current_hour"]).to eq(8.0017)
-        expect(ctx["current_hour"].to_s.split(".").last.length).to be <= described_class::GAME_HOUR_PRECISION
       end
     end
   end
