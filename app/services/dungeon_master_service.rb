@@ -87,9 +87,10 @@ class DungeonMasterService
   def execute_rolls(roll_results_text, player_message_id:)
     execute_player_resume(player_message_id) do
       metadata = DungeonMaster::Rolls::AdventureMechanicalState.latest_roll_metadata(@adventure)
+      submitted_rolls = @adventure.adventure_messages.find(player_message_id).metadata&.dig("rolls")
       resume_or_start_pipeline!(metadata, roll_results_text)
       ensure_run_pipeline!
-      DungeonMaster::PipelineTiming.run(@log) { pipeline_engine.run_rolls(roll_results_text, metadata) }
+      DungeonMaster::PipelineTiming.run(@log) { pipeline_engine.run_rolls(roll_results_text, metadata, submitted_rolls: submitted_rolls) }
     end
   end
 

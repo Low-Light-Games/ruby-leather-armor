@@ -60,6 +60,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — roll pause and resume", type: 
           "domain_results"    => {}
         },
         "mechanical_summaries"  => ["Disable Device DC 15 required."],
+        "roll_requests"         => [{ "type" => "skill_check", "skill" => "Disable Device", "dc" => 15, "description" => "Disable Device DC 15 required." }],
         "pending_npc_actions"   => [],
         "pending_consequences"  => [],
         "remaining_actions"     => []
@@ -82,7 +83,9 @@ RSpec.describe "DungeonMaster::PipelineEngine — roll pause and resume", type: 
       )
     end
 
-    subject(:result) { pipeline.run_rolls(roll_results, metadata) }
+    let(:submitted_rolls) { [{ roll_value: 18, roll_description: "Disable Device DC 15 required." }] }
+
+    subject(:result) { pipeline.run_rolls(roll_results, metadata, submitted_rolls: submitted_rolls) }
 
     it "returns action: :narrated" do
       expect(result[:action]).to eq(:narrated)

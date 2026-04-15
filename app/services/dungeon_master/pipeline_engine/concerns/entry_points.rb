@@ -90,7 +90,7 @@ module DungeonMaster
           end
         end
 
-        def run_rolls(roll_results, metadata)
+        def run_rolls(roll_results, metadata, submitted_rolls: nil)
           restore_paused_loop!
 
           if battlefield_roll_version_mismatch?(metadata)
@@ -113,7 +113,10 @@ module DungeonMaster
           Rolls::PlayerRolls.tag_roll_resolution!(@loop, roll_results)
 
           intent, merged = restore_roll_pause_inputs(metadata)
-          result = finish_resolution(intent, merged, roll_results)
+          restored_roll_requests = Array(metadata["roll_requests"]).map(&:deep_symbolize_keys)
+          result = finish_resolution(intent, merged, roll_results,
+            requested_rolls: restored_roll_requests,
+            submitted_rolls: submitted_rolls)
 
           if result[:status] == :awaiting_initiative
             @loop&.batch_update!(new_status: "paused",

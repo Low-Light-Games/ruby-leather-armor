@@ -76,7 +76,7 @@ module DungeonMaster
     end
 
     # Post-roll completion: verdict → mutations → time_keeper
-    def finish_resolution(intent, merged, roll_results)
+    def finish_resolution(intent, merged, roll_results, requested_rolls: nil, submitted_rolls: nil)
       # In active combat, world turn resolves routine NPC turns. Only immediate
       # reactions (see mechanical_evaluation/_combat) pass through here with the
       # player's rolls so AoO-style events resolve before the turn advances.
@@ -119,7 +119,8 @@ module DungeonMaster
         time_result: time_result,
         action_outcome: verdict_result[:outcome].to_s.presence,
         queue_resolution_context: {
-          player_rolls: Array(merged[:player_rolls]).map { |r| r.is_a?(Hash) ? r.deep_dup : r },
+          player_rolls: Array(requested_rolls.presence || merged[:player_rolls]).map { |r| r.is_a?(Hash) ? r.deep_dup : r },
+          submitted_rolls: Array(submitted_rolls).map { |r| r.is_a?(Hash) ? r.deep_dup : r },
           roll_results: roll_results
         }
       )

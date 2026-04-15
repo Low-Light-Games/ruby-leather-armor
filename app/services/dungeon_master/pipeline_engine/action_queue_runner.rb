@@ -189,45 +189,44 @@ module DungeonMaster
 
           roll[:type].to_s == "skill_check" && roll[:skill].to_s.casecmp("Stealth").zero?
         end
-        return false if rolls.empty?
+        return true if rolls.empty?
 
-        submitted_entries = extract_roll_entries(ctx[:roll_results])
+        submitted_entries = extract_submitted_rolls(ctx[:submitted_rolls])
         return false if submitted_entries.empty?
 
+        requested_groups = group_equivalent_stealth_rolls(rolls)
         used_indexes = Set.new
-        rolls.all? do |roll|
-          entry = find_matching_roll_entry(roll, submitted_entries, used_indexes)
-          entry && entry[:total].to_i >= roll[:dc].to_i
+        requested_groups.all? do |group|
+          entry = find_matching_roll_entry(group, submitted_entries, used_indexes)
+          entry && entry[:total].to_i >= group[:dc].to_i
         end
       end
 
-      def extract_roll_entries(roll_results)
-        text = roll_results.to_s
-        return [] if text.blank?
+      def extract_submitted_rolls(submitted_rolls)
+        Array(submitted_rolls).filter_map do |roll|
+          next unless roll.respond_to?(:deep_symbolize_keys)
 
-        text.each_line.filter_map do |line|
-          stripped = line.strip
-          next if stripped.blank?
-
-          if (m = stripped.match(/\ARolled\s+(-?\d+)\s+for:\s*(.+)\z/i))
-            { label: normalize_roll_label(m[2]), total: m[1].to_i }
-          elsif (m = stripped.match(/\A(.+?):\s*rolled\s+(-?\d+)(?:\s+\(total\s+(-?\d+)[^)]+\))?/i))
-            total = (m[3] || m[2]).to_i
-            { label: normalize_roll_label(m[1]), total: total }
-          end
+          normalized = roll.deep_symbolize_keys
+          {
+            label: normalize_roll_label(normalized[:roll_description]),
+            total: normalized[:roll_value].to_i
+          }
         end
       end
 
-      def find_matching_roll_entry(roll, submitted_entries, used_indexes)
-        desired = normalize_roll_label(roll[:description].presence || roll[:skill].presence || roll[:type].to_s)
+      def find_matching_roll_entry(group, submitted_entries, used_indexes)
         idx = submitted_entries.each_with_index.find do |entry, i|
           next if used_indexes.include?(i)
 
-          entry[:label] == desired
+          group[:labels].include?(entry[:label])
         end&.last
 
-        if idx.nil? && submitted_entries.size == 1 && desired.present?
-          idx = 0
+        if idx.nil?
+          idx = submitted_entries.each_with_index.find do |entry, i|
+            next if used_indexes.include?(i)
+
+            group[:labels].any? { |label| roll_labels_similar?(entry[:label], label) }
+          end&.last
         end
 
         return nil if idx.nil?
@@ -236,8 +235,43 @@ module DungeonMaster
         submitted_entries[idx]
       end
 
+      def group_equivalent_stealth_rolls(rolls)
+        groups = []
+
+        rolls.each do |roll|
+          label = normalize_roll_label(roll[:description].presence || roll[:skill].presence || roll[:type].to_s)
+          matching_group = groups.find do |group|
+            group[:labels].any? { |existing| roll_labels_similar?(existing, label) }
+          end
+
+          if matching_group
+            matching_group[:labels] << label unless matching_group[:labels].include?(label)
+            matching_group[:dc] = [matching_group[:dc].to_i, roll[:dc].to_i].max
+          else
+            groups << { labels: [label], dc: roll[:dc].to_i }
+          end
+        end
+
+        groups
+      end
+
+      def roll_labels_similar?(a, b)
+        return false if a.blank? || b.blank?
+
+        a_words = significant_roll_words(a)
+        b_words = significant_roll_words(b)
+        union = (a_words | b_words).size
+        return true if union.zero?
+
+        (a_words & b_words).size.to_f / union >= 0.30
+      end
+
+      def significant_roll_words(label)
+        normalize_roll_label(label).scan(/[a-z0-9]+/) - %w[a an the to of for in on at with by from and or is it that this]
+      end
+
       def normalize_roll_label(label)
-        label.to_s.downcase.gsub(/\s+/, " ").strip
+        label.to_s.downcase.gsub(/[^a-z0-9\s]/, " ").gsub(/\s+/, " ").strip
       end
 
       def finish_orchestrated(pipeline, queue_log, accumulated, action_narratives, use_per_action, total, action_count,

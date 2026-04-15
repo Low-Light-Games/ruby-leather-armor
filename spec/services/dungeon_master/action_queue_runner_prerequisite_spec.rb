@@ -32,14 +32,20 @@ RSpec.describe "DungeonMaster::PipelineEngine::ActionQueueRunner prerequisite ga
           { type: "skill_check", skill: "Stealth", dc: 10, description: "Stealth check to move silently closer" },
           { type: "skill_check", skill: "Stealth", dc: 15, description: "Stealth check to approach quietly" }
         ],
-        roll_results: "Rolled 5 for: Stealth check to move silently closer\nRolled 10 for: Stealth check to approach quietly"
+        submitted_rolls: [
+          { roll_value: 5, roll_description: "Stealth check to move silently closer" },
+          { roll_value: 10, roll_description: "Stealth check to approach quietly" }
+        ]
       }
     }
   end
 
   let(:successful_stealth_result) do
     failed_stealth_result.deep_dup.tap do |result|
-      result[:queue_resolution_context][:roll_results] = "Rolled 21 for: Stealth check to move silently closer\nRolled 20 for: Stealth check to approach quietly"
+      result[:queue_resolution_context][:submitted_rolls] = [
+        { roll_value: 21, roll_description: "Stealth check to move silently closer" },
+        { roll_value: 20, roll_description: "Stealth check to approach quietly" }
+      ]
     end
   end
 
@@ -147,11 +153,44 @@ RSpec.describe "DungeonMaster::PipelineEngine::ActionQueueRunner prerequisite ga
 
   it "matches submitted stealth rolls to requested checks by label, not just index" do
     scrambled = successful_stealth_result.deep_dup
-    scrambled[:queue_resolution_context][:roll_results] = <<~TEXT.strip
-      Rolled 20 for: Stealth check to approach quietly
-      Rolled 21 for: Stealth check to move silently closer
-    TEXT
+    scrambled[:queue_resolution_context][:submitted_rolls] = [
+      { roll_value: 20, roll_description: "Stealth check to approach quietly" },
+      { roll_value: 21, roll_description: "Stealth check to move silently closer" }
+    ]
 
     expect(runner.send(:stealth_approach_succeeded?, scrambled)).to eq(true)
+  end
+
+  it "passes when no stealth proof was required on the prior action" do
+    result = {
+      status: :resolved,
+      intent: { intention: "walk up to the goblins" },
+      mutations: {},
+      queue_resolution_context: {
+        player_rolls: [],
+        submitted_rolls: []
+      }
+    }
+
+    expect(runner.send(:stealth_approach_succeeded?, result)).to eq(true)
+  end
+
+  it "lets one submitted stealth roll satisfy equivalent cross-domain approach checks using the highest DC" do
+    result = {
+      status: :resolved,
+      intent: { intention: "move stealthily up to the goblins" },
+      mutations: {},
+      queue_resolution_context: {
+        player_rolls: [
+          { type: "skill_check", skill: "Stealth", dc: 15, description: "Stealth check to approach goblins without being noticed" },
+          { type: "skill_check", skill: "Stealth", dc: 15, description: "Stealth check to approach the goblins quietly" }
+        ],
+        submitted_rolls: [
+          { roll_value: 24, roll_description: "Stealth check to approach goblins without being noticed" }
+        ]
+      }
+    }
+
+    expect(runner.send(:stealth_approach_succeeded?, result)).to eq(true)
   end
 end
