@@ -123,4 +123,35 @@ RSpec.describe "DungeonMaster::PipelineEngine::ActionQueueRunner prerequisite ga
       "abort_on_failed_prerequisite" => true
     )
   end
+
+  it "fails closed for an unknown prerequisite" do
+    allow(pipeline).to receive(:run_accumulated_narrative_phase).and_return({ action: :narrated, narrative: "stub" })
+    expect(pipeline).not_to receive(:resolve)
+
+    result = runner.run(
+      action_strings: [{
+        "text" => "cast Ray of Frost on one of the goblins",
+        "depends_on_index" => 0,
+        "prerequisite" => "mystery_condition",
+        "abort_on_failed_prerequisite" => true
+      }],
+      base_sequence_index: 1,
+      total_for_logging: 2,
+      abort_on_rejected: false,
+      initial_accumulated: [successful_stealth_result],
+      per_action_narration: false
+    )
+
+    expect(result[:action]).to eq(:narrated)
+  end
+
+  it "matches submitted stealth rolls to requested checks by label, not just index" do
+    scrambled = successful_stealth_result.deep_dup
+    scrambled[:queue_resolution_context][:roll_results] = <<~TEXT.strip
+      Rolled 20 for: Stealth check to approach quietly
+      Rolled 21 for: Stealth check to move silently closer
+    TEXT
+
+    expect(runner.send(:stealth_approach_succeeded?, scrambled)).to eq(true)
+  end
 end

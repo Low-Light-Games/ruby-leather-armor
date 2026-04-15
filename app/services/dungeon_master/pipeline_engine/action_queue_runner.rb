@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "set"
+
 module DungeonMaster
   class PipelineEngine
     # Centralizes the per-action resolve loop + `case result[:status]` that
@@ -189,19 +191,53 @@ module DungeonMaster
         end
         return false if rolls.empty?
 
-        submitted_totals = extract_roll_totals(ctx[:roll_results])
-        return false if submitted_totals.size < rolls.size
+        submitted_entries = extract_roll_entries(ctx[:roll_results])
+        return false if submitted_entries.empty?
 
-        rolls.each_with_index.all? do |roll, idx|
-          submitted_totals[idx] >= roll[:dc].to_i
+        used_indexes = Set.new
+        rolls.all? do |roll|
+          entry = find_matching_roll_entry(roll, submitted_entries, used_indexes)
+          entry && entry[:total].to_i >= roll[:dc].to_i
         end
       end
 
-      def extract_roll_totals(roll_results)
+      def extract_roll_entries(roll_results)
         text = roll_results.to_s
         return [] if text.blank?
 
-        text.scan(/(?:rolled|total)\s+(-?\d+)/i).flatten.map(&:to_i)
+        text.each_line.filter_map do |line|
+          stripped = line.strip
+          next if stripped.blank?
+
+          if (m = stripped.match(/\ARolled\s+(-?\d+)\s+for:\s*(.+)\z/i))
+            { label: normalize_roll_label(m[2]), total: m[1].to_i }
+          elsif (m = stripped.match(/\A(.+?):\s*rolled\s+(-?\d+)(?:\s+\(total\s+(-?\d+)[^)]+\))?/i))
+            total = (m[3] || m[2]).to_i
+            { label: normalize_roll_label(m[1]), total: total }
+          end
+        end
+      end
+
+      def find_matching_roll_entry(roll, submitted_entries, used_indexes)
+        desired = normalize_roll_label(roll[:description].presence || roll[:skill].presence || roll[:type].to_s)
+        idx = submitted_entries.each_with_index.find do |entry, i|
+          next if used_indexes.include?(i)
+
+          entry[:label] == desired
+        end&.last
+
+        if idx.nil? && submitted_entries.size == 1 && desired.present?
+          idx = 0
+        end
+
+        return nil if idx.nil?
+
+        used_indexes << idx
+        submitted_entries[idx]
+      end
+
+      def normalize_roll_label(label)
+        label.to_s.downcase.gsub(/\s+/, " ").strip
       end
 
       def finish_orchestrated(pipeline, queue_log, accumulated, action_narratives, use_per_action, total, action_count,

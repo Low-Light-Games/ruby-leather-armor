@@ -99,4 +99,31 @@ RSpec.describe "DungeonMaster::PipelineEngine — prepared hostile opener flow",
 
     expect(result[:status]).to eq(:resolved)
   end
+
+  it "does not debit round-1 action economy when initiative is finalized after the opener" do
+    paused_loop = AdventureLoop.create!(
+      adventure: adventure,
+      registry_entry_uuid: pipeline.instance_variable_get(:@log).registry_entry_uuid,
+      sequence_index: 0,
+      raw_action: "cast Ray of Frost on one of the goblins",
+      player_intent: "cast Ray of Frost on one of the goblins",
+      status: "paused"
+    )
+    pipeline.bind_current_loop!(paused_loop)
+
+    meta = {
+      "intent" => prepared_intent.deep_stringify_keys,
+      "mutations" => {},
+      "creature_data" => prepared_intent[:creature_data].map(&:deep_stringify_keys),
+      "pending_opening_merged" => nil,
+      "remaining_actions" => []
+    }
+
+    result = pipeline.run_initiative(23, meta)
+    adventure.reload
+
+    expect(result[:action]).to eq(:combat_initialized)
+    expect(adventure.combat_context.dig("action_economy", "standard_available")).to eq(true)
+    expect(adventure.combat_context.dig("action_economy", "move_available")).to eq(true)
+  end
 end

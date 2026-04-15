@@ -131,6 +131,8 @@ module DungeonMaster
       prepared = Array(intent[:creature_data])
       return false if prepared.empty?
 
+      # v1 assumption: the prepared creature_data set is the authoritative hostile roster
+      # for deciding whether the opener should hand off into initiative.
       creature_ids = prepared.map { |entry| (entry[:creature_sheet_id] || entry["creature_sheet_id"]).to_i }.reject(&:zero?)
       return false if creature_ids.empty?
 

@@ -257,5 +257,41 @@ RSpec.describe "DungeonMaster::PipelineEngine — initiative + world-turn termin
       expect(resumed[:remaining_actions]).to eq([])
       expect(resumed[:pending_opening_merged]).to include(:player_rolls, :mechanical_summaries)
     end
+
+    it "round-trips structured remaining_actions through roll pause and initiative pause together" do
+      paused_loop_for(pipeline, "I cast Ray of Frost")
+      allow(pipeline).to receive(:battlefield_roll_version_mismatch?).and_return(false)
+      allow(DungeonMaster::Rolls::PlayerRolls).to receive(:tag_roll_resolution!)
+
+      intent = { intention: "I cast Ray of Frost", affected_contexts: ["combat"], macro_significant: false, domain_results: {} }
+      merged = { player_rolls: [{ type: "attack_roll", dc: 12 }], npc_actions: [], consequences: [], mechanical_summaries: ["attack"] }
+      structured_remaining = [{
+        "text" => "drink a potion",
+        "depends_on_index" => nil,
+        "prerequisite" => nil,
+        "abort_on_failed_prerequisite" => false
+      }]
+      result = {
+        status: :awaiting_initiative,
+        intent: intent,
+        merged: merged,
+        pending_opening_merged: merged,
+        creature_data: [{ "name" => "Goblin", "creature_sheet_id" => 123, "initiative" => 10 }],
+        mutations: {},
+        remaining_actions: structured_remaining
+      }
+
+      allow(pipeline).to receive(:restore_roll_pause_inputs).and_return([intent, merged])
+      allow(pipeline).to receive(:finish_resolution).and_return(result)
+      allow(pipeline).to receive(:run_context_updates_at_encounter_pause)
+
+      resumed = pipeline.run_rolls("Rolled 14 for: attack", {
+        "remaining_actions" => [{ "text" => "stale opener replay" }]
+      })
+      meta = DungeonMaster::AdventurePlay::InitiativeRequestMetadata.for_awaiting_initiative(resumed)
+
+      expect(meta[:remaining_actions]).to eq(structured_remaining)
+      expect(meta[:pending_opening_merged]).to include("player_rolls", "mechanical_summaries")
+    end
   end
 end
