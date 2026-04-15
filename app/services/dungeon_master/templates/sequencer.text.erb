@@ -6,8 +6,32 @@ need their own evaluation and resolution or if they are a single action.
 When splitting into multiple actions, ORDER them by logical dependency.
 Evaluate if the player worded his actions semantically different as to how they will take place chronologically.
 
+=== CONDITIONAL FOLLOW-UPS ===
+When later actions only happen if an earlier setup succeeds, mark them as conditional.
+Common dependency markers:
+- "when I get there"
+- "after I sneak up"
+- "once I'm close"
+- "if I make it"
+
+For v1, use prerequisite "stealth_approach_succeeded" when a follow-up action depends on
+successfully approaching, sneaking up, or remaining unnoticed during the prior action.
+
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
-  "actions": ["first action text", "second action text"],
+  "actions": [
+    {
+      "text": "first action text",
+      "depends_on_index": null,
+      "prerequisite": null,
+      "abort_on_failed_prerequisite": false
+    },
+    {
+      "text": "second action text",
+      "depends_on_index": 0,
+      "prerequisite": "stealth_approach_succeeded",
+      "abort_on_failed_prerequisite": true
+    }
+  ],
   "reasoning": "Brief explanation of what the player intended and why you split it (or why you didn't)"
 }

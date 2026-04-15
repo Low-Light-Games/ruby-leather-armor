@@ -118,7 +118,11 @@ module DungeonMaster
         status: :resolved, intent: intent,
         mutations: verdict_result[:mutations],
         time_result: time_result,
-        action_outcome: verdict_result[:outcome].to_s.presence
+        action_outcome: verdict_result[:outcome].to_s.presence,
+        queue_resolution_context: {
+          player_rolls: Array(merged[:player_rolls]).map { |r| r.is_a?(Hash) ? r.deep_dup : r },
+          roll_results: roll_results
+        }
       )
     end
 

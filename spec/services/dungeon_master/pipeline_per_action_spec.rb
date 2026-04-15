@@ -88,8 +88,13 @@ RSpec.describe "DungeonMaster::PipelineEngine — per-action narration", type: :
       expect(result[:action]).to eq(:awaiting_rolls)
     end
 
-    it "remaining_actions contains only 'push the door open'" do
-      expect(result[:remaining_actions]).to eq(["push the door open"])
+    it "remaining_actions contains only the structured 'push the door open' entry" do
+      expect(result[:remaining_actions]).to eq([{
+        "text" => "push the door open",
+        "depends_on_index" => nil,
+        "prerequisite" => nil,
+        "abort_on_failed_prerequisite" => false
+      }])
     end
 
     it "fires on_narrative exactly once (action 1 narrated before the halt)" do

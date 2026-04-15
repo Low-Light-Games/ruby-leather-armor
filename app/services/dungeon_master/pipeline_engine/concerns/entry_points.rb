@@ -78,9 +78,7 @@ module DungeonMaster
           remaining = remaining_actions_from(metadata)
           if remaining.any? && !terminal_combat_result?(result)
             # Use post-world-turn mutations so combat advancement carries through the queue.
-            run_remaining_queue(remaining,
-              accumulated_intents: [intent],
-              accumulated_mutations: [result[:mutations]].compact)
+            run_remaining_queue(remaining, initial_accumulated: [result])
           elsif npcs_go_first || terminal_combat_result?(result)
             # World turn appended NPC action prose to pipeline_outcome; narrate it so
             # the player sees what the enemies did before their first move.
@@ -178,9 +176,7 @@ module DungeonMaster
                           (!only_continue_if_resolved || status == :resolved) &&
                           !terminal_combat_result?(accumulated_row)
           if queue_allowed
-            run_remaining_queue(remaining,
-              accumulated_intents: [intent],
-              accumulated_mutations: [mutations].compact)
+            run_remaining_queue(remaining, initial_accumulated: [accumulated_row])
           else
             run_accumulated_narrative_phase([accumulated_row])
           end
@@ -210,20 +206,16 @@ module DungeonMaster
 
         # Continue the action queue after a roll pause or from a mid-queue resume.
         # :rejected on an action skips that action (next); fresh orchestration aborts the whole turn instead.
-        def run_remaining_queue(remaining, accumulated_intents: [], accumulated_mutations: [])
+        def run_remaining_queue(remaining, initial_accumulated: [])
           processed_count = AdventureLoop.for_registry_entry(@log.registry_entry_uuid).count
           total_original = processed_count + remaining.size
           base_idx = processed_count
-          accumulated = accumulated_intents.each_with_index.map do |intent, i|
-            { status: :resolved, intent: intent, mutations: accumulated_mutations[i] }
-          end
-
           ActionQueueRunner.new(self).run(
             action_strings: remaining,
             base_sequence_index: base_idx,
             total_for_logging: total_original,
             abort_on_rejected: false,
-            initial_accumulated: accumulated,
+            initial_accumulated: initial_accumulated,
             per_action_narration: false
           )
         end
