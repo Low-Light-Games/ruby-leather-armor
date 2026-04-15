@@ -16,6 +16,7 @@ module DungeonMaster
 
       FATIGUE_THRESHOLD_HOURS  = 16
       HUNGER_THRESHOLD_HOURS   = 24
+      GAME_HOUR_PRECISION      = 6
 
       module_function
 
@@ -28,10 +29,12 @@ module DungeonMaster
         new_hour      = total_hours % 24
         days_advanced = (total_hours / 24).floor
 
-        ctx["current_hour"]    = new_hour.round(2)
+        ctx["current_hour"]    = new_hour.round(GAME_HOUR_PRECISION)
         ctx["adventure_day"]   = old_day + days_advanced
         ctx["light_conditions"] = light_for_hour(new_hour.floor)
 
+        # These accumulators can keep native float precision because they are
+        # threshold-based and not used for exact-boundary expiry comparisons.
         ctx["hours_since_last_rest"] = (ctx["hours_since_last_rest"] || 0).to_f + hours
 
         if reset_encounter_check

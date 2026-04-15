@@ -140,6 +140,20 @@ RSpec.describe "DungeonMaster::Steps::TimeKeeper — expire_elapsed_buffs", type
     end
   end
 
+  context "when a buff expires on an exact combat-round precision boundary" do
+    before { set_buffs([buff(source: "shield", expires_at: 8.0 + (0.0017 * 10))]) }
+
+    it "does not expire before the boundary tick and expires at the boundary tick" do
+      harness.call_expire({ "adventure_day" => 1, "current_hour" => 8.0 + (0.0017 * 9) })
+      sheet.reload
+      expect(sheet.active_buffs.map { |b| b["source"] }).to eq(["shield"])
+
+      harness.call_expire({ "adventure_day" => 1, "current_hour" => 8.0 + (0.0017 * 10) })
+      sheet.reload
+      expect(sheet.active_buffs).to eq([])
+    end
+  end
+
   context "when sheet does not support active_buffs" do
     it "returns without error" do
       bare = instance_double("CreatureSheet")
