@@ -44,6 +44,7 @@ module DungeonMaster
         )
 
         intent = converge_beacons(beacon_results, intention)
+        intent = prepare_canonical_combatants(intent)
         log_parallel_to_loop(intent)
 
         # Phase 2 — Mechanical Evaluation
@@ -127,6 +128,32 @@ module DungeonMaster
 
         ctx = @adventure.send("#{domain}_context") rescue nil
         ctx.present? ? "=== #{domain.upcase} CONTEXT ===\n#{ctx.to_json}" : nil
+      end
+
+      def prepare_canonical_combatants(intent)
+        return intent if @adventure.combat_active?
+
+        combat_result = intent.dig(:domain_results, "combat") || {}
+        transition = combat_result[:transition].to_s
+        return intent unless transition == "combat_started" || transition.end_with?("_to_combat")
+
+        combatant_names = Array(combat_result[:combatants]).map(&:to_s).reject(&:blank?)
+        scene_enemy_names = EncounterWarmasterBridge.scene_enemy_names_from_traversal_context(@adventure.traversal_context)
+        return intent if combatant_names.empty? && scene_enemy_names.empty?
+
+        prepared = Utilities::Warmaster.prepare_from_names!(
+          adventure: @adventure,
+          combatant_names: combatant_names,
+          scene_enemy_names: scene_enemy_names,
+          sheet: @sheet,
+          log: @log,
+          config: @config,
+          ai: @ai
+        )
+
+        return intent if prepared[:status] == :no_creatures
+
+        intent.merge(creature_data: prepared[:creature_data])
       end
 
       # ── AdventureLoop integration ──────────────────────────────────

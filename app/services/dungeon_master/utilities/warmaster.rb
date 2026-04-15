@@ -45,18 +45,7 @@ module DungeonMaster
                       []
                     end
 
-        # Merge scene enemies (hostile NPCs already established in traversal_context).
-        # Skip any whose creature-type name overlaps with an encounter creature already spawned
-        # to avoid doubling up (e.g. encounter already has orcs, nearby_npcs also says "orc patrol").
-        novel_scene_names = Array(scene_enemy_names).reject do |scene_name|
-          lower = scene_name.downcase
-          creatures.any? { |c| c[:name].downcase.include?(lower) || lower.include?(c[:name].downcase.split.first.to_s) }
-        end
-
-        if novel_scene_names.any?
-          log.log!(:info, "Warmaster: merging #{novel_scene_names.size} scene enemy type(s) from traversal context: #{novel_scene_names.inspect}")
-          creatures.concat(spawn_from_names(ctx, novel_scene_names))
-        end
+        creatures = merge_scene_enemy_names(ctx, creatures, scene_enemy_names)
 
         build_initiative_result(ctx, creatures)
       end
@@ -64,8 +53,31 @@ module DungeonMaster
       # Path B: from combat beacon combatant names
       def initialize_from_names!(adventure:, combatant_names:, sheet:, log:, config:, ai:)
         ctx = Context.new(adventure: adventure, sheet: sheet, log: log, config: config, ai: ai)
-        creatures = spawn_from_names(ctx, combatant_names)
+        creatures = prepare_from_names!(
+          adventure: adventure,
+          combatant_names: combatant_names,
+          scene_enemy_names: [],
+          sheet: sheet,
+          log: log,
+          config: config,
+          ai: ai
+        )[:creatures]
         build_initiative_result(ctx, creatures)
+      end
+
+      # Path C: eager canonical creature prep for combat-starting actions before mech-eval.
+      # Creates / reuses creature sheets and rolls NPC initiative, but does not write combat_context.
+      def prepare_from_names!(adventure:, combatant_names:, scene_enemy_names:, sheet:, log:, config:, ai:)
+        ctx = Context.new(adventure: adventure, sheet: sheet, log: log, config: config, ai: ai)
+        creatures = spawn_from_names(ctx, combatant_names)
+        creatures = merge_scene_enemy_names(ctx, creatures, scene_enemy_names)
+        creature_data = prepare_creature_data(ctx, creatures)
+
+        {
+          status: creature_data.any? ? :prepared : :no_creatures,
+          creature_data: creature_data,
+          creatures: creatures
+        }
       end
 
       # Compute the finalized combat state from creature data and player initiative.
@@ -180,6 +192,23 @@ module DungeonMaster
         end
       end
 
+      def merge_scene_enemy_names(ctx, creatures, scene_enemy_names)
+        # Merge scene enemies (hostile NPCs already established in traversal_context).
+        # Skip any whose creature-type name overlaps with an encounter creature already spawned
+        # to avoid doubling up (e.g. encounter already has orcs, nearby_npcs also says "orc patrol").
+        novel_scene_names = Array(scene_enemy_names).reject do |scene_name|
+          lower = scene_name.downcase
+          creatures.any? { |c| c[:name].downcase.include?(lower) || lower.include?(c[:name].downcase.split.first.to_s) }
+        end
+
+        if novel_scene_names.any?
+          ctx.log.log!(:info, "Warmaster: merging #{novel_scene_names.size} scene enemy type(s) from traversal context: #{novel_scene_names.inspect}")
+          creatures + spawn_from_names(ctx, novel_scene_names)
+        else
+          creatures
+        end
+      end
+
       # ---- Initiative ----
 
       def build_initiative_result(ctx, creatures)
@@ -188,16 +217,20 @@ module DungeonMaster
           return { status: :no_creatures }
         end
 
-        creature_data = creatures.map do |c|
-          initiative = roll_creature_initiative(ctx, c[:creature_sheet_id])
-          c.merge(initiative: initiative)
-        end
+        creature_data = prepare_creature_data(ctx, creatures)
 
         creature_names = creature_data.map { |c| "#{c[:name]} (init #{c[:initiative]})" }
         ctx.log.play_log!("warmaster", "Combat: #{creature_data.size} creature(s) ready",
                           parsed_response: { creature_count: creature_data.size, creatures: creature_names })
 
         { status: :awaiting_initiative, creature_data: creature_data }
+      end
+
+      def prepare_creature_data(ctx, creatures)
+        creatures.map do |c|
+          initiative = roll_creature_initiative(ctx, c[:creature_sheet_id])
+          c.merge(initiative: initiative)
+        end
       end
 
       def roll_creature_initiative(ctx, creature_sheet_id)

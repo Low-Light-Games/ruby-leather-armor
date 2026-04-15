@@ -26,7 +26,7 @@ module DungeonMaster
 
       if encounter_entry
         creatures_data = loop&.get("encounter_creatures")
-        scene_enemy_names = extract_scene_enemy_names(adventure.traversal_context)
+        scene_enemy_names = scene_enemy_names_from_traversal_context(adventure.traversal_context)
         warmaster_result = Utilities::Warmaster.initialize_from_encounter!(
           adventure: adventure, encounter_entry: encounter_entry,
           creatures_data: creatures_data,
@@ -134,7 +134,7 @@ module DungeonMaster
     # Extracts hostile NPC names from traversal_context["nearby_npcs"] for merging into
     # a Harbinger-triggered combat. Filters out clearly distant or passive entries and
     # returns up to 2 meaningful words per entry (enough for fuzzy bestiary matching).
-    def self.extract_scene_enemy_names(traversal_context)
+    def self.scene_enemy_names_from_traversal_context(traversal_context)
       nearby = Array(traversal_context&.dig("nearby_npcs") || traversal_context&.dig(:nearby_npcs))
       nearby.filter_map do |entry|
         str = entry.to_s.strip
@@ -147,6 +147,6 @@ module DungeonMaster
       end.uniq
     end
 
-    private_class_method :reconcile_encounter, :extract_scene_enemy_names
+    private_class_method :reconcile_encounter
   end
 end
