@@ -54,11 +54,13 @@ module DungeonMaster
                                           .paused.order(:created_at).last
                                           &.get("pipeline_outcome")
           initiative_content = [encounter_intro.presence, "Roll for initiative!"].compact.join("\n\n")
-          [persist_message(
+          msgs = persist_action_result_messages(result[:action_outcomes])
+          msgs << persist_message(
             role: "dm",
             content: initiative_content,
             message_type: "initiative_request",
-            metadata: meta)]
+            metadata: meta)
+          msgs
 
         when :combat_initialized
           # Combat context was written directly after initiative resolve; the encounter scene
