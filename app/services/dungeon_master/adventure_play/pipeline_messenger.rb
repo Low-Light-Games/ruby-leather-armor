@@ -76,9 +76,10 @@ module DungeonMaster
           msgs
 
         when :narrated
-          msgs = [persist_message(role: "dm", content: result[:narrative], message_type: "narrative")]
+          msgs = []
           msgs.concat(persist_action_result_messages(result[:action_outcomes]))
           msgs.concat(persist_combat_log_messages(result[:world_turn_lines]))
+          msgs << persist_message(role: "dm", content: result[:narrative], message_type: "narrative")
           msgs.concat(persist_event_messages(result))
 
         when :narrated_sequence
