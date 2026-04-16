@@ -40,9 +40,10 @@ intended action, within the COMBAT context only.
   When variable damage applies on a hit, include "damage", and "damage_type" / "target" when known.
 - For saving_throw entries: do NOT output a numeric "dc". Use "save" ("fort", "ref", or "will")
   and "dc_formula" describing how the server should compute DC:
-  - { "kind": "spell_dc", "spell_name": "<exact spell name>", "caster": "player" }
+  - { "kind": "spell_dc", "spell_name": "<exact spell name>", "caster": "player" } — only for spells the **player
+    character** casts (NPC/hostile spell effects the player saves against are not spell_dc yet; use "ability_dc"
+    with pattern "half_hd_plus_ability" for a creature's SLA-like DC when appropriate).
   - { "kind": "ability_dc", "pattern": "half_hd_plus_ability", "ability": "<ability>", "origin_target": "<participant name>" }
-  - { "kind": "fixed", "ref": "<non-numeric ref string>" } only when rules supply a fixed DC the code maps by ref.
 - Leave npc_actions EMPTY during routine combat rounds. World turn resolves NPC initiative actions
   after the player. Only include npc_action when the player's action triggers an attack of opportunity
   that must be queued before rolls resolve. For those entries you MUST set "action": "attack_of_opportunity"
