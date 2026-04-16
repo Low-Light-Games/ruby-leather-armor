@@ -90,7 +90,7 @@ module DungeonMaster
       roll_results, submitted_rolls = merge_roll_chain_results(merged, roll_results, submitted_rolls)
 
       # In active combat, world turn resolves routine NPC turns. Only immediate
-      # reactions (see mechanical_evaluation/_combat) pass through here with the
+      # reactions (see combat_mechanic prompt; attack_of_opportunity npc_actions) pass through here with the
       # player's rolls so AoO-style events resolve before the turn advances.
       effective_npc_actions = MechanicalEvaluationNpcActions.filter_for_combat_finish(
         merged[:npc_actions],
