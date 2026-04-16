@@ -51,6 +51,14 @@ RSpec.describe DungeonMaster::CreatureFactory, type: :service do
         expect(creature.level).to eq(3)
         expect(creature.strength).to eq(DungeonMaster::CreatureFactory::CREATURE_TEMPLATE[3][:str])
       end
+
+      it "recomputes full derived_stats including touch_ac and flat_footed_ac" do
+        creature = factory.create_for_name("Template Beast")
+        ds = creature.reload.derived_stats
+        expect(ds["touch_ac"]).to be_present
+        expect(ds["flat_footed_ac"]).to be_present
+        expect(ds["ac"]).to be_present
+      end
     end
 
     context "when no bestiary entry and fallback is disabled" do

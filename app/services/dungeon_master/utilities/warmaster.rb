@@ -256,7 +256,9 @@ module DungeonMaster
       def create_creature_from_bestiary_static(ctx, entry, display_name)
         hp = roll_hp_static(entry.hp_formula)
         attrs = entry.to_creature_sheet_attrs(display_name: display_name)
-        ctx.adventure.creature_sheets.create!(attrs.merge(hp: hp, max_hp: hp, origin: "bestiary"))
+        sheet = ctx.adventure.creature_sheets.create!(attrs.merge(hp: hp, max_hp: hp, origin: "bestiary"))
+        sheet.recompute_derived_stats!
+        sheet
       end
 
       def dynamic_creature_sheet_static(ctx, name, party_level:)
@@ -285,13 +287,15 @@ module DungeonMaster
         stats = CREATURE_TEMPLATE[tier]
         hp = roll_hp_static(stats[:hp])
 
-        ctx.adventure.creature_sheets.create!(
+        sheet = ctx.adventure.creature_sheets.create!(
           name: name, creature_type: "monster", origin: "template",
           strength: stats[:str], dexterity: stats[:dex], constitution: stats[:con],
           intelligence: stats[:int], wisdom: stats[:wis], charisma: stats[:cha],
           level: [party_level, 1].max, hp: hp, max_hp: hp,
           derived_stats: { "ac" => stats[:ac], "bab" => stats[:bab], "speed" => stats[:speed] }
         )
+        sheet.recompute_derived_stats!
+        sheet
       end
 
       def create_from_ai_static(ctx, name, party_level)
@@ -321,7 +325,7 @@ module DungeonMaster
         raw_type = parsed["creature_type"].to_s.downcase.strip
         normalized_type = BestiaryEntry::CREATURE_TYPE_MAP[raw_type] ||
                           (CreatureSheet::CREATURE_TYPES.include?(raw_type) ? raw_type : "monster")
-        ctx.adventure.creature_sheets.create!(
+        sheet = ctx.adventure.creature_sheets.create!(
           name: name, creature_type: normalized_type, origin: "ai",
           strength: parsed["strength"].to_i.clamp(1, 40),
           dexterity: parsed["dexterity"].to_i.clamp(1, 40),
@@ -336,6 +340,8 @@ module DungeonMaster
             "speed" => parsed["speed"].to_i
           }
         )
+        sheet.recompute_derived_stats!
+        sheet
       end
 
       def roll_hp_static(formula)
