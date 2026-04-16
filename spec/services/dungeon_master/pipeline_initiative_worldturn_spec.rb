@@ -108,7 +108,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — initiative + world-turn termin
         end
 
         pipeline.run_initiative(15, meta)
-        expect(captured).to eq([hash_including(mutations: enriched_mutations)])
+        expect(captured).to match([hash_including(mutations: enriched_mutations)])
       end
     end
   end
