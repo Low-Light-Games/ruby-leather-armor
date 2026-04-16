@@ -19,15 +19,22 @@ module DungeonMaster
                   []
                 end
 
+        death_type = if result[:player_death]
+                       :player_death
+                     elsif result[:player_incapacitated]
+                       :player_incapacitated
+                     end
+
         ctx = PipelineContext.new(
           combined_seed: outcome,
           dm_brief: plot_result&.dig(:dm_brief),
           player_action: loop&.player_intent,
-          prior_outcomes: prior
+          prior_outcomes: prior,
+          death_type: death_type
         )
 
         extra = {}
-        extra[:player_death] = true if result[:player_death]
+        extra[:player_death]         = true if result[:player_death]
         extra[:player_incapacitated] = true if result[:player_incapacitated]
 
         NarrationPhaseInputs.new(

@@ -46,6 +46,16 @@ These did NOT exist before — describe them as fresh discoveries.
 
 <%= v.directed_play_text %>
 
+<% if v.death_type == :player_death -%>
+=== CHARACTER DEATH ===
+The player character has just died from their injuries. Your narration MUST end with the character's death.
+Do not leave the ending open or hopeful. The character falls — this is the end of their story.
+Weave the death naturally into the events above. Let it land with weight.
+<% elsif v.death_type == :player_incapacitated -%>
+=== CHARACTER INCAPACITATED ===
+The player character has just fallen unconscious and is dying. Your narration MUST end with the character collapsing.
+The world fades — vision blurs, sounds grow distant. There is a fragile thread of hope (aid could still come), but the character cannot act.
+<% end -%>
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
   "narrative": "Your DM narration here",

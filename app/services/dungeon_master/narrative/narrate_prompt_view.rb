@@ -39,6 +39,10 @@ module DungeonMaster
       def player_action
         @pipeline_context.player_action
       end
+
+      def death_type
+        @pipeline_context.death_type
+      end
     end
   end
 end
