@@ -5,9 +5,33 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useAdventureMessages } from './hooks/useAdventureMessages'
 import { ResolutionMethod } from './rollHelpers'
 import ChatMessage from './ChatMessage'
+import MechanicsGroup, { isMechanicalMessage } from './MechanicsGroup'
 import PendingRollsPanel from './PendingRollsPanel'
 import PendingInitiativePanel from './PendingInitiativePanel'
 import './AdventureChat.scss'
+
+type MessageGroup =
+  | { type: 'single'; msg: AdventureMessage }
+  | { type: 'group'; messages: AdventureMessage[] }
+
+function groupMessages(messages: AdventureMessage[]): MessageGroup[] {
+  const result: MessageGroup[] = []
+  let i = 0
+  while (i < messages.length) {
+    if (isMechanicalMessage(messages[i])) {
+      const group: AdventureMessage[] = []
+      while (i < messages.length && isMechanicalMessage(messages[i])) {
+        group.push(messages[i])
+        i++
+      }
+      result.push({ type: 'group', messages: group })
+    } else {
+      result.push({ type: 'single', msg: messages[i] })
+      i++
+    }
+  }
+  return result
+}
 
 interface AdventureChatProps {
   adventureId: number
@@ -118,14 +142,18 @@ export const AdventureChat = ({
             <p>Your adventure awaits! Describe what your character does to begin.</p>
           </div>
         ) : (
-          messages.map(msg => (
-            <ChatMessage
-              key={msg.id}
-              msg={msg}
-              isAdmin={!!user?.admin}
-              onRetry={handleRetry}
-            />
-          ))
+          groupMessages(messages).map((item, i) =>
+            item.type === 'group' ? (
+              <MechanicsGroup key={`group-${item.messages[0].id}`} messages={item.messages} />
+            ) : (
+              <ChatMessage
+                key={item.msg.id}
+                msg={item.msg}
+                isAdmin={!!user?.admin}
+                onRetry={handleRetry}
+              />
+            )
+          )
         )}
         <div ref={messagesEndRef} />
       </div>
