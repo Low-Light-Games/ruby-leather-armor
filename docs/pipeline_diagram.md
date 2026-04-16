@@ -655,7 +655,7 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | **Sequencer** | AI | Split compound player input into ordered discrete actions. Skipped if `action_queue` off. |
 | **ParallelEvaluation** | Code orchestration + 3 HTTP phases to Node | beacon→mech_eval→roll_qualifier chain via Node evaluator microservice. Requires `EVALUATOR_URL`. |
 | **↳ beacon** | AI ×6 (parallel, Node) | Per-domain intent classification. One call per domain, all 6 run concurrently via `Promise.all` in Node. |
-| **↳ mechanical_evaluation** | AI ×N (sequential, Node) | Per-domain mechanical resolution for each affected domain. Sequential with cross-domain summary injection. |
+| **↳ mechanical_evaluation** | AI ×N (sequential, Node) + code normalization for combat | Per-domain mechanical resolution for each affected domain. `combat` uses `combat_mechanic` and app-side normalization for AC/save DC resolution; other domains use the generic mechanical_evaluation prompt with per-domain partials. |
 | **↳ roll_qualifier** | AI ×N (parallel, Node) | Take 10/20 eligibility + situational modifiers per domain that has rolls. |
 | **World consistency check** | AI | Validate referenced entities exist in current scene. Runs in the sanity gate (mechanics path) or standalone (non-mechanics path). Bypassed on both paths when the adventure's `skip_world_sanity_check` flag is set. |
 | **Capability check** | AI | Validate player has required spells/feats/items. Runs in sanity gate (needs_mechanics only). Always runs regardless of `skip_world_sanity_check`. |

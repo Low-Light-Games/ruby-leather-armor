@@ -552,27 +552,34 @@ caused a wasted evaluation iteration for a non-existent combat context and
 skewed downstream steps. The classification should answer "what is the
 player trying to accomplish?" not "does this involve spellcasting?"
 
-### 21. Domain-specific instruction partials
+### 21. Domain-specific mechanical evaluation prompts
 
-**Decision:** domain-specific guidance is stored in separate partial files
-(`templates/mechanical_evaluation/_combat.text.erb`,
-`templates/mechanical_evaluation/_traversal.text.erb`, etc.) and injected
-into the UnifiedEvaluation prompt as a single "DOMAIN GUIDANCE" block,
-rather than inlining all domain logic in one template with `if/elsif` blocks.
+**Decision:** non-combat domains keep their domain-specific guidance in
+partial files (`templates/mechanical_evaluation/_traversal.text.erb`,
+`templates/mechanical_evaluation/_social.text.erb`, etc.) rendered into the
+generic `mechanical_evaluation.text.erb` prompt, while the `combat` domain
+uses its own standalone `templates/combat_mechanic.text.erb` prompt and a
+Ruby normalization step (`CombatMechanicResolution`) to resolve live AC / save
+DC values from canonical sheet data.
 
-**How:** `PromptRenderer.render_partial("mechanical_evaluation/_#{domain}")`
-loads the partial for each domain. If no partial exists, it returns
-an empty string gracefully. All rendered partials are concatenated and
-injected into the unified template via `@domain_hints`.
+**How:** `Steps::Phases::MechEvalPhase` branches on domain:
+- `combat` → `PromptRenderer.render("combat_mechanic", ...)`, then
+  `CombatMechanicResolution.call(...)` converts structured combat JSON into the
+  same normalized `player_rolls` / `npc_actions` shape the rest of the
+  pipeline expects. Resolution errors raise and fail the combat mech-eval path
+  closed instead of silently degrading to empty roll requests.
+- all other domains → `PromptRenderer.render_partial("mechanical_evaluation/_#{domain}")`
+  inside `mechanical_evaluation.text.erb`.
 
-**Why:** with six domains each needing domain-specific Pathfinder 1e
-guidance (combat: AoO, flanking, concentration; traversal: overland
-movement, forced march; social: diplomacy DCs; etc.), a single template
-with conditionals became unwieldy. Separate files are easier to review,
-edit, and version-control independently.
+**Why:** combat rolls need stricter structure than the generic prompt can
+reliably provide. The AI now classifies *what kind* of combat roll is needed
+(`defense_kind`, `spell_dc`, `ability_dc`, `attack_of_opportunity`), while
+Ruby resolves the numeric DC from live participant sheets. Non-combat domains
+still benefit from lightweight instruction partials without needing this extra
+normalization step.
 
-**Domains covered:** `combat`, `traversal`, `social`, `exploration`,
-`rest`, `inventory`.
+**Domains covered by generic partials:** `traversal`, `social`,
+`exploration`, `rest`, `inventory`, `buff`.
 
 ### 22. Scene summary as player-facing status
 
@@ -639,8 +646,10 @@ roll_qualifier chain but offloads concurrency to a dedicated stateless Node.js m
 (`evaluator/`) via `Promise.all` for the beacon and roll_qualifier phases and a sequential
 loop for mechanical_evaluation. The Node service is a stateless HTTP proxy — no DB access,
 no domain logic. All prompts are rendered in Rails (ERB templates); model and token budget
-travel inline per request from `DmConfig`. Requires `EVALUATOR_URL` (default:
-`http://evaluator:3001`).
+travel inline per request from `DmConfig`. Within the sequential mech-eval phase, `combat`
+now uses `templates/combat_mechanic.text.erb` plus app-side `CombatMechanicResolution`,
+while non-combat domains still use `templates/mechanical_evaluation.text.erb` plus
+domain partials. Requires `EVALUATOR_URL` (default: `http://evaluator:3001`).
 
 `ParallelEvaluation` is now the **only** evaluation path. `AdventureLoopResolution#resolve` calls it
 unconditionally.
@@ -918,7 +927,7 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | -- | **AdventureLoopResolution** (module) | Code orchestration | `app/services/dungeon_master/adventure_loop_resolution.rb` |
 | 3 | **ParallelEvaluation** | Code + 3 HTTP phases to Node evaluator | `app/services/dungeon_master/steps/parallel_evaluation.rb` — requires `EVALUATOR_URL` |
 | 3-i | **↳ beacon** | AI ×6, parallel (Node) | `evaluator/src/index.js` `/fan_out` + `templates/beacon.text.erb` |
-| 3-ii | **↳ mechanical_evaluation** | AI ×N, sequential (Node) | `evaluator/src/index.js` `/sequential` + `templates/mechanical_evaluation.text.erb` |
+| 3-ii | **↳ mechanical_evaluation** | AI ×N, sequential (Node) + app-side normalization | `evaluator/src/index.js` `/sequential` + `templates/combat_mechanic.text.erb` for `combat`, `templates/mechanical_evaluation.text.erb` for other domains |
 | 3-iii | **↳ roll_qualifier** | AI ×N, parallel (Node) | `evaluator/src/index.js` `/fan_out` + `templates/roll_qualifier.text.erb` |
 | 4 | **SanityChecker** | AI (parallel, mechanical path) | `app/services/dungeon_master/steps/sanity_checker.rb` |
 | 5 | **Mechanic** | AI (mechanical path, non-combat or inactive combat) | `app/services/dungeon_master/steps/mechanic.rb` |
@@ -950,7 +959,7 @@ Interrupted queues (encounter, social scene, roll request) fall back to the accu
 | Component | AI? | Notes |
 |---|---|---|
 | ParallelEvaluation (beacon) | ✅ AI ×6 | Per-domain intent classification via Node `/fan_out` |
-| ParallelEvaluation (mechanical_evaluation) | ✅ AI ×N | Sequential per-domain mechanical resolution via Node `/sequential` |
+| ParallelEvaluation (mechanical_evaluation) | ✅ AI ×N + ❌ code normalization for `combat` | Sequential per-domain mechanical resolution via Node `/sequential`; combat responses are normalized in Ruby before roll merge |
 | ParallelEvaluation (roll_qualifier) | ✅ AI ×N | Per-domain Take 10/20 eligibility + situational modifiers via Node `/fan_out` |
 | Mechanic | ✅ AI | Post-roll arbitration + structured mutations when combat is not active |
 | Combat GM | ✅ AI | Same role as Mechanic during **active combat** (battlefield slice + PF1e combat guidance); emits `battlefield_patches` + `action_economy_delta` |
