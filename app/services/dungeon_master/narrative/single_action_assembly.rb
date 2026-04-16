@@ -19,9 +19,11 @@ module DungeonMaster
                   []
                 end
 
-        death_type = if result[:player_death]
+        player_death         = result[:player_death]
+        player_incapacitated = result[:player_incapacitated]
+        death_type = if player_death
                        :player_death
-                     elsif result[:player_incapacitated]
+                     elsif player_incapacitated
                        :player_incapacitated
                      end
 
@@ -34,8 +36,8 @@ module DungeonMaster
         )
 
         extra = {}
-        extra[:player_death]         = true if result[:player_death]
-        extra[:player_incapacitated] = true if result[:player_incapacitated]
+        extra[:player_death]         = true if player_death
+        extra[:player_incapacitated] = true if player_incapacitated
 
         NarrationPhaseInputs.new(
           intent: result[:intent],

@@ -24,7 +24,11 @@ function groupMessages(messages: AdventureMessage[]): MessageGroup[] {
         group.push(messages[i])
         i++
       }
-      result.push({ type: 'group', messages: group })
+      if (group.length === 1) {
+        result.push({ type: 'single', msg: group[0] })
+      } else {
+        result.push({ type: 'group', messages: group })
+      }
     } else {
       result.push({ type: 'single', msg: messages[i] })
       i++
