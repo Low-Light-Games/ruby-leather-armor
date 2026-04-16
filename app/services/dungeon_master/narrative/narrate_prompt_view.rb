@@ -22,7 +22,15 @@ module DungeonMaster
         @directed_play_text = directed_play_text
       end
 
-      attr_reader :loop, :time_context, :pacing_text, :directed_play_text
+      attr_reader :loop, :time_context, :pacing_text
+
+      # Suppressed for terminal outcomes: a character who just died or collapsed
+      # cannot be offered "what do you do next?" choices.
+      def directed_play_text
+        return "" if @pipeline_context.death_type
+
+        @directed_play_text
+      end
 
       def dm_brief
         @pipeline_context.dm_brief

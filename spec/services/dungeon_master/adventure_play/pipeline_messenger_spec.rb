@@ -7,6 +7,37 @@ RSpec.describe DungeonMaster::AdventurePlay::PipelineMessenger, type: :service d
   let(:log)       { instance_double(DungeonMaster::Logging, registry_entry_uuid: "registry-123") }
   let(:messenger) { described_class.new(adventure: adventure, log: log, user: user) }
 
+  describe "#messages_for :narrated" do
+    it "persists mechanics before prose and event messages last" do
+      result = {
+        action:          :narrated,
+        action_outcomes: ["You hit the goblin for 4 damage.", "The goblin staggers."],
+        world_turn_lines: ["Goblin claws at you for 2 damage."],
+        narrative:       "The battle turns in your favour.",
+        player_death:    true
+      }
+
+      messages = messenger.messages_for(result)
+
+      types = messages.map(&:message_type)
+      expect(types).to eq(%w[action_result action_result combat_log narrative player_death])
+    end
+
+    it "omits mechanics sections when absent" do
+      result = {
+        action:          :narrated,
+        action_outcomes: nil,
+        world_turn_lines: nil,
+        narrative:       "You press on.",
+      }
+
+      messages = messenger.messages_for(result)
+
+      types = messages.map(&:message_type)
+      expect(types).to eq(%w[narrative])
+    end
+  end
+
   describe "#persist_event_messages" do
     it "marks the adventure ended for player death before persisting the message" do
       persisted_message = nil

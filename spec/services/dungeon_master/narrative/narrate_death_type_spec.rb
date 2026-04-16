@@ -39,6 +39,41 @@ RSpec.describe "death-aware narration prompt", type: :service do
     end
   end
 
+  describe "NarratePromptView#directed_play_text" do
+    let(:directed_text) { "=== DIRECTED PLAY STYLE ===" }
+
+    def build_view_with_directed(death_type:)
+      ctx = DungeonMaster::PipelineContext.new(
+        combined_seed: "The goblin strikes.",
+        dm_brief:      nil,
+        player_action: "Attack the goblin.",
+        death_type:    death_type
+      )
+      DungeonMaster::Narrative::NarratePromptView.new(
+        pipeline_context:   ctx,
+        loop:               nil,
+        time_context:       {},
+        pacing_text:        "",
+        directed_play_text: directed_text
+      )
+    end
+
+    it "returns the directed play text when no death_type" do
+      view = build_view_with_directed(death_type: nil)
+      expect(view.directed_play_text).to eq(directed_text)
+    end
+
+    it "suppresses directed play text for :player_death" do
+      view = build_view_with_directed(death_type: :player_death)
+      expect(view.directed_play_text).to eq("")
+    end
+
+    it "suppresses directed play text for :player_incapacitated" do
+      view = build_view_with_directed(death_type: :player_incapacitated)
+      expect(view.directed_play_text).to eq("")
+    end
+  end
+
   describe "narrate.text.erb rendering" do
     it "omits the death block when death_type is nil" do
       view = build_view(death_type: nil)
