@@ -169,6 +169,8 @@ if ENV["STUB_OPENAI"].present?
 
     results = body.map do |p|
       domain = p.dig("meta", "domain")
+      # Sequential mech_eval: combat domain uses CombatMechanicResolution when player_rolls is non-empty
+      # (defense_kind + no model dc). Keep empty rolls here so default stubs need no combat_context.
       parsed = if is_lock && domain == "exploration"
         { "player_rolls"       => [{ "type" => "skill_check", "skill" => "Disable Device",
                                      "dc" => 15, "description" => "Pick the lock" }],

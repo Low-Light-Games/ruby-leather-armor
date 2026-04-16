@@ -237,6 +237,7 @@ shared_context "with evaluator stubs" do
 
       results = body.map do |p|
         domain = p.dig("meta", "domain")
+        # Combat domain: non-empty player_rolls must match CombatMechanicResolution (see stub_openai sequential).
         if is_lock && domain == "exploration"
           evaluator_entry("mechanical_evaluation", domain,
                           "parsed_response" => {
