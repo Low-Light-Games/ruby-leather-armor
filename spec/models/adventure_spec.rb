@@ -7,6 +7,7 @@ RSpec.describe Adventure, type: :model do
     it { should have_many(:adventure_messages).dependent(:destroy) }
     it { should have_many(:adventure_sheets).dependent(:destroy) }
     it { should have_many(:play_logs).dependent(:nullify) }
+    it { should have_many(:experience_suggestions).dependent(:destroy) }
   end
 
   describe "factory" do

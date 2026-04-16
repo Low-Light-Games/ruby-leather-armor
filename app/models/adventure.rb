@@ -7,7 +7,6 @@ class Adventure < ApplicationRecord
 
   has_many :adventure_sheets, dependent: :destroy
   has_many :adventure_messages, dependent: :destroy
-  has_many :dm_logs, dependent: :nullify
   has_many :play_logs, dependent: :nullify
   has_many :adventure_loops, dependent: :nullify
   has_many :pipeline_registry_entries, dependent: :destroy
@@ -15,6 +14,7 @@ class Adventure < ApplicationRecord
   has_many :creature_sheets, dependent: :destroy
   has_many :story_npcs, dependent: :destroy
   has_many :story_clues, dependent: :destroy
+  has_many :experience_suggestions, dependent: :destroy
 
   include Contextable
 
