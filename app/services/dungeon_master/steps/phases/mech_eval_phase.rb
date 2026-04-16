@@ -18,7 +18,8 @@ module DungeonMaster
             creature_stats = domain == "buff" ? nil : CharacterBlock.creature_stats_for(@adventure)
             rules_text     = domain_rules_text_for(intent, domain)
 
-            system_prompt_base = if domain == "combat"
+            system_prompt_base = case domain.to_s
+            when "combat"
               PromptRenderer.render("combat_mechanic",
                 domain:              domain,
                 character_block:     char_block,
@@ -57,35 +58,34 @@ module DungeonMaster
             domain = ordered_domains[idx] || result.dig("meta", "domain")
             parsed = (result["parsed_response"] || {}).deep_symbolize_keys
 
-            if domain.to_s == "combat"
-              merged = begin
-                CombatMechanicResolution.call(
+            rolls, npc_actions, consequences, summary = case domain.to_s
+            when "combat"
+              begin
+                merged = CombatMechanicResolution.call(
                   parsed: parsed,
                   domain: domain,
                   adventure: @adventure,
                   sheet: @sheet,
                   log: @log
                 )
+                [
+                  merged[:player_rolls],
+                  merged[:npc_actions],
+                  merged[:consequences],
+                  merged[:mechanical_summary].to_s
+                ]
               rescue DungeonMaster::CombatMechanicResolutionError => e
                 @log&.play_log!("combat_mech_eval_resolution_error", e.message)
-                {
-                  domain:             domain,
-                  player_rolls:       [],
-                  npc_actions:        [],
-                  consequences:       Array(parsed[:consequences]).map(&:deep_symbolize_keys),
-                  mechanical_summary: "(combat resolution failed: #{e.message})"
-                }
+                raise DungeonMaster::AiError,
+                      "Combat mechanical evaluation could not resolve rolls (#{e.code}): #{e.message}"
               end
-
-              rolls        = merged[:player_rolls]
-              npc_actions  = merged[:npc_actions]
-              consequences = merged[:consequences]
-              summary      = merged[:mechanical_summary].to_s
             else
-              rolls        = Array(parsed[:player_rolls]).map { |r| r.deep_symbolize_keys.merge(domain: domain) }
-              npc_actions  = Array(parsed[:npc_actions]).map(&:deep_symbolize_keys)
-              consequences = Array(parsed[:consequences]).map(&:deep_symbolize_keys)
-              summary      = parsed[:mechanical_summary].to_s
+              [
+                Array(parsed[:player_rolls]).map { |r| r.deep_symbolize_keys.merge(domain: domain) },
+                Array(parsed[:npc_actions]).map(&:deep_symbolize_keys),
+                Array(parsed[:consequences]).map(&:deep_symbolize_keys),
+                parsed[:mechanical_summary].to_s
+              ]
             end
 
             next if rolls.empty? && npc_actions.empty? && consequences.empty? && summary.blank?
