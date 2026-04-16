@@ -72,9 +72,11 @@ Player input
 | **GameClock** | Advances the in-game clock, recalculates light conditions and fatigue thresholds |
 | **Harbinger** | Checks encounter tables for random encounters based on time, location, and noise |
 | **Warmaster** | Initializes combat: creates creature sheets, rolls NPC initiative, sets turn order |
+| **CombatMechanicResolution** | Normalizes combat mech-eval JSON into authoritative attack/save DCs from live sheet data |
+| **World Turn** | Resolves post-player NPC turns in active combat, advances turn/round state, and short-circuits on combat end |
 | **Stagehand** | Orchestrates the final output shape — decides what gets sent back to the player |
 | **NPC Roll Resolution** | Rolls dice on behalf of NPCs during mechanical evaluation |
-| **AdventureLoopResolution** | Resolves one AdventureLoop row: Beacon → Mechanics → Verdict → TimeKeeper (mixed into Pipeline) |
+| **AdventureLoopResolution** | Resolves one AdventureLoop row: ParallelEvaluation → Sanity → Mechanic/Combat GM → TimeKeeper → optional World Turn (mixed into Pipeline) |
 
 ## Architecture
 
@@ -86,7 +88,7 @@ The system separates concerns into three layers:
 
 Each AI step can be configured independently (model, token budget, on/off toggle) through `DmConfig`, an admin-editable settings object.
 
-Prompts live as ERB templates in `app/services/dungeon_master/templates/`, keeping prompt engineering separate from pipeline logic.
+Prompts live as ERB templates in `app/services/dungeon_master/templates/`, keeping prompt engineering separate from pipeline logic. Most domains still use the generic `mechanical_evaluation` prompt family, while `combat` now uses `combat_mechanic` plus Ruby-side normalization for live AC / save DC resolution.
 
 Six **micro-contexts** (JSONB columns on `Adventure`) give each step a focused, domain-specific window into game state rather than dumping the full history into every prompt.
 

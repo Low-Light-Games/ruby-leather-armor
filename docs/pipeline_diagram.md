@@ -426,9 +426,10 @@ Returns `{ status: :resolved }`.
 Runs after the player submits dice results, or immediately when auto-success is detected.
 
 1. **resolve_npc_actions** — Pure code. Formats NPC dice results by rolling each NPC action's dice formula.
-2. **run_mechanic** (AI) — Takes roll results + NPC results + mechanical summaries + consequences + character block + all micro contexts. Produces `outcome` (factual what-happened prose) and `mutations` (structured HP/condition/item changes).
+2. **run_mechanic / run_combat_gm** (AI) — Non-combat and inactive-combat resolutions use Mechanic. Active combat routes through Combat GM, which owns combat-specific outcome synthesis and battlefield/action-economy patches.
 3. **apply_mutations** (code) — Applies `mutations` to the character sheet and creature sheets immediately. Handles HP changes, condition additions/removals, item consumption, location transitions.
-4. **run_time_keeper** — See dedicated section.
+4. **run_time_keeper** — See dedicated section. Runs after mutations, so combat-aware time checks use canonical post-mutation state.
+5. **maybe_run_world_turn** — In active combat, code-owned World Turn resolves routine NPC initiative turns after the player's action, advances combat state, and can short-circuit on player death/incapacitation or combat end.
 
 Returns `{ status: :resolved }` or `{ status: :awaiting_initiative }` or `{ status: :encounter }`.
 
@@ -596,7 +597,7 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | Intake | ✅ AI | Danger scoring, sanitization, DM query detection |
 | Sequencer | ✅ AI | Action splitting (skipped if `action_queue` off) |
 | ParallelEvaluation (beacon) | ✅ AI ×6 | Per-domain intent classification via Node `/fan_out` |
-| ParallelEvaluation (mech_eval) | ✅ AI ×N | Sequential per-domain mechanical resolution via Node `/sequential` |
+| ParallelEvaluation (mech_eval) | ✅ AI ×N + ❌ code normalization for `combat` | Sequential per-domain mechanical resolution via Node `/sequential`; combat responses are normalized in Ruby before roll merge |
 | ParallelEvaluation (roll_qualifier) | ✅ AI ×N | Per-domain Take 10/20 + situational modifiers via Node `/fan_out` |
 | converge_beacons | ❌ Code | Merges 6 beacon results into the `intent` hash |
 | World consistency check | ✅ AI | Scene/entity validation |

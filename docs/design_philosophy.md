@@ -337,6 +337,9 @@ belongs to none of them.
 - Time estimation is code-first: journeys to known destinations use
   deterministic distance/speed/terrain math; combat, rest, and Take 20 use
   fixed values. AI is only called for freeform actions (wait, craft, etc.)
+- In combat, TimeKeeper consults canonical post-mutation combat truth rather
+  than trusting the lagging cached combat snapshot, because it runs after
+  mutations but before context refresh
 - The clock is advanced by GameClock (a code-only utility), never by AI —
   deterministic hour arithmetic eliminates desynchronization
 - Light conditions (dawn/day/dusk/night) are derived from `current_hour` via
@@ -364,20 +367,20 @@ nature immediately obvious:
 scoped to one responsibility. If you can't name it without a compound
 word, the step is probably doing too much.
 
-Current AI step names: Sequencer, UnifiedEvaluation, SanityChecker
-(capability check + world consistency check), Mechanic, Momentum,
-Social Expansion, TimeKeeper, Chronicler, Narrate, Intake, DM Query.
+Current AI step names: Sequencer, SanityChecker
+(capability check + world consistency check), Mechanic, Combat GM, Momentum,
+Social Expansion, Chronicler, Narrate, Intake, DM Query.
 
 **Code-only steps get role/object names** — functional, clearly
 non-creative, conveying "no AI judgment here."
 
 Current code-only names: Stagehand, AdventureLoopResolution, GameClock, Harbinger,
-Mutations.
+Mutations, World Turn, CombatMechanicResolution.
 
 **Why this matters:** when debugging a pipeline, the name tells you
 whether a step's output is deterministic (code) or probabilistic (AI).
-If the Stagehand produced wrong data, it's a code bug. If the Verdict
-produced wrong data, it's a prompt or model issue. The naming convention
+If the Stagehand produced wrong data, it's a code bug. If Mechanic or
+Combat GM produced wrong data, it's a prompt or model issue. The naming convention
 encodes this diagnostic shortcut into every conversation about the
 pipeline.
 

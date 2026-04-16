@@ -1003,6 +1003,10 @@ stops applying further NPC consequences if combat ends or the player is
 dead/incapacitated mid-round, so later NPCs do not keep damaging a resolved
 encounter.
 
+When `instant_death` is disabled, World Turn also owns PF1e-style dying bleed-out:
+code applies the per-round HP loss and stabilization check before NPC fan-out,
+and can mark `player_death` / close combat without waiting for AI to infer it.
+
 ---
 
 ## Error Handling
