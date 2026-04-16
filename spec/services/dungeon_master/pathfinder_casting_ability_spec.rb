@@ -20,4 +20,14 @@ RSpec.describe DungeonMaster::PathfinderCastingAbility do
       expect(described_class.primary_for_class("fighter")).to be_nil
     end
   end
+
+  describe ".casting_ability_for_slug" do
+    it "returns intelligence for wizard slug" do
+      expect(described_class.casting_ability_for_slug("wizard")).to eq(:intelligence)
+    end
+
+    it "returns nil for an unknown slug" do
+      expect(described_class.casting_ability_for_slug("commoner")).to be_nil
+    end
+  end
 end

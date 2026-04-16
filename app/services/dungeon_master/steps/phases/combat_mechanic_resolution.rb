@@ -15,9 +15,6 @@ module DungeonMaster
           "will" => "Will"
         }.freeze
 
-        # Code-authoritative fixed DCs keyed by non-numeric ref string from the model.
-        FIXED_DC_REF = {}.freeze
-
         class << self
           # @param parsed [Hash] symbolized parsed_response from evaluator
           def call(parsed:, domain:, adventure:, sheet:, log: nil)
@@ -44,7 +41,6 @@ module DungeonMaster
 
           def normalize_player_roll(raw, idx, combat_ctx:, adventure:, sheet:)
             type = raw[:type].to_s
-            base = { domain: "combat" }.merge(raw.except(:dc_formula))
 
             case type
             when "attack_roll"
@@ -62,7 +58,8 @@ module DungeonMaster
                 player_sheet: sheet,
                 adventure: adventure
               )
-              base.merge(dc: dc)
+              attrs = raw.except(:dc_formula, :defense_kind)
+              { domain: "combat" }.merge(attrs).merge(dc: dc)
             when "saving_throw"
               if raw[:dc].present?
                 raise DungeonMaster::CombatMechanicResolutionError.new(
@@ -74,7 +71,8 @@ module DungeonMaster
               dc = resolve_dc_formula(raw[:dc_formula], idx, adventure: adventure, sheet: sheet, combat_ctx: combat_ctx)
               save = raw[:save].to_s.downcase
               skill = SAVE_TO_SKILL_LABEL[save] || save.capitalize
-              base.merge(dc: dc, save: save, skill: skill)
+              attrs = raw.except(:dc_formula)
+              { domain: "combat" }.merge(attrs).merge(dc: dc, save: save, skill: skill)
             else
               raise DungeonMaster::CombatMechanicResolutionError.new(
                 "unsupported player_roll type: #{type.inspect}",
@@ -87,8 +85,6 @@ module DungeonMaster
             f = formula.is_a?(Hash) ? formula.deep_symbolize_keys : {}
             kind = f[:kind].to_s
             case kind
-            when "fixed"
-              resolve_fixed_dc(f, idx)
             when "spell_dc"
               resolve_spell_dc(f, sheet)
             when "ability_dc"
@@ -99,18 +95,6 @@ module DungeonMaster
                 code: :unsupported_dc_formula
               )
             end
-          end
-
-          def resolve_fixed_dc(f, idx)
-            ref = f[:ref].to_s
-            dc = FIXED_DC_REF[ref]
-            unless dc
-              raise DungeonMaster::CombatMechanicResolutionError.new(
-                "unknown fixed dc ref: #{ref.inspect} (roll index #{idx})",
-                code: :unknown_fixed_ref
-              )
-            end
-            dc.to_i
           end
 
           def resolve_spell_dc(f, sheet)
@@ -128,22 +112,26 @@ module DungeonMaster
 
             caster = f[:caster].to_s.presence || "player"
             unless caster == "player"
-              raise DungeonMaster::CombatMechanicResolutionError,
-                    "only player caster supported for spell_dc"
+              raise DungeonMaster::CombatMechanicResolutionError.new(
+                "spell_dc only supports player-cast spells (caster must be \"player\"); use ability_dc for NPC abilities",
+                code: :unsupported_npc_spell_dc
+              )
             end
 
             cls = sheet.character_class.to_s
-            ability = DungeonMaster::PathfinderCastingAbility.primary_for_class(cls)
-            unless ability
-              raise DungeonMaster::CombatMechanicResolutionError,
-                    "no primary casting class on sheet for spell_dc"
-            end
-
             levels = spell.class_levels || {}
             slug = cls.downcase.split(%r{[/\s]+}).find { |s| levels.key?(s) }
             unless slug
               raise DungeonMaster::CombatMechanicResolutionError,
                     "spell #{name} not on character class #{cls.inspect}"
+            end
+
+            ability = DungeonMaster::PathfinderCastingAbility.casting_ability_for_slug(slug)
+            unless ability
+              raise DungeonMaster::CombatMechanicResolutionError.new(
+                "no casting ability mapped for class #{slug.inspect} (spell #{name.inspect})",
+                code: :no_casting_ability_for_class
+              )
             end
 
             spell_level = levels[slug].to_i
@@ -178,13 +166,25 @@ module DungeonMaster
             end
           end
 
+          ABILITY_NAMES = %w[strength dexterity constitution intelligence wisdom charisma].freeze
+
           def ability_modifier_from_sheet(sheet, ability)
+            name = ability.to_s
+            unless ABILITY_NAMES.include?(name)
+              raise DungeonMaster::CombatMechanicResolutionError,
+                    "invalid ability #{ability.inspect} for modifier"
+            end
+            unless sheet.respond_to?(name)
+              raise DungeonMaster::CombatMechanicResolutionError,
+                    "sheet does not expose ability #{name.inspect}"
+            end
+
             ds = sheet.derived_stats || {}
             mods = ds["mods"] || {}
-            m = mods[ability.to_s]
+            m = mods[name]
             return m.to_i if m
 
-            score = sheet.public_send(ability)
+            score = sheet.public_send(name)
             ((score.to_i - 10) / 2).floor
           end
 

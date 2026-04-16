@@ -35,5 +35,14 @@ module DungeonMaster
       slug = character_class.to_s.downcase.split(%r{[/\s]+}).find { |s| CLASS_TO_CASTING_ABILITY.key?(s) }
       CLASS_TO_CASTING_ABILITY[slug] if slug
     end
+
+    # Casting stat for a spell list identified by +slug+ (keys in SpellDefinition#class_levels), e.g. "wizard".
+    # Use this when resolving spell DCs so multiclass characters use the stat for the list that grants the spell.
+    # @return [Symbol, nil]
+    def casting_ability_for_slug(slug)
+      return nil if slug.blank?
+
+      CLASS_TO_CASTING_ABILITY[slug.to_s.downcase]
+    end
   end
 end
