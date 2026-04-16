@@ -17,17 +17,29 @@ module DungeonMaster
             micro_ctx      = domain == "buff" ? @sheet&.active_buffs : @adventure.send("#{domain}_context")
             creature_stats = domain == "buff" ? nil : CharacterBlock.creature_stats_for(@adventure)
             rules_text     = domain_rules_text_for(intent, domain)
-            instructions   = PromptRenderer.render_partial("mechanical_evaluation/_#{domain}")
 
-            system_prompt_base = PromptRenderer.render("mechanical_evaluation",
-              domain:              domain,
-              character_block:     char_block,
-              micro_context:       micro_ctx.present? ? micro_ctx.to_json : nil,
-              creature_stats:      creature_stats,
-              previous_summaries:  [],
-              rules_text:          rules_text,
-              domain_instructions: instructions,
-              prior_outcomes:      prior)
+            system_prompt_base = if domain == "combat"
+              PromptRenderer.render("combat_mechanic",
+                domain:              domain,
+                character_block:     char_block,
+                micro_context:       micro_ctx.present? ? micro_ctx.to_json : nil,
+                creature_stats:      creature_stats,
+                previous_summaries:  [],
+                rules_text:          rules_text,
+                prior_outcomes:      prior)
+            else
+              instructions = PromptRenderer.render_partial("mechanical_evaluation/_#{domain}")
+
+              PromptRenderer.render("mechanical_evaluation",
+                domain:              domain,
+                character_block:     char_block,
+                micro_context:       micro_ctx.present? ? micro_ctx.to_json : nil,
+                creature_stats:      creature_stats,
+                previous_summaries:  [],
+                rules_text:          rules_text,
+                domain_instructions: instructions,
+                prior_outcomes:      prior)
+            end
 
             {
               system_prompt_base:     system_prompt_base,
@@ -45,10 +57,36 @@ module DungeonMaster
             domain = ordered_domains[idx] || result.dig("meta", "domain")
             parsed = (result["parsed_response"] || {}).deep_symbolize_keys
 
-            rolls        = Array(parsed[:player_rolls]).map { |r| r.deep_symbolize_keys.merge(domain: domain) }
-            npc_actions  = Array(parsed[:npc_actions]).map(&:deep_symbolize_keys)
-            consequences = Array(parsed[:consequences]).map(&:deep_symbolize_keys)
-            summary      = parsed[:mechanical_summary].to_s
+            if domain.to_s == "combat"
+              merged = begin
+                CombatMechanicResolution.call(
+                  parsed: parsed,
+                  domain: domain,
+                  adventure: @adventure,
+                  sheet: @sheet,
+                  log: @log
+                )
+              rescue DungeonMaster::CombatMechanicResolutionError => e
+                @log&.play_log!("combat_mech_eval_resolution_error", e.message)
+                {
+                  domain:             domain,
+                  player_rolls:       [],
+                  npc_actions:        [],
+                  consequences:       Array(parsed[:consequences]).map(&:deep_symbolize_keys),
+                  mechanical_summary: "(combat resolution failed: #{e.message})"
+                }
+              end
+
+              rolls        = merged[:player_rolls]
+              npc_actions  = merged[:npc_actions]
+              consequences = merged[:consequences]
+              summary      = merged[:mechanical_summary].to_s
+            else
+              rolls        = Array(parsed[:player_rolls]).map { |r| r.deep_symbolize_keys.merge(domain: domain) }
+              npc_actions  = Array(parsed[:npc_actions]).map(&:deep_symbolize_keys)
+              consequences = Array(parsed[:consequences]).map(&:deep_symbolize_keys)
+              summary      = parsed[:mechanical_summary].to_s
+            end
 
             next if rolls.empty? && npc_actions.empty? && consequences.empty? && summary.blank?
 
