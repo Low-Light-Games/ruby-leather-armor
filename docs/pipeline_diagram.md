@@ -63,7 +63,7 @@ flowchart TB
             PE2 --> PE3["Phase 3: POST /fan_out — roll_qualifier ×N  ☆ AI ×N"]
         end
 
-        PE3 --> NM{needs_mechanics?}
+        PE3 --> NM{"affected_contexts.any?"}
     end
 
     NM -->|yes| SANITY_GATE
@@ -359,7 +359,6 @@ Three sequential HTTP calls to the **Node evaluator microservice** (`evaluator/`
 All Node results are persisted via `@log.ai_log!` — `PlayLog` and `AiUsageRecord` records are created identically to any other AI step. On Node 4xx/5xx, `partial_results` from the error body are logged before raising `AiError`.
 
 The output `intent` hash (from either path) includes:
-- `needs_mechanics` (bool) — any domain requires dice rolls.
 - `expand_scene` (bool) — significant social interaction warrants a scene expansion.
 - `affected_contexts` (array) — domain names that this action touches.
 - `macro_significant` (bool) — major story beat (quest completion, boss defeat, critical secret).
@@ -368,7 +367,7 @@ The output `intent` hash (from either path) includes:
 
 ---
 
-### Step 6 — Mechanical path (needs_mechanics = true)
+### Step 6 — Mechanical path (one or more affected domains)
 
 The **sanity gate** validates the action before any mechanics are resolved. Its behaviour depends on the adventure's `skip_world_sanity_check` flag:
 
@@ -401,7 +400,7 @@ The **sanity gate** validates the action before any mechanics are resolved. Its 
 
 ---
 
-### Step 7 — Non-mechanical path (needs_mechanics = false)
+### Step 7 — No-domain path (no affected domains)
 
 **World consistency check** — Same AI call as above, but runs alone (no parallel threads). Skipped entirely when the adventure's `skip_world_sanity_check` flag is set; the pipeline proceeds directly to the expansion/TimeKeeper branch.
 
@@ -659,7 +658,7 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | **↳ mechanical_evaluation** | AI ×N (sequential, Node) + code normalization for combat | Per-domain mechanical resolution for each affected domain. `combat` uses `combat_mechanic` and app-side normalization for AC/save DC resolution; other domains use the generic mechanical_evaluation prompt with per-domain partials. |
 | **↳ roll_qualifier** | AI ×N (parallel, Node) | Take 10/20 eligibility + situational modifiers per domain that has rolls. |
 | **World consistency check** | AI | Validate referenced entities exist in current scene. Runs in the sanity gate (mechanics path) or standalone (non-mechanics path). Bypassed on both paths when the adventure's `skip_world_sanity_check` flag is set. |
-| **Capability check** | AI | Validate player has required spells/feats/items. Runs in sanity gate (needs_mechanics only). Always runs regardless of `skip_world_sanity_check`. |
+| **Capability check** | AI | Validate player has required spells/feats/items. Runs in the sanity gate whenever one or more domains are affected. Always runs regardless of `skip_world_sanity_check`. |
 | **Auto-success filter** | Code | Remove rolls the character cannot possibly fail (DC ≤ 0, guaranteed modifier, Take 10 covers DC). Never removes attack rolls. |
 | **Momentum** | AI | Non-mechanical outcome: what happened + affected contexts + optional mutations. |
 | **Social Expansion** | AI | Immersive NPC scene for significant social interactions (`expand_scene` from evaluation). Skips TimeKeeper. |

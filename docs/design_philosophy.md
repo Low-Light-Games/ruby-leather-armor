@@ -506,6 +506,13 @@ authoritative** — when the intervention is based on deterministic data
 (character sheet stats, database records, game rules with no ambiguity)
 rather than on matching text or numbers the AI generated.
 
+**Prompt-scope corollary:** when an AI step keeps emitting cross-domain or
+contradictory output, first tighten the prompt around what that step
+*does own*. Prefer narrow, positive scope over long lists of forbidden
+behavior. Use explicit negative instructions only for repeated,
+high-cost confusions where the ownership boundary must be reinforced
+(for example traversal vs. stealth).
+
 **Examples:**
 
 - **Correct (deterministic):** `filter_auto_success_rolls!` removes rolls
