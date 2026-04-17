@@ -37,6 +37,7 @@ Your job is to update ONLY the <%= @context_key %> object based on what just hap
 <% end -%>
 9. If a CANONICAL HP section is present, use those exact HP values. Do not estimate.
 10. If CANONICAL COMBAT PARTICIPANTS are present, preserve every `creature_sheet_id` exactly. Do not invent, remove, or rewrite them.
+11. Before you respond, re-read CANONICAL HP and MUTATIONS APPLIED together: if no hostile NPC remains in the fight, `active` must be false.
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
