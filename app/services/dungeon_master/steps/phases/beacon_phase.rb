@@ -96,7 +96,8 @@ module DungeonMaster
               expand_scene:      domain == "social" && d[:expand_scene] == true,
               transition:        d[:transition],
               destination:       d[:destination],
-              combatants:        Array(d[:combatants])
+              combatants:        Array(d[:combatants]),
+              count:             normalized_combatant_count(d[:count])
             }
 
             next unless is_affected
@@ -114,7 +115,8 @@ module DungeonMaster
             domain_results["combat"] = (domain_results["combat"] || {}).merge(
               domain:          "combat",
               affected:        true,
-              needs_mechanics: true
+              needs_mechanics: true,
+              count:           nil
             )
             affected["combat"] = true
             needs_mechanics = true
@@ -144,6 +146,11 @@ module DungeonMaster
             combat_ending:     combat_ending,
             domain_results:    domain_results
           }
+        end
+
+        def normalized_combatant_count(raw)
+          value = raw.to_i
+          value.positive? ? value : nil
         end
       end
     end
