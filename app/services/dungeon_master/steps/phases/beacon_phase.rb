@@ -86,15 +86,17 @@ module DungeonMaster
 
           ParallelEvaluation::DOMAINS.each do |domain|
             d          = by_domain[domain] || {}
-            is_affected = d[:affected] == true
+            combat_now = domain == "combat" ? d[:combat_now] == true : false
+            is_affected = domain == "combat" ? combat_now : d[:affected] == true
+            combat_transition = combat_now ? "combat_started" : d[:transition]
 
             domain_results[domain] = {
               domain:            domain,
               affected:          is_affected,
-              needs_mechanics:   d[:needs_mechanics] == true,
+              needs_mechanics:   domain == "combat" ? combat_now : d[:needs_mechanics] == true,
               macro_significant: d[:macro_significant] == true,
               expand_scene:      domain == "social" && d[:expand_scene] == true,
-              transition:        d[:transition],
+              transition:        combat_transition,
               destination:       d[:destination],
               combatants:        normalized_combatants(d[:combatants], d[:count])
             }
@@ -102,9 +104,9 @@ module DungeonMaster
             next unless is_affected
 
             affected[domain]   = true
-            needs_mechanics    = true if d[:needs_mechanics] == true
+            needs_mechanics    = true if domain == "combat" ? combat_now : d[:needs_mechanics] == true
             macro_significant  = true if d[:macro_significant] == true
-            transition       ||= d[:transition]
+            transition       ||= combat_transition
             destination      ||= d[:destination] if domain == "traversal"
           end
 

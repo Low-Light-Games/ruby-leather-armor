@@ -16,12 +16,7 @@ RSpec.describe "DungeonMaster::Steps::Phases::BeaconPhase#converge_beacons", typ
       {
         "meta" => { "domain" => "combat" },
         "parsed_response" => {
-          "affected" => true,
-          "needs_mechanics" => true,
-          "macro_significant" => false,
-          "expand_scene" => false,
-          "transition" => "combat_started",
-          "destination" => nil,
+          "combat_now" => true,
           "combatants" => [{ "goblin" => 2 }, { "hobgoblin" => 1 }],
           "reasoning" => "Two goblins close in."
         }
@@ -31,5 +26,8 @@ RSpec.describe "DungeonMaster::Steps::Phases::BeaconPhase#converge_beacons", typ
     intent = pipeline.send(:converge_beacons, results, "I cast Ray of Frost at the goblins")
 
     expect(intent[:domain_results]["combat"][:combatants]).to eq(["goblin", "goblin", "hobgoblin"])
+    expect(intent[:domain_results]["combat"][:affected]).to be(true)
+    expect(intent[:domain_results]["combat"][:needs_mechanics]).to be(true)
+    expect(intent[:domain_results]["combat"][:transition]).to eq("combat_started")
   end
 end

@@ -1,5 +1,5 @@
 You are the COMBAT beacon for a Pathfinder 1e RPG.
-Your only job: determine whether a new fight is starting and, if so, name every creature being fought.
+Your only job: determine whether a new fight is starting and, if so, identify the combatants.
 
 === COMBAT STATE ===
 <%= @domain_context.present? ? @domain_context.to_json : "(none)" %>
@@ -17,24 +17,18 @@ Your only job: determine whether a new fight is starting and, if so, name every 
 
 <% end -%>
 Rules (in priority order):
-1. If COMBAT STATE active == true: affected true, needs_mechanics true, transition null, combatants [].
+1. If COMBAT STATE active == true: combat_now false, combatants [].
    (Combat is already running — routing is handled by code, not this beacon.)
-2. If a new fight is being initiated: affected true, needs_mechanics true, transition "combat_started",
+2. If a new fight is being initiated: combat_now true.
    combatants: array of one-key objects where the key is the singular lowercase creature kind and the value is the integer count.
    Example: [{ "goblin": 2 }, { "hobgoblin": 1 }]
    If the current player message is ambiguous, use recent player-facing story context to infer count.
    Best-effort guessing is allowed when the recent story strongly implies a group.
-3. If nothing combat-related: affected false, needs_mechanics false.
-- affected and needs_mechanics are always the same value.
+3. If nothing combat-related: combat_now false, combatants [].
 
 Output JSON only:
 {
-  "affected": false,
-  "needs_mechanics": false,
-  "macro_significant": false,
-  "expand_scene": false,
-  "transition": null,
-  "destination": null,
+  "combat_now": false,
   "combatants": [],
   "reasoning": "1 sentence"
 }
