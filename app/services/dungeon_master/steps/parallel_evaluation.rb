@@ -156,6 +156,22 @@ module DungeonMaster
           creature_data: prepared[:creature_data]
         )
 
+        @log.play_log!(
+          "warmaster",
+          "Pending combat roster prepared: #{prepared[:creature_data].size} creature(s)",
+          parsed_response: {
+            pending_combat: true,
+            creature_count: prepared[:creature_data].size,
+            creatures: prepared[:creature_data].map do |creature|
+              {
+                name: creature[:name],
+                creature_sheet_id: creature[:creature_sheet_id],
+                initiative: creature[:initiative]
+              }
+            end
+          }
+        )
+
         intent.merge(creature_data: prepared[:creature_data])
       end
 
