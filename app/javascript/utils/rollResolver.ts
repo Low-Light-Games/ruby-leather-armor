@@ -1,11 +1,27 @@
 import type { RollRequest, DerivedStats, DerivedSkill } from '../types'
 import { formatMod, ABILITY_ABBR } from './formatting'
 
-export interface ResolvedRoll {
-  modifier: number
-  label: string
-  modifierLabel: string
-}
+export type ResolvedRoll =
+  | {
+      kind: 'd20'
+      modifier: number
+      label: string
+      modifierLabel: string
+    }
+  | {
+      kind: 'spell_damage'
+      spellId: string
+      label: string
+    }
+  | {
+      kind: 'weapon_damage'
+      itemId: string
+      label: string
+    }
+  | {
+      kind: 'unarmed_damage'
+      label: string
+    }
 
 const SAVE_MAP: Record<string, { key: keyof Pick<DerivedStats, 'fort' | 'ref' | 'will'>; label: string }> = {
   fortitude: { key: 'fort', label: 'Fortitude Save' },
@@ -49,7 +65,7 @@ export function resolveRollRequest(req: RollRequest, ds: DerivedStats): Resolved
   }
 
   if (rollType === 'attack_roll' || rollType === 'attack') {
-    return resolveAttack(skillLower, ds)
+    return resolveAttack(skillLower, ds, req)
   }
 
   if (rollType === 'ability_check' || rollType === 'ability') {
@@ -57,11 +73,11 @@ export function resolveRollRequest(req: RollRequest, ds: DerivedStats): Resolved
   }
 
   if (rollType === 'initiative') {
-    return { modifier: ds.initiative, label: 'Initiative', modifierLabel: `Init ${formatMod(ds.initiative)}` }
+    return { kind: 'd20', modifier: ds.initiative, label: 'Initiative', modifierLabel: `Init ${formatMod(ds.initiative)}` }
   }
 
   if (rollType === 'damage_roll' || rollType === 'damage') {
-    return null
+    return resolveDamage(req)
   }
 
   // Fallback: try skill match, then save, then ability
@@ -79,6 +95,7 @@ function resolveSkillCheck(skillLower: string, skillName: string, ds: DerivedSta
   if (!skill) return null
 
   return {
+    kind: 'd20',
     modifier: skill.total,
     label: `${skill.name} Check`,
     modifierLabel: `Skill ${formatMod(skill.total)}`,
@@ -90,18 +107,37 @@ function resolveSave(skillLower: string, ds: DerivedStats): ResolvedRoll | null 
   if (!entry) return null
 
   const mod = ds[entry.key]
-  return { modifier: mod, label: entry.label, modifierLabel: `${entry.label.split(' ')[0]} ${formatMod(mod)}` }
+  return {
+    kind: 'd20',
+    modifier: mod,
+    label: entry.label,
+    modifierLabel: `${entry.label.split(' ')[0]} ${formatMod(mod)}`
+  }
 }
 
-function resolveAttack(skillLower: string, ds: DerivedStats): ResolvedRoll | null {
-  if (skillLower.includes('ranged')) {
+function resolveAttack(_skillLower: string, ds: DerivedStats, req?: RollRequest): ResolvedRoll | null {
+  const mode = req?.attack_mode?.toLowerCase()
+
+  if (mode === 'ranged' || mode === 'ranged_touch') {
     return {
+      kind: 'd20',
       modifier: ds.ranged_attack,
-      label: 'Ranged Attack',
+      label: mode === 'ranged_touch' ? 'Ranged Touch Attack' : 'Ranged Attack',
       modifierLabel: `BAB ${formatMod(ds.bab)} + DEX ${formatMod(ds.mods.dexterity)}`,
     }
   }
+
+  if (mode === 'melee' || mode === 'melee_touch') {
+    return {
+      kind: 'd20',
+      modifier: ds.melee_attack,
+      label: mode === 'melee_touch' ? 'Melee Touch Attack' : 'Melee Attack',
+      modifierLabel: `BAB ${formatMod(ds.bab)} + STR ${formatMod(ds.mods.strength)}`,
+    }
+  }
+
   return {
+    kind: 'd20',
     modifier: ds.melee_attack,
     label: 'Melee Attack',
     modifierLabel: `BAB ${formatMod(ds.bab)} + STR ${formatMod(ds.mods.strength)}`,
@@ -114,5 +150,23 @@ function resolveAbilityCheck(skillLower: string, ds: DerivedStats): ResolvedRoll
 
   const mod = ds.mods[abilityKey] ?? 0
   const abbr = ABILITY_ABBR[abilityKey as keyof typeof ABILITY_ABBR] ?? abilityKey.slice(0, 3).toUpperCase()
-  return { modifier: mod, label: `${abbr} Check`, modifierLabel: `${abbr} ${formatMod(mod)}` }
+  return { kind: 'd20', modifier: mod, label: `${abbr} Check`, modifierLabel: `${abbr} ${formatMod(mod)}` }
+}
+
+function resolveDamage(req: RollRequest): ResolvedRoll | null {
+  const sourceType = req.source_type?.toLowerCase()
+
+  if (sourceType === 'spell' && req.source_id) {
+    return { kind: 'spell_damage', spellId: req.source_id, label: req.description }
+  }
+
+  if (sourceType === 'weapon' && req.source_id) {
+    return { kind: 'weapon_damage', itemId: req.source_id, label: req.description }
+  }
+
+  if (sourceType === 'unarmed') {
+    return { kind: 'unarmed_damage', label: req.description }
+  }
+
+  return null
 }

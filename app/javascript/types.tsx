@@ -332,6 +332,10 @@ export interface RollRequest {
   dc?: number
   description: string
   domain?: string
+  attack_mode?: string
+  defense_kind?: string
+  source_type?: string
+  source_id?: string
   damage?: string
   damage_type?: string
   target?: string

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import type { AdventureMessage, DerivedStats, AdventureSheet } from '../../types'
+import type { DamageRollResult } from '../../rules/dice'
 import RollResultModal, { RollResultDisplay } from '../RollResultModal'
 import { useAuth } from '../../contexts/AuthContext'
 import { useAdventureMessages } from './hooks/useAdventureMessages'
@@ -62,6 +63,7 @@ export const AdventureChat = ({
   const [input, setInput] = useState('')
   const [askDm, setAskDm] = useState(false)
   const [rollModalDisplay, setRollModalDisplay] = useState<RollResultDisplay | null>(null)
+  const [damageModalDisplay, setDamageModalDisplay] = useState<DamageRollResult | null>(null)
   const [rollModalTargetIdx, setRollModalTargetIdx] = useState<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -96,14 +98,26 @@ export const AdventureChat = ({
 
   const handleRollModal = (index: number, display: RollResultDisplay) => {
     setRollModalTargetIdx(index)
+    setDamageModalDisplay(null)
     setRollModalDisplay(display)
   }
 
+  const handleDamageRollModal = (index: number, damage: DamageRollResult) => {
+    setRollModalTargetIdx(index)
+    setRollModalDisplay(null)
+    setDamageModalDisplay(damage)
+  }
+
   const handleRollModalClose = () => {
-    if (rollModalDisplay && rollModalTargetIdx != null) {
-      setRollValue(rollModalTargetIdx, rollModalDisplay.result.total, 'roll')
+    if (rollModalTargetIdx != null) {
+      if (rollModalDisplay) {
+        setRollValue(rollModalTargetIdx, rollModalDisplay.result.total, 'roll')
+      } else if (damageModalDisplay) {
+        setRollValue(rollModalTargetIdx, damageModalDisplay.total, 'roll')
+      }
     }
     setRollModalDisplay(null)
+    setDamageModalDisplay(null)
     setRollModalTargetIdx(null)
   }
 
@@ -166,10 +180,12 @@ export const AdventureChat = ({
         <PendingRollsPanel
           pendingRolls={pendingRolls}
           derivedStats={derivedStats}
+          adventureSheet={adventureSheet}
           onRollValueChange={setRollValue}
           onSubmit={handleRollsSubmit}
           allRollsFilled={allRollsFilled}
           onRollModal={handleRollModal}
+          onDamageRollModal={handleDamageRollModal}
         />
       )}
 
@@ -182,6 +198,7 @@ export const AdventureChat = ({
 
       <RollResultModal
         roll={rollModalDisplay}
+        damageRoll={damageModalDisplay}
         onClose={handleRollModalClose}
       />
 
