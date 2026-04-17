@@ -20,6 +20,9 @@ Your job is to resolve combat consequences accurately (hits, damage, conditions,
 === ROLL RESULTS ===
 <%= @roll_results.present? ? @roll_results : "(no rolls — resolve from declared action if appropriate)" %>
 
+=== DETERMINISTIC COMBAT FACTS (code-owned; outcome must match these exactly) ===
+<%= @deterministic_facts.presence || "(none)" %>
+
 === PENDING CONSEQUENCES ===
 <%= @consequences.presence || "(none)" %>
 
@@ -51,6 +54,7 @@ Your job is to resolve combat consequences accurately (hits, damage, conditions,
 <% end %>
 === INSTRUCTIONS ===
 - Determine factual mechanical outcomes from the rolls and battlefield (hits, crits, damage, saves, conditions).
+- If the deterministic combat facts say an attack missed, `outcome` must describe a miss. If they say it hit, `outcome` must describe a hit. Never contradict the code-owned totals vs AC.
 - Apply PF1e accurately: threatened squares, attacks of opportunity (only when the declared action provokes), reach, soft cover approximations from terrain text.
 - Do NOT re-resolve NPC initiative-turn attacks here — world turn handles routine NPC actions after the player. Only adjudicate the player's action and immediate reactions tied to it.
 - Mutations must include standard player/npc HP and conditions. When position or terrain changes, list ordered `battlefield_patches` (see schema).

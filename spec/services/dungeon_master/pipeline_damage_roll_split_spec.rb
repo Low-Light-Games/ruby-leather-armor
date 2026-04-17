@@ -6,6 +6,8 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
   include_context "with mocked ai"
   include_context "with evaluator stubs"
 
+  let(:ai_responses) { AI_STEP_RESPONSES.merge("combat_gm" => combat_gm_response) }
+
   let(:story) { create(:story) }
   let(:user) { create(:user) }
   let(:adventure) { create(:adventure, user: user, story: story) }
@@ -23,6 +25,13 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
       hp: 8, max_hp: 8, constitution: 10,
       strength: 10, dexterity: 14, intelligence: 6, wisdom: 8, charisma: 8
     )
+  end
+  let(:combat_gm_response) do
+    {
+      outcome: "Contradictory model prose.",
+      reasoning: "stub",
+      mutations: {}
+    }.to_json
   end
 
   def paused_loop_for(action_text)
@@ -302,5 +311,52 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
     expect(result[:world_turn_lines]).to eq(["Goblin attacks Player: hit for 2."])
     advancement = result.dig(:mutations, :combat_state_advancement) || result.dig(:mutations, "combat_state_advancement")
     expect(advancement).to be_present
+  end
+
+  it "overrides contradictory combat GM prose with a deterministic miss summary" do
+    adventure.update!(
+      combat_context: {
+        "active" => true,
+        "participants" => [{ "name" => "Player" }, { "name" => "Goblin" }],
+        "turn_order" => ["Player", "Goblin"],
+        "current_turn" => "Player"
+      }
+    )
+    allow(pipeline).to receive(:resolve_npc_actions).and_return("")
+    allow(pipeline).to receive(:run_time_keeper).and_return({ encounter: false })
+    allow(pipeline).to receive(:run_context_updates).and_return(nil)
+    allow(pipeline).to receive(:maybe_run_world_turn).and_wrap_original do |_original, **kwargs|
+      kwargs
+    end
+
+    contradictory = {
+      outcome: "Meein M'ecks successfully hits the goblin with an 8 against AC 12.",
+      reasoning: "stub",
+      mutations: {
+        player: { hp_change: 0, conditions_add: [], conditions_remove: [], buffs_add: [], buffs_remove: [] },
+        npcs: [{ name: "Goblin", creature_sheet_id: goblin.id, hp_change: 0, conditions_add: [], conditions_remove: [] }],
+        inventory: {},
+        battlefield_patches: [],
+        action_economy_delta: { spend_standard: true, spend_move: false, spend_swift: false, spend_full_round: false },
+        items_consumed: [],
+        spells_used: ["Ray of Frost"]
+      }
+    }.to_json
+    ai_responses["combat_gm"] = contradictory
+
+    result = pipeline.send(
+      :finish_resolution,
+      { intention: "I cast Ray of Frost at it.", affected_contexts: ["combat"], macro_significant: false, domain_results: {} },
+      {
+        player_rolls: [{ request_id: "atk-9", type: "attack_roll", dc: 12, defense_kind: "touch_ac", description: "Ray of Frost attack", damage: "1d3", damage_type: "cold", target: "Goblin" }],
+        npc_actions: [],
+        consequences: [],
+        mechanical_summaries: ["Player casts Ray of Frost targeting the Goblin, requiring a ranged touch attack roll and dealing cold damage on a hit."]
+      },
+      "Rolled 8 for: Ray of Frost attack",
+      submitted_rolls: [{ request_id: "atk-9", roll_value: 8, roll_description: "Ray of Frost attack" }]
+    )
+
+    expect(result[:action_outcome]).to eq("Ray of Frost attack vs Goblin: miss (8 vs Touch AC 12).")
   end
 end

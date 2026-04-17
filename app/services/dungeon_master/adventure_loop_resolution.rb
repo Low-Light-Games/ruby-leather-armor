@@ -88,6 +88,7 @@ module DungeonMaster
       end
 
       roll_results, submitted_rolls = merge_roll_chain_results(merged, roll_results, submitted_rolls)
+      verdict_roll_requests = merge_roll_chain_requests(merged, current_roll_requests)
 
       # In active combat, world turn resolves routine NPC turns. Only immediate
       # reactions (see combat_mechanic prompt; attack_of_opportunity npc_actions) pass through here with the
@@ -98,7 +99,11 @@ module DungeonMaster
       )
       npc_results = resolve_npc_actions(effective_npc_actions)
       verdict_result = if combat_active?
-                         run_combat_gm(intent, merged, roll_results: roll_results, npc_results: npc_results)
+                         run_combat_gm(intent, merged,
+                           roll_results: roll_results,
+                           npc_results: npc_results,
+                           roll_requests: verdict_roll_requests,
+                           submitted_rolls: submitted_rolls)
                        else
                          run_mechanic(intent, merged, roll_results: roll_results, npc_results: npc_results)
                        end
@@ -152,7 +157,8 @@ module DungeonMaster
           roll_chain: {
             phase: "damage",
             prior_roll_results: roll_results,
-            prior_submitted_rolls: Array(submitted_rolls).map { |r| r.is_a?(Hash) ? r.deep_dup : r }
+            prior_submitted_rolls: Array(submitted_rolls).map { |r| r.is_a?(Hash) ? r.deep_dup : r },
+            prior_roll_requests: Array(current_roll_requests).map { |r| r.is_a?(Hash) ? r.deep_dup : r }
           }
         )
       }
@@ -204,6 +210,14 @@ module DungeonMaster
                                  Array(submitted_rolls).map { |r| r.is_a?(Hash) ? r.deep_dup : r }
 
       [combined_results, combined_submitted_rolls]
+    end
+
+    def merge_roll_chain_requests(merged, current_roll_requests)
+      chain = merged[:roll_chain]
+      return Array(current_roll_requests).map { |r| r.is_a?(Hash) ? r.deep_symbolize_keys : r } unless chain.is_a?(Hash)
+
+      Array(chain[:prior_roll_requests]).map { |r| r.is_a?(Hash) ? r.deep_symbolize_keys : r } +
+        Array(current_roll_requests).map { |r| r.is_a?(Hash) ? r.deep_symbolize_keys : r }
     end
 
     def normalize_roll_label(label)
