@@ -62,19 +62,20 @@ module DungeonMaster
           effect = spell_damage_effect_for(spell)
           return [] unless effect
 
-          attack_modes_for_spell(spell).map do |attack_mode|
-            {
-              id: spell_option_id(spell.id, attack_mode),
-              label: spell_label_for(spell.name, attack_mode),
-              attack_mode: attack_mode,
-              defense_kind: "touch_ac",
-              source_type: "spell",
-              source_id: spell.id,
-              damage: effect["dice"],
-              damage_type: effect["damageType"] || effect["damage_type"],
-              action_cost: "standard"
-            }.compact
-          end
+          attack_mode = spell_attack_mode_for(spell)
+          return [] unless attack_mode
+
+          [{
+            id: "spell:#{spell.id}",
+            label: spell.name,
+            attack_mode: attack_mode,
+            defense_kind: "touch_ac",
+            source_type: "spell",
+            source_id: spell.id,
+            damage: effect["dice"],
+            damage_type: effect["damageType"] || effect["damage_type"],
+            action_cost: "standard"
+          }.compact]
         end
 
         def spell_damage_effect_for(spell)
@@ -85,19 +86,19 @@ module DungeonMaster
           end
         end
 
-        def attack_modes_for_spell(spell)
+        def spell_attack_mode_for(spell)
           summary = [spell.summary, spell_effect_descriptions(spell)].compact.join(" ").downcase
 
           if summary.include?("use as touch or ranged touch") ||
              summary.include?("touch attack or throw as ranged touch")
-            %w[melee_touch ranged_touch]
+            nil
           elsif summary.match?(/\branged touch attack\b|\branged touch\b/)
-            ["ranged_touch"]
+            "ranged_touch"
           elsif spell.range.to_s.downcase.start_with?("touch") ||
                 summary.match?(/\btouch attack\b|\btouch deals\b/)
-            ["melee_touch"]
+            "melee_touch"
           else
-            []
+            nil
           end
         end
 
@@ -107,21 +108,6 @@ module DungeonMaster
 
             effect["description"]
           end.join(" ")
-        end
-
-        def spell_option_id(spell_id, attack_mode)
-          return "spell:#{spell_id}" unless attack_mode == "melee_touch" || attack_mode == "ranged_touch"
-
-          "spell:#{spell_id}:#{attack_mode}"
-        end
-
-        def spell_label_for(name, attack_mode)
-          suffix = case attack_mode
-                   when "ranged_touch" then "ranged touch"
-                   when "melee_touch" then "touch"
-                   else attack_mode.tr("_", " ")
-                   end
-          "#{name} (#{suffix})"
         end
 
         def equipped_weapon_options(sheet)

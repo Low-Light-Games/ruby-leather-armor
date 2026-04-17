@@ -98,7 +98,7 @@ RSpec.describe "DungeonMaster cross-domain ownership", type: :service do
                      "player_rolls" => [
                        {
                          "type" => "attack_roll",
-                         "attack_option_id" => "spell:ray_of_frost:ranged_touch",
+                         "attack_option_id" => "spell:ray_of_frost",
                          "target" => "Goblin",
                          "description" => "Ranged touch spell attack"
                        }

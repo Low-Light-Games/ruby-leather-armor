@@ -54,7 +54,7 @@ RSpec.describe DungeonMaster::Steps::Phases::CombatMechanicResolution do
         player_rolls: [
           {
             type: "attack_roll",
-            attack_option_id: "spell:ray_of_frost:ranged_touch",
+            attack_option_id: "spell:ray_of_frost",
             target: "Goblin",
             description: "Ray"
           }
@@ -101,7 +101,7 @@ RSpec.describe DungeonMaster::Steps::Phases::CombatMechanicResolution do
     it "raises when attack_roll includes dc from the model" do
       parsed = {
         player_rolls: [
-          { type: "attack_roll", attack_option_id: "spell:ray_of_frost:ranged_touch", target: "Goblin", dc: 10, description: "bad" }
+          { type: "attack_roll", attack_option_id: "spell:ray_of_frost", target: "Goblin", dc: 10, description: "bad" }
         ],
         npc_actions: [],
         consequences: [],
@@ -146,7 +146,7 @@ RSpec.describe DungeonMaster::Steps::Phases::CombatMechanicResolution do
     it "raises when target is not in combat participants" do
       parsed = {
         player_rolls: [
-          { type: "attack_roll", attack_option_id: "spell:ray_of_frost:ranged_touch", target: "Orc", description: "hit" }
+          { type: "attack_roll", attack_option_id: "spell:ray_of_frost", target: "Orc", description: "hit" }
         ],
         npc_actions: [],
         consequences: [],

@@ -89,8 +89,8 @@ RSpec.describe DungeonMaster::Combat::AttackOptionBuilder do
 
       expect(options).to include(
         include(
-          id: "spell:ray_of_frost:ranged_touch",
-          label: "Ray of Frost (ranged touch)",
+          id: "spell:ray_of_frost",
+          label: "Ray of Frost",
           attack_mode: "ranged_touch",
           defense_kind: "touch_ac",
           source_type: "spell",
@@ -122,6 +122,31 @@ RSpec.describe DungeonMaster::Combat::AttackOptionBuilder do
         )
       )
       expect(options.map { |option| option[:id] }).not_to include("spell:magic_missile")
+    end
+
+    it "does not expose spells with multiple legal attack profiles yet" do
+      produce_flame = SpellDefinition.create!(
+        id: "produce_flame",
+        name: "Produce Flame",
+        school: "evocation",
+        class_levels: { "wizard" => 1 },
+        components: %w[V S],
+        casting_time: "1 standard action",
+        range: "personal (or close for ranged touch)",
+        duration: "1 min/level",
+        saving_throw: "none",
+        spell_resistance: false,
+        effects: [
+          { "type" => "damage", "dice" => "1d6", "damageType" => "fire", "perCasterLevel" => true, "maxDice" => 5 },
+          { "type" => "utility", "description" => "Touch attack or throw as ranged touch." }
+        ],
+        summary: "Flames in hand deal 1d6 + 1/level (max +5) fire. Use as touch or ranged touch."
+      )
+      sheet.adventure_sheet_spells.create!(spell_id: produce_flame.id, storage_type: "spellbook")
+
+      options = described_class.call(sheet: sheet, adventure: adventure)
+
+      expect(options.map { |option| option[:id] }).not_to include("spell:produce_flame")
     end
 
     it "filters out attack options when no standard action is available" do

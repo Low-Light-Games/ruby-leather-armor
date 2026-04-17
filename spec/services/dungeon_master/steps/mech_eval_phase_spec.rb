@@ -44,7 +44,7 @@ RSpec.describe "DungeonMaster::Steps::Phases::MechEvalPhase ownership guards", t
     expect(prompt).to include("attack_option_id")
     expect(prompt).not_to include("\"defense_kind\":")
     expect(prompt).to include("PLAYER ATTACK OPTIONS")
-    expect(prompt).to include("spell:ray_of_frost:ranged_touch | Ray of Frost (ranged touch) | 1d3 cold")
+    expect(prompt).to include("spell:ray_of_frost | Ray of Frost | 1d3 cold")
   end
 
   it "drops inventory attack rolls that violate domain ownership" do
