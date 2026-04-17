@@ -174,7 +174,6 @@ shared_context "with evaluator stubs" do
                             "transition"        => nil,
                             "destination"       => nil,
                             "combatants"        => [],
-                            "count"             => nil,
                             "reasoning"         => domain == "exploration" ? "Exploration action" : "Not affected"
                           })
         end
@@ -220,7 +219,6 @@ shared_context "with evaluator stubs" do
                               "transition"        => nil,
                               "destination"       => nil,
                               "combatants"        => [],
-                              "count"             => nil,
                               "reasoning"         => domain == "exploration" ? "Exploration action" : "Not affected"
                             })
           end

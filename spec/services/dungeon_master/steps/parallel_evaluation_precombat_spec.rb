@@ -50,8 +50,7 @@ RSpec.describe "DungeonMaster::Steps::ParallelEvaluation#prepare_canonical_comba
       domain_results: {
         "combat" => {
           transition: "combat_started",
-          combatants: ["goblin"],
-          count: 2
+          combatants: ["goblin", "goblin"]
         }
       }
     }
@@ -59,8 +58,7 @@ RSpec.describe "DungeonMaster::Steps::ParallelEvaluation#prepare_canonical_comba
     allow(adventure).to receive(:combat_active?).and_return(false)
     expect(DungeonMaster::Utilities::Warmaster).to receive(:prepare_from_names!).with(
       adventure: adventure,
-      combatant_names: ["goblin"],
-      count: 2,
+      combatant_names: ["goblin", "goblin"],
       sheet: sheet,
       log: anything,
       config: anything,

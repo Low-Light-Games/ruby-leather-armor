@@ -138,13 +138,11 @@ module DungeonMaster
         return intent unless DungeonMaster::CombatTransitions.start?(transition)
 
         combatant_names = Array(combat_result[:combatants]).map(&:to_s).reject(&:blank?)
-        combatant_count = combat_result[:count]
         return intent if combatant_names.empty?
 
         prepared = Utilities::Warmaster.prepare_from_names!(
           adventure: @adventure,
           combatant_names: combatant_names,
-          count: combatant_count,
           sheet: @sheet,
           log: @log,
           config: @config,

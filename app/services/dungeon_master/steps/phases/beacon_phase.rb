@@ -96,8 +96,7 @@ module DungeonMaster
               expand_scene:      domain == "social" && d[:expand_scene] == true,
               transition:        d[:transition],
               destination:       d[:destination],
-              combatants:        Array(d[:combatants]),
-              count:             normalized_combatant_count(d[:count])
+              combatants:        normalized_combatants(d[:combatants], d[:count])
             }
 
             next unless is_affected
@@ -115,8 +114,7 @@ module DungeonMaster
             domain_results["combat"] = (domain_results["combat"] || {}).merge(
               domain:          "combat",
               affected:        true,
-              needs_mechanics: true,
-              count:           nil
+              needs_mechanics: true
             )
             affected["combat"] = true
             needs_mechanics = true
@@ -148,9 +146,37 @@ module DungeonMaster
           }
         end
 
-        def normalized_combatant_count(raw)
-          value = raw.to_i
-          value.positive? ? value : nil
+        def normalized_combatants(raw_combatants, raw_count)
+          compact_entries = Array(raw_combatants).filter_map do |entry|
+            case entry
+            when Hash
+              key, value = entry.to_a.first
+              next if key.blank?
+
+              count = value.to_i
+              next if count <= 0
+
+              [key.to_s.strip, count]
+            else
+              name = entry.to_s.strip
+              next if name.blank?
+
+              [name, 1]
+            end
+          end
+
+          if compact_entries.empty?
+            names = Array(raw_combatants).map { |entry| entry.to_s.strip }.reject(&:blank?)
+            count = raw_count.to_i
+            return names if names.empty?
+            return names unless names.one? && count > 1
+
+            return Array.new(count, names.first)
+          end
+
+          compact_entries.flat_map do |name, count|
+            Array.new(count, name)
+          end
         end
       end
     end

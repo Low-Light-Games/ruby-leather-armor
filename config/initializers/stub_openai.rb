@@ -118,7 +118,6 @@ if ENV["STUB_OPENAI"].present?
         "transition" => nil,
         "destination" => nil,
         "combatants" => [],
-        "count" => nil,
         "reasoning" => domain == "exploration" ? "Exploration" : "Not affected"
       }
     when "sanity_checker_world"

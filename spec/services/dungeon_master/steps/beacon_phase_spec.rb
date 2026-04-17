@@ -11,7 +11,7 @@ RSpec.describe "DungeonMaster::Steps::Phases::BeaconPhase#converge_beacons", typ
   let!(:sheet) { create(:adventure_sheet, adventure: adventure) }
   let(:pipeline) { build_pipeline(adventure) }
 
-  it "preserves combat beacon count for combat-start prep" do
+  it "expands compact combatant manifests into the internal combatant list" do
     results = [
       {
         "meta" => { "domain" => "combat" },
@@ -22,8 +22,7 @@ RSpec.describe "DungeonMaster::Steps::Phases::BeaconPhase#converge_beacons", typ
           "expand_scene" => false,
           "transition" => "combat_started",
           "destination" => nil,
-          "combatants" => ["goblin"],
-          "count" => 2,
+          "combatants" => [{ "goblin" => 2 }, { "hobgoblin" => 1 }],
           "reasoning" => "Two goblins close in."
         }
       }
@@ -31,7 +30,6 @@ RSpec.describe "DungeonMaster::Steps::Phases::BeaconPhase#converge_beacons", typ
 
     intent = pipeline.send(:converge_beacons, results, "I cast Ray of Frost at the goblins")
 
-    expect(intent[:domain_results]["combat"][:combatants]).to eq(["goblin"])
-    expect(intent[:domain_results]["combat"][:count]).to eq(2)
+    expect(intent[:domain_results]["combat"][:combatants]).to eq(["goblin", "goblin", "hobgoblin"])
   end
 end

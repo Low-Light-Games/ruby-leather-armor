@@ -17,13 +17,13 @@ Your only job: determine whether a new fight is starting and, if so, name every 
 
 <% end -%>
 Rules (in priority order):
-1. If COMBAT STATE active == true: affected true, needs_mechanics true, transition null, combatants [], count null.
+1. If COMBAT STATE active == true: affected true, needs_mechanics true, transition null, combatants [].
    (Combat is already running — routing is handled by code, not this beacon.)
 2. If a new fight is being initiated: affected true, needs_mechanics true, transition "combat_started",
-   combatants: list every creature name in singular lowercase bestiary form.
-   count: integer count for the engaged creature kind when reasonably clear from PLAYER + RECENT STORY.
+   combatants: array of one-key objects where the key is the singular lowercase creature kind and the value is the integer count.
+   Example: [{ "goblin": 2 }, { "hobgoblin": 1 }]
    If the current player message is ambiguous, use recent player-facing story context to infer count.
-   Best-effort guessing is allowed when the recent story strongly implies a group; otherwise use null.
+   Best-effort guessing is allowed when the recent story strongly implies a group.
 3. If nothing combat-related: affected false, needs_mechanics false.
 - affected and needs_mechanics are always the same value.
 
@@ -36,6 +36,5 @@ Output JSON only:
   "transition": null,
   "destination": null,
   "combatants": [],
-  "count": null,
   "reasoning": "1 sentence"
 }
