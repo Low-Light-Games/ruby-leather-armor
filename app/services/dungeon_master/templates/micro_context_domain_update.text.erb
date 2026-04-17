@@ -6,18 +6,19 @@ Your job is to update ONLY the <%= @context_key %> object based on what just hap
 
 === MUTATIONS APPLIED ===
 <%= @mutations_json.present? ? @mutations_json : "(no mechanical mutations)" %>
-<% if @canonical_hp.present? -%>
 
+<% if @canonical_hp.present? -%>
 === CANONICAL HP (authoritative — copy these exact values into participant hp fields) ===
 <%= @canonical_hp %>
 <% end -%>
-<% if @canonical_participants.present? -%>
 
+<% if @canonical_participants.present? -%>
 === CANONICAL COMBAT PARTICIPANTS (authoritative identity — preserve creature_sheet_id exactly) ===
 <%= @canonical_participants.to_json %>
 <% end -%>
 
 === CURRENT <%= @domain.upcase %> CONTEXT ===
+
 <%= @current_context.present? ? @current_context.to_json : "(empty)" %>
 
 === <%= @domain.upcase %> SCHEMA ===

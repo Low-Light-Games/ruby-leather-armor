@@ -44,6 +44,7 @@ interface AdventureChatProps {
   adventureSheet?: AdventureSheet | null
   adventureEnded?: boolean
   endReason?: 'player_death' | 'adventure_complete' | null
+  isCombatActive?: boolean
   onAdventureComplete?: () => void
   onDmResponse?: () => void
   onSheetUpdate?: () => void
@@ -55,6 +56,7 @@ export const AdventureChat = ({
   adventureSheet,
   adventureEnded = false,
   endReason = null,
+  isCombatActive = false,
   onAdventureComplete,
   onDmResponse,
   onSheetUpdate,
@@ -149,7 +151,7 @@ export const AdventureChat = ({
     : 'This adventure has reached its conclusion.'
 
   return (
-    <div className="adventure-chat">
+    <div className={`adventure-chat${isCombatActive ? ' combat-active' : ''}`}>
       <h2>Game Master</h2>
 
       <div className="chat-messages">
@@ -207,7 +209,13 @@ export const AdventureChat = ({
           {terminalNotice}
         </div>
       ) : (
-        <div className="chat-input-area">
+        <>
+          {isCombatActive && (
+            <div className="combat-banner" aria-live="polite">
+              ⚔&nbsp;&nbsp;Combat Active&nbsp;&nbsp;⚔
+            </div>
+          )}
+          <div className="chat-input-area">
           <button
             type="button"
             className={`ask-dm-toggle ${askDm ? 'active' : ''}`}
@@ -240,6 +248,7 @@ export const AdventureChat = ({
             ➤
           </button>
         </div>
+        </>
       )}
     </div>
   )

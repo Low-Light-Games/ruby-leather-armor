@@ -56,6 +56,7 @@
     line-height: 1.5;
     max-width: 95%;
     word-wrap: break-word;
+    transition: background-color 1s, color 1s, border-color 1s, border-left-color 1s, border-left-width 1s;
 
     .msg-header {
       margin-bottom: 4px;
@@ -531,6 +532,70 @@
     }
   }
 
+  /* ===== Combat-active state ===== */
+  &.combat-active {
+    .chat-message.msg-dm {
+      background-color: hsl(0, 53%, 80%);
+      color: #930000;
+      border-left-color: $red-ink-dk;
+      border-left-width: 4px;
+
+      .msg-role { color: #930000; }
+
+      &.msg-type-combat_log,
+      &.msg-type-action_result {
+        background-color: hsl(350, 38%, 64%);
+        border: 1px dashed $red-ink-dk;
+        border-left: 3px dashed $red-ink-dk;
+        color: hsl(0, 77%, 11%);
+
+        .msg-role { color: hsl(0, 77%, 11%); }
+      }
+    }
+
+    .chat-message.msg-player {
+      background-color: hsl(24, 52%, 82%);
+      border-left-color: $amber;
+
+      .msg-role { color: $amber; }
+    }
+
+    .mechanics-group {
+      background-color: hsl(350, 38%, 64%);
+      border: 1px dashed $red-ink-dk;
+      border-left: 3px dashed $red-ink-dk;
+      color: hsl(0, 77%, 11%);
+    }
+
+    .chat-input {
+      border-color: $red-ink;
+
+      &:focus {
+        border-color: $red-ink-dk;
+        box-shadow: 0 0 0 2px rgba(80, 20, 20, 0.28);
+      }
+    }
+  }
+
+  /* ===== Combat banner (shown above input area during active combat) ===== */
+  .combat-banner {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 12px;
+    background: hsl(350, 42%, 30%);
+    border: 1px solid hsl(350, 42%, 22%);
+    border-bottom: none;
+    font-family: $font-display;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: hsl(24, 52%, 82%);
+    text-transform: uppercase;
+    user-select: none;
+    animation: combatBannerIn 1s ease both;
+  }
+
   /* ===== Mechanics group (combat_log / action_result run) ===== */
   .mechanics-group {
     align-self: flex-start;
@@ -542,6 +607,7 @@
     border: 1px dashed $border-light;
     border-left: 3px dashed $ink-faint;
     padding: 4px 10px;
+    transition: background-color 1s, color 1s, border-color 1s;
 
     .sr-only {
       position: absolute;
@@ -602,4 +668,9 @@
 @keyframes thinkingPulse {
   0%, 80%, 100% { opacity: 0.3; transform: scale(1); }
   40%           { opacity: 1;   transform: scale(1.15); }
+}
+
+@keyframes combatBannerIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }

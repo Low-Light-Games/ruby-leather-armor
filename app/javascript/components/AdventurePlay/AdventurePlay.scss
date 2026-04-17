@@ -112,6 +112,7 @@
     padding: 16px;
     background: $parchment-dk;
     border: 1px solid $border-light;
+    transition: border-color 1s, border-width 1s, box-shadow 1s;
   }
 
   /* ===== LEFT: Character column ===== */
@@ -1170,6 +1171,15 @@
     min-height: 0;
     max-height: calc(100vh - 120px);
     background: $parchment;
+  }
+
+  /* ===== MIDDLE: Active-combat state ===== */
+  .middle-column.active-combat {
+    border-color: hsl(350, 42%, 22%);
+    border-width: 2px;
+    box-shadow:
+      0 0 0 1px hsl(350, 42%, 22%) inset,
+      0 0 18px hsla(350, 45%, 20%, 0.22);
   }
 
   /* ===== RIGHT: Story column ===== */
