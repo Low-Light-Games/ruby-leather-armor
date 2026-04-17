@@ -6,6 +6,15 @@ module DungeonMaster
       # Phase 2 of ParallelEvaluation — builds mechanical evaluation prompts,
       # calls the evaluator's /sequential endpoint, and parses results.
       module MechEvalPhase
+        DOMAIN_ROLL_INVARIANTS = {
+          "inventory" => {
+            forbidden_types: %w[attack_roll damage_roll]
+          },
+          "traversal" => {
+            forbidden_skills: %w[Stealth]
+          }
+        }.freeze
+
         private
 
         def build_mech_eval_prompts(ordered_domains, intention, intent)
@@ -80,8 +89,9 @@ module DungeonMaster
                       "Combat mechanical evaluation could not resolve rolls (#{e.code}): #{e.message}"
               end
             else
+              rolls = symbolize_hash_array(parsed[:player_rolls]).map { |r| r.merge(domain: domain) }
               [
-                symbolize_hash_array(parsed[:player_rolls]).map { |r| r.merge(domain: domain) },
+                enforce_roll_domain_ownership(domain, rolls),
                 symbolize_hash_array(parsed[:npc_actions]),
                 symbolize_hash_array(parsed[:consequences]),
                 parsed[:mechanical_summary].to_s
@@ -106,6 +116,34 @@ module DungeonMaster
 
             entry.deep_symbolize_keys
           end
+        end
+
+        def enforce_roll_domain_ownership(domain, rolls)
+          rules = DOMAIN_ROLL_INVARIANTS[domain.to_s]
+          return rolls unless rules
+
+          Array(rolls).reject do |roll|
+            violation = roll_domain_violation(rules, roll)
+            next false unless violation
+
+            @log&.play_log!(
+              "ownership_guard",
+              "Dropped #{domain} roll that violates domain ownership (#{violation})",
+              parsed_response: {
+                domain: domain,
+                violation: violation,
+                roll: roll
+              }
+            )
+            true
+          end
+        end
+
+        def roll_domain_violation(rules, roll)
+          return "forbidden_type" if Array(rules[:forbidden_types]).include?(roll[:type].to_s)
+          return "forbidden_skill" if Array(rules[:forbidden_skills]).include?(roll[:skill].to_s)
+
+          nil
         end
       end
     end

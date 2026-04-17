@@ -8,6 +8,7 @@ class PlayLog < ApplicationRecord
     intake_rejection
     queue_paused queue_interrupted queue_completed
     auto_success_filter duplicate_roll_warning
+    ownership_guard
     pipeline_abandoned
     harbinger warmaster
     battlefield_version_mismatch
