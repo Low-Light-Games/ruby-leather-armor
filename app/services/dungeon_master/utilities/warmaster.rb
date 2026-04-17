@@ -91,6 +91,8 @@ module DungeonMaster
 
         npc_combatants = pending_npc_combatants(adventure, player_sheet).presence ||
                          creature_data.filter_map do |c|
+                           next unless c.is_a?(Hash)
+
                            c = c.deep_symbolize_keys
                            sheet = adventure.creature_sheets.find_by(id: c[:creature_sheet_id])
                            unless sheet
@@ -126,6 +128,8 @@ module DungeonMaster
 
       def compute_pending_combat_context(adventure:, creature_data:)
         npc_combatants = creature_data.filter_map do |c|
+          next unless c.is_a?(Hash)
+
           row = c.deep_symbolize_keys
           sheet = adventure.creature_sheets.find_by(id: row[:creature_sheet_id])
           unless sheet

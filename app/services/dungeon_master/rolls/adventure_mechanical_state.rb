@@ -27,7 +27,10 @@ module DungeonMaster
         return if last_player_response.message_type == "initiative_result"
 
         player_init = Utilities::Warmaster.auto_roll_player_initiative(sheet)
-        creature_data = last_init_msg.metadata["creature_data"].map(&:deep_symbolize_keys)
+        creature_data = Array(last_init_msg.metadata["creature_data"]).filter_map do |entry|
+          entry.is_a?(Hash) ? entry.deep_symbolize_keys : nil
+        end
+        return if creature_data.empty?
 
         # Same atomic combat start as run_initiative (battlefield row + refs in one transaction).
         combat_data = Utilities::Warmaster.compute_combat_initialization(

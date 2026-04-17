@@ -135,6 +135,23 @@ RSpec.describe DungeonMaster::Logging, type: :service do
     end
   end
 
+  describe "#capture_pipeline_exception!" do
+    before do
+      logging.start_registry_entry!("Hello")
+      allow(Rails.logger).to receive(:error)
+    end
+
+    it "reports to Rails.error and logs the backtrace to Rails logger" do
+      error = RuntimeError.new("boom")
+      error.set_backtrace(["line1", "line2"])
+
+      logging.capture_pipeline_exception!(error)
+
+      expect(Rails.error).to have_received(:report).with(error, handled: true, context: anything)
+      expect(Rails.logger).to have_received(:error).with(/RuntimeError: boom.*line1/m)
+    end
+  end
+
   describe "#pause_registry_entry!" do
     before { logging.start_registry_entry!("Hello") }
 

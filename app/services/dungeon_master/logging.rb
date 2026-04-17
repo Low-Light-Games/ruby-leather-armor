@@ -62,7 +62,7 @@ module DungeonMaster
       report_error(e, context: { method: "complete_registry_entry!" })
     end
 
-    def error_registry_entry!
+    def error_registry_entry!(exception = nil)
       registry_entry_record&.update!(status: "errored", finished_at: Time.current)
       enqueue_registry_entry_event!
     rescue => e
@@ -157,6 +157,19 @@ module DungeonMaster
 
     # Sentry + Rails.error for pipeline exceptions surfaced to the player — never raises.
     def capture_pipeline_exception!(exception)
+      Rails.logger.error(
+        "[DM pipeline exception adventure=#{@adventure&.id} registry=#{@registry_entry_uuid}] " \
+        "#{exception.class}: #{exception.message}\n#{Array(exception.backtrace).join("\n")}"
+      )
+      play_log!(
+        "pipeline_error",
+        "#{exception.class}: #{exception.message}",
+        parsed_response: {
+          error_class: exception.class.name,
+          error_message: exception.message,
+          backtrace: Array(exception.backtrace).first(25)
+        }
+      )
       ApplicationErrorReporter.notify(exception, context: {
         source: "dungeon_master_pipeline_exception",
         registry_entry_uuid: @registry_entry_uuid,

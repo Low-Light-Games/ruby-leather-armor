@@ -117,7 +117,7 @@ module DungeonMaster
 
       def pipeline_exception_messages(error)
         @log.capture_pipeline_exception!(error)
-        @log.error_registry_entry!
+        @log.error_registry_entry!(error)
         [persist_message(
           role: "system",
           content: "The Dungeon Master is momentarily distracted... (#{player_facing_error(error)})",

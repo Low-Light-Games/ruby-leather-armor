@@ -81,9 +81,9 @@ module DungeonMaster
               end
             else
               [
-                Array(parsed[:player_rolls]).map { |r| r.deep_symbolize_keys.merge(domain: domain) },
-                Array(parsed[:npc_actions]).map(&:deep_symbolize_keys),
-                Array(parsed[:consequences]).map(&:deep_symbolize_keys),
+                symbolize_hash_array(parsed[:player_rolls]).map { |r| r.merge(domain: domain) },
+                symbolize_hash_array(parsed[:npc_actions]),
+                symbolize_hash_array(parsed[:consequences]),
                 parsed[:mechanical_summary].to_s
               ]
             end
@@ -97,6 +97,14 @@ module DungeonMaster
               consequences:       consequences,
               mechanical_summary: summary
             }
+          end
+        end
+
+        def symbolize_hash_array(value)
+          Array(value).filter_map do |entry|
+            next unless entry.is_a?(Hash)
+
+            entry.deep_symbolize_keys
           end
         end
       end
