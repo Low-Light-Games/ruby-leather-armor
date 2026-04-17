@@ -67,6 +67,17 @@ If the input space is natural language, use AI. The Sequencer step
 exists because regex-based compound action detection would be fragile
 in exactly the ways that matter most.
 
+**Corollary: define prompt ownership positively.** A prompt should state
+what its step or domain *does own*, narrowly and concretely. Prefer
+positive scope over long lists of forbidden behaviors. Use explicit
+"do not do X" language only for repeated, high-cost confusions where the
+boundary must be hard, such as traversal vs. stealth.
+
+**Example:** inventory should talk about concrete item-state changes
+(gain, lose, equip, consume, loot), not "resources" in the abstract.
+Traversal should describe movement and location change, while exploration
+explicitly owns stealth-style field actions.
+
 ---
 
 ## 2. Honor system

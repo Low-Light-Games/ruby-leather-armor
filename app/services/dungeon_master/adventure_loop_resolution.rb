@@ -28,6 +28,8 @@ module DungeonMaster
     end
 
     def resolve_with_mechanics(intent, evaluations)
+      return resolve_social_scene_after_world_gate(intent) if social_scene_only?(intent)
+
       capability = if skip_world_sanity_for_privileged_player?
                      @loop&.log_step("sanity_checker", "World: skipped (player opt-out)")
                      run_capability_check(intent)
@@ -67,6 +69,23 @@ module DungeonMaster
         time_result: time_result,
         action_outcome: momentum_result[:outcome].to_s.presence
       )
+    end
+
+    def social_scene_only?(intent)
+      intent[:expand_scene] && Array(intent[:affected_contexts]).uniq == ["social"]
+    end
+
+    def resolve_social_scene_after_world_gate(intent)
+      if skip_world_sanity_for_privileged_player?
+        @loop&.log_step("sanity_checker", "World: skipped (player opt-out, social scene)")
+      else
+        world = run_world_consistency_check(intent)
+        return world_check_rejection(intent, world) unless world[:consistent]
+
+        @loop&.log_step("sanity_checker", "World: consistent (social scene)")
+      end
+
+      resolve_social_scene(intent)
     end
 
     def skip_world_sanity_for_privileged_player?

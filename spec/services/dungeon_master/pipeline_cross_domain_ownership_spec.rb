@@ -164,6 +164,7 @@ RSpec.describe "DungeonMaster cross-domain ownership", type: :service do
     expect(traversal).to include("Traversal does NOT own stealth")
     expect(exploration).to include("Exploration also owns stealth-style field actions")
     expect(inventory).to include("concrete inventory state")
+    expect(inventory).not_to include("spellcasting")
   end
 
   private
