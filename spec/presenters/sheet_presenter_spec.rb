@@ -79,11 +79,100 @@ RSpec.describe SheetPresenter, type: :model do
 
       shield = active_buffs.find { |b| b["source"] == "shield" }
       expect(shield["remaining_hours"]).to be_within(0.001).of(0.2)
-      expect(shield["duration_label"]).to eq("12m remaining")
+      expect(shield["duration_label"]).to eq("12 min remaining")
 
       blessing = active_buffs.find { |b| b["source"] == "blessing" }
       expect(blessing["remaining_hours"]).to be_nil
       expect(blessing["duration_label"]).to eq("Sustained")
+    end
+
+    it "formats sub-five-minute durations as m:ss" do
+      adventure.update!(time_context: adventure.time_context.merge("current_hour" => 8.0))
+      sheet.update!(
+        active_buffs: [
+          {
+            "source" => "blink",
+            "bonus_type" => "dodge",
+            "target" => "ac",
+            "value" => 1,
+            "expires_at_game_hours" => 8.0125
+          },
+          {
+            "source" => "shield",
+            "bonus_type" => "shield",
+            "target" => "ac",
+            "value" => 4,
+            "expires_at_game_hours" => 8.025
+          },
+          {
+            "source" => "haste",
+            "bonus_type" => "enhancement",
+            "target" => "speed",
+            "value" => 30,
+            "expires_at_game_hours" => 8.07
+          }
+        ]
+      )
+
+      active_buffs = presenter.as_json.fetch("active_buffs").index_by { |b| b["source"] }
+
+      expect(active_buffs.fetch("blink")["duration_label"]).to eq("0:45 remaining")
+      expect(active_buffs.fetch("shield")["duration_label"]).to eq("1:30 remaining")
+      expect(active_buffs.fetch("haste")["duration_label"]).to eq("4:12 remaining")
+    end
+
+    it "switches from m:ss to explicit minutes at five minutes" do
+      adventure.update!(time_context: adventure.time_context.merge("current_hour" => 8.0))
+      sheet.update!(
+        active_buffs: [
+          {
+            "source" => "blur",
+            "bonus_type" => "concealment",
+            "target" => "ac",
+            "value" => 20,
+            "expires_at_game_hours" => 8.0830556
+          },
+          {
+            "source" => "mage_armor",
+            "bonus_type" => "armor",
+            "target" => "ac",
+            "value" => 4,
+            "expires_at_game_hours" => 8.0833333
+          }
+        ]
+      )
+
+      active_buffs = presenter.as_json.fetch("active_buffs").index_by { |b| b["source"] }
+
+      expect(active_buffs.fetch("blur")["duration_label"]).to eq("4:59 remaining")
+      expect(active_buffs.fetch("mage_armor")["duration_label"]).to eq("5 min remaining")
+    end
+
+    it "formats hour-scale durations with explicit hr/min units" do
+      adventure.update!(time_context: adventure.time_context.merge("current_hour" => 8.0))
+      sheet.update!(
+        active_buffs: [
+          {
+            "source" => "stoneskin",
+            "bonus_type" => "enhancement",
+            "target" => "ac",
+            "value" => 2,
+            "expires_at_game_hours" => 9.0
+          },
+          {
+            "source" => "heroism",
+            "bonus_type" => "morale",
+            "target" => "saves",
+            "value" => 2,
+            "expires_at_game_hours" => 9.2
+          }
+        ]
+      )
+
+      active_buffs = presenter.as_json.fetch("active_buffs").index_by { |b| b["source"] }
+
+      expect(active_buffs.fetch("stoneskin")["duration_label"]).to eq("1 hr remaining")
+      expect(active_buffs.fetch("heroism")["duration_label"]).to eq("1 hr 12 min remaining")
     end
   end
 end

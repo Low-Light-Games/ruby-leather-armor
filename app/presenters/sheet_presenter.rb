@@ -88,15 +88,23 @@ class SheetPresenter
   def duration_label_for(remaining_hours)
     return "Sustained" if remaining_hours.nil?
 
-    total_minutes = (remaining_hours * 60).round
-    return "Expired" if total_minutes <= 0
-    return "#{total_minutes}m remaining" if total_minutes < 60
+    total_seconds = (remaining_hours * 3600).round
+    return "Expired" if total_seconds <= 0
+
+    if total_seconds < 5.minutes
+      minutes = total_seconds / 60
+      seconds = total_seconds % 60
+      return format("%d:%02d remaining", minutes, seconds)
+    end
+
+    total_minutes = (total_seconds / 60.0).round
+    return "#{total_minutes} min remaining" if total_minutes < 60
 
     hours = total_minutes / 60
     minutes = total_minutes % 60
-    return "#{hours}h remaining" if minutes.zero?
+    return "#{hours} hr remaining" if minutes.zero?
 
-    "#{hours}h #{minutes}m remaining"
+    "#{hours} hr #{minutes} min remaining"
   end
 
   def current_game_hours
