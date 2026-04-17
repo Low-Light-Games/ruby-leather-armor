@@ -138,13 +138,13 @@ module DungeonMaster
         return intent unless DungeonMaster::CombatTransitions.start?(transition)
 
         combatant_names = Array(combat_result[:combatants]).map(&:to_s).reject(&:blank?)
-        scene_enemy_names = EncounterWarmasterBridge.scene_enemy_names_from_traversal_context(@adventure.traversal_context)
-        return intent if combatant_names.empty? && scene_enemy_names.empty?
+        combatant_count = combat_result[:count]
+        return intent if combatant_names.empty?
 
         prepared = Utilities::Warmaster.prepare_from_names!(
           adventure: @adventure,
           combatant_names: combatant_names,
-          scene_enemy_names: scene_enemy_names,
+          count: combatant_count,
           sheet: @sheet,
           log: @log,
           config: @config,
@@ -152,6 +152,11 @@ module DungeonMaster
         )
 
         return intent if prepared[:status] == :no_creatures
+
+        Utilities::Warmaster.persist_pending_combat!(
+          adventure: @adventure,
+          creature_data: prepared[:creature_data]
+        )
 
         intent.merge(creature_data: prepared[:creature_data])
       end
