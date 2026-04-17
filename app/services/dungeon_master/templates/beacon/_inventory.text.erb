@@ -1,15 +1,10 @@
-- Affected when the player is equipping, unequipping, dropping, stowing, retrieving,
-  drinking, throwing, trading, giving, receiving, looting, purchasing, crafting,
-  loading, or repairing physical items and gear.
-- Crafting always affects inventory — the resulting item is added regardless of whether
-  a Craft check is needed. needs_mechanics depends on whether crafting requires a roll.
-- Acquiring items through looting, purchasing, or receiving as rewards affects inventory.
-- Giving or trading items to NPCs affects inventory — the item leaves the player's possession.
-- Dropping or discarding an item affects inventory.
-- Using a consumable (potion, alchemist's fire, scroll, holy water) affects inventory
-  — the item is expended. needs_mechanics: false unless activation requires a roll
-  (Use Magic Device for scrolls/wands).
-- Drawing or sheathing a weapon in combat is a combat action, NOT inventory, unless
-  the player is explicitly swapping loadouts between scenes.
-- needs_mechanics: false for most item management. needs_mechanics: true for identification,
-  crafting with a Craft check, or activating items requiring Use Magic Device.
+- This domain is only about concrete inventory state: items the player possesses,
+  gains, loses, consumes, equips, trades, loots, drops, crafts, repairs, or activates as items.
+- Mark affected only when the action directly changes that item state right now.
+- Typical inventory actions include:
+  equipping or unequipping gear, retrieving or stowing an item, drinking a potion,
+  reading a scroll, using a wand, throwing alchemist's fire, dropping a weapon,
+  looting treasure, buying supplies, or giving an item to someone else.
+- Crafting affects inventory because it changes what items exist or are being produced.
+- Identification and item activation can require mechanics when the item rules call for it
+  (for example Use Magic Device, Spellcraft, or Craft).

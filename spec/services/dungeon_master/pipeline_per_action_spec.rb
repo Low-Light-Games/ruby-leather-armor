@@ -4,7 +4,7 @@ require "rails_helper"
 #
 # Scenario: compound input splits into 3 actions:
 #   1. "scout the corridor"  — non-mechanical, narrated immediately (progressive)
-#   2. "pick the lock"       — needs_mechanics → Disable Device DC 15 → :awaiting_rolls
+#   2. "pick the lock"       — exploration affected → Disable Device DC 15 → :awaiting_rolls
 #   3. "push the door open"  — never reached in run_prompt; processed in run_rolls resume
 #
 # The evaluator stubs detect "lock" in the user_message to trigger mechanics.

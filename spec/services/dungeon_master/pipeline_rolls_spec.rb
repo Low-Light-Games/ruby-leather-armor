@@ -6,7 +6,7 @@ require "rails_helper"
 RSpec.describe "DungeonMaster::PipelineEngine — roll pause and resume", type: :service do
   include_context "with mocked ai"
   # Evaluator stubs intercept /fan_out and /sequential. "lock" in the action
-  # text causes the exploration beacon to flag needs_mechanics: true and
+  # text causes the exploration beacon to mark exploration affected and
   # mech_eval to return a Disable Device DC 15 roll.
   include_context "with evaluator stubs"
 
@@ -18,7 +18,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — roll pause and resume", type: 
 
   describe "phase 1 — run_prompt returns :awaiting_rolls for mechanical actions" do
     # Override intake + sequencer so "lock" reaches the evaluator stubs,
-    # which then mark exploration needs_mechanics: true → Disable Device DC 15.
+    # which then mark exploration affected → Disable Device DC 15.
     let(:ai_responses) do
       AI_STEP_RESPONSES.merge(
         "intake"    => { "sanitized_input" => "try to pick the lock",
@@ -53,7 +53,6 @@ RSpec.describe "DungeonMaster::PipelineEngine — roll pause and resume", type: 
       {
         "intent" => {
           "intention"         => "try to pick the lock",
-          "needs_mechanics"   => true,
           "expand_scene"      => false,
           "affected_contexts" => ["exploration"],
           "macro_significant" => false,

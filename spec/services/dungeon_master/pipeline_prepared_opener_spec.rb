@@ -28,7 +28,6 @@ RSpec.describe "DungeonMaster::PipelineEngine — prepared hostile opener flow",
   let(:prepared_intent) do
     {
       intention: "cast Ray of Frost on one of the goblins",
-      needs_mechanics: true,
       expand_scene: false,
       affected_contexts: ["combat"],
       macro_significant: false,

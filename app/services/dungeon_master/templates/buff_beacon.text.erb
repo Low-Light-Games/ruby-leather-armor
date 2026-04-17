@@ -18,15 +18,12 @@ Rules:
 - NEVER set affected: true for restorative actions such as healing potions, cure spells,
   channel energy, or any action whose sole effect is restoring hit points or conditions.
   Those route through the inventory or combat domain instead.
-- If affected: needs_mechanics is always true (mechanical evaluation identifies the buff
-  source and emits a buffs_add mutation — no dice roll is needed from this domain).
 - If the player is attacking, moving, talking, healing, or doing anything other than
   applying a persistent buff: affected false.
 
 Output JSON only:
 {
   "affected": false,
-  "needs_mechanics": false,
   "macro_significant": false,
   "expand_scene": false,
   "transition": null,

@@ -39,7 +39,6 @@ RSpec.describe "DungeonMaster::PipelineEngine — initiative + world-turn termin
     {
       "intent" => {
         "intention" => "I attack the goblin",
-        "needs_mechanics" => false,
         "expand_scene" => false,
         "affected_contexts" => ["combat"],
         "macro_significant" => false,

@@ -27,7 +27,6 @@ RSpec.describe "DungeonMaster::Steps::Phases::BeaconPhase#converge_beacons", typ
 
     expect(intent[:domain_results]["combat"][:combatants]).to eq(["goblin", "goblin", "hobgoblin"])
     expect(intent[:domain_results]["combat"][:affected]).to be(true)
-    expect(intent[:domain_results]["combat"][:needs_mechanics]).to be(true)
     expect(intent[:domain_results]["combat"][:transition]).to eq("combat_started")
   end
 end

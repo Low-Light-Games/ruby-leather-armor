@@ -55,7 +55,6 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
     metadata = {
       "intent" => {
         "intention" => "I cast Ray of Frost on the goblin",
-        "needs_mechanics" => true,
         "expand_scene" => false,
         "affected_contexts" => ["combat"],
         "macro_significant" => false,

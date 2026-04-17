@@ -8,7 +8,7 @@ module DungeonMaster
     #
     #   A) Capability Check — validates that the player possesses the spells,
     #      feats, items, or class abilities they intend to *use*. Runs in parallel
-    #      with MechanicalEvaluation inside the full gate (needs_mechanics only).
+    #      with MechanicalEvaluation inside the full affected-domain gate.
     #      Split responsibility: the AI extracts *what* is being used (NLP problem),
     #      Ruby verifies *ownership* deterministically against the sheet (not AI).
     #      This means prompt rules can never cause a false rejection — if the model

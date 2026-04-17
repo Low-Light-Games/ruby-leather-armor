@@ -22,7 +22,7 @@ module DungeonMaster
     # Always uses Steps::ParallelEvaluation (Node microservice: beacon + mech_eval + roll_qualifier).
     def resolve(intention)
       intent, evaluations = run_parallel_evaluation(intention)
-      return resolve_with_mechanics(intent, evaluations) if intent[:needs_mechanics]
+      return resolve_with_mechanics(intent, evaluations) if intent[:affected_contexts].any?
 
       resolve_without_mechanics(intent)
     end
@@ -40,6 +40,7 @@ module DungeonMaster
                    end
 
       return capability_check_rejection(intent, capability) unless capability[:allowed]
+      return resolve_social_scene(intent) if intent[:expand_scene]
 
       merged = merge_mechanical_evaluations_and_prepare_rolls(evaluations)
       return { status: :awaiting_rolls, intent: intent, merged: merged } if merged[:player_rolls].any?
@@ -56,9 +57,6 @@ module DungeonMaster
 
         @loop&.log_step("sanity_checker", "World: consistent (no mechanics)")
       end
-
-      return resolve_social_scene(intent) if intent[:expand_scene]
-
       time_result = run_time_keeper(intent, nil)
       return dispatch_encounter_warmaster(intent, time_result, mutations: nil) if time_result[:encounter]
 

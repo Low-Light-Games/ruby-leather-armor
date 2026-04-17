@@ -50,7 +50,7 @@ module DungeonMaster
         # Phase 2 — Mechanical Evaluation
         evaluations = []
 
-        if intent[:needs_mechanics]
+        if intent[:affected_contexts].any?
           affected       = intent[:affected_contexts]
           ordered_domains = DOMAIN_PRIORITY.select { |d| affected.include?(d) } +
                             (affected - DOMAIN_PRIORITY)
@@ -181,11 +181,7 @@ module DungeonMaster
         return unless @loop
 
         affected   = intent[:affected_contexts]
-        loop_tags  = {}
-        loop_tags["needs_mechanics"] = true if intent[:needs_mechanics]
-
         @loop.batch_update!(
-          new_tags:  loop_tags.presence,
           new_data:  { "affected_contexts" => affected, "parallel_eval" => true },
           new_status: "resolving",
           timeline_entry: {

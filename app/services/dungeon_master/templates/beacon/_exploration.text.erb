@@ -2,16 +2,12 @@
   examining, recalling lore, detecting magic, tracking, hunting, foraging, or any
   Survival-based field activity. Passive observation ("I look around") IS affected
   — exploration domain is aware of the environment at all times.
+- Exploration also owns stealth-style field actions: hiding, sneaking, moving quietly,
+  shadowing someone, or trying to avoid notice. When the player is attempting stealth,
+  this domain is responsible for that judgment.
 
-- needs_mechanics: false for passive observation, ambient awareness, or casual glancing.
-  The player is simply perceiving — narration handles this, no roll required.
-
-- needs_mechanics: true when the player names a specific target or intent:
-  "I search the desk", "I look for traps", "I examine the body", "I track the footprints."
-- Using a detection spell or magic item to sense the environment is exploration,
-  not inventory — needs_mechanics: false unless the item requires a roll to activate.
-- Hunting and foraging ALWAYS need mechanics (Survival check).
-- Tracking needs mechanics (Survival check).
-- Identifying creatures or plants needs mechanics (Knowledge check).
-- Searching for hidden objects or traps needs mechanics (Perception check).
-- Recalling lore needs mechanics (Knowledge check, cannot retry on failure).
+- Passive observation, ambient awareness, and casual glancing still belong here when the player
+  is simply perceiving the environment.
+- Specific searching, trap-finding, tracking, hunting, foraging, recalling lore, and stealthy
+  movement all belong here when the player is actively trying to learn or avoid being noticed.
+- Using a detection spell or magic item to sense the environment is exploration, not inventory.

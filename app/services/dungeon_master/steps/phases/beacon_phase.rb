@@ -78,7 +78,6 @@ module DungeonMaster
           end
 
           affected          = {}
-          needs_mechanics   = false
           macro_significant = false
           transition        = nil
           destination       = nil
@@ -93,7 +92,6 @@ module DungeonMaster
             domain_results[domain] = {
               domain:            domain,
               affected:          is_affected,
-              needs_mechanics:   domain == "combat" ? combat_now : d[:needs_mechanics] == true,
               macro_significant: d[:macro_significant] == true,
               expand_scene:      domain == "social" && d[:expand_scene] == true,
               transition:        combat_transition,
@@ -104,7 +102,6 @@ module DungeonMaster
             next unless is_affected
 
             affected[domain]   = true
-            needs_mechanics    = true if domain == "combat" ? combat_now : d[:needs_mechanics] == true
             macro_significant  = true if d[:macro_significant] == true
             transition       ||= combat_transition
             destination      ||= d[:destination] if domain == "traversal"
@@ -115,18 +112,15 @@ module DungeonMaster
           if @beacon_combat_live
             domain_results["combat"] = (domain_results["combat"] || {}).merge(
               domain:          "combat",
-              affected:        true,
-              needs_mechanics: true
+              affected:        true
             )
             affected["combat"] = true
-            needs_mechanics = true
           # Combat just starting: beacon named combatants but may have forgotten affected.
           elsif (cr = domain_results["combat"]) && !cr[:affected] &&
                 Array(cr[:combatants]).any? &&
                 DungeonMaster::CombatTransitions.start?(cr[:transition])
-            domain_results["combat"] = cr.merge(affected: true, needs_mechanics: true)
+            domain_results["combat"] = cr.merge(affected: true)
             affected["combat"] = true
-            needs_mechanics = true
           end
 
           expand_scene = domain_results.dig("social", :expand_scene) == true
@@ -137,7 +131,6 @@ module DungeonMaster
 
           {
             intention:         intention,
-            needs_mechanics:   needs_mechanics,
             expand_scene:      expand_scene,
             destination:       destination,
             affected_contexts: affected.keys,
