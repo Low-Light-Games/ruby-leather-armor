@@ -206,6 +206,8 @@ module DungeonMaster
         source_request_id: attack_roll[:request_id],
         type: "damage_roll",
         description: damage_roll_description_for(attack_roll),
+        source_type: attack_roll[:source_type],
+        source_id: attack_roll[:source_id],
         damage: attack_roll[:damage],
         damage_type: attack_roll[:damage_type],
         target: attack_roll[:target],
@@ -299,7 +301,7 @@ module DungeonMaster
 
         sym = roll.deep_symbolize_keys
         next unless sym[:type].to_s == "attack_roll"
-        next if sym[:damage].present?
+        next unless attack_roll_missing_damage_metadata?(sym)
 
         sym
       end
@@ -317,7 +319,7 @@ module DungeonMaster
         #{intent[:intention]}
 
         Retry reason: an active-combat attack roll hit and still needs structural damage metadata.
-        Re-emit the combat attack_rolls with `damage`, and `damage_type` / `target` when known.
+        Re-emit the combat attack_rolls with `attack_option_id`, `target`, and `description`.
         Existing attack roll requests:
         #{Array(current_roll_requests).to_json}
       MSG
@@ -346,11 +348,26 @@ module DungeonMaster
         next sym unless retried
 
         sym.merge(
+          attack_mode: retried[:attack_mode].presence || sym[:attack_mode],
+          defense_kind: retried[:defense_kind].presence || sym[:defense_kind],
+          source_type: retried[:source_type].presence || sym[:source_type],
+          source_id: retried[:source_id].presence || sym[:source_id],
           damage: retried[:damage].presence || sym[:damage],
           damage_type: retried[:damage_type].presence || sym[:damage_type],
           target: retried[:target].presence || sym[:target]
         )
       end
+    end
+
+    def attack_roll_missing_damage_metadata?(roll)
+      sym = roll.deep_symbolize_keys
+      return true if sym[:attack_mode].blank?
+      return true if sym[:defense_kind].blank?
+      return true if sym[:damage].blank?
+      return true if sym[:source_type].blank?
+      return true if sym[:source_type].to_s != "unarmed" && sym[:source_id].blank?
+
+      false
     end
 
     def prepared_hostile_combat_continues?(intent)

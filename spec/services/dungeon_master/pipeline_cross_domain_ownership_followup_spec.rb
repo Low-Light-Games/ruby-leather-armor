@@ -25,8 +25,25 @@ RSpec.describe "DungeonMaster cross-domain ownership follow-ups", type: :service
   end
   let(:pipeline) { build_pipeline(adventure) }
   let(:evaluator_base) { ENV.fetch("EVALUATOR_URL", "http://evaluator:3001") }
+  let!(:ray_of_frost) do
+    SpellDefinition.create!(
+      id: "ray_of_frost",
+      name: "Ray of Frost",
+      school: "evocation",
+      class_levels: { "wizard" => 0 },
+      components: %w[V S],
+      casting_time: "1 standard action",
+      range: "close",
+      duration: "instantaneous",
+      saving_throw: "none",
+      spell_resistance: false,
+      effects: [{ "type" => "damage", "dice" => "1d3", "damageType" => "cold" }],
+      summary: "Ranged touch attack deals 1d3 cold damage."
+    )
+  end
 
   before do
+    adv_sheet.adventure_sheet_spells.create!(spell_id: ray_of_frost.id, storage_type: "spellbook")
     WebMock.enable!
     WebMock.allow_net_connect!(allow_localhost: true)
   end
@@ -76,11 +93,9 @@ RSpec.describe "DungeonMaster cross-domain ownership follow-ups", type: :service
           "player_rolls" => [
             {
               "type" => "attack_roll",
+              "attack_option_id" => "spell:ray_of_frost:ranged_touch",
               "target" => "Goblin",
-              "defense_kind" => "touch_ac",
-              "description" => "Ranged touch spell attack",
-              "damage" => "1d3",
-              "damage_type" => "cold"
+              "description" => "Ranged touch spell attack"
             }
           ],
           "npc_actions" => [],

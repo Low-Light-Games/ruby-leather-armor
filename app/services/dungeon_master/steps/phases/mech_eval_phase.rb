@@ -29,11 +29,16 @@ module DungeonMaster
 
             system_prompt_base = case domain.to_s
             when "combat"
+              attack_options = DungeonMaster::Combat::AttackOptionBuilder.call(
+                sheet: @sheet,
+                adventure: @adventure
+              )
               PromptRenderer.render("combat_mechanic",
                 domain:              domain,
                 character_block:     char_block,
                 micro_context:       micro_ctx.present? ? micro_ctx.to_json : nil,
                 creature_stats:      creature_stats,
+                attack_options_text: format_attack_options_for_prompt(attack_options),
                 previous_summaries:  [],
                 rules_text:          rules_text,
                 prior_outcomes:      prior)
@@ -144,6 +149,19 @@ module DungeonMaster
           return "forbidden_skill" if Array(rules[:forbidden_skills]).include?(roll[:skill].to_s)
 
           nil
+        end
+
+        def format_attack_options_for_prompt(options)
+          list = Array(options).map do |option|
+            parts = [option[:id], option[:label]]
+            if option[:damage].present?
+              damage_label = [option[:damage], option[:damage_type]].compact.join(" ")
+              parts << damage_label
+            end
+            "- #{parts.join(' | ')}"
+          end
+
+          list.presence&.join("\n") || "(no legal player attack options available)"
         end
       end
     end

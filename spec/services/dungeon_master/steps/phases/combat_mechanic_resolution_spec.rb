@@ -26,18 +26,36 @@ RSpec.describe DungeonMaster::Steps::Phases::CombatMechanicResolution do
     { "participants" => [{ "name" => "Goblin", "creature_sheet_id" => creature.id }] }
   end
 
+  let!(:ray_of_frost) do
+    SpellDefinition.create!(
+      id: "ray_of_frost",
+      name: "Ray of Frost",
+      school: "evocation",
+      class_levels: { "wizard" => 0 },
+      components: %w[V S],
+      casting_time: "1 standard action",
+      range: "close",
+      duration: "instantaneous",
+      saving_throw: "none",
+      spell_resistance: false,
+      effects: [{ "type" => "damage", "dice" => "1d3", "damageType" => "cold" }],
+      summary: "Ranged touch attack deals 1d3 cold damage."
+    )
+  end
+
   before do
     adventure.update!(combat_context: combat_ctx)
+    sheet.adventure_sheet_spells.create!(spell_id: ray_of_frost.id, storage_type: "spellbook")
   end
 
   describe ".call" do
-    it "resolves attack_roll dc from touch_ac and omits defense_kind from output" do
+    it "resolves attack_roll metadata from attack_option_id" do
       parsed = {
         player_rolls: [
           {
             type: "attack_roll",
+            attack_option_id: "spell:ray_of_frost:ranged_touch",
             target: "Goblin",
-            defense_kind: "touch_ac",
             description: "Ray"
           }
         ],
@@ -57,27 +75,33 @@ RSpec.describe DungeonMaster::Steps::Phases::CombatMechanicResolution do
       roll = out[:player_rolls].first
       expect(roll[:dc]).to eq(creature.reload.derived_stats["touch_ac"].to_i)
       expect(roll[:domain]).to eq("combat")
-      expect(roll).not_to have_key(:defense_kind)
+      expect(roll[:attack_mode]).to eq("ranged_touch")
+      expect(roll[:defense_kind]).to eq("touch_ac")
+      expect(roll[:source_type]).to eq("spell")
+      expect(roll[:source_id]).to eq("ray_of_frost")
+      expect(roll[:damage]).to eq("1d3")
+      expect(roll[:damage_type]).to eq("cold")
     end
 
-    it "resolves full_ac from creature sheet" do
+    it "raises when attack_option_id is missing" do
       parsed = {
         player_rolls: [
-          { type: "attack_roll", target: "Goblin", defense_kind: "full_ac", description: "arrow" }
+          { type: "attack_roll", target: "Goblin", description: "arrow" }
         ],
         npc_actions: [],
         consequences: [],
         mechanical_summary: "x"
       }
 
-      out = described_class.call(parsed: parsed, domain: "combat", adventure: adventure, sheet: sheet)
-      expect(out[:player_rolls].first[:dc]).to eq(creature.reload.derived_stats["ac"].to_i)
+      expect {
+        described_class.call(parsed: parsed, domain: "combat", adventure: adventure, sheet: sheet)
+      }.to raise_error(DungeonMaster::CombatMechanicResolutionError, /attack_option_id/)
     end
 
     it "raises when attack_roll includes dc from the model" do
       parsed = {
         player_rolls: [
-          { type: "attack_roll", target: "Goblin", defense_kind: "full_ac", dc: 10, description: "bad" }
+          { type: "attack_roll", attack_option_id: "spell:ray_of_frost:ranged_touch", target: "Goblin", dc: 10, description: "bad" }
         ],
         npc_actions: [],
         consequences: [],
@@ -122,7 +146,7 @@ RSpec.describe DungeonMaster::Steps::Phases::CombatMechanicResolution do
     it "raises when target is not in combat participants" do
       parsed = {
         player_rolls: [
-          { type: "attack_roll", target: "Orc", defense_kind: "full_ac", description: "hit" }
+          { type: "attack_roll", attack_option_id: "spell:ray_of_frost:ranged_touch", target: "Orc", description: "hit" }
         ],
         npc_actions: [],
         consequences: [],

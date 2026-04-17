@@ -51,15 +51,41 @@ module DungeonMaster
                 )
               end
 
+              option_id = raw[:attack_option_id].to_s
+              if option_id.blank?
+                raise DungeonMaster::CombatMechanicResolutionError.new(
+                  "attack_roll must include attack_option_id (roll index #{idx})",
+                  code: :missing_attack_option_id
+                )
+              end
+
+              option = DungeonMaster::Combat::AttackOptionBuilder.resolve_option_id!(
+                sheet: sheet,
+                adventure: adventure,
+                option_id: option_id
+              )
+
               dc = DungeonMaster::WorldTurn::ParticipantLookup.defense_dc_for_target!(
                 raw[:target],
-                raw[:defense_kind],
+                option[:defense_kind],
                 combat_ctx: combat_ctx,
                 player_sheet: sheet,
                 adventure: adventure
               )
-              attrs = raw.except(:dc_formula, :defense_kind)
-              { domain: "combat" }.merge(attrs).merge(dc: dc)
+              attrs = raw.except(
+                :dc_formula, :defense_kind, :attack_option_id,
+                :damage, :damage_type, :source_type, :source_id, :attack_mode
+              )
+
+              { domain: "combat" }.merge(attrs).merge(
+                attack_mode: option[:attack_mode],
+                defense_kind: option[:defense_kind],
+                source_type: option[:source_type],
+                source_id: option[:source_id],
+                damage: option[:damage],
+                damage_type: option[:damage_type],
+                dc: dc
+              ).compact
             when "saving_throw"
               if raw[:dc].present?
                 raise DungeonMaster::CombatMechanicResolutionError.new(

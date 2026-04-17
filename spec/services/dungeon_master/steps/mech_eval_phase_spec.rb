@@ -11,6 +11,42 @@ RSpec.describe "DungeonMaster::Steps::Phases::MechEvalPhase ownership guards", t
   let!(:sheet) { create(:adventure_sheet, adventure: adventure) }
   let(:pipeline) { build_pipeline(adventure) }
 
+  let!(:ray_of_frost) do
+    SpellDefinition.create!(
+      id: "ray_of_frost",
+      name: "Ray of Frost",
+      school: "evocation",
+      class_levels: { "fighter" => 0 },
+      components: %w[V S],
+      casting_time: "1 standard action",
+      range: "close",
+      duration: "instantaneous",
+      saving_throw: "none",
+      spell_resistance: false,
+      effects: [{ "type" => "damage", "dice" => "1d3", "damageType" => "cold" }],
+      summary: "Ranged touch attack deals 1d3 cold damage."
+    )
+  end
+
+  before do
+    sheet.adventure_sheet_spells.create!(spell_id: ray_of_frost.id, storage_type: "spellbook")
+  end
+
+  it "renders combat mech-eval prompts with attack_option_id and compact attack options" do
+    prompts = pipeline.send(
+      :build_mech_eval_prompts,
+      ["combat"],
+      "I cast Ray of Frost at the goblin.",
+      { affected_contexts: ["combat"] }
+    )
+
+    prompt = prompts.first.fetch(:system_prompt_base)
+    expect(prompt).to include("attack_option_id")
+    expect(prompt).not_to include("\"defense_kind\":")
+    expect(prompt).to include("PLAYER ATTACK OPTIONS")
+    expect(prompt).to include("spell:ray_of_frost:ranged_touch | Ray of Frost (ranged touch) | 1d3 cold")
+  end
+
   it "drops inventory attack rolls that violate domain ownership" do
     allow(pipeline.instance_variable_get(:@log)).to receive(:play_log!)
 

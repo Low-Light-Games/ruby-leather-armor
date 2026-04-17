@@ -63,7 +63,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
       },
       "mechanical_summaries" => ["Ray of Frost requires an attack roll and deals 1d3 cold damage on a hit."],
       "roll_requests" => [
-        { "request_id" => "atk-1", "type" => "attack_roll", "dc" => 16, "description" => "Ray of Frost against the goblin", "damage" => "1d3", "damage_type" => "cold", "target" => "goblin" }
+        { "request_id" => "atk-1", "type" => "attack_roll", "attack_mode" => "ranged_touch", "defense_kind" => "touch_ac", "source_type" => "spell", "source_id" => "ray_of_frost", "dc" => 16, "description" => "Ray of Frost against the goblin", "damage" => "1d3", "damage_type" => "cold", "target" => "goblin" }
       ],
       "pending_npc_actions" => [],
       "pending_consequences" => [],
@@ -78,7 +78,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
 
     expect(result[:action]).to eq(:awaiting_rolls)
     expect(result[:merged][:player_rolls]).to contain_exactly(
-      include(type: "damage_roll", damage: "1d3", damage_type: "cold", source_request_id: "atk-1", request_id: "atk-1:damage")
+      include(type: "damage_roll", damage: "1d3", damage_type: "cold", source_type: "spell", source_id: "ray_of_frost", source_request_id: "atk-1", request_id: "atk-1:damage")
     )
     expect(result[:merged][:roll_chain]).to include(phase: "damage")
   end
@@ -92,7 +92,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
       :finish_resolution,
       { intention: "cast Ray of Frost", creature_data: [], affected_contexts: ["combat"], macro_significant: false, domain_results: {} },
       {
-        player_rolls: [{ request_id: "atk-1", type: "attack_roll", dc: 16, description: "Ray of Frost against the goblin", damage: "1d3", damage_type: "cold", target: "goblin" }],
+        player_rolls: [{ request_id: "atk-1", type: "attack_roll", attack_mode: "ranged_touch", defense_kind: "touch_ac", source_type: "spell", source_id: "ray_of_frost", dc: 16, description: "Ray of Frost against the goblin", damage: "1d3", damage_type: "cold", target: "goblin" }],
         npc_actions: [],
         consequences: [],
         mechanical_summaries: ["Ray of Frost requires an attack roll and deals 1d3 cold damage on a hit."]
@@ -117,7 +117,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
       :finish_resolution,
       { intention: "cast Ray of Frost", creature_data: [], affected_contexts: ["combat"], macro_significant: false, domain_results: {} },
       {
-        player_rolls: [{ request_id: "atk-1:damage", source_request_id: "atk-1", type: "damage_roll", description: "Damage roll for Ray of Frost against the goblin", damage: "1d3", damage_type: "cold", target: "goblin" }],
+        player_rolls: [{ request_id: "atk-1:damage", source_request_id: "atk-1", type: "damage_roll", source_type: "spell", source_id: "ray_of_frost", description: "Damage roll for Ray of Frost against the goblin", damage: "1d3", damage_type: "cold", target: "goblin" }],
         npc_actions: [],
         consequences: [],
         mechanical_summaries: ["Ray of Frost requires an attack roll and deals 1d3 cold damage on a hit."],
@@ -150,7 +150,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
       :finish_resolution,
       { intention: "attack the goblin", affected_contexts: ["combat"], macro_significant: false, domain_results: {} },
       {
-        player_rolls: [{ request_id: "atk-2", type: "attack_roll", dc: 16, description: "Longsword attack against the goblin", damage: "1d8+3", target: "goblin" }],
+        player_rolls: [{ request_id: "atk-2", type: "attack_roll", attack_mode: "melee", defense_kind: "full_ac", source_type: "weapon", source_id: "longsword", dc: 16, description: "Longsword attack against the goblin", damage: "1d8+3", target: "goblin" }],
         npc_actions: [],
         consequences: [],
         mechanical_summaries: ["The longsword attack requires an attack roll and deals 1d8+3 damage on a hit."]
@@ -160,7 +160,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
     )
 
     expect(result[:status]).to eq(:awaiting_rolls)
-    expect(result[:merged][:player_rolls]).to contain_exactly(include(type: "damage_roll", damage: "1d8+3"))
+    expect(result[:merged][:player_rolls]).to contain_exactly(include(type: "damage_roll", damage: "1d8+3", source_type: "weapon", source_id: "longsword"))
   end
 
   it "retries active-combat mech-eval once when a hit is missing damage metadata" do
@@ -174,7 +174,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
     )
     expect(pipeline).not_to receive(:run_combat_gm)
     allow(pipeline).to receive(:retry_attack_damage_metadata).and_return([
-      { request_id: "atk-3", type: "attack_roll", dc: 16, description: "Ray of Frost against the goblin", damage: "1d3", damage_type: "cold", target: "goblin" }
+      { request_id: "atk-3", type: "attack_roll", attack_mode: "ranged_touch", defense_kind: "touch_ac", source_type: "spell", source_id: "ray_of_frost", dc: 16, description: "Ray of Frost against the goblin", damage: "1d3", damage_type: "cold", target: "goblin" }
     ])
 
     result = pipeline.send(
@@ -191,7 +191,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
     )
 
     expect(result[:status]).to eq(:awaiting_rolls)
-    expect(result[:merged][:player_rolls]).to contain_exactly(include(type: "damage_roll", damage: "1d3"))
+    expect(result[:merged][:player_rolls]).to contain_exactly(include(type: "damage_roll", damage: "1d3", source_type: "spell", source_id: "ray_of_frost"))
   end
 
   it "raises when an active-combat hit is still missing damage metadata after retry" do
@@ -210,7 +210,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
         :finish_resolution,
         { intention: "cast Ray of Frost on the goblin", affected_contexts: ["combat"], macro_significant: false, domain_results: {} },
         {
-          player_rolls: [{ request_id: "atk-4", type: "attack_roll", dc: 16, description: "Ray of Frost against the goblin" }],
+          player_rolls: [{ request_id: "atk-4", type: "attack_roll", attack_mode: "ranged_touch", defense_kind: "touch_ac", source_type: "spell", source_id: "ray_of_frost", dc: 16, description: "Ray of Frost against the goblin" }],
           npc_actions: [],
           consequences: [],
           mechanical_summaries: ["Ray of Frost requires an attack roll."]
@@ -235,8 +235,8 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
     result = pipeline.send(
       :finish_resolution,
       { intention: "cast Ray of Frost on the goblin", affected_contexts: ["combat"], macro_significant: false, domain_results: {} },
-      {
-        player_rolls: [{ type: "attack_roll", dc: 16, description: "Ray of Frost against the goblin", damage: "1d3", damage_type: "cold", target: "goblin" }],
+        {
+        player_rolls: [{ type: "attack_roll", attack_mode: "ranged_touch", defense_kind: "touch_ac", source_type: "spell", source_id: "ray_of_frost", dc: 16, description: "Ray of Frost against the goblin", damage: "1d3", damage_type: "cold", target: "goblin" }],
         npc_actions: [],
         consequences: [],
         mechanical_summaries: ["Ray of Frost requires an attack roll and deals 1d3 cold damage on a hit."]
@@ -247,7 +247,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
 
     expect(result[:status]).to eq(:awaiting_rolls)
     expect(result[:merged][:player_rolls]).to contain_exactly(
-      include(type: "damage_roll", damage: "1d3", damage_type: "cold")
+      include(type: "damage_roll", damage: "1d3", damage_type: "cold", source_type: "spell", source_id: "ray_of_frost")
     )
   end
 
@@ -292,7 +292,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
       :finish_resolution,
       { intention: "cast Ray of Frost on the goblin", affected_contexts: ["combat"], macro_significant: false, domain_results: {} },
       {
-        player_rolls: [{ request_id: "atk-5:damage", source_request_id: "atk-5", type: "damage_roll", description: "Damage roll for Ray of Frost against the goblin", damage: "1d3", damage_type: "cold", target: "Goblin" }],
+        player_rolls: [{ request_id: "atk-5:damage", source_request_id: "atk-5", type: "damage_roll", source_type: "spell", source_id: "ray_of_frost", description: "Damage roll for Ray of Frost against the goblin", damage: "1d3", damage_type: "cold", target: "Goblin" }],
         npc_actions: [],
         consequences: [],
         mechanical_summaries: ["Ray of Frost requires an attack roll and deals 1d3 cold damage on a hit."],
@@ -347,7 +347,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — attack and damage roll splitti
       :finish_resolution,
       { intention: "I cast Ray of Frost at it.", affected_contexts: ["combat"], macro_significant: false, domain_results: {} },
       {
-        player_rolls: [{ request_id: "atk-9", type: "attack_roll", dc: 12, defense_kind: "touch_ac", description: "Ray of Frost attack", damage: "1d3", damage_type: "cold", target: "Goblin" }],
+        player_rolls: [{ request_id: "atk-9", type: "attack_roll", attack_mode: "ranged_touch", dc: 12, defense_kind: "touch_ac", source_type: "spell", source_id: "ray_of_frost", description: "Ray of Frost attack", damage: "1d3", damage_type: "cold", target: "Goblin" }],
         npc_actions: [],
         consequences: [],
         mechanical_summaries: ["Player casts Ray of Frost targeting the Goblin, requiring a ranged touch attack roll and dealing cold damage on a hit."]

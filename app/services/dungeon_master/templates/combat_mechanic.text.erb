@@ -12,6 +12,11 @@ intended action, within the COMBAT context only.
 === NPC/CREATURE STATS ===
 <%= @creature_stats %>
 <% end -%>
+<% if @attack_options_text.present? -%>
+
+=== PLAYER ATTACK OPTIONS ===
+<%= @attack_options_text %>
+<% end -%>
 <% if @previous_summaries.present? && @previous_summaries.any? -%>
 
 === PREVIOUS EVALUATION SUMMARIES ===
@@ -36,8 +41,9 @@ intended action, within the COMBAT context only.
 - For attack_roll entries: do NOT output a numeric "dc". The engine resolves the target number
   from live sheets. You MUST include:
   - "target": exact participant name from combat context (pending or active roster), or "player" for the PC, and
-  - "defense_kind": one of "full_ac", "touch_ac", or "flat_footed_ac".
-  When variable damage applies on a hit, include "damage", and "damage_type" / "target" when known.
+  - "attack_option_id": one exact id from PLAYER ATTACK OPTIONS.
+  Do NOT emit "defense_kind", attack delivery, source ids, "damage", or "damage_type" for attack_rolls.
+  The server resolves all combat semantics from the chosen option id.
 - For saving_throw entries: do NOT output a numeric "dc". Use "save" ("fort", "ref", or "will")
   and "dc_formula" describing how the server should compute DC:
   - { "kind": "spell_dc", "spell_name": "<exact spell name>", "caster": "player" } — only for spells the **player
@@ -61,11 +67,9 @@ Respond ONLY with valid JSON (no markdown, no code fences):
   "player_rolls": [
     {
       "type": "attack_roll",
+      "attack_option_id": "spell:ray_of_frost",
       "target": "Goblin",
-      "defense_kind": "touch_ac",
-      "description": "Ranged touch spell attack",
-      "damage": "4d6",
-      "damage_type": "fire"
+      "description": "Ray of Frost against the goblin"
     },
     {
       "type": "saving_throw",
