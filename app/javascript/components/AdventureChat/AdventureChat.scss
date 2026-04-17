@@ -124,6 +124,18 @@
       border-left: 3px solid $red-ink;
 
       .msg-role { color: $red-ink; }
+
+      &.msg-type-combat_log,
+      &.msg-type-action_result {
+        font-family: $font-mono;
+        font-size: 11px;
+        color: $ink-mid;
+        background-color: $parchment-mid;
+        border: 1px dashed $border-light;
+        border-left: 3px dashed $ink-faint;
+
+        .msg-role { color: $ink-mid; }
+      }
     }
 
     &.msg-system {
