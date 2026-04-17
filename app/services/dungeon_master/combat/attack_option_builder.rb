@@ -120,7 +120,7 @@ module DungeonMaster
             next if item.damage_dice.blank?
 
             {
-              id: "weapon:#{item.id}",
+              id: item.id,
               label: weapon_label_for(item),
               attack_mode: item.weapon_type == "ranged" ? "ranged" : "melee",
               defense_kind: "full_ac",

@@ -100,7 +100,7 @@ RSpec.describe DungeonMaster::Combat::AttackOptionBuilder do
           action_cost: "standard"
         ),
         include(
-          id: "weapon:longsword",
+          id: "longsword",
           label: "Longsword",
           attack_mode: "melee",
           defense_kind: "full_ac",
