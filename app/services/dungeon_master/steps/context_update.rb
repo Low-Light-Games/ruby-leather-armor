@@ -165,7 +165,8 @@ module DungeonMaster
 
       def domain_context_evaluator_prompt(field, what_happened, mutations, allow_combat_initialization:)
         key = "#{field}_context"
-        system_prompt = PromptRenderer.render("micro_context_domain_update",
+        template_name = field == "combat" ? "micro_context_domain_update_combat" : "micro_context_domain_update"
+        system_prompt = PromptRenderer.render(template_name,
           domain: field,
           context_key: key,
           current_context: @adventure.public_send(key),

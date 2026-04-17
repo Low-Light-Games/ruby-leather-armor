@@ -28,13 +28,10 @@ Your job is to update ONLY the <%= @context_key %> object based on what just hap
 1. Update ONLY the <%= @context_key %> domain. Do not emit any other domains.
 2. If this domain was not affected, respond with `"unchanged": true` and return the current context exactly in `"context"`.
 3. If this domain was affected, respond with `"unchanged": false` and return the full updated context in `"context"`.
-4. When combat_initialization is present in mutations and this is COMBAT, write the combat context from mutations verbatim.
-5. When combat_state_advancement is present in mutations and this is COMBAT, merge/write only those advancement values into the combat context; preserve all other top-level combat keys unchanged.
 <% unless @allow_combat_initialization %>
-6. You are updating a pause snapshot. If combat is currently inactive and mutations do NOT contain combat_initialization, you MUST NOT activate combat from narrative inference alone.
+4. You are updating a pause snapshot. If combat is currently inactive and mutations do NOT contain combat_initialization, you MUST NOT activate combat from narrative inference alone.
 <% end -%>
-7. If a CANONICAL HP section is present, use those exact HP values. Do not estimate.
-8. If CANONICAL COMBAT PARTICIPANTS are present, preserve every `creature_sheet_id` exactly. Do not invent, remove, or rewrite them.
+5. If a CANONICAL HP section is present, use those exact HP values. Do not estimate.
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
