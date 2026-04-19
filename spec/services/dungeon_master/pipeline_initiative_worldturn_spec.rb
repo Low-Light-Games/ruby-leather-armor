@@ -185,6 +185,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — initiative + world-turn termin
         creature_data: [{ "name" => "Goblin", "creature_sheet_id" => 123, "initiative" => 10 }],
         intent: { intention: "I cast Ray of Frost", affected_contexts: ["combat"], macro_significant: false, domain_results: {} },
         mutations: {},
+        opener_outcome: "Fig charges first.",
         merged: { player_rolls: [{ type: "attack_roll", dc: 12 }], npc_actions: [], consequences: [], mechanical_summaries: ["attack"], bonus_context: { flank: false } },
         remaining_actions: []
       }
@@ -192,6 +193,7 @@ RSpec.describe "DungeonMaster::PipelineEngine — initiative + world-turn termin
       meta = DungeonMaster::AdventurePlay::InitiativeRequestMetadata.for_awaiting_initiative(result)
       stored = meta["pending_opening_merged"] || meta[:pending_opening_merged]
       expect(stored).to include("player_rolls", "mechanical_summaries", "bonus_context")
+      expect(meta[:opener_outcome]).to eq("Fig charges first.")
     end
 
     it "returns awaiting_rolls after initiative when an opening action still needs rolls" do
@@ -291,6 +293,90 @@ RSpec.describe "DungeonMaster::PipelineEngine — initiative + world-turn termin
 
       expect(meta[:remaining_actions]).to eq(structured_remaining)
       expect(meta[:pending_opening_merged]).to include("player_rolls", "mechanical_summaries")
+    end
+
+    it "lets only pre-player NPCs act after a resolved opener when NPCs win initiative" do
+      paused_loop = paused_loop_for(pipeline, "charge at the goblins")
+      paused_loop.batch_update!(new_data: { "pipeline_outcome" => "Fig charges at one of the goblins, striking first." })
+      goblin_1 = adventure.creature_sheets.create!(
+        name: "Goblin", creature_type: "monster", origin: "template",
+        strength: 8, dexterity: 13, constitution: 10, intelligence: 6,
+        wisdom: 10, charisma: 8, level: 1, hp: 5, max_hp: 8
+      )
+      goblin_2 = adventure.creature_sheets.create!(
+        name: "Goblin 2", creature_type: "monster", origin: "template",
+        strength: 8, dexterity: 13, constitution: 10, intelligence: 6,
+        wisdom: 10, charisma: 8, level: 1, hp: 4, max_hp: 4
+      )
+
+      npc_first_data = {
+        "active" => true,
+        "round" => 1,
+        "current_turn" => "Goblin",
+        "turn_order" => ["Goblin", "Player", "Goblin 2"],
+        "participants" => [
+          { "name" => "Goblin", "type" => "npc", "hp" => 5, "max_hp" => 8, "initiative" => 19, "conditions" => [], "creature_sheet_id" => goblin_1.id },
+          { "name" => "Player", "type" => "player", "hp" => 10, "max_hp" => 10, "initiative" => 14, "conditions" => [] },
+          { "name" => "Goblin 2", "type" => "npc", "hp" => 4, "max_hp" => 4, "initiative" => 9, "conditions" => [], "creature_sheet_id" => goblin_2.id }
+        ],
+        "terrain_notes" => nil
+      }
+
+      allow(DungeonMaster::Utilities::Warmaster).to receive(:compute_combat_initialization).and_return(npc_first_data)
+      allow(pipeline).to receive(:request_npc_actions).and_return([
+        ["npc_action_#{goblin_1.id}_0"],
+        {
+          "npc_action_#{goblin_1.id}_0" => {
+            "parsed_response" => {
+              "action" => "attack",
+              "target" => "Player",
+              "attack_modifier" => 0,
+              "damage_dice" => "1d6"
+            }
+          }
+        }
+      ])
+      allow(pipeline).to receive(:evaluator_fan_out_result!).and_wrap_original do |_orig, by_step, step_key, _phase|
+        by_step.fetch(step_key)
+      end
+      allow(DungeonMaster::WorldTurn::NpcActionResolver).to receive(:resolve).and_return(
+        lines: ["Goblin attacks Player: 15+0=15 vs AC 20 — miss."],
+        player_hp_delta: 0,
+        npc_muts: [],
+        battlefield_patches: []
+      )
+      captured_rows = nil
+      allow(pipeline).to receive(:run_accumulated_narrative_phase) do |rows|
+        captured_rows = rows
+        { action: :narrated, narrative: "stub" }
+      end
+
+      meta = {
+        "intent" => {
+          "intention" => "charge at the goblins",
+          "expand_scene" => false,
+          "affected_contexts" => ["combat"],
+          "macro_significant" => false,
+          "domain_results" => {}
+        },
+        "mutations" => {},
+        "opener_outcome" => "Fig charges at one of the goblins, striking first.",
+        "creature_data" => [
+          { "name" => "Goblin", "creature_sheet_id" => goblin_1.id, "initiative" => 19 },
+          { "name" => "Goblin 2", "creature_sheet_id" => goblin_2.id, "initiative" => 9 }
+        ],
+        "pending_opening_merged" => nil,
+        "remaining_actions" => []
+      }
+
+      result = pipeline.run_initiative(14, meta)
+
+      expect(result[:action]).to eq(:narrated)
+      expect(DungeonMaster::WorldTurn::NpcActionResolver).to have_received(:resolve).once
+      expect(paused_loop.reload.get("pipeline_outcome")).to eq("Goblin attacks Player: 15+0=15 vs AC 20 — miss.")
+      combat_mutations = captured_rows.first.dig(:mutations, "combat_state_advancement")
+      expect(combat_mutations["round"]).to eq(1)
+      expect(combat_mutations["current_turn"]).to eq("Player")
     end
   end
 end

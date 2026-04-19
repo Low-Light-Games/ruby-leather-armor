@@ -50,15 +50,25 @@ module DungeonMaster
 
         when :awaiting_initiative
           meta = InitiativeRequestMetadata.for_awaiting_initiative(result)
+          opener_outcome = meta[:opener_outcome].presence || meta["opener_outcome"].presence
           encounter_intro = AdventureLoop.for_registry_entry(@log.registry_entry_uuid)
-                                          .paused.order(:created_at).last
-                                          &.get("pipeline_outcome")
-          initiative_content = [encounter_intro.presence, "Roll for initiative!"].compact.join("\n\n")
-          [persist_message(
+                                         .paused.order(:created_at).last
+                                         &.get("pipeline_outcome")
+          initiative_content = if opener_outcome.present?
+                                 "Roll for initiative!"
+                               else
+                                 [encounter_intro.presence, "Roll for initiative!"].compact.join("\n\n")
+                               end
+          msgs = []
+          if opener_outcome.present?
+            msgs << persist_message(role: "dm", content: opener_outcome, message_type: "action_result")
+          end
+          msgs << persist_message(
             role: "dm",
             content: initiative_content,
             message_type: "initiative_request",
-            metadata: meta)]
+            metadata: meta)
+          msgs
 
         when :combat_initialized
           # Combat context was written directly after initiative resolve; the encounter scene

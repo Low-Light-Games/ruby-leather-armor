@@ -49,7 +49,14 @@ module DungeonMaster
           @adventure.reload
 
           base_mutations = metadata["mutations"] || {}
-          result = { status: :resolved, intent: intent, mutations: base_mutations }
+          opener_outcome = metadata["opener_outcome"].to_s.presence
+          result = {
+            status: :resolved,
+            intent: intent,
+            mutations: base_mutations,
+            action_outcome: opener_outcome,
+            precombat_opener: opener_outcome.present?
+          }
           opening_merged = restore_opening_action_merged(metadata)
 
           if opening_merged
@@ -73,6 +80,9 @@ module DungeonMaster
           # first move. World turn enriches result[:mutations] with combat advancement and sets
           # :player_death / :player_incapacitated on the result when needed.
           npcs_go_first = combat_data["current_turn"] != Utilities::CombatTurnCalculator::PLAYER_NAME
+          if npcs_go_first && opener_outcome.present? && opening_merged.blank?
+            @loop&.batch_update!(new_data: { "pipeline_outcome" => "" })
+          end
           result = maybe_run_world_turn(result) if npcs_go_first
 
           remaining = remaining_actions_from(metadata)

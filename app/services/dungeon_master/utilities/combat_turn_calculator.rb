@@ -9,7 +9,7 @@ module DungeonMaster
 
       class << self
         # @return [Hash] :npc_turns => Array<Combatant>, :next_state => Hash of string keys
-        def call(combat_context:)
+        def call(combat_context:, player_acted_this_round: true)
           ctx = combat_context.deep_stringify_keys
           return default_skip unless ctx["active"] == true
 
@@ -52,7 +52,7 @@ module DungeonMaster
             # the player (they act first in the next round).
             ((p_idx + 1)...turn_order.length).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
             (0...p_idx).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
-          else
+          elsif player_acted_this_round
             # Player acted while an NPC held the turn (e.g. after initiative setup placed a
             # high-initiative enemy first). Run the NPCs that should have acted before the
             # player, then the NPCs after the player — completing the full round.
@@ -69,6 +69,20 @@ module DungeonMaster
               ((p_idx + 1)...turn_order.length).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
               (0...p_idx).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
             end
+          else
+            current_idx = turn_order.index(current_turn.to_s)
+            if current_idx && current_idx < p_idx
+              (current_idx...p_idx).each { |i| append_npc!(by_name, turn_order[i], npc_turns) }
+            end
+
+            return {
+              npc_turns: npc_turns,
+              next_state: {
+                "current_turn" => PLAYER_NAME,
+                "round" => round,
+                "active" => true
+              }
+            }
           end
 
           {

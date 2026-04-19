@@ -143,7 +143,8 @@ module DungeonMaster
           status: :awaiting_initiative,
           intent: intent,
           creature_data: intent[:creature_data],
-          mutations: verdict_result[:mutations]
+          mutations: verdict_result[:mutations],
+          opener_outcome: verdict_result[:outcome].to_s.presence
         }
       end
 

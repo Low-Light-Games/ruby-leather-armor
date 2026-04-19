@@ -38,6 +38,25 @@ RSpec.describe DungeonMaster::AdventurePlay::PipelineMessenger, type: :service d
     end
   end
 
+  describe "#messages_for :awaiting_initiative" do
+    it "persists a resolved opener separately before the initiative prompt" do
+      result = {
+        action: :awaiting_initiative,
+        creature_data: [],
+        intent: { intention: "charge at the goblins" },
+        mutations: {},
+        opener_outcome: "Fig charges at one of the goblins, striking first.",
+        remaining_actions: []
+      }
+
+      messages = messenger.messages_for(result)
+
+      expect(messages.map(&:message_type)).to eq(%w[action_result initiative_request])
+      expect(messages.first.content).to eq("Fig charges at one of the goblins, striking first.")
+      expect(messages.last.content).to eq("Roll for initiative!")
+    end
+  end
+
   describe "#persist_event_messages" do
     it "marks the adventure ended for player death before persisting the message" do
       persisted_message = nil

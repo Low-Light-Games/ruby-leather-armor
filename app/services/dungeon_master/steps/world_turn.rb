@@ -52,7 +52,10 @@ module DungeonMaster
         broadcast_progress("The world reacts...")
 
         base_ctx = (@adventure.combat_context || {}).deep_dup.deep_stringify_keys
-        calc     = Utilities::CombatTurnCalculator.call(combat_context: base_ctx)
+        calc     = Utilities::CombatTurnCalculator.call(
+          combat_context: base_ctx,
+          player_acted_this_round: result[:precombat_opener] != true
+        )
         instant_death = instant_death_enabled?
 
         # Short-circuit before NPC fan-out if the player is already dead.

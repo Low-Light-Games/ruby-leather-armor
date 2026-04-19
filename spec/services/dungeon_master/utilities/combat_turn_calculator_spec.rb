@@ -129,4 +129,22 @@ RSpec.describe DungeonMaster::Utilities::CombatTurnCalculator, type: :service do
       expect(out[:next_state]["round"]).to eq(2)
     end
   end
+
+  context "when combat started from a resolved opener before the player's first combat turn" do
+    it "runs only the NPCs before Player and keeps the round on Player's first turn" do
+      ctx = {
+        "active" => true,
+        "round" => 1,
+        "current_turn" => "Wolf A",
+        "turn_order" => ["Wolf A", "Player", "Wolf B"],
+        "participants" => [wolf_a, player, wolf_b]
+      }
+
+      out = described_class.call(combat_context: ctx, player_acted_this_round: false)
+
+      expect(out[:npc_turns].map(&:name)).to eq(["Wolf A"])
+      expect(out[:next_state]["round"]).to eq(1)
+      expect(out[:next_state]["current_turn"]).to eq("Player")
+    end
+  end
 end
