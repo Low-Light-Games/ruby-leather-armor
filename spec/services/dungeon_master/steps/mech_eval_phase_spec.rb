@@ -47,6 +47,55 @@ RSpec.describe "DungeonMaster::Steps::Phases::MechEvalPhase ownership guards", t
     expect(prompt).to include("spell:ray_of_frost | Ray of Frost | 1d3 cold")
   end
 
+  it "renders traversal mech-eval prompts without combat-only attack instructions" do
+    prompts = pipeline.send(
+      :build_mech_eval_prompts,
+      ["traversal"],
+      "I charge at the goblins.",
+      { affected_contexts: ["traversal", "combat"] }
+    )
+
+    prompt = prompts.first.fetch(:system_prompt_base)
+    expect(prompt).to include("TRAVERSAL OWNERSHIP")
+    expect(prompt).to include("ROUTINE TRAVEL")
+    expect(prompt).to include("does NOT own weapon attacks, spell attacks, damage rolls")
+    expect(prompt).not_to include("When you request an attack_roll")
+    expect(prompt).not_to include("damage expression")
+    expect(prompt).not_to include("Using an item, equipping gear")
+    expect(prompt).not_to include("Walking, riding a trained mount on a road, or other routine actions")
+  end
+
+  it "renders inventory mech-eval prompts with inventory-specific no-roll guidance" do
+    prompts = pipeline.send(
+      :build_mech_eval_prompts,
+      ["inventory"],
+      "I draw a potion and drink it.",
+      { affected_contexts: ["inventory"] }
+    )
+
+    prompt = prompts.first.fetch(:system_prompt_base)
+    expect(prompt).to include("INVENTORY OWNERSHIP")
+    expect(prompt).to include("ROUTINE ITEM HANDLING")
+    expect(prompt).not_to include("=== NPC/CREATURE STATS ===")
+    expect(prompt).not_to include("Determine what NPC actions occur in this domain")
+    expect(prompt).not_to include("dc: 0")
+    expect(prompt).not_to include("Walking, riding a trained mount on a road, or other routine actions")
+  end
+
+  it "renders social mech-eval prompts with opposed-check guidance" do
+    prompts = pipeline.send(
+      :build_mech_eval_prompts,
+      ["social"],
+      "I lie to the guard.",
+      { affected_contexts: ["social"] }
+    )
+
+    prompt = prompts.first.fetch(:system_prompt_base)
+    expect(prompt).to include("SOCIAL OWNERSHIP")
+    expect(prompt).to include("OPPOSED CHECKS")
+    expect(prompt).to include("dc: 0")
+  end
+
   it "drops inventory attack rolls that violate domain ownership" do
     allow(pipeline.instance_variable_get(:@log)).to receive(:play_log!)
 
@@ -94,6 +143,31 @@ RSpec.describe "DungeonMaster::Steps::Phases::MechEvalPhase ownership guards", t
       "ownership_guard",
       /Dropped traversal roll/,
       parsed_response: hash_including(domain: "traversal", violation: "forbidden_skill")
+    )
+  end
+
+  it "drops traversal attack rolls that violate domain ownership" do
+    allow(pipeline.instance_variable_get(:@log)).to receive(:play_log!)
+
+    results = [{
+      "meta" => { "domain" => "traversal" },
+      "parsed_response" => {
+        "player_rolls" => [
+          { "type" => "attack_roll", "dc" => 0, "description" => "Attack roll against Goblin 1", "damage" => "1d6+2" }
+        ],
+        "npc_actions" => [],
+        "consequences" => [],
+        "mechanical_summary" => "bad traversal attack roll"
+      }
+    }]
+
+    parsed = pipeline.send(:parse_mech_eval_results, results, ["traversal"])
+
+    expect(parsed).to contain_exactly(include(domain: "traversal", player_rolls: []))
+    expect(pipeline.instance_variable_get(:@log)).to have_received(:play_log!).with(
+      "ownership_guard",
+      /Dropped traversal roll/,
+      parsed_response: hash_including(domain: "traversal", violation: "forbidden_type")
     )
   end
 end

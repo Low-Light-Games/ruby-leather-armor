@@ -12,11 +12,6 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
 === NPC/CREATURE STATS ===
 <%= @creature_stats %>
 <% end -%>
-<% if @previous_summaries.present? && @previous_summaries.any? -%>
-
-=== PREVIOUS EVALUATION SUMMARIES ===
-<%= @previous_summaries.join("\n\n") %>
-<% end -%>
 <% _prior = PromptRenderer.render_partial("partials/prior_outcomes", outcomes: @prior_outcomes) -%>
 <% if _prior.present? -%>
 
@@ -27,29 +22,25 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
 <%= @rules_text.presence || "(no specific rules requested for this domain)" %>
 
 === INSTRUCTIONS ===
-- Determine what player rolls are needed (skill checks, attack rolls, saves, etc.) for this domain.
-  IMPORTANT: Only request rolls the rules actually require. Many actions simply succeed with no roll:
-  - Casting a prepared spell in safe conditions (no threats, not casting defensively) requires NO roll.
-  - Walking, riding a trained mount on a road, or other routine actions require NO roll.
-  - Using an item, equipping gear, or other standard actions require NO roll unless rules say otherwise.
+- Determine only the player rolls this domain actually owns.
+  IMPORTANT: Only request rolls the rules require. Many actions simply succeed with no roll:
+  - If the mechanics belong to another domain, treat this domain as NO mechanical involvement
+    unless one of this domain's own rules actually triggers a separate roll or consequence.
   If no rolls are needed, return an EMPTY player_rolls array. Do NOT invent rolls the rules don't call for.
-  When you request an attack_roll that deals variable damage on a hit, include the attack's
-  damage expression in a "damage" field so the pipeline can ask for the damage roll after
-  a successful hit instead of inventing damage itself. Include "damage_type" and "target"
-  when known.
-  Every roll MUST include a numeric "dc" value. EXCEPTION: opposed checks (Bluff vs Sense Motive,
-  contested grapples, etc.) use dc: 0 and note "opposed" in the description — the DC is the
-  opponent's roll result and cannot be predetermined.
+  Every requested roll MUST include a numeric "dc" value.
+<% if @include_npc_actions_guidance != false -%>
 - Determine what NPC actions occur in this domain in response to the player's action.
   For each NPC action include: actor name, action type, target, modifier (total attack bonus
   or skill bonus as a single integer), and damage (dice string, for attacks only).
-- List any automatic consequences that don't require rolls (e.g. attitude shifts from witnessed actions).
+<% end -%>
+- List any automatic consequences that don't require rolls.
 - Write a mechanical_summary that describes what happens mechanically in this domain. This summary
   will be passed to subsequent evaluations for other domains.
 - If this domain has no mechanical involvement in this action, return empty arrays and write
   mechanical_summary as "(no mechanical involvement in this domain)". Do not narrate or speculate
   about outcomes — leave that to the Narrate step.
-- Only adjudicate for the <%= @domain.upcase %> domain. Do not rule on other domains.
+- Only adjudicate for the <%= @domain.upcase %> domain. Off-domain mechanics are not your job;
+  return no mechanical involvement instead of speculating about them.
 <% if @prior_outcomes.present? && @prior_outcomes.any? -%>
 - If a PRIOR ACTION THIS TURN failed to produce the prerequisite for this action
   (e.g. tree not found, so nothing to cut), set player_rolls to [] and write a
@@ -66,15 +57,10 @@ for the player's intended action, within the <%= @domain.upcase %> context only.
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
   "player_rolls": [
-    { "type": "skill_check", "skill": "Swim", "dc": 10, "description": "Swim check to stay afloat" },
-    { "type": "skill_check", "skill": "Disable Device", "dc": 20, "description": "Disarm the trapped lock" }
+    { "type": "skill_check", "skill": "Relevant Skill", "dc": 10, "description": "Domain-owned check" }
   ],
-  "npc_actions": [
-    { "actor": "Goblin A", "action": "attack", "target": "player", "modifier": 3, "damage": "1d6+2" }
-  ],
-  "consequences": [
-    { "target": "NPC Name", "effect": "attitude_shift", "from": "friendly", "to": "unfriendly", "reason": "explanation" }
-  ],
+  "npc_actions": [],
+  "consequences": [],
   "mechanical_summary": "Brief mechanical summary of what happens in this domain",
   "reasoning": "Brief explanation of rules applied (1-2 sentences)"
 }

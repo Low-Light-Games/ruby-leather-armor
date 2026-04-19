@@ -6,11 +6,30 @@ module DungeonMaster
       # Phase 2 of ParallelEvaluation — builds mechanical evaluation prompts,
       # calls the evaluator's /sequential endpoint, and parses results.
       module MechEvalPhase
+        DOMAIN_PROMPT_RULES = {
+          "inventory" => { creature_stats: false, npc_actions_guidance: false },
+          "rest" => { creature_stats: false, npc_actions_guidance: false },
+          "buff" => { creature_stats: false, npc_actions_guidance: false }
+        }.freeze
+
         DOMAIN_ROLL_INVARIANTS = {
           "inventory" => {
             forbidden_types: %w[attack_roll damage_roll]
           },
+          "exploration" => {
+            forbidden_types: %w[attack_roll damage_roll]
+          },
+          "social" => {
+            forbidden_types: %w[attack_roll damage_roll]
+          },
+          "rest" => {
+            forbidden_types: %w[attack_roll damage_roll]
+          },
+          "buff" => {
+            forbidden_types: %w[attack_roll damage_roll]
+          },
           "traversal" => {
+            forbidden_types: %w[attack_roll damage_roll],
             forbidden_skills: %w[Stealth]
           }
         }.freeze
@@ -20,11 +39,16 @@ module DungeonMaster
         def build_mech_eval_prompts(ordered_domains, intention, intent)
           prior = continuity_prior_outcomes
           ordered_domains.map do |domain|
+            prompt_rules   = DOMAIN_PROMPT_RULES.fetch(domain.to_s, {})
             # buff: focused char block (spells + items only); context is active_buffs on the sheet;
             # no creature stats needed — buff eval produces no rolls and no NPC actions.
             char_block     = domain == "buff" ? CharacterBlock.buff(@sheet) : CharacterBlock.for(@sheet, category: domain)
             micro_ctx      = domain == "buff" ? @sheet&.active_buffs : @adventure.send("#{domain}_context")
-            creature_stats = domain == "buff" ? nil : CharacterBlock.creature_stats_for(@adventure)
+            creature_stats = if prompt_rules[:creature_stats] == false || domain == "buff"
+                               nil
+                             else
+                               CharacterBlock.creature_stats_for(@adventure)
+                             end
             rules_text     = domain_rules_text_for(intent, domain)
 
             system_prompt_base = case domain.to_s
@@ -50,7 +74,7 @@ module DungeonMaster
                 character_block:     char_block,
                 micro_context:       micro_ctx.present? ? micro_ctx.to_json : nil,
                 creature_stats:      creature_stats,
-                previous_summaries:  [],
+                include_npc_actions_guidance: prompt_rules.fetch(:npc_actions_guidance, true),
                 rules_text:          rules_text,
                 domain_instructions: instructions,
                 prior_outcomes:      prior)
