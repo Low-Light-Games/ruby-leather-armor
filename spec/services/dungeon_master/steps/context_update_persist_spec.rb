@@ -111,6 +111,52 @@ RSpec.describe "DungeonMaster::Steps::ContextUpdate#persist_micro_contexts", typ
     expect(adventure.combat_context.dig("action_economy", "standard_available")).to be(true)
   end
 
+  it "persists normalized ended-combat snapshots without slain npc pollution" do
+    adventure.update!(
+      combat_context: {
+        "active" => true,
+        "round" => 3,
+        "current_turn" => "Orc",
+        "turn_order" => ["Orc", "Player"],
+        "participants" => [
+          { "name" => "Orc", "type" => "npc", "creature_sheet_id" => 77, "hp" => 0, "max_hp" => 12, "conditions" => [] },
+          { "name" => "Player", "type" => "player", "hp" => 9, "max_hp" => 12, "conditions" => [] }
+        ],
+        "battlefield_ref" => { "id" => 99, "version" => 1, "topology" => "square" },
+        "action_economy" => {
+          "round" => 3,
+          "holder" => "Orc",
+          "standard_available" => false,
+          "move_available" => false,
+          "swift_available" => true,
+          "full_round_claimed" => true
+        }
+      }
+    )
+    parsed = { "combat_context" => { "unchanged" => true, "context" => {} } }
+    mutations = {
+      "combat_state_advancement" => {
+        "active" => false,
+        "round" => 3,
+        "current_turn" => nil,
+        "turn_order" => [],
+        "participants" => [
+          { "name" => "Player", "type" => "player", "hp" => 9, "max_hp" => 12, "conditions" => [] }
+        ],
+        "battlefield_ref" => nil,
+        "action_economy" => nil
+      }
+    }
+
+    pipeline.send(:persist_micro_contexts, parsed, mutations)
+    adventure.reload
+
+    npc_rows = Array(adventure.combat_context["participants"]).select { |row| row["type"] == "npc" }
+    expect(npc_rows).to be_empty
+    expect(adventure.combat_context["action_economy"]).to be_nil
+    expect(adventure.combat_context["battlefield_ref"]).to be_nil
+  end
+
   it "repairs dropped npc creature_sheet_id from existing active combat participants" do
     goblin = CreatureSheet.create!(
       adventure: adventure, name: "Goblin", creature_type: "monster", origin: "template",
