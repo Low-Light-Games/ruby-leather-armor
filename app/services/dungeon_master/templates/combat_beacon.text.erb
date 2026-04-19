@@ -22,8 +22,9 @@ Rules (in priority order):
 2. If a new fight is being initiated: combat_now true.
    combatants: array of one-key objects where the key is the singular lowercase creature kind and the value is the integer count.
    Example: [{ "goblin": 2 }, { "hobgoblin": 1 }]
-   If the current player message is ambiguous, use recent player-facing story context to infer count.
-   Best-effort guessing is allowed when the recent story strongly implies a group.
+   If the player message or recent story indicates a grouped enemy ("orcs", "patrol", "squad", etc.),
+   emit explicit counted entries. Do not collapse grouped enemies to a single creature.
+   If count is uncertain, pick the most likely count from available story context and still emit counted entries.
 3. If nothing combat-related: combat_now false, combatants [].
 
 Output JSON only:

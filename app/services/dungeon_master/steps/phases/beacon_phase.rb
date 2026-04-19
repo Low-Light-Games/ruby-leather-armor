@@ -88,6 +88,7 @@ module DungeonMaster
             combat_now = domain == "combat" ? d[:combat_now] == true : false
             is_affected = domain == "combat" ? combat_now : d[:affected] == true
             combat_transition = combat_now ? "combat_started" : d[:transition]
+            normalized_combatants = normalized_combatants(d[:combatants], d[:count])
 
             domain_results[domain] = {
               domain:            domain,
@@ -96,8 +97,10 @@ module DungeonMaster
               expand_scene:      domain == "social" && d[:expand_scene] == true,
               transition:        combat_transition,
               destination:       d[:destination],
-              combatants:        normalized_combatants(d[:combatants], d[:count])
+              combatants:        normalized_combatants
             }
+
+            log_single_creature_combat_manifest!(d, normalized_combatants) if domain == "combat" && combat_now
 
             next unless is_affected
 
@@ -172,6 +175,24 @@ module DungeonMaster
           compact_entries.flat_map do |name, count|
             Array.new(count, name)
           end
+        end
+
+        def log_single_creature_combat_manifest!(raw_combat_domain, normalized_combatants)
+          return unless normalized_combatants.size == 1
+
+          raw_total = Array(raw_combat_domain[:combatants]).sum do |entry|
+            entry.is_a?(Hash) ? entry.values.first.to_i : 1
+          end
+          return unless raw_total == 1
+
+          @log&.play_log!(
+            "combat_beacon_single_manifest",
+            "Combat beacon started combat with a single-creature manifest; preserving as-is.",
+            parsed_response: {
+              combatants: raw_combat_domain[:combatants],
+              count: raw_combat_domain[:count]
+            }
+          )
         end
       end
     end
