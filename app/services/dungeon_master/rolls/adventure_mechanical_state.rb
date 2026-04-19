@@ -17,11 +17,11 @@ module DungeonMaster
 
       def auto_finalize_pending_initiative!(adventure:, sheet:, log:)
         msgs = adventure.adventure_messages
-        last_init_msg = msgs.for_message_types(["initiative_request"]).newest_first.first
+        last_init_msg = latest_pending_initiative_request(adventure)
         return unless last_init_msg&.metadata&.dig("creature_data")
 
         last_player_response = msgs.from_players
-                                   .where("created_at > ?", last_init_msg.created_at)
+                                   .where("id > ?", last_init_msg.id)
                                    .newest_first.first
         return unless last_player_response
         return if last_player_response.message_type == "initiative_result"
@@ -41,6 +41,13 @@ module DungeonMaster
         DungeonMaster::Battlefield::PersistCombatStart.call(adventure: adventure, combat_data: combat_data, sheet: sheet)
 
         log.log!(:info, "Auto-rolled player initiative (#{player_init}) — player ignored initiative prompt")
+      end
+
+      def latest_pending_initiative_request(adventure)
+        msgs = adventure.adventure_messages
+        msgs.for_message_types(["initiative_request"]).newest_first.detect do |init_msg|
+          !msgs.for_message_types(["initiative_result"]).where("id > ?", init_msg.id).exists?
+        end
       end
     end
   end
