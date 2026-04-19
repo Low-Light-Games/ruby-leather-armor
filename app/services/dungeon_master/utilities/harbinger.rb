@@ -153,7 +153,11 @@ module DungeonMaster
         scene
       rescue => e
         log&.log!(:error, "[harbinger_expand] #{e.class}: #{e.message}")
-        raise if Rails.env.local?
+        ApplicationErrorReporter.notify(e, context: {
+          source: "harbinger_expand",
+          encounter_entry_id: entry&.id,
+          adventure_id: adventure&.id
+        })
         entry.description
       end
 

@@ -17,7 +17,7 @@ module DungeonMaster
           run_narrative_phase(narration_inputs.intent,
             narration_context: narration_inputs.pipeline_context,
             mutations: narration_inputs.mutations,
-            extra: narration_inputs.extra)
+            extra: narration_inputs.extra || {})
         end
 
         def run_single_action_narrative_phase(result, sequence_index, total_actions)
@@ -27,7 +27,8 @@ module DungeonMaster
 
           phase = run_narrative_phase(narration_inputs.intent,
             narration_context: narration_inputs.pipeline_context,
-            mutations: narration_inputs.mutations)
+            mutations: narration_inputs.mutations,
+            extra: narration_inputs.extra || {})
 
           entry = Narrative::ProgressiveEntry.from_narrative_phase(
             phase,

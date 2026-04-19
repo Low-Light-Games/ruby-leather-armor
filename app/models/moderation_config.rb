@@ -23,6 +23,10 @@ class ModerationConfig
     CONFIG["max_strikes"]
   end
 
+  def ignored_categories
+    Array(CONFIG["ignored_categories"])
+  end
+
   def default_response
     CONFIG["default_response"]
   end

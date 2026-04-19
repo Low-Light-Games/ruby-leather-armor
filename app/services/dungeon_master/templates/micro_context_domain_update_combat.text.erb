@@ -1,0 +1,47 @@
+You are the state tracker for the COMBAT micro-context of a Pathfinder 1e tabletop RPG adventure.
+Your job is to update ONLY the <%= @context_key %> object based on what just happened.
+
+=== WHAT HAPPENED ===
+<%= @what_happened %>
+
+=== MUTATIONS APPLIED ===
+<%= @mutations_json.present? ? @mutations_json : "(no mechanical mutations)" %>
+
+<% if @canonical_hp.present? -%>
+=== CANONICAL HP (authoritative — copy these exact values into participant hp fields) ===
+<%= @canonical_hp %>
+<% end -%>
+
+<% if @canonical_participants.present? -%>
+=== CANONICAL COMBAT PARTICIPANTS (authoritative identity — preserve creature_sheet_id exactly) ===
+<%= @canonical_participants.to_json %>
+<% end -%>
+
+=== CURRENT COMBAT CONTEXT ===
+
+<%= @current_context.present? ? @current_context.to_json : "(empty)" %>
+
+=== COMBAT SCHEMA ===
+<%= @context_schema %>
+
+=== INSTRUCTIONS ===
+1. Update ONLY the <%= @context_key %> domain. Do not emit any other domains.
+2. If combat was not affected, respond with `"unchanged": true` and return the current context exactly in `"context"`.
+3. If combat was affected, respond with `"unchanged": false` and return the full updated combat context in `"context"`.
+4. **`active` (combat engine):** `true` means initiative/turn order still applies; `false` means the encounter is over and combat tracking stops. Set `active` to **false** when every hostile NPC in this encounter is eliminated (HP ≤ 0 and/or `dead`/`fled`/`surrendered` as appropriate) or when mutations clearly end the encounter. Do **not** leave `active: true` with no remaining credible threats unless the story explicitly continues tactical play.
+5. **Alignment with mutations:** Your `context` must agree with mechanical facts already in MUTATIONS APPLIED — round, `current_turn`, `turn_order`, participant HP/conditions, and end-of-combat signals. Do not contradict pipeline output (e.g. do not show `active: true` if mutations already advanced or ended combat).
+6. When `combat_initialization` is present in mutations, write the combat context from those mutation values as the basis for the new state.
+7. When `combat_state_advancement` is present in mutations, merge those advancement fields into your updated context so turn/round/active/participants match the pipeline; preserve unrelated top-level keys only when they are still valid.
+<% unless @allow_combat_initialization %>
+8. You are updating a pause snapshot. If combat is currently inactive and mutations do NOT contain `combat_initialization`, you MUST NOT activate combat from narrative inference alone.
+<% end -%>
+9. If a CANONICAL HP section is present, use those exact HP values. Do not estimate.
+10. If CANONICAL COMBAT PARTICIPANTS are present, preserve every `creature_sheet_id` exactly. Do not invent, remove, or rewrite them.
+11. Before you respond, re-read CANONICAL HP and MUTATIONS APPLIED together: if no hostile NPC remains in the fight, `active` must be false.
+
+Respond ONLY with valid JSON (no markdown, no code fences):
+{
+  "unchanged": false,
+  "context": {},
+  "reasoning": "1-3 sentences explaining whether this domain changed and why"
+}

@@ -34,6 +34,8 @@ The **AI step mixins** (Intake, Sequencer, Narrate, …) implement individual pr
 
 **Per-class contracts** (what must be set on the pipeline before the step, what mutates, prompt inputs) live in the file header comments on each phase and on `ActionQueueRunner`.
 
+Combat attack rolls now follow the same AI-picks / server-resolves pattern as saving-throw `dc_formula`: combat mech-eval selects an `attack_option_id`, and Ruby resolves attack mode, defense targeting, damage metadata, and pending-roll quick actions from that code-built option.
+
 **Adding a conditional outer step:** insert a phase class in `pipeline/phases/`, implement `.call(pipeline, state)` returning `{ halt: true, result: ... }` to stop the chain or `{ halt: false, ... }` to merge keys into `state`, then add **`return r if (r = apply_prompt_phase(Phases::YourPhase, state))`** (or equivalent) in **`#run_prompt`** in the desired order.
 
 ---
@@ -74,24 +76,7 @@ We accepted this because correctness and debuggability matter more than
 speed for a turn-based game, and per-step model selection recovers most
 of the cost overhead by using cheap models on cheap steps.
 
-**Standard path:** UnifiedEvaluation collapses the evaluation phase
-(domain intent classification + mechanical roll determination + Take 10/20
-eligibility) into a single AI call, while preserving the rest of the
-pipeline (sanity checks, verdict, time keeping, narration, context updates
-as separate steps). One model handles all 6 domains in one pass, delivering
-better coherence and eliminating roll duplication without sacrificing
-debugging granularity for the non-evaluation steps.
-
-| | Unified Evaluation |
-|---|---|
-| Evaluation calls | 1 |
-| Other steps | Separate |
-| Per-domain model selection | No (one model for eval) |
-| Cross-domain coherence | High (single context) |
-| Roll deduplication | AI avoids duplicates natively |
-| Prompt size | Large (all contexts + rules) |
-| Recommended model | gpt-5-mini (floor: gpt-4.1-mini, o4-mini) |
-| Toggle | always active |
+**Current path:** `Steps::ParallelEvaluation` (via `EVALUATOR_URL`, default `http://evaluator:3001`) is the **only** evaluation route. `AdventureLoopResolution#resolve` calls it unconditionally. UnifiedEvaluation has been retired — see Decision 4.
 
 ### 2. Six micro-contexts instead of a single context blob
 
@@ -326,7 +311,7 @@ to understand any single part.
 
 The separation means:
 - `Pipeline#run_prompt` reads like a linear script: intake,
-  then branch, then player_interpreter, then beacon, then mechanics gate, etc.
+  then branch, then beacon, then mechanics gate, etc.
   A developer can read the full flow in ~40 lines.
 - The service's `process_player_prompt` is equally clear: persist the
   player message, run the pipeline, map the result to messages, catch
@@ -355,7 +340,7 @@ cheap steps or under-serving expensive ones. Per-step selection lets you
 put the budget where it matters.
 
 This also future-proofs for fine-tuning: steps with consistent schemas
-(intake, player_interpreter, beacon, context updates) are strong
+(intake, beacon, context updates) are strong
 fine-tuning candidates. You can fine-tune a cheap model on logged examples
 and slot it in for one step without affecting others.
 
@@ -476,6 +461,13 @@ mutations. No other step, utility, or service (except emergency recovery in
 `DungeonMaster::Rolls::AdventureMechanicalState.auto_finalize_pending_initiative!`) writes directly to
 Adventure context fields.
 
+**Documented exception (Path A encounter pause):**
+`DungeonMaster::EncounterWarmasterBridge` calls
+`DungeonMaster::Utilities::Warmaster.persist_pending_combat!` when encounter
+combat is spawned but initiative is still pending. This writes an NPC-only
+pending roster to `combat_context` before ContextUpdate runs, so pause-time
+state does not fall back to stale ended-combat snapshots.
+
 **Runs before every player-facing message:** ContextUpdate executes before
 any pipeline early return that presents a message to the player — including
 initiative prompts and roll requests, not only after full narrative resolution.
@@ -569,27 +561,34 @@ caused a wasted evaluation iteration for a non-existent combat context and
 skewed downstream steps. The classification should answer "what is the
 player trying to accomplish?" not "does this involve spellcasting?"
 
-### 21. Domain-specific instruction partials
+### 21. Domain-specific mechanical evaluation prompts
 
-**Decision:** domain-specific guidance is stored in separate partial files
-(`templates/mechanical_evaluation/_combat.text.erb`,
-`templates/mechanical_evaluation/_traversal.text.erb`, etc.) and injected
-into the UnifiedEvaluation prompt as a single "DOMAIN GUIDANCE" block,
-rather than inlining all domain logic in one template with `if/elsif` blocks.
+**Decision:** non-combat domains keep their domain-specific guidance in
+partial files (`templates/mechanical_evaluation/_traversal.text.erb`,
+`templates/mechanical_evaluation/_social.text.erb`, etc.) rendered into the
+generic `mechanical_evaluation.text.erb` prompt, while the `combat` domain
+uses its own standalone `templates/combat_mechanic.text.erb` prompt and a
+Ruby normalization step (`CombatMechanicResolution`) to resolve live AC / save
+DC values from canonical sheet data.
 
-**How:** `PromptRenderer.render_partial("mechanical_evaluation/_#{domain}")`
-loads the partial for each domain. If no partial exists, it returns
-an empty string gracefully. All rendered partials are concatenated and
-injected into the unified template via `@domain_hints`.
+**How:** `Steps::Phases::MechEvalPhase` branches on domain:
+- `combat` → `PromptRenderer.render("combat_mechanic", ...)`, then
+  `CombatMechanicResolution.call(...)` converts structured combat JSON into the
+  same normalized `player_rolls` / `npc_actions` shape the rest of the
+  pipeline expects. Resolution errors raise and fail the combat mech-eval path
+  closed instead of silently degrading to empty roll requests.
+- all other domains → `PromptRenderer.render_partial("mechanical_evaluation/_#{domain}")`
+  inside `mechanical_evaluation.text.erb`.
 
-**Why:** with six domains each needing domain-specific Pathfinder 1e
-guidance (combat: AoO, flanking, concentration; traversal: overland
-movement, forced march; social: diplomacy DCs; etc.), a single template
-with conditionals became unwieldy. Separate files are easier to review,
-edit, and version-control independently.
+**Why:** combat rolls need stricter structure than the generic prompt can
+reliably provide. The AI now classifies *what kind* of combat roll is needed
+(`defense_kind`, `spell_dc`, `ability_dc`, `attack_of_opportunity`), while
+Ruby resolves the numeric DC from live participant sheets. Non-combat domains
+still benefit from lightweight instruction partials without needing this extra
+normalization step.
 
-**Domains covered:** `combat`, `traversal`, `social`, `exploration`,
-`rest`, `inventory`.
+**Domains covered by generic partials:** `traversal`, `social`,
+`exploration`, `rest`, `inventory`, `buff`.
 
 ### 22. Scene summary as player-facing status
 
@@ -656,11 +655,34 @@ roll_qualifier chain but offloads concurrency to a dedicated stateless Node.js m
 (`evaluator/`) via `Promise.all` for the beacon and roll_qualifier phases and a sequential
 loop for mechanical_evaluation. The Node service is a stateless HTTP proxy — no DB access,
 no domain logic. All prompts are rendered in Rails (ERB templates); model and token budget
-travel inline per request from `DmConfig`. Requires `EVALUATOR_URL` (default:
-`http://evaluator:3001`).
+travel inline per request from `DmConfig`. Within the sequential mech-eval phase, `combat`
+now uses `templates/combat_mechanic.text.erb` plus app-side `CombatMechanicResolution`,
+while non-combat domains still use `templates/mechanical_evaluation.text.erb` plus
+domain partials. Requires `EVALUATOR_URL` (default: `http://evaluator:3001`).
 
 `ParallelEvaluation` is now the **only** evaluation path. `AdventureLoopResolution#resolve` calls it
 unconditionally.
+
+### 25a. Cheap-model prompt policy: simplify, don't stack warnings
+
+**Decision:** when prompt changes are needed for reliability on cheap models,
+changes must simplify ownership and contracts rather than layering additional
+negative instructions.
+
+**Why:** additive warning prompts ("DO NOT X", "DO NOT Y", "ALSO DO NOT Z")
+increase token noise and ambiguity. Small models fail more often when asked to
+remember long exception lists. Reliability improves when prompts are narrowed:
+remove responsibilities the step should not own, replace ambiguous rules with
+single clear contracts, or split overloaded prompts.
+
+**Rule of thumb:**
+- If data is deterministic and already owned in code (HP, turn order, roster
+  shape, state transitions), fix in code at that seam.
+- If behavior is language interpretation owned by AI, simplify/replace the prompt
+  contract instead of appending more prohibitions.
+
+**Anti-pattern:** code that parses player text or AI prose to "repair" model
+output. This violates Design Philosophy §15 and §17.
 
 ### 26. SanityChecker (capability + world consistency validation)
 
@@ -935,11 +957,14 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | -- | **AdventureLoopResolution** (module) | Code orchestration | `app/services/dungeon_master/adventure_loop_resolution.rb` |
 | 3 | **ParallelEvaluation** | Code + 3 HTTP phases to Node evaluator | `app/services/dungeon_master/steps/parallel_evaluation.rb` — requires `EVALUATOR_URL` |
 | 3-i | **↳ beacon** | AI ×6, parallel (Node) | `evaluator/src/index.js` `/fan_out` + `templates/beacon.text.erb` |
-| 3-ii | **↳ mechanical_evaluation** | AI ×N, sequential (Node) | `evaluator/src/index.js` `/sequential` + `templates/mechanical_evaluation.text.erb` |
+| 3-ii | **↳ mechanical_evaluation** | AI ×N, sequential (Node) + app-side normalization | `evaluator/src/index.js` `/sequential` + `templates/combat_mechanic.text.erb` for `combat`, `templates/mechanical_evaluation.text.erb` for other domains |
 | 3-iii | **↳ roll_qualifier** | AI ×N, parallel (Node) | `evaluator/src/index.js` `/fan_out` + `templates/roll_qualifier.text.erb` |
 | 4 | **SanityChecker** | AI (parallel, mechanical path) | `app/services/dungeon_master/steps/sanity_checker.rb` |
-| 5 | **Mechanic** | AI (mechanical path) | `app/services/dungeon_master/steps/mechanic.rb` |
+| 5 | **Mechanic** | AI (mechanical path, non-combat or inactive combat) | `app/services/dungeon_master/steps/mechanic.rb` |
+| 5′ | **Combat GM** | AI (mechanical path, **active combat** — `combat_active?`) | `app/services/dungeon_master/steps/combat_gm.rb`, `templates/combat_gm.text.erb` |
 | 5a | **Momentum** | AI (non-mechanical path) | `app/services/dungeon_master/steps/momentum.rb` |
+| 5a.5 | **World Turn** | Code orchestration | `app/services/dungeon_master/steps/world_turn.rb`, `app/services/dungeon_master/world_turn/*.rb` |
+| 5a.5-i | **↳ npc_action** | AI ×N (parallel `/fan_out`; code applies sequentially) | `app/services/dungeon_master/steps/world_turn.rb`, `app/services/dungeon_master/world_turn/npc_action_prompt.rb` |
 | 5b | **TimeKeeper** | Code-first, AI fallback | `app/services/dungeon_master/steps/time_keeper.rb` |
 | 5c | **Social Expansion** | AI (conditional) | `app/services/dungeon_master/adventure_loop_resolution.rb` (`resolve_social_scene`) |
 | -- | **Harbinger** (utility) | Code + optional AI | `app/services/dungeon_master/utilities/harbinger.rb` |
@@ -959,6 +984,59 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 
 Interrupted queues (encounter, social scene, roll request) fall back to the accumulated path for the interrupting event regardless of mode.
 
+## What is AI vs. what is code
+
+| Component | AI? | Notes |
+|---|---|---|
+| ParallelEvaluation (beacon) | ✅ AI ×6 | Per-domain intent classification via Node `/fan_out` |
+| ParallelEvaluation (mechanical_evaluation) | ✅ AI ×N + ❌ code normalization for `combat` | Sequential per-domain mechanical resolution via Node `/sequential`; combat responses are normalized in Ruby before roll merge |
+| ParallelEvaluation (roll_qualifier) | ✅ AI ×N | Per-domain Take 10/20 eligibility + situational modifiers via Node `/fan_out` |
+| Mechanic | ✅ AI | Post-roll arbitration + structured mutations when combat is not active |
+| Combat GM | ✅ AI | Same role as Mechanic during **active combat** (battlefield slice + PF1e combat guidance); emits `battlefield_patches` + `action_economy_delta` |
+| Momentum | ✅ AI | Non-mechanical outcome |
+| World Turn (orchestration) | ❌ Code | Shared-snapshot NPC turn orchestration, sequential dice + mutation application in initiative order, combat advancement, and combat-end handling |
+| NPC Action (individual decisions) | ✅ AI ×N | One Node `/fan_out` batch (parallel AI) against the same live combat snapshot; code resolves and applies per NPC in order |
+| TimeKeeper (journey / combat / rest / take_20) | ❌ Code | Deterministic formulas |
+| TimeKeeper (fallback freeform estimate) | ✅ AI | Used only when no code rule applies |
+| Harbinger / GameClock / Warmaster turn ordering | ❌ Code | Encounter math, clock math, and deterministic combat state transitions |
+| Narrate / ContextUpdate / Chronicler | ✅ AI | Prose, context writing, and plot synthesis |
+
+### 5. World Turn after player resolution in active combat
+
+**Decision:** after a player's action resolves in active combat, the pipeline runs a
+code-owned **World Turn** phase before narration. World Turn computes which NPCs
+act, asks all acting NPCs what they do from the same live combat snapshot (one
+parallel `/fan_out`), then applies dice and mutations **in initiative order** in
+code (stopping early if the player dies, is incapacitated, or combat ends), and
+emits deterministic `combat_state_advancement` for ContextUpdate to write.
+
+**Why:** the previous combat flow treated combat like any other action: one
+player message in, one outcome out. That left three correctness gaps:
+
+- NPCs never took proper initiative-ordered turns
+- `current_turn` / `round` advancement depended on AI inference from prose
+- player-facing damage from NPC turns had no deterministic owner
+
+World Turn fixes that by separating **combat orchestration** from **individual NPC
+judgment**. Code decides who acts and when; AI decides what a given NPC tries to
+do on its turn.
+
+**Why NPC actions are parallelized from one shared snapshot:** the desired combat
+model is that all NPCs choose their actions for the round "at once" with respect
+to AI judgment, then code resolves the resulting dice and mutations. This keeps
+the Node `/fan_out` latency win (one batch instead of N sequential evaluator
+round-trips).
+
+**Trade-off accepted:** NPC prompts do not see each other's *chosen* actions—only
+the shared pre-turn snapshot. Code still applies outcomes in initiative order and
+stops applying further NPC consequences if combat ends or the player is
+dead/incapacitated mid-round, so later NPCs do not keep damaging a resolved
+encounter.
+
+When `instant_death` is disabled, World Turn also owns PF1e-style dying bleed-out:
+code applies the per-round HP loss and stabilization check before NPC fan-out,
+and can mark `player_death` / close combat without waiting for AI to infer it.
+
 ---
 
 ## Error Handling
@@ -969,7 +1047,7 @@ All AI steps follow the same error handling pattern:
    returns `finish_reason: length`. This is a hard error for critical
    steps -- even truncated non-empty responses are rejected. The error is
    logged with `status: "token_budget_exceeded"` and re-raised (for
-   intake, player_interpreter, mechanical evaluation, mechanic, momentum, narrate) or
+   intake, mechanical evaluation, mechanic, momentum, narrate) or
    swallowed with an empty result (for context updates and capability
    guardrail, which are non-critical).
 
@@ -998,7 +1076,7 @@ Every AI call produces an `AiLog` record containing:
 
 | Field | Description |
 |---|---|
-| `step` | Pipeline step name (intake, beacon, mechanical_evaluation, roll_qualifier, sanity_checker, sanity_checker_world, mechanic, momentum, social_expansion, chronicler, narrate, micro_context_update, macro_narrative_update) |
+| `step` | Pipeline step name (intake, beacon, mechanical_evaluation, roll_qualifier, sanity_checker, sanity_checker_world, mechanic, combat_gm, momentum, social_expansion, chronicler, narrate, micro_context_update, macro_narrative_update) |
 | `prompt_summary` | Truncated description of what was asked |
 | `raw_response` | The complete API response |
 | `parsed_response` | The parsed JSON |

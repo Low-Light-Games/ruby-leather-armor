@@ -2,6 +2,8 @@
 
 module DungeonMaster
   module Rolls
+    # Code-driven d20/damage for automated combat (no player roll message): {CombatDice}.
+    #
     # Player roll handling for the DM pipeline: normalizing requested rolls from mechanical
     # evaluation (dedupe, auto-success removal), synthetic roll text for the Mechanic when
     # all rolls auto-succeed, sheet-derived Take 10/20 values for prompts, and persisting

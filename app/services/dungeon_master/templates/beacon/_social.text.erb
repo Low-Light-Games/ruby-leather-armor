@@ -2,10 +2,9 @@
   persuasion, intimidation, deception, diplomacy, gathering information, eavesdropping,
   observing NPC behavior, sending messages, writing letters, making speeches, bribing,
   or using Disguise in a social context.
-- Eavesdropping and passive observation of NPCs IS social — affected: true,
-  needs_mechanics: false unless the player is actively trying to go unnoticed
-  (Stealth check) or read intent (Sense Motive check).
-- Sense Motive without speaking is social — affected: true, needs_mechanics: true.
+- Eavesdropping and passive observation of NPCs is social when the player is trying to learn
+  something from people rather than the broader environment.
+- Sense Motive, deception, persuasion, intimidation, and other interpersonal pressure all belong here.
 - transition: set to "social_to_combat" if the social interaction is escalating to violence.
 - expand_scene: set to true for SIGNIFICANT social interactions that deserve player agency
   before resolution — transactions, negotiations, information-gathering, confrontations,

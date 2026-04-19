@@ -14,7 +14,8 @@ module DungeonMaster
         encounter_triggered = results.any? { |r| r[:status] == :encounter }
         social_scene_triggered = results.any? { |r| r[:status] == :social_scene }
 
-        combined_seed = all_outcomes.join("\n\nThen: ").presence
+        action_outcomes = results.filter_map { |r| r[:action_outcome] }
+        combined_seed = all_outcomes.join("\n\nThen: ").presence || action_outcomes.join("\n\nThen: ").presence
         combined_mutations = all_mutations.compact.reduce({}) do |acc, m|
           Utilities::HashMerge.deep_merge_presence(acc, m)
         end
@@ -22,15 +23,33 @@ module DungeonMaster
         plot_result = pipeline_engine.send(:resolve_plot, merged_intent, verdict_outcome: combined_seed,
           encounter_triggered: encounter_triggered)
 
+        player_death         = results.any? { |r| r[:player_death] }
+        player_incapacitated = results.any? { |r| r[:player_incapacitated] }
+        death_type = if player_death
+                       :player_death
+                     elsif player_incapacitated
+                       :player_incapacitated
+                     end
+
         ctx = PipelineContext.new(
           combined_seed: combined_seed,
           dm_brief: plot_result&.dig(:dm_brief),
-          player_action: all_loops.filter_map(&:player_intent).join("\nThen: ").presence
+          player_action: all_loops.filter_map(&:player_intent).join("\nThen: ").presence || merged_intent&.dig(:intention),
+          death_type: death_type
         )
 
         extra = {}
-        extra[:encounter_triggered] = true if encounter_triggered
+        extra[:encounter_triggered]    = true if encounter_triggered
         extra[:social_scene_triggered] = true if social_scene_triggered
+        extra[:player_death]           = true if player_death
+        extra[:player_incapacitated]   = true if player_incapacitated
+
+        # Aggregate per-action outcome strings and NPC world-turn lines so PipelineMessenger
+        # can persist them as discrete combat_log / action_result messages.
+        extra[:action_outcomes] = action_outcomes if action_outcomes.any?
+
+        all_world_turn_lines = results.flat_map { |r| Array(r[:world_turn_lines]) }
+        extra[:world_turn_lines] = all_world_turn_lines if all_world_turn_lines.any?
 
         NarrationPhaseInputs.new(
           intent: merged_intent,

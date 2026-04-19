@@ -4,7 +4,7 @@ require "rails_helper"
 #
 # Scenario: compound input splits into 3 actions:
 #   1. "scout the corridor"  — non-mechanical, narrated immediately (progressive)
-#   2. "pick the lock"       — needs_mechanics → Disable Device DC 15 → :awaiting_rolls
+#   2. "pick the lock"       — exploration affected → Disable Device DC 15 → :awaiting_rolls
 #   3. "push the door open"  — never reached in run_prompt; processed in run_rolls resume
 #
 # The evaluator stubs detect "lock" in the user_message to trigger mechanics.
@@ -88,8 +88,13 @@ RSpec.describe "DungeonMaster::PipelineEngine — per-action narration", type: :
       expect(result[:action]).to eq(:awaiting_rolls)
     end
 
-    it "remaining_actions contains only 'push the door open'" do
-      expect(result[:remaining_actions]).to eq(["push the door open"])
+    it "remaining_actions contains only the structured 'push the door open' entry" do
+      expect(result[:remaining_actions]).to eq([{
+        "text" => "push the door open",
+        "depends_on_index" => nil,
+        "prerequisite" => nil,
+        "abort_on_failed_prerequisite" => false
+      }])
     end
 
     it "fires on_narrative exactly once (action 1 narrated before the halt)" do

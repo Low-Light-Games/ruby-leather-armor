@@ -1,0 +1,53 @@
+# frozen_string_literal: true
+
+module DungeonMaster
+  module WorldTurn
+    # Assembles Node evaluator payloads for the npc_action step (system/user prompts + meta).
+    # Creature lines use {CharacterBlock.creature_npc_action_prompt} — same “block text for LLMs”
+    # role as other CharacterBlock helpers, not ad-hoc string building in the step.
+    module NpcActionPrompt
+      module_function
+
+      def meta_step(npc, idx)
+        "npc_action_#{npc.creature_sheet_id}_#{idx}"
+      end
+
+      # @param last_outcome [String] truncated pipeline_outcome seed for the loop
+      # @return [Hash] evaluator fan_out item (:system_prompt, :user_message, :model, :max_tokens, :meta)
+      #   plus :step_key — same string as meta[:step]; callers must strip :step_key before JSON POST.
+      def evaluator_payload(npc:, combat_ctx:, slot:, config:, adventure:, last_outcome:)
+        creature_sheet = adventure.creature_sheets.find_by(id: npc.creature_sheet_id)
+        creature_block = if creature_sheet
+                           CharacterBlock.creature_npc_action_prompt(creature_sheet)
+                         else
+                           npc.to_context_hash.to_json
+                         end
+
+        combat_summary = combat_ctx.except("participants").to_json
+        participants_line = Array(combat_ctx["participants"]).map { |x| x["name"] }.join(", ")
+        battlefield_text = Battlefield::PromptSerializer.slice_for_adventure(adventure)
+        scene_hint = [
+          adventure.current_location&.name.presence && "Location: #{adventure.current_location.name}",
+          adventure.scene_summary.presence && "Scene: #{adventure.scene_summary}"
+        ].compact.join(" | ").presence || "(none)"
+        system_prompt, user_msg = PromptRenderer.render_with_user_message("npc_action",
+          npc_name: npc.name,
+          creature_block: creature_block,
+          combat_summary: "#{combat_summary}\nParticipants: #{participants_line}",
+          battlefield_text: battlefield_text.presence || "(no battlefield slice)",
+          scene_hint: scene_hint,
+          last_outcome: last_outcome.presence || "(none)")
+
+        key = meta_step(npc, slot)
+        {
+          system_prompt: system_prompt,
+          user_message: user_msg || "Decide action.",
+          model: config.model_for("npc_action"),
+          max_tokens: config.token_budget_for("npc_action"),
+          meta: { step: key },
+          step_key: key
+        }
+      end
+    end
+  end
+end

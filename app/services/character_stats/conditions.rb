@@ -74,6 +74,16 @@ module CharacterStats
         ability_penalties: { "dexterity" => -4 },
         restrictions: %w[cannot_move deny_dex_to_ac_vs_non_grappler],
       },
+      # Combat / narrative flags (tracked on sheets; minimal mechanical defs)
+      "fled" => {},
+      "surrendered" => {},
+      "dead" => {},
+      "disabled" => {},
+      "petrified" => {
+        restrictions: %w[cannot_act deny_dex_to_ac],
+      },
+      # Dying stabilization flag: character stopped losing HP but is still at negative HP.
+      "stabilized" => {},
     }.freeze
 
     VALID_CONDITIONS = DEFINITIONS.keys.freeze

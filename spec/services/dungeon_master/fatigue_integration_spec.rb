@@ -57,6 +57,19 @@ RSpec.describe "Fatigue condition integration", type: :service do
         ctx = described_class.advance_clock!(adventure, 0.5, intent: intent)
         expect(ctx["rest_clears_fatigue"]).to be_nil
       end
+
+      it "stores current_hour with the configured stable precision" do
+        adventure.update!(time_context: {
+          "current_hour" => 8.0,
+          "adventure_day" => 1,
+          "hours_since_last_rest" => 0,
+          "hours_since_last_encounter_check" => 0
+        })
+
+        ctx = described_class.advance_clock!(adventure, 0.0017, intent: { intention: "I attack." })
+
+        expect(ctx["current_hour"]).to eq(8.0017)
+      end
     end
   end
 
@@ -73,13 +86,14 @@ RSpec.describe "Fatigue condition integration", type: :service do
 
       intent = { intention: "I walk through the forest.", destination: nil }
 
-      ai_time_response = { "hours_elapsed" => 2.0 }.to_json
-      allow_any_instance_of(DungeonMaster::AiClient).to receive(:chat) do |instance, **kwargs|
-        instance.instance_variable_set(:@last_parse_status, "success")
-        instance.instance_variable_set(:@last_model_used, "test")
-        instance.instance_variable_set(:@last_usage, {})
-        kwargs[:step_name] == "time_keeper" ? ai_time_response : AI_STEP_RESPONSES.fetch(kwargs[:step_name].to_s, '{}')
-      end
+      allow(pipeline).to receive(:estimate_time).and_return(
+        hours: 2.0, source: :ai, terrain: nil, is_journey: false,
+        speed_mph: nil, journey_data: nil
+      )
+      allow(pipeline).to receive(:consult_harbinger_if_needed).and_return(
+        interrupted: false, stop_reason: :skipped, hours_granted: 2.0,
+        distance_covered_miles: 0, encounter_entry: nil
+      )
 
       pipeline.send(:run_time_keeper, intent, {})
 
@@ -97,13 +111,14 @@ RSpec.describe "Fatigue condition integration", type: :service do
 
       intent = { intention: "I rest at the inn." }
 
-      ai_time_response = { "hours_elapsed" => 8.0 }.to_json
-      allow_any_instance_of(DungeonMaster::AiClient).to receive(:chat) do |instance, **kwargs|
-        instance.instance_variable_set(:@last_parse_status, "success")
-        instance.instance_variable_set(:@last_model_used, "test")
-        instance.instance_variable_set(:@last_usage, {})
-        kwargs[:step_name] == "time_keeper" ? ai_time_response : AI_STEP_RESPONSES.fetch(kwargs[:step_name].to_s, '{}')
-      end
+      allow(pipeline).to receive(:estimate_time).and_return(
+        hours: 8.0, source: :rest_code, terrain: nil, is_journey: false,
+        speed_mph: nil, journey_data: nil
+      )
+      allow(pipeline).to receive(:consult_harbinger_if_needed).and_return(
+        interrupted: false, stop_reason: :skipped, hours_granted: 8.0,
+        distance_covered_miles: 0, encounter_entry: nil
+      )
 
       pipeline.send(:run_time_keeper, intent, {})
 

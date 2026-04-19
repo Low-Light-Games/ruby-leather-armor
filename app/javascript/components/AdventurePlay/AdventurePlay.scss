@@ -1,4 +1,5 @@
 @use '../tokens' as *;
+@use 'sass:color';
 
 /* ── Banned notice ── */
 .banned-notice {
@@ -327,6 +328,86 @@
         }
 
         &:hover .roll-dice-hint { opacity: 0.85; }
+      }
+    }
+
+    .active-buffs-section {
+      margin-bottom: 10px;
+      padding: 10px;
+      background: $parchment;
+      border: 1px solid $border-light;
+
+      .active-buffs-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+
+        h3 {
+          margin: 0;
+          font-size: 12px;
+          font-family: $font-mono;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          color: $ink-light;
+        }
+
+        .active-buffs-count {
+          min-width: 20px;
+          padding: 1px 6px;
+          font-size: 10px;
+          font-family: $font-mono;
+          text-align: center;
+          color: $blue-ink;
+          background: $blue-ink-lt;
+          border: 1px solid color.adjust($blue-ink, $alpha: -0.5);
+          border-radius: 999px;
+        }
+      }
+
+      .active-buffs-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .active-buff-row {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding-bottom: 8px;
+        border-bottom: 1px dashed $border-light;
+
+        &:last-child {
+          padding-bottom: 0;
+          border-bottom: none;
+        }
+      }
+
+      .active-buff-main {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .active-buff-source {
+        font-size: 12px;
+        font-family: $font-mono;
+        font-weight: 700;
+        color: $ink;
+      }
+
+      .active-buff-effect,
+      .active-buff-duration {
+        font-size: 11px;
+        color: $ink-mid;
+      }
+
+      .active-buff-duration {
+        font-family: $font-mono;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        color: $green-ink;
       }
     }
 
@@ -1091,6 +1172,29 @@
     background: $parchment;
   }
 
+  /* ===== MIDDLE: Active-combat state ===== */
+  .middle-column.active-combat {
+    border-color: $red-ink;
+    border-width: 2px;
+    box-shadow:
+      0 0 0 1px $red-ink inset,
+      0 0 16px hsla(0, 50%, 30%, 0.18);
+
+    &::before {
+      content: '⚔  COMBAT  ⚔';
+      flex-shrink: 0;
+      display: block;
+      text-align: center;
+      font-family: $font-display;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      color: $red-ink;
+      background: $red-ink-lt;
+      border-bottom: 2px solid $red-ink;
+      padding: 5px 8px;
+    }
+  }
+
   /* ===== RIGHT: Story column ===== */
   .story-column {
     flex: 0 0 300px;
@@ -1111,6 +1215,28 @@
       line-height: 1.7;
       white-space: pre-wrap;
       font-size: 13px;
+    }
+
+    .tactical-map-rail {
+      .tactical-map-version {
+        font-size: 10px;
+        font-family: $font-mono;
+        color: $ink-light;
+      }
+
+      .tactical-map-topology {
+        margin: 0 0 8px;
+        font-size: 12px;
+        color: $ink-mid;
+      }
+
+      .tactical-token-list {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 12px;
+        line-height: 1.5;
+        color: $ink;
+      }
     }
 
     .context-section {

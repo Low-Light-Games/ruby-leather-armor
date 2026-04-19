@@ -10,6 +10,15 @@ character, and end at the moment the player must decide how to respond.
 
 === LOCATION ===
 <%= @location %>
+<% if @location_description.present? -%>
+
+Description: <%= @location_description %>
+<% end -%>
+<% if @traversal_context.present? -%>
+
+=== SCENE ===
+<%= @traversal_context.to_json %>
+<% end -%>
 
 === CURRENT SOCIAL CONTEXT ===
 <%= @social_context.present? ? @social_context.to_json : "(no active social context)" %>

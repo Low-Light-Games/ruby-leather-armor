@@ -24,6 +24,10 @@ module DungeonMaster
 
           run_context_updates(outcome, mutations)
         rescue => e
+          ApplicationErrorReporter.notify(e, context: {
+            source: "encounter_pause_ctx_update",
+            adventure_id: @adventure&.id
+          })
           @log.log!(:warn, "[encounter_pause_ctx_update] #{e.class}: #{e.message}")
         end
 

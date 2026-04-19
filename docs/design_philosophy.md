@@ -67,6 +67,17 @@ If the input space is natural language, use AI. The Sequencer step
 exists because regex-based compound action detection would be fragile
 in exactly the ways that matter most.
 
+**Corollary: define prompt ownership positively.** A prompt should state
+what its step or domain *does own*, narrowly and concretely. Prefer
+positive scope over long lists of forbidden behaviors. Use explicit
+"do not do X" language only for repeated, high-cost confusions where the
+boundary must be hard, such as traversal vs. stealth.
+
+**Example:** inventory should talk about concrete item-state changes
+(gain, lose, equip, consume, loot), not "resources" in the abstract.
+Traversal should describe movement and location change, while exploration
+explicitly owns stealth-style field actions.
+
 ---
 
 ## 2. Honor system
@@ -337,6 +348,9 @@ belongs to none of them.
 - Time estimation is code-first: journeys to known destinations use
   deterministic distance/speed/terrain math; combat, rest, and Take 20 use
   fixed values. AI is only called for freeform actions (wait, craft, etc.)
+- In combat, TimeKeeper consults canonical post-mutation combat truth rather
+  than trusting the lagging cached combat snapshot, because it runs after
+  mutations but before context refresh
 - The clock is advanced by GameClock (a code-only utility), never by AI —
   deterministic hour arithmetic eliminates desynchronization
 - Light conditions (dawn/day/dusk/night) are derived from `current_hour` via
@@ -364,20 +378,20 @@ nature immediately obvious:
 scoped to one responsibility. If you can't name it without a compound
 word, the step is probably doing too much.
 
-Current AI step names: Sequencer, UnifiedEvaluation, SanityChecker
-(capability check + world consistency check), Mechanic, Momentum,
-Social Expansion, TimeKeeper, Chronicler, Narrate, Intake, DM Query.
+Current AI step names: Sequencer, SanityChecker
+(capability check + world consistency check), Mechanic, Combat GM, Momentum,
+Social Expansion, Chronicler, Narrate, Intake, DM Query.
 
 **Code-only steps get role/object names** — functional, clearly
 non-creative, conveying "no AI judgment here."
 
 Current code-only names: Stagehand, AdventureLoopResolution, GameClock, Harbinger,
-Mutations.
+Mutations, World Turn, CombatMechanicResolution.
 
 **Why this matters:** when debugging a pipeline, the name tells you
 whether a step's output is deterministic (code) or probabilistic (AI).
-If the Stagehand produced wrong data, it's a code bug. If the Verdict
-produced wrong data, it's a prompt or model issue. The naming convention
+If the Stagehand produced wrong data, it's a code bug. If Mechanic or
+Combat GM produced wrong data, it's a prompt or model issue. The naming convention
 encodes this diagnostic shortcut into every conversation about the
 pipeline.
 
@@ -503,6 +517,24 @@ authoritative** — when the intervention is based on deterministic data
 (character sheet stats, database records, game rules with no ambiguity)
 rather than on matching text or numbers the AI generated.
 
+**Prompt-scope corollary:** when an AI step keeps emitting cross-domain or
+contradictory output, first tighten the prompt around what that step
+*does own*. Prefer narrow, positive scope over long lists of forbidden
+behavior. Use explicit negative instructions only for repeated,
+high-cost confusions where the ownership boundary must be reinforced
+(for example traversal vs. stealth).
+
+**Cheap-model policy (required):** treat prompt edits as contract simplification,
+not warning accumulation.
+- Prefer edits that **remove responsibility** from the model (move deterministic
+  state handling to code that already owns it).
+- Prefer edits that **replace ambiguous instructions** with narrower contracts.
+- Prefer edits that **split overloaded prompts** into smaller scoped steps.
+- Do **not** treat additive "DO NOT ..." lists as a primary fix when a
+  deterministic seam already owns the data (counts, HP, roster shape, turn order).
+- If a prompt-only fix cannot be expressed as simplification/replacement, stop and
+  look for the owned deterministic seam first.
+
 **Examples:**
 
 - **Correct (deterministic):** `filter_auto_success_rolls!` removes rolls
@@ -550,14 +582,18 @@ narrative for turn 80 has the same clean, bounded input as one generating
 narrative for turn 1. Long adventures do not become harder or less
 reliable to reason about.
 
-**Single-writer principle:** ContextUpdate is the sole entity that writes to
-Adventure context fields. No pipeline step, utility class, or service writes
-to those JSONB fields directly (except emergency recovery in
-`DungeonMaster::Rolls::AdventureMechanicalState.auto_finalize_pending_initiative!`). Deterministic
-utilities like Warmaster compute and return data; ContextUpdate receives it
-as structured mutations and writes it verbatim. This eliminates a class of
-race conditions and drift bugs where two different code paths each write
-partial context with different assumptions.
+**Single-writer principle (JSONB micro-contexts):** ContextUpdate is the primary writer for the six `*_context` JSONB fields. Documented exceptions and co-writers must stay explicit so drift stays observable:
+
+- **Combat start:** `DungeonMaster::Battlefield::PersistCombatStart` writes `combat_context` in one transaction with a new `adventure_battlefields` row and `battlefield_ref` (used by `run_initiative` and `AdventureMechanicalState.auto_finalize_pending_initiative!`).
+- **Encounter pause (Path A pending roster):** `DungeonMaster::EncounterWarmasterBridge` may call `DungeonMaster::Utilities::Warmaster.persist_pending_combat!` to persist an NPC-only pending roster before initiative is provided. This is a documented writer because the pause must preserve encounter roster truth before ContextUpdate runs.
+- **Mid-combat / missing map (just-in-time):** `DungeonMaster::Battlefield::EnsureForActiveCombat` creates the row + ref the first time something needs a battlefield while `combat_context.active` is true (no batch rake). Invoked from serializers, roll metadata, and patch application so stories can start in combat without initiative.
+- **Combat resolution:** `DungeonMaster::Battlefield::ApplyPatches` bumps the battlefield row and syncs `combat_context["battlefield_ref"]["version"]` after Combat GM / world-turn patches. `apply_mutations` may merge `action_economy_delta` into `combat_context` when the Combat GM emits spends.
+- **Combat end:** `DungeonMaster::Battlefield::ArchiveCombatEnd` archives the row and updates `last_battlefield_ref` / clears `battlefield_ref`, invoked when micro-context persistence detects `active: true → false`.
+- **Adventure UI (combat):** direct sheet endpoints (e.g. equip toggle) may atomically adjust `action_economy` when `combat_active?` — server-authoritative, no AI.
+
+`ContextUpdate` applies **deep merge** for `combat` when persisting micro-context output so partial `combat_state_advancement` payloads do not drop `battlefield_ref`, `last_battlefield_ref`, or `action_economy` by accident.
+
+Deterministic utilities like Warmaster still compute hashes; ContextUpdate receives structured mutations for narrative-driven updates. This pattern limits races where two writers each assume they own the full document.
 
 **Runs before every pause:** ContextUpdate executes before any pipeline
 early return that presents a message to the player — initiative prompts,

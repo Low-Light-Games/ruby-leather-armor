@@ -68,6 +68,7 @@ module DungeonMaster
       when "template" then create_from_template(name, party_level)
       end
     rescue => e
+      ApplicationErrorReporter.notify(e, context: { source: "creature_factory_resolve_dynamic", creature_name: name })
       @log.log!(:error, "dynamic_creature failed for '#{name}': #{e.message}")
       nil
     end
@@ -75,7 +76,9 @@ module DungeonMaster
     def create_from_bestiary(entry, display_name)
       hp   = roll_hp(entry.hp_formula)
       attrs = entry.to_creature_sheet_attrs(display_name: display_name)
-      @adventure.creature_sheets.create!(attrs.merge(hp: hp, max_hp: hp, origin: "bestiary"))
+      sheet = @adventure.creature_sheets.create!(attrs.merge(hp: hp, max_hp: hp, origin: "bestiary"))
+      sheet.recompute_derived_stats!
+      sheet
     end
 
     def create_from_template(name, party_level)
@@ -83,7 +86,7 @@ module DungeonMaster
       stats = CREATURE_TEMPLATE[tier]
       hp    = roll_hp(stats[:hp])
 
-      @adventure.creature_sheets.create!(
+      sheet = @adventure.creature_sheets.create!(
         name: name,
         creature_type: "monster",
         origin: "template",
@@ -93,6 +96,8 @@ module DungeonMaster
         hp: hp, max_hp: hp,
         derived_stats: { "ac" => stats[:ac], "bab" => stats[:bab], "speed" => stats[:speed] }
       )
+      sheet.recompute_derived_stats!
+      sheet
     end
 
     def create_from_ai(name, party_level)
@@ -120,7 +125,7 @@ module DungeonMaster
         usage:        @ai.last_usage)
 
       hp = roll_hp(parsed["hp_formula"])
-      @adventure.creature_sheets.create!(
+      sheet = @adventure.creature_sheets.create!(
         name: name,
         creature_type: parsed["creature_type"] || "monster",
         origin: "ai",
@@ -138,6 +143,8 @@ module DungeonMaster
           "speed" => parsed["speed"].to_i
         }
       )
+      sheet.recompute_derived_stats!
+      sheet
     end
 
     def roll_hp(formula)

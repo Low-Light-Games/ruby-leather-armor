@@ -1,3 +1,10 @@
+- TRAVERSAL OWNERSHIP: This domain owns movement, travel, mounts, terrain, and environmental hazard
+  checks. It does NOT own weapon attacks, spell attacks, damage rolls, or combat save prompts.
+  If the action is "move into combat", "charge toward them", or otherwise just repositions for a
+  fight, return EMPTY player_rolls unless the movement itself triggers a traversal check.
+- ROUTINE TRAVEL: walking, riding a trained mount on a road, or other routine travel actions
+  require NO roll unless terrain, hazards, navigation pressure, or mount-handling complications
+  introduce an actual traversal mechanic.
 - TRAVEL: Do NOT estimate travel time or distance — the TimeKeeper step handles that. Focus on
   whether the travel action requires any mechanical checks (Survival for navigation, Fortitude
   for forced march, etc.).

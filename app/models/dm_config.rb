@@ -41,6 +41,8 @@ class DmConfig < ApplicationRecord
     "scene_history_depth" => 10,
     "chronicler_tone_direction" => false,
     "creature_creation_fallback" => "ai",
+    "instant_death" => true,
+    "no_auto_hit_miss" => true,
     "terrain_speed_modifiers" => {
       "road" => 1.0, "trail" => 0.75, "urban" => 1.0, "coast" => 0.75,
       "forest" => 0.5, "swamp" => 0.5, "desert" => 0.75, "river" => 0.5,
@@ -92,5 +94,13 @@ class DmConfig < ApplicationRecord
     budgets = get("token_budgets")
     val = budgets[step.to_s]
     val.nil? ? nil : val.to_i
+  end
+
+  def instant_death?
+    get("instant_death") == true
+  end
+
+  def no_auto_hit_miss?
+    get("no_auto_hit_miss") == true
   end
 end

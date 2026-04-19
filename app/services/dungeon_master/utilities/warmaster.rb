@@ -21,9 +21,14 @@ module DungeonMaster
       module_function
 
       # Path A: from Harbinger encounter table roll
-      # creatures_data: optional structured array from encounter_expand AI (via AdventureLoop)
-      #   e.g. [{ "name" => "goblin", "count" => 4 }]
-      def initialize_from_encounter!(adventure:, encounter_entry:, sheet:, log:, config:, ai:, creatures_data: nil)
+      # creatures_data:    optional structured array from encounter_expand AI (via AdventureLoop)
+      #                    e.g. [{ "name" => "goblin", "count" => 4 }]
+      # scene_enemy_names: optional array of creature-type strings extracted from
+      #                    traversal_context["nearby_npcs"] by EncounterWarmasterBridge.
+      #                    These are merged in after the encounter-table creatures so that
+      #                    pre-established scene enemies join the combat.
+      def initialize_from_encounter!(adventure:, encounter_entry:, sheet:, log:, config:, ai:,
+                                     creatures_data: nil, scene_enemy_names: [])
         ctx = Context.new(adventure: adventure, sheet: sheet, log: log, config: config, ai: ai)
 
         creatures = if encounter_entry.has_manifest?
@@ -40,35 +45,107 @@ module DungeonMaster
                       []
                     end
 
+        creatures = merge_scene_enemy_names(ctx, creatures, scene_enemy_names)
+
         build_initiative_result(ctx, creatures)
       end
 
       # Path B: from combat beacon combatant names
-      def initialize_from_names!(adventure:, combatant_names:, sheet:, log:, config:, ai:)
+      def initialize_from_names!(adventure:, combatant_names:, count: nil, sheet:, log:, config:, ai:)
         ctx = Context.new(adventure: adventure, sheet: sheet, log: log, config: config, ai: ai)
-        creatures = spawn_from_names(ctx, combatant_names)
+        creatures = prepare_from_names!(
+          adventure: adventure,
+          combatant_names: combatant_names,
+          count: count,
+          sheet: sheet,
+          log: log,
+          config: config,
+          ai: ai
+        )[:creatures]
         build_initiative_result(ctx, creatures)
+      end
+
+      # Path C: eager canonical creature prep for combat-starting actions before mech-eval.
+      # Creates / reuses creature sheets and rolls NPC initiative before combat activation.
+      def prepare_from_names!(adventure:, combatant_names:, count: nil, sheet:, log:, config:, ai:)
+        ctx = Context.new(adventure: adventure, sheet: sheet, log: log, config: config, ai: ai)
+        names = expand_combatant_names(combatant_names, count)
+        creatures = spawn_from_names(ctx, names)
+        creature_data = prepare_creature_data(ctx, creatures)
+
+        {
+          status: creature_data.any? ? :prepared : :no_creatures,
+          creature_data: creature_data,
+          creatures: creatures
+        }
       end
 
       # Compute the finalized combat state from creature data and player initiative.
       # Pure computation — does NOT write to the adventure record.
       # Returns a hash suitable for passing as combat_initialization in mutations,
       # which ContextUpdate will write verbatim to adventure.combat_context.
-      def compute_combat_initialization(creature_data:, player_initiative:)
-        participants = creature_data.map do |c|
-          { "name" => c[:name], "creature_sheet_id" => c[:creature_sheet_id],
-            "initiative" => c[:initiative], "type" => "npc" }
-        end
-        participants << { "name" => "Player", "initiative" => player_initiative.to_i, "type" => "player" }
+      #
+      # +adventure+ and +player_sheet+ are required to load canonical HP/conditions from sheets.
+      def compute_combat_initialization(adventure:, player_sheet:, creature_data:, player_initiative:)
+        raise ArgumentError, "player_sheet required for combat initialization" unless player_sheet
 
-        turn_order = participants.sort_by { |p| -p["initiative"] }.map { |p| p["name"] }
+        npc_combatants = pending_npc_combatants(adventure, player_sheet).presence ||
+                         creature_data.filter_map do |c|
+                           next unless c.is_a?(Hash)
+
+                           c = c.deep_symbolize_keys
+                           sheet = adventure.creature_sheets.find_by(id: c[:creature_sheet_id])
+                           unless sheet
+                             Rails.logger.warn("[Warmaster] creature_sheet id=#{c[:creature_sheet_id]} not found — omitted from combat")
+                             next
+                           end
+
+                           Combatant.from_creature_sheet(sheet, initiative: c[:initiative].to_i)
+                         end
+
+        player_combatant = Combatant.from_player_sheet(player_sheet, initiative: player_initiative.to_i)
+        all_ordered = (npc_combatants + [player_combatant]).sort_by { |p| -p.initiative }
+        turn_order = all_ordered.map(&:name)
+        current_turn = turn_order.first
+
+        participants = all_ordered.map(&:to_context_hash)
 
         {
-          "active" => true, "round" => 1,
-          "participants" => participants,
+          "active" => true,
+          "round" => 1,
+          "current_turn" => current_turn,
           "turn_order" => turn_order,
-          "active_effects" => []
+          "participants" => participants,
+          "terrain_notes" => nil
         }
+      end
+
+      def persist_pending_combat!(adventure:, creature_data:)
+        pending = compute_pending_combat_context(adventure: adventure, creature_data: creature_data)
+        adventure.update!(combat_context: pending)
+        pending
+      end
+
+      def compute_pending_combat_context(adventure:, creature_data:)
+        npc_combatants = creature_data.filter_map do |c|
+          next unless c.is_a?(Hash)
+
+          row = c.deep_symbolize_keys
+          sheet = adventure.creature_sheets.find_by(id: row[:creature_sheet_id])
+          unless sheet
+            Rails.logger.warn("[Warmaster] creature_sheet id=#{row[:creature_sheet_id]} not found — omitted from pending combat")
+            next
+          end
+
+          Combatant.from_creature_sheet(sheet, initiative: row[:initiative].to_i)
+        end.sort_by { |combatant| -combatant.initiative }
+
+        CombatContext.pending(
+          participants: npc_combatants.map(&:to_context_hash),
+          current_turn: npc_combatants.first&.name,
+          turn_order: npc_combatants.map(&:name),
+          terrain_notes: nil
+        )
       end
 
       # Auto-roll player initiative from their character sheet
@@ -146,6 +223,46 @@ module DungeonMaster
         end
       end
 
+      def merge_scene_enemy_names(ctx, creatures, scene_enemy_names)
+        # Merge scene enemies (hostile NPCs already established in traversal_context).
+        # Skip any whose creature-type name overlaps with an encounter creature already spawned
+        # to avoid doubling up (e.g. encounter already has orcs, nearby_npcs also says "orc patrol").
+        novel_scene_names = Array(scene_enemy_names).reject do |scene_name|
+          lower = scene_name.downcase
+          creatures.any? { |c| c[:name].downcase.include?(lower) || lower.include?(c[:name].downcase.split.first.to_s) }
+        end
+
+        if novel_scene_names.any?
+          ctx.log.log!(:info, "Warmaster: merging #{novel_scene_names.size} scene enemy type(s) from traversal context: #{novel_scene_names.inspect}")
+          creatures + spawn_from_names(ctx, novel_scene_names)
+        else
+          creatures
+        end
+      end
+
+      def expand_combatant_names(combatant_names, count)
+        names = Array(combatant_names).map { |name| name.to_s.strip }.reject(&:blank?)
+        qty = count.to_i
+        return names unless names.one? && qty > 1
+
+        Array.new(qty, names.first)
+      end
+
+      def pending_npc_combatants(adventure, player_sheet)
+        ctx = adventure.combat_context
+        return [] unless ctx.is_a?(Hash) && ctx["active"] != true
+        participants = Array(ctx["participants"])
+        return [] if participants.empty?
+        return [] if participants.any? { |participant| participant["type"].to_s == "player" }
+
+        participants.filter_map do |participant|
+          next if participant["type"].to_s == "player"
+
+          refreshed = Combatant.refresh_from_live_sources(participant, adventure: adventure, sheet: player_sheet)
+          Combatant.from_context_hash(refreshed)
+        end
+      end
+
       # ---- Initiative ----
 
       def build_initiative_result(ctx, creatures)
@@ -154,16 +271,20 @@ module DungeonMaster
           return { status: :no_creatures }
         end
 
-        creature_data = creatures.map do |c|
-          initiative = roll_creature_initiative(ctx, c[:creature_sheet_id])
-          c.merge(initiative: initiative)
-        end
+        creature_data = prepare_creature_data(ctx, creatures)
 
         creature_names = creature_data.map { |c| "#{c[:name]} (init #{c[:initiative]})" }
         ctx.log.play_log!("warmaster", "Combat: #{creature_data.size} creature(s) ready",
                           parsed_response: { creature_count: creature_data.size, creatures: creature_names })
 
         { status: :awaiting_initiative, creature_data: creature_data }
+      end
+
+      def prepare_creature_data(ctx, creatures)
+        creatures.map do |c|
+          initiative = roll_creature_initiative(ctx, c[:creature_sheet_id])
+          c.merge(initiative: initiative)
+        end
       end
 
       def roll_creature_initiative(ctx, creature_sheet_id)
@@ -189,7 +310,9 @@ module DungeonMaster
       def create_creature_from_bestiary_static(ctx, entry, display_name)
         hp = roll_hp_static(entry.hp_formula)
         attrs = entry.to_creature_sheet_attrs(display_name: display_name)
-        ctx.adventure.creature_sheets.create!(attrs.merge(hp: hp, max_hp: hp, origin: "bestiary"))
+        sheet = ctx.adventure.creature_sheets.create!(attrs.merge(hp: hp, max_hp: hp, origin: "bestiary"))
+        sheet.recompute_derived_stats!
+        sheet
       end
 
       def dynamic_creature_sheet_static(ctx, name, party_level:)
@@ -218,13 +341,15 @@ module DungeonMaster
         stats = CREATURE_TEMPLATE[tier]
         hp = roll_hp_static(stats[:hp])
 
-        ctx.adventure.creature_sheets.create!(
+        sheet = ctx.adventure.creature_sheets.create!(
           name: name, creature_type: "monster", origin: "template",
           strength: stats[:str], dexterity: stats[:dex], constitution: stats[:con],
           intelligence: stats[:int], wisdom: stats[:wis], charisma: stats[:cha],
           level: [party_level, 1].max, hp: hp, max_hp: hp,
           derived_stats: { "ac" => stats[:ac], "bab" => stats[:bab], "speed" => stats[:speed] }
         )
+        sheet.recompute_derived_stats!
+        sheet
       end
 
       def create_from_ai_static(ctx, name, party_level)
@@ -254,7 +379,7 @@ module DungeonMaster
         raw_type = parsed["creature_type"].to_s.downcase.strip
         normalized_type = BestiaryEntry::CREATURE_TYPE_MAP[raw_type] ||
                           (CreatureSheet::CREATURE_TYPES.include?(raw_type) ? raw_type : "monster")
-        ctx.adventure.creature_sheets.create!(
+        sheet = ctx.adventure.creature_sheets.create!(
           name: name, creature_type: normalized_type, origin: "ai",
           strength: parsed["strength"].to_i.clamp(1, 40),
           dexterity: parsed["dexterity"].to_i.clamp(1, 40),
@@ -269,6 +394,8 @@ module DungeonMaster
             "speed" => parsed["speed"].to_i
           }
         )
+        sheet.recompute_derived_stats!
+        sheet
       end
 
       def roll_hp_static(formula)

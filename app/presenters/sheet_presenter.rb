@@ -27,6 +27,8 @@ class SheetPresenter
     base    = @sheet.as_json
     details = (base["details"] || {}).dup
 
+    base["active_buffs"] = serialized_active_buffs
+
     details.merge!(
       "feats"       => serialized_feats,
       "knownSpells" => @spell_rel.where(storage_type: "known").pluck(:spell_id),
@@ -57,5 +59,58 @@ class SheetPresenter
         definition:   si.item_definition&.as_json,
       }
     end
+  end
+
+  def serialized_active_buffs
+    current_hours = current_game_hours
+
+    Array(@sheet.try(:active_buffs)).filter_map do |buff|
+      next unless buff.is_a?(Hash)
+
+      entry = buff.deep_stringify_keys
+      expires_at = entry["expires_at_game_hours"]
+
+      if expires_at.present? && current_hours.present? && expires_at.to_f <= current_hours
+        next
+      end
+
+      remaining_hours = if expires_at.present? && current_hours.present?
+                          [expires_at.to_f - current_hours, 0.0].max
+                        end
+
+      entry.merge(
+        "remaining_hours" => remaining_hours,
+        "duration_label" => duration_label_for(remaining_hours)
+      )
+    end
+  end
+
+  def duration_label_for(remaining_hours)
+    return "Sustained" if remaining_hours.nil?
+
+    total_seconds = (remaining_hours * 3600).round
+    return "Expired" if total_seconds <= 0
+
+    if total_seconds < 5.minutes
+      minutes = total_seconds / 60
+      seconds = total_seconds % 60
+      return format("%d:%02d remaining", minutes, seconds)
+    end
+
+    total_minutes = (total_seconds / 60.0).round
+    return "#{total_minutes} min remaining" if total_minutes < 60
+
+    hours = total_minutes / 60
+    minutes = total_minutes % 60
+    return "#{hours} hr remaining" if minutes.zero?
+
+    "#{hours} hr #{minutes} min remaining"
+  end
+
+  def current_game_hours
+    adventure = @sheet.try(:adventure)
+    return nil unless adventure&.respond_to?(:time_context)
+
+    DungeonMaster::Utilities::GameClock.absolute_hours(adventure.time_context)
   end
 end

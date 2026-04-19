@@ -1,11 +1,19 @@
 # Moderation settings — controls OpenAI Moderation API enforcement in the pipeline.
 #
-# enabled:          Master switch. Set to false to bypass all moderation checks.
-# max_strikes:      Number of offenses before a user is automatically banned.
-#                   Trusted users who hit this threshold also lose their trusted status.
-# default_response: In-world message returned to a non-trusted user when their input
-#                   is flagged. Should read as narrative flavour, not a system error.
+# enabled:             Master switch. Set to false to bypass all moderation checks.
+# max_strikes:         Number of offenses before a user is automatically banned.
+#                      Trusted users who hit this threshold also lose their trusted status.
+# ignored_categories:  OpenAI Moderation categories that are NEVER treated as violations.
+#                      If every flagged category is on this list the input passes through.
+#                      Combat-heavy RPG content routinely triggers "violence" and
+#                      "violence/graphic"; ignoring them lets the game function normally
+#                      while hate, sexual, and self-harm categories still block.
+# default_response:    In-world message returned to a non-trusted user when their input
+#                      is flagged. Should read as narrative flavour, not a system error.
 moderation:
   enabled: true
   max_strikes: 3
+  ignored_categories:
+    - violence
+    - violence/graphic
   default_response: "Your mind wandered to dark places... you recollect yourself after a brief moment and press on."

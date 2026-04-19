@@ -17,23 +17,37 @@ module DungeonMaster
 
       def auto_finalize_pending_initiative!(adventure:, sheet:, log:)
         msgs = adventure.adventure_messages
-        last_init_msg = msgs.for_message_types(["initiative_request"]).newest_first.first
+        last_init_msg = latest_pending_initiative_request(adventure)
         return unless last_init_msg&.metadata&.dig("creature_data")
 
         last_player_response = msgs.from_players
-                                   .where("created_at > ?", last_init_msg.created_at)
+                                   .where("id > ?", last_init_msg.id)
                                    .newest_first.first
         return unless last_player_response
         return if last_player_response.message_type == "initiative_result"
 
         player_init = Utilities::Warmaster.auto_roll_player_initiative(sheet)
-        creature_data = last_init_msg.metadata["creature_data"].map(&:deep_symbolize_keys)
+        creature_data = Array(last_init_msg.metadata["creature_data"]).filter_map do |entry|
+          entry.is_a?(Hash) ? entry.deep_symbolize_keys : nil
+        end
+        return if creature_data.empty?
 
+        # Same atomic combat start as run_initiative (battlefield row + refs in one transaction).
         combat_data = Utilities::Warmaster.compute_combat_initialization(
-          creature_data: creature_data, player_initiative: player_init)
-        adventure.update!(combat_context: combat_data)
+          adventure: adventure,
+          player_sheet: sheet,
+          creature_data: creature_data,
+          player_initiative: player_init)
+        DungeonMaster::Battlefield::PersistCombatStart.call(adventure: adventure, combat_data: combat_data, sheet: sheet)
 
         log.log!(:info, "Auto-rolled player initiative (#{player_init}) — player ignored initiative prompt")
+      end
+
+      def latest_pending_initiative_request(adventure)
+        msgs = adventure.adventure_messages
+        msgs.for_message_types(["initiative_request"]).newest_first.detect do |init_msg|
+          !msgs.for_message_types(["initiative_result"]).where("id > ?", init_msg.id).exists?
+        end
       end
     end
   end

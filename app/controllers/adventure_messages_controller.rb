@@ -3,6 +3,7 @@ class AdventureMessagesController < ApplicationController
   before_action -> { authorize(@adventure, :show?) }
   before_action -> { authorize(@adventure, :pipeline?) }, only: %i[create initiative roll]
   before_action :check_ban
+  before_action :reject_ended_adventure!, only: %i[create initiative roll]
 
   # GET /adventures/:adventure_id/messages
   def index
@@ -53,17 +54,19 @@ class AdventureMessagesController < ApplicationController
               Array(params[:rolls]).map do |r|
                 { roll_value: r[:roll_value].to_i,
                   roll_description: r[:roll_description]&.strip || "unknown check",
-                  resolution_method: r[:resolution_method]&.strip }
+                  resolution_method: r[:resolution_method]&.strip,
+                  request_id: r[:request_id]&.strip.presence }
               end
             else
               [{ roll_value: params[:roll_value].to_i,
                  roll_description: params[:roll_description]&.strip || "unknown check",
-                 resolution_method: params[:resolution_method]&.strip }]
+                 resolution_method: params[:resolution_method]&.strip,
+                 request_id: params[:request_id]&.strip.presence }]
             end
 
-    invalid = rolls.find { |r| !(1..100).include?(r[:roll_value]) }
+    invalid = rolls.find { |r| !(-100..100).include?(r[:roll_value]) }
     if invalid
-      return render json: { error: "Roll value must be between 1 and 100" }, status: :unprocessable_entity
+      return render json: { error: "Roll value must be between -100 and 100" }, status: :unprocessable_entity
     end
 
     service = dm_service
@@ -83,6 +86,15 @@ class AdventureMessagesController < ApplicationController
       banned: true,
       message: "Your account has been suspended. Contact appeals@leatheramor.io for assistance."
     }, status: :forbidden
+  end
+
+  def reject_ended_adventure!
+    return unless @adventure.ended?
+
+    render json: {
+      error: "This adventure has ended and can no longer continue.",
+      error_code: "adventure_ended"
+    }, status: 422
   end
 
   def set_adventure

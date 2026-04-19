@@ -6,6 +6,7 @@
 load Rails.root.join("db", "seeds", "feats.rb")
 load Rails.root.join("db", "seeds", "spells.rb")
 load Rails.root.join("db", "seeds", "items.rb")
+load Rails.root.join("db", "seeds", "class_abilities.rb")
 load Rails.root.join("db", "seeds", "bestiary.rb")
 
 # Story content — must run before encounter_tables, which depends on stories existing

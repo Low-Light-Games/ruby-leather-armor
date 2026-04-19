@@ -18,14 +18,13 @@ When in doubt, set affected to false. False negatives are recoverable. False pos
 <%= @extra_context %>
 <% end -%>
 
-<% _prior = PromptRenderer.render_partial("partials/prior_outcomes", outcomes: @prior_outcomes, note: "NOTE: If the player's current action depends on something from a prior action\n(e.g. cutting down a tree that was never found), reflect that in affected/needs_mechanics.") -%>
+<% _prior = PromptRenderer.render_partial("partials/prior_outcomes", outcomes: @prior_outcomes, note: "NOTE: If the player's current action depends on something from a prior action\n(e.g. cutting down a tree that was never found), reflect that in affected.") -%>
 <% if _prior.present? -%>
 <%= _prior %>
 <% end -%>
 
 === OUTPUT ===
 - affected: true only if this action directly changes <%= @domain %> state right now
-- needs_mechanics: true only if a roll or rule adjudication is needed in this domain
 - macro_significant: true only for quest completion, boss defeat, critical secret. Almost always false.
 - domain_interpretation: what this action means in <%= @domain %> terms, or why it doesn't apply
 <%= @domain_instructions %>
@@ -33,7 +32,6 @@ When in doubt, set affected to false. False negatives are recoverable. False pos
 Output JSON only:
 {
   "affected": false,
-  "needs_mechanics": false,
   "macro_significant": false,
   "expand_scene": false,
   "transition": null,

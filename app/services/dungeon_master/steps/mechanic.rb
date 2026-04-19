@@ -22,7 +22,8 @@ module DungeonMaster
           mechanical_summaries_text: merged[:mechanical_summaries].join("\n\n"),
           roll_results: all_roll_results,
           consequences: merged[:consequences].present? ? merged[:consequences].to_json : nil,
-          contexts_text: PromptHelpers.format_contexts(micro_contexts))
+          contexts_text: PromptHelpers.format_contexts(micro_contexts),
+          no_auto_hit_miss: @config.no_auto_hit_miss?)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
 

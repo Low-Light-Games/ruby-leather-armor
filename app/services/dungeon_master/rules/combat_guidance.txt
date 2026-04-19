@@ -1,1 +1,44 @@
-Validate the player's declared actions against their equipped weapons, known feats, and available action economy (standard, move, swift, free actions per round). Track HP, active conditions (frightened, prone, grappled, etc.), and relative positioning. Request attack rolls, saving throws, or skill checks from the player as appropriate. When an enemy attacks or an NPC must make a roll, resolve it yourself by picking a random number between 1 and 20 for the d20, adding the NPC's modifier, and narrating the outcome — do NOT ask the player to roll for NPCs. Reference the character's BAB, CMB/CMD, and relevant feats when adjudicating combat maneuvers. Initiative is rolled ONCE at the start of each combat encounter to establish turn order — do NOT request initiative again on subsequent rounds of the same fight.
+Pathfinder 1e combat reference for the Combat GM (table adjudication; grid notes match app BETA).
+
+=== Action economy (standard framework) ===
+- On your turn you get one swift (or immediate), one move, and one standard action (or a full-round action in place of move+standard). Free actions are unlimited only where the rules allow; many free actions are still "only one per turn" (e.g. one potion drink as move + retrieve as move, etc. — use CRB action type for each effect).
+- Full attack is a full-round action; after a full attack you cannot also take a move action (except a 5-foot step if you did not otherwise move — PF1e 5-ft step has its own rules).
+- Casting a spell: usually standard (or longer for longer casting times). Swift-action spells use your swift slot.
+
+=== Attacks ===
+- d20 + attack bonus vs AC (or touch / flat-footed when appropriate). Natural 1 on attack auto-miss; natural 20 threatens critical (confirm second roll vs same AC).
+- Melee: add Str bonus to damage (1.5× Str for two-handed unless exceptions). Ranged: add Dex to hit; damage from weapon + Str (thrown) or listed bonus.
+- Apply DR, resistances, and hardness after damage type is known.
+
+=== Full attack / iteratives ===
+- High BAB grants extra attacks at cumulative −5 (−10 with some natural weapons). TWF adds off-hand attacks at listed penalties. Haste grants one extra attack at highest BAB (usually) — verify condition on sheet.
+
+=== Attacks of opportunity ===
+- Moving out of a threatened square without a 5-ft step or withdraw (or special ability) provokes. Casting in threatened area provokes unless casting defensively (Concentration). Ranged attack in threat provokes. Some actions (e.g. standing from prone) provoke.
+- Combat Reflexes allows extra AoOs; most creatures get one per round.
+
+=== Combat maneuvers ===
+- CMB vs CMD. Many maneuvers provoke without the Improved feat. Size and bonuses matter. Some maneuvers replace attacks (e.g. in place of melee attack) under specific rules.
+
+=== Flanking / positioning (theatre + grid) ===
+- Flanking requires opposite borders or corners through the target — on a square grid, two allies threatening the same enemy from opposite sides often qualifies. Diagonal adjacency counts as adjacent for threaten unless a specific ability says otherwise.
+- Cover: use approximate categories (+2 soft, +4 normal, +8 improved) from what the battlefield slice shows; exact raycasting is not simulated in engine (BETA).
+
+=== Movement (app grid variant) ===
+- Cardinal adjacent squares cost 1 square (5 ft). Diagonal steps use 1.5 squares (7.5 ft) per step — variant metric, not strict PF1e alternating diagonals. Pathfinding should accumulate diagonal cost accordingly. Speed converts to squares at 5 ft per cardinal unit; with half-square bookkeeping, double speed in feet to get half-square budget and charge 3 half-units per diagonal.
+
+=== Viewport vs world (BETA — no BattlefieldFill) ===
+- The persisted `viewport` JSON is a **rectangle in world coordinates** (`min_x`, `min_y`, `width`, `height`) plus optional `anchor_x` / `anchor_y`. On **new** battlefields the window is placed so the **player token is at the center** of that rectangle (40×40 squares by default).
+- The engine **does not** auto-pan when a token moves. If the player “runs right” and leaves the window, prompts/UI still show the **stored** viewport until a `shift_viewport` patch (or equivalent) recenters or slides the window. Combat GM / world-turn output should emit viewport shifts when chase or long movement would leave the tactical picture misleading.
+- Optional future **BattlefieldFill** could reveal unknown `world.cells` inside a bounded region; until then, off-window terrain stays undefined unless patches add cells.
+
+=== Multi-target spells and areas ===
+- Identify spell shape (line, cone, burst, spread). Convert lengths using the grid note above. Creatures in the area make saves as appropriate; selective / shapeable spells follow CRB.
+- Cover and line of effect are approximated from the battlefield text unless exact engine geometry exists.
+
+=== Conditions (high-signal) ===
+- Stunned / paralyzed / petrified: deny actions appropriately. Nauseated: only move — standard limitations. Dazed: one action. Prone: melee −4 / ranged as listed; standing provokes without feat.
+- Dying / stable / dead: follow PF1e thresholds; player dying continues until −CON.
+
+=== When uncertain ===
+- Prefer conservative rulings that preserve table clarity; note assumptions in the outcome string.

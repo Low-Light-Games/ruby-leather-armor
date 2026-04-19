@@ -68,5 +68,35 @@ RSpec.describe "Adventure Messages ban gate", type: :request do
 
       expect(response).not_to have_http_status(:forbidden)
     end
+
+    describe "POST /adventures/:id/messages/roll" do
+      before do
+        allow_any_instance_of(DungeonMasterService).to receive(:prepare_roll) do |service, rolls|
+          adventure.adventure_messages.create!(
+            role: "player",
+            content: DungeonMaster::Rolls::RollResultsText.format(rolls),
+            message_type: "roll_result",
+            metadata: { "rolls" => rolls }
+          )
+        end
+        allow(RollPipelineJob).to receive(:perform_later)
+      end
+
+      it "accepts a zero roll total" do
+        post "/adventures/#{adventure.id}/messages/roll",
+             params: { roll_value: 0, roll_description: "Attack roll", resolution_method: "manual" },
+             headers: { "Accept" => "application/json" }
+
+        expect(response).to have_http_status(:accepted)
+      end
+
+      it "accepts a negative roll total" do
+        post "/adventures/#{adventure.id}/messages/roll",
+             params: { roll_value: -3, roll_description: "Attack roll", resolution_method: "manual" },
+             headers: { "Accept" => "application/json" }
+
+        expect(response).to have_http_status(:accepted)
+      end
+    end
   end
 end

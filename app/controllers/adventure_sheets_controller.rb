@@ -64,15 +64,21 @@ class AdventureSheetsController < ApplicationController
   def toggle_equip
     authorize @adventure, :show?
 
-    item = @adventure_sheet.adventure_sheet_items.find_by!(item_definition_id: params[:item_id])
-    item.equipped = !item.equipped
+    AdventureSheet.transaction do
+      if @adventure.combat_active?
+        AdventureSheets::CombatUiActionEconomy.apply_equip_toggle!(adventure: @adventure, sheet: @adventure_sheet)
+      end
 
-    if item.save
+      item = @adventure_sheet.adventure_sheet_items.find_by!(item_definition_id: params[:item_id])
+      item.equipped = !item.equipped
+      item.save!
       @adventure_sheet.recompute_derived_stats!
-      render json: adventure_sheet_json(@adventure_sheet.reload)
-    else
-      render json: { error: item.errors.full_messages.join(", ") }, status: :unprocessable_entity
     end
+    render json: adventure_sheet_json(@adventure_sheet.reload)
+  rescue AdventureSheets::CombatUiActionEconomy::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { error: e.record.errors.full_messages.join(", ") }, status: :unprocessable_entity
   end
 
   private

@@ -135,11 +135,62 @@ RSpec.describe DungeonMaster::Logging, type: :service do
     end
   end
 
+  describe "#capture_pipeline_exception!" do
+    before do
+      logging.start_registry_entry!("Hello")
+      allow(Rails.logger).to receive(:error)
+    end
+
+    it "reports to Rails.error and logs the backtrace to Rails logger" do
+      error = RuntimeError.new("boom")
+      error.set_backtrace(["line1", "line2"])
+
+      logging.capture_pipeline_exception!(error)
+
+      expect(Rails.error).to have_received(:report).with(error, handled: true, context: anything)
+      expect(Rails.logger).to have_received(:error).with(/RuntimeError: boom.*line1/m)
+    end
+  end
+
   describe "#pause_registry_entry!" do
     before { logging.start_registry_entry!("Hello") }
 
     it "enqueues ShipPipelineRegistryEntryEventJob" do
       expect { logging.pause_registry_entry! }.to have_enqueued_job(ShipPipelineRegistryEntryEventJob)
+    end
+  end
+
+  describe "#log_abandoned_pipeline_if_needed!" do
+    let!(:roll_request) do
+      create(:adventure_message,
+        adventure: adventure,
+        role: "dm",
+        message_type: "roll_request",
+        metadata: { "intent" => { "intention" => "I sneak up to the goblins" } })
+    end
+
+    it "writes a pipeline_abandoned play log when a fresh prompt supersedes a pending roll request" do
+      create(:adventure_message,
+        adventure: adventure,
+        role: "player",
+        message_type: "narrative",
+        content: "Actually, I'll do something else.")
+
+      expect {
+        logging.log_abandoned_pipeline_if_needed!
+      }.to change { PlayLog.where(event_type: "pipeline_abandoned").count }.by(1)
+    end
+
+    it "does not log abandonment when the latest player response is a roll result" do
+      create(:adventure_message,
+        adventure: adventure,
+        role: "player",
+        message_type: "roll_result",
+        content: "Rolled 18 for: Stealth check")
+
+      expect {
+        logging.log_abandoned_pipeline_if_needed!
+      }.not_to change { PlayLog.where(event_type: "pipeline_abandoned").count }
     end
   end
 end

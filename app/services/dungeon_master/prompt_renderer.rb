@@ -20,15 +20,15 @@ module DungeonMaster
 
     # Returns [system_prompt, user_message]. Templates that include a
     # ---USER_MESSAGE--- separator define both halves; templates without
-    # the separator return nil for user_message.
+    # the separator are invalid for this API and raise immediately.
     def self.render_with_user_message(template_name, **locals)
       full = render(template_name, **locals)
-      if full.include?(USER_MESSAGE_SEPARATOR)
-        parts = full.split(USER_MESSAGE_SEPARATOR, 2)
-        [parts[0].strip, parts[1].strip]
-      else
-        [full, nil]
+      unless full.include?(USER_MESSAGE_SEPARATOR)
+        raise ArgumentError, "Template #{template_name.inspect} does not define #{USER_MESSAGE_SEPARATOR}"
       end
+
+      parts = full.split(USER_MESSAGE_SEPARATOR, 2)
+      [parts[0].strip, parts[1].strip]
     end
 
     # Renders a partial template. Returns empty string if the file does not

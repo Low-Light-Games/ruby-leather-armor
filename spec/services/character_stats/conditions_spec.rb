@@ -2,10 +2,11 @@ require "rails_helper"
 
 RSpec.describe CharacterStats::Conditions do
   describe "DEFINITIONS" do
-    it "includes all expected core PF1e conditions" do
+    it "includes core PF1e conditions plus combat/narrative flags from DEFINITIONS" do
       expected = %w[
         fatigued exhausted shaken frightened panicked sickened nauseated
         entangled prone blinded staggered paralyzed stunned dazed poisoned grappled
+        fled surrendered dead disabled petrified stabilized
       ]
       expect(described_class::VALID_CONDITIONS).to match_array(expected)
     end

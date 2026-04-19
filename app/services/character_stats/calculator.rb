@@ -42,10 +42,21 @@ module CharacterStats
         total_acp: cbt[:armor_check_penalty],
       )
 
-      # ── Speed: apply condition multiplier on top of encumbrance/armor ──
+      # ── Speed: encumbrance/armor → condition multiplier → active buffs ──
       speed = enc[:effective_speed]
       cond_speed_mult = Conditions.speed_multiplier(ability[:active_conditions])
       speed = (speed * cond_speed_mult).floor if cond_speed_mult < 1.0
+
+      # Apply active_buffs with target: "speed".
+      # Stacking rule: group by bonus_type; highest per type; sum distinct types.
+      # TODO: extend to target: "str", "dex", etc. when ability-score buff phase lands.
+      speed_buffs = Array(@src.try(:active_buffs)).select { |b| b["target"] == "speed" }
+      unless speed_buffs.empty?
+        buff_speed = speed_buffs
+          .group_by { |b| b["bonus_type"] }
+          .sum { |_type, group| group.map { |b| b["value"].to_i }.max }
+        speed += buff_speed
+      end
 
       {
         final_scores:        ability[:final_scores],

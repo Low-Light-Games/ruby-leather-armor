@@ -9,13 +9,14 @@ module DungeonMaster
   # turns the two overlap; for multi-action turns only this object has the
   # full picture.
   class PipelineContext
-    attr_reader :combined_seed, :dm_brief, :player_action, :prior_outcomes
+    attr_reader :combined_seed, :dm_brief, :player_action, :prior_outcomes, :death_type
 
-    def initialize(combined_seed:, dm_brief:, player_action:, prior_outcomes: nil)
-      @combined_seed = combined_seed
-      @dm_brief      = dm_brief
-      @player_action = player_action
+    def initialize(combined_seed:, dm_brief:, player_action:, prior_outcomes: nil, death_type: nil)
+      @combined_seed  = combined_seed
+      @dm_brief       = dm_brief
+      @player_action  = player_action
       @prior_outcomes = prior_outcomes
+      @death_type     = death_type
     end
   end
 end

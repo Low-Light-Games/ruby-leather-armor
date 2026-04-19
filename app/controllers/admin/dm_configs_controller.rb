@@ -15,6 +15,8 @@ module Admin
 
       # Boolean toggles
       new_settings["chronicler_tone_direction"] = params[:chronicler_tone_direction] == "1"
+      new_settings["instant_death"]           = params[:instant_death]    == "1"
+      new_settings["no_auto_hit_miss"]         = params[:no_auto_hit_miss] == "1"
 
       # Action queue — 3-state: false / "progressive" / "progressive_continuity"
       new_settings["action_queue"] =
@@ -87,6 +89,7 @@ module Admin
         .select { |id| OpenaiModelCatalog.chat_model?(id) }
         .sort
     rescue StandardError => e
+      ApplicationErrorReporter.notify(e, context: { source: "dm_configs_fetch_openai_models" })
       Rails.logger.error("[DmConfigsController] Failed to fetch OpenAI models: #{e.message}")
       [DmConfig::DEFAULTS["model"]]
     end

@@ -183,4 +183,29 @@ RSpec.describe DungeonMaster::Mutations, type: :service do
       expect(torch_item.quantity).to eq(1)
     end
   end
+
+  describe "#apply_mutations — action_economy_delta" do
+    before do
+      adventure.update!(combat_context: {
+        "active" => true,
+        "action_economy" => {
+          "standard_available" => false,
+          "move_available" => true,
+          "swift_available" => true,
+          "full_round_claimed" => false
+        }
+      })
+    end
+
+    it "raises AiError and does not apply other mutations when delta is illegal" do
+      expect do
+        pipeline.send(:apply_mutations, {
+          action_economy_delta: { spend_standard: true },
+          player: { hp_change: -5 }
+        })
+      end.to raise_error(DungeonMaster::AiError, /Invalid action economy/)
+
+      expect(sheet.reload.hp).to eq(12)
+    end
+  end
 end

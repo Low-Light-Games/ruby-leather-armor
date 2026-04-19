@@ -51,6 +51,11 @@ module DungeonMaster
       def broadcast_progress(message)
         @on_progress&.call(message)
       end
+
+      # Shared with TimeKeeper, Sequencer, WorldTurn, resolve_plot skips, etc.
+      def combat_active?
+        @adventure.combat_active?
+      end
     end
   end
 end

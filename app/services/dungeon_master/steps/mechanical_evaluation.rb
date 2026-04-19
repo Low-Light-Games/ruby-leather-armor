@@ -23,7 +23,16 @@ module DungeonMaster
         rolls_desc = merged[:player_rolls].map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]} (#{r[:domain]})" }.join(", ")
         @loop&.log_step("mech_eval", rolls_desc.presence || "No rolls")
         Rolls::PlayerRolls.filter_auto_success_rolls!(merged, log: @log, sheet: @sheet)
+        assign_roll_request_ids!(merged[:player_rolls])
         merged
+      end
+
+      def assign_roll_request_ids!(player_rolls)
+        Array(player_rolls).each do |roll|
+          next unless roll.is_a?(Hash)
+
+          roll[:request_id] ||= SecureRandom.uuid
+        end
       end
     end
   end

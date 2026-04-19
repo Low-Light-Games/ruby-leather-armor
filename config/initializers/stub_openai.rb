@@ -104,6 +104,41 @@ if ENV["STUB_OPENAI"].present?
       "request_body"    => {} }
   end
 
+  fan_out_parsed_response = lambda do |step, domain, is_lock|
+    case step
+    when "roll_qualifier"
+      { "qualifications" => [] }
+    when "beacon"
+      needs_mech = is_lock && domain == "exploration"
+      {
+        "affected" => domain == "exploration",
+        "needs_mechanics" => needs_mech,
+        "macro_significant" => false,
+        "expand_scene" => false,
+        "transition" => nil,
+        "destination" => nil,
+        "combatants" => [],
+        "reasoning" => domain == "exploration" ? "Exploration" : "Not affected"
+      }
+    when "sanity_checker_world"
+      { "consistent" => true, "reason" => nil, "dm_message" => nil }
+    when "sanity_checker"
+      { "allowed" => true, "reason" => nil }
+    when "micro_context_update"
+      { "context_updates" => {} }
+    when "macro_narrative_update"
+      { "story_summary" => "Stub summary." }
+    when "meta_context_update"
+      { "scene_summary" => "Stub scene summary.", "new_creatures" => [], "context_wishes" => [] }
+    when "narrate"
+      { "narrative" => "The adventurer moves with purpose through the dungeon." }
+    when /\A[a-z]+_context_update\z/
+      { "unchanged" => true, "context" => {} }
+    else
+      {}
+    end
+  end
+
   WebMock.stub_request(:post, "#{evaluator_base}/fan_out")
          .to_return do |request|
     body       = JSON.parse(request.body) rescue []
@@ -114,49 +149,11 @@ if ENV["STUB_OPENAI"].present?
     results = if first_step == "roll_qualifier"
       body.map { |p| build_entry.call("roll_qualifier", p.dig("meta", "domain"),
                                       "qualifications" => []) }
-    elsif first_step == "beacon"
-      body.map do |p|
-        domain     = p.dig("meta", "domain")
-        needs_mech = is_lock && domain == "exploration"
-        build_entry.call("beacon", domain,
-                         "affected"          => domain == "exploration",
-                         "needs_mechanics"   => needs_mech,
-                         "macro_significant" => false,
-                         "expand_scene"      => false,
-                         "transition"        => nil,
-                         "destination"       => nil,
-                         "combatants"        => [],
-                         "reasoning"         => domain == "exploration" ? "Exploration" : "Not affected")
-      end
     else
       body.map do |p|
         st = p.dig("meta", "step").to_s
-        case st
-        when "sanity_checker_world"
-          build_entry.call("sanity_checker_world", nil,
-                           "consistent" => true, "reason" => nil, "dm_message" => nil)
-        when "sanity_checker"
-          build_entry.call("sanity_checker", nil, "allowed" => true, "reason" => nil)
-        when "micro_context_update"
-          build_entry.call("micro_context_update", nil, "context_updates" => {})
-        when "macro_narrative_update"
-          build_entry.call("macro_narrative_update", nil, "story_summary" => "Stub summary.")
-        when "narrate"
-          build_entry.call("narrate", nil,
-                           "narrative" => "The adventurer moves with purpose through the dungeon.")
-        else
-          domain     = p.dig("meta", "domain")
-          needs_mech = is_lock && domain == "exploration"
-          build_entry.call("beacon", domain,
-                           "affected"          => domain == "exploration",
-                           "needs_mechanics"   => needs_mech,
-                           "macro_significant" => false,
-                           "expand_scene"      => false,
-                           "transition"        => nil,
-                           "destination"       => nil,
-                           "combatants"        => [],
-                           "reasoning"         => domain == "exploration" ? "Exploration" : "Not affected")
-        end
+        domain = p.dig("meta", "domain")
+        build_entry.call(st, domain, fan_out_parsed_response.call(st, domain, is_lock))
       end
     end
 
@@ -172,6 +169,8 @@ if ENV["STUB_OPENAI"].present?
 
     results = body.map do |p|
       domain = p.dig("meta", "domain")
+      # Sequential mech_eval: combat domain uses CombatMechanicResolution when player_rolls is non-empty
+      # (defense_kind + no model dc). Keep empty rolls here so default stubs need no combat_context.
       parsed = if is_lock && domain == "exploration"
         { "player_rolls"       => [{ "type" => "skill_check", "skill" => "Disable Device",
                                      "dc" => 15, "description" => "Pick the lock" }],

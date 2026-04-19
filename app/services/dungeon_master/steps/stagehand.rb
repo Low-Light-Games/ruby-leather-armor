@@ -28,6 +28,9 @@ module DungeonMaster
           }.merge(extra)
         end
 
+        # v1 latency: combat rounds are never macro-significant; skip macro context LLM cost.
+        intent = intent.merge(macro_significant: false) if stagehand_combat_active?
+
         narration_mode = @config.get("narration_mode") || "parallel"
 
         if narration_mode == "subjugated"
@@ -44,28 +47,28 @@ module DungeonMaster
 
       def run_parallel_narrative(intent, narration_context:, mutations:)
         seed = narration_context.combined_seed
-        evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
 
         broadcast_progress("Writing the story...")
         broadcast_progress("Remembering the world...")
 
-        prompts = [narrate_evaluator_prompt(narration_context), micro_context_evaluator_prompt(seed, mutations)]
+        prompts = [narrate_evaluator_prompt(narration_context)]
+        prompts.concat(build_micro_context_updater_prompts(seed, mutations, allow_combat_initialization: true))
         prompts << macro_context_evaluator_prompt(seed) if intent[:macro_significant]
-
-        results = call_evaluator!("#{evaluator_url}/fan_out", prompts, seed, phase: "narrative_phase")
 
         # All prompts are built on the main thread before this single HTTP call; Node runs
         # LLM calls concurrently but returns results in request order — see evaluator index.js.
-        by_step = evaluator_fan_out_results_by_step(results)
+        by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
 
-        micro_parsed = evaluator_fan_out_result!(by_step, "micro_context_update", "narrative_phase")["parsed_response"] || {}
+        micro_parsed = aggregate_micro_context_results(by_step)
         macro_parsed = if intent[:macro_significant]
                          evaluator_fan_out_result!(by_step, "macro_narrative_update", "narrative_phase")["parsed_response"] || {}
                        else
                          {}
                        end
 
-        apply_context_update_results(micro_parsed, macro_parsed, macro_significant: intent[:macro_significant])
+        apply_context_update_results(micro_parsed, macro_parsed,
+          macro_significant: intent[:macro_significant],
+          mutations: mutations)
 
         narrative_from_evaluator_result(evaluator_fan_out_result!(by_step, "narrate", "narrative_phase"))
       end
@@ -104,7 +107,7 @@ module DungeonMaster
       def combat_transition?(transition)
         return false if transition.blank?
 
-        transition == "combat_started" || transition.to_s.end_with?("_to_combat")
+        DungeonMaster::CombatTransitions.start?(transition)
       end
 
       def stagehand_combat_active?

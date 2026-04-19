@@ -25,36 +25,37 @@ module DungeonMaster
       include Phases::MechEvalPhase
       include Phases::RollQualifierPhase
 
-      DOMAINS        = PromptHelpers::CONTEXT_FIELDS.freeze
-      DOMAIN_PRIORITY = %w[combat social traversal exploration rest inventory].freeze
+      # CONTEXT_FIELDS drives micro-context columns on Adventure (traversal_context, etc.).
+      # DOMAINS adds "buff" which has no adventure column — its context is sheet.active_buffs.
+      DOMAINS        = (PromptHelpers::CONTEXT_FIELDS + %w[buff]).freeze
+      DOMAIN_PRIORITY = %w[combat buff social traversal exploration rest inventory].freeze
 
       private
 
       def run_parallel_evaluation(intention)
         broadcast_progress("Reading the situation...")
-        evaluator_url = ENV.fetch("EVALUATOR_URL", "http://evaluator:3001")
 
-        # Phase 1 — Beacons
+        # Phase 1 — Beacons (raw array; converge_beacons reads result order, not step keys)
         beacon_results = call_evaluator!(
-          "#{evaluator_url}/fan_out",
+          "#{evaluator_base_url}/fan_out",
           build_beacon_prompts(intention),
           intention,
           phase: "beacons"
         )
 
         intent = converge_beacons(beacon_results, intention)
+        intent = prepare_canonical_combatants(intent)
         log_parallel_to_loop(intent)
 
         # Phase 2 — Mechanical Evaluation
         evaluations = []
 
-        if intent[:needs_mechanics]
+        if intent[:affected_contexts].any?
           affected       = intent[:affected_contexts]
           ordered_domains = DOMAIN_PRIORITY.select { |d| affected.include?(d) } +
                             (affected - DOMAIN_PRIORITY)
 
-          mech_results = call_evaluator!(
-            "#{evaluator_url}/sequential",
+          mech_results = evaluator_sequential!(
             build_mech_eval_prompts(ordered_domains, intention, intent),
             intention,
             phase: "mech_eval"
@@ -62,12 +63,12 @@ module DungeonMaster
 
           evaluations = parse_mech_eval_results(mech_results, ordered_domains)
 
-          # Phase 3 — Roll Qualifier
+          # Phase 3 — Roll Qualifier (raw array; apply_qualifier_results reads result order)
           domains_with_rolls = evaluations.select { |e| e[:player_rolls].any? }
 
           if domains_with_rolls.any?
             qual_results = call_evaluator!(
-              "#{evaluator_url}/fan_out",
+              "#{evaluator_base_url}/fan_out",
               build_roll_qualifier_prompts(domains_with_rolls, intention),
               intention,
               phase: "roll_qualifier"
@@ -120,8 +121,58 @@ module DungeonMaster
       end
 
       def build_qualifier_context_block(domain)
+        # buff always returns empty player_rolls so qualifier never runs for it;
+        # also, there is no adventure.buff_context column — be explicit rather than
+        # relying on the rescue nil fallback.
+        return nil if domain == "buff"
+
         ctx = @adventure.send("#{domain}_context") rescue nil
         ctx.present? ? "=== #{domain.upcase} CONTEXT ===\n#{ctx.to_json}" : nil
+      end
+
+      def prepare_canonical_combatants(intent)
+        return intent if @adventure.combat_active?
+
+        combat_result = intent.dig(:domain_results, "combat") || {}
+        transition = combat_result[:transition].to_s
+        return intent unless DungeonMaster::CombatTransitions.start?(transition)
+
+        combatant_names = Array(combat_result[:combatants]).map(&:to_s).reject(&:blank?)
+        return intent if combatant_names.empty?
+
+        prepared = Utilities::Warmaster.prepare_from_names!(
+          adventure: @adventure,
+          combatant_names: combatant_names,
+          sheet: @sheet,
+          log: @log,
+          config: @config,
+          ai: @ai
+        )
+
+        return intent if prepared[:status] == :no_creatures
+
+        Utilities::Warmaster.persist_pending_combat!(
+          adventure: @adventure,
+          creature_data: prepared[:creature_data]
+        )
+
+        @log.play_log!(
+          "warmaster",
+          "Pending combat roster prepared: #{prepared[:creature_data].size} creature(s)",
+          parsed_response: {
+            pending_combat: true,
+            creature_count: prepared[:creature_data].size,
+            creatures: prepared[:creature_data].map do |creature|
+              {
+                name: creature[:name],
+                creature_sheet_id: creature[:creature_sheet_id],
+                initiative: creature[:initiative]
+              }
+            end
+          }
+        )
+
+        intent.merge(creature_data: prepared[:creature_data])
       end
 
       # ── AdventureLoop integration ──────────────────────────────────
@@ -130,11 +181,7 @@ module DungeonMaster
         return unless @loop
 
         affected   = intent[:affected_contexts]
-        loop_tags  = {}
-        loop_tags["needs_mechanics"] = true if intent[:needs_mechanics]
-
         @loop.batch_update!(
-          new_tags:  loop_tags.presence,
           new_data:  { "affected_contexts" => affected, "parallel_eval" => true },
           new_status: "resolving",
           timeline_entry: {

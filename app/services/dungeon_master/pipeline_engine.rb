@@ -20,7 +20,7 @@ module DungeonMaster
   class PipelineEngine
     # Step mixins add private methods; order here is not execution order. Outer turn: phases →
     # ActionQueueRunner → `AdventureLoopResolution#resolve` per queued line. Inner path: ParallelEvaluation
-    # → (optional) SanityChecker + MechanicalEvaluation roll prep → Mechanic / TimeKeeper / …
+    # → (optional) SanityChecker + MechanicalEvaluation roll prep → Combat GM or Mechanic / TimeKeeper / …
     include Steps::Helpers
     include Steps::EvaluatorTransport
     include Steps::Intake
@@ -30,6 +30,7 @@ module DungeonMaster
     include Steps::SanityChecker
     include Steps::ParallelEvaluation
     include Steps::Mechanic
+    include Steps::CombatGm
     include Steps::Momentum
     include Steps::TimeKeeper
     include Steps::Stagehand
@@ -38,6 +39,7 @@ module DungeonMaster
     include Steps::ContextUpdate
     include AdventureLoopResolution
     include Mutations
+    include Steps::WorldTurn
 
     include Concerns::NarrationCoordination
     include Concerns::ContextCoordination
@@ -85,6 +87,8 @@ module DungeonMaster
 
     def resolve_plot(intent, verdict_outcome: nil, encounter_triggered: false)
       return unless story_has_plot_data?
+      # v1 latency: skip Chronicler while combat is active (revisit if combat rounds gain plot beats).
+      return if combat_active?
 
       run_chronicler(intent, verdict_outcome: verdict_outcome, encounter_triggered: encounter_triggered)
     end

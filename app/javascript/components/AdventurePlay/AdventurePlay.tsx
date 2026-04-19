@@ -134,7 +134,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
         />
 
         {/* MIDDLE COLUMN — Chat */}
-        <div className="adventure-column middle-column">
+        <div className={`adventure-column middle-column${adventure.combat_context?.active ? ' active-combat' : ''}`}>
           {user.onboarding_state === 'in_progress' && (
             <div className="first-time-hint">
               <p>
@@ -147,6 +147,9 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
             adventureId={adventureId}
             derivedStats={ds}
             adventureSheet={advSheet}
+            adventureEnded={adventure.ended}
+            endReason={adventure.end_reason}
+            isCombatActive={adventure.combat_context?.active === true}
             onAdventureComplete={reload}
             onDmResponse={reload}
             onSheetUpdate={reload}
@@ -157,6 +160,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
         <StorySidebar
           story={story}
           adventureId={adventureId}
+          battlefield={adventure.battlefield ?? null}
           traversalContext={adventure.traversal_context}
           combatContext={adventure.combat_context}
           socialContext={adventure.social_context}

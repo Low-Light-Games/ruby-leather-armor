@@ -29,7 +29,7 @@ module DungeonMaster
         estimated = estimate_time(intent, verdict_result)
         @log.log!(:info, "TimeKeeper: estimated=#{estimated[:hours].round(4)}h, source=#{estimated[:source]}")
 
-        unless estimated[:source].in?(%i[ai ai_fallback])
+        unless estimated[:source] == :ai
           @log.play_log!("time_keeper", "#{estimated[:hours].round(4)}h (#{estimated[:source]})",
                          parsed_response: { source: estimated[:source],
                                             hours: estimated[:hours].round(4),
@@ -57,6 +57,7 @@ module DungeonMaster
         thresholds = Utilities::GameClock.check_thresholds(time_ctx)
 
         apply_fatigue_conditions(thresholds, time_ctx)
+        expire_elapsed_buffs(time_ctx)
 
         encounter = harbinger_result if harbinger_result[:stop_reason] == :encounter
 
@@ -137,7 +138,7 @@ module DungeonMaster
       end
 
       def try_combat_estimate
-        return nil unless combat_active?
+        return nil unless effective_combat_active_for_timekeeper?
 
         { hours: 0.0017, source: :combat_code, terrain: nil, is_journey: false,
           speed_mph: nil, journey_data: nil }
@@ -159,6 +160,9 @@ module DungeonMaster
           speed_mph: nil, journey_data: nil }
       end
 
+      # AI errors (TokenBudgetExceededError, AiError) are intentionally allowed to
+      # propagate here — a wrong elapsed time silently pollutes the game clock, which
+      # is harder to diagnose than a visible pipeline failure. (See 46d182f.)
       def estimate_via_ai(intent, verdict_result)
         time_ctx = @adventure.time_context || {}
         outcome  = verdict_result&.dig(:outcome) || intent[:intention]
@@ -170,7 +174,7 @@ module DungeonMaster
           current_hour: time_ctx["current_hour"] || 8,
           adventure_day: time_ctx["adventure_day"] || 1,
           light_conditions: time_ctx["light_conditions"] || "day",
-          combat_active: combat_active?,
+          combat_active: effective_combat_active_for_timekeeper?,
           has_destination: intent[:destination].present?)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
@@ -203,9 +207,6 @@ module DungeonMaster
             speed_factors: { source: "ai_estimate" }
           } : nil
         }
-      rescue TokenBudgetExceededError, AiError
-        { hours: 0.0017, source: :ai_fallback, terrain: nil, is_journey: false,
-          speed_mph: nil, journey_data: nil }
       end
 
       # ── Fatigue condition management ─────────────────────────────
@@ -236,13 +237,35 @@ module DungeonMaster
         end
       end
 
+      # ── Buff expiry ───────────────────────────────────────────────
+
+      # Removes active_buffs entries whose expires_at_game_hours has passed
+      # after the clock advances. Deterministic — no AI involved.
+      def expire_elapsed_buffs(time_ctx)
+        return unless @sheet&.respond_to?(:active_buffs)
+
+        current_hour = Utilities::GameClock.absolute_hours(time_ctx)
+        current = Array(@sheet.active_buffs).map(&:deep_stringify_keys)
+
+        expired = current.select do |b|
+          b["expires_at_game_hours"] && b["expires_at_game_hours"].to_f <= current_hour
+        end
+
+        return if expired.empty?
+
+        remaining = current - expired
+        @sheet.update!(active_buffs: remaining)
+        @sheet.recompute_derived_stats!
+        @log.log!(:info, "TimeKeeper: expired buffs at game_hour #{current_hour.round(4)}: #{expired.map { _1['source'] }.join(', ')}")
+      end
+
       # ── Harbinger consultation ────────────────────────────────────
 
       def consult_harbinger_if_needed(estimated, intent)
         no_op = { interrupted: false, stop_reason: :skipped, hours_granted: estimated[:hours],
                   distance_covered_miles: 0, encounter_entry: nil }
 
-        return no_op if combat_active?
+        return no_op if effective_combat_active_for_timekeeper?
         return no_op if estimated[:hours] < 0.01
 
         table = EncounterTable.table_for(@adventure.story)
@@ -266,6 +289,24 @@ module DungeonMaster
         )
       end
 
+      # TimeKeeper runs after canonical mutations apply but before context update
+      # refreshes combat_context, so it must consult live combat truth instead of
+      # the lagging combat cache when deciding elapsed time and encounters.
+      def effective_combat_active_for_timekeeper?
+        return @effective_combat_active_for_timekeeper if defined?(@effective_combat_active_for_timekeeper)
+
+        @effective_combat_active_for_timekeeper = if !combat_active? || @sheet.nil?
+                                                    false
+                                                  else
+                                                    end_info = Utilities::CombatEndResolver.check_combat_end(
+                                                      adventure: @adventure,
+                                                      sheet: @sheet,
+                                                      instant_death: @config.instant_death?
+                                                    )
+                                                    end_info.dig(:combat, :combat_active) == true
+                                                  end
+      end
+
       # ── Journey helpers ───────────────────────────────────────────
 
       def resolve_destination(destination_name)
@@ -287,11 +328,6 @@ module DungeonMaster
         (modifiers[terrain.to_s] || 1.0).to_f
       end
 
-      def combat_active?
-        ctx = @adventure.combat_context
-        ctx.is_a?(Hash) && ctx["active"] == true &&
-          Array(ctx["participants"]).any?
-      end
     end
   end
 end

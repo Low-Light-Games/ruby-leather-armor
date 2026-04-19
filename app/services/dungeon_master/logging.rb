@@ -62,7 +62,7 @@ module DungeonMaster
       report_error(e, context: { method: "complete_registry_entry!" })
     end
 
-    def error_registry_entry!
+    def error_registry_entry!(exception = nil)
       registry_entry_record&.update!(status: "errored", finished_at: Time.current)
       enqueue_registry_entry_event!
     rescue => e
@@ -155,9 +155,27 @@ module DungeonMaster
       text.length > length ? "#{text.first(length)}…" : text
     end
 
-    # Sentry (and similar) for unhandled pipeline exceptions — never raises.
+    # Sentry + Rails.error for pipeline exceptions surfaced to the player — never raises.
     def capture_pipeline_exception!(exception)
-      Sentry.capture_exception(exception) if defined?(Sentry)
+      Rails.logger.error(
+        "[DM pipeline exception adventure=#{@adventure&.id} registry=#{@registry_entry_uuid}] " \
+        "#{exception.class}: #{exception.message}\n#{Array(exception.backtrace).join("\n")}"
+      )
+      play_log!(
+        "pipeline_error",
+        "#{exception.class}: #{exception.message}",
+        parsed_response: {
+          error_class: exception.class.name,
+          error_message: exception.message,
+          backtrace: Array(exception.backtrace).first(25)
+        }
+      )
+      ApplicationErrorReporter.notify(exception, context: {
+        source: "dungeon_master_pipeline_exception",
+        registry_entry_uuid: @registry_entry_uuid,
+        adventure_id: @adventure&.id,
+        player_message_id: @player_message_id
+      })
     end
 
     # When the player starts a new prompt while a roll/initiative request is still pending.
@@ -235,7 +253,7 @@ module DungeonMaster
         player_message_id: @player_message_id
       }.merge(context)
 
-      Rails.error.report(exception, handled: true, context: full_context)
+      ApplicationErrorReporter.notify(exception, context: full_context)
     end
 
     # Last-resort write when the primary ai_log! or ai_log_error! fails.

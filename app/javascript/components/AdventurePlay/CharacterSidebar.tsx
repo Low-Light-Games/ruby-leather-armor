@@ -16,6 +16,7 @@ import {
 } from '../../rules/pathfinder_skill_ranks'
 import CombatStatsGrid from './CharacterSidebar/CombatStatsGrid'
 import ConditionsBadges from './CharacterSidebar/ConditionsBadges'
+import ActiveBuffsSection from './CharacterSidebar/ActiveBuffsSection'
 import SpellsSection from './CharacterSidebar/SpellsSection'
 import CharacterActions from './CharacterSidebar/CharacterActions'
 import AttributesAccordion from './CharacterSidebar/AttributesAccordion'
@@ -157,6 +158,8 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
           restrictions={ds.condition_restrictions ?? []}
         />
       )}
+
+      <ActiveBuffsSection buffs={sheet.active_buffs ?? []} />
 
       <CombatStatsGrid
         sheet={sheet} ds={ds}

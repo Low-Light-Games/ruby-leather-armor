@@ -91,6 +91,17 @@ export interface DerivedSkill {
   total: number
 }
 
+export interface ActiveBuff {
+  source: string
+  bonus_type: string
+  target: string
+  value: number
+  expires_at_game_hours?: number | null
+  remaining_hours?: number | null
+  duration_label: string
+  meta?: Record<string, unknown>
+}
+
 export interface Sheet {
   id: number
   name: string
@@ -258,16 +269,28 @@ export interface AdventureSheet {
   currency: Currency
   /** Per-skill rank counts; adventure copy is independent from the source sheet. */
   skill_ranks?: Record<string, number>
+  active_buffs?: ActiveBuff[]
   hp: number
   max_hp: number
   items: string | null       // legacy text field
   effects: string | null
 }
 
+/** Active combat tactical snapshot; null when not in combat. */
+export interface BattlefieldSnapshot {
+  id: number
+  version: number
+  topology: string
+  tokens: Record<string, Record<string, unknown>>
+  viewport: Record<string, unknown>
+  world: Record<string, unknown>
+}
+
 export interface Adventure {
   id: number
   adventure_sheet: AdventureSheet
   story: Story
+  battlefield?: BattlefieldSnapshot | null
   traversal_context: Record<string, unknown> | null
   combat_context: Record<string, unknown> | null
   social_context: Record<string, unknown> | null
@@ -278,6 +301,9 @@ export interface Adventure {
   story_summary: string | null
   scene_summary: string | null
   current_category: string | null
+  ended: boolean
+  ended_at: string | null
+  end_reason: 'player_death' | 'adventure_complete' | null
   directed_dm: boolean
   skip_world_sanity_check: boolean
 }
@@ -298,12 +324,21 @@ export interface SituationalModifier {
 }
 
 export interface RollRequest {
+  request_id?: string
+  source_request_id?: string
   type: string
   skill?: string
   spell?: string
   dc?: number
   description: string
   domain?: string
+  attack_mode?: string
+  defense_kind?: string
+  source_type?: string
+  source_id?: string
+  damage?: string
+  damage_type?: string
+  target?: string
   take_10_eligible?: boolean
   take_20_eligible?: boolean
   take_10_value?: number | null
@@ -315,16 +350,18 @@ export interface AdventureMessage {
   id: number
   role: 'player' | 'dm' | 'system'
   content: string
-  message_type: 'narrative' | 'sanitization_fail' | 'adventure_complete'
+  message_type: 'narrative' | 'sanitization_fail' | 'adventure_complete' | 'player_death'
+    | 'player_incapacitated'
+    | 'combat_log' | 'action_result'
     | 'roll_request' | 'roll_result'
     | 'initiative_request' | 'initiative_result'
-    | 'dm_query' | 'usage_limit'
+    | 'dm_query' | 'usage_limit' | 'system_notice' | 'moderation_flagged'
   metadata: {
     roll_request?: RollRequest
     roll_requests?: RollRequest[]
     roll_value?: number
     roll_description?: string
-    rolls?: Array<{ roll_value: number; roll_description: string }>
+    rolls?: Array<{ roll_value: number; roll_description: string; request_id?: string }>
     sequence_index?: number
     total_actions?: number
     action_text?: string | null

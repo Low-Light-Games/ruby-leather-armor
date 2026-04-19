@@ -26,16 +26,16 @@ AI_STEP_RESPONSES = {
   # unified_evaluation is retired — kept for reference only; never called.
   "unified_evaluation" => {
     "domains" => {
-      "traversal"   => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false },
-      "combat"      => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false },
-      "social"      => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false, "expand_scene" => false },
+      "traversal"   => { "affected" => false, "macro_significant" => false },
+      "combat"      => { "affected" => false, "macro_significant" => false },
+      "social"      => { "affected" => false, "macro_significant" => false, "expand_scene" => false },
       "exploration" => {
-        "affected" => true, "needs_mechanics" => false, "macro_significant" => false,
+        "affected" => true, "macro_significant" => false,
         "domain_interpretation" => "Player opens a door.",
         "player_rolls" => [], "npc_actions" => [], "consequences" => [], "mechanical_summary" => ""
       },
-      "rest"      => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false },
-      "inventory" => { "affected" => false, "needs_mechanics" => false, "macro_significant" => false }
+      "rest"      => { "affected" => false, "macro_significant" => false },
+      "inventory" => { "affected" => false, "macro_significant" => false }
     },
     "reasoning" => "Simple exploration action."
   }.to_json,
@@ -79,6 +79,12 @@ AI_STEP_RESPONSES = {
     "context_updates" => {}
   }.to_json,
 
+  "meta_context_update" => {
+    "scene_summary" => "The adventurer opened a door.",
+    "new_creatures" => [],
+    "context_wishes" => []
+  }.to_json,
+
   "macro_narrative_update" => {
     "story_summary" => "The adventurer opened a door."
   }.to_json,
@@ -116,12 +122,12 @@ end
 # are hermetic and don't require a running evaluator service.
 #
 # Default behaviour:
-#   beacon  — exploration affected, no mechanics
+#   beacon  — exploration affected
 #   mech_eval — no rolls (exploration only, no lock mechanics)
 #   roll_qualifier — qualifications: []
 #
 # Lock-pick detection: if the user_message (player action text) contains "lock",
-# the exploration beacon is marked needs_mechanics: true, and mech_eval returns
+# the exploration beacon is marked affected, and mech_eval returns
 # a Disable Device DC 15 roll for exploration.
 shared_context "with evaluator stubs" do
   before do
@@ -143,14 +149,24 @@ shared_context "with evaluator stubs" do
           evaluator_entry("roll_qualifier", domain,
                           "parsed_response" => { "qualifications" => [] })
         end
+      elsif first_step.start_with?("npc_action")
+        body.map do |p|
+          st = p.dig("meta", "step").to_s
+          evaluator_entry(st, nil,
+                          "parsed_response" => {
+                            "action" => "attack",
+                            "target" => "Player",
+                            "attack_modifier" => 5,
+                            "damage_dice" => "1d4",
+                            "reasoning" => "stub npc turn"
+                          })
+        end
       elsif first_step == "beacon"
         body.map do |p|
           domain     = p.dig("meta", "domain")
-          needs_mech = is_lock && domain == "exploration"
           evaluator_entry("beacon", domain,
                           "parsed_response" => {
                             "affected"          => domain == "exploration",
-                            "needs_mechanics"   => needs_mech,
                             "macro_significant" => false,
                             "expand_scene"      => false,
                             "transition"        => nil,
@@ -173,6 +189,16 @@ shared_context "with evaluator stubs" do
           when "micro_context_update"
             evaluator_entry("micro_context_update", nil,
                             "parsed_response" => JSON.parse(AI_STEP_RESPONSES["micro_context_update"]))
+          when "meta_context_update"
+            evaluator_entry("meta_context_update", nil,
+                            "parsed_response" => JSON.parse(AI_STEP_RESPONSES["meta_context_update"]))
+          when /\A[a-z]+_context_update\z/
+            domain = st.sub(/_context_update\z/, "")
+            evaluator_entry(st, domain,
+                            "parsed_response" => {
+                              "unchanged" => true,
+                              "context" => {}
+                            })
           when "macro_narrative_update"
             evaluator_entry("macro_narrative_update", nil,
                             "parsed_response" => JSON.parse(AI_STEP_RESPONSES["macro_narrative_update"]))
@@ -181,11 +207,9 @@ shared_context "with evaluator stubs" do
                             "parsed_response" => JSON.parse(AI_STEP_RESPONSES["narrate"]))
           else
             domain     = p.dig("meta", "domain")
-            needs_mech = is_lock && domain == "exploration"
             evaluator_entry("beacon", domain,
                             "parsed_response" => {
                               "affected"          => domain == "exploration",
-                              "needs_mechanics"   => needs_mech,
                               "macro_significant" => false,
                               "expand_scene"      => false,
                               "transition"        => nil,
@@ -209,6 +233,7 @@ shared_context "with evaluator stubs" do
 
       results = body.map do |p|
         domain = p.dig("meta", "domain")
+        # Combat domain: non-empty player_rolls must match CombatMechanicResolution (see stub_openai sequential).
         if is_lock && domain == "exploration"
           evaluator_entry("mechanical_evaluation", domain,
                           "parsed_response" => {

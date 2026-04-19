@@ -27,6 +27,10 @@ export function extractRollRequests(msg: AdventureMessage): RollRequest[] {
 }
 
 export function rollLabel(req: RollRequest): string {
+  if (req.type === 'damage_roll') {
+    const parts = [req.damage, req.damage_type].filter(Boolean)
+    return parts.length > 0 ? `Damage Roll (${parts.join(' ')})` : 'Damage Roll'
+  }
   const name = req.skill || req.type?.replace(/_/g, ' ') || 'Roll'
   if (req.domain) return `${name} (${req.domain.charAt(0).toUpperCase() + req.domain.slice(1)})`
   return name

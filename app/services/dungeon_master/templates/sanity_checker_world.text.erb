@@ -23,6 +23,18 @@ Your job is to verify that the player's intended action is possible given reason
 === STORY NPCs (these people exist, but they may not be around) ===
 <%= @npc_names.any? ? @npc_names.join(", ") : "(none)" %>
 
+<% if @combat_active && @combat_turn_order.any? %>
+=== ACTIVE COMBAT ROSTER ===
+Combat is in progress. The following creatures are engaged: <%= @combat_turn_order.join(", ") %>
+
+Rule: if the player is mechanically targeting a creature NOT in this roster — meaning
+attacking, casting an offensive or control spell on, grappling, or otherwise applying a
+direct game effect to a named non-roster creature — return consistent: false.
+Broad non-targeted actions (shouting to bystanders, awareness checks, environmental
+interactions) are allowed even if other creatures are nearby.
+The dm_message should be in-world and not break the fourth wall.
+
+<% end -%>
 === INSTRUCTIONS ===
 Check if the entities, targets, or objects the player references actually
 exist in the current scene, recent history, or active game state. Or if they can

@@ -59,16 +59,33 @@ module CharacterStats
       ac_size  = size == "Small" ? 1 : 0
       cmb_size = size == "Small" ? -1 : 0
 
+      # ── Active buffs (target: "ac") ───────────────────────────────
+      # Stacking rule: group by bonus_type; take highest per group; sum across groups.
+      # Same bonus_type → highest wins (replacement). Different types → additive.
+      # armor_bonus and shield_bonus also compete with equipped item values.
+      #
+      # TODO: extend this block to handle target: "saves", "attack", etc. when those
+      #       expansion phases are implemented. Add the handler here; no other files change.
+      ac_buffs = Array(@src.try(:active_buffs)).select { |b| b["target"] == "ac" }
+      buff_by_type = ac_buffs.group_by { |b| b["bonus_type"] }
+                              .transform_values { |g| g.map { |b| b["value"].to_i }.max }
+
       # ── AC ───────────────────────────────────────────────────────
       cond_ac_mod = ac_modifier_from_conditions(active_conds)
-      armor_ac    = equip[:armor_bonus]
-      shield_ac   = equip[:shield_bonus]
+
+      # Equipped armor/shield compete with same-type buff: take highest
+      armor_ac  = [equip[:armor_bonus],  buff_by_type.delete("armor")  || 0].max
+      shield_ac = [equip[:shield_bonus], buff_by_type.delete("shield") || 0].max
+
+      # Remaining distinct AC bonus types all stack with each other and with armor/shield
+      # TODO: full typed-bonus enforcement for feat/equipment :ac bucket belongs here
+      other_buff_ac = buff_by_type.values.sum
 
       ac    = 10 + effective_dex_mod + ac_size + armor_ac + shield_ac +
-              feat_stat_bonuses[:ac] + equip_stat_bonuses[:ac] + cond_ac_mod
+              feat_stat_bonuses[:ac] + equip_stat_bonuses[:ac] + cond_ac_mod + other_buff_ac
       t_ac  = 10 + effective_dex_mod + ac_size +
-              feat_stat_bonuses[:ac] + equip_stat_bonuses[:ac] + cond_ac_mod
-      ff_ac = 10 + ac_size + armor_ac + shield_ac + cond_ac_mod
+              feat_stat_bonuses[:ac] + equip_stat_bonuses[:ac] + cond_ac_mod + other_buff_ac
+      ff_ac = 10 + ac_size + armor_ac + shield_ac + cond_ac_mod + other_buff_ac
 
       # ── CMB / CMD / Initiative ────────────────────────────────────
       cmb        = bab + mods["strength"] + cmb_size
@@ -87,6 +104,14 @@ module CharacterStats
                       feat_stat_bonuses[:ranged_attack] + equip_stat_bonuses[:ranged_attack]
 
       # ── Breakdowns ───────────────────────────────────────────────
+      buff_breakdown_entries = ac_buffs
+        .group_by { |b| b["bonus_type"] }
+        .transform_values { |g| g.map { |b| b["value"].to_i }.max }
+        .filter_map do |btype, val|
+          next if btype == "armor" || btype == "shield" # shown in Armor/Shield lines
+          { label: "Buff (#{btype})", value: val } if val.nonzero?
+        end
+
       ac_breakdown   = build_breakdown(
         { label: "Base",      value: 10 },
         { label: "Dex Mod",   value: effective_dex_mod },
@@ -96,6 +121,7 @@ module CharacterStats
         { label: "Feat",      value: feat_stat_bonuses[:ac] },
         { label: "Equipment", value: equip_stat_bonuses[:ac] },
         *condition_breakdown_entries(active_conds, :ac_modifiers, "all"),
+        *buff_breakdown_entries,
       )
       fort_breakdown = build_breakdown(
         { label: "Base Save", value: compute_base_save(good_saves.include?("fort"), @src.level) },

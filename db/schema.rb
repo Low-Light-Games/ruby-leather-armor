@@ -10,9 +10,24 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_09_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_16_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "adventure_battlefields", force: :cascade do |t|
+    t.bigint "adventure_id", null: false
+    t.string "status", default: "active", null: false
+    t.string "topology", default: "square", null: false
+    t.jsonb "world", default: {}, null: false
+    t.jsonb "tokens", default: {}, null: false
+    t.jsonb "viewport", default: {}, null: false
+    t.integer "version", default: 1, null: false
+    t.datetime "archived_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_id", "status"], name: "index_adventure_battlefields_on_adventure_id_and_status"
+    t.index ["adventure_id"], name: "index_adventure_battlefields_on_adventure_id"
+  end
 
   create_table "adventure_loops", force: :cascade do |t|
     t.bigint "adventure_id"
@@ -46,6 +61,15 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_09_120000) do
     t.datetime "updated_at", null: false
     t.index ["adventure_id", "created_at"], name: "index_adventure_messages_on_adventure_id_and_created_at"
     t.index ["adventure_id"], name: "index_adventure_messages_on_adventure_id"
+  end
+
+  create_table "adventure_sheet_class_abilities", force: :cascade do |t|
+    t.bigint "adventure_sheet_id", null: false
+    t.string "class_ability_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_sheet_id", "class_ability_id"], name: "idx_adv_sheet_class_abilities_unique", unique: true
+    t.index ["adventure_sheet_id"], name: "index_adv_sheet_class_abilities_on_sheet_id"
   end
 
   create_table "adventure_sheet_feats", force: :cascade do |t|
@@ -111,6 +135,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_09_120000) do
     t.jsonb "currency", default: {"gold"=>0, "copper"=>0, "silver"=>0, "platinum"=>0}, null: false
     t.jsonb "conditions", default: [], null: false
     t.jsonb "skill_ranks", default: {}, null: false
+    t.jsonb "active_buffs", default: [], null: false
     t.index ["adventure_id"], name: "index_adventure_sheets_on_adventure_id"
     t.index ["equipped_armor_id"], name: "index_adventure_sheets_on_equipped_armor_id"
     t.index ["equipped_shield_id"], name: "index_adventure_sheets_on_equipped_shield_id"
@@ -142,8 +167,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_09_120000) do
     t.jsonb "scene_history", default: [], null: false
     t.datetime "discarded_at"
     t.boolean "skip_world_sanity_check", default: false, null: false
+    t.datetime "ended_at"
+    t.string "end_reason"
     t.index ["current_location_id"], name: "index_adventures_on_current_location_id"
     t.index ["discarded_at"], name: "index_adventures_on_discarded_at"
+    t.index ["ended_at"], name: "index_adventures_on_ended_at"
     t.index ["story_id"], name: "index_adventures_on_story_id"
     t.index ["user_id"], name: "index_adventures_on_user_id"
   end
@@ -200,6 +228,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_09_120000) do
     t.datetime "updated_at", null: false
     t.index ["cr"], name: "index_bestiary_entries_on_cr"
     t.index ["creature_type"], name: "index_bestiary_entries_on_creature_type"
+  end
+
+  create_table "class_ability_definitions", id: :string, force: :cascade do |t|
+    t.string "name", null: false
+    t.string "pf1e_class", null: false
+    t.text "summary"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name"], name: "index_class_ability_definitions_on_name"
+    t.index ["pf1e_class"], name: "index_class_ability_definitions_on_pf1e_class"
   end
 
   create_table "creature_sheet_feats", force: :cascade do |t|
@@ -524,6 +562,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_09_120000) do
     t.text "summary"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.jsonb "duration_formula"
     t.index ["class_levels"], name: "index_spell_definitions_on_class_levels", using: :gin
     t.index ["name"], name: "index_spell_definitions_on_name"
     t.index ["school"], name: "index_spell_definitions_on_school"
@@ -621,9 +660,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_09_120000) do
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true, where: "(provider IS NOT NULL)"
   end
 
+  add_foreign_key "adventure_battlefields", "adventures"
   add_foreign_key "adventure_loops", "adventures", on_delete: :nullify
   add_foreign_key "adventure_loops", "pipelines"
   add_foreign_key "adventure_messages", "adventures"
+  add_foreign_key "adventure_sheet_class_abilities", "adventure_sheets"
+  add_foreign_key "adventure_sheet_class_abilities", "class_ability_definitions", column: "class_ability_id"
   add_foreign_key "adventure_sheet_feats", "adventure_sheets"
   add_foreign_key "adventure_sheet_feats", "feat_definitions", column: "feat_id"
   add_foreign_key "adventure_sheet_items", "adventure_sheets"
@@ -648,7 +690,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_09_120000) do
   add_foreign_key "location_connections", "story_locations", column: "from_location_id"
   add_foreign_key "location_connections", "story_locations", column: "to_location_id"
   add_foreign_key "moderation_events", "users"
-  add_foreign_key "pipelines", "adventure_messages", column: "player_message_id"
+  add_foreign_key "pipelines", "adventure_messages", column: "player_message_id", on_delete: :nullify
   add_foreign_key "pipelines", "adventures"
   add_foreign_key "play_logs", "adventure_messages", column: "player_message_id", on_delete: :nullify
   add_foreign_key "play_logs", "adventures", on_delete: :nullify

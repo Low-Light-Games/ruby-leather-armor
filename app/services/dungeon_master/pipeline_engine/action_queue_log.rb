@@ -19,16 +19,28 @@ module DungeonMaster
 
       def log_pause(idx, total, remaining, reason: "paused mid-queue")
         return unless total > 1
-        @log.play_log!("queue_paused", "Action queue paused at action #{idx + 1}/#{total} (#{reason}). Remaining: #{remaining.inspect}")
+        @log.play_log!("queue_paused", "Action queue paused at action #{idx + 1}/#{total} (#{reason}). Remaining: #{format_remaining(remaining)}")
       end
 
       def log_interrupt(idx, total, remaining, reason: "encounter")
         return unless total > 1
-        @log.play_log!("queue_interrupted", "Action queue interrupted at action #{idx + 1}/#{total} (#{reason}). Aborted: #{remaining.inspect}")
+        @log.play_log!("queue_interrupted", "Action queue interrupted at action #{idx + 1}/#{total} (#{reason}). Aborted: #{format_remaining(remaining)}")
       end
 
       def log_completed(total)
         @log.play_log!("queue_completed", "Action queue completed: #{total}/#{total} actions resolved")
+      end
+
+      private
+
+      def format_remaining(remaining)
+        Array(remaining).map do |entry|
+          if entry.is_a?(Hash)
+            entry["text"] || entry[:text] || entry.inspect
+          else
+            entry.inspect
+          end
+        end.inspect
       end
     end
   end

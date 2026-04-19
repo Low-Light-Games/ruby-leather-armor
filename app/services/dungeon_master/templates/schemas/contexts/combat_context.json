@@ -5,13 +5,17 @@
     "round": "integer — current combat round, starts at 1, increments after all participants have acted",
     "current_turn": "string or null — name of the combatant whose turn it currently is",
     "turn_order": "array of strings — participant names sorted by initiative from highest to lowest",
-    "participants": "array of objects — one entry per combatant: { name, type (player|npc), hp, max_hp, conditions (array of strings), position (string or null) }",
+    "participants": "array of objects — one entry per combatant: { name, type (player|npc), creature_sheet_id (required for npc rows), hp, max_hp, conditions (array of strings), position (string or null) }",
     "terrain_notes": "string or null — notable terrain features affecting combat (difficult terrain, cover, elevation, hazards)",
-    "active_effects": "array of strings — ongoing magical or environmental effects that affect the encounter"
+    "battlefield_ref": "object or null — while active==true, { id, version, topology } pointing at the live adventure_battlefields row; cleared when combat ends",
+    "last_battlefield_ref": "object or null — after combat ends, points at archived battlefield row for recap / DmQuery until scene reset",
+    "action_economy": "object or null — turn pool for the current actor: round, holder, standard_available, move_available, swift_available, full_round_claimed (BETA shape)"
   },
   "notes": [
     "When combat_initialization is present in mutations, write it verbatim without modification.",
+    "When combat_state_advancement is present in mutations, merge/write it verbatim into combat_context without modification (same rule as combat_initialization).",
     "HP values must always come from canonical_hp when provided — never calculate or estimate.",
+    "When combat is active, preserve every NPC participant's creature_sheet_id exactly.",
     "Set active to false when the outcome describes all enemies defeated, fled, or surrendered.",
     "Do not clear this context immediately after combat ends — preserve the post-combat state for scene continuity."
   ]

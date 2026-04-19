@@ -36,7 +36,8 @@ class InitiativePipelineJob < ApplicationJob
       type: "pipeline_result",
       messages: [ DungeonMasterService.message_json(error_msg) ]
     })
-  rescue StandardError
+  rescue StandardError => e
+    ApplicationErrorReporter.notify(e, context: { source: "initiative_pipeline_job_broadcast_error", adventure_id: adventure_id })
     nil
   end
 end

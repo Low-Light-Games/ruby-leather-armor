@@ -63,7 +63,7 @@ flowchart TB
             PE2 --> PE3["Phase 3: POST /fan_out — roll_qualifier ×N  ☆ AI ×N"]
         end
 
-        PE3 --> NM{needs_mechanics?}
+        PE3 --> NM{"affected_contexts.any?"}
     end
 
     NM -->|yes| SANITY_GATE
@@ -85,8 +85,11 @@ flowchart TB
     ROLLCHECK -->|no| FINISH_RES
 
     subgraph finish_res["finish_resolution — after rolls or auto-success"]
-        FINISH_RES[resolve_npc_actions  — code] --> MECHANIC[run_mechanic  ☆ AI]
-        MECHANIC --> APPLY_MUT[apply_mutations  — code]
+        FINISH_RES[resolve_npc_actions  — code] --> CGM{combat_active?}
+        CGM -->|yes| COMBAT_GM[run_combat_gm  ☆ AI]
+        CGM -->|no| MECHANIC[run_mechanic  ☆ AI]
+        COMBAT_GM --> APPLY_MUT[apply_mutations  — code]
+        MECHANIC --> APPLY_MUT
         APPLY_MUT --> TK_MECH[run_time_keeper]
     end
 
@@ -125,7 +128,18 @@ flowchart TB
     NM_RESOLVED -->|non-mechanical| MOMENTUM_STEP[run_momentum  ☆ AI]
     MOMENTUM_STEP --> NM_RESOLVED2["status: :resolved\n(from momentum)"]
 
-    MECH_RESOLVED & NM_RESOLVED2 --> LOOP_OUTCOME
+    MECH_RESOLVED & NM_RESOLVED2 --> WT_CHECK
+
+    subgraph world_turn["World Turn — combat-only post-resolution phase"]
+        WT_CHECK{combat active?}
+        WT_CHECK -->|yes| WORLD_TURN["maybe_run_world_turn — code"]
+        WORLD_TURN --> WT_ORCH["Shared-snapshot world-turn orchestration — code"]
+        WT_ORCH --> NPC_ACTION["npc_action ×N — AI parallel /fan_out"]
+        NPC_ACTION --> WT_DICE["Sequential code: dice + mutations in initiative order"]
+        WT_DICE --> WT_ADV["combat_state_advancement + combat end check — code"]
+        WT_ADV --> LOOP_OUTCOME
+        WT_CHECK -->|no| LOOP_OUTCOME
+    end
 
     subgraph loop_outcomes["Action loop outcome dispatch"]
         LOOP_OUTCOME{result.status?}
@@ -189,19 +203,24 @@ flowchart LR
         RR1 --> RR2[Rolls::RollRequestMetadata.resume_inputs — rebuild intent + merged]
         RR2 --> RR3[finish_resolution]
         RR3 --> RR4["NPC rolls → Mechanic ☆ AI → apply_mutations → TimeKeeper"]
-        RR4 --> RR5{More actions in queue?}
-        RR5 -->|yes| RR6[run_remaining_queue]
-        RR5 -->|no| RR7[run_accumulated_narrative_phase]
+        RR4 --> RR5{"More actions in queue?\n(skipped if player_death/incapacitated)"}
+        RR5 -->|"yes — player alive"| RR6[run_remaining_queue]
+        RR5 -->|"no, or terminal"| RR7[run_accumulated_narrative_phase]
         RR6 --> PHASE[Output phase]
         RR7 --> PHASE
     end
 
     subgraph init_resume["Initiative submitted — run_initiative"]
-        II[restore_paused_loop!] --> II1[Warmaster.finalize_combat!  — code]
-        II1 --> II2[set turn order by initiative]
-        II2 --> II3{More actions in queue?}
-        II3 -->|yes| II4[run_remaining_queue]
-        II3 -->|no| II5[run_accumulated_narrative_phase]
+        II[restore_paused_loop!] --> II1[PersistCombatStart — atomic bf row + context]
+        II1 --> II2["npcs_go_first? — code (compare current_turn)"]
+        II2 -->|"yes — NPCs outrolled player"| II_WT["maybe_run_world_turn — NPC actions before player's first move\n(sets :player_death / :player_incapacitated on result)"]
+        II_WT --> II3
+        II2 -->|no| II3
+        II3{"player_death / incapacitated\n or remaining_actions?"}
+        II3 -->|"terminal (death/incap)"| II5[run_accumulated_narrative_phase]
+        II3 -->|"remaining actions (alive)"| II4["run_remaining_queue\n(uses post-world-turn mutations)"]
+        II3 -->|"npcs acted, no queue"| II5
+        II3 -->|"player first, no queue"| II_SILENT[Return :combat_initialized]
         II4 --> PHASE
         II5 --> PHASE
     end
@@ -340,7 +359,6 @@ Three sequential HTTP calls to the **Node evaluator microservice** (`evaluator/`
 All Node results are persisted via `@log.ai_log!` — `PlayLog` and `AiUsageRecord` records are created identically to any other AI step. On Node 4xx/5xx, `partial_results` from the error body are logged before raising `AiError`.
 
 The output `intent` hash (from either path) includes:
-- `needs_mechanics` (bool) — any domain requires dice rolls.
 - `expand_scene` (bool) — significant social interaction warrants a scene expansion.
 - `affected_contexts` (array) — domain names that this action touches.
 - `macro_significant` (bool) — major story beat (quest completion, boss defeat, critical secret).
@@ -349,7 +367,7 @@ The output `intent` hash (from either path) includes:
 
 ---
 
-### Step 6 — Mechanical path (needs_mechanics = true)
+### Step 6 — Mechanical path (one or more affected domains)
 
 The **sanity gate** validates the action before any mechanics are resolved. Its behaviour depends on the adventure's `skip_world_sanity_check` flag:
 
@@ -382,7 +400,7 @@ The **sanity gate** validates the action before any mechanics are resolved. Its 
 
 ---
 
-### Step 7 — Non-mechanical path (needs_mechanics = false)
+### Step 7 — No-domain path (no affected domains)
 
 **World consistency check** — Same AI call as above, but runs alone (no parallel threads). Skipped entirely when the adventure's `skip_world_sanity_check` flag is set; the pipeline proceeds directly to the expansion/TimeKeeper branch.
 
@@ -407,9 +425,10 @@ Returns `{ status: :resolved }`.
 Runs after the player submits dice results, or immediately when auto-success is detected.
 
 1. **resolve_npc_actions** — Pure code. Formats NPC dice results by rolling each NPC action's dice formula.
-2. **run_mechanic** (AI) — Takes roll results + NPC results + mechanical summaries + consequences + character block + all micro contexts. Produces `outcome` (factual what-happened prose) and `mutations` (structured HP/condition/item changes).
+2. **run_mechanic / run_combat_gm** (AI) — Non-combat and inactive-combat resolutions use Mechanic. Active combat routes through Combat GM, which owns combat-specific outcome synthesis and battlefield/action-economy patches.
 3. **apply_mutations** (code) — Applies `mutations` to the character sheet and creature sheets immediately. Handles HP changes, condition additions/removals, item consumption, location transitions.
-4. **run_time_keeper** — See dedicated section.
+4. **run_time_keeper** — See dedicated section. Runs after mutations, so combat-aware time checks use canonical post-mutation state.
+5. **maybe_run_world_turn** — In active combat, code-owned World Turn resolves routine NPC initiative turns after the player's action, advances combat state, and can short-circuit on player death/incapacitation or combat end.
 
 Returns `{ status: :resolved }` or `{ status: :awaiting_initiative }` or `{ status: :encounter }`.
 
@@ -562,9 +581,9 @@ Has a special fallback: if the model returns raw text instead of JSON, the text 
 **Initiative resumption (`run_initiative`):**
 
 1. `restore_paused_loop!` — finds the paused loop.
-2. `Warmaster.finalize_combat!` — writes `adventure.combat_context` with player + creature initiatives, sorted turn order.
-3. Reconstructs intent, mutations, and remaining actions from metadata.
-4. If more actions in queue → `run_remaining_queue`. Otherwise → `run_accumulated_narrative_phase`.
+2. `Battlefield::PersistCombatStart.call` — atomic: archives any stale active battlefield rows, creates a fresh battlefield row seeded with `scene_summary` + `current_location`, writes `combat_context` with sorted turn order + `battlefield_ref`.
+3. **NPCs-go-first check:** if `current_turn != "Player"` (NPCs outrolled the player on initiative), `maybe_run_world_turn` runs immediately — NPC actions resolve before the player's first move. World turn enriches `result[:mutations]` and sets `:player_death` / `:player_incapacitated` on the result if needed.
+4. If remaining actions exist and the player is alive → `run_remaining_queue` with **post-world-turn** `result[:mutations]` (not the pre-world-turn base). If the player is dead/incapacitated → `run_accumulated_narrative_phase` regardless of queue. If no remaining actions → `run_accumulated_narrative_phase` (when NPCs acted) or silent `:combat_initialized` return (when player goes first).
 
 In both resumptions, the output phase reads `pipeline_outcome` from all `AdventureLoop` rows for the current `registry_entry_uuid` — no in-memory seed accumulation is needed across the pause boundary.
 
@@ -577,7 +596,7 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | Intake | ✅ AI | Danger scoring, sanitization, DM query detection |
 | Sequencer | ✅ AI | Action splitting (skipped if `action_queue` off) |
 | ParallelEvaluation (beacon) | ✅ AI ×6 | Per-domain intent classification via Node `/fan_out` |
-| ParallelEvaluation (mech_eval) | ✅ AI ×N | Sequential per-domain mechanical resolution via Node `/sequential` |
+| ParallelEvaluation (mech_eval) | ✅ AI ×N + ❌ code normalization for `combat` | Sequential per-domain mechanical resolution via Node `/sequential`; combat responses are normalized in Ruby before roll merge |
 | ParallelEvaluation (roll_qualifier) | ✅ AI ×N | Per-domain Take 10/20 + situational modifiers via Node `/fan_out` |
 | converge_beacons | ❌ Code | Merges 6 beacon results into the `intent` hash |
 | World consistency check | ✅ AI | Scene/entity validation |
@@ -585,6 +604,8 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | Momentum | ✅ AI | Non-mechanical outcome |
 | Social Expansion | ✅ AI | NPC scene generation |
 | Mechanic | ✅ AI | Post-roll arbitration + mutations |
+| World Turn (orchestration) | ❌ Code | Shared-snapshot NPC orchestration, sequential code resolution (dice + mutations), combat advancement, and combat-end handling after a player action resolves in active combat |
+| npc_action | ✅ AI ×N | Per-NPC combat action decisions during world turn. All acting NPCs are evaluated in one parallel Node `/fan_out` batch against the same live combat snapshot; code then resolves and applies in initiative order (early-stop if combat ends) |
 | TimeKeeper (journey, combat, rest, take_20) | ❌ Code | Deterministic formulas |
 | TimeKeeper (freeform) | ✅ AI | Fallback when no code rule matches |
 | Harbinger | ❌ Code + optional AI | Dice rolls against table; AI for scene expansion only |
@@ -634,14 +655,16 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | **Sequencer** | AI | Split compound player input into ordered discrete actions. Skipped if `action_queue` off. |
 | **ParallelEvaluation** | Code orchestration + 3 HTTP phases to Node | beacon→mech_eval→roll_qualifier chain via Node evaluator microservice. Requires `EVALUATOR_URL`. |
 | **↳ beacon** | AI ×6 (parallel, Node) | Per-domain intent classification. One call per domain, all 6 run concurrently via `Promise.all` in Node. |
-| **↳ mechanical_evaluation** | AI ×N (sequential, Node) | Per-domain mechanical resolution for each affected domain. Sequential with cross-domain summary injection. |
+| **↳ mechanical_evaluation** | AI ×N (sequential, Node) + code normalization for combat | Per-domain mechanical resolution for each affected domain. `combat` uses `combat_mechanic` and app-side normalization for AC/save DC resolution; other domains use the generic mechanical_evaluation prompt with per-domain partials. |
 | **↳ roll_qualifier** | AI ×N (parallel, Node) | Take 10/20 eligibility + situational modifiers per domain that has rolls. |
 | **World consistency check** | AI | Validate referenced entities exist in current scene. Runs in the sanity gate (mechanics path) or standalone (non-mechanics path). Bypassed on both paths when the adventure's `skip_world_sanity_check` flag is set. |
-| **Capability check** | AI | Validate player has required spells/feats/items. Runs in sanity gate (needs_mechanics only). Always runs regardless of `skip_world_sanity_check`. |
+| **Capability check** | AI | Validate player has required spells/feats/items. Runs in the sanity gate whenever one or more domains are affected. Always runs regardless of `skip_world_sanity_check`. |
 | **Auto-success filter** | Code | Remove rolls the character cannot possibly fail (DC ≤ 0, guaranteed modifier, Take 10 covers DC). Never removes attack rolls. |
 | **Momentum** | AI | Non-mechanical outcome: what happened + affected contexts + optional mutations. |
 | **Social Expansion** | AI | Immersive NPC scene for significant social interactions (`expand_scene` from evaluation). Skips TimeKeeper. |
 | **Mechanic** | AI | Post-roll arbitration: factual outcome + structured mutations from rolls + NPC results. |
+| **World Turn** | Code orchestration + batched Node call | In active combat after a player action resolves: rebuild one live combat snapshot, parallel `/fan_out` for all acting NPCs, then sequential code (dice + mutations per NPC, early-stop on player death/incapacitation or combat end), then `combat_state_advancement`. |
+| **↳ npc_action** | AI ×N (parallel, Node) | Per-NPC combat action decision during world turn. Prompts run together via Node `/fan_out` against the same shared snapshot; application is sequential in code. |
 | **TimeKeeper** | Code + AI | Estimate time (code-first: journey/combat/rest/take_20, then AI) → consult Harbinger → advance GameClock → apply fatigue. |
 | **Harbinger** | Code + AI | Segment-based encounter check against table. AI expands encounter scene if entry is non-fixed. |
 | **GameClock** | Code | Advance current_hour, adventure_day, light_conditions, hours_since_last_rest, hours_since_last_encounter_check. |
@@ -650,4 +673,3 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | **Narrate** | AI | Prose generation from outcome + contexts + dm_brief + journey/encounter data + pacing directives. |
 | **Micro context update** | AI | Update affected + active context JSONBs. Forces social re-evaluation on traversal changes. Updates scene_summary + scene_history. |
 | **Macro narrative update** | AI | Update story_summary (rolling adventure log). Conditional on `macro_significant`. |
-

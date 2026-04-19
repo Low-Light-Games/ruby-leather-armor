@@ -27,6 +27,15 @@ determine the factual outcome and produce structured mutations.
 - For NPC HP changes: negative means damage dealt to them.
 - Include conditions added or removed.
 - Include items consumed (potions used, ammunition spent) and spells used.
+- If the action applies a buff spell (e.g. casting Mage Armor), include it in `buffs_add` with the
+  SpellDefinition ID and `"source_type": "spell"` (e.g. `{ "id": "mage_armor", "source_type": "spell" }`).
+- If the action consumes a potion (e.g. drinking a Potion of Haste), include it with the ItemDefinition ID
+  and `"source_type": "item"` (e.g. `{ "id": "potion_of_haste", "source_type": "item" }`).
+- For class features with no catalog entry, use `"source_type": "class_feature"` and supply
+  bonus_type, target, value, and optionally duration_hours.
+- Ruby resolves duration and bonus automatically for catalog-backed sources (spell/item) — do not
+  compute or pass caster level or duration in those cases.
+- If a buff ends or is dispelled, list its source ID in `buffs_remove`.
 - The outcome field should be a factual summary (not narrative prose).
 - Do NOT estimate travel time or distance — the TimeKeeper step handles that separately.
   Focus only on whether the action mechanically succeeded or failed.
@@ -34,16 +43,31 @@ determine the factual outcome and produce structured mutations.
   confirmation roll also hits, apply the weapon's crit multiplier to damage
   (x2 most weapons, x3 for axes/bows/picks, x4 for scythes). Note "critical hit"
   in the outcome field.
+<% if @no_auto_hit_miss %>
+- ATTACK ROLLS: Use total (d20 + modifier) vs AC only. Natural 1 is not an automatic miss;
+  natural 20 is not an automatic hit. No fumbles, no guaranteed crits from die face alone —
+  the math decides. A well-armored character is genuinely unhittable by a weak attacker.
+<% else %>
 - FUMBLES: A natural 1 on an attack roll always misses regardless of modifiers.
   Note "natural 1 — automatic miss" in the outcome. Do not apply fumble effects
   beyond the miss unless the adventure config specifies house rules.
+<% end %>
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
   "outcome": "Factual summary of what happened mechanically",
   "reasoning": "Brief explanation of how rolls were evaluated (1-2 sentences)",
   "mutations": {
-    "player": { "hp_change": 0, "conditions_add": [], "conditions_remove": [] },
+    "player": {
+      "hp_change": 0,
+      "conditions_add": [],
+      "conditions_remove": [],
+      "buffs_add": [
+        { "id": "mage_armor", "source_type": "spell" },
+        { "id": "fighting_defensively", "source_type": "class_feature", "bonus_type": "dodge_bonus", "target": "ac", "value": 2, "duration_hours": 0.0017 }
+      ],
+      "buffs_remove": ["mage_armor"]
+    },
     "npcs": [
       { "name": "NPC Name", "hp_change": -8, "conditions_add": [], "conditions_remove": [], "defeated": false, "attitude_change": null }
     ],
