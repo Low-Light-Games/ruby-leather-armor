@@ -112,7 +112,6 @@
     padding: 16px;
     background: $parchment-dk;
     border: 1px solid $border-light;
-    transition: border-color 1s, border-width 1s, box-shadow 1s;
   }
 
   /* ===== LEFT: Character column ===== */
@@ -1175,11 +1174,25 @@
 
   /* ===== MIDDLE: Active-combat state ===== */
   .middle-column.active-combat {
-    border-color: hsl(350, 42%, 22%);
+    border-color: $red-ink;
     border-width: 2px;
     box-shadow:
-      0 0 0 1px hsl(350, 42%, 22%) inset,
-      0 0 18px hsla(350, 45%, 20%, 0.22);
+      0 0 0 1px $red-ink inset,
+      0 0 16px hsla(0, 50%, 30%, 0.18);
+
+    &::before {
+      content: '⚔  COMBAT  ⚔';
+      flex-shrink: 0;
+      display: block;
+      text-align: center;
+      font-family: $font-display;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      color: $red-ink;
+      background: $red-ink-lt;
+      border-bottom: 2px solid $red-ink;
+      padding: 5px 8px;
+    }
   }
 
   /* ===== RIGHT: Story column ===== */
