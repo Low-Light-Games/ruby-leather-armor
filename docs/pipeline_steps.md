@@ -461,6 +461,13 @@ mutations. No other step, utility, or service (except emergency recovery in
 `DungeonMaster::Rolls::AdventureMechanicalState.auto_finalize_pending_initiative!`) writes directly to
 Adventure context fields.
 
+**Documented exception (Path A encounter pause):**
+`DungeonMaster::EncounterWarmasterBridge` calls
+`DungeonMaster::Utilities::Warmaster.persist_pending_combat!` when encounter
+combat is spawned but initiative is still pending. This writes an NPC-only
+pending roster to `combat_context` before ContextUpdate runs, so pause-time
+state does not fall back to stale ended-combat snapshots.
+
 **Runs before every player-facing message:** ContextUpdate executes before
 any pipeline early return that presents a message to the player — including
 initiative prompts and roll requests, not only after full narrative resolution.
@@ -655,6 +662,27 @@ domain partials. Requires `EVALUATOR_URL` (default: `http://evaluator:3001`).
 
 `ParallelEvaluation` is now the **only** evaluation path. `AdventureLoopResolution#resolve` calls it
 unconditionally.
+
+### 25a. Cheap-model prompt policy: simplify, don't stack warnings
+
+**Decision:** when prompt changes are needed for reliability on cheap models,
+changes must simplify ownership and contracts rather than layering additional
+negative instructions.
+
+**Why:** additive warning prompts ("DO NOT X", "DO NOT Y", "ALSO DO NOT Z")
+increase token noise and ambiguity. Small models fail more often when asked to
+remember long exception lists. Reliability improves when prompts are narrowed:
+remove responsibilities the step should not own, replace ambiguous rules with
+single clear contracts, or split overloaded prompts.
+
+**Rule of thumb:**
+- If data is deterministic and already owned in code (HP, turn order, roster
+  shape, state transitions), fix in code at that seam.
+- If behavior is language interpretation owned by AI, simplify/replace the prompt
+  contract instead of appending more prohibitions.
+
+**Anti-pattern:** code that parses player text or AI prose to "repair" model
+output. This violates Design Philosophy §15 and §17.
 
 ### 26. SanityChecker (capability + world consistency validation)
 

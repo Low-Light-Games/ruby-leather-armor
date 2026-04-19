@@ -524,6 +524,17 @@ behavior. Use explicit negative instructions only for repeated,
 high-cost confusions where the ownership boundary must be reinforced
 (for example traversal vs. stealth).
 
+**Cheap-model policy (required):** treat prompt edits as contract simplification,
+not warning accumulation.
+- Prefer edits that **remove responsibility** from the model (move deterministic
+  state handling to code that already owns it).
+- Prefer edits that **replace ambiguous instructions** with narrower contracts.
+- Prefer edits that **split overloaded prompts** into smaller scoped steps.
+- Do **not** treat additive "DO NOT ..." lists as a primary fix when a
+  deterministic seam already owns the data (counts, HP, roster shape, turn order).
+- If a prompt-only fix cannot be expressed as simplification/replacement, stop and
+  look for the owned deterministic seam first.
+
 **Examples:**
 
 - **Correct (deterministic):** `filter_auto_success_rolls!` removes rolls
@@ -574,6 +585,7 @@ reliable to reason about.
 **Single-writer principle (JSONB micro-contexts):** ContextUpdate is the primary writer for the six `*_context` JSONB fields. Documented exceptions and co-writers must stay explicit so drift stays observable:
 
 - **Combat start:** `DungeonMaster::Battlefield::PersistCombatStart` writes `combat_context` in one transaction with a new `adventure_battlefields` row and `battlefield_ref` (used by `run_initiative` and `AdventureMechanicalState.auto_finalize_pending_initiative!`).
+- **Encounter pause (Path A pending roster):** `DungeonMaster::EncounterWarmasterBridge` may call `DungeonMaster::Utilities::Warmaster.persist_pending_combat!` to persist an NPC-only pending roster before initiative is provided. This is a documented writer because the pause must preserve encounter roster truth before ContextUpdate runs.
 - **Mid-combat / missing map (just-in-time):** `DungeonMaster::Battlefield::EnsureForActiveCombat` creates the row + ref the first time something needs a battlefield while `combat_context.active` is true (no batch rake). Invoked from serializers, roll metadata, and patch application so stories can start in combat without initiative.
 - **Combat resolution:** `DungeonMaster::Battlefield::ApplyPatches` bumps the battlefield row and syncs `combat_context["battlefield_ref"]["version"]` after Combat GM / world-turn patches. `apply_mutations` may merge `action_economy_delta` into `combat_context` when the Combat GM emits spends.
 - **Combat end:** `DungeonMaster::Battlefield::ArchiveCombatEnd` archives the row and updates `last_battlefield_ref` / clears `battlefield_ref`, invoked when micro-context persistence detects `active: true → false`.
