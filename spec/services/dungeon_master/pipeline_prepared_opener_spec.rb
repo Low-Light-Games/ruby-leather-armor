@@ -178,4 +178,58 @@ RSpec.describe "DungeonMaster::PipelineEngine — prepared hostile opener flow",
     expect(adventure.combat_context["battlefield_ref"]).to be_present
     expect(adventure.combat_context["action_economy"]).to be_present
   end
+
+  it "ignores ended combat snapshots with a player row when finalizing fresh initiative" do
+    paused_loop = AdventureLoop.create!(
+      adventure: adventure,
+      registry_entry_uuid: pipeline.instance_variable_get(:@log).registry_entry_uuid,
+      sequence_index: 0,
+      raw_action: "cast Ray of Frost on one of the goblins",
+      player_intent: "cast Ray of Frost on one of the goblins",
+      status: "paused"
+    )
+    pipeline.bind_current_loop!(paused_loop)
+
+    adventure.update!(combat_context: {
+      "active" => false,
+      "round" => 2,
+      "current_turn" => "Player",
+      "turn_order" => ["Player", "Orc"],
+      "participants" => [
+        {
+          "name" => "Player",
+          "type" => "player",
+          "initiative" => 16,
+          "hp" => 10,
+          "max_hp" => 10,
+          "conditions" => []
+        },
+        {
+          "name" => "Orc",
+          "type" => "npc",
+          "initiative" => 9,
+          "hp" => 0,
+          "max_hp" => 8,
+          "conditions" => ["dead"]
+        }
+      ],
+      "terrain_notes" => nil
+    })
+
+    meta = {
+      "intent" => prepared_intent.deep_stringify_keys,
+      "mutations" => {},
+      "creature_data" => prepared_intent[:creature_data].map(&:deep_stringify_keys),
+      "pending_opening_merged" => nil,
+      "remaining_actions" => []
+    }
+
+    result = pipeline.run_initiative(23, meta)
+    adventure.reload
+
+    expect(result[:action]).to eq(:combat_initialized)
+    npc_rows = adventure.combat_context["participants"].select { |row| row["type"] == "npc" }
+    expect(npc_rows.map { |row| row["name"] }).to contain_exactly("Goblin")
+    expect(npc_rows.first["creature_sheet_id"]).to eq(goblin.id)
+  end
 end

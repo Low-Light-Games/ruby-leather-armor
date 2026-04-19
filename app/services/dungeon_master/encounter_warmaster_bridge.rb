@@ -34,6 +34,11 @@ module DungeonMaster
           sheet: sheet, log: log, config: config, ai: ai)
 
         if warmaster_result[:status] == :awaiting_initiative
+          Utilities::Warmaster.persist_pending_combat!(
+            adventure: adventure,
+            creature_data: warmaster_result[:creature_data]
+          )
+
           loop&.batch_update!(
             new_tags: { "combat_started" => true },
             new_data: { "creature_count" => warmaster_result[:creature_data]&.size },

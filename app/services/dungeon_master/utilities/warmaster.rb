@@ -251,8 +251,11 @@ module DungeonMaster
       def pending_npc_combatants(adventure, player_sheet)
         ctx = adventure.combat_context
         return [] unless ctx.is_a?(Hash) && ctx["active"] != true
+        participants = Array(ctx["participants"])
+        return [] if participants.empty?
+        return [] if participants.any? { |participant| participant["type"].to_s == "player" }
 
-        Array(ctx["participants"]).filter_map do |participant|
+        participants.filter_map do |participant|
           next if participant["type"].to_s == "player"
 
           refreshed = Combatant.refresh_from_live_sources(participant, adventure: adventure, sheet: player_sheet)
