@@ -55,6 +55,62 @@ RSpec.describe "DungeonMaster::Steps::ContextUpdate#persist_micro_contexts", typ
     expect(adventure.combat_context).not_to have_key("legacy_key")
   end
 
+  it "persists canonical combat_state_advancement even when the AI marks combat unchanged" do
+    adventure.update!(
+      combat_context: {
+        "active" => true,
+        "round" => 2,
+        "current_turn" => "Player",
+        "turn_order" => ["Goblin", "Player", "Goblin 2"],
+        "participants" => [
+          { "name" => "Goblin", "type" => "npc", "creature_sheet_id" => 101, "hp" => 0, "max_hp" => 8, "initiative" => 19, "conditions" => [] },
+          { "name" => "Player", "type" => "player", "hp" => 8, "max_hp" => 12, "initiative" => 14, "conditions" => [] },
+          { "name" => "Goblin 2", "type" => "npc", "creature_sheet_id" => 102, "hp" => 4, "max_hp" => 4, "initiative" => 9, "conditions" => [] }
+        ],
+        "battlefield_ref" => { "id" => 62, "version" => 1, "topology" => "square" },
+        "action_economy" => {
+          "round" => 2,
+          "holder" => "Player",
+          "standard_available" => false,
+          "move_available" => true,
+          "swift_available" => true,
+          "full_round_claimed" => false
+        }
+      }
+    )
+    parsed = { "combat_context" => { "unchanged" => true, "context" => {} } }
+    mutations = {
+      "combat_state_advancement" => {
+        "active" => true,
+        "round" => 3,
+        "current_turn" => "Player",
+        "turn_order" => ["Goblin", "Player", "Goblin 2"],
+        "participants" => [
+          { "name" => "Goblin", "type" => "npc", "creature_sheet_id" => 101, "hp" => 0, "max_hp" => 8, "initiative" => 19, "conditions" => [] },
+          { "name" => "Player", "type" => "player", "hp" => 8, "max_hp" => 12, "initiative" => 14, "conditions" => [] },
+          { "name" => "Goblin 2", "type" => "npc", "creature_sheet_id" => 102, "hp" => 4, "max_hp" => 4, "initiative" => 9, "conditions" => [] }
+        ],
+        "battlefield_ref" => { "id" => 62, "version" => 1, "topology" => "square" },
+        "action_economy" => {
+          "round" => 3,
+          "holder" => "Player",
+          "standard_available" => true,
+          "move_available" => true,
+          "swift_available" => true,
+          "full_round_claimed" => false
+        }
+      }
+    }
+
+    pipeline.send(:persist_micro_contexts, parsed, mutations)
+    adventure.reload
+
+    expect(adventure.combat_context["round"]).to eq(3)
+    expect(adventure.combat_context["current_turn"]).to eq("Player")
+    expect(adventure.combat_context.dig("action_economy", "holder")).to eq("Player")
+    expect(adventure.combat_context.dig("action_economy", "standard_available")).to be(true)
+  end
+
   it "repairs dropped npc creature_sheet_id from existing active combat participants" do
     goblin = CreatureSheet.create!(
       adventure: adventure, name: "Goblin", creature_type: "monster", origin: "template",

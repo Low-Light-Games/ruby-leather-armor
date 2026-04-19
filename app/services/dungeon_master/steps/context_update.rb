@@ -111,15 +111,23 @@ module DungeonMaster
           domain_result = normalize_domain_context_result(field, domain_result) unless domain_result.is_a?(Hash) &&
                                                                                 (domain_result.key?("context") || domain_result.key?(:context) ||
                                                                                  domain_result.key?("unchanged") || domain_result.key?(:unchanged))
-          next if domain_result["unchanged"] == true
+          unchanged = domain_result["unchanged"] == true
+          existing = (@adventure.public_send(key) || {}).deep_stringify_keys
+          canonical_combat = canonical_combat_context_from_mutations(field, mutations_hash)
+          next if unchanged && canonical_combat.blank?
 
           val = domain_result["context"] || domain_result[:context]
+          val = {} if unchanged && canonical_combat.present? && val.nil?
           raise AiError, "#{key} updater returned no context payload" if val.nil?
 
           if DEEP_MERGE_CONTEXT_FIELDS.include?(field) && val.is_a?(Hash)
+            val = merge_canonical_combat_context(
+              val.deep_stringify_keys,
+              canonical_combat: canonical_combat
+            )
             val = prepare_combat_context_update(
               val.deep_stringify_keys,
-              existing: (@adventure.public_send(key) || {}).deep_stringify_keys
+              existing: existing
             )
             val = guard_combat_context_update(
               val.deep_stringify_keys,
@@ -130,7 +138,6 @@ module DungeonMaster
             next unless val.present?
 
             unless has_combat_initialization
-              existing = (@adventure.public_send(key) || {}).deep_stringify_keys
               val = existing.deep_merge(val)
             end
           end
@@ -287,6 +294,18 @@ module DungeonMaster
         end
 
         val
+      end
+
+      def canonical_combat_context_from_mutations(field, mutations_hash)
+        return nil unless field == "combat"
+
+        mutations_hash["combat_initialization"] || mutations_hash["combat_state_advancement"]
+      end
+
+      def merge_canonical_combat_context(val, canonical_combat:)
+        return val if canonical_combat.blank?
+
+        val.deep_merge(canonical_combat.deep_stringify_keys)
       end
 
       def snapshot_contexts_to_loop
