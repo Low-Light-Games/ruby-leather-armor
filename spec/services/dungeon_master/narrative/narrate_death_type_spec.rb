@@ -16,6 +16,7 @@ RSpec.describe "death-aware narration prompt", type: :service do
     DungeonMaster::Narrative::NarratePromptView.new(
       pipeline_context:   ctx,
       loop:               nil,
+      combat_context:     {},
       time_context:       {},
       pacing_text:        "",
       directed_play_text: ""
@@ -52,6 +53,7 @@ RSpec.describe "death-aware narration prompt", type: :service do
       DungeonMaster::Narrative::NarratePromptView.new(
         pipeline_context:   ctx,
         loop:               nil,
+        combat_context:     {},
         time_context:       {},
         pacing_text:        "",
         directed_play_text: directed_text
@@ -102,6 +104,35 @@ RSpec.describe "death-aware narration prompt", type: :service do
       death_pos = prompt.index("CHARACTER DEATH")
       json_pos  = prompt.index("Respond ONLY with valid JSON")
       expect(death_pos).to be < json_pos
+    end
+
+    it "renders canonical combat facts and lethal constraints for hostiles" do
+      ctx = DungeonMaster::PipelineContext.new(
+        combined_seed: "You wound the first orc for 3 piercing damage.",
+        dm_brief: nil,
+        player_action: "I slash at the nearest orc."
+      )
+      view = DungeonMaster::Narrative::NarratePromptView.new(
+        pipeline_context: ctx,
+        loop: nil,
+        combat_context: {
+          "active" => true,
+          "participants" => [
+            { "name" => "Player", "type" => "player", "hp" => 22, "max_hp" => 22 },
+            { "name" => "Orc 1", "type" => "npc", "hp" => 2, "max_hp" => 5 },
+            { "name" => "Orc 2", "type" => "npc", "hp" => 5, "max_hp" => 5 }
+          ]
+        },
+        time_context: {},
+        pacing_text: "",
+        directed_play_text: ""
+      )
+
+      prompt = DungeonMaster::PromptRenderer.render("narrate", narrate_view: view)
+      expect(prompt).to include("=== CANONICAL COMBAT FACTS (authoritative current hostile state) ===")
+      expect(prompt).to include("\"any_hostile_alive\":true")
+      expect(prompt).to include("do not narrate all hostiles as dead")
+      expect(prompt).to include("Do not introduce extra hostiles")
     end
   end
 end
