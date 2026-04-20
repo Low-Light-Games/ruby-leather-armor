@@ -87,12 +87,12 @@ module DungeonMaster
         # When the player moves, Combat GM / NPC patches should emit shift_viewport (or move the window)
         # — the engine does not auto-follow unless patches update this JSON.
         def viewport_for_tokens(tokens)
-          pt = tokens["player"]
+          player_token = tokens["player"]
           half = 20
           span = 40
-          if pt.is_a?(Hash) && pt["x"] && pt["y"]
-            px = pt["x"].to_i
-            py = pt["y"].to_i
+          if player_token_with_coordinates?(player_token)
+            px = player_token["x"].to_i
+            py = player_token["y"].to_i
             {
               "min_x" => px - half,
               "min_y" => py - half,
@@ -104,6 +104,10 @@ module DungeonMaster
           else
             default_viewport
           end
+        end
+
+        def player_token_with_coordinates?(player_token)
+          player_token.is_a?(Hash) && player_token["x"] && player_token["y"]
         end
 
         # Place tokens on a simple grid for BETA (canonical positions for patches / prompts).

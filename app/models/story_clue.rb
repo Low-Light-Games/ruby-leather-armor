@@ -21,5 +21,7 @@ class StoryClue < ApplicationRecord
   }
 
   scope :story_level, -> { where(adventure_id: nil) }
+  scope :for_story, ->(story) { where(story_id: story.id) }
+  scope :ordered_by_id, -> { order(:id) }
   scope :manual_source, -> { where(source: "manual") }
 end

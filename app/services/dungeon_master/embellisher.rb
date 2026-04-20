@@ -88,13 +88,13 @@ module DungeonMaster
     end
 
     def npc_data
-      StoryNpc.where(story_id: @story.id, adventure_id: nil).order(:id).map do |npc|
+      StoryNpc.for_story(@story).story_level.ordered_by_id.map do |npc|
         { id: npc.id, name: npc.name, role: npc.role, attitude: npc.attitude, description: npc.description }
       end
     end
 
     def clue_data
-      StoryClue.where(story_id: @story.id, adventure_id: nil).order(:id).map do |clue|
+      StoryClue.for_story(@story).story_level.ordered_by_id.map do |clue|
         { id: clue.id, title: clue.title, description: clue.description, discovery_method: clue.discovery_method, difficulty: clue.difficulty }
       end
     end
