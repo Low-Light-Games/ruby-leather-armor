@@ -104,27 +104,31 @@ module CharacterStats
     private
 
     def load_feats(source)
-      if source.respond_to?(:sheet_feats)
-        source.sheet_feats.includes(:feat_definition)
-      elsif source.respond_to?(:adventure_sheet_feats)
-        source.adventure_sheet_feats.includes(:feat_definition)
-      elsif source.respond_to?(:creature_sheet_feats)
-        source.creature_sheet_feats.includes(:feat_definition)
-      else
-        []
-      end
+      return source.sheet_feats.includes(:feat_definition) if sheet_source?(source)
+      return source.adventure_sheet_feats.includes(:feat_definition) if adventure_sheet_source?(source)
+      return source.creature_sheet_feats.includes(:feat_definition) if creature_sheet_source?(source)
+
+      []
     end
 
     def load_items(source)
-      if source.respond_to?(:sheet_items)
-        source.sheet_items.includes(:item_definition)
-      elsif source.respond_to?(:adventure_sheet_items)
-        source.adventure_sheet_items.includes(:item_definition)
-      elsif source.respond_to?(:creature_sheet_items)
-        source.creature_sheet_items.includes(:item_definition)
-      else
-        []
-      end
+      return source.sheet_items.includes(:item_definition) if sheet_source?(source)
+      return source.adventure_sheet_items.includes(:item_definition) if adventure_sheet_source?(source)
+      return source.creature_sheet_items.includes(:item_definition) if creature_sheet_source?(source)
+
+      []
+    end
+
+    def sheet_source?(source)
+      source.respond_to?(:sheet_feats) && source.respond_to?(:sheet_items)
+    end
+
+    def adventure_sheet_source?(source)
+      source.respond_to?(:adventure_sheet_feats) && source.respond_to?(:adventure_sheet_items)
+    end
+
+    def creature_sheet_source?(source)
+      source.respond_to?(:creature_sheet_feats) && source.respond_to?(:creature_sheet_items)
     end
   end
 end

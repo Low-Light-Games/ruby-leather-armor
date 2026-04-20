@@ -41,7 +41,7 @@ module DungeonMaster
         handle_new_creatures(micro_result["new_creatures"]) if micro_result["new_creatures"].present?
         handle_context_wishes(micro_result["context_wishes"]) if micro_result["context_wishes"].present?
 
-        if macro_significant && macro_result["story_summary"].present?
+        if should_persist_macro_story_summary?(macro_significant, macro_result)
           @adventure.update!(story_summary: macro_result["story_summary"])
         end
       end
@@ -108,9 +108,7 @@ module DungeonMaster
           key = "#{field}_context"
           domain_result = parsed[key] || parsed[key.to_sym]
           next unless domain_result.present?
-          domain_result = normalize_domain_context_result(field, domain_result) unless domain_result.is_a?(Hash) &&
-                                                                                (domain_result.key?("context") || domain_result.key?(:context) ||
-                                                                                 domain_result.key?("unchanged") || domain_result.key?(:unchanged))
+          domain_result = normalize_domain_context_result(field, domain_result) unless domain_result_pre_normalized?(domain_result)
           unchanged = domain_result["unchanged"] == true
           existing = (@adventure.public_send(key) || {}).deep_stringify_keys
           canonical_combat = canonical_combat_context_from_mutations(field, mutations_hash)
@@ -240,6 +238,19 @@ module DungeonMaster
           "unchanged" => h["unchanged"] == true,
           "context" => context
         }
+      end
+
+      def domain_result_pre_normalized?(domain_result)
+        return false unless domain_result.is_a?(Hash)
+
+        domain_result.key?("context") ||
+          domain_result.key?(:context) ||
+          domain_result.key?("unchanged") ||
+          domain_result.key?(:unchanged)
+      end
+
+      def should_persist_macro_story_summary?(macro_significant, macro_result)
+        macro_significant && macro_result["story_summary"].present?
       end
 
       def prepare_combat_context_update(val, existing:)
