@@ -105,14 +105,14 @@ module DungeonMaster
       request_body = { system_prompt: system_prompt, user_message: "Reconcile the encounter." }
 
       t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      raw = ai.chat(system_prompt: system_prompt, user_message: "Reconcile the encounter.",
-                    max_tokens: config.token_budget_for("narrate"),
-                    step_name: "encounter_reconciliation",
-                    model: config.model_for("narrate"))
-      parsed = ai.parse_json(raw)
+      ai_raw_response_text = ai.chat(system_prompt: system_prompt, user_message: "Reconcile the encounter.",
+                                     max_tokens: config.token_budget_for("narrate"),
+                                     step_name: "encounter_reconciliation",
+                                     model: config.model_for("narrate"))
+      parsed = ai.parse_json(ai_raw_response_text)
       duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
 
-      log.ai_log!("encounter_reconciliation", prompt_summary, raw, parsed,
+      log.ai_log!("encounter_reconciliation", prompt_summary, ai_raw_response_text, parsed,
                   parse_status: ai.last_parse_status, request_body: request_body,
                   model_used: ai.last_model_used, duration_ms: duration_ms,
                   usage: ai.last_usage)

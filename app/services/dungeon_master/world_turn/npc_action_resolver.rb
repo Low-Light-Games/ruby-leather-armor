@@ -32,7 +32,12 @@ module DungeonMaster
 
           bf_patches = Array(parsed[:battlefield_patches]).map { |p| p.is_a?(Hash) ? p.deep_stringify_keys : p }
 
-          { lines: lines, npc_muts: npc_muts, player_hp_delta: player_hp, battlefield_patches: bf_patches }
+          NpcActionResult.new(
+            lines: lines,
+            npc_mutations: npc_muts,
+            player_hp_delta: player_hp,
+            battlefield_patches: bf_patches
+          ).to_h
         end
 
         private

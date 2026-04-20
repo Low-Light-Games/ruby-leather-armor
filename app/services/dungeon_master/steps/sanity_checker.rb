@@ -54,7 +54,7 @@ module DungeonMaster
                        parse_capability_from_evaluator_result(
                          evaluator_fan_out_result!(by_step, "sanity_checker", "sanity_gate"))
                      else
-                       { allowed: true, reason: nil }
+                       CapabilityCheckResult.new(allowed: true, reason: nil).to_h
                      end
         [world, capability]
       end
@@ -91,12 +91,12 @@ module DungeonMaster
 
       def parse_world_from_evaluator_result(result)
         parsed = result["parsed_response"] || {}
-        {
+        WorldConsistencyResult.new(
           consistent: parsed["consistent"] != false,
           reason: parsed["reason"],
           dm_message: parsed["dm_message"],
           referenced_entities: Array(parsed["referenced_entities"])
-        }
+        ).to_h
       end
 
       def parse_capability_from_evaluator_result(result)
@@ -127,7 +127,7 @@ module DungeonMaster
       # ------------------------------------------------------------------
 
       def run_capability_check(intent)
-        return { allowed: true, reason: nil } unless @sheet
+        return CapabilityCheckResult.new(allowed: true, reason: nil).to_h unless @sheet
 
         prompt_summary = "SanityChecker/capability: \"#{@log.truncate(intent[:intention])}\""
         prompt_context = build_capability_prompt_context
@@ -156,21 +156,26 @@ module DungeonMaster
       # ------------------------------------------------------------------
 
       def check_extracted_abilities(ability_uses, condition_violated)
-        return { allowed: false, reason: condition_violated } if condition_violated.present?
+        if condition_violated.present?
+          return CapabilityCheckResult.new(allowed: false, reason: condition_violated).to_h
+        end
 
         ability_uses = ability_uses.reject do |u|
           TACTICAL_PHRASE_IGNORE.include?(TextNormalizer.normalized_key(u[:name]))
         end
 
-        return { allowed: true, reason: nil } if ability_uses.empty?
+        return CapabilityCheckResult.new(allowed: true, reason: nil).to_h if ability_uses.empty?
 
         lookup  = sheet_ability_lookup
         missing = ability_uses.reject { |u| ability_on_sheet?(u[:name], u[:type], lookup) }
         if missing.any?
           names = missing.map { |u| u[:name] }.join(", ")
-          { allowed: false, reason: "#{names} not found on character sheet" }
+          CapabilityCheckResult.new(
+            allowed: false,
+            reason: "#{names} not found on character sheet"
+          ).to_h
         else
-          { allowed: true, reason: nil }
+          CapabilityCheckResult.new(allowed: true, reason: nil).to_h
         end
       end
 
@@ -226,12 +231,12 @@ module DungeonMaster
           [raw_response, @ai.parse_json(raw_response)]
         end
 
-        {
+        WorldConsistencyResult.new(
           consistent: parsed["consistent"] != false,
           reason: parsed["reason"],
           dm_message: parsed["dm_message"],
           referenced_entities: Array(parsed["referenced_entities"])
-        }
+        ).to_h
       end
 
       def build_capability_prompt_context
