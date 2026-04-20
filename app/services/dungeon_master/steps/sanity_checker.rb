@@ -113,13 +113,13 @@ module DungeonMaster
       def world_check_rejection(intent, world)
         @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
         @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
-        { status: :rejected, intent: intent, reason: world[:reason], dm_message: world[:dm_message] }
+        FlowResults.rejected(intent: intent, reason: world[:reason], dm_message: world[:dm_message]).to_h
       end
 
       def capability_check_rejection(intent, capability)
         @log.play_log!("capability_rejection", "SanityChecker capability check failed: #{capability[:reason]}")
         @loop&.log_step("sanity_checker", "Capability check FAILED: #{capability[:reason].to_s.truncate(100)}")
-        { status: :rejected, intent: intent, reason: capability[:reason] }
+        FlowResults.rejected(intent: intent, reason: capability[:reason]).to_h
       end
 
       # ------------------------------------------------------------------
