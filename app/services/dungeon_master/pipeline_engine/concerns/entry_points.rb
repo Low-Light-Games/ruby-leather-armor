@@ -19,8 +19,9 @@ module DungeonMaster
       #     running the remaining queue, so run_rolls cannot continue a queue after a lethal
       #     world turn triggered by finish_resolution.
       module EntryPoints
-        def run_prompt(player_input, mode: nil)
-          state = { player_input: player_input, mode: mode }
+        def run_prompt(player_input, prompt_mode: nil, mode: nil)
+          resolved_mode = prompt_mode.nil? ? mode : prompt_mode
+          state = { player_input: player_input, mode: resolved_mode }
           # Assign then return — avoid `return r if (r = …)` (parses as `return (r if …)` and can raise NameError on `r`).
           result = apply_prompt_phase(Phases::IntakeDangerGate, state)
           return result if result

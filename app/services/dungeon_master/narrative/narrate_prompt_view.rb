@@ -4,10 +4,18 @@ module DungeonMaster
   module Narrative
     # Single ERB root for `narrate.text.erb`: loop, time, pacing, and PipelineContext fields.
     class NarratePromptView
-      BuildContext = Struct.new(
-        :pipeline_context, :loop, :combat_context, :time_context, :pacing_text, :directed_play_text,
-        keyword_init: true
-      )
+      class PromptContext
+        attr_reader :pipeline_context, :loop, :combat_context, :time_context, :pacing_text, :directed_play_text
+
+        def initialize(pipeline_context:, loop:, combat_context:, time_context:, pacing_text:, directed_play_text:)
+          @pipeline_context = pipeline_context
+          @loop = loop
+          @combat_context = combat_context
+          @time_context = time_context
+          @pacing_text = pacing_text
+          @directed_play_text = directed_play_text
+        end
+      end
 
       def self.for_narrate(pipeline_engine, pipeline_context)
         base_combat_context = pipeline_engine.adventure.combat_context || {}
@@ -17,7 +25,7 @@ module DungeonMaster
           sheet: pipeline_engine.sheet
         )
 
-        context = BuildContext.new(
+        context = PromptContext.new(
           pipeline_context:   pipeline_context,
           loop:               pipeline_engine.loop,
           combat_context:     live_combat_context,

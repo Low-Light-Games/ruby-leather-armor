@@ -12,7 +12,7 @@ RSpec.describe "death-aware narration prompt", type: :service do
       player_action: "Attack the goblin.",
       death_type:    death_type
     )
-    prompt_context = DungeonMaster::Narrative::NarratePromptView::BuildContext.new(
+    prompt_context = DungeonMaster::Narrative::NarratePromptView::PromptContext.new(
       pipeline_context:   ctx,
       loop:               nil,
       combat_context:     {},
@@ -84,7 +84,7 @@ RSpec.describe "death-aware narration prompt", type: :service do
         player_action: "Attack the goblin.",
         death_type:    death_type
       )
-      prompt_context = DungeonMaster::Narrative::NarratePromptView::BuildContext.new(
+      prompt_context = DungeonMaster::Narrative::NarratePromptView::PromptContext.new(
         pipeline_context:   ctx,
         loop:               nil,
         combat_context:     {},
@@ -165,7 +165,7 @@ RSpec.describe "death-aware narration prompt", type: :service do
         dm_brief: nil,
         player_action: "I slash at the nearest orc."
       )
-      prompt_context = DungeonMaster::Narrative::NarratePromptView::BuildContext.new(
+      prompt_context = DungeonMaster::Narrative::NarratePromptView::PromptContext.new(
         pipeline_context:   ctx,
         loop:               nil,
         combat_context: {

@@ -50,7 +50,7 @@ class DungeonMasterService
   # ----------------------------------------------------------------
 
   def execute_prompt(player_input, player_message_id:, mode: nil)
-    prompt_execution.call(player_input: player_input, player_message_id: player_message_id, mode: mode)
+    prompt_execution.call(player_input: player_input, player_message_id: player_message_id, prompt_mode: mode)
   end
 
   def execute_rolls(roll_results_text, player_message_id:)
