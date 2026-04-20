@@ -119,6 +119,24 @@ RSpec.describe "death-aware narration prompt", type: :service do
       expect(prompt).not_to include("CHARACTER INCAPACITATED")
     end
 
+    it "omits hostile guidance blocks when death_type is player_death" do
+      view = build_view(death_type: :player_death)
+      prompt = DungeonMaster::PromptRenderer.render("narrate", narrate_view: view)
+
+      expect(prompt).not_to include("=== CANONICAL COMBAT FACTS")
+      expect(prompt).not_to include("=== ENEMY / HOSTILE OUTCOMES ===")
+      expect(prompt).to include("=== CHARACTER DEATH ===")
+    end
+
+    it "omits hostile guidance blocks when death_type is player_incapacitated" do
+      view = build_view(death_type: :player_incapacitated)
+      prompt = DungeonMaster::PromptRenderer.render("narrate", narrate_view: view)
+
+      expect(prompt).not_to include("=== CANONICAL COMBAT FACTS")
+      expect(prompt).not_to include("=== ENEMY / HOSTILE OUTCOMES ===")
+      expect(prompt).to include("=== CHARACTER INCAPACITATED ===")
+    end
+
     it "includes the death block for :player_death" do
       view = build_view(death_type: :player_death)
       prompt = DungeonMaster::PromptRenderer.render("narrate", narrate_view: view)
