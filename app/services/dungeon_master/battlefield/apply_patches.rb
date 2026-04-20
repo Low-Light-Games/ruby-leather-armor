@@ -19,15 +19,17 @@ module DungeonMaster
 
             ref = ctx["battlefield_ref"] || ctx[:battlefield_ref]
             return if ref.blank?
+            battlefield_reference = BattlefieldReference.from_hash(ref)
+            return unless battlefield_reference
 
-            bf_id = ref["id"] || ref[:id]
+            bf_id = battlefield_reference.id
             bf = adventure.adventure_battlefields.lock.find_by(id: bf_id, status: "active")
             unless bf
               log&.log!(:warn, "[Battlefield::ApplyPatches] No active battlefield id=#{bf_id}")
               return
             end
 
-            expected = ref["version"] || ref[:version]
+            expected = battlefield_reference.version
             if expected.present? && expected.to_i != bf.version.to_i
               raise DungeonMaster::AiError,
                     "battlefield version drift: combat_context has #{expected}, row has #{bf.version}"
@@ -49,7 +51,7 @@ module DungeonMaster
             bf.save!
 
             adventure.update!(
-              combat_context: BattlefieldRef.attach_to_combat_context(ctx, battlefield: bf)
+              combat_context: CombatContextReferencePatch.attach(ctx, battlefield: bf)
             )
           end
           adventure.reload

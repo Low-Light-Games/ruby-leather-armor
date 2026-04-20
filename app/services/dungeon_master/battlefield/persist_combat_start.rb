@@ -5,21 +5,6 @@ module DungeonMaster
     # Atomic combat start: Warmaster combat hash + adventure_battlefields row + battlefield_ref
     # + action_economy in one transaction.
     class PersistCombatStart
-      class CombatContextPayload
-        def initialize(base_data:, battlefield_ref:, action_economy_builder:)
-          @base_data = base_data.deep_stringify_keys
-          @battlefield_ref = battlefield_ref
-          @action_economy_builder = action_economy_builder
-        end
-
-        def to_h
-          payload = @base_data.deep_dup
-          payload["battlefield_ref"] = @battlefield_ref
-          payload["action_economy"] ||= @action_economy_builder.call(payload)
-          payload
-        end
-      end
-
       class << self
         def call(adventure:, combat_data:, sheet:)
           data = combat_data.deep_stringify_keys
@@ -42,11 +27,11 @@ module DungeonMaster
               viewport: viewport_for_tokens(desired_tokens),
               version: 1
             )
-            ref = { "id" => bf.id, "version" => bf.version, "topology" => bf.topology }
+            battlefield_reference = BattlefieldReference.from_battlefield(bf)
 
-            payload = CombatContextPayload.new(
+            payload = DungeonMaster::Battlefield::CombatContextPayload.new(
               base_data: data,
-              battlefield_ref: ref,
+              battlefield_reference: battlefield_reference,
               action_economy_builder: method(:default_action_economy)
             )
             adventure.update!(combat_context: payload.to_h)

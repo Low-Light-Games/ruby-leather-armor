@@ -27,7 +27,8 @@ module DungeonMaster
             next unless active_combat_context?(combat_context)
 
             participants = combat_participants(combat_context)
-            reference_id = BattlefieldRef.reference_id(combat_context["battlefield_ref"])
+            battlefield_reference = CombatContextReferencePatch.reference_from(combat_context)
+            reference_id = battlefield_reference&.id
 
             archive_non_matching_active_battlefields!(adventure, participants)
             collapse_duplicate_active_battlefields!(adventure, reference_id)
@@ -37,7 +38,7 @@ module DungeonMaster
             keeper = find_matching_active_battlefield(adventure, participants)
             if keeper
               adventure.update!(
-                combat_context: BattlefieldRef.attach_to_combat_context(combat_context, battlefield: keeper)
+                combat_context: CombatContextReferencePatch.attach(combat_context, battlefield: keeper)
               )
               next
             end
@@ -98,7 +99,7 @@ module DungeonMaster
         end
 
         def recreate_battlefield_from_combat_context!(adventure, combat_context, sheet)
-          combat_payload = BattlefieldRef.clear_from_combat_context(combat_context)
+          combat_payload = CombatContextReferencePatch.clear(combat_context)
           PersistCombatStart.call(adventure: adventure, combat_data: combat_payload, sheet: sheet)
         end
       end

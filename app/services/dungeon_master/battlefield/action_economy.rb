@@ -6,28 +6,11 @@ module DungeonMaster
     module ActionEconomy
       module_function
 
-      class TurnState
-        attr_reader :round, :holder
-
-        def initialize(round:, holder:)
-          @round = round.to_i
-          @holder = holder.to_s
-        end
-
-        def to_h
-          {
-            "round" => round,
-            "holder" => holder,
-            "standard_available" => true,
-            "move_available" => true,
-            "swift_available" => true,
-            "full_round_claimed" => false
-          }
-        end
-      end
-
       def build_for_turn_holder(holder_name, combat_ctx:)
-        TurnState.new(round: combat_ctx["round"], holder: holder_name).to_h
+        DungeonMaster::Battlefield::TurnState.new(
+          round: combat_ctx["round"],
+          holder: holder_name
+        ).to_h
       end
 
       # @param delta [Hash] string keys: spend_standard, spend_move, spend_swift, refund_* (bool)
