@@ -14,13 +14,25 @@ module DungeonMaster
           "ref" => "Reflex",
           "will" => "Will"
         }.freeze
-        ResolutionContext = Struct.new(:combat_ctx, :adventure, :sheet, :lookup_context, keyword_init: true)
+        ABILITY_NAMES = CharacterStats::GameRules::ABILITIES
+
+        class CombatResolutionContext
+          attr_reader :combat_ctx, :adventure, :sheet, :lookup_context
+
+          def initialize(combat_ctx:, adventure:, sheet:, lookup_context:)
+            @combat_ctx = combat_ctx
+            @adventure = adventure
+            @sheet = sheet
+            @lookup_context = lookup_context
+          end
+        end
 
         class << self
           # @param parsed [Hash] symbolized parsed_response from evaluator
-          def call(parsed:, domain:, adventure:, sheet:, log: nil)
+          def call(parsed:, domain:, adventure:, sheet:, log: nil, parsed_mech_eval_response: nil)
+            parsed_mech_eval_response ||= parsed
             combat_ctx = adventure.combat_context.is_a?(Hash) ? adventure.combat_context : {}
-            context = ResolutionContext.new(
+            context = CombatResolutionContext.new(
               combat_ctx: combat_ctx,
               adventure: adventure,
               sheet: sheet,
@@ -31,24 +43,27 @@ module DungeonMaster
               )
             )
 
-            rolls = Array(parsed[:player_rolls]).map.with_index do |raw, idx|
-              r = raw.deep_symbolize_keys
-              normalize_player_roll(r, idx, context: context)
-            end
+            rolls = normalize_player_rolls(Array(parsed_mech_eval_response[:player_rolls]), context: context)
 
-            npc_actions = normalize_npc_actions(Array(parsed[:npc_actions]), log: log)
-            summary = parsed[:mechanical_summary].to_s
+            npc_actions = normalize_npc_actions(Array(parsed_mech_eval_response[:npc_actions]), log: log)
+            summary = parsed_mech_eval_response[:mechanical_summary].to_s
 
             {
               domain:             domain,
               player_rolls:       rolls,
               npc_actions:        npc_actions,
-              consequences:       Array(parsed[:consequences]).map(&:deep_symbolize_keys),
+              consequences:       Array(parsed_mech_eval_response[:consequences]).map(&:deep_symbolize_keys),
               mechanical_summary: summary
             }
           end
 
           private
+
+          def normalize_player_rolls(player_roll_entries, context:)
+            player_roll_entries.map.with_index do |player_roll_entry, roll_index|
+              normalize_player_roll(player_roll_entry.deep_symbolize_keys, roll_index, context: context)
+            end
+          end
 
           def normalize_player_roll(raw, idx, context:)
             type = raw[:type].to_s
@@ -136,8 +151,7 @@ module DungeonMaster
             name = TextNormalizer.strip(formula_payload[:spell_name])
             raise DungeonMaster::CombatMechanicResolutionError, "spell_name required" if name.blank?
 
-            spell = SpellDefinition.find_by(name: name) ||
-                    SpellDefinition.where("LOWER(name) = ?", TextNormalizer.normalized_key(name)).first
+            spell = SpellDefinition.find_by_name_case_insensitive(name)
             unless spell
               raise DungeonMaster::CombatMechanicResolutionError.new(
                 "spell not found: #{name.inspect}",
@@ -153,12 +167,12 @@ module DungeonMaster
               )
             end
 
-            cls = sheet.character_class.to_s
+            character_class_name = sheet.character_class.to_s
             levels = spell.class_levels || {}
-            slug = TextNormalizer.class_slug_tokens(cls).find { |class_token| levels.key?(class_token) }
+            slug = TextNormalizer.class_slug_tokens(character_class_name).find { |class_token| levels.key?(class_token) }
             unless slug
               raise DungeonMaster::CombatMechanicResolutionError,
-                    "spell #{name} not on character class #{cls.inspect}"
+                    "spell #{name} not on character class #{character_class_name.inspect}"
             end
 
             ability = DungeonMaster::PathfinderCastingAbility.casting_ability_for_slug(slug)
@@ -177,7 +191,7 @@ module DungeonMaster
           def resolve_ability_dc(formula_payload, context:)
             pattern = formula_payload[:pattern].to_s
             ability = TextNormalizer.normalized_key(formula_payload[:ability])
-            unless %w[strength dexterity constitution intelligence wisdom charisma].include?(ability)
+            unless valid_ability_name?(ability)
               raise DungeonMaster::CombatMechanicResolutionError, "invalid ability for ability_dc"
             end
 
@@ -186,7 +200,7 @@ module DungeonMaster
               origin = TextNormalizer.strip(formula_payload[:origin_target])
               raise DungeonMaster::CombatMechanicResolutionError, "origin_target required" if origin.blank?
 
-              _k, origin_sheet = DungeonMaster::WorldTurn::ParticipantLookup.resolve_target_sheet!(
+              origin_sheet = DungeonMaster::WorldTurn::ParticipantLookup.target_sheet!(
                 origin,
                 context: context.lookup_context
               )
@@ -198,8 +212,6 @@ module DungeonMaster
                     "unsupported ability_dc pattern: #{pattern.inspect}"
             end
           end
-
-          ABILITY_NAMES = %w[strength dexterity constitution intelligence wisdom charisma].freeze
 
           def ability_modifier_from_sheet(sheet, ability)
             name = ability.to_s
@@ -219,6 +231,10 @@ module DungeonMaster
 
             score = sheet.public_send(name)
             ((score.to_i - 10) / 2).floor
+          end
+
+          def valid_ability_name?(ability_name)
+            ABILITY_NAMES.include?(ability_name)
           end
 
           def normalize_npc_actions(list, log:)

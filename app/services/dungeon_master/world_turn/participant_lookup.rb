@@ -68,6 +68,12 @@ module DungeonMaster
         [:creature, creature]
       end
 
+      def target_sheet!(target_name, context: nil, **kwargs)
+        lookup = context || LookupContext.new(**kwargs)
+        _target_kind, target_sheet = resolve_target_sheet!(target_name, context: lookup)
+        target_sheet
+      end
+
       # @param defense_kind [String] full_ac | touch_ac | flat_footed_ac
       def defense_dc_for_target!(target_name, defense_kind, context: nil, **kwargs)
         lookup = context || LookupContext.new(**kwargs)
@@ -79,7 +85,7 @@ module DungeonMaster
           )
         end
 
-        _kind, sheet = resolve_target_sheet!(target_name, context: lookup)
+        sheet = target_sheet!(target_name, context: lookup)
         derived_stats = sheet.derived_stats || {}
         defense_dc = derived_stats[stat_key] || derived_stats[stat_key.to_sym]
         if defense_dc.nil?
