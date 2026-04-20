@@ -37,71 +37,18 @@ module DungeonMaster
         private
 
         def build_mech_eval_prompts(ordered_domains, intention, intent)
-          prior = continuity_prior_outcomes
+          prior_outcomes = continuity_prior_outcomes
           ordered_domains.map do |domain|
-            prompt_rules   = DOMAIN_PROMPT_RULES.fetch(domain.to_s, {})
-            # buff: focused char block (spells + items only); context is active_buffs on the sheet;
-            # no creature stats needed — buff eval produces no rolls and no NPC actions.
-            char_block     = domain == "buff" ? CharacterBlock.buff(@sheet) : CharacterBlock.for(@sheet, category: domain)
-            micro_ctx      = domain == "buff" ? @sheet&.active_buffs : @adventure.send("#{domain}_context")
-            creature_stats = if prompt_rules[:creature_stats] == false || domain == "buff"
-                               nil
-                             else
-                               CharacterBlock.creature_stats_for(@adventure)
-                             end
-            rules_text     = domain_rules_text_for(intent, domain)
-            mech_eval_context = PromptViews::MechEvalPromptContext.new(
-              domain: domain,
-              character_block: char_block,
-              micro_context: micro_ctx.present? ? micro_ctx.to_json : nil,
-              creature_stats: creature_stats,
-              rules_text: rules_text,
-              prior_outcomes: prior,
-              include_npc_actions_guidance: prompt_rules.fetch(:npc_actions_guidance, true)
-            )
-
-            system_prompt_base = case domain.to_s
-            when "combat"
-              attack_options = DungeonMaster::Combat::AttackOptionBuilder.call(
-                sheet: @sheet,
-                adventure: @adventure
-              )
-              combat_context = PromptViews::MechEvalPromptContext.new(
-                domain: mech_eval_context.domain,
-                character_block: mech_eval_context.character_block,
-                micro_context: mech_eval_context.micro_context,
-                creature_stats: mech_eval_context.creature_stats,
-                rules_text: mech_eval_context.rules_text,
-                prior_outcomes: mech_eval_context.prior_outcomes,
-                attack_options_text: format_attack_options_for_prompt(attack_options),
-                previous_summaries: []
-              )
-              PromptRenderer.render("combat_mechanic",
-                mech_eval_context: combat_context)
-            else
-              instructions = PromptRenderer.render_partial("mechanical_evaluation/_#{domain}")
-              mech_eval_context = PromptViews::MechEvalPromptContext.new(
-                domain: mech_eval_context.domain,
-                character_block: mech_eval_context.character_block,
-                micro_context: mech_eval_context.micro_context,
-                creature_stats: mech_eval_context.creature_stats,
-                rules_text: mech_eval_context.rules_text,
-                prior_outcomes: mech_eval_context.prior_outcomes,
-                domain_instructions: instructions,
-                include_npc_actions_guidance: mech_eval_context.include_npc_actions_guidance?
-              )
-
-              PromptRenderer.render("mechanical_evaluation",
-                mech_eval_context: mech_eval_context)
-            end
+            base_prompt_context = build_base_mech_eval_context(domain, intent, prior_outcomes)
+            system_prompt_base = render_mech_eval_prompt(domain, base_prompt_context)
 
             {
-              system_prompt_base:     system_prompt_base,
-              user_message:           intention,
-              model:                  @config.model_for("mechanical_evaluation"),
-              max_tokens:             @config.token_budget_for("mechanical_evaluation"),
+              system_prompt_base: system_prompt_base,
+              user_message: intention,
+              model: @config.model_for("mechanical_evaluation"),
+              max_tokens: @config.token_budget_for("mechanical_evaluation"),
               summary_extraction_key: "mechanical_summary",
-              meta:                   { step: "mechanical_evaluation", domain: domain }
+              meta: { step: "mechanical_evaluation", domain: domain }
             }
           end
         end
@@ -142,16 +89,69 @@ module DungeonMaster
               ]
             end
 
-            next if rolls.empty? && npc_actions.empty? && consequences.empty? && summary.blank?
-
-            {
-              domain:             domain,
-              player_rolls:       rolls,
-              npc_actions:        npc_actions,
-              consequences:       consequences,
+            domain_result = MechEvalDomainResult.new(
+              domain: domain,
+              player_rolls: rolls,
+              npc_actions: npc_actions,
+              consequences: consequences,
               mechanical_summary: summary
-            }
+            )
+            next if domain_result.empty?
+
+            domain_result.to_h
           end
+        end
+
+        def build_base_mech_eval_context(domain, intent, prior_outcomes)
+          prompt_rules = DOMAIN_PROMPT_RULES.fetch(domain.to_s, {})
+          # buff: focused char block (spells + items only); context is active_buffs on the sheet;
+          # no creature stats needed — buff eval produces no rolls and no NPC actions.
+          character_block = domain == "buff" ? CharacterBlock.buff(@sheet) : CharacterBlock.for(@sheet, category: domain)
+          micro_context = domain == "buff" ? @sheet&.active_buffs : @adventure.send("#{domain}_context")
+
+          PromptViews::MechEvalPromptContext.new(
+            domain: domain,
+            character_block: character_block,
+            micro_context: micro_context.present? ? micro_context.to_json : nil,
+            creature_stats: creature_stats_for(domain, prompt_rules),
+            rules_text: domain_rules_text_for(intent, domain),
+            prior_outcomes: prior_outcomes,
+            include_npc_actions_guidance: prompt_rules.fetch(:npc_actions_guidance, true)
+          )
+        end
+
+        def creature_stats_for(domain, prompt_rules)
+          return nil if prompt_rules[:creature_stats] == false || domain == "buff"
+
+          CharacterBlock.creature_stats_for(@adventure)
+        end
+
+        def render_mech_eval_prompt(domain, base_prompt_context)
+          if domain.to_s == "combat"
+            render_combat_mech_eval_prompt(base_prompt_context)
+          else
+            render_domain_mech_eval_prompt(domain, base_prompt_context)
+          end
+        end
+
+        def render_combat_mech_eval_prompt(base_prompt_context)
+          attack_options = DungeonMaster::Combat::AttackOptionBuilder.call(
+            sheet: @sheet,
+            adventure: @adventure
+          )
+          combat_prompt_context = base_prompt_context.with_combat_options(
+            attack_options_text: format_attack_options_for_prompt(attack_options),
+            previous_summaries: []
+          )
+
+          PromptRenderer.render("combat_mechanic", mech_eval_context: combat_prompt_context)
+        end
+
+        def render_domain_mech_eval_prompt(domain, base_prompt_context)
+          domain_instructions = PromptRenderer.render_partial("mechanical_evaluation/_#{domain}")
+          mech_eval_context = base_prompt_context.with_domain_instructions(domain_instructions)
+
+          PromptRenderer.render("mechanical_evaluation", mech_eval_context: mech_eval_context)
         end
 
         def symbolize_hash_array(value)
@@ -169,15 +169,16 @@ module DungeonMaster
           Array(rolls).reject do |roll|
             violation = roll_domain_violation(rules, roll)
             next false unless violation
+            ownership_violation_payload = MechEvalOwnershipViolationLogPayload.new(
+              domain: domain,
+              violation: violation,
+              roll: roll
+            )
 
             @log&.play_log!(
               "ownership_guard",
               "Dropped #{domain} roll that violates domain ownership (#{violation})",
-              parsed_response: {
-                domain: domain,
-                violation: violation,
-                roll: roll
-              }
+              parsed_response: ownership_violation_payload.to_h
             )
             true
           end
