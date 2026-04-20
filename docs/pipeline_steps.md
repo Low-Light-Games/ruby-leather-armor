@@ -580,6 +580,14 @@ DC values from canonical sheet data.
 - all other domains → `PromptRenderer.render_partial("mechanical_evaluation/_#{domain}")`
   inside `mechanical_evaluation.text.erb`.
 
+**Signature ownership note (readability refactor):**
+- `CombatMechanicResolution` now carries a small `ResolutionContext` object and forwards
+  participant targeting through `WorldTurn::ParticipantLookup::LookupContext` instead of
+  threading multiple `combat_ctx` / `sheet` / `adventure` keyword arguments through each helper.
+- `Utilities::Warmaster` entrypoints accept explicit request objects (`EncounterInitializationRequest`,
+  `NamesPreparationRequest`, `CombatInitializationRequest`) so call sites pass one cohesive object
+  per operation boundary rather than spreading utility construction arguments across pipeline layers.
+
 **Why:** combat rolls need stricter structure than the generic prompt can
 reliably provide. The AI now classifies *what kind* of combat roll is needed
 (`defense_kind`, `spell_dc`, `ability_dc`, `attack_of_opportunity`), while

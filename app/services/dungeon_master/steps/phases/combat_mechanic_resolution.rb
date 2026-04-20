@@ -14,15 +14,26 @@ module DungeonMaster
           "ref" => "Reflex",
           "will" => "Will"
         }.freeze
+        ResolutionContext = Struct.new(:combat_ctx, :adventure, :sheet, :lookup_context, keyword_init: true)
 
         class << self
           # @param parsed [Hash] symbolized parsed_response from evaluator
           def call(parsed:, domain:, adventure:, sheet:, log: nil)
             combat_ctx = adventure.combat_context.is_a?(Hash) ? adventure.combat_context : {}
+            context = ResolutionContext.new(
+              combat_ctx: combat_ctx,
+              adventure: adventure,
+              sheet: sheet,
+              lookup_context: DungeonMaster::WorldTurn::ParticipantLookup::LookupContext.new(
+                combat_ctx: combat_ctx,
+                player_sheet: sheet,
+                adventure: adventure
+              )
+            )
 
             rolls = Array(parsed[:player_rolls]).map.with_index do |raw, idx|
               r = raw.deep_symbolize_keys
-              normalize_player_roll(r, idx, combat_ctx: combat_ctx, adventure: adventure, sheet: sheet)
+              normalize_player_roll(r, idx, context: context)
             end
 
             npc_actions = normalize_npc_actions(Array(parsed[:npc_actions]), log: log)
@@ -39,7 +50,7 @@ module DungeonMaster
 
           private
 
-          def normalize_player_roll(raw, idx, combat_ctx:, adventure:, sheet:)
+          def normalize_player_roll(raw, idx, context:)
             type = raw[:type].to_s
 
             case type
@@ -60,17 +71,15 @@ module DungeonMaster
               end
 
               option = DungeonMaster::Combat::AttackOptionBuilder.resolve_option_id!(
-                sheet: sheet,
-                adventure: adventure,
+                sheet: context.sheet,
+                adventure: context.adventure,
                 option_id: option_id
               )
 
               dc = DungeonMaster::WorldTurn::ParticipantLookup.defense_dc_for_target!(
                 raw[:target],
                 option[:defense_kind],
-                combat_ctx: combat_ctx,
-                player_sheet: sheet,
-                adventure: adventure
+                context: context.lookup_context
               )
               attrs = raw.except(
                 :dc_formula, :defense_kind, :attack_option_id,
@@ -94,7 +103,7 @@ module DungeonMaster
                 )
               end
 
-              dc = resolve_dc_formula(raw[:dc_formula], idx, adventure: adventure, sheet: sheet, combat_ctx: combat_ctx)
+              dc = resolve_dc_formula(raw[:dc_formula], idx, context: context)
               save = raw[:save].to_s.downcase
               skill = SAVE_TO_SKILL_LABEL[save] || save.capitalize
               attrs = raw.except(:dc_formula)
@@ -107,14 +116,14 @@ module DungeonMaster
             end
           end
 
-          def resolve_dc_formula(formula, idx, adventure:, sheet:, combat_ctx:)
+          def resolve_dc_formula(formula, idx, context:)
             f = formula.is_a?(Hash) ? formula.deep_symbolize_keys : {}
             kind = f[:kind].to_s
             case kind
             when "spell_dc"
-              resolve_spell_dc(f, sheet)
+              resolve_spell_dc(f, context.sheet)
             when "ability_dc"
-              resolve_ability_dc(f, adventure: adventure, sheet: sheet, combat_ctx: combat_ctx)
+              resolve_ability_dc(f, context: context)
             else
               raise DungeonMaster::CombatMechanicResolutionError.new(
                 "unsupported dc_formula.kind: #{kind.inspect} (roll index #{idx})",
@@ -165,7 +174,7 @@ module DungeonMaster
             10 + spell_level + mod
           end
 
-          def resolve_ability_dc(f, adventure:, sheet:, combat_ctx:)
+          def resolve_ability_dc(f, context:)
             pattern = f[:pattern].to_s
             ability = f[:ability].to_s.downcase
             unless %w[strength dexterity constitution intelligence wisdom charisma].include?(ability)
@@ -179,9 +188,7 @@ module DungeonMaster
 
               _k, origin_sheet = DungeonMaster::WorldTurn::ParticipantLookup.resolve_target_sheet!(
                 origin,
-                combat_ctx: combat_ctx,
-                player_sheet: sheet,
-                adventure: adventure
+                context: context.lookup_context
               )
               mod = ability_modifier_from_sheet(origin_sheet, ability)
               hd = origin_sheet.level.to_i

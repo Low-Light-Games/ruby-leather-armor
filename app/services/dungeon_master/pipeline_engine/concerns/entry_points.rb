@@ -36,10 +36,13 @@ module DungeonMaster
 
           creature_data = metadata["creature_data"] || []
           combat_data = Utilities::Warmaster.compute_combat_initialization(
-            adventure: @adventure,
-            player_sheet: @sheet,
-            creature_data: creature_data.map(&:deep_symbolize_keys),
-            player_initiative: player_initiative)
+            request: Utilities::Warmaster::CombatInitializationRequest.new(
+              adventure: @adventure,
+              player_sheet: @sheet,
+              creature_data: creature_data.map(&:deep_symbolize_keys),
+              player_initiative: player_initiative
+            )
+          )
 
           intent = metadata["intent"]&.deep_symbolize_keys
           raise AiError, "Initiative metadata missing intent — state integrity failure" unless intent

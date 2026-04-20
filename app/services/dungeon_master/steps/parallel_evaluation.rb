@@ -141,12 +141,14 @@ module DungeonMaster
         return intent if combatant_names.empty?
 
         prepared = Utilities::Warmaster.prepare_from_names!(
-          adventure: @adventure,
-          combatant_names: combatant_names,
-          sheet: @sheet,
-          log: @log,
-          config: @config,
-          ai: @ai
+          request: Utilities::Warmaster::NamesPreparationRequest.new(
+            adventure: @adventure,
+            combatant_names: combatant_names,
+            sheet: @sheet,
+            log: @log,
+            config: @config,
+            ai: @ai
+          )
         )
 
         return intent if prepared[:status] == :no_creatures

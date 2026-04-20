@@ -20,6 +20,19 @@ module DungeonMaster
 
       module_function
 
+      EncounterInitializationRequest = Struct.new(
+        :adventure, :encounter_entry, :sheet, :log, :config, :ai, :creatures_data, :scene_enemy_names,
+        keyword_init: true
+      )
+      NamesPreparationRequest = Struct.new(
+        :adventure, :combatant_names, :count, :sheet, :log, :config, :ai,
+        keyword_init: true
+      )
+      CombatInitializationRequest = Struct.new(
+        :adventure, :player_sheet, :creature_data, :player_initiative,
+        keyword_init: true
+      )
+
       # Path A: from Harbinger encounter table roll
       # creatures_data:    optional structured array from encounter_expand AI (via AdventureLoop)
       #                    e.g. [{ "name" => "goblin", "count" => 4 }]
@@ -27,49 +40,49 @@ module DungeonMaster
       #                    traversal_context["nearby_npcs"] by EncounterWarmasterBridge.
       #                    These are merged in after the encounter-table creatures so that
       #                    pre-established scene enemies join the combat.
-      def initialize_from_encounter!(adventure:, encounter_entry:, sheet:, log:, config:, ai:,
-                                     creatures_data: nil, scene_enemy_names: [])
-        ctx = Context.new(adventure: adventure, sheet: sheet, log: log, config: config, ai: ai)
+      def initialize_from_encounter!(request: nil, **kwargs)
+        request ||= EncounterInitializationRequest.new(**kwargs)
+        ctx = Context.new(
+          adventure: request.adventure,
+          sheet: request.sheet,
+          log: request.log,
+          config: request.config,
+          ai: request.ai
+        )
 
-        creatures = if encounter_entry.has_manifest?
-                      spawn_from_manifest(ctx, encounter_entry.creature_manifest)
-                    elsif creatures_data.is_a?(Array) && creatures_data.any?
-                      names = creatures_data.flat_map do |c|
+        creatures = if request.encounter_entry.has_manifest?
+                      spawn_from_manifest(ctx, request.encounter_entry.creature_manifest)
+                    elsif request.creatures_data.is_a?(Array) && request.creatures_data.any?
+                      names = request.creatures_data.flat_map do |c|
                         name = (c["name"] || c[:name] || "creature").to_s.singularize
                         count = (c["count"] || c[:count] || 1).to_i.clamp(1, 20)
                         Array.new(count, name)
                       end
                       spawn_from_names(ctx, names)
                     else
-                      log.log!(:warn, "Warmaster: no manifest or creatures_data for entry '#{encounter_entry.title}' — cannot spawn creatures")
+                      request.log.log!(:warn, "Warmaster: no manifest or creatures_data for entry '#{request.encounter_entry.title}' — cannot spawn creatures")
                       []
                     end
 
-        creatures = merge_scene_enemy_names(ctx, creatures, scene_enemy_names)
+        creatures = merge_scene_enemy_names(ctx, creatures, request.scene_enemy_names)
 
         build_initiative_result(ctx, creatures)
       end
 
       # Path B: from combat beacon combatant names
-      def initialize_from_names!(adventure:, combatant_names:, count: nil, sheet:, log:, config:, ai:)
-        ctx = Context.new(adventure: adventure, sheet: sheet, log: log, config: config, ai: ai)
-        creatures = prepare_from_names!(
-          adventure: adventure,
-          combatant_names: combatant_names,
-          count: count,
-          sheet: sheet,
-          log: log,
-          config: config,
-          ai: ai
-        )[:creatures]
+      def initialize_from_names!(request: nil, **kwargs)
+        request ||= NamesPreparationRequest.new(**kwargs)
+        ctx = Context.new(adventure: request.adventure, sheet: request.sheet, log: request.log, config: request.config, ai: request.ai)
+        creatures = prepare_from_names!(request: request)[:creatures]
         build_initiative_result(ctx, creatures)
       end
 
       # Path C: eager canonical creature prep for combat-starting actions before mech-eval.
       # Creates / reuses creature sheets and rolls NPC initiative before combat activation.
-      def prepare_from_names!(adventure:, combatant_names:, count: nil, sheet:, log:, config:, ai:)
-        ctx = Context.new(adventure: adventure, sheet: sheet, log: log, config: config, ai: ai)
-        names = expand_combatant_names(combatant_names, count)
+      def prepare_from_names!(request: nil, **kwargs)
+        request ||= NamesPreparationRequest.new(**kwargs)
+        ctx = Context.new(adventure: request.adventure, sheet: request.sheet, log: request.log, config: request.config, ai: request.ai)
+        names = expand_combatant_names(request.combatant_names, request.count)
         creatures = spawn_from_names(ctx, names)
         creature_data = prepare_creature_data(ctx, creatures)
 
@@ -86,15 +99,16 @@ module DungeonMaster
       # which ContextUpdate will write verbatim to adventure.combat_context.
       #
       # +adventure+ and +player_sheet+ are required to load canonical HP/conditions from sheets.
-      def compute_combat_initialization(adventure:, player_sheet:, creature_data:, player_initiative:)
-        raise ArgumentError, "player_sheet required for combat initialization" unless player_sheet
+      def compute_combat_initialization(request: nil, **kwargs)
+        request ||= CombatInitializationRequest.new(**kwargs)
+        raise ArgumentError, "player_sheet required for combat initialization" unless request.player_sheet
 
-        npc_combatants = pending_npc_combatants(adventure, player_sheet).presence ||
-                         creature_data.filter_map do |c|
+        npc_combatants = pending_npc_combatants(request.adventure, request.player_sheet).presence ||
+                         request.creature_data.filter_map do |c|
                            next unless c.is_a?(Hash)
 
                            c = c.deep_symbolize_keys
-                           sheet = adventure.creature_sheets.find_by(id: c[:creature_sheet_id])
+                           sheet = request.adventure.creature_sheets.find_by(id: c[:creature_sheet_id])
                            unless sheet
                              Rails.logger.warn("[Warmaster] creature_sheet id=#{c[:creature_sheet_id]} not found — omitted from combat")
                              next
@@ -103,7 +117,7 @@ module DungeonMaster
                            Combatant.from_creature_sheet(sheet, initiative: c[:initiative].to_i)
                          end
 
-        player_combatant = Combatant.from_player_sheet(player_sheet, initiative: player_initiative.to_i)
+        player_combatant = Combatant.from_player_sheet(request.player_sheet, initiative: request.player_initiative.to_i)
         all_ordered = (npc_combatants + [player_combatant]).sort_by { |p| -p.initiative }
         turn_order = all_ordered.map(&:name)
         current_turn = turn_order.first

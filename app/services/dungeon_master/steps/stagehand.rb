@@ -100,8 +100,15 @@ module DungeonMaster
         return nil if combatants.empty?
 
         Utilities::Warmaster.initialize_from_names!(
-          adventure: @adventure, combatant_names: combatants,
-          sheet: @sheet, log: @log, config: @config, ai: @ai)
+          request: Utilities::Warmaster::NamesPreparationRequest.new(
+            adventure: @adventure,
+            combatant_names: combatants,
+            sheet: @sheet,
+            log: @log,
+            config: @config,
+            ai: @ai
+          )
+        )
       end
 
       def combat_transition?(transition)
