@@ -34,9 +34,9 @@ module DungeonMaster
               "version" => bf&.version || ref&.dig("version"),
               "topology" => bf&.topology || ref&.dig("topology") || "square"
             }.compact
-            s["last_battlefield_ref"] = last if last["id"].present?
-            s.delete("battlefield_ref")
-            adventure.update!(combat_context: s)
+            archived_context = BattlefieldRef.clear_from_combat_context(s)
+            archived_context["last_battlefield_ref"] = last if last["id"].present?
+            adventure.update!(combat_context: archived_context)
           end
           adventure.reload
         end

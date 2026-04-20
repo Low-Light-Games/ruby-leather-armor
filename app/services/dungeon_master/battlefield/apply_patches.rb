@@ -48,14 +48,9 @@ module DungeonMaster
             )
             bf.save!
 
-            merged = ctx.deep_stringify_keys.deep_dup
-            new_ref = (merged["battlefield_ref"] || {}).merge(
-              "id" => bf.id,
-              "version" => bf.version,
-              "topology" => bf.topology
+            adventure.update!(
+              combat_context: BattlefieldRef.attach_to_combat_context(ctx, battlefield: bf)
             )
-            merged["battlefield_ref"] = new_ref
-            adventure.update!(combat_context: merged)
           end
           adventure.reload
         end
