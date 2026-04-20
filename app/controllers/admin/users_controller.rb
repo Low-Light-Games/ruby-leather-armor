@@ -2,7 +2,7 @@
 
 module Admin
   class UsersController < BaseController
-    before_action :set_user, only: [:show, :ban, :unban, :trust, :untrust]
+    before_action :set_user, only: [:show, :update_tier, :ban, :unban, :trust, :untrust]
 
     def index
       @users = User.order(created_at: :desc)
@@ -12,6 +12,18 @@ module Admin
 
     def show
       @moderation_events = @user.moderation_events.recent.limit(20)
+    end
+
+    def update_tier
+      target_tier = tier_params[:tier]
+
+      unless User::TIERS.include?(target_tier)
+        redirect_to admin_users_path, alert: "Invalid plan selected."
+        return
+      end
+
+      @user.update!(tier: target_tier)
+      redirect_to admin_users_path, notice: "#{@user.email} plan updated to #{target_tier}."
     end
 
     def ban
@@ -42,6 +54,10 @@ module Admin
 
     def set_user
       @user = User.find(params[:id])
+    end
+
+    def tier_params
+      params.require(:user).permit(:tier)
     end
   end
 end
