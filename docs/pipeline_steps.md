@@ -300,11 +300,14 @@ accessible to anyone who needs to tune the DM's behavior.
 file I/O) for what was previously inline strings. This is negligible —
 template rendering is sub-millisecond compared to the AI call it feeds.
 
-### 11. Pipeline class separated from the service
+### 11. Pipeline class separated from entry services
 
 **Decision:** `DungeonMaster::PipelineEngine` encapsulates pure pipeline logic
-(step sequencing, branching, data flow). `DungeonMasterService` handles
-only message persistence and error handling.
+(step sequencing, branching, data flow). Pipeline entry responsibilities are
+split into focused deterministic services under `DungeonMaster::EntryServices`
+(`PromptExecution`, `ResumeExecution`) with shared dependency wiring in
+`DungeonMaster::EntryRuntime`; `DungeonMasterService` remains a small facade
+for controller/job compatibility.
 
 **Why:** the original `DungeonMasterService` was a monolith that mixed
 pipeline orchestration, message persistence, error handling, and step
@@ -315,9 +318,9 @@ The separation means:
 - `Pipeline#run_prompt` reads like a linear script: intake,
   then branch, then beacon, then mechanics gate, etc.
   A developer can read the full flow in ~40 lines.
-- The service's `process_player_prompt` is equally clear: persist the
-  player message, run the pipeline, map the result to messages, catch
-  errors.
+- Prompt, roll, and initiative execution each have explicit entry services,
+  so moderation/policy/runtime orchestration is not mixed into one monolithic
+  class.
 - Steps can be tested against the Pipeline without mocking persistence.
 
 **Trade-off accepted:** more files to navigate. Mitigated by consistent
