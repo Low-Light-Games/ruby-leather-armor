@@ -12,8 +12,7 @@ RSpec.describe "death-aware narration prompt", type: :service do
       player_action: "Attack the goblin.",
       death_type:    death_type
     )
-
-    DungeonMaster::Narrative::NarratePromptView.new(
+    prompt_context = DungeonMaster::Narrative::NarratePromptView::BuildContext.new(
       pipeline_context:   ctx,
       loop:               nil,
       combat_context:     {},
@@ -21,6 +20,8 @@ RSpec.describe "death-aware narration prompt", type: :service do
       pacing_text:        "",
       directed_play_text: ""
     )
+
+    DungeonMaster::Narrative::NarratePromptView.new(context: prompt_context)
   end
 
   describe "NarratePromptView#death_type" do
@@ -83,7 +84,7 @@ RSpec.describe "death-aware narration prompt", type: :service do
         player_action: "Attack the goblin.",
         death_type:    death_type
       )
-      DungeonMaster::Narrative::NarratePromptView.new(
+      prompt_context = DungeonMaster::Narrative::NarratePromptView::BuildContext.new(
         pipeline_context:   ctx,
         loop:               nil,
         combat_context:     {},
@@ -91,6 +92,7 @@ RSpec.describe "death-aware narration prompt", type: :service do
         pacing_text:        "",
         directed_play_text: directed_text
       )
+      DungeonMaster::Narrative::NarratePromptView.new(context: prompt_context)
     end
 
     it "returns the directed play text when no death_type" do
@@ -145,9 +147,9 @@ RSpec.describe "death-aware narration prompt", type: :service do
         dm_brief: nil,
         player_action: "I slash at the nearest orc."
       )
-      view = DungeonMaster::Narrative::NarratePromptView.new(
-        pipeline_context: ctx,
-        loop: nil,
+      prompt_context = DungeonMaster::Narrative::NarratePromptView::BuildContext.new(
+        pipeline_context:   ctx,
+        loop:               nil,
         combat_context: {
           "active" => true,
           "participants" => [
@@ -156,10 +158,11 @@ RSpec.describe "death-aware narration prompt", type: :service do
             { "name" => "Orc 2", "type" => "npc", "hp" => 5, "max_hp" => 5 }
           ]
         },
-        time_context: {},
-        pacing_text: "",
+        time_context:       {},
+        pacing_text:        "",
         directed_play_text: ""
       )
+      view = DungeonMaster::Narrative::NarratePromptView.new(context: prompt_context)
 
       prompt = DungeonMaster::PromptRenderer.render("narrate", narrate_view: view)
       expect(prompt).to include("=== CANONICAL COMBAT FACTS (authoritative current hostile state) ===")

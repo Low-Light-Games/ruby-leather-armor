@@ -28,8 +28,7 @@ module DungeonMaster
         new(context: context)
       end
 
-      def initialize(context: nil, **legacy_kwargs)
-        context ||= BuildContext.new(**legacy_kwargs)
+      def initialize(context:)
         @pipeline_context = context.pipeline_context
         @loop = context.loop
         @combat_context = context.combat_context
