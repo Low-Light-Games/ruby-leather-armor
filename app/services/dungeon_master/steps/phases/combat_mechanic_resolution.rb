@@ -104,7 +104,7 @@ module DungeonMaster
               end
 
               dc = resolve_dc_formula(raw[:dc_formula], idx, context: context)
-              save = raw[:save].to_s.downcase
+              save = TextNormalizer.normalized_key(raw[:save])
               skill = SAVE_TO_SKILL_LABEL[save] || save.capitalize
               attrs = raw.except(:dc_formula)
               { domain: "combat" }.merge(attrs).merge(dc: dc, save: save, skill: skill)
@@ -133,11 +133,11 @@ module DungeonMaster
           end
 
           def resolve_spell_dc(f, sheet)
-            name = f[:spell_name].to_s.strip
+            name = TextNormalizer.strip(f[:spell_name])
             raise DungeonMaster::CombatMechanicResolutionError, "spell_name required" if name.blank?
 
             spell = SpellDefinition.find_by(name: name) ||
-                    SpellDefinition.where("LOWER(name) = ?", name.downcase).first
+                    SpellDefinition.where("LOWER(name) = ?", TextNormalizer.normalized_key(name)).first
             unless spell
               raise DungeonMaster::CombatMechanicResolutionError.new(
                 "spell not found: #{name.inspect}",
@@ -155,7 +155,7 @@ module DungeonMaster
 
             cls = sheet.character_class.to_s
             levels = spell.class_levels || {}
-            slug = cls.downcase.split(%r{[/\s]+}).find { |s| levels.key?(s) }
+            slug = TextNormalizer.class_slug_tokens(cls).find { |class_token| levels.key?(class_token) }
             unless slug
               raise DungeonMaster::CombatMechanicResolutionError,
                     "spell #{name} not on character class #{cls.inspect}"
@@ -176,14 +176,14 @@ module DungeonMaster
 
           def resolve_ability_dc(f, context:)
             pattern = f[:pattern].to_s
-            ability = f[:ability].to_s.downcase
+            ability = TextNormalizer.normalized_key(f[:ability])
             unless %w[strength dexterity constitution intelligence wisdom charisma].include?(ability)
               raise DungeonMaster::CombatMechanicResolutionError, "invalid ability for ability_dc"
             end
 
             case pattern
             when "half_hd_plus_ability"
-              origin = f[:origin_target].to_s.strip
+              origin = TextNormalizer.strip(f[:origin_target])
               raise DungeonMaster::CombatMechanicResolutionError, "origin_target required" if origin.blank?
 
               _k, origin_sheet = DungeonMaster::WorldTurn::ParticipantLookup.resolve_target_sheet!(

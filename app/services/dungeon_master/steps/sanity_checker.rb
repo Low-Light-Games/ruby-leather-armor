@@ -159,7 +159,7 @@ module DungeonMaster
         return { allowed: false, reason: condition_violated } if condition_violated.present?
 
         ability_uses = ability_uses.reject do |u|
-          TACTICAL_PHRASE_IGNORE.include?(u[:name].to_s.downcase.strip)
+          TACTICAL_PHRASE_IGNORE.include?(TextNormalizer.normalized_key(u[:name]))
         end
 
         return { allowed: true, reason: nil } if ability_uses.empty?
@@ -176,29 +176,31 @@ module DungeonMaster
 
       def sheet_ability_lookup
         {
-          spells:          @sheet.spell_definitions.map          { |s| s.name.downcase.strip },
-          feats:           @sheet.feat_definitions.map           { |f| f.name.downcase.strip },
-          items:           @sheet.item_definitions.map           { |i| i.name.downcase.strip },
-          class_abilities: @sheet.class_ability_definitions.map  { |a| a.name.downcase.strip },
+          spells:          @sheet.spell_definitions.map          { |spell| TextNormalizer.normalized_key(spell.name) },
+          feats:           @sheet.feat_definitions.map           { |feat| TextNormalizer.normalized_key(feat.name) },
+          items:           @sheet.item_definitions.map           { |item| TextNormalizer.normalized_key(item.name) },
+          class_abilities: @sheet.class_ability_definitions.map  { |ability| TextNormalizer.normalized_key(ability.name) },
           class_ability_registry_seeded: ClassAbilityDefinition.exists?
         }
       end
 
       def ability_on_sheet?(name, type, lookup)
-        n = name.to_s.downcase.strip
+        normalized_name = TextNormalizer.normalized_key(name)
         case type.to_s
-        when "spell"   then lookup[:spells].include?(n)
-        when "feat"    then lookup[:feats].include?(n)
-        when "item"    then lookup[:items].include?(n)
+        when "spell"   then lookup[:spells].include?(normalized_name)
+        when "feat"    then lookup[:feats].include?(normalized_name)
+        when "item"    then lookup[:items].include?(normalized_name)
         when "ability"
           # Two distinct states:
           #   - Global registry empty (data migration not yet run): permissive fallback.
           #   - Registry seeded but this sheet has no matching class ability: reject.
           return true unless lookup[:class_ability_registry_seeded]
 
-          lookup[:class_abilities].include?(n)
+          lookup[:class_abilities].include?(normalized_name)
         else
-          lookup[:spells].include?(n) || lookup[:feats].include?(n) || lookup[:items].include?(n)
+          lookup[:spells].include?(normalized_name) ||
+            lookup[:feats].include?(normalized_name) ||
+            lookup[:items].include?(normalized_name)
         end
       end
 

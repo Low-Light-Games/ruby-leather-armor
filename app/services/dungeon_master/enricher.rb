@@ -5,6 +5,8 @@ module DungeonMaster
   # and StoryMilestone records. Returns proposed records as hashes —
   # the admin reviews and saves them through the normal story editor flow.
   class Enricher
+    include TextNormalizer
+
     def initialize(story, user: nil)
       @story = story
       @config = DmConfig.instance
@@ -115,11 +117,11 @@ module DungeonMaster
       npcs = (parsed["npcs"] || []).map do |raw_npc|
         {
           source: "enricher",
-          name: raw_npc["name"].to_s.strip.presence || "Unnamed NPC",
+          name: present_or(raw_npc["name"], "Unnamed NPC"),
           role: validated_enum(raw_npc["role"], StoryNpc::ROLES, "bystander"),
           location_id: location_map[raw_npc["location_name"]]&.id,
-          description: raw_npc["description"].to_s.strip,
-          knowledge: raw_npc["knowledge"].to_s.strip,
+          description: strip(raw_npc["description"]),
+          knowledge: strip(raw_npc["knowledge"]),
           attitude: validated_enum(raw_npc["attitude"], StoryNpc::ATTITUDES, "indifferent"),
           secret: raw_npc["secret"] == true,
         }
@@ -130,13 +132,13 @@ module DungeonMaster
       clues = (parsed["clues"] || []).map do |raw_clue|
         {
           source: "enricher",
-          title: raw_clue["title"].to_s.strip.presence || "Untitled Clue",
-          description: raw_clue["description"].to_s.strip,
+          title: present_or(raw_clue["title"], "Untitled Clue"),
+          description: strip(raw_clue["description"]),
           discovery_method: validated_enum(raw_clue["discovery_method"], StoryClue::DISCOVERY_METHODS, "exploration"),
           location_id: location_map[raw_clue["location_name"]]&.id,
-          npc_name: raw_clue["npc_name"].to_s.strip.presence,
+          npc_name: strip(raw_clue["npc_name"]).presence,
           prerequisite_titles: Array(raw_clue["prerequisite_titles"]).map(&:to_s),
-          reveals_secret: raw_clue["reveals_secret"].to_s.strip.presence,
+          reveals_secret: strip(raw_clue["reveals_secret"]).presence,
           difficulty: validated_enum(raw_clue["difficulty"], StoryClue::DIFFICULTIES, "moderate"),
         }
       end
@@ -144,21 +146,21 @@ module DungeonMaster
       milestones = (parsed["milestones"] || []).map do |raw_ms|
         {
           source: "enricher",
-          title: raw_ms["title"].to_s.strip.presence || "Untitled Milestone",
-          description: raw_ms["description"].to_s.strip,
+          title: present_or(raw_ms["title"], "Untitled Milestone"),
+          description: strip(raw_ms["description"]),
           trigger_titles: Array(raw_ms["trigger_titles"]).map(&:to_s),
-          consequence: raw_ms["consequence"].to_s.strip,
+          consequence: strip(raw_ms["consequence"]),
         }
       end
 
       encounter_manifests = (parsed["encounter_manifests"] || []).map do |raw_em|
         {
-          encounter_entry_title: raw_em["encounter_entry_title"].to_s.strip,
+          encounter_entry_title: strip(raw_em["encounter_entry_title"]),
           creatures: Array(raw_em["creatures"]).map do |c|
             {
               bestiary_entry_id: c["bestiary_entry_id"],
               count: (c["count"] || 1).to_i,
-              display_name: c["display_name"].to_s.strip.presence || "Creature",
+              display_name: present_or(c["display_name"], "Creature"),
             }
           end
         }
@@ -166,20 +168,20 @@ module DungeonMaster
 
       proposed_encounter_tables = (parsed["proposed_encounter_tables"] || []).map do |raw_table|
         {
-          name: raw_table["name"].to_s.strip.presence || "Encounters",
+          name: present_or(raw_table["name"], "Encounters"),
           encounter_chance: (raw_table["encounter_chance"] || 15).to_i.clamp(0, 100),
           check_frequency_hours: (raw_table["check_frequency_hours"] || 4).to_i.clamp(1, 24),
           entries: Array(raw_table["entries"]).map do |raw_entry|
             {
-              title: raw_entry["title"].to_s.strip.presence || "Encounter",
-              description: raw_entry["description"].to_s.strip,
+              title: present_or(raw_entry["title"], "Encounter"),
+              description: strip(raw_entry["description"]),
               entry_type: %w[fixed ai_prompt].include?(raw_entry["entry_type"]) ? raw_entry["entry_type"] : "ai_prompt",
               weight: (raw_entry["weight"] || 1).to_i.clamp(1, 10),
               creatures: Array(raw_entry["creatures"]).map do |c|
                 {
                   bestiary_entry_id: c["bestiary_entry_id"],
                   count: (c["count"] || 1).to_i,
-                  display_name: c["display_name"].to_s.strip.presence || "Creature",
+                  display_name: present_or(c["display_name"], "Creature"),
                 }
               end
             }
@@ -194,7 +196,7 @@ module DungeonMaster
         encounter_manifests: encounter_manifests,
         proposed_encounter_tables: proposed_encounter_tables,
         initial_contexts: sanitize_initial_contexts(parsed["initial_contexts"]),
-        reasoning: parsed["reasoning"].to_s.strip,
+        reasoning: strip(parsed["reasoning"]),
       }
     end
 
