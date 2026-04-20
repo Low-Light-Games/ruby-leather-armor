@@ -40,6 +40,39 @@ RSpec.describe "death-aware narration prompt", type: :service do
     end
   end
 
+  describe ".for_narrate" do
+    it "builds combat facts from live participant refresh context" do
+      pipeline_context = DungeonMaster::PipelineContext.new(
+        combined_seed: "The goblin collapses.",
+        dm_brief: nil,
+        player_action: "Attack the goblin."
+      )
+      adventure = double("adventure", combat_context: { "active" => true, "participants" => [] }, time_context: {})
+      config = double("config")
+      pipeline_engine = double("pipeline_engine", adventure: adventure, sheet: nil, loop: nil, config: config)
+      live_context = {
+        "active" => true,
+        "participants" => [
+          { "name" => "Goblin", "type" => "npc", "hp" => 0, "max_hp" => 9 }
+        ]
+      }
+
+      allow(DungeonMaster::WorldTurn::LiveContext).to receive(:merge_live_participants).and_return(live_context)
+      allow(DungeonMaster::PromptHelpers).to receive(:pacing_instructions).with(config).and_return("")
+      allow(DungeonMaster::PromptHelpers).to receive(:directed_play_instructions).with(adventure).and_return("")
+
+      view = DungeonMaster::Narrative::NarratePromptView.for_narrate(pipeline_engine, pipeline_context)
+
+      expect(DungeonMaster::WorldTurn::LiveContext).to have_received(:merge_live_participants).with(
+        { "active" => true, "participants" => [] },
+        adventure: adventure,
+        sheet: nil
+      )
+      expect(view.combat_facts.dig("hostiles", 0, "hp")).to eq(0)
+      expect(view.combat_facts["any_hostile_alive"]).to be(false)
+    end
+  end
+
   describe "NarratePromptView#directed_play_text" do
     let(:directed_text) { "=== DIRECTED PLAY STYLE ===" }
 

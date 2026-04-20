@@ -5,10 +5,17 @@ module DungeonMaster
     # Single ERB root for `narrate.text.erb`: loop, time, pacing, and PipelineContext fields.
     class NarratePromptView
       def self.for_narrate(pipeline_engine, pipeline_context)
+        base_combat_context = pipeline_engine.adventure.combat_context || {}
+        live_combat_context = WorldTurn::LiveContext.merge_live_participants(
+          base_combat_context,
+          adventure: pipeline_engine.adventure,
+          sheet: pipeline_engine.sheet
+        )
+
         new(
           pipeline_context:   pipeline_context,
           loop:               pipeline_engine.loop,
-          combat_context:     pipeline_engine.adventure.combat_context || {},
+          combat_context:     live_combat_context,
           time_context:       pipeline_engine.adventure.time_context || {},
           pacing_text:        PromptHelpers.pacing_instructions(pipeline_engine.config),
           directed_play_text: PromptHelpers.directed_play_instructions(pipeline_engine.adventure)
