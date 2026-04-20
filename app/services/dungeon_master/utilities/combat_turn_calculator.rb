@@ -10,14 +10,14 @@ module DungeonMaster
       class << self
         # @return [Hash] :npc_turns => Array<Combatant>, :next_state => Hash of string keys
         def call(combat_context:, player_acted_this_round: true)
-          ctx = combat_context.deep_stringify_keys
-          return default_skip unless ctx["active"] == true
+          normalized_combat_context = combat_context.deep_stringify_keys
+          return default_skip unless normalized_combat_context["active"] == true
 
-          turn_order = Array(ctx["turn_order"]).map(&:to_s)
-          participants = Array(ctx["participants"]).map { |p| Combatant.from_context_hash(p) }
+          turn_order = Array(normalized_combat_context["turn_order"]).map(&:to_s)
+          participants = Array(normalized_combat_context["participants"]).map { |participant| Combatant.from_context_hash(participant) }
           by_name = participants.index_by(&:name)
 
-          round = ctx["round"].to_i
+          round = normalized_combat_context["round"].to_i
           round = 1 if round < 1
 
           npcs = participants.select(&:npc?)
@@ -34,19 +34,19 @@ module DungeonMaster
             }
           end
 
-          current_turn = ctx["current_turn"].presence || turn_order.first
+          current_turn = normalized_combat_context["current_turn"].presence || turn_order.first
 
-          p_idx = turn_order.index(PLAYER_NAME)
-          return missing_player_state(round) unless p_idx
+          player_index = turn_order.index(PLAYER_NAME)
+          return missing_player_state(round) unless player_index
 
           npc_turns = []
 
-          return resolve_player_first_turn_handoff(turn_order, by_name, npc_turns, p_idx, current_turn, round) unless player_acted_this_round
+          return resolve_player_first_turn_handoff(turn_order, by_name, npc_turns, player_index, current_turn, round) unless player_acted_this_round
 
           if player_just_acted?(current_turn)
-            append_wrapped_round_after_player(turn_order, by_name, npc_turns, p_idx)
+            append_wrapped_round_after_player(turn_order, by_name, npc_turns, player_index)
           else
-            append_remaining_npcs_after_out_of_order_player_turn(turn_order, by_name, npc_turns, p_idx, current_turn)
+            append_remaining_npcs_after_out_of_order_player_turn(turn_order, by_name, npc_turns, player_index, current_turn)
           end
 
           next_round_state(npc_turns, round)
@@ -118,11 +118,11 @@ module DungeonMaster
         end
 
         def append_npc!(by_name, name, npc_turns)
-          c = by_name[name.to_s]
-          return unless c&.npc?
-          return unless c.can_act?
+          combatant = by_name[name.to_s]
+          return unless combatant&.npc?
+          return unless combatant.can_act?
 
-          npc_turns << c
+          npc_turns << combatant
         end
       end
     end

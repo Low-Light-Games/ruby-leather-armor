@@ -22,10 +22,10 @@ module DungeonMaster
             lines << "#{npc.name} surrenders."
             npc_muts << { creature_sheet_id: npc.creature_sheet_id, name: npc.name, conditions_add: ["surrendered"] }
           when "attack"
-            res = resolve_attack(npc, parsed, combat_ctx, player_sheet, adventure)
-            lines.concat(res[:lines])
-            npc_muts.concat(res[:npc_muts])
-            player_hp += res[:player_hp_delta].to_i
+            attack_resolution = resolve_attack(npc, parsed, combat_ctx, player_sheet, adventure)
+            lines.concat(attack_resolution[:lines])
+            npc_muts.concat(attack_resolution[:npc_muts])
+            player_hp += attack_resolution[:player_hp_delta].to_i
           else
             lines << "#{npc.name} takes no decisive action."
           end

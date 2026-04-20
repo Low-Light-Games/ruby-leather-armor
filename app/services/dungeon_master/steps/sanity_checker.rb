@@ -138,11 +138,11 @@ module DungeonMaster
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
 
         parsed = timed_ai_call("sanity_checker", prompt_summary, request_body) do
-          raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
-                          max_tokens: @config.token_budget_for("sanity_checker"),
-                          step_name: "sanity_checker",
-                          model: @config.model_for("sanity_checker"))
-          [raw, @ai.parse_json(raw)]
+          raw_response = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
+                                  max_tokens: @config.token_budget_for("sanity_checker"),
+                                  step_name: "sanity_checker",
+                                  model: @config.model_for("sanity_checker"))
+          [raw_response, @ai.parse_json(raw_response)]
         end
 
         ability_uses       = Array(parsed["ability_uses"]).map(&:deep_symbolize_keys)
@@ -219,11 +219,11 @@ module DungeonMaster
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
 
         parsed = timed_ai_call("sanity_checker_world", prompt_summary, request_body) do
-          raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
-                          max_tokens: @config.token_budget_for("sanity_checker_world"),
-                          step_name: "sanity_checker_world",
-                          model: @config.model_for("sanity_checker_world"))
-          [raw, @ai.parse_json(raw)]
+          raw_response = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
+                                  max_tokens: @config.token_budget_for("sanity_checker_world"),
+                                  step_name: "sanity_checker_world",
+                                  model: @config.model_for("sanity_checker_world"))
+          [raw_response, @ai.parse_json(raw_response)]
         end
 
         {
@@ -235,9 +235,9 @@ module DungeonMaster
       end
 
       def build_capability_prompt_context
-        ds = @sheet&.derived_stats || {}
+        derived_stats = @sheet&.derived_stats || {}
         PromptViews::SanityCheckerPromptContext.new(
-          condition_restrictions: ds["condition_restrictions"]
+          condition_restrictions: derived_stats["condition_restrictions"]
         )
       end
 

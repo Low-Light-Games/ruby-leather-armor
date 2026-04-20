@@ -23,13 +23,13 @@ module DungeonMaster
 
           adventure.with_lock do
             adventure.reload
-            ctx = adventure.combat_context
-            next unless ctx.is_a?(Hash) && ctx["active"] == true
-            next unless Array(ctx["participants"]).any?
+            combat_context = adventure.combat_context
+            next unless combat_context.is_a?(Hash) && combat_context["active"] == true
+            next unless Array(combat_context["participants"]).any?
 
-            ref = ctx["battlefield_ref"]
-            ref_id = ref["id"].to_i if ref.is_a?(Hash) && ref["id"].present?
-            participants = Array(ctx["participants"])
+            battlefield_reference = combat_context["battlefield_ref"]
+            reference_id = battlefield_reference["id"].to_i if battlefield_reference.is_a?(Hash) && battlefield_reference["id"].present?
+            participants = Array(combat_context["participants"])
             token_match = ->(bf) { PersistCombatStart.same_token_set_as_participants?(bf.tokens, participants) }
 
             actives = AdventureBattlefield.active_for(adventure.id).order(:id).to_a
@@ -40,33 +40,33 @@ module DungeonMaster
 
             actives = AdventureBattlefield.active_for(adventure.id).order(:id).to_a
             if actives.many?
-              keeper = actives.find { |b| b.id == ref_id } if ref_id&.positive?
+              keeper = actives.find { |battlefield| battlefield.id == reference_id } if reference_id&.positive?
               keeper ||= actives.first
               (actives - [keeper]).each(&:archive!)
               adventure.reload
             end
 
-            if ref_id&.positive?
-              bf = adventure.adventure_battlefields.find_by(id: ref_id)
-              next if bf&.status == "active" && token_match.call(bf)
+            if reference_id&.positive?
+              referenced_battlefield = adventure.adventure_battlefields.find_by(id: reference_id)
+              next if referenced_battlefield&.status == "active" && token_match.call(referenced_battlefield)
             end
 
             keeper = AdventureBattlefield.active_for(adventure.id).order(:id).first
 
             if keeper && token_match.call(keeper)
-              ctx2 = ctx.deep_dup.deep_stringify_keys
-              ctx2["battlefield_ref"] = {
+              updated_combat_context = combat_context.deep_dup.deep_stringify_keys
+              updated_combat_context["battlefield_ref"] = {
                 "id" => keeper.id,
                 "version" => keeper.version,
                 "topology" => keeper.topology
               }
-              adventure.update!(combat_context: ctx2)
+              adventure.update!(combat_context: updated_combat_context)
               next
             end
 
-            data = ctx.deep_dup.deep_stringify_keys
-            data.delete("battlefield_ref")
-            PersistCombatStart.call(adventure: adventure, combat_data: data, sheet: sheet)
+            combat_payload = combat_context.deep_dup.deep_stringify_keys
+            combat_payload.delete("battlefield_ref")
+            PersistCombatStart.call(adventure: adventure, combat_data: combat_payload, sheet: sheet)
           end
         end
       end

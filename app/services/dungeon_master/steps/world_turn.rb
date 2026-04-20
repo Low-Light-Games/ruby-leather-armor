@@ -145,24 +145,24 @@ module DungeonMaster
           entry  = evaluator_fan_out_result!(by_step, step_keys[idx], "npc_action")
           parsed = (entry["parsed_response"] || {}).deep_symbolize_keys
 
-          res = DungeonMaster::WorldTurn::NpcActionResolver.resolve(
+          resolution = DungeonMaster::WorldTurn::NpcActionResolver.resolve(
             npc: npc, parsed: parsed, combat_ctx: working_ctx,
             player_sheet: @sheet, adventure: @adventure)
-          lines.concat(res[:lines])
+          lines.concat(resolution[:lines])
 
           @log.play_log!(
             "world_turn_resolution",
-            "World turn: #{npc.name} — #{res[:lines].join(' | ').truncate(200)}",
+            "World turn: #{npc.name} — #{resolution[:lines].join(' | ').truncate(200)}",
             parsed_response: {
               npc: npc.name, action: parsed[:action],
               attack_modifier: parsed[:attack_modifier], damage_dice: parsed[:damage_dice],
-              player_hp_delta: res[:player_hp_delta], npc_mutations: res[:npc_muts],
-              lines: res[:lines]
+              player_hp_delta: resolution[:player_hp_delta], npc_mutations: resolution[:npc_muts],
+              lines: resolution[:lines]
             }
           )
 
-          apply_world_turn_step_mutations!(res[:player_hp_delta].to_i, res[:npc_muts])
-          Battlefield::ApplyPatches.call(adventure: @adventure, patches: res[:battlefield_patches], log: @log) if res[:battlefield_patches].present?
+          apply_world_turn_step_mutations!(resolution[:player_hp_delta].to_i, resolution[:npc_muts])
+          Battlefield::ApplyPatches.call(adventure: @adventure, patches: resolution[:battlefield_patches], log: @log) if resolution[:battlefield_patches].present?
 
           reload_world_turn_records!
           live_sheets.merge!(@adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id))

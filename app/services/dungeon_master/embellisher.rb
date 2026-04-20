@@ -41,7 +41,7 @@ module DungeonMaster
 
       t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       begin
-        raw = client.chat(
+        raw_response = client.chat(
           system_prompt: system_prompt,
           user_message: user_msg,
           max_tokens: 2500,
@@ -49,13 +49,13 @@ module DungeonMaster
           model: model,
         )
 
-        parsed = client.parse_json(raw)
+        parsed = client.parse_json(raw_response)
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
 
         log.ai_log!(
           "embellisher",
           "Adventure ##{@adventure.id} (#{@mode}): #{@story.premise&.truncate(80)}",
-          raw, parsed,
+          raw_response, parsed,
           parse_status: client.last_parse_status,
           model_used: client.last_model_used,
           duration_ms: duration_ms,

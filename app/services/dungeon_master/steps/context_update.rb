@@ -89,11 +89,11 @@ module DungeonMaster
         request_body = { system_prompt: system_prompt, user_message: user_msg }
 
         timed_ai_call("macro_narrative_update", prompt_summary, request_body) do
-          raw = @ai.chat(system_prompt: system_prompt, user_message: user_msg,
-                          max_tokens: @config.token_budget_for("macro_narrative_update"),
-                          step_name: "macro_narrative_update",
-                          model: @config.model_for("macro_narrative_update"))
-          [raw, @ai.parse_json(raw)]
+          raw_response = @ai.chat(system_prompt: system_prompt, user_message: user_msg,
+                                  max_tokens: @config.token_budget_for("macro_narrative_update"),
+                                  step_name: "macro_narrative_update",
+                                  model: @config.model_for("macro_narrative_update"))
+          [raw_response, @ai.parse_json(raw_response)]
         end
       end
 
@@ -104,7 +104,7 @@ module DungeonMaster
         has_combat_initialization = mutations_hash["combat_initialization"].is_a?(Hash)
         has_combat_advancement = mutations_hash["combat_state_advancement"].is_a?(Hash)
 
-        updates = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, h|
+        updates = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, updated_contexts|
           key = "#{field}_context"
           domain_result = parsed[key] || parsed[key.to_sym]
           next unless domain_result.present?
@@ -139,14 +139,14 @@ module DungeonMaster
               val = existing.deep_merge(val)
             end
           end
-          h[key.to_sym] = val
+          updated_contexts[key.to_sym] = val
         end
         @adventure.update!(updates) if updates.any?
 
         if updates.key?(:combat_context)
           @adventure.reload
-          ctx = @adventure.combat_context
-          if ctx.is_a?(Hash) && prev_active == true && ctx["active"] == false
+          combat_context = @adventure.combat_context
+          if combat_context.is_a?(Hash) && prev_active == true && combat_context["active"] == false
             Battlefield::ArchiveCombatEnd.call(adventure: @adventure)
           end
         end
@@ -211,10 +211,10 @@ module DungeonMaster
       end
 
       def aggregate_micro_context_results(by_step)
-        PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, h|
+        PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, aggregated_results|
           key = "#{field}_context"
           parsed = evaluator_fan_out_result!(by_step, "#{field}_context_update", "micro_context_update")["parsed_response"] || {}
-          h[key] = normalize_domain_context_result(field, parsed)
+          aggregated_results[key] = normalize_domain_context_result(field, parsed)
         end.merge(
           evaluator_fan_out_result!(by_step, META_CONTEXT_STEP, "micro_context_update")["parsed_response"] || {}
         )
@@ -222,20 +222,20 @@ module DungeonMaster
 
       def normalize_domain_context_result(field, result)
         key = "#{field}_context"
-        h = result.is_a?(Hash) ? result.deep_stringify_keys : {}
-        context = if h.key?("context")
-                    h["context"]
-                  elsif h.key?(key)
-                    h[key]
-                  elsif h.key?(field)
-                    h[field]
-                  elsif h.present? && !h.key?("unchanged")
-                    h
+        normalized_result = result.is_a?(Hash) ? result.deep_stringify_keys : {}
+        context = if normalized_result.key?("context")
+                    normalized_result["context"]
+                  elsif normalized_result.key?(key)
+                    normalized_result[key]
+                  elsif normalized_result.key?(field)
+                    normalized_result[field]
+                  elsif normalized_result.present? && !normalized_result.key?("unchanged")
+                    normalized_result
                   else
                     nil
                   end
         {
-          "unchanged" => h["unchanged"] == true,
+          "unchanged" => normalized_result["unchanged"] == true,
           "context" => context
         }
       end
@@ -353,10 +353,10 @@ module DungeonMaster
       end
 
       def canonical_combat_participants
-        ctx = @adventure.combat_context
-        return [] unless ctx.is_a?(Hash)
+        combat_context = @adventure.combat_context
+        return [] unless combat_context.is_a?(Hash)
 
-        Array(ctx["participants"]).map(&:deep_stringify_keys)
+        Array(combat_context["participants"]).map(&:deep_stringify_keys)
       end
 
       # Log context wishes emitted by the AI when the outcome touches something

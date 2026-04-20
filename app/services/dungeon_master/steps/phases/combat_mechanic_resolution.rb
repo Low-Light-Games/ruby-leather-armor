@@ -117,13 +117,13 @@ module DungeonMaster
           end
 
           def resolve_dc_formula(formula, idx, context:)
-            f = formula.is_a?(Hash) ? formula.deep_symbolize_keys : {}
-            kind = f[:kind].to_s
+            formula_payload = formula.is_a?(Hash) ? formula.deep_symbolize_keys : {}
+            kind = formula_payload[:kind].to_s
             case kind
             when "spell_dc"
-              resolve_spell_dc(f, context.sheet)
+              resolve_spell_dc(formula_payload, context.sheet)
             when "ability_dc"
-              resolve_ability_dc(f, context: context)
+              resolve_ability_dc(formula_payload, context: context)
             else
               raise DungeonMaster::CombatMechanicResolutionError.new(
                 "unsupported dc_formula.kind: #{kind.inspect} (roll index #{idx})",
@@ -132,8 +132,8 @@ module DungeonMaster
             end
           end
 
-          def resolve_spell_dc(f, sheet)
-            name = TextNormalizer.strip(f[:spell_name])
+          def resolve_spell_dc(formula_payload, sheet)
+            name = TextNormalizer.strip(formula_payload[:spell_name])
             raise DungeonMaster::CombatMechanicResolutionError, "spell_name required" if name.blank?
 
             spell = SpellDefinition.find_by(name: name) ||
@@ -145,7 +145,7 @@ module DungeonMaster
               )
             end
 
-            caster = f[:caster].to_s.presence || "player"
+            caster = formula_payload[:caster].to_s.presence || "player"
             unless caster == "player"
               raise DungeonMaster::CombatMechanicResolutionError.new(
                 "spell_dc only supports player-cast spells (caster must be \"player\"); use ability_dc for NPC abilities",
@@ -174,16 +174,16 @@ module DungeonMaster
             10 + spell_level + mod
           end
 
-          def resolve_ability_dc(f, context:)
-            pattern = f[:pattern].to_s
-            ability = TextNormalizer.normalized_key(f[:ability])
+          def resolve_ability_dc(formula_payload, context:)
+            pattern = formula_payload[:pattern].to_s
+            ability = TextNormalizer.normalized_key(formula_payload[:ability])
             unless %w[strength dexterity constitution intelligence wisdom charisma].include?(ability)
               raise DungeonMaster::CombatMechanicResolutionError, "invalid ability for ability_dc"
             end
 
             case pattern
             when "half_hd_plus_ability"
-              origin = TextNormalizer.strip(f[:origin_target])
+              origin = TextNormalizer.strip(formula_payload[:origin_target])
               raise DungeonMaster::CombatMechanicResolutionError, "origin_target required" if origin.blank?
 
               _k, origin_sheet = DungeonMaster::WorldTurn::ParticipantLookup.resolve_target_sheet!(
@@ -212,8 +212,8 @@ module DungeonMaster
                     "sheet does not expose ability #{name.inspect}"
             end
 
-            ds = sheet.derived_stats || {}
-            mods = ds["mods"] || {}
+            derived_stats = sheet.derived_stats || {}
+            mods = derived_stats["mods"] || {}
             m = mods[name]
             return m.to_i if m
 
@@ -224,16 +224,16 @@ module DungeonMaster
           def normalize_npc_actions(list, log:)
             allowed = []
             Array(list).each do |a|
-              h = a.is_a?(Hash) ? a.deep_symbolize_keys : {}
-              next if h.blank?
+              action_payload = a.is_a?(Hash) ? a.deep_symbolize_keys : {}
+              next if action_payload.blank?
 
-              if h[:action].to_s != "attack_of_opportunity"
+              if action_payload[:action].to_s != "attack_of_opportunity"
                 log&.play_log!("combat_mech_eval_npc_action_dropped",
-                  "Dropped npc_action #{h[:action].inspect} (only attack_of_opportunity allowed)")
+                  "Dropped npc_action #{action_payload[:action].inspect} (only attack_of_opportunity allowed)")
                 next
               end
 
-              allowed << h
+              allowed << action_payload
             end
             allowed
           end

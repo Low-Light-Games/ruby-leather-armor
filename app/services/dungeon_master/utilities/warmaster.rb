@@ -42,7 +42,7 @@ module DungeonMaster
       #                    pre-established scene enemies join the combat.
       def initialize_from_encounter!(request: nil, **kwargs)
         request ||= EncounterInitializationRequest.new(**kwargs)
-        ctx = Context.new(
+        warmaster_context = Context.new(
           adventure: request.adventure,
           sheet: request.sheet,
           log: request.log,
@@ -51,40 +51,40 @@ module DungeonMaster
         )
 
         creatures = if request.encounter_entry.has_manifest?
-                      spawn_from_manifest(ctx, request.encounter_entry.creature_manifest)
+                      spawn_from_manifest(warmaster_context, request.encounter_entry.creature_manifest)
                     elsif request.creatures_data.is_a?(Array) && request.creatures_data.any?
                       names = request.creatures_data.flat_map do |c|
                         name = (c["name"] || c[:name] || "creature").to_s.singularize
                         count = (c["count"] || c[:count] || 1).to_i.clamp(1, 20)
                         Array.new(count, name)
                       end
-                      spawn_from_names(ctx, names)
+                      spawn_from_names(warmaster_context, names)
                     else
                       request.log.log!(:warn, "Warmaster: no manifest or creatures_data for entry '#{request.encounter_entry.title}' — cannot spawn creatures")
                       []
                     end
 
-        creatures = merge_scene_enemy_names(ctx, creatures, request.scene_enemy_names)
+        creatures = merge_scene_enemy_names(warmaster_context, creatures, request.scene_enemy_names)
 
-        build_initiative_result(ctx, creatures)
+        build_initiative_result(warmaster_context, creatures)
       end
 
       # Path B: from combat beacon combatant names
       def initialize_from_names!(request: nil, **kwargs)
         request ||= NamesPreparationRequest.new(**kwargs)
-        ctx = Context.new(adventure: request.adventure, sheet: request.sheet, log: request.log, config: request.config, ai: request.ai)
+        warmaster_context = Context.new(adventure: request.adventure, sheet: request.sheet, log: request.log, config: request.config, ai: request.ai)
         creatures = prepare_from_names!(request: request)[:creatures]
-        build_initiative_result(ctx, creatures)
+        build_initiative_result(warmaster_context, creatures)
       end
 
       # Path C: eager canonical creature prep for combat-starting actions before mech-eval.
       # Creates / reuses creature sheets and rolls NPC initiative before combat activation.
       def prepare_from_names!(request: nil, **kwargs)
         request ||= NamesPreparationRequest.new(**kwargs)
-        ctx = Context.new(adventure: request.adventure, sheet: request.sheet, log: request.log, config: request.config, ai: request.ai)
+        warmaster_context = Context.new(adventure: request.adventure, sheet: request.sheet, log: request.log, config: request.config, ai: request.ai)
         names = expand_combatant_names(request.combatant_names, request.count)
-        creatures = spawn_from_names(ctx, names)
-        creature_data = prepare_creature_data(ctx, creatures)
+        creatures = spawn_from_names(warmaster_context, names)
+        creature_data = prepare_creature_data(warmaster_context, creatures)
 
         {
           status: creature_data.any? ? :prepared : :no_creatures,
@@ -269,9 +269,9 @@ module DungeonMaster
       end
 
       def pending_npc_combatants(adventure, player_sheet)
-        ctx = adventure.combat_context
-        return [] unless ctx.is_a?(Hash) && ctx["active"] != true
-        participants = Array(ctx["participants"])
+        combat_context = adventure.combat_context
+        return [] unless combat_context.is_a?(Hash) && combat_context["active"] != true
+        participants = Array(combat_context["participants"])
         return [] if participants.empty?
         return [] if participants.any? { |participant| participant["type"].to_s == "player" }
 
@@ -374,23 +374,23 @@ module DungeonMaster
 
       def create_from_ai_static(ctx, name, party_level)
         t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        raw = nil
+        raw_response = nil
         prompt_summary = "Warmaster/CreatureGeneration: #{name} (party level #{party_level})"
 
         system_prompt, user_msg = PromptRenderer.render_with_user_message("creature_generation",
           creature_name: name, party_level: party_level)
 
         request_body = { system_prompt: system_prompt, user_message: user_msg }
-        raw = ctx.ai.chat(
+        raw_response = ctx.ai.chat(
           system_prompt: system_prompt,
           user_message: user_msg,
           max_tokens: ctx.config.token_budget_for("creature_generation"),
           step_name: "creature_generation",
           model: ctx.config.model_for("creature_generation"))
 
-        parsed = ctx.ai.parse_json(raw)
+        parsed = ctx.ai.parse_json(raw_response)
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        ctx.log.ai_log!("creature_generation", prompt_summary, raw, parsed,
+        ctx.log.ai_log!("creature_generation", prompt_summary, raw_response, parsed,
                         parse_status: ctx.ai.last_parse_status, request_body: request_body,
                         model_used: ctx.ai.last_model_used, duration_ms: duration_ms,
                         usage: ctx.ai.last_usage)

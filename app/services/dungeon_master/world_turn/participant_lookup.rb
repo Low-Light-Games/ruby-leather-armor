@@ -14,35 +14,35 @@ module DungeonMaster
       LookupContext = Struct.new(:combat_ctx, :player_sheet, :adventure, keyword_init: true)
 
       def creature_sheet_id_for_name(name, combat_ctx)
-        p = Array(combat_ctx["participants"]).find { |x| x["name"].to_s == name.to_s }
-        sid = p && p["creature_sheet_id"]
-        sid.present? ? sid.to_i : nil
+        participant = Array(combat_ctx["participants"]).find { |entry| entry["name"].to_s == name.to_s }
+        creature_sheet_id = participant && participant["creature_sheet_id"]
+        creature_sheet_id.present? ? creature_sheet_id.to_i : nil
       end
 
       def ac_for_name(name, context: nil, **kwargs)
         lookup = context || LookupContext.new(**kwargs)
         return lookup.player_sheet.derived_stats.fetch("ac").to_i if name.to_s.casecmp("player").zero?
 
-        sid = creature_sheet_id_for_name(name, lookup.combat_ctx)
-        return nil unless sid
+        creature_sheet_id = creature_sheet_id_for_name(name, lookup.combat_ctx)
+        return nil unless creature_sheet_id
 
-        c = lookup.adventure.creature_sheets.find_by(id: sid)
-        (c&.derived_stats || {})["ac"]&.to_i
+        creature_sheet = lookup.adventure.creature_sheets.find_by(id: creature_sheet_id)
+        (creature_sheet&.derived_stats || {})["ac"]&.to_i
       end
 
       # Strict combat targeting: participant names only (case-insensitive exact). "player" → PC sheet.
       # @return [Array<Symbol, AdventureSheet|CreatureSheet>] `[:player, sheet]` or `[:creature, sheet]`
       def resolve_target_sheet!(target_name, context: nil, **kwargs)
         lookup = context || LookupContext.new(**kwargs)
-        n = target_name.to_s.strip
-        if n.casecmp("player").zero?
+        normalized_target_name = target_name.to_s.strip
+        if normalized_target_name.casecmp("player").zero?
           raise DungeonMaster::CombatMechanicResolutionError, "player sheet required" if lookup.player_sheet.nil?
 
           return [:player, lookup.player_sheet]
         end
 
         participants = Array(lookup.combat_ctx["participants"])
-        matches = participants.select { |p| p["name"].to_s.strip.casecmp(n).zero? }
+        matches = participants.select { |participant| participant["name"].to_s.strip.casecmp(normalized_target_name).zero? }
         if matches.empty?
           raise DungeonMaster::CombatMechanicResolutionError.new(
             "target not in combat participants: #{target_name.inspect}",
@@ -56,11 +56,11 @@ module DungeonMaster
           )
         end
 
-        sid = matches.first["creature_sheet_id"].to_i
-        creature = lookup.adventure.creature_sheets.find_by(id: sid)
+        creature_sheet_id = matches.first["creature_sheet_id"].to_i
+        creature = lookup.adventure.creature_sheets.find_by(id: creature_sheet_id)
         unless creature
           raise DungeonMaster::CombatMechanicResolutionError.new(
-            "creature sheet missing for participant (id=#{sid})",
+            "creature sheet missing for participant (id=#{creature_sheet_id})",
             code: :creature_missing
           )
         end
@@ -80,16 +80,16 @@ module DungeonMaster
         end
 
         _kind, sheet = resolve_target_sheet!(target_name, context: lookup)
-        ds = sheet.derived_stats || {}
-        val = ds[stat_key] || ds[stat_key.to_sym]
-        if val.nil?
+        derived_stats = sheet.derived_stats || {}
+        defense_dc = derived_stats[stat_key] || derived_stats[stat_key.to_sym]
+        if defense_dc.nil?
           raise DungeonMaster::CombatMechanicResolutionError.new(
             "missing #{stat_key} on target sheet",
             code: :missing_derived_stat
           )
         end
 
-        val.to_i
+        defense_dc.to_i
       end
     end
   end

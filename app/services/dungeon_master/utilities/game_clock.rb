@@ -51,19 +51,19 @@ module DungeonMaster
       end
 
       def advance_clock!(adventure, hours, intent: nil, reset_encounter_check: false)
-        ctx = TimeAdvanceContext.new(
+        advanced_time_context = TimeAdvanceContext.new(
           old_context: (adventure.time_context || {}),
           hours: hours,
           reset_encounter_check: reset_encounter_check
         ).to_h
 
         if rest_action?(intent)
-          ctx["hours_since_last_rest"] = 0
-          ctx["rest_clears_fatigue"] = true
+          advanced_time_context["hours_since_last_rest"] = 0
+          advanced_time_context["rest_clears_fatigue"] = true
         end
 
-        adventure.update!(time_context: ctx)
-        ctx
+        adventure.update!(time_context: advanced_time_context)
+        advanced_time_context
       end
 
       def light_for_hour(hour)
@@ -87,8 +87,8 @@ module DungeonMaster
       # Converts a time_context hash to an absolute monotonic game-hours value.
       # Used by ActiveBuffResolver and TimeKeeper to compare expiry thresholds.
       def absolute_hours(time_context)
-        ctx = time_context || {}
-        (ctx["adventure_day"].to_i - 1) * 24.0 + ctx["current_hour"].to_f
+        normalized_time_context = time_context || {}
+        (normalized_time_context["adventure_day"].to_i - 1) * 24.0 + normalized_time_context["current_hour"].to_f
       end
 
       def rest_action?(intent)
