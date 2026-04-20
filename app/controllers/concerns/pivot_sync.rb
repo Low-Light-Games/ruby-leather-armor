@@ -42,11 +42,13 @@ module PivotSync
 
     (spell_data[:known] || []).each do |spell_id|
       next unless SpellDefinition.exists?(spell_id)
+
       spell_relation.create!(spell_id: spell_id, storage_type: "known")
     end
 
     (spell_data[:spellbook] || []).each do |spell_id|
       next unless SpellDefinition.exists?(spell_id)
+
       spell_relation.create!(spell_id: spell_id, storage_type: "spellbook")
     end
   end
@@ -57,6 +59,7 @@ module PivotSync
     spell_relation.where(storage_type: storage_type).destroy_all
     spell_ids.each do |spell_id|
       next unless SpellDefinition.exists?(spell_id)
+
       spell_relation.create!(spell_id: spell_id, storage_type: storage_type)
     end
   end

@@ -276,8 +276,10 @@ module DungeonMaster
       def pending_npc_combatants(adventure, player_sheet)
         combat_context = adventure.combat_context
         return [] unless combat_context.is_a?(Hash) && combat_context["active"] != true
+
         participants = Array(combat_context["participants"])
         return [] if participants.empty?
+
         return [] if participants.any? { |participant| participant["type"].to_s == "player" }
 
         participants.filter_map do |participant|

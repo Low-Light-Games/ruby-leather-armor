@@ -31,7 +31,9 @@ module Admin
 
     def update
       return update_time_context if time_context_update_request?
+
       return update_context if context_update_request?
+
       return update_adventure_attributes if adventure_attributes_update_request?
 
       redirect_to admin_adventure_path(@adventure), alert: "Nothing to update."

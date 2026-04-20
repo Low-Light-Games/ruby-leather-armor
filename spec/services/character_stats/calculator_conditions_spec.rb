@@ -107,6 +107,7 @@ RSpec.describe CharacterStats::Calculator, "condition integration", type: :model
     it "omits zero-value entries except Base" do
       stats[:ac_breakdown].each do |entry|
         next if entry[:label] == "Base"
+
         expect(entry[:value].to_i).not_to eq(0)
       end
     end

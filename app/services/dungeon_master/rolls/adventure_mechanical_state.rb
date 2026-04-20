@@ -24,6 +24,7 @@ module DungeonMaster
                                    .where("id > ?", last_init_msg.id)
                                    .newest_first.first
         return unless last_player_response
+
         return if last_player_response.message_type == "initiative_result"
 
         player_init = Utilities::Warmaster.auto_roll_player_initiative(sheet)

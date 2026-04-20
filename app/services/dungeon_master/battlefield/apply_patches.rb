@@ -19,6 +19,7 @@ module DungeonMaster
 
             ref = ctx["battlefield_ref"] || ctx[:battlefield_ref]
             return if ref.blank?
+
             battlefield_reference = BattlefieldReference.from_hash(ref)
             return unless battlefield_reference
 
@@ -69,6 +70,7 @@ module DungeonMaster
           when "move_token"
             id = h["id"].to_s
             raise ArgumentError, "move_token requires id" if id.blank?
+
             tok = (data["tokens"][id] ||= {})
             tok["x"] = h["x"].to_i if h.key?("x")
             tok["y"] = h["y"].to_i if h.key?("y")

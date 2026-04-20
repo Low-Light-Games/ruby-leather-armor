@@ -20,13 +20,17 @@ class EncounterTableEntry < ApplicationRecord
 
   def matches_terrain?(terrain)
     return true if terrain_types.blank?
+
     terrain_types.split(",").map(&:strip).include?(terrain.to_s)
   end
 
   def matches_level?(level)
     return true if min_party_level.nil? && max_party_level.nil?
+
     return level >= min_party_level if max_party_level.nil?
+
     return level <= max_party_level if min_party_level.nil?
+
     level.between?(min_party_level, max_party_level)
   end
 

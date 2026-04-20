@@ -67,6 +67,7 @@ module Admin
 
     def reverse_hp_formula(sheet)
       return "1d10+2" unless sheet.max_hp && sheet.constitution
+
       con_mod = ((sheet.constitution - 10).to_f / 2).floor
       level = [sheet.level, 1].max
       flat_bonus = con_mod * level

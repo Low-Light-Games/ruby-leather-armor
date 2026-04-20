@@ -169,6 +169,7 @@ module DungeonMaster
           Array(rolls).reject do |roll|
             violation = roll_domain_violation(rules, roll)
             next false unless violation
+
             ownership_violation_payload = MechEvalOwnershipViolationLogPayload.new(
               domain: domain,
               violation: violation,
@@ -186,6 +187,7 @@ module DungeonMaster
 
         def roll_domain_violation(rules, roll)
           return "forbidden_type" if Array(rules[:forbidden_types]).include?(roll[:type].to_s)
+
           return "forbidden_skill" if Array(rules[:forbidden_skills]).include?(roll[:skill].to_s)
 
           nil

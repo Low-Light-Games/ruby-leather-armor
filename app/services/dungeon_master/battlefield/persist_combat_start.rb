@@ -100,6 +100,7 @@ module DungeonMaster
           tokens = {}
           Array(participants).each_with_index do |p, i|
             next unless p.is_a?(Hash)
+
             name = p["name"].to_s.presence || "unknown_#{i}"
             id = token_id_for(p, i)
             x = 18 + (i % 5) * 2

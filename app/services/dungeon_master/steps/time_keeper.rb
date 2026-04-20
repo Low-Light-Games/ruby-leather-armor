@@ -104,6 +104,7 @@ module DungeonMaster
         return nil unless connection
 
         raise ArgumentError, "Character sheet or derived_stats missing for journey calculation" unless @sheet&.derived_stats
+
         base_speed_ft = @sheet.derived_stats["speed"] || 30
         encumbrance   = @sheet.derived_stats["encumbrance"] || "light"
         terrain       = connection.terrain_type
@@ -228,6 +229,7 @@ module DungeonMaster
 
         thresholds.each do |t|
           next unless t[:type] == :fatigue && t[:condition]
+
           current = Array(@sheet.conditions)
           next if current.include?(t[:condition])
 
@@ -267,6 +269,7 @@ module DungeonMaster
                   distance_covered_miles: 0, encounter_entry: nil }
 
         return no_op if effective_combat_active_for_timekeeper?
+
         return no_op if estimated[:hours] < 0.01
 
         table = EncounterTable.table_for(@adventure.story)

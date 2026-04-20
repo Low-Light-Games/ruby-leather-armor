@@ -120,10 +120,14 @@ module Admin
       sorted.each_with_index do |summary, idx|
         summary[:retry_of] = nil
         next if idx == 0
+
         prev = sorted[idx - 1]
         next unless summary[:adventure_id] && summary[:adventure_id] == prev[:adventure_id]
+
         next unless summary[:first_at] - prev[:first_at] < RETRY_WINDOW
+
         next unless summary[:message_content].present? && prev[:message_content].present?
+
         next unless summary[:message_content].strip == prev[:message_content].strip
 
         summary[:retry_of] = prev[:retry_of] || prev[:registry_entry_uuid]

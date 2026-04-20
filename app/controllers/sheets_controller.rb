@@ -14,6 +14,7 @@ class SheetsController < ApplicationController
       format.html # renders sheets/index.html.erb (the React SPA)
       format.json do
         return head :unauthorized unless current_user
+
         @sheets = policy_scope(Sheet)
                     .includes(:sheet_feats, :sheet_spells, :sheet_items)
                     .order(created_at: :desc)

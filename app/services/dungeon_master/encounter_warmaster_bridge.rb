@@ -84,6 +84,7 @@ module DungeonMaster
 
       # If only one side exists there is nothing to reconcile.
       return encounter_scene || verdict_outcome if encounter_scene.nil? || verdict_outcome.nil?
+
       return "#{encounter_scene}\n\n#{verdict_outcome}" unless ai && config && log
 
       player_action = intent[:intention].to_s

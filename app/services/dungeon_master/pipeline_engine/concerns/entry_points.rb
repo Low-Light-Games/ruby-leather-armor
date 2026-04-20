@@ -25,8 +25,10 @@ module DungeonMaster
           # Assign then return — avoid `return r if (r = …)` (parses as `return (r if …)` and can raise NameError on `r`).
           result = apply_prompt_phase(Phases::IntakeDangerGate, state)
           return result if result
+
           result = apply_prompt_phase(Phases::DmQueryBranch, state)
           return result if result
+
           apply_prompt_phase(Phases::OrchestrateCompoundActions, state) || raise("run_prompt: terminal phase did not halt")
         end
 
@@ -177,6 +179,7 @@ module DungeonMaster
           bid = metadata["battlefield_id"].to_i
           row = @adventure.adventure_battlefields.find_by(id: bid)
           return true unless row
+
           metadata["battlefield_version"].to_i != row.version.to_i
         end
 

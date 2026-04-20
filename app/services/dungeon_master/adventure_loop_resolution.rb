@@ -42,6 +42,7 @@ module DungeonMaster
                    end
 
       return capability_check_rejection(intent, capability) unless capability[:allowed]
+
       return resolve_social_scene(intent) if intent[:expand_scene]
 
       merged = merge_mechanical_evaluations_and_prepare_rolls(evaluations)
@@ -183,7 +184,9 @@ module DungeonMaster
     def attack_rolls_requiring_damage(current_roll_requests, submitted_rolls)
       attack_rolls = current_roll_requests.filter_map do |roll|
         next unless roll.is_a?(Hash)
+
         next unless roll[:type].to_s == "attack_roll"
+
         next if roll[:damage].blank?
 
         roll.deep_symbolize_keys
@@ -300,6 +303,7 @@ module DungeonMaster
 
         sym = roll.deep_symbolize_keys
         next unless sym[:type].to_s == "attack_roll"
+
         next unless attack_roll_missing_damage_metadata?(sym)
 
         sym
@@ -361,9 +365,13 @@ module DungeonMaster
     def attack_roll_missing_damage_metadata?(roll)
       sym = roll.deep_symbolize_keys
       return true if sym[:attack_mode].blank?
+
       return true if sym[:defense_kind].blank?
+
       return true if sym[:damage].blank?
+
       return true if sym[:source_type].blank?
+
       return true if sym[:source_type].to_s != "unarmed" && sym[:source_id].blank?
 
       false

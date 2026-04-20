@@ -12,6 +12,7 @@ module DungeonMaster
 
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
         raise AiError, "Combat GM reached without a character sheet — cannot resolve combat" unless @sheet
+
         Battlefield::EnsureForActiveCombat.call(adventure: @adventure, sheet: @sheet)
         @adventure.reload
 
@@ -115,6 +116,7 @@ module DungeonMaster
 
           sym = roll.deep_symbolize_keys
           next unless sym[:type].to_s == "damage_roll"
+
           next true if source_id.present? && sym[:source_request_id].to_s == source_id.to_s
 
           sym[:target].to_s.casecmp?(attack_roll[:target].to_s) &&

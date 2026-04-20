@@ -373,6 +373,7 @@ module DungeonMaster
       def handle_context_wishes(wishes)
         Array(wishes).each do |wish|
           next unless wish.is_a?(String) && wish.present?
+
           @log.play_log!("context_wish", wish)
         end
       end

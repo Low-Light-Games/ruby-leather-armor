@@ -105,7 +105,9 @@ module CharacterStats
 
     def load_feats(source)
       return source.sheet_feats.includes(:feat_definition) if sheet_source?(source)
+
       return source.adventure_sheet_feats.includes(:feat_definition) if adventure_sheet_source?(source)
+
       return source.creature_sheet_feats.includes(:feat_definition) if creature_sheet_source?(source)
 
       []
@@ -113,7 +115,9 @@ module CharacterStats
 
     def load_items(source)
       return source.sheet_items.includes(:item_definition) if sheet_source?(source)
+
       return source.adventure_sheet_items.includes(:item_definition) if adventure_sheet_source?(source)
+
       return source.creature_sheet_items.includes(:item_definition) if creature_sheet_source?(source)
 
       []

@@ -167,6 +167,7 @@ module DungeonMaster
             names = Array(raw_combatants).map { |entry| entry.to_s.strip }.reject(&:blank?)
             count = raw_count.to_i
             return names if names.empty?
+
             return names unless names.one? && count > 1
 
             return Array.new(count, names.first)

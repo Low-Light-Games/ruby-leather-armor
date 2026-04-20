@@ -108,6 +108,7 @@ module DungeonMaster
 
     def bestiary_catalog
       return [] unless defined?(BestiaryEntry)
+
       BestiaryEntry.order(:name).pluck(:id, :name).map { |id, name| { id: id, name: name } }
     end
 

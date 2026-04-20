@@ -87,6 +87,7 @@ module CharacterStats
 
         (item.effects || []).each do |effect|
           next unless effect["type"] == "skill_bonus"
+
           target = effect["skill"]
           next if target.blank?
 
@@ -99,6 +100,7 @@ module CharacterStats
     def skill_ranks_raw
       raw = @src.try(:skill_ranks)
       return {} unless raw.is_a?(Hash)
+
       raw.transform_keys(&:to_s).transform_values { |v| v.to_i }
     end
 

@@ -181,6 +181,7 @@ module DungeonMaster
 
       inventory_muts.each do |item_name, quantity|
         next unless item_name.present? && quantity.is_a?(Numeric) && quantity.to_i > 0
+
         add_inventory_item(adventure_sheet, item_name.to_s, quantity.to_i)
       end
     rescue => e
@@ -242,11 +243,13 @@ module DungeonMaster
 
       Array(remove).each do |cond|
         next unless CharacterStats::Conditions.valid?(cond)
+
         changed = true if current.delete(cond)
       end
 
       Array(add).each do |cond|
         next unless CharacterStats::Conditions.valid?(cond)
+
         current = CharacterStats::Conditions.upgrade(current, cond)
         changed = true
       end

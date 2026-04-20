@@ -58,6 +58,7 @@ module CharacterStats
       end
       Conditions.ability_penalties(conds).each do |ability, penalty|
         next if Conditions.effective_scores(conds).key?(ability)
+
         adjusted[ability] = (adjusted[ability] + penalty).clamp(0, 99)
       end
       adjusted

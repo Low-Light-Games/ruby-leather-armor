@@ -14,6 +14,7 @@ module DungeonMaster
         micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
 
         raise AiError, "Mechanic step reached without a character sheet — cannot resolve mechanics" unless @sheet
+
         char_block = CharacterBlock.full(@sheet)
         all_roll_results = [roll_results, npc_results].reject(&:blank?).join("\n\n")
 

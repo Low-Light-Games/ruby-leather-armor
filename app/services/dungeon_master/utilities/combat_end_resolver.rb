@@ -8,8 +8,11 @@ module DungeonMaster
 
       def check_player_status(sheet, instant_death: false)
         return :dead if instant_death && sheet.hp <= 0
+
         return :alive if sheet.hp > 0
+
         return :disabled if sheet.hp == 0
+
         return :dead if sheet.hp <= -sheet.constitution
 
         :dying

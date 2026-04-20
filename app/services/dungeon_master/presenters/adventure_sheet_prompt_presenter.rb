@@ -123,6 +123,7 @@ module DungeonMaster
       def conditions_line
         conds = Array(@sheet.try(:conditions))
         return nil if conds.empty?
+
         "Active Conditions: #{conds.join(', ')}"
       end
 
@@ -185,6 +186,7 @@ module DungeonMaster
         lines = feats.filter_map do |f|
           fd = f.feat_definition
           next unless fd
+
           f.choice.present? ? "#{fd.name} (#{f.choice})" : fd.name
         end
 
@@ -207,6 +209,7 @@ module DungeonMaster
 
         lines = items.filter_map do |i|
           next unless i.item_definition
+
           line = i.item_definition.name
           line += " (x#{i.quantity})" if i.quantity && i.quantity > 1
           line += " [equipped]" if i.equipped?

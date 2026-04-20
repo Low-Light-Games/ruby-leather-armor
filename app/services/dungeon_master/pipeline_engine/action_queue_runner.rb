@@ -311,6 +311,7 @@ module DungeonMaster
           if accumulated.any?
             final = pipeline.send(:run_accumulated_narrative_phase, accumulated)
             return final unless final[:action] == :narrated
+
             action_narratives << Narrative::ProgressiveEntry.from_narrative_phase(
               final,
               sequence_index: action_narratives.size,

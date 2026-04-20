@@ -108,6 +108,7 @@ module DungeonMaster
         def append_npc!(by_name, name, npc_turns)
           combatant = by_name[name.to_s]
           return unless combatant&.npc?
+
           return unless combatant.can_act?
 
           npc_turns << combatant

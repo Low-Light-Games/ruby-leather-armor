@@ -22,18 +22,22 @@ module DungeonMaster
 
         if truthy?(d["spend_standard"])
           raise ArgumentError, "standard action unavailable" unless truthy?(out["standard_available"])
+
           out["standard_available"] = false
         end
         if truthy?(d["spend_move"])
           raise ArgumentError, "move action unavailable" unless truthy?(out["move_available"])
+
           out["move_available"] = false
         end
         if truthy?(d["spend_swift"])
           raise ArgumentError, "swift action unavailable" unless truthy?(out["swift_available"])
+
           out["swift_available"] = false
         end
         if truthy?(d["spend_full_round"])
           raise ArgumentError, "full-round already claimed" if truthy?(out["full_round_claimed"])
+
           unless truthy?(out["standard_available"]) && truthy?(out["move_available"])
             raise ArgumentError, "full-round requires both standard and move actions to still be available"
           end

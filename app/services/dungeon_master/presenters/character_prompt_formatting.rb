@@ -6,11 +6,13 @@ module DungeonMaster
     module CharacterPromptFormatting
       def format_mod(val)
         return "+0" unless val
+
         val >= 0 ? "+#{val}" : val.to_s
       end
 
       def format_currency(currency)
         return "none" unless currency.is_a?(Hash)
+
         parts = []
         parts << "#{currency['platinum']} pp" if currency["platinum"].to_i > 0
         parts << "#{currency['gold']} gp"     if currency["gold"].to_i > 0
@@ -22,6 +24,7 @@ module DungeonMaster
       def format_carry(ds)
         caps = ds["carry_capacity"]
         return "unknown" unless caps.is_a?(Hash)
+
         "#{ds['total_weight'] || '?'}/#{caps['heavy'] || '?'} lbs"
       end
     end

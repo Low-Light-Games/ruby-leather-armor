@@ -116,6 +116,7 @@ module DungeonMaster
           wb = words.call(b).to_set
           union = (wa | wb).size
           return true if union.zero?
+
           (wa & wb).size.to_f / union >= 0.30
         end
 

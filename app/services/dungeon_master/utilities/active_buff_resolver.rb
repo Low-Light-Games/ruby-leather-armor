@@ -128,6 +128,7 @@ module DungeonMaster
         return nil unless multiplier
 
         return formula["fixed"].to_f * multiplier if fixed_duration?(formula)
+
         return formula["per_level"].to_f * level * multiplier if per_level_duration?(formula, level)
 
         nil
@@ -178,8 +179,11 @@ module DungeonMaster
         raw = effect["bonus"]
 
         return raw if raw.is_a?(Integer)
+
         return raw.to_i if raw.is_a?(Float)
+
         return formula_bonus_value(effect["bonus_formula"], caster_level) if effect["bonus_formula"].is_a?(Hash)
+
         return raw.to_i if raw.is_a?(String)
 
         nil
