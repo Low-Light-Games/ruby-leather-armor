@@ -65,13 +65,13 @@ module DungeonMaster
         system_prompt = PromptRenderer.render("sanity_checker_world",
           sanity_context: prompt_context)
 
-        {
+        EvaluatorPromptPayload.new(
           system_prompt: system_prompt,
-          user_message:  intent[:intention],
-          model:         @config.model_for("sanity_checker_world"),
-          max_tokens:    @config.token_budget_for("sanity_checker_world"),
-          meta:          { step: "sanity_checker_world" }
-        }
+          user_message: intent[:intention],
+          model: @config.model_for("sanity_checker_world"),
+          max_tokens: @config.token_budget_for("sanity_checker_world"),
+          step: "sanity_checker_world"
+        ).to_h
       end
 
       def sanity_checker_capability_evaluator_prompt(intent)
@@ -80,13 +80,13 @@ module DungeonMaster
         system_prompt = PromptRenderer.render("sanity_checker",
           sanity_context: prompt_context)
 
-        {
+        EvaluatorPromptPayload.new(
           system_prompt: system_prompt,
-          user_message:  intent[:intention],
-          model:         @config.model_for("sanity_checker"),
-          max_tokens:    @config.token_budget_for("sanity_checker"),
-          meta:          { step: "sanity_checker" }
-        }
+          user_message: intent[:intention],
+          model: @config.model_for("sanity_checker"),
+          max_tokens: @config.token_budget_for("sanity_checker"),
+          step: "sanity_checker"
+        ).to_h
       end
 
       def parse_world_from_evaluator_result(result)
@@ -113,13 +113,13 @@ module DungeonMaster
       def world_check_rejection(intent, world)
         @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
         @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
-        FlowResults.rejected(intent: intent, reason: world[:reason], dm_message: world[:dm_message]).to_h
+        PipelineFlowResults.rejected(intent: intent, reason: world[:reason], dm_message: world[:dm_message]).to_h
       end
 
       def capability_check_rejection(intent, capability)
         @log.play_log!("capability_rejection", "SanityChecker capability check failed: #{capability[:reason]}")
         @loop&.log_step("sanity_checker", "Capability check FAILED: #{capability[:reason].to_s.truncate(100)}")
-        FlowResults.rejected(intent: intent, reason: capability[:reason]).to_h
+        PipelineFlowResults.rejected(intent: intent, reason: capability[:reason]).to_h
       end
 
       # ------------------------------------------------------------------

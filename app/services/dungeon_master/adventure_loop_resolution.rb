@@ -45,7 +45,7 @@ module DungeonMaster
       return resolve_social_scene(intent) if intent[:expand_scene]
 
       merged = merge_mechanical_evaluations_and_prepare_rolls(evaluations)
-      return FlowResults.awaiting_rolls(intent: intent, merged: merged).to_h if merged[:player_rolls].any?
+      return PipelineFlowResults.awaiting_rolls(intent: intent, merged: merged).to_h if merged[:player_rolls].any?
 
       finish_resolution(intent, merged, Rolls::PlayerRolls.auto_success_roll_message(merged))
     end
@@ -139,7 +139,7 @@ module DungeonMaster
       store_pipeline_outcome!(verdict_result[:outcome])
 
       if prepared_hostile_combat_continues?(intent)
-        return FlowResults.awaiting_initiative(
+        return PipelineFlowResults.awaiting_initiative(
           intent: intent,
           creature_data: intent[:creature_data],
           mutations: verdict_result[:mutations],
@@ -166,7 +166,7 @@ module DungeonMaster
       hits = attack_rolls_requiring_damage(current_roll_requests, submitted_rolls)
       return nil if hits.empty?
 
-      FlowResults.awaiting_rolls(
+      PipelineFlowResults.awaiting_rolls(
         intent: intent,
         merged: merged.merge(
           player_rolls: hits.map { |hit| build_damage_roll_request(hit) },
@@ -448,7 +448,7 @@ module DungeonMaster
 
       store_pipeline_outcome!(scene)
 
-      FlowResults.social_scene(intent: intent).to_h
+      PipelineFlowResults.social_scene(intent: intent).to_h
     end
 
     def store_pipeline_outcome!(text)

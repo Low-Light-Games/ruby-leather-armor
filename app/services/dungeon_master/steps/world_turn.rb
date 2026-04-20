@@ -145,24 +145,32 @@ module DungeonMaster
           entry  = evaluator_fan_out_result!(by_step, step_keys[idx], "npc_action")
           parsed = (entry["parsed_response"] || {}).deep_symbolize_keys
 
-          resolution = DungeonMaster::WorldTurn::NpcActionResolver.resolve(
+          npc_action_result = DungeonMaster::WorldTurn::NpcActionResolver.resolve(
             npc: npc, parsed: parsed, combat_ctx: working_ctx,
             player_sheet: @sheet, adventure: @adventure)
-          lines.concat(resolution[:lines])
+          lines.concat(npc_action_result[:lines])
+          npc_action_resolution_log_payload = DungeonMaster::WorldTurn::NpcActionResolutionLogPayload.new(
+            npc_name: npc.name,
+            action: parsed[:action],
+            attack_modifier: parsed[:attack_modifier],
+            damage_dice: parsed[:damage_dice],
+            player_hp_delta: npc_action_result[:player_hp_delta],
+            npc_mutations: npc_action_result[:npc_muts],
+            lines: npc_action_result[:lines]
+          )
 
           @log.play_log!(
             "world_turn_resolution",
-            "World turn: #{npc.name} — #{resolution[:lines].join(' | ').truncate(200)}",
-            parsed_response: {
-              npc: npc.name, action: parsed[:action],
-              attack_modifier: parsed[:attack_modifier], damage_dice: parsed[:damage_dice],
-              player_hp_delta: resolution[:player_hp_delta], npc_mutations: resolution[:npc_muts],
-              lines: resolution[:lines]
-            }
+            "World turn: #{npc.name} — #{npc_action_result[:lines].join(' | ').truncate(200)}",
+            parsed_response: npc_action_resolution_log_payload.to_h
           )
 
-          apply_world_turn_step_mutations!(resolution[:player_hp_delta].to_i, resolution[:npc_muts])
-          Battlefield::ApplyPatches.call(adventure: @adventure, patches: resolution[:battlefield_patches], log: @log) if resolution[:battlefield_patches].present?
+          apply_world_turn_step_mutations!(npc_action_result[:player_hp_delta].to_i, npc_action_result[:npc_muts])
+          Battlefield::ApplyPatches.call(
+            adventure: @adventure,
+            patches: npc_action_result[:battlefield_patches],
+            log: @log
+          ) if npc_action_result[:battlefield_patches].present?
 
           reload_world_turn_records!
           live_sheets.merge!(@adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id))

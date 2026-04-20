@@ -34,7 +34,7 @@ The **AI step mixins** (Intake, Sequencer, Narrate, …) implement individual pr
 
 **Per-class contracts** (what must be set on the pipeline before the step, what mutates, prompt inputs) live in the file header comments on each phase and on `ActionQueueRunner`.
 
-`AdventureLoopResolution` now emits typed flow payloads through `DungeonMaster::FlowResults` (e.g. `AwaitingRolls`, `AwaitingInitiative`, `Rejected`) and only serializes to hashes at the boundary consumed by queue orchestration and resume entrypoints.
+`AdventureLoopResolution` now emits typed flow payloads through `DungeonMaster::PipelineFlowResults` (backward-compatible alias: `DungeonMaster::FlowResults`) and only serializes to hashes at the boundary consumed by queue orchestration and resume entrypoints.
 
 Combat attack rolls now follow the same AI-picks / server-resolves pattern as saving-throw `dc_formula`: combat mech-eval selects an `attack_option_id`, and Ruby resolves attack mode, defense targeting, damage metadata, and pending-roll quick actions from that code-built option.
 
