@@ -167,15 +167,16 @@ module DungeonMaster
         time_ctx = @adventure.time_context || {}
         outcome  = verdict_result&.dig(:outcome) || intent[:intention]
         prompt_summary = "TimeKeeper: \"#{@log.truncate(outcome)}\""
-
-        system_prompt = PromptRenderer.render("time_keeper",
+        prompt_context = PromptViews::TimeKeeperPromptContext.new(
           loop: @loop,
           outcome: outcome,
-          current_hour: time_ctx["current_hour"] || 8,
-          adventure_day: time_ctx["adventure_day"] || 1,
-          light_conditions: time_ctx["light_conditions"] || "day",
+          time_context: time_ctx,
           combat_active: effective_combat_active_for_timekeeper?,
-          has_destination: intent[:destination].present?)
+          has_destination: intent[:destination].present?
+        )
+
+        system_prompt = PromptRenderer.render("time_keeper",
+          time_keeper_context: prompt_context)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
 

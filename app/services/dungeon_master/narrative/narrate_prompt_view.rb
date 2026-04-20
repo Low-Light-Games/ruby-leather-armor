@@ -4,6 +4,11 @@ module DungeonMaster
   module Narrative
     # Single ERB root for `narrate.text.erb`: loop, time, pacing, and PipelineContext fields.
     class NarratePromptView
+      BuildContext = Struct.new(
+        :pipeline_context, :loop, :combat_context, :time_context, :pacing_text, :directed_play_text,
+        keyword_init: true
+      )
+
       def self.for_narrate(pipeline_engine, pipeline_context)
         base_combat_context = pipeline_engine.adventure.combat_context || {}
         live_combat_context = WorldTurn::LiveContext.merge_live_participants(
@@ -12,7 +17,7 @@ module DungeonMaster
           sheet: pipeline_engine.sheet
         )
 
-        new(
+        context = BuildContext.new(
           pipeline_context:   pipeline_context,
           loop:               pipeline_engine.loop,
           combat_context:     live_combat_context,
@@ -20,15 +25,17 @@ module DungeonMaster
           pacing_text:        PromptHelpers.pacing_instructions(pipeline_engine.config),
           directed_play_text: PromptHelpers.directed_play_instructions(pipeline_engine.adventure)
         )
+        new(context: context)
       end
 
-      def initialize(pipeline_context:, loop:, combat_context:, time_context:, pacing_text:, directed_play_text:)
-        @pipeline_context   = pipeline_context
-        @loop               = loop
-        @combat_context     = combat_context
-        @time_context       = time_context
-        @pacing_text        = pacing_text
-        @directed_play_text = directed_play_text
+      def initialize(context: nil, **legacy_kwargs)
+        context ||= BuildContext.new(**legacy_kwargs)
+        @pipeline_context = context.pipeline_context
+        @loop = context.loop
+        @combat_context = context.combat_context
+        @time_context = context.time_context
+        @pacing_text = context.pacing_text
+        @directed_play_text = context.directed_play_text
       end
 
       attr_reader :loop, :time_context, :pacing_text

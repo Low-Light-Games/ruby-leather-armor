@@ -50,6 +50,15 @@ module DungeonMaster
                                CharacterBlock.creature_stats_for(@adventure)
                              end
             rules_text     = domain_rules_text_for(intent, domain)
+            mech_eval_context = PromptViews::MechEvalPromptContext.new(
+              domain: domain,
+              character_block: char_block,
+              micro_context: micro_ctx.present? ? micro_ctx.to_json : nil,
+              creature_stats: creature_stats,
+              rules_text: rules_text,
+              prior_outcomes: prior,
+              include_npc_actions_guidance: prompt_rules.fetch(:npc_actions_guidance, true)
+            )
 
             system_prompt_base = case domain.to_s
             when "combat"
@@ -57,27 +66,33 @@ module DungeonMaster
                 sheet: @sheet,
                 adventure: @adventure
               )
-              PromptRenderer.render("combat_mechanic",
-                domain:              domain,
-                character_block:     char_block,
-                micro_context:       micro_ctx.present? ? micro_ctx.to_json : nil,
-                creature_stats:      creature_stats,
+              combat_context = PromptViews::MechEvalPromptContext.new(
+                domain: mech_eval_context.domain,
+                character_block: mech_eval_context.character_block,
+                micro_context: mech_eval_context.micro_context,
+                creature_stats: mech_eval_context.creature_stats,
+                rules_text: mech_eval_context.rules_text,
+                prior_outcomes: mech_eval_context.prior_outcomes,
                 attack_options_text: format_attack_options_for_prompt(attack_options),
-                previous_summaries:  [],
-                rules_text:          rules_text,
-                prior_outcomes:      prior)
+                previous_summaries: []
+              )
+              PromptRenderer.render("combat_mechanic",
+                mech_eval_context: combat_context)
             else
               instructions = PromptRenderer.render_partial("mechanical_evaluation/_#{domain}")
+              mech_eval_context = PromptViews::MechEvalPromptContext.new(
+                domain: mech_eval_context.domain,
+                character_block: mech_eval_context.character_block,
+                micro_context: mech_eval_context.micro_context,
+                creature_stats: mech_eval_context.creature_stats,
+                rules_text: mech_eval_context.rules_text,
+                prior_outcomes: mech_eval_context.prior_outcomes,
+                domain_instructions: instructions,
+                include_npc_actions_guidance: mech_eval_context.include_npc_actions_guidance?
+              )
 
               PromptRenderer.render("mechanical_evaluation",
-                domain:              domain,
-                character_block:     char_block,
-                micro_context:       micro_ctx.present? ? micro_ctx.to_json : nil,
-                creature_stats:      creature_stats,
-                include_npc_actions_guidance: prompt_rules.fetch(:npc_actions_guidance, true),
-                rules_text:          rules_text,
-                domain_instructions: instructions,
-                prior_outcomes:      prior)
+                mech_eval_context: mech_eval_context)
             end
 
             {

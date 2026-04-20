@@ -60,19 +60,10 @@ module DungeonMaster
       end
 
       def sanity_checker_world_evaluator_prompt(intent)
-        micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
-        npc_names = @adventure.story.story_npcs.pluck(:name)
-        combat_ctx = @adventure.combat_context || {}
-        combat_active = combat_ctx["active"] == true
-        combat_roster = combat_active ? Array(combat_ctx["participants"]).filter_map { |p| p["name"] } : []
+        prompt_context = build_world_prompt_context
 
         system_prompt = PromptRenderer.render("sanity_checker_world",
-          scene_summary:     @adventure.scene_summary,
-          scene_history:     Array(@adventure.scene_history),
-          micro_contexts:    micro_contexts,
-          npc_names:         npc_names,
-          combat_active:     combat_active,
-          combat_turn_order: combat_roster)
+          sanity_context: prompt_context)
 
         {
           system_prompt: system_prompt,
@@ -84,11 +75,10 @@ module DungeonMaster
       end
 
       def sanity_checker_capability_evaluator_prompt(intent)
-        ds = @sheet.derived_stats || {}
-        restrictions = Array(ds["condition_restrictions"])
+        prompt_context = build_capability_prompt_context
 
         system_prompt = PromptRenderer.render("sanity_checker",
-          condition_restrictions: restrictions)
+          sanity_context: prompt_context)
 
         {
           system_prompt: system_prompt,
@@ -140,11 +130,10 @@ module DungeonMaster
         return { allowed: true, reason: nil } unless @sheet
 
         prompt_summary = "SanityChecker/capability: \"#{@log.truncate(intent[:intention])}\""
-        ds = @sheet.derived_stats || {}
-        restrictions = Array(ds["condition_restrictions"])
+        prompt_context = build_capability_prompt_context
 
         system_prompt = PromptRenderer.render("sanity_checker",
-          condition_restrictions: restrictions)
+          sanity_context: prompt_context)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
 
@@ -220,19 +209,10 @@ module DungeonMaster
       def run_world_consistency_check(intent)
         prompt_summary = "SanityChecker/world: \"#{@log.truncate(intent[:intention])}\""
 
-        micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
-        npc_names = @adventure.story.story_npcs.pluck(:name)
-        combat_ctx = @adventure.combat_context || {}
-        combat_active = combat_ctx["active"] == true
-        combat_roster = combat_active ? Array(combat_ctx["participants"]).filter_map { |p| p["name"] } : []
+        prompt_context = build_world_prompt_context
 
         system_prompt = PromptRenderer.render("sanity_checker_world",
-          scene_summary:     @adventure.scene_summary,
-          scene_history:     Array(@adventure.scene_history),
-          micro_contexts:    micro_contexts,
-          npc_names:         npc_names,
-          combat_active:     combat_active,
-          combat_turn_order: combat_roster)
+          sanity_context: prompt_context)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
 
@@ -250,6 +230,28 @@ module DungeonMaster
           dm_message: parsed["dm_message"],
           referenced_entities: Array(parsed["referenced_entities"])
         }
+      end
+
+      def build_capability_prompt_context
+        ds = @sheet&.derived_stats || {}
+        PromptViews::SanityCheckerPromptContext.new(
+          condition_restrictions: ds["condition_restrictions"]
+        )
+      end
+
+      def build_world_prompt_context
+        combat_ctx = @adventure.combat_context || {}
+        combat_active = combat_ctx["active"] == true
+        combat_roster = combat_active ? Array(combat_ctx["participants"]).filter_map { |p| p["name"] } : []
+
+        PromptViews::SanityCheckerPromptContext.new(
+          scene_summary: @adventure.scene_summary,
+          scene_history: @adventure.scene_history,
+          micro_contexts: PromptHelpers.all_micro_contexts(@adventure),
+          npc_names: @adventure.story.story_npcs.pluck(:name),
+          combat_active: combat_active,
+          combat_turn_order: combat_roster
+        )
       end
     end
   end

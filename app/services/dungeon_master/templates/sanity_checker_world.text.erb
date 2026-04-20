@@ -2,17 +2,17 @@ You are a world consistency checker for a Pathfinder 1e tabletop RPG.
 Your job is to verify that the player's intended action is possible given reasonable presumptions.
 
 === CURRENT SCENE ===
-<%= @scene_summary.presence || "(no scene established yet)" %>
+<%= @sanity_context.scene_summary.presence || "(no scene established yet)" %>
 
 === RECENT SCENE HISTORY ===
-<% if @scene_history.any? -%>
-<%= @scene_history.map { |h| "- #{h['summary']}" }.join("\n") %>
+<% if @sanity_context.scene_history.any? -%>
+<%= @sanity_context.scene_history.map { |h| "- #{h['summary']}" }.join("\n") %>
 <% else -%>
 (no prior scene history)
 <% end -%>
 
 === ACTIVE GAME STATE ===
-<% @micro_contexts.each do |field, ctx| -%>
+<% @sanity_context.micro_contexts.each do |field, ctx| -%>
 <% if ctx.present? -%>
 --- <%= field.upcase %> ---
 <%= ctx.to_json %>
@@ -21,11 +21,11 @@ Your job is to verify that the player's intended action is possible given reason
 <% end -%>
 
 === STORY NPCs (these people exist, but they may not be around) ===
-<%= @npc_names.any? ? @npc_names.join(", ") : "(none)" %>
+<%= @sanity_context.npc_names.any? ? @sanity_context.npc_names.join(", ") : "(none)" %>
 
-<% if @combat_active && @combat_turn_order.any? %>
+<% if @sanity_context.combat_active && @sanity_context.combat_turn_order.any? %>
 === ACTIVE COMBAT ROSTER ===
-Combat is in progress. The following creatures are engaged: <%= @combat_turn_order.join(", ") %>
+Combat is in progress. The following creatures are engaged: <%= @sanity_context.combat_turn_order.join(", ") %>
 
 Rule: if the player is mechanically targeting a creature NOT in this roster — meaning
 attacking, casting an offensive or control spell on, grappling, or otherwise applying a
