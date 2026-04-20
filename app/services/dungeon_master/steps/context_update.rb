@@ -107,11 +107,11 @@ module DungeonMaster
         request_body = { system_prompt: system_prompt, user_message: user_msg }
 
         timed_ai_call("macro_narrative_update", prompt_summary, request_body) do
-          raw_response = @ai.chat(system_prompt: system_prompt, user_message: user_msg,
-                                  max_tokens: @config.token_budget_for("macro_narrative_update"),
-                                  step_name: "macro_narrative_update",
-                                  model: @config.model_for("macro_narrative_update"))
-          [raw_response, @ai.parse_json(raw_response)]
+          ai_raw_response_text = @ai.chat(system_prompt: system_prompt, user_message: user_msg,
+                                          max_tokens: @config.token_budget_for("macro_narrative_update"),
+                                          step_name: "macro_narrative_update",
+                                          model: @config.model_for("macro_narrative_update"))
+          [ai_raw_response_text, @ai.parse_json(ai_raw_response_text)]
         end
       end
 
@@ -121,41 +121,47 @@ module DungeonMaster
         combat_mutation_state = CombatMutationState.new(mutations)
 
         updates = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, updated_contexts|
-          key = "#{field}_context"
-          domain_result = parsed[key] || parsed[key.to_sym]
-          next unless domain_result.present?
-          domain_result = normalize_domain_context_result(field, domain_result) unless domain_result_pre_normalized?(domain_result)
-          unchanged = domain_result["unchanged"] == true
-          existing = (@adventure.public_send(key) || {}).deep_stringify_keys
+          domain_context_identifier = "#{field}_context"
+          domain_context_result = parsed[domain_context_identifier] || parsed[domain_context_identifier.to_sym]
+          next unless domain_context_result.present?
+
+          domain_result_parser = DomainContextResultParser.new(
+            domain_identifier: field,
+            raw_domain_result: domain_context_result
+          )
+          normalized_domain_result = domain_result_parser.normalized_result
+
+          unchanged = normalized_domain_result["unchanged"] == true
+          existing_domain_context = (@adventure.public_send(domain_context_identifier) || {}).deep_stringify_keys
           canonical_combat = canonical_combat_context_for(field, combat_mutation_state)
           next if unchanged && canonical_combat.blank?
 
-          val = domain_result["context"] || domain_result[:context]
-          val = {} if unchanged && canonical_combat.present? && val.nil?
-          raise AiError, "#{key} updater returned no context payload" if val.nil?
+          updated_domain_context = normalized_domain_result["context"] || normalized_domain_result[:context]
+          updated_domain_context = {} if unchanged && canonical_combat.present? && updated_domain_context.nil?
+          raise AiError, "#{domain_context_identifier} updater returned no context payload" if updated_domain_context.nil?
 
-          if DEEP_MERGE_CONTEXT_FIELDS.include?(field) && val.is_a?(Hash)
-            val = merge_canonical_combat_context(
-              val.deep_stringify_keys,
+          if DEEP_MERGE_CONTEXT_FIELDS.include?(field) && updated_domain_context.is_a?(Hash)
+            updated_domain_context = merge_canonical_combat_context(
+              updated_domain_context.deep_stringify_keys,
               canonical_combat: canonical_combat
             )
-            val = prepare_combat_context_update(
-              val.deep_stringify_keys,
-              existing: existing
+            updated_domain_context = prepare_combat_context_update(
+              updated_domain_context.deep_stringify_keys,
+              existing: existing_domain_context
             )
-            val = guard_combat_context_update(
-              val.deep_stringify_keys,
+            updated_domain_context = guard_combat_context_update(
+              updated_domain_context.deep_stringify_keys,
               prev_active: prev_active,
               has_combat_initialization: combat_mutation_state.has_combat_initialization?,
               has_combat_advancement: combat_mutation_state.has_combat_advancement?
             )
-            next unless val.present?
+            next unless updated_domain_context.present?
 
             unless combat_mutation_state.has_combat_initialization?
-              val = existing.deep_merge(val)
+              updated_domain_context = existing_domain_context.deep_merge(updated_domain_context)
             end
           end
-          updated_contexts[key.to_sym] = val
+          updated_contexts[domain_context_identifier.to_sym] = updated_domain_context
         end
         @adventure.update!(updates) if updates.any?
 
@@ -228,41 +234,20 @@ module DungeonMaster
 
       def aggregate_micro_context_results(by_step)
         PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, aggregated_results|
-          key = "#{field}_context"
-          parsed = evaluator_fan_out_result!(by_step, "#{field}_context_update", "micro_context_update")["parsed_response"] || {}
-          aggregated_results[key] = normalize_domain_context_result(field, parsed)
+          domain_context_identifier = "#{field}_context"
+          parsed_fan_out_response = evaluator_fan_out_result!(
+            by_step,
+            "#{field}_context_update",
+            "micro_context_update"
+          )["parsed_response"] || {}
+          domain_result_parser = DomainContextResultParser.new(
+            domain_identifier: field,
+            raw_domain_result: parsed_fan_out_response
+          )
+          aggregated_results[domain_context_identifier] = domain_result_parser.normalized_result
         end.merge(
           evaluator_fan_out_result!(by_step, META_CONTEXT_STEP, "micro_context_update")["parsed_response"] || {}
         )
-      end
-
-      def normalize_domain_context_result(field, result)
-        key = "#{field}_context"
-        normalized_result = result.is_a?(Hash) ? result.deep_stringify_keys : {}
-        context = if normalized_result.key?("context")
-                    normalized_result["context"]
-                  elsif normalized_result.key?(key)
-                    normalized_result[key]
-                  elsif normalized_result.key?(field)
-                    normalized_result[field]
-                  elsif normalized_result.present? && !normalized_result.key?("unchanged")
-                    normalized_result
-                  else
-                    nil
-                  end
-        {
-          "unchanged" => normalized_result["unchanged"] == true,
-          "context" => context
-        }
-      end
-
-      def domain_result_pre_normalized?(domain_result)
-        return false unless domain_result.is_a?(Hash)
-
-        domain_result.key?("context") ||
-          domain_result.key?(:context) ||
-          domain_result.key?("unchanged") ||
-          domain_result.key?(:unchanged)
       end
 
       def should_persist_macro_story_summary?(macro_significant, macro_result)
