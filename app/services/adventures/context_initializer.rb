@@ -25,30 +25,11 @@ module Adventures
 
     def build_time_context
       seeded_time = @story.initial_contexts&.dig("traversal_context", "time_of_day")
-      hour = parse_time_cue(seeded_time) || 8
-      hour = hour.clamp(0, 23)
-
-      {
-        "current_hour" => hour,
-        "adventure_day" => 1,
-        "light_conditions" => DungeonMaster::Utilities::GameClock.light_for_hour(hour),
-        "hours_since_last_rest" => 0,
-        "hours_since_last_encounter_check" => 0
-      }
+      Adventures::TimeContext.new(hour: parse_time_cue(seeded_time) || 8).to_h
     end
 
     def build_traversal(start_loc)
-      return {} unless start_loc
-
-      ctx = {
-        "current_location" => start_loc.name,
-        "scene" => start_loc.description,
-      }
-
-      exits = start_loc.neighbors.pluck(:name)
-      ctx["exits"] = exits if exits.any?
-
-      ctx
+      Adventures::TraversalContext.new(start_location: start_loc).to_h
     end
 
     private

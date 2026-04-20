@@ -5,6 +5,21 @@ module DungeonMaster
     # Atomic combat start: Warmaster combat hash + adventure_battlefields row + battlefield_ref
     # + action_economy in one transaction.
     class PersistCombatStart
+      class CombatContextPayload
+        def initialize(base_data:, battlefield_ref:, action_economy_builder:)
+          @base_data = base_data.deep_stringify_keys
+          @battlefield_ref = battlefield_ref
+          @action_economy_builder = action_economy_builder
+        end
+
+        def to_h
+          payload = @base_data.deep_dup
+          payload["battlefield_ref"] = @battlefield_ref
+          payload["action_economy"] ||= @action_economy_builder.call(payload)
+          payload
+        end
+      end
+
       class << self
         def call(adventure:, combat_data:, sheet:)
           data = combat_data.deep_stringify_keys
@@ -29,10 +44,12 @@ module DungeonMaster
             )
             ref = { "id" => bf.id, "version" => bf.version, "topology" => bf.topology }
 
-            data["battlefield_ref"] = ref
-            holder = data["current_turn"].presence || DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME
-            data["action_economy"] ||= ActionEconomy.build_for_turn_holder(holder, combat_ctx: data)
-            adventure.update!(combat_context: data)
+            payload = CombatContextPayload.new(
+              base_data: data,
+              battlefield_ref: ref,
+              action_economy_builder: method(:default_action_economy)
+            )
+            adventure.update!(combat_context: payload.to_h)
           end
           adventure.reload
         end
@@ -117,6 +134,11 @@ module DungeonMaster
           else
             "token_#{i}_#{p['name'].to_s.parameterize.underscore.presence || 'npc'}"
           end
+        end
+
+        def default_action_economy(combat_context)
+          holder = combat_context["current_turn"].presence || DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME
+          ActionEconomy.build_for_turn_holder(holder, combat_ctx: combat_context)
         end
       end
     end

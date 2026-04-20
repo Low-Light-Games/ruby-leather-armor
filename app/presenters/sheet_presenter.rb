@@ -12,6 +12,25 @@
 #     item_rel:  adv_sheet.adventure_sheet_items
 #   ).as_json
 class SheetPresenter
+  class DetailsPayload
+    def initialize(base_details:, feats:, known_spells:, spellbook_spells:, items:)
+      @base_details = base_details
+      @feats = feats
+      @known_spells = known_spells
+      @spellbook_spells = spellbook_spells
+      @items = items
+    end
+
+    def to_h
+      @base_details.merge(
+        "feats" => @feats,
+        "knownSpells" => @known_spells,
+        "spellbook" => @spellbook_spells,
+        "items" => @items
+      )
+    end
+  end
+
   # @param sheet     [Sheet, AdventureSheet]
   # @param feat_rel  [ActiveRecord::Relation]  feat pivot records
   # @param spell_rel [ActiveRecord::Relation]  spell pivot records
@@ -24,19 +43,19 @@ class SheetPresenter
   end
 
   def as_json(_ = nil)
-    base    = @sheet.as_json
-    details = (base["details"] || {}).dup
+    serialized_sheet = @sheet.as_json
 
-    base["active_buffs"] = serialized_active_buffs
-
-    details.merge!(
-      "feats"       => serialized_feats,
-      "knownSpells" => @spell_rel.where(storage_type: "known").pluck(:spell_id),
-      "spellbook"   => @spell_rel.where(storage_type: "spellbook").pluck(:spell_id),
-      "items"       => serialized_items
+    serialized_sheet["active_buffs"] = serialized_active_buffs
+    details_payload = DetailsPayload.new(
+      base_details: (serialized_sheet["details"] || {}).dup,
+      feats: serialized_feats,
+      known_spells: @spell_rel.where(storage_type: "known").pluck(:spell_id),
+      spellbook_spells: @spell_rel.where(storage_type: "spellbook").pluck(:spell_id),
+      items: serialized_items
     )
-    base["details"] = details
-    base
+
+    serialized_sheet["details"] = details_payload.to_h
+    serialized_sheet
   end
 
   private
