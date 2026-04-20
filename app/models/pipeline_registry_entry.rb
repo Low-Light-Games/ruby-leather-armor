@@ -16,6 +16,7 @@ class PipelineRegistryEntry < ApplicationRecord
   validates :started_at, presence: true
 
   scope :recent_first, -> { order(started_at: :desc) }
+  scope :for_registry_entry_uuids, ->(uuids) { where(registry_entry_uuid: uuids) }
 
   def self.active_for?(adventure)
     where(adventure: adventure, status: "running")

@@ -79,19 +79,19 @@ module DungeonMaster
     end
 
     def existing_npc_data
-      @story.story_npcs.where(adventure_id: nil, source: "manual").map do |npc|
+      @story.story_npcs.story_level.manual_source.map do |npc|
         { name: npc.name, role: npc.role }
       end
     end
 
     def existing_clue_data
-      @story.story_clues.where(adventure_id: nil, source: "manual").map do |clue|
+      @story.story_clues.story_level.manual_source.map do |clue|
         { title: clue.title }
       end
     end
 
     def existing_milestone_data
-      @story.story_milestones.where(source: "manual").map do |ms|
+      @story.story_milestones.manual_source.map do |ms|
         { title: ms.title }
       end
     end

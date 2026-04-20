@@ -21,4 +21,5 @@ class StoryClue < ApplicationRecord
   }
 
   scope :story_level, -> { where(adventure_id: nil) }
+  scope :manual_source, -> { where(source: "manual") }
 end

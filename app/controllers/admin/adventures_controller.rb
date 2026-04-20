@@ -8,10 +8,9 @@ module Admin
 
     def index
       @show_discarded = params[:discarded] == "1"
-      @adventures = Adventure.includes(:user, :story, :current_location, :adventure_sheets)
-                             .order(updated_at: :desc)
+      @adventures = Adventure.admin_index_includes.recently_updated
       @adventures = @show_discarded ? @adventures.discarded : @adventures.kept
-      @adventures = @adventures.where(story_id: params[:story_id]) if params[:story_id].present?
+      @adventures = @adventures.for_story(params[:story_id]) if params[:story_id].present?
     end
 
     def destroy
@@ -27,8 +26,8 @@ module Admin
       @npcs = StoryNpc.for_adventure(@adventure).includes(:location).order(:name)
       @clues = StoryClue.for_adventure(@adventure).includes(:location, :npc).order(:title)
       @recent_messages = @adventure.adventure_messages.order(created_at: :desc).limit(20)
-      @registry_entry_uuids = PlayLog.where(adventure_id: @adventure.id)
-                               .where.not(registry_entry_uuid: nil)
+      @registry_entry_uuids = PlayLog.for_adventure(@adventure.id)
+                               .with_registry_entry_uuid_present
                                .order(created_at: :desc)
                                .pluck(:registry_entry_uuid)
                                .uniq

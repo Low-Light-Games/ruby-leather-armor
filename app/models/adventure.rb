@@ -21,6 +21,9 @@ class Adventure < ApplicationRecord
 
   scope :kept,      -> { where(discarded_at: nil) }
   scope :discarded, -> { where.not(discarded_at: nil) }
+  scope :admin_index_includes, -> { includes(:user, :story, :current_location, :adventure_sheets) }
+  scope :recently_updated, -> { order(updated_at: :desc) }
+  scope :for_story, ->(story_id) { where(story_id: story_id) }
 
   def discard!
     update!(discarded_at: Time.current)

@@ -32,13 +32,13 @@ module DungeonMaster
             participants = Array(ctx["participants"])
             token_match = ->(bf) { PersistCombatStart.same_token_set_as_participants?(bf.tokens, participants) }
 
-            actives = adventure.adventure_battlefields.where(status: "active").order(:id).to_a
+            actives = AdventureBattlefield.active_for(adventure.id).order(:id).to_a
             actives.each do |bf|
               bf.archive! unless token_match.call(bf)
             end
             adventure.reload
 
-            actives = adventure.adventure_battlefields.where(status: "active").order(:id).to_a
+            actives = AdventureBattlefield.active_for(adventure.id).order(:id).to_a
             if actives.many?
               keeper = actives.find { |b| b.id == ref_id } if ref_id&.positive?
               keeper ||= actives.first
@@ -51,7 +51,7 @@ module DungeonMaster
               next if bf&.status == "active" && token_match.call(bf)
             end
 
-            keeper = adventure.adventure_battlefields.where(status: "active").order(:id).first
+            keeper = AdventureBattlefield.active_for(adventure.id).order(:id).first
 
             if keeper && token_match.call(keeper)
               ctx2 = ctx.deep_dup.deep_stringify_keys

@@ -11,9 +11,9 @@ module Admin
 
       @logs = PlayLog.includes(*includes).recent_first
 
-      @logs = @logs.where(adventure_id: params[:adventure_id]) if params[:adventure_id].present?
-      @logs = @logs.where(status: params[:status]) if params[:status].present?
-      @logs = @logs.where(event_type: params[:event_type]) if params[:event_type].present?
+      @logs = @logs.for_adventure(params[:adventure_id]) if params[:adventure_id].present?
+      @logs = @logs.with_status(params[:status]) if params[:status].present?
+      @logs = @logs.with_event_type(params[:event_type]) if params[:event_type].present?
 
       @page = [params[:page].to_i, 1].max
       @total_count = @logs.count
@@ -30,22 +30,22 @@ module Admin
 
     def pipelines
       @active_nav = :pipelines
-      aggregates = PlayLog.where.not(registry_entry_uuid: [nil, ""])
+      aggregates = PlayLog.with_registry_entry_uuid_present
                           .select("registry_entry_uuid, MIN(created_at) AS first_at, MAX(created_at) AS last_at, COUNT(*) AS step_count, MIN(adventure_id) AS adventure_id")
                           .group(:registry_entry_uuid)
                           .order("first_at DESC")
 
       @page = [params[:page].to_i, 1].max
-      @total_count = PlayLog.where.not(registry_entry_uuid: [nil, ""]).distinct.count(:registry_entry_uuid)
+      @total_count = PlayLog.with_registry_entry_uuid_present.distinct.count(:registry_entry_uuid)
       @total_pages = (@total_count.to_f / PER_PAGE).ceil
       aggregates = aggregates.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
 
       uuids = aggregates.map(&:registry_entry_uuid)
-      logs_by_uuid = PlayLog.where(registry_entry_uuid: uuids)
+      logs_by_uuid = PlayLog.for_registry_entry_uuids(uuids)
                             .order(:created_at)
                             .group_by(&:registry_entry_uuid)
 
-      registry_entries = PipelineRegistryEntry.where(registry_entry_uuid: uuids).index_by(&:registry_entry_uuid)
+      registry_entries = PipelineRegistryEntry.for_registry_entry_uuids(uuids).index_by(&:registry_entry_uuid)
 
       msg_ids = logs_by_uuid.values.flatten.filter_map(&:player_message_id).uniq
       messages = AdventureMessage.where(id: msg_ids).index_by(&:id)
@@ -69,7 +69,7 @@ module Admin
       includes = [:adventure]
       includes << :ai_usage_record if @show_usage
 
-      @logs = PlayLog.where(registry_entry_uuid: params[:registry_entry_uuid])
+      @logs = PlayLog.with_registry_entry_uuid(params[:registry_entry_uuid])
                      .order(:created_at)
                      .includes(*includes)
       if @logs.empty?
@@ -88,7 +88,7 @@ module Admin
 
     def export_pipeline
       @registry_entry_uuid = params[:registry_entry_uuid]
-      @logs = PlayLog.where(registry_entry_uuid: @registry_entry_uuid)
+      @logs = PlayLog.with_registry_entry_uuid(@registry_entry_uuid)
                      .order(:created_at)
                      .includes(:ai_usage_record)
 

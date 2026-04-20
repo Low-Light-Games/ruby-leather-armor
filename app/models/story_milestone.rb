@@ -8,4 +8,6 @@ class StoryMilestone < ApplicationRecord
   validates :title, presence: true
   validates :description, presence: true
   validates :source, inclusion: { in: SOURCES }
+
+  scope :manual_source, -> { where(source: "manual") }
 end
