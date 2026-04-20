@@ -35,6 +35,15 @@ class PlayLog < ApplicationRecord
   scope :with_registry_entry_uuid_present, -> { where.not(registry_entry_uuid: [nil, ""]) }
   scope :for_registry_entry_uuids, ->(uuids) { where(registry_entry_uuid: uuids) }
 
+  def self.recent_registry_entry_uuids_for_adventure(adventure_id, limit: 5)
+    for_adventure(adventure_id)
+      .with_registry_entry_uuid_present
+      .recent_first
+      .pluck(:registry_entry_uuid)
+      .uniq
+      .first(limit)
+  end
+
   private
 
   def warn_unknown_event_type

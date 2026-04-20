@@ -26,30 +26,17 @@ module Admin
       @npcs = StoryNpc.for_adventure(@adventure).includes(:location).order(:name)
       @clues = StoryClue.for_adventure(@adventure).includes(:location, :npc).order(:title)
       @recent_messages = @adventure.adventure_messages.order(created_at: :desc).limit(20)
-      @registry_entry_uuids = PlayLog.for_adventure(@adventure.id)
-                               .with_registry_entry_uuid_present
-                               .order(created_at: :desc)
-                               .pluck(:registry_entry_uuid)
-                               .uniq
-                               .first(5)
+      @registry_entry_uuids = PlayLog.recent_registry_entry_uuids_for_adventure(@adventure.id, limit: 5)
     end
 
     def update
-      if params[:time_context_json].present?
-        update_time_context
-      elsif params[:context_field].present?
-        update_context
-      elsif params[:adventure].present?
-        @adventure.update!(adventure_params)
-        redirect_to admin_adventure_path(@adventure), notice: "Adventure updated."
-      else
-        redirect_to admin_adventure_path(@adventure), alert: "Nothing to update."
-      end
+      return update_time_context if time_context_update_request?
+      return update_context if context_update_request?
+      return update_adventure_attributes if adventure_attributes_update_request?
+
+      redirect_to admin_adventure_path(@adventure), alert: "Nothing to update."
     rescue JSON::ParserError
-      respond_to do |format|
-        format.html { redirect_to admin_adventure_path(@adventure), alert: "Invalid JSON format." }
-        format.json { render json: { error: "Invalid JSON format." }, status: :unprocessable_entity }
-      end
+      render_invalid_json_response
     end
 
     def reset_context
@@ -99,6 +86,30 @@ module Admin
     def sheet_params
       params.require(:sheet).permit(:hp, :max_hp, :strength, :dexterity, :constitution,
                                     :intelligence, :wisdom, :charisma, :level)
+    end
+
+    def time_context_update_request?
+      params[:time_context_json].present?
+    end
+
+    def context_update_request?
+      params[:context_field].present?
+    end
+
+    def adventure_attributes_update_request?
+      params[:adventure].present?
+    end
+
+    def update_adventure_attributes
+      @adventure.update!(adventure_params)
+      redirect_to admin_adventure_path(@adventure), notice: "Adventure updated."
+    end
+
+    def render_invalid_json_response
+      respond_to do |format|
+        format.html { redirect_to admin_adventure_path(@adventure), alert: "Invalid JSON format." }
+        format.json { render json: { error: "Invalid JSON format." }, status: :unprocessable_entity }
+      end
     end
 
     def update_context

@@ -12,22 +12,33 @@
 #     item_rel:  adv_sheet.adventure_sheet_items
 #   ).as_json
 class SheetPresenter
-  class DetailsPayload
-    def initialize(base_details:, feats:, known_spells:, spellbook_spells:, items:)
+  class SheetDetailsBuilder
+    def initialize(base_details:, feats:, spell_rel:, items:)
       @base_details = base_details
       @feats = feats
-      @known_spells = known_spells
-      @spellbook_spells = spellbook_spells
+      @spell_rel = spell_rel
       @items = items
     end
 
     def to_h
+      spell_ids_by_storage_type = grouped_spell_ids
       @base_details.merge(
         "feats" => @feats,
-        "knownSpells" => @known_spells,
-        "spellbook" => @spellbook_spells,
+        "knownSpells" => spell_ids_by_storage_type.fetch("known", []),
+        "spellbook" => spell_ids_by_storage_type.fetch("spellbook", []),
         "items" => @items
       )
+    end
+
+    private
+
+    def grouped_spell_ids
+      @spell_rel
+        .pluck(:storage_type, :spell_id)
+        .each_with_object({}) do |(storage_type, spell_id), grouped_spell_ids|
+          grouped_spell_ids[storage_type] ||= []
+          grouped_spell_ids[storage_type] << spell_id
+        end
     end
   end
 
@@ -46,11 +57,10 @@ class SheetPresenter
     serialized_sheet = @sheet.as_json
 
     serialized_sheet["active_buffs"] = serialized_active_buffs
-    details_payload = DetailsPayload.new(
+    details_payload = SheetDetailsBuilder.new(
       base_details: (serialized_sheet["details"] || {}).dup,
       feats: serialized_feats,
-      known_spells: @spell_rel.where(storage_type: "known").pluck(:spell_id),
-      spellbook_spells: @spell_rel.where(storage_type: "spellbook").pluck(:spell_id),
+      spell_rel: @spell_rel,
       items: serialized_items
     )
 
