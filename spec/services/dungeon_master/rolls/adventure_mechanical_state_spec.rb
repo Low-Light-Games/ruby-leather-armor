@@ -36,7 +36,7 @@ RSpec.describe DungeonMaster::Rolls::AdventureMechanicalState, type: :service do
     }.not_to raise_error
 
     expect(DungeonMaster::Utilities::Warmaster).to have_received(:compute_combat_initialization).with(
-      request: an_object_having_attributes(
+      combat_initialization_request: an_object_having_attributes(
         adventure: adventure,
         player_sheet: sheet,
         creature_data: [hash_including(name: "Goblin 2", creature_sheet_id: 123, initiative: 9)],

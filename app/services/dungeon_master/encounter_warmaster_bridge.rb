@@ -28,7 +28,7 @@ module DungeonMaster
         creatures_data = loop&.get("encounter_creatures")
         scene_enemy_names = scene_enemy_names_from_traversal_context(adventure.traversal_context)
         warmaster_result = Utilities::Warmaster.initialize_from_encounter!(
-          request: Utilities::Warmaster::EncounterInitializationRequest.new(
+          encounter_initialization_request: Utilities::Warmaster::EncounterInitializationRequest.new(
             adventure: adventure,
             encounter_entry: encounter_entry,
             creatures_data: creatures_data,

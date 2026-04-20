@@ -37,7 +37,7 @@ module DungeonMaster
 
           creature_data = metadata["creature_data"] || []
           combat_data = Utilities::Warmaster.compute_combat_initialization(
-            request: Utilities::Warmaster::CombatInitializationRequest.new(
+            combat_initialization_request: Utilities::Warmaster::CombatInitializationRequest.new(
               adventure: @adventure,
               player_sheet: @sheet,
               creature_data: creature_data.map(&:deep_symbolize_keys),

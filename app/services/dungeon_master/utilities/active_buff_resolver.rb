@@ -109,13 +109,13 @@ module DungeonMaster
 
         expires_at = duration_h ? current_game_hours + duration_h : nil
 
-        [{
-          "source"                => source_id,
-          "bonus_type"            => bonus_type.to_s,
-          "target"                => target.to_s,
-          "value"                 => value,
-          "expires_at_game_hours" => expires_at
-        }]
+        [ActiveBuffEntry.new(
+          source: source_id,
+          bonus_type: bonus_type,
+          target: target,
+          value: value,
+          expires_at_game_hours: expires_at
+        ).to_h]
       end
 
       # ── Duration ─────────────────────────────────────────────────────────
@@ -157,15 +157,14 @@ module DungeonMaster
           reserved = %w[type bonusType bonus_type target bonus bonus_formula]
           meta = effect.reject { |k, _| reserved.include?(k) }
 
-          entry = {
-            "source"                => source_id,
-            "bonus_type"            => bonus_type.to_s,
-            "target"                => target.to_s,
-            "value"                 => value,
-            "expires_at_game_hours" => expires_at
-          }
-          entry["meta"] = meta unless meta.empty?
-          entries << entry
+          entries << ActiveBuffEntry.new(
+            source: source_id,
+            bonus_type: bonus_type,
+            target: target,
+            value: value,
+            expires_at_game_hours: expires_at,
+            meta: meta.presence
+          ).to_h
         end
 
         entries

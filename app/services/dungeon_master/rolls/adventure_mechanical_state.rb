@@ -34,7 +34,7 @@ module DungeonMaster
 
         # Same atomic combat start as run_initiative (battlefield row + refs in one transaction).
         combat_data = Utilities::Warmaster.compute_combat_initialization(
-          request: Utilities::Warmaster::CombatInitializationRequest.new(
+          combat_initialization_request: Utilities::Warmaster::CombatInitializationRequest.new(
             adventure: adventure,
             player_sheet: sheet,
             creature_data: creature_data,

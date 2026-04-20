@@ -57,7 +57,7 @@ RSpec.describe "DungeonMaster::Steps::ParallelEvaluation#prepare_canonical_comba
 
     allow(adventure).to receive(:combat_active?).and_return(false)
     expect(DungeonMaster::Utilities::Warmaster).to receive(:prepare_from_names!).with(
-      request: an_object_having_attributes(
+      names_preparation_request: an_object_having_attributes(
         adventure: adventure,
         combatant_names: ["goblin", "goblin"],
         sheet: sheet

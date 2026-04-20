@@ -100,7 +100,7 @@ module DungeonMaster
         return nil if combatants.empty?
 
         Utilities::Warmaster.initialize_from_names!(
-          request: Utilities::Warmaster::NamesPreparationRequest.new(
+          names_preparation_request: Utilities::Warmaster::NamesPreparationRequest.new(
             adventure: @adventure,
             combatant_names: combatants,
             sheet: @sheet,

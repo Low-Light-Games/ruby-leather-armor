@@ -26,11 +26,7 @@ module DungeonMaster
           if npcs.all?(&:eliminated_from_encounter?)
             return {
               npc_turns: [],
-              next_state: {
-                "current_turn" => PLAYER_NAME,
-                "round" => round,
-                "active" => false
-              }
+              next_state: CombatTurnNextState.new(round: round, active: false).to_h
             }
           end
 
@@ -83,11 +79,7 @@ module DungeonMaster
 
           {
             npc_turns: npc_turns,
-            next_state: {
-              "current_turn" => PLAYER_NAME,
-              "round" => round,
-              "active" => true
-            }
+            next_state: CombatTurnNextState.new(round: round, active: true).to_h
           }
         end
 
@@ -102,18 +94,14 @@ module DungeonMaster
         def next_round_state(npc_turns, round)
           {
             npc_turns: npc_turns,
-            next_state: {
-              "current_turn" => PLAYER_NAME,
-              "round" => round + 1,
-              "active" => true
-            }
+            next_state: CombatTurnNextState.new(round: round + 1, active: true).to_h
           }
         end
 
         def missing_player_state(round)
           {
             npc_turns: [],
-            next_state: { "current_turn" => PLAYER_NAME, "round" => round, "active" => true }
+            next_state: CombatTurnNextState.new(round: round, active: true).to_h
           }
         end
 

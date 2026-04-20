@@ -141,7 +141,7 @@ module DungeonMaster
         return intent if combatant_names.empty?
 
         prepared = Utilities::Warmaster.prepare_from_names!(
-          request: Utilities::Warmaster::NamesPreparationRequest.new(
+          names_preparation_request: Utilities::Warmaster::NamesPreparationRequest.new(
             adventure: @adventure,
             combatant_names: combatant_names,
             sheet: @sheet,
