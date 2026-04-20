@@ -243,10 +243,18 @@ had Improved Grapple" is immediately actionable.
 
 ---
 
-## 9. Incremental decomposition
+## 9. Incremental decomposition of AI pipeline steps
 
-Don't preemptively split things. Build the simplest version that works,
-observe where it breaks, and split at the fault line.
+Don't preemptively split AI calls or pipeline steps into separate
+interactions. Start with the simplest unified approach that works,
+observe where it degrades, and split at the fault line.
+
+This principle is scoped to **AI interactions and pipeline topology** —
+where a split means a new model call, a new prompt, or a new evaluation
+step. It is not a general argument against refactoring code structure:
+extracting Ruby classes, decomposing service objects, and cleaning up
+code organization are ordinary engineering hygiene and do not require
+observed AI failure to justify.
 
 **The history:**
 - Started with a single DM prompt → split into pipeline steps when
@@ -260,13 +268,15 @@ observe where it breaks, and split at the fault line.
 - Started with synchronous HTTP → moved to async Sidekiq permanently
   when connection pool exhaustion caused 504 timeouts under real load
 
-Every split was motivated by observed failure, not theoretical purity.
-This avoids premature abstraction while ensuring that when complexity is
-added, it solves a real problem.
+Every AI pipeline split was motivated by observed failure, not
+theoretical purity. Adding a new model call or evaluation step requires
+evidence that a unified call was ineffective — accuracy degradation,
+token budget ceiling, inability to tune the model independently, or
+debuggability collapse.
 
-**Corollary:** when splitting, preserve the old path behind a toggle
-(see principle 4). The new approach might not be better — you need the
-ability to compare.
+**Corollary:** when splitting an AI step, preserve the old path behind
+a toggle (see principle 4). The new approach might not be better — you
+need the ability to compare.
 
 **Exception — retiring a proven path:** once a new approach has been
 validated in production and the old path adds complexity without
