@@ -15,6 +15,24 @@ module DungeonMaster
       DEEP_MERGE_CONTEXT_FIELDS = %w[combat].freeze
       META_CONTEXT_STEP = "meta_context_update"
 
+      class CombatMutationState
+        def initialize(mutations)
+          @mutations = mutations.is_a?(Hash) ? mutations.deep_stringify_keys : {}
+        end
+
+        def has_combat_initialization?
+          @mutations["combat_initialization"].is_a?(Hash)
+        end
+
+        def has_combat_advancement?
+          @mutations["combat_state_advancement"].is_a?(Hash)
+        end
+
+        def canonical_combat_context
+          @mutations["combat_initialization"] || @mutations["combat_state_advancement"]
+        end
+      end
+
       private
 
       def run_context_updates(what_happened, mutations, macro_significant: false, allow_combat_initialization: true)
@@ -100,9 +118,7 @@ module DungeonMaster
       def persist_micro_contexts(parsed, mutations = nil)
         prev_combat = @adventure.combat_context
         prev_active = prev_combat.is_a?(Hash) ? prev_combat["active"] : nil
-        mutations_hash = mutations.is_a?(Hash) ? mutations.deep_stringify_keys : {}
-        has_combat_initialization = mutations_hash["combat_initialization"].is_a?(Hash)
-        has_combat_advancement = mutations_hash["combat_state_advancement"].is_a?(Hash)
+        combat_mutation_state = CombatMutationState.new(mutations)
 
         updates = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, updated_contexts|
           key = "#{field}_context"
@@ -111,7 +127,7 @@ module DungeonMaster
           domain_result = normalize_domain_context_result(field, domain_result) unless domain_result_pre_normalized?(domain_result)
           unchanged = domain_result["unchanged"] == true
           existing = (@adventure.public_send(key) || {}).deep_stringify_keys
-          canonical_combat = canonical_combat_context_from_mutations(field, mutations_hash)
+          canonical_combat = canonical_combat_context_for(field, combat_mutation_state)
           next if unchanged && canonical_combat.blank?
 
           val = domain_result["context"] || domain_result[:context]
@@ -130,12 +146,12 @@ module DungeonMaster
             val = guard_combat_context_update(
               val.deep_stringify_keys,
               prev_active: prev_active,
-              has_combat_initialization: has_combat_initialization,
-              has_combat_advancement: has_combat_advancement
+              has_combat_initialization: combat_mutation_state.has_combat_initialization?,
+              has_combat_advancement: combat_mutation_state.has_combat_advancement?
             )
             next unless val.present?
 
-            unless has_combat_initialization
+            unless combat_mutation_state.has_combat_initialization?
               val = existing.deep_merge(val)
             end
           end
@@ -146,7 +162,7 @@ module DungeonMaster
         if updates.key?(:combat_context)
           @adventure.reload
           combat_context = @adventure.combat_context
-          if combat_context.is_a?(Hash) && prev_active == true && combat_context["active"] == false
+          if combat_just_deactivated?(prev_active: prev_active, combat_context: combat_context)
             Battlefield::ArchiveCombatEnd.call(adventure: @adventure)
           end
         end
@@ -307,10 +323,10 @@ module DungeonMaster
         val
       end
 
-      def canonical_combat_context_from_mutations(field, mutations_hash)
+      def canonical_combat_context_for(field, combat_mutation_state)
         return nil unless field == "combat"
 
-        mutations_hash["combat_initialization"] || mutations_hash["combat_state_advancement"]
+        combat_mutation_state.canonical_combat_context
       end
 
       def merge_canonical_combat_context(val, canonical_combat:)
@@ -328,6 +344,12 @@ module DungeonMaster
         end
 
         @loop.batch_update!(new_data: { "context_snapshot" => snapshot })
+      end
+
+      def combat_just_deactivated?(prev_active:, combat_context:)
+        combat_context.is_a?(Hash) &&
+          prev_active == true &&
+          combat_context["active"] == false
       end
 
       def persist_scene_summary(summary)
