@@ -14,7 +14,6 @@ module DungeonMaster
           "ref" => "Reflex",
           "will" => "Will"
         }.freeze
-        ABILITY_NAMES = CharacterStats::GameRules::ABILITIES
 
         class CombatResolutionContext
           attr_reader :combat_ctx, :adventure, :sheet, :lookup_context
@@ -215,7 +214,7 @@ module DungeonMaster
 
           def ability_modifier_from_sheet(sheet, ability)
             name = ability.to_s
-            unless ABILITY_NAMES.include?(name)
+            unless CharacterStats::GameRules::ABILITIES.include?(name)
               raise DungeonMaster::CombatMechanicResolutionError,
                     "invalid ability #{ability.inspect} for modifier"
             end
@@ -234,7 +233,7 @@ module DungeonMaster
           end
 
           def valid_ability_name?(ability_name)
-            ABILITY_NAMES.include?(ability_name)
+            CharacterStats::GameRules::ABILITIES.include?(ability_name)
           end
 
           def normalize_npc_actions(list, log:)

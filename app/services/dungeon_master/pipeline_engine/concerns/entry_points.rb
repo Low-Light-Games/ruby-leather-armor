@@ -3,33 +3,25 @@
 module DungeonMaster
   class PipelineEngine
     module Concerns
-      # Public resume/run API, prompt phase chain, DM-query branch, mid-queue continuation.
-      #
-      # run_initiative notes:
-      #   - PersistCombatStart atomically archives stale battlefields and creates a fresh one.
-      #   - When NPCs outroll the player (current_turn != "Player"), maybe_run_world_turn fires
-      #     before any remaining actions. result[:mutations] is enriched by world turn.
-      #   - The remaining queue is skipped entirely when result[:player_death] or
-      #     result[:player_incapacitated] — terminal_combat_result? guards both branches.
-      #   - Post-world-turn mutations (result[:mutations]) are always forwarded to
-      #     run_remaining_queue; never the pre-world-turn base_mutations.
-      #
-      # run_rolls notes:
-      #   - continue_or_narrate_after_resume also checks terminal_combat_result? before
-      #     running the remaining queue, so run_rolls cannot continue a queue after a lethal
-      #     world turn triggered by finish_resolution.
+      # Public prompt/roll/initiative entrypoints.
       module EntryPoints
+        # prompt_mode:
+        #   Optional pipeline execution mode override (for action queue / narration behavior).
+        # mode:
+        #   Legacy alias kept for backward compatibility with older callsites.
         def run_prompt(player_input, prompt_mode: nil, mode: nil)
           resolved_mode = prompt_mode.nil? ? mode : prompt_mode
-          state = { player_input: player_input, mode: resolved_mode }
-          # Assign then return — avoid `return r if (r = …)` (parses as `return (r if …)` and can raise NameError on `r`).
-          result = apply_prompt_phase(Phases::IntakeDangerGate, state)
+          prompt_phase_input = PromptPhaseInput.new(player_input: player_input, prompt_mode: resolved_mode)
+          pipeline_phase_state = prompt_phase_input.to_h
+
+          result = apply_prompt_phase(Phases::IntakeDangerGate, pipeline_phase_state)
           return result if result
 
-          result = apply_prompt_phase(Phases::DmQueryBranch, state)
+          result = apply_prompt_phase(Phases::DmQueryBranch, pipeline_phase_state)
           return result if result
 
-          apply_prompt_phase(Phases::OrchestrateCompoundActions, state) || raise("run_prompt: terminal phase did not halt")
+          apply_prompt_phase(Phases::OrchestrateCompoundActions, pipeline_phase_state) ||
+            raise("run_prompt: terminal phase did not halt")
         end
 
         def run_initiative(player_initiative, metadata)
@@ -56,13 +48,12 @@ module DungeonMaster
 
           base_mutations = metadata["mutations"] || {}
           opener_outcome = metadata["opener_outcome"].to_s.presence
-          result = {
-            status: :resolved,
+          initiative_resume_result = InitiativeResumeResult.new(
             intent: intent,
             mutations: base_mutations,
-            action_outcome: opener_outcome,
-            precombat_opener: opener_outcome.present?
-          }
+            opener_outcome: opener_outcome
+          )
+          initiative_result_payload = initiative_resume_result.to_h
           opening_merged = restore_opening_action_merged(metadata)
 
           if opening_merged
@@ -70,40 +61,36 @@ module DungeonMaster
               @loop&.batch_update!(new_status: "paused",
                 timeline_entry: tl("awaiting_rolls", "Paused for player rolls"))
               ContextUpdatePause.run(pipeline_engine: self, intent: intent, merged: opening_merged)
-              return {
-                action: :awaiting_rolls,
+              return AwaitingRollsResumePayload.new(
                 intent: intent,
                 merged: opening_merged,
                 remaining_actions: remaining_actions_from(metadata)
-              }
+              ).to_h
             end
 
             opening_result = finish_resolution(intent, opening_merged, Rolls::PlayerRolls.auto_success_roll_message(opening_merged))
             return continue_or_narrate_after_resume(metadata, accumulated_row: opening_result, only_continue_if_resolved: true)
           end
 
-          # If any NPC outrolled the player on initiative, they act now — before the player's
-          # first move. World turn enriches result[:mutations] with combat advancement and sets
-          # :player_death / :player_incapacitated on the result when needed.
-          npcs_go_first = combat_data["current_turn"] != Utilities::CombatTurnCalculator::PLAYER_NAME
+          npcs_go_first = npcs_have_opening_turn?(combat_data)
           if npcs_go_first && opener_outcome.present? && opening_merged.blank?
             @loop&.batch_update!(new_data: { "pipeline_outcome" => "" })
           end
-          result = maybe_run_world_turn(result) if npcs_go_first
+          initiative_result_payload = maybe_run_world_turn(initiative_result_payload) if npcs_go_first
 
           remaining = remaining_actions_from(metadata)
-          if remaining.any? && !terminal_combat_result?(result)
+          if remaining.any? && !terminal_combat_result?(initiative_result_payload)
             # Use post-world-turn mutations so combat advancement carries through the queue.
-            run_remaining_queue(remaining, initial_accumulated: [result])
-          elsif npcs_go_first || terminal_combat_result?(result)
+            run_remaining_queue(remaining, initial_accumulated: [initiative_result_payload])
+          elsif npcs_go_first || terminal_combat_result?(initiative_result_payload)
             # World turn appended NPC action prose to pipeline_outcome; narrate it so
             # the player sees what the enemies did before their first move.
-            run_accumulated_narrative_phase([result])
+            run_accumulated_narrative_phase([initiative_result_payload])
           else
             {
               action: :combat_initialized,
               combat_start_message: player_turn_combat_start_message(combat_data)
-            }.merge(result.slice(:player_death, :player_incapacitated))
+            }.merge(initiative_result_payload.slice(:player_death, :player_incapacitated))
           end
         end
 
@@ -218,6 +205,10 @@ module DungeonMaster
 
         def terminal_combat_result?(result)
           result[:player_death] || result[:player_incapacitated]
+        end
+
+        def npcs_have_opening_turn?(combat_data)
+          combat_data["current_turn"] != Utilities::CombatTurnCalculator::PLAYER_NAME
         end
 
         def player_turn_combat_start_message(combat_data)

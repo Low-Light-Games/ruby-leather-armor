@@ -16,9 +16,8 @@ module Admin
 
     def update_tier
       target_tier = tier_params[:tier]
-
-      unless User::TIERS.include?(target_tier)
-        redirect_to admin_users_path, alert: "Invalid plan selected."
+      unless valid_tier?(target_tier)
+        render_invalid_tier_selection!
         return
       end
 
@@ -58,6 +57,14 @@ module Admin
 
     def tier_params
       params.require(:user).permit(:tier)
+    end
+
+    def valid_tier?(target_tier)
+      User::TIERS.include?(target_tier)
+    end
+
+    def render_invalid_tier_selection!
+      redirect_to admin_users_path, alert: "Invalid plan selected."
     end
   end
 end

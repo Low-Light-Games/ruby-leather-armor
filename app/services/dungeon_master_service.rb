@@ -18,7 +18,7 @@ class DungeonMasterService
   def initialize(adventure, user:)
     @runtime = DungeonMaster::EntryRuntime.new(adventure: adventure, user: user)
     @prompt_execution = DungeonMaster::EntryServices::PromptExecution.new(runtime: @runtime)
-    @resume_execution = DungeonMaster::EntryServices::ResumeExecution.new(runtime: @runtime)
+    @resume_execution = DungeonMaster::EntryServices::PipelineResumeExecution.new(runtime: @runtime)
   end
 
   # ----------------------------------------------------------------
