@@ -53,6 +53,7 @@ module DungeonMaster
         def assert_matching_battlefield_version!(battlefield_reference, battlefield)
           expected_version = battlefield_reference.version
           return if expected_version.blank?
+
           return if expected_version.to_i == battlefield.version.to_i
 
           raise DungeonMaster::AiError,
