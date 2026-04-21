@@ -257,6 +257,7 @@ module DungeonMaster
       end
 
       def blocked_action_result(entry, prior_result)
+        entry = normalize_action_entry(entry)
         prerequisite = entry.prerequisite
         blocked_text = entry.text
         prior_intent = (prior_result && prior_result[:intent].is_a?(Hash)) ? prior_result[:intent].deep_dup : {}
@@ -266,6 +267,17 @@ module DungeonMaster
           prior_intent: prior_intent,
           action_outcome: blocked_action_outcome(blocked_text, prerequisite)
         ).to_h
+      end
+
+      def normalize_action_entry(entry)
+        return entry if entry.is_a?(ActionQueueEntry)
+
+        ActionQueueEntry.from_unknown(entry) || ActionQueueEntry.new(
+          text: "",
+          depends_on_index: nil,
+          prerequisite: nil,
+          abort_on_failed_prerequisite: false
+        )
       end
 
       def blocked_action_outcome(action_text, prerequisite)

@@ -117,7 +117,7 @@ RSpec.describe DungeonMasterService, type: :service do
 
       it "starts a fresh prompt pipeline instead of resuming the pending roll" do
         expect_any_instance_of(DungeonMaster::PipelineEngine).to receive(:run_prompt)
-          .with(player_input, mode: nil)
+          .with(player_input, prompt_mode: nil)
           .and_return({ action: :narrated, narrative: "stub", adventure_complete: false })
 
         service.execute_prompt(player_input, player_message_id: player_msg.id)
