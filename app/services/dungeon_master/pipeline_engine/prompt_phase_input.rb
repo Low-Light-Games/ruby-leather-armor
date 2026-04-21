@@ -11,7 +11,7 @@ module DungeonMaster
       def to_h
         {
           player_input: @player_input,
-          mode: @prompt_mode
+          prompt_mode: @prompt_mode
         }
       end
     end

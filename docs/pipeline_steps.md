@@ -305,7 +305,7 @@ template rendering is sub-millisecond compared to the AI call it feeds.
 **Decision:** `DungeonMaster::PipelineEngine` encapsulates pure pipeline logic
 (step sequencing, branching, data flow). Pipeline entry responsibilities are
 split into focused deterministic services under `DungeonMaster::EntryServices`
-(`PromptExecution`, `ResumeExecution`) with shared dependency wiring in
+(`PromptExecution`, `ResumePipelineExecution`) with shared dependency wiring in
 `DungeonMaster::EntryRuntime`; `DungeonMasterService` remains a small facade
 for controller/job compatibility.
 

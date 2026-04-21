@@ -6,12 +6,12 @@ module DungeonMaster
       # Public prompt/roll/initiative entrypoints.
       module EntryPoints
         # prompt_mode:
-        #   Optional pipeline execution mode override (for action queue / narration behavior).
-        # mode:
-        #   Legacy alias kept for backward compatibility with older callsites.
-        def run_prompt(player_input, prompt_mode: nil, mode: nil)
-          resolved_mode = prompt_mode.nil? ? mode : prompt_mode
-          prompt_phase_input = PromptPhaseInput.new(player_input: player_input, prompt_mode: resolved_mode)
+        #   Optional pipeline override used at prompt-routing time.
+        #   Supported values:
+        #     - "dm_query": force Ask-DM flow regardless of intake classification.
+        #   Any other value is currently treated as no override.
+        def run_prompt(player_input, prompt_mode: nil)
+          prompt_phase_input = PromptPhaseInput.new(player_input: player_input, prompt_mode: prompt_mode)
           pipeline_phase_state = prompt_phase_input.to_h
 
           result = apply_prompt_phase(Phases::IntakeDangerGate, pipeline_phase_state)

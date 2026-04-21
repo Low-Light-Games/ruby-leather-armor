@@ -24,7 +24,7 @@ module DungeonMaster
         runtime.ensure_run_pipeline!
 
         result = DungeonMaster::PipelineTiming.run(runtime.log) do
-          runtime.pipeline_engine.run_prompt(player_input, mode: prompt_mode)
+          runtime.pipeline_engine.run_prompt(player_input, prompt_mode: prompt_mode)
         end
         runtime.messenger.messages_for(result)
       rescue DungeonMaster::UsageLimitExceeded => e

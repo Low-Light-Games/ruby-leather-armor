@@ -68,7 +68,7 @@ sequenceDiagram
 
 - **`AdventureChannel`** — ActionCable channel scoped per adventure; authorises via `adventure.user_id == current_user.id || current_user.admin?`
 - **`PipelineJob` / `RollPipelineJob` / `InitiativePipelineJob`** — Sidekiq jobs that run the pipeline and broadcast results
-- **`DungeonMasterService`** — two-phase facade API: `prepare_*` persists player messages; `execute_*` delegates to `DungeonMaster::EntryServices::PromptExecution` / `ResumeExecution` with shared wiring in `DungeonMaster::EntryRuntime`
+- **`DungeonMasterService`** — two-phase facade API: `prepare_*` persists player messages; `execute_*` delegates to `DungeonMaster::EntryServices::PromptExecution` / `ResumePipelineExecution` with shared wiring in `DungeonMaster::EntryRuntime`
 - **`AdventureMessagesController`** — `prepare_*` + `perform_later` and **`202`** — no synchronous pipeline path
 
 ### Node evaluator

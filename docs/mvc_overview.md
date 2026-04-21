@@ -189,7 +189,7 @@ Located in `app/views/`. The application is primarily a JSON API; HTML views are
 - **Policy-based authorization**: All controllers use Pundit-style policy objects; `ApplicationController` enforces authorization.
 - **Join table pattern**: Many-to-many relationships (feats, spells, items) are managed through explicit join-table models to support adventure-scoped snapshots.
 - **AI pipeline**: `AdventureMessagesController` triggers an async multi-step pipeline (`DungeonMaster::PipelineEngine`) tracked by `PipelineRegistryEntry` (logs/admin correlation), domain `Pipeline`, and `AdventureLoop`; results are streamed back via Action Cable.
-- **Entry-service boundary**: `DungeonMasterService` is now a compatibility facade; prompt/roll/initiative entrypoints are owned by focused deterministic services (`DungeonMaster::EntryServices::PromptExecution`, `DungeonMaster::EntryServices::ResumeExecution`) with shared runtime wiring in `DungeonMaster::EntryRuntime`.
+- **Entry-service boundary**: `DungeonMasterService` is now a compatibility facade; prompt/roll/initiative entrypoints are owned by focused deterministic services (`DungeonMaster::EntryServices::PromptExecution`, `DungeonMaster::EntryServices::ResumePipelineExecution`) with shared runtime wiring in `DungeonMaster::EntryRuntime`.
 - **Singleton config**: `DmConfig` holds a single global configuration record accessed by pipeline steps for model and budget decisions.
 - **Value-object construction seams**: builder-style hash assembly is being replaced with explicit constructors at boundaries (for example `Adventures::TimeContext`, `Adventures::TraversalContext`, `Onboarding::SheetBlueprint`, and battlefield action-economy payload objects) to keep invariants owned close to object creation.
 

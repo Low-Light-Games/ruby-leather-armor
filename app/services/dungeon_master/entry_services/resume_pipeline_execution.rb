@@ -2,7 +2,7 @@
 
 module DungeonMaster
   module EntryServices
-    class PipelineResumeExecution
+    class ResumePipelineExecution
       def initialize(runtime:)
         @runtime = runtime
       end
@@ -22,7 +22,5 @@ module DungeonMaster
 
       attr_reader :runtime
     end
-
-    ResumeExecution = PipelineResumeExecution
   end
 end
