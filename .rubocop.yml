@@ -1,5 +1,5 @@
 require:
-  - ./lib/rubocop/cop/cursor/blank_line_after_guard_clause.rb
+  - ./.rubocop/cop/cursor/blank_line_after_guard_clause.rb
 
 AllCops:
   TargetRubyVersion: 3.3
