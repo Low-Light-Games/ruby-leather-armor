@@ -7,15 +7,10 @@ module DungeonMaster
       module_function
 
       def build_for_turn_holder(holder_name, combat_ctx:)
-        h = holder_name.to_s
-        {
-          "round" => combat_ctx["round"].to_i,
-          "holder" => h,
-          "standard_available" => true,
-          "move_available" => true,
-          "swift_available" => true,
-          "full_round_claimed" => false
-        }
+        DungeonMaster::Battlefield::TurnState.new(
+          round: combat_ctx["round"],
+          holder: holder_name
+        ).to_h
       end
 
       # @param delta [Hash] string keys: spend_standard, spend_move, spend_swift, refund_* (bool)
@@ -27,18 +22,22 @@ module DungeonMaster
 
         if truthy?(d["spend_standard"])
           raise ArgumentError, "standard action unavailable" unless truthy?(out["standard_available"])
+
           out["standard_available"] = false
         end
         if truthy?(d["spend_move"])
           raise ArgumentError, "move action unavailable" unless truthy?(out["move_available"])
+
           out["move_available"] = false
         end
         if truthy?(d["spend_swift"])
           raise ArgumentError, "swift action unavailable" unless truthy?(out["swift_available"])
+
           out["swift_available"] = false
         end
         if truthy?(d["spend_full_round"])
           raise ArgumentError, "full-round already claimed" if truthy?(out["full_round_claimed"])
+
           unless truthy?(out["standard_available"]) && truthy?(out["move_available"])
             raise ArgumentError, "full-round requires both standard and move actions to still be available"
           end

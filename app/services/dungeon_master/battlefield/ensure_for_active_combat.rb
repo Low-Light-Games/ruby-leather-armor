@@ -23,51 +23,84 @@ module DungeonMaster
 
           adventure.with_lock do
             adventure.reload
-            ctx = adventure.combat_context
-            next unless ctx.is_a?(Hash) && ctx["active"] == true
-            next unless Array(ctx["participants"]).any?
+            combat_context = adventure.combat_context
+            next unless active_combat_context?(combat_context)
 
-            ref = ctx["battlefield_ref"]
-            ref_id = ref["id"].to_i if ref.is_a?(Hash) && ref["id"].present?
-            participants = Array(ctx["participants"])
-            token_match = ->(bf) { PersistCombatStart.same_token_set_as_participants?(bf.tokens, participants) }
+            participants = combat_participants(combat_context)
+            battlefield_reference = CombatContextReferencePatch.reference_from(combat_context)
+            reference_id = battlefield_reference&.id
 
-            actives = adventure.adventure_battlefields.where(status: "active").order(:id).to_a
-            actives.each do |bf|
-              bf.archive! unless token_match.call(bf)
-            end
-            adventure.reload
+            archive_non_matching_active_battlefields!(adventure, participants)
+            collapse_duplicate_active_battlefields!(adventure, reference_id)
 
-            actives = adventure.adventure_battlefields.where(status: "active").order(:id).to_a
-            if actives.many?
-              keeper = actives.find { |b| b.id == ref_id } if ref_id&.positive?
-              keeper ||= actives.first
-              (actives - [keeper]).each(&:archive!)
-              adventure.reload
-            end
+            next if referenced_active_battlefield_matches?(adventure, reference_id, participants)
 
-            if ref_id&.positive?
-              bf = adventure.adventure_battlefields.find_by(id: ref_id)
-              next if bf&.status == "active" && token_match.call(bf)
-            end
-
-            keeper = adventure.adventure_battlefields.where(status: "active").order(:id).first
-
-            if keeper && token_match.call(keeper)
-              ctx2 = ctx.deep_dup.deep_stringify_keys
-              ctx2["battlefield_ref"] = {
-                "id" => keeper.id,
-                "version" => keeper.version,
-                "topology" => keeper.topology
-              }
-              adventure.update!(combat_context: ctx2)
+            keeper = find_matching_active_battlefield(adventure, participants)
+            if keeper
+              adventure.update!(
+                combat_context: CombatContextReferencePatch.attach(combat_context, battlefield: keeper)
+              )
               next
             end
 
-            data = ctx.deep_dup.deep_stringify_keys
-            data.delete("battlefield_ref")
-            PersistCombatStart.call(adventure: adventure, combat_data: data, sheet: sheet)
+            recreate_battlefield_from_combat_context!(adventure, combat_context, sheet)
           end
+        end
+
+        private
+
+        def active_combat_context?(combat_context)
+          combat_context.is_a?(Hash) &&
+            combat_context["active"] == true &&
+            combat_participants(combat_context).any?
+        end
+
+        def combat_participants(combat_context)
+          Array(combat_context["participants"])
+        end
+
+        def battlefield_matches_participants?(battlefield, participants)
+          PersistCombatStart.same_token_set_as_participants?(battlefield.tokens, participants)
+        end
+
+        def archive_non_matching_active_battlefields!(adventure, participants)
+          AdventureBattlefield.active_for(adventure.id).order(:id).find_each do |battlefield|
+            next if battlefield_matches_participants?(battlefield, participants)
+
+            battlefield.archive!
+          end
+        end
+
+        def collapse_duplicate_active_battlefields!(adventure, reference_id)
+          active_battlefields = AdventureBattlefield.active_for(adventure.id).order(:id).to_a
+          return unless active_battlefields.many?
+
+          keeper = preferred_active_battlefield(active_battlefields, reference_id)
+          (active_battlefields - [keeper]).each(&:archive!)
+        end
+
+        def preferred_active_battlefield(active_battlefields, reference_id)
+          referenced = active_battlefields.find { |battlefield| battlefield.id == reference_id } if reference_id&.positive?
+          referenced || active_battlefields.first
+        end
+
+        def referenced_active_battlefield_matches?(adventure, reference_id, participants)
+          return false unless reference_id&.positive?
+
+          referenced_battlefield = adventure.adventure_battlefields.find_by(id: reference_id)
+          referenced_battlefield&.status == "active" &&
+            battlefield_matches_participants?(referenced_battlefield, participants)
+        end
+
+        def find_matching_active_battlefield(adventure, participants)
+          AdventureBattlefield.active_for(adventure.id).order(:id).find do |battlefield|
+            battlefield_matches_participants?(battlefield, participants)
+          end
+        end
+
+        def recreate_battlefield_from_combat_context!(adventure, combat_context, sheet)
+          combat_payload = CombatContextReferencePatch.clear(combat_context)
+          PersistCombatStart.call(adventure: adventure, combat_data: combat_payload, sheet: sheet)
         end
       end
     end

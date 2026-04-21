@@ -11,10 +11,10 @@ RULES:
 - Tactical descriptions ("surprise attack", "ambush", "feint", "charging attack",
   "sneak up and strike") are NOT named abilities — return nothing for those.
 - Plain attacks, movement, skill checks, conversation: return [].
-<% if @condition_restrictions.present? %>
+<% if @sanity_context.condition_restrictions.present? %>
 
 === ACTIVE RESTRICTIONS ===
-The character cannot currently: <%= @condition_restrictions.join(", ") %>
+The character cannot currently: <%= @sanity_context.condition_restrictions.join(", ") %>
 If the declared action requires a restricted activity, set condition_violated to a
 brief explanation.
 <% end %>

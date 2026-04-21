@@ -14,48 +14,32 @@ module DungeonMaster
             adventure.lock!
             adventure.reload
 
-            ctx = adventure.combat_context
-            return unless ctx.is_a?(Hash)
+            combat_context = adventure.combat_context
+            return unless combat_context.is_a?(Hash)
 
-            ref = ctx["battlefield_ref"] || ctx[:battlefield_ref]
-            return if ref.blank?
+            battlefield_reference_hash = combat_context["battlefield_ref"] || combat_context[:battlefield_ref]
+            return if battlefield_reference_hash.blank?
 
-            bf_id = ref["id"] || ref[:id]
-            bf = adventure.adventure_battlefields.lock.find_by(id: bf_id, status: "active")
-            unless bf
-              log&.log!(:warn, "[Battlefield::ApplyPatches] No active battlefield id=#{bf_id}")
+            battlefield_reference = BattlefieldReference.from_hash(battlefield_reference_hash)
+            return unless battlefield_reference
+
+            battlefield_id = battlefield_reference.id
+            battlefield = adventure.adventure_battlefields.lock.find_by(id: battlefield_id, status: "active")
+            unless battlefield
+              log&.log!(:warn, "[Battlefield::ApplyPatches] No active battlefield id=#{battlefield_id}")
               return
             end
 
-            expected = ref["version"] || ref[:version]
-            if expected.present? && expected.to_i != bf.version.to_i
-              raise DungeonMaster::AiError,
-                    "battlefield version drift: combat_context has #{expected}, row has #{bf.version}"
-            end
+            assert_matching_battlefield_version!(battlefield_reference, battlefield)
+            patch_state = PatchState.from_battlefield(battlefield)
+            mutable_patch_data = patch_state.to_h
+            Array(patches).each { |patch_operation| apply_op!(mutable_patch_data, patch_operation) }
 
-            data = {
-              "tokens" => bf.tokens.deep_dup,
-              "viewport" => bf.viewport.deep_dup,
-              "world" => bf.world.deep_dup
-            }
-            Array(patches).each { |op| apply_op!(data, op) }
+            apply_patch_state!(battlefield, patch_state)
 
-            bf.assign_attributes(
-              tokens: data["tokens"],
-              viewport: data["viewport"],
-              world: data["world"],
-              version: bf.version.to_i + 1
+            adventure.update!(
+              combat_context: CombatContextReferencePatch.attach(combat_context, battlefield: battlefield)
             )
-            bf.save!
-
-            merged = ctx.deep_stringify_keys.deep_dup
-            new_ref = (merged["battlefield_ref"] || {}).merge(
-              "id" => bf.id,
-              "version" => bf.version,
-              "topology" => bf.topology
-            )
-            merged["battlefield_ref"] = new_ref
-            adventure.update!(combat_context: merged)
           end
           adventure.reload
         end
@@ -66,48 +50,69 @@ module DungeonMaster
 
         private
 
-        def apply_op!(data, op)
-          h = op.is_a?(Hash) ? op.deep_stringify_keys : {}
-          case h["op"].to_s
-          when "move_token"
-            id = h["id"].to_s
-            raise ArgumentError, "move_token requires id" if id.blank?
-            tok = (data["tokens"][id] ||= {})
-            tok["x"] = h["x"].to_i if h.key?("x")
-            tok["y"] = h["y"].to_i if h.key?("y")
-          when "shift_viewport"
-            vp = (data["viewport"] ||= {})
-            if h["anchor"].is_a?(Hash)
-              a = h["anchor"].stringify_keys
-              vp["anchor_x"] = a["x"].to_i if a.key?("x")
-              vp["anchor_y"] = a["y"].to_i if a.key?("y")
-            end
-            vp["min_x"] = h["min_x"].to_i if h.key?("min_x")
-            vp["min_y"] = h["min_y"].to_i if h.key?("min_y")
-          when "set_cells"
-            world = (data["world"] ||= {})
-            cells = (world["cells"] ||= {})
-            Array(h["cells"]).each do |c|
-              raise DungeonMaster::AiError, "set_cells: each cell must be a Hash" unless c.is_a?(Hash)
+        def assert_matching_battlefield_version!(battlefield_reference, battlefield)
+          expected_version = battlefield_reference.version
+          return if expected_version.blank?
 
-              c = c.stringify_keys
-              unless c.key?("x") && c.key?("y")
+          return if expected_version.to_i == battlefield.version.to_i
+
+          raise DungeonMaster::AiError,
+                "battlefield version drift: combat_context has #{expected_version}, row has #{battlefield.version}"
+        end
+
+        def apply_patch_state!(battlefield, patch_state)
+          battlefield.assign_attributes(
+            tokens: patch_state.tokens,
+            viewport: patch_state.viewport,
+            world: patch_state.world,
+            version: battlefield.version.to_i + 1
+          )
+          battlefield.save!
+        end
+
+        def apply_op!(patch_state_data, patch_operation)
+          operation_payload = patch_operation.is_a?(Hash) ? patch_operation.deep_stringify_keys : {}
+          case operation_payload["op"].to_s
+          when "move_token"
+            token_id = operation_payload["id"].to_s
+            raise ArgumentError, "move_token requires id" if token_id.blank?
+
+            token_payload = (patch_state_data["tokens"][token_id] ||= {})
+            token_payload["x"] = operation_payload["x"].to_i if operation_payload.key?("x")
+            token_payload["y"] = operation_payload["y"].to_i if operation_payload.key?("y")
+          when "shift_viewport"
+            viewport_payload = (patch_state_data["viewport"] ||= {})
+            if operation_payload["anchor"].is_a?(Hash)
+              anchor_payload = operation_payload["anchor"].stringify_keys
+              viewport_payload["anchor_x"] = anchor_payload["x"].to_i if anchor_payload.key?("x")
+              viewport_payload["anchor_y"] = anchor_payload["y"].to_i if anchor_payload.key?("y")
+            end
+            viewport_payload["min_x"] = operation_payload["min_x"].to_i if operation_payload.key?("min_x")
+            viewport_payload["min_y"] = operation_payload["min_y"].to_i if operation_payload.key?("min_y")
+          when "set_cells"
+            world_payload = (patch_state_data["world"] ||= {})
+            world_cells = (world_payload["cells"] ||= {})
+            Array(operation_payload["cells"]).each do |cell_payload|
+              raise DungeonMaster::AiError, "set_cells: each cell must be a Hash" unless cell_payload.is_a?(Hash)
+
+              cell_payload = cell_payload.stringify_keys
+              unless cell_payload.key?("x") && cell_payload.key?("y")
                 raise DungeonMaster::AiError, "set_cells: each cell requires integer x and y"
               end
 
-              payload = c.except("x", "y")
-              bad = payload.keys - ALLOWED_CELL_ATTRS
-              if bad.any?
+              cell_attributes = cell_payload.except("x", "y")
+              disallowed_attributes = cell_attributes.keys - ALLOWED_CELL_ATTRS
+              if disallowed_attributes.any?
                 raise DungeonMaster::AiError,
-                      "set_cells: disallowed cell attribute(s) #{bad.inspect} — allowed: #{ALLOWED_CELL_ATTRS.join(', ')}"
+                      "set_cells: disallowed cell attribute(s) #{disallowed_attributes.inspect} — allowed: #{ALLOWED_CELL_ATTRS.join(', ')}"
               end
 
-              key = "#{c['x']},#{c['y']}"
-              cells[key] = payload.slice(*ALLOWED_CELL_ATTRS)
+              cell_key = "#{cell_payload['x']},#{cell_payload['y']}"
+              world_cells[cell_key] = cell_attributes.slice(*ALLOWED_CELL_ATTRS)
             end
           else
             raise DungeonMaster::AiError,
-                  "battlefield patch: unknown op #{h['op'].inspect} (supported: move_token, shift_viewport, set_cells)"
+                  "battlefield patch: unknown op #{operation_payload['op'].inspect} (supported: move_token, shift_viewport, set_cells)"
           end
         end
       end

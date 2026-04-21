@@ -11,9 +11,9 @@ module Admin
 
       @logs = PlayLog.includes(*includes).recent_first
 
-      @logs = @logs.where(adventure_id: params[:adventure_id]) if params[:adventure_id].present?
-      @logs = @logs.where(status: params[:status]) if params[:status].present?
-      @logs = @logs.where(event_type: params[:event_type]) if params[:event_type].present?
+      @logs = @logs.for_adventure(params[:adventure_id]) if params[:adventure_id].present?
+      @logs = @logs.with_status(params[:status]) if params[:status].present?
+      @logs = @logs.with_event_type(params[:event_type]) if params[:event_type].present?
 
       @page = [params[:page].to_i, 1].max
       @total_count = @logs.count
@@ -30,32 +30,28 @@ module Admin
 
     def pipelines
       @active_nav = :pipelines
-      aggregates = PlayLog.where.not(registry_entry_uuid: [nil, ""])
-                          .select("registry_entry_uuid, MIN(created_at) AS first_at, MAX(created_at) AS last_at, COUNT(*) AS step_count, MIN(adventure_id) AS adventure_id")
-                          .group(:registry_entry_uuid)
-                          .order("first_at DESC")
-
       @page = [params[:page].to_i, 1].max
-      @total_count = PlayLog.where.not(registry_entry_uuid: [nil, ""]).distinct.count(:registry_entry_uuid)
+      pipeline_query = Admin::PlayLogPipelineQuery.new(page: @page, per_page: PER_PAGE)
+      @total_count = pipeline_query.total_count
       @total_pages = (@total_count.to_f / PER_PAGE).ceil
-      aggregates = aggregates.offset((@page - 1) * PER_PAGE).limit(PER_PAGE)
+      aggregates = pipeline_query.paged_aggregates
 
       uuids = aggregates.map(&:registry_entry_uuid)
-      logs_by_uuid = PlayLog.where(registry_entry_uuid: uuids)
+      logs_by_uuid = PlayLog.for_registry_entry_uuids(uuids)
                             .order(:created_at)
                             .group_by(&:registry_entry_uuid)
 
-      registry_entries = PipelineRegistryEntry.where(registry_entry_uuid: uuids).index_by(&:registry_entry_uuid)
+      registry_entries = PipelineRegistryEntry.for_registry_entry_uuids(uuids).index_by(&:registry_entry_uuid)
 
       msg_ids = logs_by_uuid.values.flatten.filter_map(&:player_message_id).uniq
       messages = AdventureMessage.where(id: msg_ids).index_by(&:id)
 
       @registry_entry_summaries = aggregates.map do |aggregate|
         logs  = logs_by_uuid[aggregate.registry_entry_uuid] || []
-        msg   = logs.first && messages[logs.first.player_message_id]
+        player_message = first_player_message_for_logs(logs, messages)
         entry = registry_entries[aggregate.registry_entry_uuid]
 
-        Admin::RegistryEntryPresenter.new(aggregate, logs: logs, player_message: msg, registry_entry: entry).as_hash
+        Admin::RegistryEntryPresenter.new(aggregate, logs: logs, player_message: player_message, registry_entry: entry).as_hash
       end
 
       detect_retries!(@registry_entry_summaries)
@@ -69,7 +65,7 @@ module Admin
       includes = [:adventure]
       includes << :ai_usage_record if @show_usage
 
-      @logs = PlayLog.where(registry_entry_uuid: params[:registry_entry_uuid])
+      @logs = PlayLog.with_registry_entry_uuid(params[:registry_entry_uuid])
                      .order(:created_at)
                      .includes(*includes)
       if @logs.empty?
@@ -88,7 +84,7 @@ module Admin
 
     def export_pipeline
       @registry_entry_uuid = params[:registry_entry_uuid]
-      @logs = PlayLog.where(registry_entry_uuid: @registry_entry_uuid)
+      @logs = PlayLog.with_registry_entry_uuid(@registry_entry_uuid)
                      .order(:created_at)
                      .includes(:ai_usage_record)
 
@@ -120,14 +116,37 @@ module Admin
       sorted.each_with_index do |summary, idx|
         summary[:retry_of] = nil
         next if idx == 0
-        prev = sorted[idx - 1]
-        next unless summary[:adventure_id] && summary[:adventure_id] == prev[:adventure_id]
-        next unless summary[:first_at] - prev[:first_at] < RETRY_WINDOW
-        next unless summary[:message_content].present? && prev[:message_content].present?
-        next unless summary[:message_content].strip == prev[:message_content].strip
 
-        summary[:retry_of] = prev[:retry_of] || prev[:registry_entry_uuid]
+        previous_summary = sorted[idx - 1]
+        next unless retry_candidate_pair?(summary, previous_summary)
+
+        summary[:retry_of] = previous_summary[:retry_of] || previous_summary[:registry_entry_uuid]
       end
+    end
+
+    def first_player_message_for_logs(logs, messages_by_id)
+      first_player_message_id = logs.first&.player_message_id
+      messages_by_id[first_player_message_id]
+    end
+
+    def retry_candidate_pair?(summary, previous_summary)
+      same_adventure?(summary, previous_summary) &&
+        started_within_retry_window?(summary, previous_summary) &&
+        same_player_message_content?(summary, previous_summary)
+    end
+
+    def same_adventure?(summary, previous_summary)
+      summary[:adventure_id].present? && summary[:adventure_id] == previous_summary[:adventure_id]
+    end
+
+    def started_within_retry_window?(summary, previous_summary)
+      summary[:first_at] - previous_summary[:first_at] < RETRY_WINDOW
+    end
+
+    def same_player_message_content?(summary, previous_summary)
+      summary[:message_content].present? &&
+        previous_summary[:message_content].present? &&
+        summary[:message_content].strip == previous_summary[:message_content].strip
     end
   end
 end

@@ -1,16 +1,16 @@
 You estimate how much in-game time a Pathfinder 1e action takes.
 
 === CURRENT TIME ===
-Day <%= @adventure_day %>, Hour <%= @current_hour %> (<%= @light_conditions %>)
-<% if @combat_active -%>
+Day <%= @time_keeper_context.adventure_day %>, Hour <%= @time_keeper_context.current_hour %> (<%= @time_keeper_context.light_conditions %>)
+<% if @time_keeper_context.combat_active -%>
 Combat is ACTIVE. Combat rounds last 6 seconds each.
 <% end -%>
 
 === PLAYER'S INTENT ===
-<%= @loop&.player_intent %>
+<%= @time_keeper_context.loop&.player_intent %>
 
 === WHAT HAPPENED (mechanical outcome) ===
-<%= @outcome %>
+<%= @time_keeper_context.outcome %>
 
 === PATHFINDER 1e TIME REFERENCE ===
 - One combat round: 6 seconds (0.0017 hours)
@@ -57,7 +57,7 @@ Combat is ACTIVE. Combat rounds last 6 seconds each.
   SUSTAINED (0.17-0.5 hours): "I carefully survey the area", "I watch the entrance",
   "I pay close attention to the crowd", "I scan for threats" — deliberate, extended focus.
   Duration of the action does NOT constitute time pressure for Take 10/20 purposes.
-<% if @has_destination -%>
+<% if @time_keeper_context.has_destination -%>
 - FREEFORM TRAVEL: The player is moving toward a destination but no pre-computed
   route is available. Estimate both hours_elapsed AND distance_miles based on terrain:
   Road/plains: ~3 mph (24 miles/day over 8 hours)
@@ -67,7 +67,7 @@ Combat is ACTIVE. Combat rounds last 6 seconds each.
 <% end -%>
 
 Respond ONLY with valid JSON (no markdown, no code fences):
-<% if @has_destination -%>
+<% if @time_keeper_context.has_destination -%>
 {
   "hours_elapsed": 2.0,
   "distance_miles": 6.0,

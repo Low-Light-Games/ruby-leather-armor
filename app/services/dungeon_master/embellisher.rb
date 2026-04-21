@@ -12,6 +12,8 @@ module DungeonMaster
   #   adventure_messages[0]      (opening DM narrative)
   #   StoryNpc / StoryClue records with adventure_id (Expand mode only)
   class Embellisher
+    include TextNormalizer
+
     def initialize(adventure, user: nil)
       @adventure = adventure
       @story = adventure.story
@@ -39,7 +41,7 @@ module DungeonMaster
 
       t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       begin
-        raw = client.chat(
+        raw_response = client.chat(
           system_prompt: system_prompt,
           user_message: user_msg,
           max_tokens: 2500,
@@ -47,13 +49,13 @@ module DungeonMaster
           model: model,
         )
 
-        parsed = client.parse_json(raw)
+        parsed = client.parse_json(raw_response)
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
 
         log.ai_log!(
           "embellisher",
           "Adventure ##{@adventure.id} (#{@mode}): #{@story.premise&.truncate(80)}",
-          raw, parsed,
+          raw_response, parsed,
           parse_status: client.last_parse_status,
           model_used: client.last_model_used,
           duration_ms: duration_ms,
@@ -86,13 +88,13 @@ module DungeonMaster
     end
 
     def npc_data
-      StoryNpc.where(story_id: @story.id, adventure_id: nil).order(:id).map do |npc|
+      StoryNpc.for_story(@story).story_level.ordered_by_id.map do |npc|
         { id: npc.id, name: npc.name, role: npc.role, attitude: npc.attitude, description: npc.description }
       end
     end
 
     def clue_data
-      StoryClue.where(story_id: @story.id, adventure_id: nil).order(:id).map do |clue|
+      StoryClue.for_story(@story).story_level.ordered_by_id.map do |clue|
         { id: clue.id, title: clue.title, description: clue.description, discovery_method: clue.discovery_method, difficulty: clue.difficulty }
       end
     end
@@ -100,13 +102,13 @@ module DungeonMaster
     def apply_results(parsed)
       @adventure.update!(
         enriched_world: parsed["enriched_world"] || {},
-        enriched_premise: parsed["enriched_premise"].to_s.strip.presence || @story.premise,
+        enriched_premise: present_or(parsed["enriched_premise"], @story.premise),
       )
 
       if parsed["opening_narrative"].present?
         @adventure.adventure_messages.create!(
           role: "dm",
-          content: parsed["opening_narrative"].to_s.strip,
+          content: strip(parsed["opening_narrative"]),
           message_type: "narrative"
         )
       end
@@ -124,11 +126,11 @@ module DungeonMaster
         @adventure.story_npcs.create!(
           story: @story,
           source: "embellisher",
-          name: raw["name"].to_s.strip.presence || "Unnamed NPC",
+          name: present_or(raw["name"], "Unnamed NPC"),
           role: validated_enum(raw["role"], StoryNpc::ROLES, "bystander"),
           location: location_map[raw["location_name"]],
-          description: raw["description"].to_s.strip,
-          knowledge: raw["knowledge"].to_s.strip,
+          description: strip(raw["description"]),
+          knowledge: strip(raw["knowledge"]),
           attitude: validated_enum(raw["attitude"], StoryNpc::ATTITUDES, "indifferent"),
           secret: raw["secret"] == true,
         )
@@ -143,14 +145,14 @@ module DungeonMaster
         @adventure.story_clues.create!(
           story: @story,
           source: "embellisher",
-          title: raw["title"].to_s.strip.presence || "Untitled Clue",
-          description: raw["description"].to_s.strip.presence || "No description",
+          title: present_or(raw["title"], "Untitled Clue"),
+          description: present_or(raw["description"], "No description"),
           discovery_method: validated_enum(raw["discovery_method"], StoryClue::DISCOVERY_METHODS, "exploration"),
           location: location_map[raw["location_name"]],
           npc: all_npcs[raw["npc_name"]],
           difficulty: validated_enum(raw["difficulty"], StoryClue::DIFFICULTIES, "moderate"),
           prerequisite_clue_ids: [],
-          reveals_secret: raw["reveals_secret"].to_s.strip.presence,
+          reveals_secret: strip(raw["reveals_secret"]).presence,
         )
       end
     end

@@ -34,18 +34,21 @@ class OpenaiModelCatalog
 
   def self.chat_model?(model_id)
     return false unless model_id.match?(/\A(gpt-[345]|o[134])/)
+
     EXCLUDE_KEYWORDS.none? { |kw| model_id.include?(kw) }
   end
 
   def self.supports_temperature?(model_id)
     caps = catalog.dig(normalize(model_id), "capabilities")
     return true unless caps
+
     caps.fetch("supports_temperature", true)
   end
 
   def self.reasoning_model?(model_id)
     caps = catalog.dig(normalize(model_id), "capabilities")
     return false unless caps
+
     caps.fetch("reasoning_model", false)
   end
 

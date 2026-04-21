@@ -67,8 +67,8 @@ RSpec.describe DungeonMaster::PipelineEngine, type: :service do
       expect(result[:answer]).to be_present
     end
 
-    it "routes to dm_query flow when mode: 'dm_query' is passed explicitly" do
-      result = pipeline.run_prompt("How does flanking work?", mode: "dm_query")
+    it "routes to dm_query flow when prompt_mode: 'dm_query' is passed explicitly" do
+      result = pipeline.run_prompt("How does flanking work?", prompt_mode: "dm_query")
       expect(result[:action]).to eq(:dm_query)
     end
   end

@@ -15,6 +15,7 @@ class AdventureMessagePolicy < ApplicationPolicy
 
   def adventure_accessible?
     return false unless user.present?
+
     user.admin? || record.adventure.user_id == user.id
   end
 end

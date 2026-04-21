@@ -87,6 +87,7 @@ module DungeonMaster
 
     def resolve_plot(intent, verdict_outcome: nil, encounter_triggered: false)
       return unless story_has_plot_data?
+
       # v1 latency: skip Chronicler while combat is active (revisit if combat rounds gain plot beats).
       return if combat_active?
 
@@ -112,6 +113,7 @@ module DungeonMaster
 
     def restore_paused_loop!
       return unless @log.registry_entry_uuid
+
       bind_current_loop!(
         AdventureLoop.for_registry_entry(@log.registry_entry_uuid).paused.order(:created_at).last
       )

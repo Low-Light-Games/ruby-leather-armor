@@ -109,6 +109,7 @@ module CharacterStats
         .transform_values { |g| g.map { |b| b["value"].to_i }.max }
         .filter_map do |btype, val|
           next if btype == "armor" || btype == "shield" # shown in Armor/Shield lines
+
           { label: "Buff (#{btype})", value: val } if val.nonzero?
         end
 
@@ -229,6 +230,7 @@ module CharacterStats
           case effect["type"]
           when "bonus"
             next if effect["condition"].present?
+
             apply_bonus_effect(result, effect)
           when "hp_bonus"
             per_level = effect["perLevel"] || 0
@@ -262,6 +264,7 @@ module CharacterStats
           case effect["type"]
           when "bonus"
             next if effect["condition"].present?
+
             apply_bonus_effect(result, effect)
           when "hp_bonus"
             per_level = effect["perLevel"] || 0
@@ -313,8 +316,10 @@ module CharacterStats
       conds.filter_map do |cond_name|
         defn = Conditions::DEFINITIONS[cond_name]
         next unless defn && defn[effect_key]
+
         value = defn[effect_key][sub_key].to_i
         next if value == 0
+
         { label: cond_name.capitalize, value: value, type: "condition" }
       end
     end

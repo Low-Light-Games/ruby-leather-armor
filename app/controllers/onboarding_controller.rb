@@ -27,23 +27,11 @@ class OnboardingController < ApplicationController
   private
 
   def build_sheet!(data)
-    sheet = current_user.sheets.create!(
-      name:            data[:name],
-      description:     data[:description],
-      character_class: data[:character_class],
-      level:           data[:level],
-      race:            data[:race],
-      strength:        data[:strength],
-      dexterity:       data[:dexterity],
-      constitution:    data[:constitution],
-      intelligence:    data[:intelligence],
-      wisdom:          data[:wisdom],
-      charisma:        data[:charisma],
-      currency:        data[:currency],
-    )
+    blueprint = Onboarding::SheetBlueprint.new(data)
+    sheet = current_user.sheets.create!(blueprint.sheet_attributes)
 
-    sync_feats!(sheet.sheet_feats, resolve_feat_ids(data[:feat_names]))
-    sync_items!(sheet.sheet_items, resolve_item_entries(data[:item_names]))
+    sync_feats!(sheet.sheet_feats, resolve_feat_ids(blueprint.feat_names))
+    sync_items!(sheet.sheet_items, resolve_item_entries(blueprint.item_names))
     sheet.recompute_derived_stats!
     sheet
   end

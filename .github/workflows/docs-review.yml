@@ -1,9 +1,6 @@
 name: Docs Review
 
 on:
-  pull_request:
-    types: [opened]
-
   issue_comment:
     types: [created]
 
@@ -13,10 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     if: |
-      github.event_name == 'pull_request' ||
-      (github.event_name == 'issue_comment' &&
-       github.event.issue.pull_request != null &&
-       contains(github.event.comment.body, '/docs-review'))
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request != null &&
+      contains(toLower(github.event.comment.body), '@claude check documentation drif')
     permissions:
       contents: read
       pull-requests: write
@@ -25,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.event_name == 'issue_comment' && format('refs/pull/{0}/head', github.event.issue.number) || github.ref }}
+          ref: ${{ format('refs/pull/{0}/head', github.event.issue.number) }}
 
       - uses: anthropics/claude-code-action@beta
         with:

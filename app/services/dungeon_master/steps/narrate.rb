@@ -12,13 +12,11 @@ module DungeonMaster
       # Payload for Node POST /fan_out (parallel with context updates in Stagehand).
       # meta.parse_fallback matches Rails AiClient#parse_json(fallback_as: :dm_response).
       def narrate_evaluator_prompt(pipeline_context)
-        narrate_view = Narrative::NarratePromptView.for_narrate(self, pipeline_context)
-        system_prompt = PromptRenderer.render("narrate", narrate_view: narrate_view)
-        assert_narration_combined_seed!(pipeline_context)
+        prompt_payload = build_narrate_prompt_payload(pipeline_context)
 
         {
-          system_prompt: system_prompt,
-          user_message:  pipeline_context.combined_seed,
+          system_prompt: prompt_payload[:system_prompt],
+          user_message:  prompt_payload[:user_message],
           model:         @config.model_for("narrate"),
           max_tokens:    @config.token_budget_for("narrate"),
           meta:          { step: "narrate", parse_fallback: "dm_response" }
@@ -35,15 +33,11 @@ module DungeonMaster
       def run_narrate(pipeline_context)
         broadcast_progress("Writing the story...")
         prompt_summary = "Narrate"
-
-        narrate_view = Narrative::NarratePromptView.for_narrate(self, pipeline_context)
-        system_prompt = PromptRenderer.render("narrate", narrate_view: narrate_view)
-        assert_narration_combined_seed!(pipeline_context)
-
-        request_body = { system_prompt: system_prompt, user_message: pipeline_context.combined_seed }
+        prompt_payload = build_narrate_prompt_payload(pipeline_context)
+        request_body = prompt_payload.slice(:system_prompt, :user_message)
 
         parsed = timed_ai_call("narrate", prompt_summary, request_body) do
-          raw = @ai.chat(system_prompt: system_prompt, user_message: pipeline_context.combined_seed,
+          raw = @ai.chat(system_prompt: prompt_payload[:system_prompt], user_message: prompt_payload[:user_message],
                           max_tokens: @config.token_budget_for("narrate"), step_name: "narrate",
                           model: @config.model_for("narrate"))
           # fallback_as: :dm_response is the only surviving parse fallback.
@@ -64,6 +58,15 @@ module DungeonMaster
                         parsed_response: { encounter_scene: @loop&.get("encounter_scene"),
                                            verdict_outcome: @loop&.get("verdict_outcome") }.compact)
         raise AiError, "Narrate step reached without an outcome — nothing to narrate"
+      end
+
+      def build_narrate_prompt_payload(pipeline_context)
+        narrate_view = Narrative::NarratePromptView.for_narrate(self, pipeline_context)
+        assert_narration_combined_seed!(pipeline_context)
+        {
+          system_prompt: PromptRenderer.render("narrate", narrate_view: narrate_view),
+          user_message: pipeline_context.combined_seed
+        }
       end
     end
   end

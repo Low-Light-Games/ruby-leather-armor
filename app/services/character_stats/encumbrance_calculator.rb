@@ -46,6 +46,7 @@ module CharacterStats
       item_weight = @items.sum do |si|
         item = si.item_definition
         next 0.0 unless item
+
         (item.weight || 0).to_f * (si.quantity || 1)
       end
 

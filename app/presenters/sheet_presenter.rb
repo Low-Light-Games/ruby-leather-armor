@@ -12,6 +12,36 @@
 #     item_rel:  adv_sheet.adventure_sheet_items
 #   ).as_json
 class SheetPresenter
+  class SheetDetailsBuilder
+    def initialize(base_details:, feats:, spell_rel:, items:)
+      @base_details = base_details
+      @feats = feats
+      @spell_rel = spell_rel
+      @items = items
+    end
+
+    def to_h
+      spell_ids_by_storage_type = grouped_spell_ids
+      @base_details.merge(
+        "feats" => @feats,
+        "knownSpells" => spell_ids_by_storage_type.fetch("known", []),
+        "spellbook" => spell_ids_by_storage_type.fetch("spellbook", []),
+        "items" => @items
+      )
+    end
+
+    private
+
+    def grouped_spell_ids
+      @spell_rel
+        .pluck(:storage_type, :spell_id)
+        .each_with_object({}) do |(storage_type, spell_id), grouped_spell_ids|
+          grouped_spell_ids[storage_type] ||= []
+          grouped_spell_ids[storage_type] << spell_id
+        end
+    end
+  end
+
   # @param sheet     [Sheet, AdventureSheet]
   # @param feat_rel  [ActiveRecord::Relation]  feat pivot records
   # @param spell_rel [ActiveRecord::Relation]  spell pivot records
@@ -24,19 +54,18 @@ class SheetPresenter
   end
 
   def as_json(_ = nil)
-    base    = @sheet.as_json
-    details = (base["details"] || {}).dup
+    serialized_sheet = @sheet.as_json
 
-    base["active_buffs"] = serialized_active_buffs
-
-    details.merge!(
-      "feats"       => serialized_feats,
-      "knownSpells" => @spell_rel.where(storage_type: "known").pluck(:spell_id),
-      "spellbook"   => @spell_rel.where(storage_type: "spellbook").pluck(:spell_id),
-      "items"       => serialized_items
+    serialized_sheet["active_buffs"] = serialized_active_buffs
+    details_payload = SheetDetailsBuilder.new(
+      base_details: (serialized_sheet["details"] || {}).dup,
+      feats: serialized_feats,
+      spell_rel: @spell_rel,
+      items: serialized_items
     )
-    base["details"] = details
-    base
+
+    serialized_sheet["details"] = details_payload.to_h
+    serialized_sheet
   end
 
   private

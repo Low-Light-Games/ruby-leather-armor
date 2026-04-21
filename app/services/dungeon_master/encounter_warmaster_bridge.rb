@@ -28,10 +28,17 @@ module DungeonMaster
         creatures_data = loop&.get("encounter_creatures")
         scene_enemy_names = scene_enemy_names_from_traversal_context(adventure.traversal_context)
         warmaster_result = Utilities::Warmaster.initialize_from_encounter!(
-          adventure: adventure, encounter_entry: encounter_entry,
-          creatures_data: creatures_data,
-          scene_enemy_names: scene_enemy_names,
-          sheet: sheet, log: log, config: config, ai: ai)
+          encounter_initialization_request: Utilities::Warmaster::EncounterInitializationRequest.new(
+            adventure: adventure,
+            encounter_entry: encounter_entry,
+            creatures_data: creatures_data,
+            scene_enemy_names: scene_enemy_names,
+            sheet: sheet,
+            log: log,
+            config: config,
+            ai: ai
+          )
+        )
 
         if warmaster_result[:status] == :awaiting_initiative
           Utilities::Warmaster.persist_pending_combat!(
@@ -77,6 +84,7 @@ module DungeonMaster
 
       # If only one side exists there is nothing to reconcile.
       return encounter_scene || verdict_outcome if encounter_scene.nil? || verdict_outcome.nil?
+
       return "#{encounter_scene}\n\n#{verdict_outcome}" unless ai && config && log
 
       player_action = intent[:intention].to_s
@@ -97,14 +105,14 @@ module DungeonMaster
       request_body = { system_prompt: system_prompt, user_message: "Reconcile the encounter." }
 
       t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      raw = ai.chat(system_prompt: system_prompt, user_message: "Reconcile the encounter.",
-                    max_tokens: config.token_budget_for("narrate"),
-                    step_name: "encounter_reconciliation",
-                    model: config.model_for("narrate"))
-      parsed = ai.parse_json(raw)
+      ai_raw_response_text = ai.chat(system_prompt: system_prompt, user_message: "Reconcile the encounter.",
+                                     max_tokens: config.token_budget_for("narrate"),
+                                     step_name: "encounter_reconciliation",
+                                     model: config.model_for("narrate"))
+      parsed = ai.parse_json(ai_raw_response_text)
       duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
 
-      log.ai_log!("encounter_reconciliation", prompt_summary, raw, parsed,
+      log.ai_log!("encounter_reconciliation", prompt_summary, ai_raw_response_text, parsed,
                   parse_status: ai.last_parse_status, request_body: request_body,
                   model_used: ai.last_model_used, duration_ms: duration_ms,
                   usage: ai.last_usage)

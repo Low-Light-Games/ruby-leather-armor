@@ -42,10 +42,11 @@ module DungeonMaster
                    end
 
       return capability_check_rejection(intent, capability) unless capability[:allowed]
+
       return resolve_social_scene(intent) if intent[:expand_scene]
 
       merged = merge_mechanical_evaluations_and_prepare_rolls(evaluations)
-      return { status: :awaiting_rolls, intent: intent, merged: merged } if merged[:player_rolls].any?
+      return PipelineFlowResults.awaiting_rolls(intent: intent, merged: merged).to_h if merged[:player_rolls].any?
 
       finish_resolution(intent, merged, Rolls::PlayerRolls.auto_success_roll_message(merged))
     end
@@ -139,13 +140,12 @@ module DungeonMaster
       store_pipeline_outcome!(verdict_result[:outcome])
 
       if prepared_hostile_combat_continues?(intent)
-        return {
-          status: :awaiting_initiative,
+        return PipelineFlowResults.awaiting_initiative(
           intent: intent,
           creature_data: intent[:creature_data],
           mutations: verdict_result[:mutations],
           opener_outcome: verdict_result[:outcome].to_s.presence
-        }
+        ).to_h
       end
 
       maybe_run_world_turn(
@@ -167,8 +167,7 @@ module DungeonMaster
       hits = attack_rolls_requiring_damage(current_roll_requests, submitted_rolls)
       return nil if hits.empty?
 
-      {
-        status: :awaiting_rolls,
+      PipelineFlowResults.awaiting_rolls(
         intent: intent,
         merged: merged.merge(
           player_rolls: hits.map { |hit| build_damage_roll_request(hit) },
@@ -179,13 +178,15 @@ module DungeonMaster
             prior_roll_requests: Array(current_roll_requests).map { |r| r.is_a?(Hash) ? r.deep_dup : r }
           }
         )
-      }
+      ).to_h
     end
 
     def attack_rolls_requiring_damage(current_roll_requests, submitted_rolls)
       attack_rolls = current_roll_requests.filter_map do |roll|
         next unless roll.is_a?(Hash)
+
         next unless roll[:type].to_s == "attack_roll"
+
         next if roll[:damage].blank?
 
         roll.deep_symbolize_keys
@@ -302,6 +303,7 @@ module DungeonMaster
 
         sym = roll.deep_symbolize_keys
         next unless sym[:type].to_s == "attack_roll"
+
         next unless attack_roll_missing_damage_metadata?(sym)
 
         sym
@@ -363,9 +365,13 @@ module DungeonMaster
     def attack_roll_missing_damage_metadata?(roll)
       sym = roll.deep_symbolize_keys
       return true if sym[:attack_mode].blank?
+
       return true if sym[:defense_kind].blank?
+
       return true if sym[:damage].blank?
+
       return true if sym[:source_type].blank?
+
       return true if sym[:source_type].to_s != "unarmed" && sym[:source_id].blank?
 
       false
@@ -450,9 +456,7 @@ module DungeonMaster
 
       store_pipeline_outcome!(scene)
 
-      {
-        status: :social_scene, intent: intent
-      }
+      PipelineFlowResults.social_scene(intent: intent).to_h
     end
 
     def store_pipeline_outcome!(text)

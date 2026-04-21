@@ -1,0 +1,9 @@
+require:
+  - ./.rubocop/cop/cursor/blank_line_after_guard_clause.rb
+
+AllCops:
+  TargetRubyVersion: 3.3
+  NewCops: enable
+
+Cursor/BlankLineAfterGuardClause:
+  Enabled: true

@@ -60,17 +60,14 @@ module DungeonMaster
 
         # Short-circuit before NPC fan-out if the player is already dead.
         # Covers both instant_death (HP 0 = dead) and standard PF1e (HP <= -CON from CombatGM).
-        if @sheet &&
-            Utilities::CombatEndResolver.check_player_status(@sheet, instant_death: instant_death) == :dead
+        if player_dead_before_npc_turns?(instant_death)
           return build_result_with_combat_advancement(result, calc, base_ctx, true)
         end
 
         # Apply per-round dying bleed-out before NPC actions. Skipped once stabilized.
         # Under instant_death, HP cannot go negative so :dying is never reached.
         # Short-circuits if the player dies this round.
-        if @sheet &&
-            Utilities::CombatEndResolver.check_player_status(@sheet, instant_death: instant_death) == :dying &&
-            !Array(@sheet.conditions).include?("stabilized")
+        if should_apply_dying_bleed?(instant_death)
           bleed_result = apply_dying_bleed!(result)
           return bleed_result if bleed_result
         end
@@ -79,7 +76,7 @@ module DungeonMaster
         # here, before NPC fan-out, so it is always set regardless of whether any
         # NPCs act this round. (Previously this only ran inside the per-NPC loop,
         # meaning the condition was silently skipped on rounds with no acting NPCs.)
-        if @sheet && !instant_death && @sheet.hp == 0 && !Array(@sheet.conditions).include?("disabled")
+        if should_apply_disabled_condition?(instant_death)
           apply_player_mutations({ conditions_add: ["disabled"] })
         end
 
@@ -140,8 +137,7 @@ module DungeonMaster
           # Liveness from the map; refreshed after each mutation cycle so a prior NPC's
           # action that incapacitates this one is visible here.
           live_sheet = live_sheets[npc.creature_sheet_id]
-          if live_sheet.nil? || live_sheet.hp <= 0 ||
-              (Array(live_sheet.conditions) & %w[dead fled surrendered]).any?
+          if npc_sheet_unavailable_or_eliminated?(live_sheet)
             next
           end
 
@@ -149,32 +145,38 @@ module DungeonMaster
           entry  = evaluator_fan_out_result!(by_step, step_keys[idx], "npc_action")
           parsed = (entry["parsed_response"] || {}).deep_symbolize_keys
 
-          res = DungeonMaster::WorldTurn::NpcActionResolver.resolve(
+          npc_action_result = DungeonMaster::WorldTurn::NpcActionResolver.resolve(
             npc: npc, parsed: parsed, combat_ctx: working_ctx,
             player_sheet: @sheet, adventure: @adventure)
-          lines.concat(res[:lines])
+          lines.concat(npc_action_result[:lines])
+          npc_action_resolution_log_payload = DungeonMaster::WorldTurn::NpcActionResolutionLogPayload.new(
+            npc_name: npc.name,
+            action: parsed[:action],
+            attack_modifier: parsed[:attack_modifier],
+            damage_dice: parsed[:damage_dice],
+            player_hp_delta: npc_action_result[:player_hp_delta],
+            npc_mutations: npc_action_result[:npc_muts],
+            lines: npc_action_result[:lines]
+          )
 
           @log.play_log!(
             "world_turn_resolution",
-            "World turn: #{npc.name} — #{res[:lines].join(' | ').truncate(200)}",
-            parsed_response: {
-              npc: npc.name, action: parsed[:action],
-              attack_modifier: parsed[:attack_modifier], damage_dice: parsed[:damage_dice],
-              player_hp_delta: res[:player_hp_delta], npc_mutations: res[:npc_muts],
-              lines: res[:lines]
-            }
+            "World turn: #{npc.name} — #{npc_action_result[:lines].join(' | ').truncate(200)}",
+            parsed_response: npc_action_resolution_log_payload.to_h
           )
 
-          apply_world_turn_step_mutations!(res[:player_hp_delta].to_i, res[:npc_muts])
-          Battlefield::ApplyPatches.call(adventure: @adventure, patches: res[:battlefield_patches], log: @log) if res[:battlefield_patches].present?
+          apply_world_turn_step_mutations!(npc_action_result[:player_hp_delta].to_i, npc_action_result[:npc_muts])
+          Battlefield::ApplyPatches.call(
+            adventure: @adventure,
+            patches: npc_action_result[:battlefield_patches],
+            log: @log
+          ) if npc_action_result[:battlefield_patches].present?
 
           reload_world_turn_records!
           live_sheets.merge!(@adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id))
 
           end_info = Utilities::CombatEndResolver.check_combat_end(adventure: @adventure, sheet: @sheet, instant_death: instant_death)
-          if !end_info[:combat][:combat_active] ||
-              end_info.dig(:interaction, :player_death) ||
-              end_info.dig(:interaction, :player_incapacitated)
+          if should_stop_world_turn_early?(end_info)
             early_stop = true
             break
           end
@@ -259,6 +261,31 @@ module DungeonMaster
 
       def reload_player_sheet!
         @sheet&.reload
+      end
+
+      def player_dead_before_npc_turns?(instant_death)
+        @sheet && Utilities::CombatEndResolver.check_player_status(@sheet, instant_death: instant_death) == :dead
+      end
+
+      def should_apply_dying_bleed?(instant_death)
+        return false unless @sheet
+
+        Utilities::CombatEndResolver.check_player_status(@sheet, instant_death: instant_death) == :dying &&
+          !Array(@sheet.conditions).include?("stabilized")
+      end
+
+      def should_apply_disabled_condition?(instant_death)
+        @sheet && !instant_death && @sheet.hp == 0 && !Array(@sheet.conditions).include?("disabled")
+      end
+
+      def npc_sheet_unavailable_or_eliminated?(live_sheet)
+        live_sheet.nil? || live_sheet.hp <= 0 || (Array(live_sheet.conditions) & %w[dead fled surrendered]).any?
+      end
+
+      def should_stop_world_turn_early?(end_info)
+        !end_info[:combat][:combat_active] ||
+          end_info.dig(:interaction, :player_death) ||
+          end_info.dig(:interaction, :player_incapacitated)
       end
     end
   end

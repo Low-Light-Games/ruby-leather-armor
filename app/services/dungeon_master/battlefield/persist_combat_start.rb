@@ -27,12 +27,14 @@ module DungeonMaster
               viewport: viewport_for_tokens(desired_tokens),
               version: 1
             )
-            ref = { "id" => bf.id, "version" => bf.version, "topology" => bf.topology }
+            battlefield_reference = BattlefieldReference.from_battlefield(bf)
 
-            data["battlefield_ref"] = ref
-            holder = data["current_turn"].presence || DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME
-            data["action_economy"] ||= ActionEconomy.build_for_turn_holder(holder, combat_ctx: data)
-            adventure.update!(combat_context: data)
+            payload = DungeonMaster::Battlefield::CombatContextPayload.new(
+              base_data: data,
+              battlefield_reference: battlefield_reference,
+              action_economy_builder: method(:default_action_economy)
+            )
+            adventure.update!(combat_context: payload.to_h)
           end
           adventure.reload
         end
@@ -70,12 +72,12 @@ module DungeonMaster
         # When the player moves, Combat GM / NPC patches should emit shift_viewport (or move the window)
         # — the engine does not auto-follow unless patches update this JSON.
         def viewport_for_tokens(tokens)
-          pt = tokens["player"]
+          player_token = tokens["player"]
           half = 20
           span = 40
-          if pt.is_a?(Hash) && pt["x"] && pt["y"]
-            px = pt["x"].to_i
-            py = pt["y"].to_i
+          if player_token_with_coordinates?(player_token)
+            px = player_token["x"].to_i
+            py = player_token["y"].to_i
             {
               "min_x" => px - half,
               "min_y" => py - half,
@@ -89,11 +91,16 @@ module DungeonMaster
           end
         end
 
+        def player_token_with_coordinates?(player_token)
+          player_token.is_a?(Hash) && player_token["x"] && player_token["y"]
+        end
+
         # Place tokens on a simple grid for BETA (canonical positions for patches / prompts).
         def build_tokens_from_participants(participants)
           tokens = {}
           Array(participants).each_with_index do |p, i|
             next unless p.is_a?(Hash)
+
             name = p["name"].to_s.presence || "unknown_#{i}"
             id = token_id_for(p, i)
             x = 18 + (i % 5) * 2
@@ -117,6 +124,11 @@ module DungeonMaster
           else
             "token_#{i}_#{p['name'].to_s.parameterize.underscore.presence || 'npc'}"
           end
+        end
+
+        def default_action_economy(combat_context)
+          holder = combat_context["current_turn"].presence || DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME
+          ActionEconomy.build_for_turn_holder(holder, combat_ctx: combat_context)
         end
       end
     end

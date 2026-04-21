@@ -15,6 +15,24 @@ module DungeonMaster
       DEEP_MERGE_CONTEXT_FIELDS = %w[combat].freeze
       META_CONTEXT_STEP = "meta_context_update"
 
+      class CombatMutationState
+        def initialize(mutations)
+          @mutations = mutations.is_a?(Hash) ? mutations.deep_stringify_keys : {}
+        end
+
+        def has_combat_initialization?
+          @mutations["combat_initialization"].is_a?(Hash)
+        end
+
+        def has_combat_advancement?
+          @mutations["combat_state_advancement"].is_a?(Hash)
+        end
+
+        def canonical_combat_context
+          @mutations["combat_initialization"] || @mutations["combat_state_advancement"]
+        end
+      end
+
       private
 
       def run_context_updates(what_happened, mutations, macro_significant: false, allow_combat_initialization: true)
@@ -41,7 +59,7 @@ module DungeonMaster
         handle_new_creatures(micro_result["new_creatures"]) if micro_result["new_creatures"].present?
         handle_context_wishes(micro_result["context_wishes"]) if micro_result["context_wishes"].present?
 
-        if macro_significant && macro_result["story_summary"].present?
+        if should_persist_macro_story_summary?(macro_significant, macro_result)
           @adventure.update!(story_summary: macro_result["story_summary"])
         end
       end
@@ -89,66 +107,68 @@ module DungeonMaster
         request_body = { system_prompt: system_prompt, user_message: user_msg }
 
         timed_ai_call("macro_narrative_update", prompt_summary, request_body) do
-          raw = @ai.chat(system_prompt: system_prompt, user_message: user_msg,
-                          max_tokens: @config.token_budget_for("macro_narrative_update"),
-                          step_name: "macro_narrative_update",
-                          model: @config.model_for("macro_narrative_update"))
-          [raw, @ai.parse_json(raw)]
+          ai_raw_response_text = @ai.chat(system_prompt: system_prompt, user_message: user_msg,
+                                          max_tokens: @config.token_budget_for("macro_narrative_update"),
+                                          step_name: "macro_narrative_update",
+                                          model: @config.model_for("macro_narrative_update"))
+          [ai_raw_response_text, @ai.parse_json(ai_raw_response_text)]
         end
       end
 
       def persist_micro_contexts(parsed, mutations = nil)
         prev_combat = @adventure.combat_context
         prev_active = prev_combat.is_a?(Hash) ? prev_combat["active"] : nil
-        mutations_hash = mutations.is_a?(Hash) ? mutations.deep_stringify_keys : {}
-        has_combat_initialization = mutations_hash["combat_initialization"].is_a?(Hash)
-        has_combat_advancement = mutations_hash["combat_state_advancement"].is_a?(Hash)
+        combat_mutation_state = CombatMutationState.new(mutations)
 
-        updates = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, h|
-          key = "#{field}_context"
-          domain_result = parsed[key] || parsed[key.to_sym]
-          next unless domain_result.present?
-          domain_result = normalize_domain_context_result(field, domain_result) unless domain_result.is_a?(Hash) &&
-                                                                                (domain_result.key?("context") || domain_result.key?(:context) ||
-                                                                                 domain_result.key?("unchanged") || domain_result.key?(:unchanged))
-          unchanged = domain_result["unchanged"] == true
-          existing = (@adventure.public_send(key) || {}).deep_stringify_keys
-          canonical_combat = canonical_combat_context_from_mutations(field, mutations_hash)
+        updates = PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, updated_contexts|
+          domain_context_identifier = "#{field}_context"
+          domain_context_result = parsed[domain_context_identifier] || parsed[domain_context_identifier.to_sym]
+          next unless domain_context_result.present?
+
+          domain_result_parser = DomainContextResultParser.new(
+            domain_identifier: field,
+            raw_domain_result: domain_context_result
+          )
+          normalized_domain_result = domain_result_parser.normalized_result
+
+          unchanged = normalized_domain_result["unchanged"] == true
+          existing_domain_context = (@adventure.public_send(domain_context_identifier) || {}).deep_stringify_keys
+          canonical_combat = canonical_combat_context_for(field, combat_mutation_state)
           next if unchanged && canonical_combat.blank?
 
-          val = domain_result["context"] || domain_result[:context]
-          val = {} if unchanged && canonical_combat.present? && val.nil?
-          raise AiError, "#{key} updater returned no context payload" if val.nil?
+          updated_domain_context = normalized_domain_result["context"] || normalized_domain_result[:context]
+          updated_domain_context = {} if unchanged && canonical_combat.present? && updated_domain_context.nil?
+          raise AiError, "#{domain_context_identifier} updater returned no context payload" if updated_domain_context.nil?
 
-          if DEEP_MERGE_CONTEXT_FIELDS.include?(field) && val.is_a?(Hash)
-            val = merge_canonical_combat_context(
-              val.deep_stringify_keys,
+          if DEEP_MERGE_CONTEXT_FIELDS.include?(field) && updated_domain_context.is_a?(Hash)
+            updated_domain_context = merge_canonical_combat_context(
+              updated_domain_context.deep_stringify_keys,
               canonical_combat: canonical_combat
             )
-            val = prepare_combat_context_update(
-              val.deep_stringify_keys,
-              existing: existing
+            updated_domain_context = prepare_combat_context_update(
+              updated_domain_context.deep_stringify_keys,
+              existing: existing_domain_context
             )
-            val = guard_combat_context_update(
-              val.deep_stringify_keys,
+            updated_domain_context = guard_combat_context_update(
+              updated_domain_context.deep_stringify_keys,
               prev_active: prev_active,
-              has_combat_initialization: has_combat_initialization,
-              has_combat_advancement: has_combat_advancement
+              has_combat_initialization: combat_mutation_state.has_combat_initialization?,
+              has_combat_advancement: combat_mutation_state.has_combat_advancement?
             )
-            next unless val.present?
+            next unless updated_domain_context.present?
 
-            unless has_combat_initialization
-              val = existing.deep_merge(val)
+            unless combat_mutation_state.has_combat_initialization?
+              updated_domain_context = existing_domain_context.deep_merge(updated_domain_context)
             end
           end
-          h[key.to_sym] = val
+          updated_contexts[domain_context_identifier.to_sym] = updated_domain_context
         end
         @adventure.update!(updates) if updates.any?
 
         if updates.key?(:combat_context)
           @adventure.reload
-          ctx = @adventure.combat_context
-          if ctx.is_a?(Hash) && prev_active == true && ctx["active"] == false
+          combat_context = @adventure.combat_context
+          if combat_just_deactivated?(prev_active: prev_active, combat_context: combat_context)
             Battlefield::ArchiveCombatEnd.call(adventure: @adventure)
           end
         end
@@ -213,33 +233,25 @@ module DungeonMaster
       end
 
       def aggregate_micro_context_results(by_step)
-        PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, h|
-          key = "#{field}_context"
-          parsed = evaluator_fan_out_result!(by_step, "#{field}_context_update", "micro_context_update")["parsed_response"] || {}
-          h[key] = normalize_domain_context_result(field, parsed)
+        PromptHelpers::CONTEXT_FIELDS.each_with_object({}) do |field, aggregated_results|
+          domain_context_identifier = "#{field}_context"
+          parsed_fan_out_response = evaluator_fan_out_result!(
+            by_step,
+            "#{field}_context_update",
+            "micro_context_update"
+          )["parsed_response"] || {}
+          domain_result_parser = DomainContextResultParser.new(
+            domain_identifier: field,
+            raw_domain_result: parsed_fan_out_response
+          )
+          aggregated_results[domain_context_identifier] = domain_result_parser.normalized_result
         end.merge(
           evaluator_fan_out_result!(by_step, META_CONTEXT_STEP, "micro_context_update")["parsed_response"] || {}
         )
       end
 
-      def normalize_domain_context_result(field, result)
-        key = "#{field}_context"
-        h = result.is_a?(Hash) ? result.deep_stringify_keys : {}
-        context = if h.key?("context")
-                    h["context"]
-                  elsif h.key?(key)
-                    h[key]
-                  elsif h.key?(field)
-                    h[field]
-                  elsif h.present? && !h.key?("unchanged")
-                    h
-                  else
-                    nil
-                  end
-        {
-          "unchanged" => h["unchanged"] == true,
-          "context" => context
-        }
+      def should_persist_macro_story_summary?(macro_significant, macro_result)
+        macro_significant && macro_result["story_summary"].present?
       end
 
       def prepare_combat_context_update(val, existing:)
@@ -296,10 +308,10 @@ module DungeonMaster
         val
       end
 
-      def canonical_combat_context_from_mutations(field, mutations_hash)
+      def canonical_combat_context_for(field, combat_mutation_state)
         return nil unless field == "combat"
 
-        mutations_hash["combat_initialization"] || mutations_hash["combat_state_advancement"]
+        combat_mutation_state.canonical_combat_context
       end
 
       def merge_canonical_combat_context(val, canonical_combat:)
@@ -317,6 +329,12 @@ module DungeonMaster
         end
 
         @loop.batch_update!(new_data: { "context_snapshot" => snapshot })
+      end
+
+      def combat_just_deactivated?(prev_active:, combat_context:)
+        combat_context.is_a?(Hash) &&
+          prev_active == true &&
+          combat_context["active"] == false
       end
 
       def persist_scene_summary(summary)
@@ -342,10 +360,10 @@ module DungeonMaster
       end
 
       def canonical_combat_participants
-        ctx = @adventure.combat_context
-        return [] unless ctx.is_a?(Hash)
+        combat_context = @adventure.combat_context
+        return [] unless combat_context.is_a?(Hash)
 
-        Array(ctx["participants"]).map(&:deep_stringify_keys)
+        Array(combat_context["participants"]).map(&:deep_stringify_keys)
       end
 
       # Log context wishes emitted by the AI when the outcome touches something
@@ -355,6 +373,7 @@ module DungeonMaster
       def handle_context_wishes(wishes)
         Array(wishes).each do |wish|
           next unless wish.is_a?(String) && wish.present?
+
           @log.play_log!("context_wish", wish)
         end
       end

@@ -39,7 +39,7 @@ sequenceDiagram
 ```
 
 - **Puma** returns **quickly** (`202`); it does **not** run the full pipeline.
-- **Sidekiq** runs [`PipelineJob`](app/jobs/pipeline_job.rb) and executes [`DungeonMasterService#execute_*`](app/services/dungeon_master_service.rb).
+- **Sidekiq** runs [`PipelineJob`](app/jobs/pipeline_job.rb) and executes [`DungeonMasterService#execute_*`](app/services/dungeon_master_service.rb), which now delegates execution to `DungeonMaster::EntryServices`.
 - **Parallel LLM calls** for beacons, roll qualifiers, and (by policy) other batched steps go through the **Node evaluator** ([`evaluator/`](evaluator/)) via **`POST /fan_out`** and **`POST /sequential`**, not Ruby threads.
 - **Application policy:** no manual **`Thread.new`** (or ad-hoc thread pools) under [`app/`](app/) for concurrency — use Sidekiq, Node fan-out, or sequential calls. CI enforces this.
 
@@ -68,7 +68,7 @@ sequenceDiagram
 
 - **`AdventureChannel`** — ActionCable channel scoped per adventure; authorises via `adventure.user_id == current_user.id || current_user.admin?`
 - **`PipelineJob` / `RollPipelineJob` / `InitiativePipelineJob`** — Sidekiq jobs that run the pipeline and broadcast results
-- **`DungeonMasterService`** — two-phase API: `prepare_*` (persist player message for the `202`) and `execute_*` (run pipeline in the job)
+- **`DungeonMasterService`** — two-phase facade API: `prepare_*` persists player messages; `execute_*` delegates to `DungeonMaster::EntryServices::PromptExecution` / `ResumePipelineExecution` with shared wiring in `DungeonMaster::EntryRuntime`
 - **`AdventureMessagesController`** — `prepare_*` + `perform_later` and **`202`** — no synchronous pipeline path
 
 ### Node evaluator
@@ -98,7 +98,7 @@ Peak **concurrent DB connections per pipeline job** should stay **low**: paralle
 
 ## Live progress feedback
 
-Step modules call `broadcast_progress("message")` at meaningful points. `DungeonMasterService` wires `on_progress` to `AdventureChannel.broadcast_to(..., type: "pipeline_progress", ...)`.
+Step modules call `broadcast_progress("message")` at meaningful points. `DungeonMaster::EntryRuntime` wires `on_progress` to `AdventureChannel.broadcast_to(..., type: "pipeline_progress", ...)`.
 
 The frontend patches the thinking sentinel when it receives `pipeline_progress`.
 

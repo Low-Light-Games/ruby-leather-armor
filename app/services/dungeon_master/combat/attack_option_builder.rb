@@ -15,6 +15,7 @@ module DungeonMaster
       class << self
         def call(sheet:, adventure:)
           return [] unless sheet
+
           return [] unless attack_action_available?(adventure)
 
           [
@@ -116,7 +117,9 @@ module DungeonMaster
 
             item = entry.item_definition
             next unless item
+
             next unless %w[weapon shield].include?(item.item_type)
+
             next if item.damage_dice.blank?
 
             {

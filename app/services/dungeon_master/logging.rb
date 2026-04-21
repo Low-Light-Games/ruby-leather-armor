@@ -43,6 +43,7 @@ module DungeonMaster
     def finish_pipeline_segment!(duration_ms)
       pr = registry_entry_record
       return unless pr
+
       pr.update!(active_duration_ms: pr.active_duration_ms + duration_ms)
     rescue => e
       report_error(e, context: { method: "finish_pipeline_segment!" })

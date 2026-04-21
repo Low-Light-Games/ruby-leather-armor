@@ -11,6 +11,7 @@ class SpellDefinition < ApplicationRecord
   validates :school, presence: true
 
   scope :by_school, ->(school) { where(school: school) }
+  scope :named_case_insensitive, ->(name) { where("LOWER(name) = ?", name.to_s.downcase) }
 
   # Spells available to a given class (checks JSONB class_levels key existence)
   scope :for_class, ->(class_id) {
@@ -21,6 +22,10 @@ class SpellDefinition < ApplicationRecord
   scope :for_class_and_max_level, ->(class_id, max_level) {
     where("(class_levels->>:cls)::int <= :lvl", cls: class_id, lvl: max_level)
   }
+
+  def self.find_by_name_case_insensitive(name)
+    named_case_insensitive(name).first
+  end
 
   # Frontend expects camelCase keys to match the SpellDefinition TS interface
   def as_json(options = {})

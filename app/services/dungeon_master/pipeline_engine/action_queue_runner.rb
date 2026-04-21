@@ -50,12 +50,12 @@ module DungeonMaster
             accumulated << blocked_action_result(entry, prior_result)
             p.log.play_log!(
               "queue_action_blocked",
-              "Blocked queued action #{action_idx + 1}/#{total} — #{entry_text(entry).inspect} (failed prerequisite #{entry_prerequisite(entry).inspect})"
+              "Blocked queued action #{action_idx + 1}/#{total} — #{entry.text.inspect} (failed prerequisite #{entry.prerequisite.inspect})"
             )
             break
           end
 
-          action_text = entry_text(entry)
+          action_text = entry.text
           qlog.set_action_label(action_idx, total)
           bind_loop!(p.send(:create_adventure_loop, action_text, action_idx))
           result = p.send(:resolve, action_text)
@@ -74,7 +74,7 @@ module DungeonMaster
             p.loop&.batch_update!(new_status: "paused",
               timeline_entry: p.send(:tl, "awaiting_rolls", "Paused for player rolls"))
             ContextUpdatePause.run(pipeline_engine: p, intent: result[:intent], merged: result[:merged])
-            remaining = action_entries[(idx + 1)..]
+            remaining = remaining_action_entries(action_entries, idx)
             qlog.log_pause(action_idx, total, remaining, reason: "awaiting rolls")
             qlog.clear_action_label
             return {
@@ -87,7 +87,7 @@ module DungeonMaster
               new_tags: { "combat_started" => true },
               timeline_entry: p.send(:tl, "awaiting_initiative", "Paused for player initiative"))
             p.send(:run_context_updates_at_encounter_pause, result[:mutations])
-            remaining = action_entries[(idx + 1)..]
+            remaining = remaining_action_entries(action_entries, idx)
             qlog.log_pause(action_idx, total, remaining, reason: "awaiting initiative")
             qlog.clear_action_label
             return {
@@ -106,7 +106,7 @@ module DungeonMaster
             p.loop&.batch_update!(new_status: label,
               timeline_entry: p.send(:tl, label, summary))
             accumulated << result
-            qlog.log_interrupt(action_idx, total, action_entries[(idx + 1)..], reason: label)
+            qlog.log_interrupt(action_idx, total, remaining_action_entries(action_entries, idx), reason: label)
             break
 
           when :resolved
@@ -135,45 +135,14 @@ module DungeonMaster
       end
 
       def normalize_action_entries(entries)
-        Array(entries).filter_map do |entry|
-          case entry
-          when String
-            {
-              "text" => entry,
-              "depends_on_index" => nil,
-              "prerequisite" => nil,
-              "abort_on_failed_prerequisite" => false
-            }
-          when Hash
-            text = (entry["text"] || entry[:text]).to_s
-            next if text.blank?
-
-            {
-              "text" => text,
-              "depends_on_index" => entry["depends_on_index"] || entry[:depends_on_index],
-              "prerequisite" => entry["prerequisite"] || entry[:prerequisite],
-              "abort_on_failed_prerequisite" => (entry["abort_on_failed_prerequisite"] || entry[:abort_on_failed_prerequisite]) == true
-            }
-          end
-        end
-      end
-
-      def entry_text(entry)
-        (entry["text"] || entry[:text]).to_s
-      end
-
-      def entry_prerequisite(entry)
-        raw = entry["prerequisite"] || entry[:prerequisite]
-        raw.present? ? raw.to_s : nil
+        Array(entries).filter_map { |entry| ActionQueueEntry.from_unknown(entry) }
       end
 
       def prerequisite_failed?(entry, action_idx, resolved_history)
-        prerequisite = entry_prerequisite(entry)
+        prerequisite = entry.prerequisite
         return false if prerequisite.blank?
 
-        depends_on_index = entry["depends_on_index"] || entry[:depends_on_index]
-        source_index = depends_on_index.nil? ? (action_idx - 1) : depends_on_index.to_i
-        source_result = resolved_history[source_index]
+        source_result = dependency_source_result(entry, action_idx, resolved_history)
         return true unless source_result
 
         case prerequisite
@@ -182,6 +151,17 @@ module DungeonMaster
         else
           true
         end
+      end
+
+      def dependency_source_result(entry, action_idx, resolved_history)
+        source_index = dependency_source_index(entry, action_idx)
+        resolved_history[source_index]
+      end
+
+      def dependency_source_index(entry, action_idx)
+        return action_idx - 1 if entry.depends_on_index.nil?
+
+        entry.depends_on_index.to_i
       end
 
       def stealth_approach_succeeded?(result)
@@ -277,21 +257,27 @@ module DungeonMaster
       end
 
       def blocked_action_result(entry, prior_result)
-        prerequisite = entry_prerequisite(entry)
-        blocked_text = entry_text(entry)
+        entry = normalize_action_entry(entry)
+        prerequisite = entry.prerequisite
+        blocked_text = entry.text
         prior_intent = (prior_result && prior_result[:intent].is_a?(Hash)) ? prior_result[:intent].deep_dup : {}
 
-        {
-          status: :resolved,
-          intent: {
-            intention: blocked_text,
-            affected_contexts: Array(prior_intent[:affected_contexts]),
-            macro_significant: prior_intent[:macro_significant] == true,
-            domain_results: prior_intent[:domain_results].is_a?(Hash) ? prior_intent[:domain_results] : {}
-          },
-          mutations: {},
+        BlockedActionResolution.new(
+          action_text: blocked_text,
+          prior_intent: prior_intent,
           action_outcome: blocked_action_outcome(blocked_text, prerequisite)
-        }
+        ).to_h
+      end
+
+      def normalize_action_entry(entry)
+        return entry if entry.is_a?(ActionQueueEntry)
+
+        ActionQueueEntry.from_unknown(entry) || ActionQueueEntry.new(
+          text: "",
+          depends_on_index: nil,
+          prerequisite: nil,
+          abort_on_failed_prerequisite: false
+        )
       end
 
       def blocked_action_outcome(action_text, prerequisite)
@@ -309,10 +295,11 @@ module DungeonMaster
 
         if abort_on_rejected && use_per_action && action_narratives.any?
           if accumulated.any?
-            final = pipeline.send(:run_accumulated_narrative_phase, accumulated)
-            return final unless final[:action] == :narrated
+            final_narrative_result = pipeline.send(:run_accumulated_narrative_phase, accumulated)
+            return final_narrative_result unless final_narrative_result[:action] == :narrated
+
             action_narratives << Narrative::ProgressiveEntry.from_narrative_phase(
-              final,
+              final_narrative_result,
               sequence_index: action_narratives.size,
               total_actions: action_count,
               action_text: nil
@@ -322,6 +309,10 @@ module DungeonMaster
         else
           pipeline.send(:run_accumulated_narrative_phase, accumulated)
         end
+      end
+
+      def remaining_action_entries(action_entries, action_idx)
+        Array(action_entries[(action_idx + 1)..]).map(&:to_h)
       end
     end
   end

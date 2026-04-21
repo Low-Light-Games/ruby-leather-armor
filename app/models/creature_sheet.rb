@@ -23,6 +23,9 @@ class CreatureSheet < ApplicationRecord
 
   include SheetCurrency
 
+  scope :ai_generated, -> { where(origin: "ai") }
+  scope :alphabetical, -> { order(:name) }
+
   def recompute_derived_stats!
     stats = CharacterStats::Calculator.new(self).compute
     update_column(:derived_stats, stats)

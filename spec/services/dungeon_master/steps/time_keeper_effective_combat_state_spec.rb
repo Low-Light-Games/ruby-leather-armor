@@ -75,7 +75,7 @@ RSpec.describe "DungeonMaster::Steps::TimeKeeper — effective combat state", ty
     estimate = pipeline.send(:estimate_time, { intention: "I wait quietly." }, {})
 
     expect(estimate[:source]).to eq(:ai)
-    expect(captured[:combat_active]).to eq(false)
+    expect(captured[:time_keeper_context].combat_active).to eq(false)
   end
 
   it "still uses combat_code when another hostile remains active" do

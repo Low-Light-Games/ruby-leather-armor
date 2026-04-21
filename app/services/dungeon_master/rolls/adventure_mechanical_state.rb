@@ -24,6 +24,7 @@ module DungeonMaster
                                    .where("id > ?", last_init_msg.id)
                                    .newest_first.first
         return unless last_player_response
+
         return if last_player_response.message_type == "initiative_result"
 
         player_init = Utilities::Warmaster.auto_roll_player_initiative(sheet)
@@ -34,10 +35,13 @@ module DungeonMaster
 
         # Same atomic combat start as run_initiative (battlefield row + refs in one transaction).
         combat_data = Utilities::Warmaster.compute_combat_initialization(
-          adventure: adventure,
-          player_sheet: sheet,
-          creature_data: creature_data,
-          player_initiative: player_init)
+          combat_initialization_request: Utilities::Warmaster::CombatInitializationRequest.new(
+            adventure: adventure,
+            player_sheet: sheet,
+            creature_data: creature_data,
+            player_initiative: player_init
+          )
+        )
         DungeonMaster::Battlefield::PersistCombatStart.call(adventure: adventure, combat_data: combat_data, sheet: sheet)
 
         log.log!(:info, "Auto-rolled player initiative (#{player_init}) — player ignored initiative prompt")

@@ -147,4 +147,45 @@ RSpec.describe DungeonMaster::Utilities::CombatTurnCalculator, type: :service do
       expect(out[:next_state]["current_turn"]).to eq("Player")
     end
   end
+
+  it "falls back to post-player + wrap when current_turn is already past player" do
+    ctx = {
+      "active" => true,
+      "round" => 3,
+      "current_turn" => "Wolf B",
+      "turn_order" => ["Wolf A", "Player", "Wolf B"],
+      "participants" => [wolf_a, player, wolf_b]
+    }
+
+    out = described_class.call(combat_context: ctx)
+
+    expect(out[:npc_turns].map(&:name)).to eq(["Wolf B", "Wolf A"])
+    expect(out[:next_state]["round"]).to eq(4)
+    expect(out[:next_state]["current_turn"]).to eq("Player")
+    expect(out[:next_state]["active"]).to eq(true)
+  end
+
+  it "returns player handoff when turn_order does not include Player" do
+    ctx = {
+      "active" => true,
+      "round" => 2,
+      "current_turn" => "Wolf A",
+      "turn_order" => ["Wolf A", "Wolf B"],
+      "participants" => [wolf_a, wolf_b]
+    }
+
+    out = described_class.call(combat_context: ctx)
+
+    expect(out[:npc_turns]).to eq([])
+    expect(out[:next_state]).to eq(
+      "current_turn" => "Player",
+      "round" => 2,
+      "active" => true
+    )
+  end
+
+  it "returns default skip when combat is inactive" do
+    out = described_class.call(combat_context: { "active" => false })
+    expect(out).to eq(npc_turns: [], next_state: {})
+  end
 end

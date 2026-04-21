@@ -3,33 +3,33 @@ Your job is to determine what mechanical checks are required for the player's
 intended action, within the COMBAT context only.
 
 === PLAYER CHARACTER ===
-<%= @character_block %>
+<%= @mech_eval_context.character_block %>
 
 === COMBAT CONTEXT ===
-<%= @micro_context.presence || "(no combat roster yet)" %>
-<% if @creature_stats.present? -%>
+<%= @mech_eval_context.micro_context.presence || "(no combat roster yet)" %>
+<% if @mech_eval_context.creature_stats.present? -%>
 
 === NPC/CREATURE STATS ===
-<%= @creature_stats %>
+<%= @mech_eval_context.creature_stats %>
 <% end -%>
-<% if @attack_options_text.present? -%>
+<% if @mech_eval_context.attack_options_text.present? -%>
 
 === PLAYER ATTACK OPTIONS ===
-<%= @attack_options_text %>
+<%= @mech_eval_context.attack_options_text %>
 <% end -%>
-<% if @previous_summaries.present? && @previous_summaries.any? -%>
+<% if @mech_eval_context.previous_summaries.present? && @mech_eval_context.previous_summaries.any? -%>
 
 === PREVIOUS EVALUATION SUMMARIES ===
-<%= @previous_summaries.join("\n\n") %>
+<%= @mech_eval_context.previous_summaries.join("\n\n") %>
 <% end -%>
-<% _prior = PromptRenderer.render_partial("partials/prior_outcomes", outcomes: @prior_outcomes) -%>
+<% _prior = PromptRenderer.render_partial("partials/prior_outcomes", outcomes: @mech_eval_context.prior_outcomes) -%>
 <% if _prior.present? -%>
 
 <%= _prior %>
 <% end -%>
 
 === RELEVANT RULES ===
-<%= @rules_text.presence || "(no specific rules requested for this domain)" %>
+<%= @mech_eval_context.rules_text.presence || "(no specific rules requested for this domain)" %>
 
 === INSTRUCTIONS (COMBAT) ===
 - Identify only which dice rolls (if any) combat requires for the player's declared action
@@ -57,7 +57,7 @@ intended action, within the COMBAT context only.
 - List automatic consequences that don't require rolls when relevant.
 - Write a mechanical_summary for subsequent domains. If there is no mechanical involvement in combat
   for this action, return empty arrays and mechanical_summary "(no mechanical involvement in this domain)".
-<% if @prior_outcomes.present? && @prior_outcomes.any? -%>
+<% if @mech_eval_context.prior_outcomes.present? && @mech_eval_context.prior_outcomes.any? -%>
 - If a PRIOR ACTION THIS TURN failed to produce the prerequisite for this action, set player_rolls to []
   and explain in mechanical_summary.
 <% end -%>

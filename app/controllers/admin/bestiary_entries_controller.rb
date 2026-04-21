@@ -7,11 +7,11 @@ module Admin
       @entries = BestiaryEntry.order(:name)
       @entries = @entries.where("LOWER(name) LIKE ?", "%#{params[:q].downcase}%") if params[:q].present?
       @total = BestiaryEntry.count
-      @ai_candidates = CreatureSheet.where(origin: "ai").select(:name).distinct.pluck(:name)
+      @ai_candidates = CreatureSheet.ai_generated.select(:name).distinct.pluck(:name)
     end
 
     def import_candidates
-      sheets = CreatureSheet.where(origin: "ai").order(:name)
+      sheets = CreatureSheet.ai_generated.alphabetical
       @candidates = sheets.group_by(&:name).map do |name, group|
         representative = group.max_by(&:updated_at)
         existing = BestiaryEntry.where("LOWER(name) = ?", name.downcase.strip.singularize).exists?
@@ -67,6 +67,7 @@ module Admin
 
     def reverse_hp_formula(sheet)
       return "1d10+2" unless sheet.max_hp && sheet.constitution
+
       con_mod = ((sheet.constitution - 10).to_f / 2).floor
       level = [sheet.level, 1].max
       flat_bonus = con_mod * level

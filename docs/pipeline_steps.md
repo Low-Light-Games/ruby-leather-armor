@@ -14,11 +14,11 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md).
 
 ## Outer orchestration (Pipeline class)
 
-The **AI step mixins** (Intake, Sequencer, Narrate, …) implement individual prompts; **`AdventureLoopResolution`** (also mixed into `PipelineEngine`) drives evaluation → sanity → mechanics for each **AdventureLoop** row; the **`DungeonMaster::PipelineEngine`** class wires the **player turn** and **action queue**. Reorder or extend the main line by editing **`#run_prompt`** in [`app/services/dungeon_master/pipeline_engine.rb`](../app/services/dungeon_master/pipeline_engine.rb) (three explicit `apply_prompt_phase` calls).
+The **AI step mixins** (Intake, Sequencer, Narrate, …) implement individual prompts; **`AdventureLoopResolution`** (also mixed into `PipelineEngine`) drives evaluation → sanity → mechanics for each **AdventureLoop** row; the **`DungeonMaster::PipelineEngine`** class wires the **player turn** and **action queue**. Reorder or extend the main line by editing **`#run_prompt`** in [`app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb`](../app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb) (three explicit `apply_prompt_phase` calls).
 
 | Phase / component | Role | Source |
 |-------------------|------|--------|
-| **`#run_prompt` + `#apply_prompt_phase`** | Ordered calls: intake + danger gate → DM query branch → sequencer + compound-action loop | `pipeline.rb` |
+| **`#run_prompt` + `#apply_prompt_phase`** | Ordered calls: intake + danger gate → DM query branch → sequencer + compound-action loop | [`pipeline_engine/concerns/entry_points.rb`](../app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb) |
 | **`Phases::IntakeDangerGate`** | `run_intake`; danger threshold → `:rejected` | [`pipeline_engine/phases/intake_danger_gate.rb`](../app/services/dungeon_master/pipeline_engine/phases/intake_danger_gate.rb) |
 | **`Phases::DmQueryBranch`** | Ask DM mode / `is_dm_query` → `run_dm_query_flow` | [`pipeline_engine/phases/dm_query_branch.rb`](../app/services/dungeon_master/pipeline_engine/phases/dm_query_branch.rb) |
 | **`Phases::OrchestrateCompoundActions`** | `run_sequencer` then **`ActionQueueRunner`** | [`pipeline_engine/phases/orchestrate_compound_actions.rb`](../app/services/dungeon_master/pipeline_engine/phases/orchestrate_compound_actions.rb) |
@@ -33,6 +33,8 @@ The **AI step mixins** (Intake, Sequencer, Narrate, …) implement individual pr
 | **`Narrative::ProgressiveEntry`** | Value object for each progressive narration payload: DM text, `adventure_complete`, queue indices, `action_text`. Built after `run_narrative_phase`; `#to_h` is passed to `on_narrative` and into `:narratives` on `:narrated_sequence`. | [`narrative/progressive_entry.rb`](../app/services/dungeon_master/narrative/progressive_entry.rb) |
 
 **Per-class contracts** (what must be set on the pipeline before the step, what mutates, prompt inputs) live in the file header comments on each phase and on `ActionQueueRunner`.
+
+`AdventureLoopResolution` now emits typed flow payloads through `DungeonMaster::PipelineFlowResults` (backward-compatible alias: `DungeonMaster::FlowResults`) and only serializes to hashes at the boundary consumed by queue orchestration and resume entrypoints.
 
 Combat attack rolls now follow the same AI-picks / server-resolves pattern as saving-throw `dc_formula`: combat mech-eval selects an `attack_option_id`, and Ruby resolves attack mode, defense targeting, damage metadata, and pending-roll quick actions from that code-built option.
 
@@ -298,11 +300,14 @@ accessible to anyone who needs to tune the DM's behavior.
 file I/O) for what was previously inline strings. This is negligible —
 template rendering is sub-millisecond compared to the AI call it feeds.
 
-### 11. Pipeline class separated from the service
+### 11. Pipeline class separated from entry services
 
 **Decision:** `DungeonMaster::PipelineEngine` encapsulates pure pipeline logic
-(step sequencing, branching, data flow). `DungeonMasterService` handles
-only message persistence and error handling.
+(step sequencing, branching, data flow). Pipeline entry responsibilities are
+split into focused deterministic services under `DungeonMaster::EntryServices`
+(`PromptExecution`, `ResumePipelineExecution`) with shared dependency wiring in
+`DungeonMaster::EntryRuntime`; `DungeonMasterService` remains a small facade
+for controller/job compatibility.
 
 **Why:** the original `DungeonMasterService` was a monolith that mixed
 pipeline orchestration, message persistence, error handling, and step
@@ -313,9 +318,9 @@ The separation means:
 - `Pipeline#run_prompt` reads like a linear script: intake,
   then branch, then beacon, then mechanics gate, etc.
   A developer can read the full flow in ~40 lines.
-- The service's `process_player_prompt` is equally clear: persist the
-  player message, run the pipeline, map the result to messages, catch
-  errors.
+- Prompt, roll, and initiative execution each have explicit entry services,
+  so moderation/policy/runtime orchestration is not mixed into one monolithic
+  class.
 - Steps can be tested against the Pipeline without mocking persistence.
 
 **Trade-off accepted:** more files to navigate. Mitigated by consistent
@@ -579,6 +584,14 @@ DC values from canonical sheet data.
   closed instead of silently degrading to empty roll requests.
 - all other domains → `PromptRenderer.render_partial("mechanical_evaluation/_#{domain}")`
   inside `mechanical_evaluation.text.erb`.
+
+**Signature ownership note (readability refactor):**
+- `CombatMechanicResolution` now carries a small `ResolutionContext` object and forwards
+  participant targeting through `WorldTurn::ParticipantLookup::LookupContext` instead of
+  threading multiple `combat_ctx` / `sheet` / `adventure` keyword arguments through each helper.
+- `Utilities::Warmaster` entrypoints accept explicit request objects (`EncounterInitializationRequest`,
+  `NamesPreparationRequest`, `CombatInitializationRequest`) so call sites pass one cohesive object
+  per operation boundary rather than spreading utility construction arguments across pipeline layers.
 
 **Why:** combat rolls need stricter structure than the generic prompt can
 reliably provide. The AI now classifies *what kind* of combat roll is needed
@@ -948,7 +961,7 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 
 | # | Step | Type | Source |
 |---|------|------|--------|
-| — | **`#run_prompt` outer phases** | Code (orchestration) | `app/services/dungeon_master/pipeline_engine.rb`, `app/services/dungeon_master/pipeline_engine/phases/*.rb` |
+| — | **`#run_prompt` outer phases** | Code (orchestration) | `app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb`, `app/services/dungeon_master/pipeline_engine/phases/*.rb` |
 | — | **`ActionQueueRunner`** | Code (queued actions) | `app/services/dungeon_master/pipeline_engine/action_queue_runner.rb` |
 | 0 | **Moderation gate** | Code + Node evaluator `POST /moderate` | `app/services/dungeon_master/moderation_service.rb`, `app/jobs/moderation_check_job.rb`, `evaluator/src/index.js` |
 | 1 | **Intake** | AI | `app/services/dungeon_master/steps/intake.rb` |

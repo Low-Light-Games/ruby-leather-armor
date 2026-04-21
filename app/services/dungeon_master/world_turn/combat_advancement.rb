@@ -65,6 +65,7 @@ module DungeonMaster
         participants = Array(normalized["participants"]).filter_map do |participant|
           row = participant.deep_stringify_keys
           next row unless row["type"].to_s == "npc"
+
           next if row["hp"].to_i <= 0
 
           row

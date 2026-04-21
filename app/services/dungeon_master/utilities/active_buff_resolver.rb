@@ -109,13 +109,13 @@ module DungeonMaster
 
         expires_at = duration_h ? current_game_hours + duration_h : nil
 
-        [{
-          "source"                => source_id,
-          "bonus_type"            => bonus_type.to_s,
-          "target"                => target.to_s,
-          "value"                 => value,
-          "expires_at_game_hours" => expires_at
-        }]
+        [ActiveBuffEntry.new(
+          source: source_id,
+          bonus_type: bonus_type,
+          target: target,
+          value: value,
+          expires_at_game_hours: expires_at
+        ).to_h]
       end
 
       # ── Duration ─────────────────────────────────────────────────────────
@@ -124,15 +124,14 @@ module DungeonMaster
       def compute_duration_hours(formula, level:)
         return nil unless formula.is_a?(Hash)
 
-        unit     = formula["unit"]
-        multiplier = UNIT_TO_HOURS[unit]
+        multiplier = UNIT_TO_HOURS[formula["unit"]]
         return nil unless multiplier
 
-        if formula.key?("fixed")
-          formula["fixed"].to_f * multiplier
-        elsif formula.key?("per_level") && level
-          formula["per_level"].to_f * level * multiplier
-        end
+        return formula["fixed"].to_f * multiplier if fixed_duration?(formula)
+
+        return formula["per_level"].to_f * level * multiplier if per_level_duration?(formula, level)
+
+        nil
       end
 
       # ── Effect building ───────────────────────────────────────────────────
@@ -159,15 +158,14 @@ module DungeonMaster
           reserved = %w[type bonusType bonus_type target bonus bonus_formula]
           meta = effect.reject { |k, _| reserved.include?(k) }
 
-          entry = {
-            "source"                => source_id,
-            "bonus_type"            => bonus_type.to_s,
-            "target"                => target.to_s,
-            "value"                 => value,
-            "expires_at_game_hours" => expires_at
-          }
-          entry["meta"] = meta unless meta.empty?
-          entries << entry
+          entries << ActiveBuffEntry.new(
+            source: source_id,
+            bonus_type: bonus_type,
+            target: target,
+            value: value,
+            expires_at_game_hours: expires_at,
+            meta: meta.presence
+          ).to_h
         end
 
         entries
@@ -180,22 +178,39 @@ module DungeonMaster
       def resolve_bonus_value(effect, caster_level: nil)
         raw = effect["bonus"]
 
-        if raw.is_a?(Integer)
-          raw
-        elsif raw.is_a?(Float)
-          raw.to_i
-        elsif effect["bonus_formula"].is_a?(Hash)
-          bf = effect["bonus_formula"]
-          base = bf["base"].to_i
-          if caster_level && bf["per_n_cl"].to_i > 0
-            bonus = base + (caster_level / bf["per_n_cl"].to_i)
-            bf["max"] ? [bonus, bf["max"].to_i].min : bonus
-          else
-            base
-          end
-        elsif raw.is_a?(String)
-          raw.to_i
-        end
+        return raw if raw.is_a?(Integer)
+
+        return raw.to_i if raw.is_a?(Float)
+
+        return formula_bonus_value(effect["bonus_formula"], caster_level) if effect["bonus_formula"].is_a?(Hash)
+
+        return raw.to_i if raw.is_a?(String)
+
+        nil
+      end
+
+      def fixed_duration?(formula)
+        formula.key?("fixed")
+      end
+
+      def per_level_duration?(formula, level)
+        formula.key?("per_level") && level
+      end
+
+      def formula_bonus_value(bonus_formula, caster_level)
+        base = bonus_formula["base"].to_i
+        return base unless scales_with_caster_level?(bonus_formula, caster_level)
+
+        scaled_bonus = base + (caster_level / bonus_formula["per_n_cl"].to_i)
+        capped_bonus_for_formula(scaled_bonus, bonus_formula)
+      end
+
+      def scales_with_caster_level?(bonus_formula, caster_level)
+        caster_level && bonus_formula["per_n_cl"].to_i > 0
+      end
+
+      def capped_bonus_for_formula(value, bonus_formula)
+        bonus_formula["max"] ? [value, bonus_formula["max"].to_i].min : value
       end
     end
   end

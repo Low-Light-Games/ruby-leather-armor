@@ -129,6 +129,7 @@ module CharacterStats
       Array(active_conditions).each do |cond_name|
         defn = DEFINITIONS[cond_name]
         next unless defn
+
         if defn[:speed_multiplier]
           multiplier = [multiplier, defn[:speed_multiplier]].min
         end
