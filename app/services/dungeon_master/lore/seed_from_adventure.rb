@@ -28,9 +28,9 @@ module DungeonMaster
           enriched_world:        enriched_world_text,
           opening_narrative:     opening_narrative_text,
           initial_contexts_text: initial_contexts_text,
-          npcs_text:             npcs_text,
-          clues_text:            clues_text,
-          locations_text:        locations_text,
+          npcs_text:             SeedPresenters::Npcs.call(adventure: @adventure),
+          clues_text:            SeedPresenters::Clues.call(adventure: @adventure),
+          locations_text:        SeedPresenters::Locations.call(adventure: @adventure),
         )
 
         result = run_loremaster_seed_call(system_prompt)
@@ -100,34 +100,6 @@ module DungeonMaster
       def initial_contexts_text
         block = DungeonMaster::PromptHelpers.build_micro_contexts_block(@adventure)
         block.presence || "(no initial micro-contexts)"
-      end
-
-      def npcs_text
-        rows = StoryNpc.for_adventure(@adventure).ordered_by_id.map do |npc|
-          parts = ["- #{npc.name} (role: #{npc.role}, attitude: #{npc.attitude})"]
-          parts << "  description: #{npc.description}" if npc.description.present?
-          parts.join("\n")
-        end
-        rows.any? ? rows.join("\n") : "(none)"
-      end
-
-      def clues_text
-        rows = StoryClue.for_adventure(@adventure).ordered_by_id.map do |clue|
-          parts = ["- #{clue.title} (discovery: #{clue.discovery_method}, difficulty: #{clue.difficulty})"]
-          parts << "  description: #{clue.description}" if clue.description.present?
-          parts.join("\n")
-        end
-        rows.any? ? rows.join("\n") : "(none)"
-      end
-
-      def locations_text
-        locations = @adventure.story&.story_locations&.order(:id).to_a
-        rows = locations.map do |loc|
-          parts = ["- #{loc.name}"]
-          parts << "  description: #{loc.description}" if loc.description.present?
-          parts.join("\n")
-        end
-        rows.any? ? rows.join("\n") : "(none)"
       end
     end
   end
