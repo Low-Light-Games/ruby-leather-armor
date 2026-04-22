@@ -205,6 +205,17 @@ shared_context "with evaluator stubs" do
           when "narrate"
             evaluator_entry("narrate", nil,
                             "parsed_response" => JSON.parse(AI_STEP_RESPONSES["narrate"]))
+          when "loremaster"
+            # Loremaster runs as the third prompt in the narrative-phase
+            # fan-out (C6 of narrative facts plan). Default stub emits no
+            # facts and no invalidations so existing pipeline specs see
+            # no new side effects unless they stub a richer response.
+            evaluator_entry("loremaster", nil,
+                            "parsed_response" => {
+                              "facts" => [],
+                              "invalidates" => [],
+                              "reasoning" => "stub loremaster — no facts extracted",
+                            })
           else
             domain     = p.dig("meta", "domain")
             evaluator_entry("beacon", domain,

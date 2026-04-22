@@ -51,9 +51,18 @@ module DungeonMaster
         broadcast_progress("Writing the story...")
         broadcast_progress("Remembering the world...")
 
+        # Snapshot Loremaster's inputs BEFORE the fan-out dispatches. The
+        # LoremasterInputs value object is frozen at construction
+        # (correctness claim #6 — write-too-early guard): if a future
+        # pipeline reorder places a mutation-producing step inside the
+        # fan-out, Loremaster's inputs won't silently drift because they
+        # aren't live references.
+        loremaster_inputs = build_loremaster_inputs(seed, mutations)
+
         prompts = [narrate_evaluator_prompt(narration_context)]
         prompts.concat(build_micro_context_updater_prompts(seed, mutations, allow_combat_initialization: true))
         prompts << macro_context_evaluator_prompt(seed) if intent[:macro_significant]
+        prompts << loremaster_evaluator_prompt(loremaster_inputs)
 
         # All prompts are built on the main thread before this single HTTP call; Node runs
         # LLM calls concurrently but returns results in request order — see evaluator index.js.
@@ -70,6 +79,8 @@ module DungeonMaster
           macro_significant: intent[:macro_significant],
           mutations: mutations)
 
+        apply_loremaster_from_fan_out!(by_step)
+
         narrative_from_evaluator_result(evaluator_fan_out_result!(by_step, "narrate", "narrative_phase"))
       end
 
@@ -77,7 +88,98 @@ module DungeonMaster
         run_context_updates(narration_context.combined_seed, mutations,
                             macro_significant: intent[:macro_significant])
 
-        run_narrate(narration_context)
+        result = run_narrate(narration_context)
+
+        # Subjugated mode has no fan-out to slot into: it's two sequential
+        # single-prompt calls today. Loremaster's write only has to be
+        # ready by the *next* turn's sanity gate, not the current one, so
+        # serial-after-Narrate is correctness-equivalent to parallel for
+        # the world check. Users on subjugated mode are already trading
+        # latency for a specific ordering property.
+        run_loremaster_subjugated(narration_context.combined_seed, mutations)
+
+        result
+      end
+
+      def build_loremaster_inputs(what_happened, mutations)
+        Steps::Loremaster::LoremasterInputs.new(
+          what_happened: what_happened.to_s,
+          mutations: (mutations || {}).deep_stringify_keys,
+          contexts_text: PromptHelpers.build_micro_contexts_block(@adventure).to_s,
+          active_facts: active_facts_window,
+        )
+      end
+
+      def loremaster_evaluator_prompt(inputs)
+        Steps::Loremaster.turn_evaluator_prompt(inputs: inputs, config: @config)
+      end
+
+      def apply_loremaster_from_fan_out!(by_step)
+        result = by_step["loremaster"]
+        return if result.nil?
+
+        parsed = result["parsed_response"]
+        Lore::ApplyResults.call(
+          adventure: @adventure,
+          loop: @loop,
+          log: @log,
+          ai: @ai,
+          result: parsed || {},
+        )
+      rescue StandardError => e
+        handle_loremaster_failure(e, source: "apply_results")
+      end
+
+      def run_loremaster_subjugated(what_happened, mutations)
+        inputs = build_loremaster_inputs(what_happened, mutations)
+        payload = loremaster_evaluator_prompt(inputs)
+
+        prompt_summary = "Loremaster (subjugated)"
+        request_body = { system_prompt: payload[:system_prompt], user_message: payload[:user_message] }
+        parsed = timed_ai_call("loremaster", prompt_summary, request_body) do
+          raw = @ai.chat(
+            system_prompt: payload[:system_prompt],
+            user_message:  payload[:user_message],
+            max_tokens:    payload[:max_tokens],
+            step_name:     "loremaster",
+            model:         payload[:model],
+          )
+          [raw, @ai.parse_json(raw)]
+        end
+
+        Lore::ApplyResults.call(
+          adventure: @adventure, loop: @loop, log: @log, ai: @ai,
+          result: parsed || {},
+        )
+      rescue StandardError => e
+        handle_loremaster_failure(e, source: "subjugated_call")
+      end
+
+      def handle_loremaster_failure(exception, source:)
+        @log.report_error(exception, context: {
+          step: "loremaster",
+          adventure_id: @adventure&.id,
+          loop_id: @loop&.id,
+          source: source,
+        })
+        @log.play_log!(
+          "loremaster_failure",
+          "Loremaster #{source} failed: #{exception.class}",
+          parsed_response: { error: exception.message.to_s.truncate(500) },
+        )
+      end
+
+      def active_facts_window
+        limit = (DmConfig.instance.narrative_facts_active_window.presence || 20).to_i
+        limit = 20 if limit <= 0
+
+        AdventureNarrativeFact
+          .active
+          .where(adventure_id: @adventure.id)
+          .order(created_at: :desc, id: :desc)
+          .limit(limit)
+          .pluck(:id, :kind, :text)
+          .map { |id, kind, text| { fact_id: id, kind: kind, text: text } }
       end
 
       def maybe_initialize_combat(intent)
