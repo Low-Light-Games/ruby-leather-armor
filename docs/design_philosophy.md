@@ -241,6 +241,34 @@ provides the model's own explanation of its decision. When a verdict is
 wrong, the reasoning field often reveals *why* — "I assumed the player
 had Improved Grapple" is immediately actionable.
 
+**Errors are first-class audit artifacts:** in production and staging,
+every real error must be observable. The failure path uses
+`ApplicationErrorReporter.notify(exception, context: { ... })` — or
+patterns that already delegate to it, such as
+`DungeonMaster::Logging#report_error` and `#capture_pipeline_exception!`
+— so the exception surfaces in Sentry with a context hash rich enough
+to replay. This applies even when the surrounding operation is
+intentionally degraded rather than aborted: if a step swallows an
+`AiError`, a `TokenBudgetExceededError`, or a `StandardError` to keep a
+turn flowing (for example, a best-effort fact writer), it still has to
+notify before it continues. A play_log entry is never a substitute
+for a Sentry notification — play_log exists for in-app debugging and
+is easy to miss at a glance, while Sentry is where reliability signal
+is actually monitored. Bare `rescue StandardError; nil` is reserved
+for true last-resort shims and, when used, must still notify. The rule
+is enforced by the always-applied Cursor rule
+[`.cursor/rules/error-reporting-sentry.mdc`](/.cursor/rules/error-reporting-sentry.mdc);
+this section is the design rationale behind it.
+
+**Why:** silent failures are the worst-case AI bug, because AI pipelines
+degrade gracefully by design (per §1, honor system verdicts; per §17,
+don't code-fix AI problems). The same properties that make a pipeline
+robust to individual model hiccups — best-effort steps, lossy caches,
+fallback paths — also make it possible for a whole class of failures to
+never surface. Sentry notification is the guarantee that "degraded"
+never becomes "invisible": the data may be lossy, the error signal
+must not be.
+
 ---
 
 ## 9. Incremental decomposition of AI pipeline steps
