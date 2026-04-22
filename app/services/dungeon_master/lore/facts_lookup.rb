@@ -2,13 +2,6 @@
 
 module DungeonMaster
   module Lore
-    # Code-only fact retriever for `sanity_checker_world`. See
-    # docs/pipeline_steps.md Decision 37 and docs/design_philosophy.md §18
-    # for contract, single-writer invariant, and lossy-with-Sentry
-    # failure policy. This class is the read-side mirror of
-    # `Lore::ApplyResults` and the third embedding-call site alongside
-    # `SeedFromAdventure`. No live pipeline caller invoked it before the
-    # C10 cutover; today it's wired into `SanityChecker`.
     class FactsLookup
       def self.call(adventure:, ai:, log:, query_text:, limit: nil)
         new(adventure: adventure, ai: ai, log: log,
@@ -74,10 +67,7 @@ module DungeonMaster
 
       def nearest_neighbors(query_embedding)
         AdventureNarrativeFact
-          .active
-          .for_adventure(@adventure)
-          .nearest_neighbors(:embedding, query_embedding, distance: "cosine")
-          .limit(@limit)
+          .nearest_active_for(@adventure, query_embedding, limit: @limit)
           .map { |row| FactHit.from_row(row).to_h }
       end
 

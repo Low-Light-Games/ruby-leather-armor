@@ -37,6 +37,12 @@ class AdventureNarrativeFact < ApplicationRecord
   scope :active,      -> { where(invalidated_at_loop_id: nil) }
   scope :invalidated, -> { where.not(invalidated_at_loop_id: nil) }
   scope :for_adventure, ->(adventure) { where(adventure_id: adventure.id) }
+  scope :nearest_active_for, ->(adventure, embedding, limit:) {
+    active
+      .for_adventure(adventure)
+      .nearest_neighbors(:embedding, embedding, distance: "cosine")
+      .limit(limit)
+  }
 
   def active?
     invalidated_at_loop_id.nil?
