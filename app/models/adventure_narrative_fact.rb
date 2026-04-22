@@ -43,6 +43,12 @@ class AdventureNarrativeFact < ApplicationRecord
       .nearest_neighbors(:embedding, embedding, distance: "cosine")
       .limit(limit)
   }
+  scope :active_window_for, ->(adventure, limit:) {
+    active
+      .for_adventure(adventure)
+      .order(created_at: :desc, id: :desc)
+      .limit(limit)
+  }
 
   def active?
     invalidated_at_loop_id.nil?

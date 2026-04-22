@@ -2,15 +2,6 @@
 
 module DungeonMaster
   module Steps
-    # Pipeline Step: Stagehand (narrative phase orchestration).
-    #
-    # Code-only step — no AI call. Sits between Mechanic/Momentum and Narrate/ContextUpdates.
-    # Responsibilities:
-    #   1. Check if combat signal from UnifiedEvaluation warrants Warmaster (Path B)
-    #   2. Run ContextUpdate before any awaiting_initiative early return (Path B)
-    #   3. Orchestrate Narrate + ContextUpdate based on narration_mode config:
-    #        "parallel"   — both via Node POST /fan_out (default)
-    #        "subjugated" — context updates run first, then narrate sees fresh DB state
     module Stagehand
       private
 
@@ -20,16 +11,13 @@ module DungeonMaster
           # ContextUpdate runs before the initiative prompt goes to the player so
           # contexts reflect combat beginning at pause time, not only after the roll.
           run_context_updates(narration_context.combined_seed, mutations)
-          return {
-            action: :awaiting_initiative,
+          return NarrativePhaseResults.awaiting_initiative(
             intent: intent,
             creature_data: warmaster_result[:creature_data],
-            mutations: mutations
-          }.merge(extra)
+            mutations: mutations,
+            extras: extra,
+          ).to_h
         end
-
-        # v1 latency: combat rounds are never macro-significant; skip macro context LLM cost.
-        intent = intent.merge(macro_significant: false) if stagehand_combat_active?
 
         narration_mode = @config.get("narration_mode") || "parallel"
 
@@ -39,17 +27,15 @@ module DungeonMaster
           run_parallel_narrative(intent, narration_context: narration_context, mutations: mutations)
         end => narration
 
-        adventure_complete = @loop&.get("adventure_complete") == true
-
-        { action: :narrated, narrative: narration[:narrative],
-          adventure_complete: adventure_complete }.merge(extra)
+        NarrativePhaseResults.narrated(
+          narrative: narration[:narrative],
+          adventure_complete: @loop&.get("adventure_complete") == true,
+          extras: extra,
+        ).to_h
       end
 
       def run_parallel_narrative(intent, narration_context:, mutations:)
         seed = narration_context.combined_seed
-
-        broadcast_progress("Writing the story...")
-        broadcast_progress("Remembering the world...")
 
         # Snapshot before the fan-out dispatches — inputs must capture
         # post-mutation state (docs/pipeline_steps.md Decision 37).
@@ -60,6 +46,7 @@ module DungeonMaster
         prompts << macro_context_evaluator_prompt(seed) if intent[:macro_significant]
         prompts << loremaster_evaluator_prompt(loremaster_inputs)
 
+        broadcast_progress("Writing the story...")
         # All prompts are built on the main thread before this single HTTP call; Node runs
         # LLM calls concurrently but returns results in request order — see evaluator index.js.
         by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
@@ -75,6 +62,7 @@ module DungeonMaster
           macro_significant: intent[:macro_significant],
           mutations: mutations)
 
+        broadcast_progress("Remembering the world...")
         apply_loremaster_from_fan_out!(by_step)
 
         narrative_from_evaluator_result(evaluator_fan_out_result!(by_step, "narrate", "narrative_phase"))
@@ -164,10 +152,7 @@ module DungeonMaster
         limit = 20 if limit <= 0
 
         AdventureNarrativeFact
-          .active
-          .where(adventure_id: @adventure.id)
-          .order(created_at: :desc, id: :desc)
-          .limit(limit)
+          .active_window_for(@adventure, limit: limit)
           .pluck(:id, :kind, :text)
           .map { |id, kind, text| { fact_id: id, kind: kind, text: text } }
       end

@@ -22,6 +22,9 @@ RSpec.describe DungeonMaster::AiClient, "#embeddings" do
     allow(openai_double).to receive(:embeddings).and_return({ "data" => data })
   end
 
+  let(:small) { "text-embedding-3-small" }
+  let(:large) { "text-embedding-3-large" }
+
   it "returns vectors in input order for a batch of texts" do
     vectors = [
       Array.new(3) { 0.1 },
@@ -30,7 +33,7 @@ RSpec.describe DungeonMaster::AiClient, "#embeddings" do
     ]
     stub_success(vectors)
 
-    result = client.embeddings(texts: ["first", "second", "third"])
+    result = client.embeddings(texts: ["first", "second", "third"], model: small)
 
     expect(result).to eq(vectors)
   end
@@ -38,7 +41,7 @@ RSpec.describe DungeonMaster::AiClient, "#embeddings" do
   it "sends a single HTTP request for N texts (batched, not per-text)" do
     stub_success([[0.0], [0.0], [0.0], [0.0]])
 
-    client.embeddings(texts: ["a", "b", "c", "d"])
+    client.embeddings(texts: ["a", "b", "c", "d"], model: small)
 
     expect(openai_double).to have_received(:embeddings).once
   end
@@ -46,7 +49,7 @@ RSpec.describe DungeonMaster::AiClient, "#embeddings" do
   it "accepts a 1-element array for single-query retrieval" do
     stub_success([[1.0, 0.0]])
 
-    result = client.embeddings(texts: ["just one"])
+    result = client.embeddings(texts: ["just one"], model: small)
 
     expect(result).to eq([[1.0, 0.0]])
   end
@@ -54,37 +57,33 @@ RSpec.describe DungeonMaster::AiClient, "#embeddings" do
   it "passes the model and input through to OpenAI::Client#embeddings" do
     stub_success([[0.0]])
 
-    client.embeddings(texts: ["x"], model: "text-embedding-3-large")
+    client.embeddings(texts: ["x"], model: large)
 
     expect(openai_double).to have_received(:embeddings).with(
-      parameters: { model: "text-embedding-3-large", input: ["x"] },
+      parameters: { model: large, input: ["x"] },
     )
   end
 
-  it "defaults to text-embedding-3-small when no model is given" do
-    stub_success([[0.0]])
-
-    client.embeddings(texts: ["x"])
-
-    expect(openai_double).to have_received(:embeddings).with(
-      parameters: { model: "text-embedding-3-small", input: ["x"] },
-    )
+  it "raises ArgumentError when model: is omitted (no hardcoded default)" do
+    expect {
+      client.embeddings(texts: ["x"])
+    }.to raise_error(ArgumentError, /missing keyword: :?model/)
   end
 
   it "passes dimensions through when provided (for -3-large truncation)" do
     stub_success([[0.0]])
 
-    client.embeddings(texts: ["x"], model: "text-embedding-3-large", dimensions: 1536)
+    client.embeddings(texts: ["x"], model: large, dimensions: 1536)
 
     expect(openai_double).to have_received(:embeddings).with(
-      parameters: { model: "text-embedding-3-large", input: ["x"], dimensions: 1536 },
+      parameters: { model: large, input: ["x"], dimensions: 1536 },
     )
   end
 
   it "omits the dimensions parameter when not provided" do
     stub_success([[0.0]])
 
-    client.embeddings(texts: ["x"])
+    client.embeddings(texts: ["x"], model: small)
 
     expect(openai_double).to have_received(:embeddings) do |args|
       expect(args[:parameters]).not_to have_key(:dimensions)
@@ -101,7 +100,7 @@ RSpec.describe DungeonMaster::AiClient, "#embeddings" do
     }
     allow(openai_double).to receive(:embeddings).and_return(out_of_order)
 
-    result = client.embeddings(texts: %w[a b c])
+    result = client.embeddings(texts: %w[a b c], model: small)
 
     # Index 0 ~ "a", index 1 ~ "b", index 2 ~ "c".
     expect(result).to eq([[0.0], [2.0], [1.0]])
@@ -110,7 +109,7 @@ RSpec.describe DungeonMaster::AiClient, "#embeddings" do
   it "raises AiError on an empty texts array without hitting OpenAI" do
     expect(openai_double).not_to receive(:embeddings)
 
-    expect { client.embeddings(texts: []) }.to raise_error(DungeonMaster::AiError)
+    expect { client.embeddings(texts: [], model: small) }.to raise_error(DungeonMaster::AiError)
   end
 
   it "retries on a transient Faraday::ConnectionFailed then succeeds" do
@@ -125,7 +124,7 @@ RSpec.describe DungeonMaster::AiClient, "#embeddings" do
     end
     allow(client).to receive(:sleep)
 
-    result = client.embeddings(texts: ["x"])
+    result = client.embeddings(texts: ["x"], model: small)
 
     expect(result).to eq([[0.42]])
     expect(call_count).to eq(2)
@@ -135,14 +134,14 @@ RSpec.describe DungeonMaster::AiClient, "#embeddings" do
     allow(openai_double).to receive(:embeddings).and_raise(Faraday::ConnectionFailed.new("still boom"))
     allow(client).to receive(:sleep)
 
-    expect { client.embeddings(texts: ["x"]) }.to raise_error(DungeonMaster::AiError, /Could not reach the AI embeddings service/)
+    expect { client.embeddings(texts: ["x"], model: small) }.to raise_error(DungeonMaster::AiError, /Could not reach the AI embeddings service/)
   end
 
   it "raises AiError when the response shape does not match the input count" do
     stub_success([[0.0]])
 
     expect {
-      client.embeddings(texts: %w[first second])
+      client.embeddings(texts: %w[first second], model: small)
     }.to raise_error(DungeonMaster::AiError, /Unexpected embeddings response shape/)
   end
 
@@ -152,7 +151,7 @@ RSpec.describe DungeonMaster::AiClient, "#embeddings" do
     )
 
     expect {
-      client.embeddings(texts: ["x"])
+      client.embeddings(texts: ["x"], model: small)
     }.to raise_error(DungeonMaster::AiError, /model not found/)
   end
 end

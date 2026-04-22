@@ -136,7 +136,10 @@ module DungeonMaster
     # (write path) and Lore::FactsLookup (read path).
     #
     # @param texts      [Array<String>]  non-empty array of texts to embed
-    # @param model      [String]         embedding model (default text-embedding-3-small)
+    # @param model      [String]         embedding model id — required; callers
+    #                                    read it from DmConfig so the admin UI
+    #                                    selection is authoritative and no
+    #                                    hardcoded default can drift from it.
     # @param dimensions [Integer, nil]   optional output-dim truncation (only
     #                                    honored by `text-embedding-3-*` models).
     #                                    Pass 1536 when using `-3-large` so its
@@ -145,7 +148,7 @@ module DungeonMaster
     #                                    `dimensions` if given, else model's
     #                                    native), in the same order as `texts`
     # @raise [DungeonMaster::AiError]
-    def embeddings(texts:, model: "text-embedding-3-small", dimensions: nil)
+    def embeddings(texts:, model:, dimensions: nil)
       raise AiError, "embeddings called with no texts" if texts.nil? || texts.empty?
 
       params = { model: model, input: texts }
