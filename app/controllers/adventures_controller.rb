@@ -42,7 +42,7 @@ class AdventuresController < ApplicationController
     # and would violate NOT NULL on adventures.skip_world_sanity_check.
     can_opt_out_world_sanity = current_user.paid? || current_user.admin == true
     skip_world_sanity_check  = !!(can_opt_out_world_sanity &&
-      ActiveModel::Type::Boolean.new.cast(params.fetch(:skip_world_sanity_check, false)))
+      ActiveModel::Type::Boolean.new.cast(params.fetch(:skip_world_sanity_check, true)))
 
     @adventure = Adventures::Bootstrap.new(
       story:                   story,

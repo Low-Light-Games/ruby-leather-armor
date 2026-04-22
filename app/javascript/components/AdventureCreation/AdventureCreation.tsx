@@ -19,7 +19,7 @@ export const AdventureCreation = () => {
   const [selectedStoryId, setSelectedStoryId] = useState<number | ''>('')
   const [selectedSheetId, setSelectedSheetId] = useState<number | ''>('')
   const [directedDm, setDirectedDm] = useState(false)
-  const [skipWorldSanityCheck, setSkipWorldSanityCheck] = useState(false)
+  const [skipWorldSanityCheck, setSkipWorldSanityCheck] = useState(true)
 
   const selectedStory = stories.find(s => s.id === selectedStoryId) || null
   const selectedSheet = sheets.find(s => s.id === selectedSheetId) || null
@@ -109,7 +109,7 @@ export const AdventureCreation = () => {
                   <label className="toggle-row" htmlFor="skip-world-sanity-check-toggle">
                     <span className="toggle-text">
                       <span className="toggle-label">Skip World Sanity Check</span>
-                      <span className="toggle-desc">If you want to hallucinate a goblin sidekick by acting as if he always existed, go for it — however, we may fail to stop the world from getting out of hand</span>
+                      <span className="toggle-desc">Temporarily enabled by default while we smooth out world consistency issues. Turn it off if you want stricter scene validation.</span>
                     </span>
                     <span className={`toggle-switch ${skipWorldSanityCheck ? 'active' : ''}`} role="switch" aria-checked={skipWorldSanityCheck}>
                       <input
