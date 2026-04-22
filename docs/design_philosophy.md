@@ -655,3 +655,26 @@ existing domain, ContextUpdate can emit a `context_wishes` entry. Each wish
 is persisted as a `context_wish` play log event, visible in the admin UI as
 an amber badge. These are observability signals for future domain design, not
 errors.
+
+**World Consistency Check no longer queries micro-contexts.** As of the
+narrative facts store cutover (see `docs/pipeline_steps.md` Decision 37),
+`sanity_checker_world` reads its dynamic-state input from
+`adventure_narrative_facts` (pgvector, top-K by similarity against the
+player's intent) rather than from the six `*_context` JSONB fields.
+Micro-contexts remain the structured mutation surface for ContextUpdate
+and every other consumer that needs domain-typed state; they are simply
+no longer the retrieval target of the world sanity gate. This keeps the
+§18 single-writer principle intact for the JSONB fields (ContextUpdate
+is still the primary writer, with the same documented exceptions above)
+while introducing a second, orthogonal store with its own single writer:
+
+- **`adventure_narrative_facts` (pgvector):** sole writer is
+  `DungeonMaster::Lore::ApplyResults`, invoked from
+  `DungeonMaster::Steps::Stagehand` on every terminal narrative phase
+  (`source: "loremaster"`) and from `DungeonMaster::Lore::SeedFromAdventure`
+  at adventure creation (`source: "seed"`). No other pipeline step,
+  admin tool, or background job mutates this table. A partial unique
+  index on `(adventure_id, introduced_at_loop_id, source_idx) WHERE
+  source = 'loremaster'` makes idempotent reapply a no-op so the
+  lossy-with-Sentry write contract stays safe under higher-layer
+  retries.
