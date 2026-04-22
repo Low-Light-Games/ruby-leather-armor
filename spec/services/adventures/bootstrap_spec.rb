@@ -13,7 +13,7 @@ RSpec.describe Adventures::Bootstrap, type: :service do
     # bootstrap specs don't need to orchestrate the AI surface. Specific
     # specs below override this to verify the wiring.
     allow(DungeonMaster::Lore::SeedFromAdventure).to receive(:call)
-      .and_return(DungeonMaster::Lore::ApplyResults::ApplyOutcome.new([], []))
+      .and_return(DungeonMaster::Lore::FactsChangeSet.empty)
   end
 
   subject(:bootstrap) do
@@ -108,7 +108,7 @@ RSpec.describe Adventures::Bootstrap, type: :service do
             adventure: adventure,
             has_opening_message: adventure.adventure_messages.exists?,
           }
-          DungeonMaster::Lore::ApplyResults::ApplyOutcome.new([], [])
+          DungeonMaster::Lore::FactsChangeSet.empty
         end
 
         adventure = bootstrap.call

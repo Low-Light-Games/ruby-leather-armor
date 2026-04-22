@@ -2,43 +2,14 @@
 
 module DungeonMaster
   module Lore
-    # Code-only fact retriever: embeds the player's stated intent, runs a
-    # pgvector cosine-similarity search (via `neighbor`) scoped to the
-    # current adventure's *active* facts, and returns the top-K hits as
-    # plain hashes ready for the `sanity_checker_world` prompt.
-    #
-    # This is the *read* side of the narrative facts store — the mirror
-    # of `Lore::ApplyResults`' write side, and the third and final
-    # embedding-call site after `ApplyResults` (write) and
-    # `SeedFromAdventure` (one-shot creation). Read calls share the same
-    # batched `AiClient#embeddings` API used on the write path (a
-    # 1-element `texts:` array — the OpenAI embeddings endpoint accepts
-    # arrays of any length, so there is no separate single-text API).
-    #
-    # AiLog ownership matches the rest of the repo: `AiClient` only
-    # holds HTTP + retry, and this service is the read-side owner of
-    # the `call_type: "embedding"` AiLog row (the write-side owner is
-    # `Lore::ApplyResults`, C5). `AiClient` itself does not write
-    # AiLog rows — that keeps the config/transport class free of
-    # adventure/user/registry context it does not otherwise need.
-    #
-    # A `narrative_facts_retrieved` play_log event is emitted with the
-    # K hits + their distances so the Admin UI facts-retrieval panel
-    # (future work) can surface the exact retrieval for a given turn.
-    #
-    # Failure policy: if the embeddings API call or the pgvector query
-    # raises, we call `log.report_error` and return an empty array.
-    # The world check degrades to zero retrieved facts — which is the
-    # same input shape as a brand-new adventure before the seed pass
-    # populates anything, and which the sanity_checker_world prompt
-    # already has to handle gracefully. Lossy-with-Sentry, per
-    # [.cursor/rules/error-reporting-sentry.mdc].
-    #
-    # Inert for C9 — no live caller invokes this yet. `SanityChecker`
-    # wires it in via C10's cutover commit.
+    # Code-only fact retriever for `sanity_checker_world`. See
+    # docs/pipeline_steps.md Decision 37 and docs/design_philosophy.md §18
+    # for contract, single-writer invariant, and lossy-with-Sentry
+    # failure policy. This class is the read-side mirror of
+    # `Lore::ApplyResults` and the third embedding-call site alongside
+    # `SeedFromAdventure`. No live pipeline caller invoked it before the
+    # C10 cutover; today it's wired into `SanityChecker`.
     class FactsLookup
-      Hit = Struct.new(:fact_id, :text, :kind, :polarity, :distance, keyword_init: true)
-
       def self.call(adventure:, ai:, log:, query_text:, limit: nil)
         new(adventure: adventure, ai: ai, log: log,
             query_text: query_text, limit: limit).call
@@ -62,11 +33,7 @@ module DungeonMaster
         emit_retrieval_play_log(hits)
         hits
       rescue StandardError => e
-        @log.report_error(e, context: {
-          step: "facts_lookup",
-          adventure_id: @adventure&.id,
-          query_preview: @query_text.to_s.truncate(120),
-        })
+        @log.report_error(e, context: error_context.with(query_preview: @query_text.truncate(120)))
         []
       end
 
@@ -79,39 +46,21 @@ module DungeonMaster
       end
 
       def embed_query
-        prompt_summary = "FactsLookup query — #{@query_text.truncate(80)}"
-        model = embedding_model
-        dims  = embedding_dimensions
-        kwargs = { texts: [@query_text], model: model }
-        kwargs[:dimensions] = dims if dims
-
-        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        begin
-          vectors = @ai.embeddings(**kwargs)
-        rescue DungeonMaster::AiError => e
-          duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-          @log.ai_log_error!(
-            "embedding",
-            prompt_summary,
-            e,
-            model_used:  model,
-            duration_ms: duration_ms,
-          )
-          raise
+        vectors = @log.timed_embedding_call(
+          "FactsLookup query — #{@query_text.truncate(80)}",
+          model_used: embedding_model,
+          source:     "facts_lookup",
+        ) do
+          @ai.embeddings(**embeddings_kwargs)
         end
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-
-        @log.ai_log!(
-          "embedding",
-          prompt_summary,
-          nil,
-          { text_count: 1, dim: vectors.first&.length, source: "facts_lookup" },
-          parse_status: "success",
-          model_used:   model,
-          duration_ms:  duration_ms,
-        )
 
         vectors.first
+      end
+
+      def embeddings_kwargs
+        kwargs = { texts: [@query_text], model: embedding_model }
+        kwargs[:dimensions] = embedding_dimensions if embedding_dimensions
+        kwargs
       end
 
       def embedding_model
@@ -126,29 +75,30 @@ module DungeonMaster
       def nearest_neighbors(query_embedding)
         AdventureNarrativeFact
           .active
-          .where(adventure_id: @adventure.id)
+          .for_adventure(@adventure)
           .nearest_neighbors(:embedding, query_embedding, distance: "cosine")
           .limit(@limit)
-          .map do |row|
-            Hit.new(
-              fact_id:  row.id,
-              text:     row.text,
-              kind:     row.kind,
-              polarity: row.polarity,
-              distance: row.neighbor_distance,
-            ).to_h
-          end
+          .map { |row| FactHit.from_row(row).to_h }
       end
 
       def emit_retrieval_play_log(hits)
         @log.play_log!(
           "narrative_facts_retrieved",
           "World check retrieved #{hits.length} fact(s) for intent",
-          parsed_response: {
-            query_preview: @query_text.to_s.truncate(120),
-            limit: @limit,
-            hits: hits.map { |h| h.slice(:fact_id, :kind, :distance) },
-          },
+          parsed_response: PlayLogEvents::FactsRetrieved.new(
+            query_text: @query_text,
+            limit:      @limit,
+            hits:       hits.map { |h| h.slice(:fact_id, :kind, :distance) },
+          ).to_h,
+        )
+      end
+
+      def error_context
+        @error_context ||= ErrorContext.new(
+          step:         "facts_lookup",
+          adventure_id: @adventure&.id,
+          loop_id:      nil,
+          source:       "facts_lookup",
         )
       end
     end

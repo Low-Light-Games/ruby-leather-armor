@@ -74,7 +74,7 @@ module DungeonMaster
         )
 
         result = run_loremaster_seed_call(system_prompt)
-        return empty_outcome if result.nil?
+        return FactsChangeSet.empty if result.nil?
 
         DungeonMaster::Lore::ApplyResults.call(
           adventure: @adventure,
@@ -86,7 +86,7 @@ module DungeonMaster
         )
       rescue StandardError => e
         handle_seed_failure(e)
-        empty_outcome
+        FactsChangeSet.empty
       end
 
       private
@@ -145,10 +145,6 @@ module DungeonMaster
           "Loremaster seed failed: #{exception.class}",
           parsed_response: { error: exception.message.to_s.truncate(500) },
         )
-      end
-
-      def empty_outcome
-        DungeonMaster::Lore::ApplyResults::ApplyOutcome.new([], [])
       end
 
       # --- Seed-input assembly -------------------------------------------

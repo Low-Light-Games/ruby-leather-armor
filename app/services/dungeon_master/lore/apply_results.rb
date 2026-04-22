@@ -21,79 +21,65 @@ module DungeonMaster
       end
 
       def call
-        facts = normalized_facts
-        invalidates = normalized_invalidates
-
-        return ApplyOutcome.new([], []) if facts.empty? && invalidates.empty?
+        return FactsChangeSet.empty if nothing_to_apply?
 
         embeddings_by_idx = embed_facts(facts)
         inserted_ids = insert_facts(facts, embeddings_by_idx)
         invalidated_ids = apply_invalidations(invalidates, inserted_ids)
 
-        ApplyOutcome.new(inserted_ids.values.compact, invalidated_ids)
+        FactsChangeSet.new(
+          inserted_fact_ids:    inserted_ids.values.compact,
+          invalidated_fact_ids: invalidated_ids,
+        )
       end
-
-      # Value returned to the caller so tests (and future observability
-      # surfaces) can see what landed. Not used to drive behaviour.
-      ApplyOutcome = Struct.new(:inserted_fact_ids, :invalidated_fact_ids)
 
       private
 
-      def normalized_facts
-        Array(@result["facts"] || @result[:facts]).select { |f| f.is_a?(Hash) }
+      def nothing_to_apply?
+        facts.empty? && invalidates.empty?
       end
 
-      def normalized_invalidates
-        Array(@result["invalidates"] || @result[:invalidates]).select { |i| i.is_a?(Hash) }
+      def facts
+        @facts ||= Array(@result["facts"] || @result[:facts]).select { |f| f.is_a?(Hash) }
+      end
+
+      def invalidates
+        @invalidates ||= Array(@result["invalidates"] || @result[:invalidates]).select { |i| i.is_a?(Hash) }
       end
 
       def embed_facts(facts)
         return {} if facts.empty?
 
-        texts = facts.map { |f| string_field(f, "text").to_s }
+        texts = facts.map { |f| TextNormalizer.indifferent_string(f, "text") }
 
         if texts.any?(&:empty?)
           @log.report_error(
             ArgumentError.new("Loremaster emitted a fact with empty text"),
-            context: error_context.merge(texts_preview: texts.first(3))
+            context: error_context.with(texts_preview: texts.first(3))
           )
         end
 
-        model = embedding_model
-        dims  = embedding_dimensions
-        kwargs = { texts: texts, model: model }
-        kwargs[:dimensions] = dims if dims
+        vectors = embed_with_logging(texts)
+        vectors.each_with_index.each_with_object({}) { |(vec, idx), acc| acc[idx] = vec }
+      end
 
-        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        begin
-          vectors = @ai.embeddings(**kwargs)
-        rescue DungeonMaster::AiError => e
-          duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-          @log.ai_log_error!(
-            "embedding",
-            "Loremaster apply — #{texts.length} fact text(s)",
-            e,
-            model_used: model,
-            duration_ms: duration_ms,
-          )
-          @log.report_error(e, context: error_context.merge(source: "apply_results.embeddings"))
-          raise
-        end
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-
-        @log.ai_log!(
-          "embedding",
+      def embed_with_logging(texts)
+        @log.timed_embedding_call(
           "Loremaster apply — #{texts.length} fact text(s)",
-          nil,
-          { text_count: texts.length, dim: vectors.first&.length, source: @source },
-          parse_status: "success",
-          model_used: model,
-          duration_ms: duration_ms,
-        )
-
-        vectors.each_with_index.each_with_object({}) do |(vec, idx), acc|
-          acc[idx] = vec
+          model_used: embedding_model,
+          source:     @source,
+        ) do
+          @ai.embeddings(**embeddings_kwargs(texts))
         end
+      rescue DungeonMaster::AiError => e
+        @log.report_error(e, context: error_context.with(source: "apply_results.embeddings"))
+        raise
+      end
+
+      def embeddings_kwargs(texts)
+        kwargs = { texts: texts, model: embedding_model }
+        kwargs[:dimensions] = embedding_dimensions if embedding_dimensions
+        kwargs
       end
 
       def embedding_model
@@ -109,9 +95,9 @@ module DungeonMaster
         inserted_ids = {}
 
         facts.each_with_index do |fact, idx|
-          text = string_field(fact, "text")
-          kind = string_field(fact, "kind")
-          polarity = string_field(fact, "polarity").presence || "asserts"
+          text = TextNormalizer.indifferent_string(fact, "text")
+          kind = TextNormalizer.indifferent_string(fact, "kind")
+          polarity = TextNormalizer.indifferent_string(fact, "polarity").presence || "asserts"
           entities = Array(fact["entities"] || fact[:entities]).map(&:to_s)
           embedding = embeddings_by_idx[idx]
 
@@ -131,9 +117,14 @@ module DungeonMaster
             @log.play_log!(
               "narrative_fact_stored",
               "#{@source}: stored #{kind} fact ##{row.id}",
-              parsed_response: { fact_id: row.id, kind: kind, polarity: polarity,
-                                 source: @source, source_idx: idx,
-                                 text: @log.truncate(text) },
+              parsed_response: PlayLogEvents::StoredFact.new(
+                fact_id:    row.id,
+                kind:       kind,
+                polarity:   polarity,
+                source:     @source,
+                source_idx: idx,
+                text:       text,
+              ).to_h,
             )
           rescue ActiveRecord::RecordNotUnique
             # Partial unique index hit — an at-most-once retry for the
@@ -150,7 +141,7 @@ module DungeonMaster
           rescue StandardError => e
             @log.report_error(
               e,
-              context: error_context.merge(
+              context: error_context.with(
                 source: "apply_results.insert_fact",
                 source_idx: idx,
                 kind: kind,
@@ -174,14 +165,11 @@ module DungeonMaster
           replacement_fact_id = replacement_idx.is_a?(Integer) ? inserted_ids[replacement_idx] : nil
 
           begin
-            fact = AdventureNarrativeFact
-              .where(adventure_id: @adventure.id)
-              .find_by(id: fact_id.to_i)
+            fact = AdventureNarrativeFact.for_adventure(@adventure).find_by(id: fact_id.to_i)
             unless fact
               @log.report_error(
                 ArgumentError.new("Loremaster tried to invalidate unknown/foreign fact_id=#{fact_id}"),
-                context: error_context.merge(source: "apply_results.invalidate_fact",
-                                             fact_id: fact_id)
+                context: error_context.with(source: "apply_results.invalidate_fact", fact_id: fact_id)
               )
               next
             end
@@ -195,19 +183,21 @@ module DungeonMaster
               "narrative_fact_invalidated",
               "#{@source}: invalidated fact ##{fact.id}" \
               "#{replacement_fact_id ? " (replaced by ##{replacement_fact_id})" : " (no replacement)"}",
-              parsed_response: {
-                fact_id: fact.id,
-                replacement_fact_id: replacement_fact_id,
+              parsed_response: PlayLogEvents::InvalidatedFact.new(
+                fact_id:                fact.id,
+                replacement_fact_id:    replacement_fact_id,
                 replacement_source_idx: replacement_idx,
-                reason: entry["reason"] || entry[:reason],
-              },
+                reason:                 entry["reason"] || entry[:reason],
+              ).to_h,
             )
           rescue StandardError => e
             @log.report_error(
               e,
-              context: error_context.merge(source: "apply_results.invalidate_fact",
-                                           fact_id: fact_id,
-                                           replacement_source_idx: replacement_idx)
+              context: error_context.with(
+                source: "apply_results.invalidate_fact",
+                fact_id: fact_id,
+                replacement_source_idx: replacement_idx,
+              )
             )
           end
         end
@@ -215,18 +205,13 @@ module DungeonMaster
         invalidated_ids
       end
 
-      def string_field(hash, key)
-        v = hash[key] || hash[key.to_sym]
-        v.is_a?(String) ? v : v.to_s
-      end
-
       def error_context
-        {
-          step: "loremaster",
+        @error_context ||= ErrorContext.new(
+          step:         "loremaster",
           adventure_id: @adventure&.id,
-          loop_id: @loop&.id,
-          source: @source,
-        }
+          loop_id:      @loop&.id,
+          source:       @source,
+        )
       end
     end
   end
