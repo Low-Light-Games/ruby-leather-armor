@@ -750,19 +750,21 @@ outcomes — the only difference was one was "factual" and one was
 making Stagehand a code-only routing layer, we eliminate the redundancy
 and guarantee consistency.
 
-### 28. Narration mode toggle (parallel vs. subjugated)
+### 28. Narration runs the output phase in parallel (single mode)
 
-**Decision:** the output phase supports two modes via `narration_mode`:
-- `"parallel"` (default): Narrate and ContextUpdate run concurrently
-- `"subjugated"`: ContextUpdate runs first, then Narrate runs with
-  fresh DB state
+**Decision:** Narrate, ContextUpdate domains, and Loremaster all run
+concurrently inside one evaluator fan-out (Node `Promise.all`). There
+is no alternative "subjugated" (serial) mode.
 
-**Why:** in parallel mode, Narrate and ContextUpdate don't see each
-other's output. This is usually fine — Narrate works from the verdict
-outcome, and ContextUpdate works from the factual "what happened" seed.
-However, in subjugated mode, Narrate can read the freshly updated
-contexts, which may produce more consistent results at the cost of
-higher latency (sequential instead of parallel).
+**Why:** we previously kept a `narration_mode = "subjugated"` toggle that
+ran ContextUpdate first, then Narrate, so Narrate could read freshly
+updated contexts. In practice the parallel mode always won: Narrate
+is driven by the verdict outcome, not by the contexts, so the DB-read
+freshness never materialized as a quality gain — and subjugated mode
+paid a full extra LLM round-trip in latency. Keeping one mode removes
+a config knob that no user flipped, keeps the fan-out the single place
+where narrative-phase latency is shaped, and lets Loremaster's
+zero-latency placement (Decision 37) rely on the fan-out unconditionally.
 
 ### 29. Context updates receive factual outcomes, not narrative
 
@@ -971,17 +973,12 @@ and "new check."
 
 **Placement.** Loremaster is placed to add zero wall-clock latency:
 
-- **Turn path — parallel mode.** Runs as a third prompt in the existing output
-  fan-out alongside `Narrate` and `ContextUpdate`, dispatched in one
-  `POST /fan_out` round-trip to the Node evaluator. The Loremaster LLM call
-  therefore fits inside the Narrate window — it does not add a sequential
-  step to the critical path.
-- **Turn path — subjugated mode.** Subjugated mode is two sequential
-  single-prompt calls (`run_context_updates` then `run_narrate`) with no
-  fan-out to slot into. Loremaster runs **serially after `Narrate`** there;
-  users who opt into subjugated mode are already trading latency for a
-  specific ordering property, and Loremaster's output only needs to be
-  ready by the **next** turn's sanity gate, not in-turn.
+- **Turn path.** Runs as an extra prompt in the output-phase fan-out
+  alongside `Narrate` and `ContextUpdate`, dispatched in one
+  `POST /fan_out` round-trip to the Node evaluator. The Loremaster LLM
+  call therefore fits inside the Narrate window — it does not add a
+  sequential step to the critical path. (With subjugated mode retired
+  in Decision 28, this is the only turn path.)
 - **Seed path — adventure creation.** `DungeonMaster::Lore::SeedFromAdventure`
   runs one Loremaster call at `Adventures::Bootstrap` time, after Embellisher
   has populated `enriched_world` / the opening DM narrative, so turn 1's
@@ -1101,7 +1098,7 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | 7 | **Narrate** | AI | `app/services/dungeon_master/steps/narrate.rb` |
 | 8a | **Micro Context Update** | AI (parallel with 8b) | `app/services/dungeon_master/steps/context_update.rb` |
 | 8b | **Macro Narrative Update** | AI (conditional) | `app/services/dungeon_master/steps/context_update.rb` |
-| 8c | **Loremaster** | AI (parallel with 7/8a/8b in parallel mode; serial after Narrate in subjugated mode) — sole writer of `adventure_narrative_facts` (see Decision 37) | `app/services/dungeon_master/steps/loremaster.rb`, `app/services/dungeon_master/lore/apply_results.rb`, `app/services/dungeon_master/lore/seed_from_adventure.rb`, `app/services/dungeon_master/lore/facts_lookup.rb` |
+| 8c | **Loremaster** | AI (parallel with 7/8a/8b in the output-phase fan-out) — sole writer of `adventure_narrative_facts` (see Decision 37) | `app/services/dungeon_master/steps/loremaster.rb`, `app/services/dungeon_master/lore/apply_results.rb`, `app/services/dungeon_master/lore/seed_from_adventure.rb`, `app/services/dungeon_master/lore/facts_lookup.rb` |
 | -- | **Mutations** | App-side | `app/services/dungeon_master/mutations.rb` |
 
 **Action queue narrative delivery modes:** when `action_queue` is not `false`, the Sequencer splits input into multiple actions. There are two progressive modes:
@@ -1347,7 +1344,6 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `token_budgets[step]` | `nil` (no limit) | Per-step max completion tokens - defaults to no limit; set specific values only as safety kill switches |
 | `action_queue` | `"progressive"` | Controls action splitting and narrative delivery. `false` — no splitting; `"progressive"` — split compound inputs, stream each action's narrative immediately via `pipeline_action_result` WebSocket events; `"progressive_continuity"` — as progressive, plus each action is evaluated with prior action outcomes from `AdventureLoop` injected into beacon/mech_eval/narrate. Per-adventure override: `dm_settings["action_queue"]`. Requires `EVALUATOR_URL` (Node evaluator microservice) |
 | `guardrail_mode` | `"code"` | `"code"` (deterministic) or `"ai"` (prompt-based) |
-| `narration_mode` | `"parallel"` | `"parallel"` (concurrent) or `"subjugated"` (sequential) |
 | `creature_creation_fallback` | `"ai"` | `"ai"` (bestiary + AI gen), `"template"` (bestiary + generic stats), `"none"` |
 | `scene_history_depth` | `10` | Number of scene summaries retained for world consistency checks |
 | `skip_world_sanity_check` _(per-adventure attribute)_ | `false` | Per-adventure toggle set at creation time. When on, the world consistency check is bypassed on both the mechanical and non-mechanical resolution paths. The capability check always runs. |

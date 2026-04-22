@@ -174,14 +174,12 @@ flowchart TB
         WB2 -->|no| NARRATE_PHASE
         COMBAT_CHECK -->|no| NARRATE_PHASE
 
-        subgraph narrate_phase["Narration — mode controls threading"]
-            NARRATE_PHASE --> NMODE{narration_mode?}
-            NMODE -->|parallel default| PAR_NARRATE["run_narrate  ☆ AI\n+ run_context_updates — parallel threads"]
-            NMODE -->|subjugated| SUB_NARRATE["run_context_updates first\nthen run_narrate  ☆ AI\n(sees fresh DB state)"]
+        subgraph narrate_phase["Narration — parallel fan-out"]
+            NARRATE_PHASE --> PAR_NARRATE["run_narrate  ☆ AI\n+ run_context_updates\n+ Loremaster — one evaluator fan-out"]
         end
 
         subgraph ctx_update["Context updates — always run"]
-            PAR_NARRATE & SUB_NARRATE --> MICRO[run_micro_context_update  ☆ AI]
+            PAR_NARRATE --> MICRO[run_micro_context_update  ☆ AI]
             MICRO --> MACRO{macro_significant?}
             MACRO -->|yes| MACRO_UPDATE[run_macro_narrative_update  ☆ AI]
             MACRO -->|no| SKIP_MACRO[skip]
@@ -547,12 +545,13 @@ Produces:
 
 Before narration, Stagehand checks if the most recent action's evaluation signaled a combat transition (`combat_started`, `*_to_combat`) via `intent[:beacon_results]`. If yes and no combat is already active, calls `Warmaster.initialize_from_names!` and potentially returns `:awaiting_initiative` before narration runs at all.
 
-#### Narration modes
+#### Narration fan-out
 
-Controlled by `DmConfig["narration_mode"]`:
-
-- **`parallel`** (default) — Narrate and context updates run in two simultaneous threads. Narrate produces prose using the current DB state; context updates write new context simultaneously.
-- **`subjugated`** — Context updates run first (sequential), then Narrate runs with the freshly updated DB state. Useful when narrative consistency requires seeing the result of mutations before writing prose.
+Narrate, the micro/macro context updaters, and Loremaster all run
+concurrently inside one `POST /fan_out` call to the Node evaluator.
+The previous `narration_mode = "subjugated"` option was retired
+(see `docs/pipeline_steps.md` Decision 28); there is no alternate
+sequential mode.
 
 #### Narrate (AI)
 
@@ -560,7 +559,7 @@ The prose generator. Receives: story title/hook, story summary, all micro contex
 
 Has a special fallback: if the model returns raw text instead of JSON, the text is treated as the narrative directly (`fallback_as: :dm_response`).
 
-#### Context updates (AI, parallel threads)
+#### Context updates (AI, in fan-out)
 
 **Micro context update** (always runs): Updates the affected + active context JSONB fields on the adventure. If traversal is in affected contexts, social is forced into the update scope (a location change may end the current social scene, so the AI must explicitly evaluate it rather than silently preserving it). Also updates `scene_summary` and `scene_history` (ring-buffered to `scene_history_depth` entries, default 10).
 

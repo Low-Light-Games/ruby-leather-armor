@@ -19,13 +19,7 @@ module DungeonMaster
           ).to_h
         end
 
-        narration_mode = @config.get("narration_mode") || "parallel"
-
-        if narration_mode == "subjugated"
-          run_subjugated_narrative(intent, narration_context: narration_context, mutations: mutations)
-        else
-          run_parallel_narrative(intent, narration_context: narration_context, mutations: mutations)
-        end => narration
+        narration = run_parallel_narrative(intent, narration_context: narration_context, mutations: mutations)
 
         NarrativePhaseResults.narrated(
           narrative: narration[:narrative],
@@ -68,17 +62,6 @@ module DungeonMaster
         narrative_from_evaluator_result(evaluator_fan_out_result!(by_step, "narrate", "narrative_phase"))
       end
 
-      def run_subjugated_narrative(intent, narration_context:, mutations:)
-        run_context_updates(narration_context.combined_seed, mutations,
-                            macro_significant: intent[:macro_significant])
-
-        result = run_narrate(narration_context)
-
-        run_loremaster_subjugated(narration_context.combined_seed, mutations)
-
-        result
-      end
-
       def build_loremaster_inputs(what_happened, mutations)
         Steps::LoremasterInputs.new(
           what_happened: what_happened.to_s,
@@ -105,44 +88,19 @@ module DungeonMaster
           result: parsed || {},
         )
       rescue StandardError => e
-        handle_loremaster_failure(e, source: "apply_results")
+        handle_loremaster_failure(e)
       end
 
-      def run_loremaster_subjugated(what_happened, mutations)
-        inputs = build_loremaster_inputs(what_happened, mutations)
-        payload = loremaster_evaluator_prompt(inputs)
-
-        prompt_summary = "Loremaster (subjugated)"
-        request_body = { system_prompt: payload[:system_prompt], user_message: payload[:user_message] }
-        parsed = timed_ai_call("loremaster", prompt_summary, request_body) do
-          raw = @ai.chat(
-            system_prompt: payload[:system_prompt],
-            user_message:  payload[:user_message],
-            max_tokens:    payload[:max_tokens],
-            step_name:     "loremaster",
-            model:         payload[:model],
-          )
-          [raw, @ai.parse_json(raw)]
-        end
-
-        Lore::ApplyResults.call(
-          adventure: @adventure, loop: @loop, log: @log, ai: @ai,
-          result: parsed || {},
-        )
-      rescue StandardError => e
-        handle_loremaster_failure(e, source: "subjugated_call")
-      end
-
-      def handle_loremaster_failure(exception, source:)
+      def handle_loremaster_failure(exception)
         @log.report_error(exception, context: {
           step: "loremaster",
           adventure_id: @adventure&.id,
           loop_id: @loop&.id,
-          source: source,
+          source: "apply_results",
         })
         @log.play_log!(
           "loremaster_failure",
-          "Loremaster #{source} failed: #{exception.class}",
+          "Loremaster apply_results failed: #{exception.class}",
           parsed_response: { error: exception.message.to_s.truncate(500) },
         )
       end

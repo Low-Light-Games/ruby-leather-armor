@@ -144,7 +144,6 @@ adjust.
 
 **Current toggles:**
 - `guardrail_mode` — code-based vs. AI-based validation
-- `narration_mode` — parallel vs. subjugated output
 - `sanitization_threshold` — danger score cutoff (0-100)
 - `verbose` / `pacing_words_min` / `pacing_words_max` — narration length
 - `temperature` — creativity/randomness
@@ -321,11 +320,18 @@ When introducing a new approach, don't rip out the old one. Keep both
 paths alive behind a toggle and let observation determine which wins.
 
 - Code and AI guardrails coexist (`guardrail_mode` toggle)
-- Parallel and subjugated narration coexist (`narration_mode` toggle)
 
 This principle is a direct consequence of principles 4 and 9: if you
 toggle everything and split incrementally, coexistence is the natural
 result. The old path is your safety net and your control group.
+
+**Waiver.** Coexistence is the default, not a mandate. When a path has
+been demonstrably low-confidence or effectively broken, we may retire it
+outright instead of maintaining the toggle. Two precedents: the
+`narration_mode = "subjugated"` branch (retired in favor of parallel
+output), and the pre-facts-store World Consistency Check
+(retired in favor of the narrative facts store, see
+docs/pipeline_steps.md Decision 37).
 
 **Note:** the synchronous HTTP pipeline is an intentional exception.
 After async Sidekiq was validated in production, the sync path was
