@@ -104,25 +104,27 @@ export const AdventureCreation = () => {
                 </label>
               </div>
 
-              <div className="form-group">
-                <label className="toggle-row" htmlFor="skip-world-sanity-check-toggle">
-                  <span className="toggle-text">
-                    <span className="toggle-label">Skip World Sanity Check</span>
-                    <span className="toggle-desc">Enabled by default for now while we smooth out world consistency issues. Turn it off if you want stricter scene validation.</span>
-                  </span>
-                  <span className={`toggle-switch ${skipWorldSanityCheck ? 'active' : ''}`} role="switch" aria-checked={skipWorldSanityCheck}>
-                    <input
-                      id="skip-world-sanity-check-toggle"
-                      type="checkbox"
-                      checked={skipWorldSanityCheck}
-                      onChange={e => setSkipWorldSanityCheck(e.target.checked)}
-                    />
-                    <span className="toggle-track">
-                      <span className="toggle-knob" />
+              {(user.tier === 'paid' || user.admin) && (
+                <div className="form-group">
+                  <label className="toggle-row" htmlFor="skip-world-sanity-check-toggle">
+                    <span className="toggle-text">
+                      <span className="toggle-label">Skip World Sanity Check</span>
+                      <span className="toggle-desc">Temporarily enabled by default while we smooth out world consistency issues. Turn it off if you want stricter scene validation.</span>
                     </span>
-                  </span>
-                </label>
-              </div>
+                    <span className={`toggle-switch ${skipWorldSanityCheck ? 'active' : ''}`} role="switch" aria-checked={skipWorldSanityCheck}>
+                      <input
+                        id="skip-world-sanity-check-toggle"
+                        type="checkbox"
+                        checked={skipWorldSanityCheck}
+                        onChange={e => setSkipWorldSanityCheck(e.target.checked)}
+                      />
+                      <span className="toggle-track">
+                        <span className="toggle-knob" />
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              )}
 
               {selectedSheet && (
                 <div className="character-preview">

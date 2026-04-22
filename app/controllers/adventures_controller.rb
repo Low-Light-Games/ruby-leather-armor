@@ -38,9 +38,11 @@ class AdventuresController < ApplicationController
     sheet = policy_scope(Sheet).find(params[:sheet_id])
 
     directed_dm = ActiveModel::Type::Boolean.new.cast(params.fetch(:directed_dm, false))
-    skip_world_sanity_check = ActiveModel::Type::Boolean.new.cast(
-      params.fetch(:skip_world_sanity_check, true)
-    )
+    # `users.admin` is nullable: (paid? || admin) can be nil (false || nil => nil)
+    # and would violate NOT NULL on adventures.skip_world_sanity_check.
+    can_opt_out_world_sanity = current_user.paid? || current_user.admin == true
+    skip_world_sanity_check  = !!(can_opt_out_world_sanity &&
+      ActiveModel::Type::Boolean.new.cast(params.fetch(:skip_world_sanity_check, true)))
 
     @adventure = Adventures::Bootstrap.new(
       story:                   story,
