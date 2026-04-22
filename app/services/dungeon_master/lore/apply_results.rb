@@ -88,6 +88,7 @@ module DungeonMaster
 
       def embedding_dimensions
         return @embedding_dimensions if defined?(@embedding_dimensions)
+
         @embedding_dimensions = DmConfig.instance.narrative_facts_embedding_dimensions
       end
 
