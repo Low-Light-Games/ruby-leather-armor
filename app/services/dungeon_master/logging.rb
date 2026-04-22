@@ -156,6 +156,40 @@ module DungeonMaster
       text.length > length ? "#{text.first(length)}…" : text
     end
 
+    # Times an embedding-style AI call and routes to ai_log! on success
+    # or ai_log_error! on AiError, always re-raising. Parallels
+    # `Steps::Helpers#timed_ai_call` but tuned to the embedding shape:
+    # the block returns the vector Array (not `[raw, parsed]`), and the
+    # caller supplies `model_used` explicitly because embeddings don't
+    # round-trip through `AiClient#last_model_used`.
+    #
+    # `source` is the caller tag carried into the
+    # `EmbeddingLogDetails` payload (e.g. "loremaster", "seed",
+    # "facts_lookup") so Admin > Play Logs can tell sites apart.
+    def timed_embedding_call(prompt_summary, model_used:, source:)
+      t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      vectors = yield
+      ai_log!(
+        "embedding", prompt_summary, nil,
+        EmbeddingLogDetails.from_vectors(vectors, source: source).to_h,
+        parse_status: "success",
+        model_used:   model_used,
+        duration_ms:  elapsed_ms(t0),
+      )
+      vectors
+    rescue AiError => e
+      ai_log_error!(
+        "embedding", prompt_summary, e,
+        model_used:  model_used,
+        duration_ms: elapsed_ms(t0),
+      )
+      raise
+    end
+
+    def elapsed_ms(t0)
+      ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
+    end
+
     # Sentry + Rails.error for pipeline exceptions surfaced to the player — never raises.
     def capture_pipeline_exception!(exception)
       Rails.logger.error(
