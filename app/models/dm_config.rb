@@ -50,6 +50,12 @@ class DmConfig < ApplicationRecord
     },
     "wait_messages" => WAIT_MESSAGES_DEFAULT,
     "token_budgets" => {},
+    # Narrative facts store (see plan: narrative_facts_store_for_world_sanity).
+    # Defaults-only for MVP — not whitelisted in Admin::DmConfigsController,
+    # so operators can't tune these from the admin UI yet. Promote via the
+    # whitelist if turn data shows the knobs warrant operator-level tuning.
+    "narrative_facts_top_k" => 8,
+    "narrative_facts_active_window" => 20,
   }.freeze
 
   def self.instance
@@ -102,5 +108,13 @@ class DmConfig < ApplicationRecord
 
   def no_auto_hit_miss?
     get("no_auto_hit_miss") == true
+  end
+
+  def narrative_facts_top_k
+    get("narrative_facts_top_k").to_i
+  end
+
+  def narrative_facts_active_window
+    get("narrative_facts_active_window").to_i
   end
 end

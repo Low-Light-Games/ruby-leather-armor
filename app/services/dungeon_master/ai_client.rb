@@ -117,6 +117,77 @@ module DungeonMaster
       content
     end
 
+    # Compute embeddings for an array of texts in a single HTTP round-trip.
+    #
+    # The OpenAI embeddings endpoint accepts an array `input`, so batching
+    # N texts is one HTTP call rather than N — this is what lets the
+    # per-turn Loremaster apply stay within the "zero added wall-clock
+    # latency" envelope regardless of fact count. Single-text callers pass
+    # a 1-element array and use `embeddings(...).first`.
+    #
+    # Retries follow the same transient-error pattern as `#chat` (rate
+    # limits + generic Faraday errors retried up to MAX_RETRIES times,
+    # bad-request errors raised immediately).
+    #
+    # AiLog writes are intentionally the caller's responsibility — `AiClient`
+    # holds HTTP + retry only and does not know about `@adventure` / `@log` /
+    # prompt summaries. Call sites wrap this with `DungeonMaster::Logging#ai_log!`
+    # / `#ai_log_error!` using `call_type: "embedding"`. See Lore::ApplyResults
+    # (write path) and Lore::FactsLookup (read path).
+    #
+    # @param texts [Array<String>]       non-empty array of texts to embed
+    # @param model [String]              embedding model (default text-embedding-3-small)
+    # @return [Array<Array<Float>>]      parallel array of 1536-d vectors,
+    #                                    in the same order as `texts`
+    # @raise [DungeonMaster::AiError]
+    def embeddings(texts:, model: "text-embedding-3-small")
+      raise AiError, "embeddings called with no texts" if texts.nil? || texts.empty?
+
+      params = { model: model, input: texts }
+
+      attempt = 0
+      begin
+        attempt += 1
+        response = @client.embeddings(parameters: params)
+      rescue Faraday::TooManyRequestsError
+        if attempt <= MAX_RETRIES
+          delay = RETRY_BASE_DELAY * (2**(attempt - 1))
+          Rails.logger.warn("[DungeonMaster::AiClient] Embeddings rate limited (attempt #{attempt}/#{MAX_RETRIES + 1}), retrying in #{delay}s")
+          sleep(delay)
+          retry
+        end
+        raise AiError, "Embeddings rate limited by OpenAI after #{attempt} attempts"
+      rescue Faraday::BadRequestError => e
+        body = begin; e.response&.dig(:body); rescue StandardError; nil; end
+        msg = body.is_a?(Hash) ? body.dig("error", "message") : e.message
+        Rails.logger.error("[DungeonMaster::AiClient] Embeddings bad request: #{msg}")
+        raise AiError, "AI embeddings request rejected: #{msg}"
+      rescue Faraday::Error => e
+        if attempt <= MAX_RETRIES
+          delay = RETRY_BASE_DELAY * (2**(attempt - 1))
+          Rails.logger.warn("[DungeonMaster::AiClient] Embeddings #{e.class} (attempt #{attempt}/#{MAX_RETRIES + 1}), retrying in #{delay}s: #{e.message}")
+          sleep(delay)
+          retry
+        end
+        Rails.logger.error("[DungeonMaster::AiClient] Embeddings #{e.class} after #{attempt} attempts: #{e.message}")
+        raise AiError, "Could not reach the AI embeddings service after #{attempt} attempts."
+      end
+
+      if response.is_a?(Hash) && response.dig("error")
+        raise AiError, response.dig("error", "message") || "OpenAI embeddings API error"
+      end
+
+      data = response.is_a?(Hash) ? response["data"] : nil
+      unless data.is_a?(Array) && data.length == texts.length
+        raise AiError, "Unexpected embeddings response shape (got #{data&.length || 'nil'} vectors for #{texts.length} texts)"
+      end
+
+      # Sort defensively by `index` — the API is spec'd to return elements
+      # in input order, but aligning on `index` makes the contract explicit
+      # if an upstream shim ever shuffles them.
+      data.sort_by { |row| row["index"].to_i }.map { |row| row["embedding"] }
+    end
+
     # Parse a raw JSON string from the AI, with fallback strategies
     # for when the model returns plain text instead of JSON.
     #
