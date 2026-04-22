@@ -3,19 +3,15 @@
 module DungeonMaster
   module Steps
     module Loremaster
-      STEP_NAME     = "loremaster"
-      TEMPLATE_NAME = "loremaster"
-      SCHEMA_NAME   = "loremaster"
-
       module_function
 
       def turn_evaluator_prompt(inputs:, config:)
         {
           system_prompt: render_turn_prompt(inputs: inputs),
           user_message:  inputs.what_happened.to_s,
-          model:         config.model_for(STEP_NAME),
-          max_tokens:    config.token_budget_for(STEP_NAME),
-          meta:          { step: STEP_NAME },
+          model:         config.model_for("loremaster"),
+          max_tokens:    config.token_budget_for("loremaster"),
+          meta:          { step: "loremaster" },
         }
       end
 
@@ -23,7 +19,7 @@ module DungeonMaster
                              initial_contexts_text:, npcs_text:, clues_text:,
                              locations_text:)
         PromptRenderer.render(
-          TEMPLATE_NAME,
+          "loremaster",
           call_shape: "seed",
           premise: premise,
           enriched_world: enriched_world,
@@ -32,19 +28,19 @@ module DungeonMaster
           npcs_text: npcs_text,
           clues_text: clues_text,
           locations_text: locations_text,
-          schema_json: PromptRenderer.load_schema(SCHEMA_NAME),
+          schema_json: PromptRenderer.load_schema("loremaster"),
         )
       end
 
       def render_turn_prompt(inputs:)
         PromptRenderer.render(
-          TEMPLATE_NAME,
+          "loremaster",
           call_shape: "turn",
           what_happened: inputs.what_happened,
           mutations_json: inputs.mutations.present? ? inputs.mutations.to_json : "(no mutations)",
           contexts_text: inputs.contexts_text,
           active_facts: inputs.active_facts,
-          schema_json: PromptRenderer.load_schema(SCHEMA_NAME),
+          schema_json: PromptRenderer.load_schema("loremaster"),
         )
       end
 
