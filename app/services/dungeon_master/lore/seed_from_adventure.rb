@@ -52,46 +52,18 @@ module DungeonMaster
       private
 
       def run_loremaster_seed_call(system_prompt)
-        model = @config.model_for(SEED_MODEL_KEY)
-        max_tokens = @config.token_budget_for(SEED_MODEL_KEY)
         prompt_summary = "Loremaster seed — adventure ##{@adventure.id}"
 
-        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        raw_response = @ai.chat(
-          system_prompt: system_prompt,
-          user_message:  "Seed the narrative facts store for this adventure.",
-          max_tokens:    max_tokens,
-          step_name:     SEED_MODEL_KEY,
-          model:         model,
-        )
-        parsed = @ai.parse_json(raw_response)
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-
-        @log.ai_log!(
-          SEED_MODEL_KEY,
-          prompt_summary,
-          raw_response,
-          parsed,
-          parse_status: @ai.last_parse_status,
-          model_used:   @ai.last_model_used,
-          duration_ms:  duration_ms,
-          usage:        @ai.last_usage,
-        )
-
-        parsed
-      rescue DungeonMaster::AiError, DungeonMaster::TokenBudgetExceededError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        status = e.is_a?(DungeonMaster::TokenBudgetExceededError) ? "token_budget_exceeded" : "api_error"
-        @log.ai_log_error!(
-          SEED_MODEL_KEY,
-          prompt_summary,
-          e,
-          model_used: @ai.last_model_used,
-          status:     status,
-          duration_ms: duration_ms,
-          usage:      @ai.last_usage,
-        )
-        raise
+        @log.timed_chat_call(SEED_MODEL_KEY, prompt_summary, ai: @ai) do
+          raw = @ai.chat(
+            system_prompt: system_prompt,
+            user_message:  "Seed the narrative facts store for this adventure.",
+            max_tokens:    @config.token_budget_for(SEED_MODEL_KEY),
+            step_name:     SEED_MODEL_KEY,
+            model:         @config.model_for(SEED_MODEL_KEY),
+          )
+          [raw, @ai.parse_json(raw)]
+        end
       end
 
       def handle_seed_failure(exception)

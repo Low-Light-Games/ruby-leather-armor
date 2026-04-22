@@ -99,6 +99,84 @@ RSpec.describe DungeonMaster::Logging, type: :service do
     end
   end
 
+  # ── timed_chat_call ────────────────────────────────────────────────────────
+
+  describe "#timed_chat_call" do
+    let(:ai) { instance_double(DungeonMaster::AiClient) }
+
+    before do
+      allow(ai).to receive(:last_parse_status).and_return("success")
+      allow(ai).to receive(:last_model_used).and_return("gpt-4.1-mini")
+      allow(ai).to receive(:last_usage).and_return({ "total_tokens" => 42 })
+      allow(ai).to receive(:last_failed_raw_response).and_return(nil)
+    end
+
+    it "writes a success PlayLog with duration, model, and parsed payload on happy path" do
+      parsed = { "narrative" => "ok" }
+
+      result = logging.timed_chat_call("narrate", "summary", ai: ai) do
+        ["raw response body", parsed]
+      end
+
+      expect(result).to eq(parsed)
+
+      row = PlayLog.where(event_type: "narrate").last
+      expect(row).to be_present
+      expect(row.status).to eq("success")
+      expect(row.raw_response).to eq("raw response body")
+      expect(JSON.parse(row.parsed_response)).to eq(parsed)
+      expect(row.model_used).to eq("gpt-4.1-mini")
+      expect(row.duration_ms).to be_a(Integer).and(be >= 0)
+    end
+
+    it "writes an api_error PlayLog and re-raises on AiError" do
+      allow(ai).to receive(:last_failed_raw_response).and_return("partial raw body")
+
+      expect {
+        logging.timed_chat_call("narrate", "summary", ai: ai) do
+          raise DungeonMaster::AiError, "upstream blew up"
+        end
+      }.to raise_error(DungeonMaster::AiError, "upstream blew up")
+
+      row = PlayLog.where(event_type: "narrate").last
+      expect(row).to be_present
+      expect(row.status).to eq("api_error")
+      expect(row.error_message).to eq("upstream blew up")
+      expect(row.raw_response).to eq("partial raw body")
+      expect(row.duration_ms).to be_a(Integer).and(be >= 0)
+    end
+
+    it "writes a token_budget_exceeded PlayLog and re-raises on TokenBudgetExceededError" do
+      expect {
+        logging.timed_chat_call("narrate", "summary", ai: ai) do
+          raise DungeonMaster::TokenBudgetExceededError.new(step_name: "narrate", budget: 500)
+        end
+      }.to raise_error(DungeonMaster::TokenBudgetExceededError)
+
+      row = PlayLog.where(event_type: "narrate").last
+      expect(row.status).to eq("token_budget_exceeded")
+    end
+
+    it "threads request_body through to the success log when provided" do
+      logging.timed_chat_call("narrate", "summary", ai: ai, request_body: { user_message: "hi" }) do
+        ["raw", { "ok" => true }]
+      end
+
+      row = PlayLog.where(event_type: "narrate").last
+      expect(JSON.parse(row.request_body)).to eq({ "user_message" => "hi" })
+    end
+
+    it "does not swallow non-AI exceptions from the block" do
+      expect {
+        logging.timed_chat_call("narrate", "summary", ai: ai) do
+          raise ArgumentError, "programmer error"
+        end
+      }.to raise_error(ArgumentError)
+
+      expect(PlayLog.where(event_type: "narrate")).to be_empty
+    end
+  end
+
   # ── pipeline registry entry lifecycle ───────────────────────────────────────
 
   describe "#start_registry_entry!" do

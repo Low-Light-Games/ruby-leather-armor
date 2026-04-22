@@ -131,6 +131,7 @@ RSpec.describe DungeonMaster::Lore::SeedFromAdventure do
       allow(ai).to receive(:chat).and_raise(DungeonMaster::AiError, "simulated upstream failure")
       allow(ai).to receive(:last_model_used).and_return("gpt-4.1-mini")
       allow(ai).to receive(:last_usage).and_return({})
+      allow(ai).to receive(:last_failed_raw_response).and_return(nil)
 
       reports = []
       allow(log).to receive(:report_error).and_wrap_original do |orig, exception, **kwargs|

@@ -186,6 +186,38 @@ module DungeonMaster
       raise
     end
 
+    # Times a chat-style AI call and routes to ai_log! on success or
+    # ai_log_error! on AiError / TokenBudgetExceededError, always
+    # re-raising. Sibling of timed_embedding_call; equivalent to
+    # Steps::Helpers#timed_ai_call but usable from non-Step services
+    # (Lore::SeedFromAdventure, Embellisher, Enricher, …) that receive
+    # `ai` explicitly rather than as an ivar. Block must return
+    # [raw_response, parsed_response].
+    def timed_chat_call(call_type, prompt_summary, ai:, request_body: nil)
+      t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      raw, parsed = yield
+      ai_log!(
+        call_type, prompt_summary, raw, parsed,
+        parse_status: ai.last_parse_status,
+        request_body: request_body,
+        model_used:   ai.last_model_used,
+        duration_ms:  elapsed_ms(t0),
+        usage:        ai.last_usage,
+      )
+      parsed
+    rescue TokenBudgetExceededError, AiError => e
+      ai_log_error!(
+        call_type, prompt_summary, e,
+        raw_response: ai.last_failed_raw_response,
+        request_body: request_body,
+        status:       e.is_a?(TokenBudgetExceededError) ? "token_budget_exceeded" : "api_error",
+        model_used:   ai.last_model_used,
+        duration_ms:  elapsed_ms(t0),
+        usage:        ai.last_usage,
+      )
+      raise
+    end
+
     def elapsed_ms(t0)
       ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
     end
