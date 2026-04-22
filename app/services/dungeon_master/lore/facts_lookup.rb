@@ -37,8 +37,6 @@ module DungeonMaster
     # Inert for C9 — no live caller invokes this yet. `SanityChecker`
     # wires it in via C10's cutover commit.
     class FactsLookup
-      EMBEDDING_MODEL = "text-embedding-3-small"
-
       Hit = Struct.new(:fact_id, :text, :kind, :polarity, :distance, keyword_init: true)
 
       def self.call(adventure:, ai:, log:, query_text:, limit: nil)
@@ -82,9 +80,25 @@ module DungeonMaster
 
       def embed_query
         prompt_summary = "FactsLookup query — #{@query_text.truncate(80)}"
+        model = embedding_model
+        dims  = embedding_dimensions
+        kwargs = { texts: [@query_text], model: model }
+        kwargs[:dimensions] = dims if dims
 
         t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        vectors = @ai.embeddings(texts: [@query_text], model: EMBEDDING_MODEL)
+        begin
+          vectors = @ai.embeddings(**kwargs)
+        rescue DungeonMaster::AiError => e
+          duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
+          @log.ai_log_error!(
+            "embedding",
+            prompt_summary,
+            e,
+            model_used:  model,
+            duration_ms: duration_ms,
+          )
+          raise
+        end
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
 
         @log.ai_log!(
@@ -93,21 +107,20 @@ module DungeonMaster
           nil,
           { text_count: 1, dim: vectors.first&.length, source: "facts_lookup" },
           parse_status: "success",
-          model_used:   EMBEDDING_MODEL,
+          model_used:   model,
           duration_ms:  duration_ms,
         )
 
         vectors.first
-      rescue DungeonMaster::AiError => e
-        duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
-        @log.ai_log_error!(
-          "embedding",
-          "FactsLookup query — #{@query_text.truncate(80)}",
-          e,
-          model_used:  EMBEDDING_MODEL,
-          duration_ms: duration_ms,
-        )
-        raise
+      end
+
+      def embedding_model
+        @embedding_model ||= DmConfig.instance.narrative_facts_embedding_model
+      end
+
+      def embedding_dimensions
+        return @embedding_dimensions if defined?(@embedding_dimensions)
+        @embedding_dimensions = DmConfig.instance.narrative_facts_embedding_dimensions
       end
 
       def nearest_neighbors(query_embedding)

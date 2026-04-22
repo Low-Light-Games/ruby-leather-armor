@@ -135,15 +135,21 @@ module DungeonMaster
     # / `#ai_log_error!` using `call_type: "embedding"`. See Lore::ApplyResults
     # (write path) and Lore::FactsLookup (read path).
     #
-    # @param texts [Array<String>]       non-empty array of texts to embed
-    # @param model [String]              embedding model (default text-embedding-3-small)
-    # @return [Array<Array<Float>>]      parallel array of 1536-d vectors,
-    #                                    in the same order as `texts`
+    # @param texts      [Array<String>]  non-empty array of texts to embed
+    # @param model      [String]         embedding model (default text-embedding-3-small)
+    # @param dimensions [Integer, nil]   optional output-dim truncation (only
+    #                                    honored by `text-embedding-3-*` models).
+    #                                    Pass 1536 when using `-3-large` so its
+    #                                    native-3072 output fits our column.
+    # @return [Array<Array<Float>>]      parallel array of vectors (dim =
+    #                                    `dimensions` if given, else model's
+    #                                    native), in the same order as `texts`
     # @raise [DungeonMaster::AiError]
-    def embeddings(texts:, model: "text-embedding-3-small")
+    def embeddings(texts:, model: "text-embedding-3-small", dimensions: nil)
       raise AiError, "embeddings called with no texts" if texts.nil? || texts.empty?
 
       params = { model: model, input: texts }
+      params[:dimensions] = dimensions if dimensions
 
       attempt = 0
       begin

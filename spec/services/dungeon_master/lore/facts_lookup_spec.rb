@@ -123,6 +123,21 @@ RSpec.describe DungeonMaster::Lore::FactsLookup do
         .with(texts: ["dig"], model: "text-embedding-3-small")
     end
 
+    it "uses the model configured on DmConfig and passes dimensions override when the model requires it" do
+      pinned = DmConfig.instance
+      pinned.set("narrative_facts_embedding_model", "text-embedding-3-large")
+      allow(DmConfig).to receive(:instance).and_return(pinned)
+      create_fact(adv: adventure, text: "ocean state", v0: 0.99)
+
+      described_class.call(adventure: adventure, ai: ai, log: log, query_text: "dig")
+
+      expect(ai).to have_received(:embeddings).with(
+        texts: ["dig"],
+        model: "text-embedding-3-large",
+        dimensions: 1536,
+      )
+    end
+
     it "writes the read-side AiLog row with call_type: 'embedding'" do
       create_fact(adv: adventure, text: "ocean state", v0: 0.99)
 

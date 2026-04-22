@@ -6,8 +6,6 @@ module DungeonMaster
     # lossy-with-Sentry rationale live in docs/pipeline_steps.md Decision 37
     # and docs/design_philosophy.md §18.
     class ApplyResults
-      EMBEDDING_MODEL = "text-embedding-3-small"
-
       def self.call(adventure:, loop:, log:, ai:, result:, source: "loremaster")
         new(adventure: adventure, loop: loop, log: log, ai: ai,
             result: result, source: source).call
@@ -61,16 +59,21 @@ module DungeonMaster
           )
         end
 
+        model = embedding_model
+        dims  = embedding_dimensions
+        kwargs = { texts: texts, model: model }
+        kwargs[:dimensions] = dims if dims
+
         t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         begin
-          vectors = @ai.embeddings(texts: texts, model: EMBEDDING_MODEL)
+          vectors = @ai.embeddings(**kwargs)
         rescue DungeonMaster::AiError => e
           duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
           @log.ai_log_error!(
             "embedding",
             "Loremaster apply — #{texts.length} fact text(s)",
             e,
-            model_used: EMBEDDING_MODEL,
+            model_used: model,
             duration_ms: duration_ms,
           )
           @log.report_error(e, context: error_context.merge(source: "apply_results.embeddings"))
@@ -84,13 +87,22 @@ module DungeonMaster
           nil,
           { text_count: texts.length, dim: vectors.first&.length, source: @source },
           parse_status: "success",
-          model_used: EMBEDDING_MODEL,
+          model_used: model,
           duration_ms: duration_ms,
         )
 
         vectors.each_with_index.each_with_object({}) do |(vec, idx), acc|
           acc[idx] = vec
         end
+      end
+
+      def embedding_model
+        @embedding_model ||= DmConfig.instance.narrative_facts_embedding_model
+      end
+
+      def embedding_dimensions
+        return @embedding_dimensions if defined?(@embedding_dimensions)
+        @embedding_dimensions = DmConfig.instance.narrative_facts_embedding_dimensions
       end
 
       def insert_facts(facts, embeddings_by_idx)

@@ -71,6 +71,26 @@ RSpec.describe DungeonMaster::AiClient, "#embeddings" do
     )
   end
 
+  it "passes dimensions through when provided (for -3-large truncation)" do
+    stub_success([[0.0]])
+
+    client.embeddings(texts: ["x"], model: "text-embedding-3-large", dimensions: 1536)
+
+    expect(openai_double).to have_received(:embeddings).with(
+      parameters: { model: "text-embedding-3-large", input: ["x"], dimensions: 1536 },
+    )
+  end
+
+  it "omits the dimensions parameter when not provided" do
+    stub_success([[0.0]])
+
+    client.embeddings(texts: ["x"])
+
+    expect(openai_double).to have_received(:embeddings) do |args|
+      expect(args[:parameters]).not_to have_key(:dimensions)
+    end
+  end
+
   it "re-orders out-of-order responses by the `index` key" do
     out_of_order = {
       "data" => [

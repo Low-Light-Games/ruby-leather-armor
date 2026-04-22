@@ -284,6 +284,67 @@
     </div>
 
     <div class="config-section">
+      <h2 class="collapsible-header" id="narrative-facts-toggle">
+        Narrative Facts Store
+        <span class="collapse-arrow" id="narrative-facts-arrow">▸</span>
+      </h2>
+      <div id="narrative-facts-body" style="display: none;">
+        <p class="field-hint" style="margin-bottom: 12px;">
+          Controls the pgvector-backed facts store that powers the World Consistency
+          Check (see Decision 37 in <code>docs/pipeline_steps.md</code>). Loremaster
+          writes into it at every terminal narrative phase; the sanity check reads
+          the top-K nearest neighbors by cosine similarity to the player's intent.
+        </p>
+
+        <div class="config-field">
+          <label for="narrative_facts_embedding_model">Embedding Model</label>
+          <select name="narrative_facts_embedding_model" id="narrative_facts_embedding_model" class="config-select">
+            <% DmConfig::EMBEDDING_MODELS.each do |m| %>
+              <option value="<%= m["id"] %>"
+                      data-description="<%= m["description"] %>"
+                      data-input-cost="<%= m["input_cost"] %>"
+                      data-native-dims="<%= m["native_dimensions"] %>"
+                      <%= 'selected' if @config.narrative_facts_embedding_model == m["id"] %>>
+                <%= m["name"] %>
+              </option>
+            <% end %>
+          </select>
+          <p class="field-hint"><%= DmConfig::EMBEDDING_MODEL_HINT %></p>
+        </div>
+
+        <div class="config-field">
+          <label for="narrative_facts_top_k">Retrieval Top-K</label>
+          <%= number_field_tag :narrative_facts_top_k, @config.narrative_facts_top_k,
+                min: 1, max: 50, step: 1,
+                class: "config-input" %>
+          <p class="field-hint">
+            Number of facts retrieved by the World Consistency Check for each player
+            action (nearest neighbors by cosine similarity). Higher = better recall
+            on subtle contradictions but more tokens per sanity call. Default:
+            <strong>8</strong>. Range: 1–50.
+          </p>
+        </div>
+
+        <div class="config-field">
+          <label for="narrative_facts_active_window">Active Facts Window</label>
+          <%= number_field_tag :narrative_facts_active_window, @config.narrative_facts_active_window,
+                min: 0, max: 200, step: 1,
+                class: "config-input" %>
+          <p class="field-hint">
+            Number of most-recent active facts shown to Loremaster in its turn
+            prompt so it can decide which to invalidate. Tune conservatively —
+            failures here are latent (stale facts silently keep being retrieved
+            by the sanity check). Raising this adds input tokens to every
+            Loremaster call; if it pushes Loremaster past Narrate's latency,
+            it becomes the tail of the narrative fan-out. Default:
+            <strong>20</strong>. Range: 0–200 (0 disables — Loremaster sees no
+            existing facts and cannot invalidate).
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="config-section">
       <h2>Creativity</h2>
 
       <div class="config-field">
@@ -340,6 +401,19 @@
   document.getElementById('pipeline-steps-toggle').addEventListener('click', function() {
     var body = document.getElementById('pipeline-steps-body');
     var arrow = document.getElementById('pipeline-steps-arrow');
+    if (body.style.display === 'none') {
+      body.style.display = 'block';
+      arrow.textContent = '▾';
+    } else {
+      body.style.display = 'none';
+      arrow.textContent = '▸';
+    }
+  });
+
+  // Collapsible Narrative Facts Store section
+  document.getElementById('narrative-facts-toggle').addEventListener('click', function() {
+    var body = document.getElementById('narrative-facts-body');
+    var arrow = document.getElementById('narrative-facts-arrow');
     if (body.style.display === 'none') {
       body.style.display = 'block';
       arrow.textContent = '▾';
