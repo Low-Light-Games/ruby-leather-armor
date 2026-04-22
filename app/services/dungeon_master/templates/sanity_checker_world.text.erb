@@ -11,13 +11,40 @@ Your job is to verify that the player's intended action is possible given reason
 (no prior scene history)
 <% end -%>
 
-=== ACTIVE GAME STATE ===
-<% @sanity_context.micro_contexts.each do |field, ctx| -%>
-<% if ctx.present? -%>
---- <%= field.upcase %> ---
-<%= ctx.to_json %>
+=== ESTABLISHED NARRATIVE FACTS ===
+These are the durable facts about this adventure's world, retrieved by
+relevance to the player's stated intent. They are authoritative: the
+player's action must remain consistent with them. A direct contradiction
+with any of these facts means the action is NOT consistent.
 
+<% events = @sanity_context.established_facts.select { |f| f[:kind].to_s == "event" } -%>
+Events (things that have happened):
+<% if events.any? -%>
+<% events.each do |f| -%>
+- <%= f[:text] %>
 <% end -%>
+<% else -%>
+(none retrieved)
+<% end -%>
+
+<% states = @sanity_context.established_facts.select { |f| f[:kind].to_s == "state" } -%>
+Current state (conditions that constrain what the player can attempt):
+<% if states.any? -%>
+<% states.each do |f| -%>
+- <%= f[:text] %>
+<% end -%>
+<% else -%>
+(none retrieved)
+<% end -%>
+
+<% entities = @sanity_context.established_facts.select { |f| f[:kind].to_s == "entity" } -%>
+Known entities (NPCs, objects, and places the narrative has introduced):
+<% if entities.any? -%>
+<% entities.each do |f| -%>
+- <%= f[:text] %>
+<% end -%>
+<% else -%>
+(none retrieved)
 <% end -%>
 
 === STORY NPCs (these people exist, but they may not be around) ===
@@ -37,15 +64,21 @@ The dm_message should be in-world and not break the fourth wall.
 <% end -%>
 === INSTRUCTIONS ===
 Check if the entities, targets, or objects the player references actually
-exist in the current scene, recent history, or active game state. Or if they can
-reasonably be inferred to exist in the current scene or given the game state.
+exist in the current scene, recent history, or established facts — or if
+they can reasonably be inferred to exist given that context.
 
-- Check if the player has presumptions that are not supported. Did he ask an NPC
-  about something he couldn't know about to even question?
-  Did he try to interact with a character he doesn't know about?
-  All of those should be inconsistent.
+- If the player's intent directly contradicts any established fact above,
+  set consistent=false and cite the contradicting fact's text verbatim in
+  `reason`. Example: if a "state" fact says "the party is in the middle
+  of the ocean" and the player says "I dig in the sand," that is a
+  contradiction — they cannot reach sand while adrift at sea.
+- Check if the player has presumptions that are not supported. Did he ask
+  an NPC about something he couldn't know about to even question? Did he
+  try to interact with a character he doesn't know about? All of those
+  should be inconsistent.
 - Be conservative: only reject if you are confident the referenced entity
-  does NOT exist. When in doubt, allow.
+  does NOT exist or the intent directly contradicts a fact. When in
+  doubt, allow.
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
