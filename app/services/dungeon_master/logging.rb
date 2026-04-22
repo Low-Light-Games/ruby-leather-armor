@@ -180,6 +180,21 @@ module DungeonMaster
     end
 
     # When the player starts a new prompt while a roll/initiative request is still pending.
+    # Sentry + context-merged error notification. Public so best-effort
+    # services like `Lore::ApplyResults` (Loremaster apply path) can
+    # observe their lossy failures without losing the structured
+    # registry/adventure/user context. Internal callers below `private`
+    # still invoke the same method directly.
+    def report_error(exception, context: {})
+      full_context = {
+        registry_entry_uuid: @registry_entry_uuid,
+        adventure_id: @adventure&.id,
+        player_message_id: @player_message_id
+      }.merge(context)
+
+      ApplicationErrorReporter.notify(exception, context: full_context)
+    end
+
     def log_abandoned_pipeline_if_needed!
       msgs = @adventure.adventure_messages
       last_request = msgs.for_message_types(%w[roll_request initiative_request]).newest_first.first
@@ -245,16 +260,6 @@ module DungeonMaster
       ShipPipelineRegistryEntryEventJob.perform_later(@registry_entry_uuid)
     rescue => e
       report_error(e, context: { method: "enqueue_registry_entry_event!", registry_entry_uuid: @registry_entry_uuid })
-    end
-
-    def report_error(exception, context: {})
-      full_context = {
-        registry_entry_uuid: @registry_entry_uuid,
-        adventure_id: @adventure&.id,
-        player_message_id: @player_message_id
-      }.merge(context)
-
-      ApplicationErrorReporter.notify(exception, context: full_context)
     end
 
     # Last-resort write when the primary ai_log! or ai_log_error! fails.
