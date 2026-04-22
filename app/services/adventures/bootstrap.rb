@@ -10,6 +10,8 @@ module Adventures
   #   3. Seed plot_state with empty tracking arrays
   #   4. Run Embellisher (non-fatal — logs and continues on AI errors)
   #   5. Ensure an opening DM message exists
+  #   6. Run Lore::SeedFromAdventure to populate the narrative facts store
+  #      (non-fatal — internal rescue + Sentry + seed_failure play_log)
   #
   # Returns the persisted (reloaded) Adventure on success.
   # Raises ActiveRecord::RecordInvalid or ActiveRecord::RecordNotSaved on failure.
@@ -34,6 +36,7 @@ module Adventures
       seed_plot_state!(adventure)
       run_embellisher(adventure)
       ensure_opening_message(adventure)
+      run_narrative_facts_seed(adventure)
       adventure.reload
     end
 
@@ -96,6 +99,29 @@ module Adventures
         content:      @story.preview,
         message_type: "narrative"
       )
+    end
+
+    # Runs Loremaster in seed-call shape so turn 1's world check is not a
+    # cold start. Placed *after* run_embellisher + ensure_opening_message
+    # so enriched_world / the opening DM narrative / any Embellisher
+    # Expand adventure-scoped NPCs and clues are all in place before the
+    # seed call reads them (see plan §Concrete changes "Adventure
+    # creation seeding" for input provenance).
+    #
+    # SeedFromAdventure is internally lossy-with-Sentry — it rescues its
+    # own AI failures and emits a seed_failure play_log — so this call
+    # site only needs a belt-and-braces top-level rescue in case the
+    # service itself raises for a reason its own rescue doesn't cover.
+    # Adventure creation must never fail because seeding failed: an
+    # empty facts store degrades to the pre-plan world-check cold start,
+    # not to a broken adventure.
+    def run_narrative_facts_seed(adventure)
+      DungeonMaster::Lore::SeedFromAdventure.call(adventure: adventure, user: @user)
+    rescue StandardError => e
+      ApplicationErrorReporter.notify(
+        e, context: { source: "adventures_bootstrap_narrative_facts_seed", adventure_id: adventure.id }
+      )
+      Rails.logger.error("[Adventures::Bootstrap] Narrative facts seed failed: #{e.message}")
     end
   end
 end
