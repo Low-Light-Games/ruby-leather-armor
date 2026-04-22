@@ -29,6 +29,11 @@ RSpec.describe Adventures::Bootstrap, type: :service do
       expect(result).to be_persisted
     end
 
+    it "skips the world sanity check by default" do
+      adventure = bootstrap.call
+      expect(adventure.skip_world_sanity_check).to be(true)
+    end
+
     it "creates an AdventureSheet via SheetCopier" do
       expect { bootstrap.call }.to change { AdventureSheet.count }.by(1)
     end
@@ -65,6 +70,17 @@ RSpec.describe Adventures::Bootstrap, type: :service do
       it "sets directed_dm on the adventure" do
         adventure = bootstrap.call
         expect(adventure.directed_dm).to be(true)
+      end
+    end
+
+    context "with skip_world_sanity_check: false" do
+      subject(:bootstrap) do
+        described_class.new(story: story, sheet: sheet, user: user, skip_world_sanity_check: false)
+      end
+
+      it "keeps the world sanity check enabled when requested" do
+        adventure = bootstrap.call
+        expect(adventure.skip_world_sanity_check).to be(false)
       end
     end
 

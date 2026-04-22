@@ -42,7 +42,7 @@ class OnboardingController < ApplicationController
       sheet:                   sheet,
       user:                    current_user,
       directed_dm:             true,
-      skip_world_sanity_check: false
+      skip_world_sanity_check: true
     ).call
   end
 

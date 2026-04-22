@@ -19,13 +19,13 @@ module Adventures
     # @param user    [User]
     # @param options [Hash]
     #   :directed_dm [Boolean] default false
-    #   :skip_world_sanity_check [Boolean] default false
+    #   :skip_world_sanity_check [Boolean] default true
     def initialize(story:, sheet:, user:, **options)
       @story    = story
       @sheet    = sheet
       @user     = user
       @directed_dm             = options.fetch(:directed_dm, false)
-      @skip_world_sanity_check = options.fetch(:skip_world_sanity_check, false)
+      @skip_world_sanity_check = options.fetch(:skip_world_sanity_check, true)
     end
 
     # @return [Adventure]

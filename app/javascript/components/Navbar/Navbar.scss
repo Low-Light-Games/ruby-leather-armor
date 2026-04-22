@@ -1,6 +1,33 @@
 @use '../tokens' as *;
 @use 'sass:color';
 
+.early-access-banner {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  width: fit-content;
+  max-width: min(100%, 720px);
+  margin: 0 auto 16px;
+  padding: 8px 14px;
+  background: rgba($parchment, 0.94);
+  border: 1px solid $red-ink;
+  box-shadow: 0 8px 24px rgba($ink, 0.12);
+  color: $red-ink;
+  font-family: $font-mono;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .early-access-banner {
+    top: 8px;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    font-size: 11px;
+  }
+}
+
 .app-header {
   display: flex;
   justify-content: space-between;
