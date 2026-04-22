@@ -246,17 +246,6 @@ module DungeonMaster
         )
       end
 
-      # Builds the sanity_checker_world prompt context.
-      #
-      # Dynamic world state comes from `Lore::FactsLookup` — the top-K
-      # narrative facts retrieved by cosine similarity against the
-      # player's stated intent. Micro-contexts are deliberately not
-      # included here anymore; the cutover (plan C10, narrative facts
-      # store) replaced the six micro-context blocks with a bounded
-      # facts block. Orientation fields (`scene_summary`,
-      # `scene_history`, `npc_names`, `combat_active`,
-      # `combat_turn_order`) are preserved — they are cheap narrative
-      # framing the facts store does not duplicate.
       def build_world_prompt_context(intent:)
         combat_ctx = @adventure.combat_context || {}
         combat_active = combat_ctx["active"] == true
@@ -273,14 +262,11 @@ module DungeonMaster
       end
 
       def retrieve_established_facts(intent)
-        query = intent.is_a?(Hash) ? intent[:intention].to_s : intent.to_s
-        return [] if query.strip.empty?
-
         DungeonMaster::Lore::FactsLookup.call(
-          adventure: @adventure,
-          ai:        @ai,
-          log:       @log,
-          query_text: query,
+          adventure:  @adventure,
+          ai:         @ai,
+          log:        @log,
+          query_text: intent[:intention],
         )
       end
     end
