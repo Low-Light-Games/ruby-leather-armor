@@ -2,19 +2,9 @@
 
 module DungeonMaster
   module Lore
-    # Sole writer of `adventure_narrative_facts`. Persists a Loremaster output
-    # (`{facts: [...], invalidates: [...]}`) in one pass: batched embeddings
-    # call → insert rows keyed by `source_idx` → apply invalidations
-    # (dereferencing `replacement_source_idx` against the just-inserted rows).
-    #
-    # Called from `Steps::Stagehand` on terminal narrative phases
-    # (`source: "loremaster"`) and `Lore::SeedFromAdventure` at adventure
-    # creation (`source: "seed"`, `loop: nil`).
-    #
-    # Lossy-with-Sentry: per-row failures report and continue, embeddings
-    # failures report and re-raise so the caller can emit `loremaster_failure`.
-    # This is the write-side owner of `call_type: "embedding"` AiLog rows;
-    # read-side is `Lore::FactsLookup`. See Decision 37 in pipeline_steps.md.
+    # Sole writer of `adventure_narrative_facts`. Contract, call sites, and
+    # lossy-with-Sentry rationale live in docs/pipeline_steps.md Decision 37
+    # and docs/design_philosophy.md §18.
     class ApplyResults
       EMBEDDING_MODEL = "text-embedding-3-small"
 
