@@ -2,37 +2,19 @@
 
 module DungeonMaster
   module Lore
-    # Persists a Loremaster output (`{facts: [...], invalidates: [...]}`)
-    # into `adventure_narrative_facts` in one pass:
+    # Sole writer of `adventure_narrative_facts`. Persists a Loremaster output
+    # (`{facts: [...], invalidates: [...]}`) in one pass: batched embeddings
+    # call → insert rows keyed by `source_idx` → apply invalidations
+    # (dereferencing `replacement_source_idx` against the just-inserted rows).
     #
-    # 1. Collect the `text` of every emitted fact.
-    # 2. Call `ai.embeddings(texts: fact_texts)` — **one batched** OpenAI
-    #    embeddings request returning one vector per fact, in order.
-    # 3. Insert one row per fact with `source_idx` equal to its position
-    #    in the Loremaster output array. Row ids are captured keyed by
-    #    `source_idx` so in-turn invalidations can dereference
-    #    `replacement_source_idx` against them.
-    # 4. For each `invalidates` entry, set the referenced fact's
-    #    `invalidated_at_loop_id` (and, if a `replacement_source_idx`
-    #    was provided, `invalidated_by_fact_id` from the freshly-inserted
-    #    row for that index).
+    # Called from `Steps::Stagehand` on terminal narrative phases
+    # (`source: "loremaster"`) and `Lore::SeedFromAdventure` at adventure
+    # creation (`source: "seed"`, `loop: nil`).
     #
-    # Called from:
-    # * `DungeonMaster::Steps::Stagehand` on every terminal narrative phase
-    #   (turn path — `source: "loremaster"`). C6.
-    # * `DungeonMaster::Lore::SeedFromAdventure` at adventure creation
-    #   (seed path — `source: "seed"`, `loop: nil`). C7.
-    #
-    # Error policy (lossy-with-Sentry, codified by
-    # [.cursor/rules/error-reporting-sentry.mdc](../../.cursor/rules/error-reporting-sentry.mdc)):
-    # per-row failures call `@log.report_error` before continuing so the
-    # facts store ends up with a partial but consistent set of rows.
-    # The embeddings call is logged via `@log.ai_log!` / `#ai_log_error!`
-    # — this is the *write-side* owner of the `call_type: "embedding"`
-    # AiLog row (the read-side owner is `Lore::FactsLookup`, C9). If the
-    # embeddings API call itself raises, we surface it so the caller's
-    # top-level rescue (Stagehand) can emit the `loremaster_failure`
-    # play_log event and the full turn-level Sentry notification.
+    # Lossy-with-Sentry: per-row failures report and continue, embeddings
+    # failures report and re-raise so the caller can emit `loremaster_failure`.
+    # This is the write-side owner of `call_type: "embedding"` AiLog rows;
+    # read-side is `Lore::FactsLookup`. See Decision 37 in pipeline_steps.md.
     class ApplyResults
       EMBEDDING_MODEL = "text-embedding-3-small"
 

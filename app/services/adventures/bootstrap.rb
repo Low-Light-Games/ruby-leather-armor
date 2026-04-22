@@ -101,20 +101,9 @@ module Adventures
       )
     end
 
-    # Runs Loremaster in seed-call shape so turn 1's world check is not a
-    # cold start. Placed *after* run_embellisher + ensure_opening_message
-    # so enriched_world / the opening DM narrative / any Embellisher
-    # Expand adventure-scoped NPCs and clues are all in place before the
-    # seed call reads them (see plan §Concrete changes "Adventure
-    # creation seeding" for input provenance).
-    #
-    # SeedFromAdventure is internally lossy-with-Sentry — it rescues its
-    # own AI failures and emits a seed_failure play_log — so this call
-    # site only needs a belt-and-braces top-level rescue in case the
-    # service itself raises for a reason its own rescue doesn't cover.
-    # Adventure creation must never fail because seeding failed: an
-    # empty facts store degrades to the pre-plan world-check cold start,
-    # not to a broken adventure.
+    # Placed after Embellisher + opening message so enriched_world and the opening narrative are visible to the seed call. Belt-and-braces rescue:
+    # SeedFromAdventure is already lossy-with-Sentry internally (see Decision 37); this rescue just guarantees adventure creation never fails because
+    # seeding did.
     def run_narrative_facts_seed(adventure)
       DungeonMaster::Lore::SeedFromAdventure.call(adventure: adventure, user: @user)
     rescue StandardError => e
