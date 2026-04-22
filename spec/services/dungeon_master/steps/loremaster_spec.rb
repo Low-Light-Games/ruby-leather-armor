@@ -5,7 +5,7 @@ require "rails_helper"
 RSpec.describe DungeonMaster::Steps::Loremaster do
   describe ".turn_evaluator_prompt" do
     let(:inputs) do
-      described_class::LoremasterInputs.new(
+      DungeonMaster::Steps::LoremasterInputs.new(
         what_happened: "The bridge over the Chasm of Teeth collapsed into the gorge.",
         mutations: { "player" => { "conditions_add" => ["off_balance"] } },
         contexts_text: "traversal: {...}\ncombat: {...}",
@@ -60,7 +60,7 @@ RSpec.describe DungeonMaster::Steps::Loremaster do
     end
 
     it "renders '(none yet)' when the active-facts window is empty" do
-      empty_inputs = described_class::LoremasterInputs.new(
+      empty_inputs = DungeonMaster::Steps::LoremasterInputs.new(
         what_happened: "Nothing of note.",
         mutations: {},
         contexts_text: "",
@@ -78,7 +78,7 @@ RSpec.describe DungeonMaster::Steps::Loremaster do
     end
 
     describe "LoremasterInputs value object" do
-      it "is frozen at construction (write-too-early guard, plan claim #6)" do
+      it "is frozen at construction" do
         expect(inputs).to be_frozen
       end
     end

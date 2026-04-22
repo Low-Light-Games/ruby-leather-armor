@@ -51,12 +51,8 @@ module DungeonMaster
         broadcast_progress("Writing the story...")
         broadcast_progress("Remembering the world...")
 
-        # Snapshot Loremaster's inputs BEFORE the fan-out dispatches. The
-        # LoremasterInputs value object is frozen at construction
-        # (correctness claim #6 — write-too-early guard): if a future
-        # pipeline reorder places a mutation-producing step inside the
-        # fan-out, Loremaster's inputs won't silently drift because they
-        # aren't live references.
+        # Snapshot before the fan-out dispatches — inputs must capture
+        # post-mutation state (docs/pipeline_steps.md Decision 37).
         loremaster_inputs = build_loremaster_inputs(seed, mutations)
 
         prompts = [narrate_evaluator_prompt(narration_context)]
@@ -90,19 +86,13 @@ module DungeonMaster
 
         result = run_narrate(narration_context)
 
-        # Subjugated mode has no fan-out to slot into: it's two sequential
-        # single-prompt calls today. Loremaster's write only has to be
-        # ready by the *next* turn's sanity gate, not the current one, so
-        # serial-after-Narrate is correctness-equivalent to parallel for
-        # the world check. Users on subjugated mode are already trading
-        # latency for a specific ordering property.
         run_loremaster_subjugated(narration_context.combined_seed, mutations)
 
         result
       end
 
       def build_loremaster_inputs(what_happened, mutations)
-        Steps::Loremaster::LoremasterInputs.new(
+        Steps::LoremasterInputs.new(
           what_happened: what_happened.to_s,
           mutations: (mutations || {}).deep_stringify_keys,
           contexts_text: PromptHelpers.build_micro_contexts_block(@adventure).to_s,
