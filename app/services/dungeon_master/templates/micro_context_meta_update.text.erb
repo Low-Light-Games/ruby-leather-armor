@@ -16,10 +16,10 @@ Your job is to update the non-domain micro-context fields based on what just hap
 3. Add `context_wishes` only for concepts that truly do not fit the six current micro-context domains.
 4. If there are no new creatures or wishes, return empty arrays.
 
-Respond ONLY with valid JSON (no markdown, no code fences):
+Respond ONLY with valid JSON in the format of the example below (no markdown, no code fences):
 {
   "scene_summary": "Single concise sentence",
-  "new_creatures": [],
-  "context_wishes": [],
+  "new_creatures": ["Unicorn", "Goblin Scout"],
+  "context_wishes": ["The player prompt would benefit from a new 'politics' domain"],
   "reasoning": "1-3 sentences explaining the meta updates"
 }
