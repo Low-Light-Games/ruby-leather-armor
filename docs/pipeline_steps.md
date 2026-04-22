@@ -989,6 +989,33 @@ and "new check."
   the middle of the open ocean" lands as a `state` seed fact that is
   retrieved when the player attempts "I dig in the sand."
 
+**Seed input sources.** `SeedFromAdventure` assembles its prompt from
+exactly seven creation-time sources, chosen against the current data
+model rather than the obvious guess:
+
+- `adventure.story.premise` — the one-line concept.
+- `adventure.enriched_world` (JSONB on **`Adventure`**, written by
+  `DungeonMaster::Embellisher`). There is no `story.enriched_world`;
+  reading from `story` here would silently return `nil`.
+- `adventure.adventure_messages.chronological.first.content` — the
+  opening DM narrative, also produced by Embellisher.
+- Every `*_context` micro-context field populated at bootstrap. This is
+  the one remaining read of micro-contexts in the creation path; the
+  turn-time read was removed in the C10 cutover.
+- `StoryNpc.for_adventure(adventure)` and
+  `StoryClue.for_adventure(adventure)` — **these scopes include both
+  story-level records AND adventure-scoped records created by
+  Embellisher in Expand mode.** Sourcing from `story.story_npcs` /
+  `story.story_clues` alone would miss the Expand additions.
+- `adventure.story.story_locations` — locations exist only at Story
+  level; there is no Adventure-level duplicate, so going through
+  `story` here is correct and going through `adventure` would be empty.
+
+All resulting facts are written with `source: "seed"` and
+`introduced_at_loop_id: nil` through the shared `Lore::ApplyResults`
+pipeline, so seed rows are indistinguishable from turn rows downstream
+except by the `source` column.
+
 **Two embeddings round-trips per turn, independent of fact count.**
 `Lore::FactsLookup` embeds the intent once at the sanity gate (read side);
 `Lore::ApplyResults` makes **one batched** `AiClient#embeddings` call for

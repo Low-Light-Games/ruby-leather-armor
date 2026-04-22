@@ -2,49 +2,9 @@
 
 module DungeonMaster
   module Lore
-    # Runs Loremaster once at adventure creation to populate
-    # `adventure_narrative_facts` with the adventure's initial conditions, so
-    # turn 1's World Consistency Check is not a cold start (e.g. a premise
-    # "party adrift in the middle of the ocean" lands as a `state` seed fact
-    # that later retrieves for "I dig in the sand" → contradiction).
-    #
-    # Assembles the seed input from the authoritative creation-time sources
-    # (all verified against the current data model — see plan §Concrete
-    # changes "Adventure creation seeding"):
-    #
-    # * `adventure.story.premise`
-    # * `adventure.enriched_world` (JSONB on Adventure, written by
-    #   `DungeonMaster::Embellisher`; there is no `story.enriched_world`)
-    # * `adventure.adventure_messages.chronological.first.content` — the
-    #   opening DM narrative produced by Embellisher
-    # * Every `*_context` micro-context field populated at bootstrap
-    # * `StoryNpc.for_adventure(adventure)` and
-    #   `StoryClue.for_adventure(adventure)` — these scopes include both
-    #   story-level records AND adventure-scoped records created by
-    #   Embellisher in Expand mode. Sourcing from `story.story_npcs` alone
-    #   would miss the Embellisher Expand additions.
-    # * `adventure.story.story_locations` — locations exist only at Story
-    #   level (no Adventure-level duplicate).
-    #
-    # Writes all resulting facts with `source: "seed"` and
-    # `introduced_at_loop_id: nil` via the shared `Lore::ApplyResults`
-    # service — the same embedding-and-insert pipeline the turn path uses,
-    # so seed rows are indistinguishable from turn rows downstream except
-    # by their `source` column.
-    #
-    # Failure policy (lossy-with-Sentry, per [.cursor/rules/error-reporting-sentry.mdc]):
-    # if the AI call raises or the response is unparseable, we call
-    # `log.report_error` and emit a `seed_failure` play_log event, then
-    # return without writing any facts. Adventure creation must never fail
-    # because seeding failed — an empty facts store is strictly better
-    # than status quo (turn 1 with the facts store still-empty is exactly
-    # the post-C10 cold-start baseline). The caller (C8 wiring in the
-    # creation path) treats `SeedFromAdventure.call` as advisory and does
-    # not `rescue` anything it raises — nothing should raise here.
-    #
-    # This class is inert for C7: nothing in the adventure creation path
-    # invokes it yet. The `adventures: seed narrative facts at adventure
-    # creation` wiring lands in C8.
+    # Runs Loremaster once at adventure creation to seed the narrative
+    # facts store. Input sources, failure contract, and placement
+    # rationale: docs/pipeline_steps.md Decision 37.
     class SeedFromAdventure
       SEED_MODEL_KEY = "loremaster"
 
