@@ -678,3 +678,48 @@ while introducing a second, orthogonal store with its own single writer:
   source = 'loremaster'` makes idempotent reapply a no-op so the
   lossy-with-Sentry write contract stays safe under higher-layer
   retries.
+
+---
+
+## 19. No ad-hoc data structures
+
+Every piece of data with a fixed shape is a named class — value object,
+result object, event payload, presenter output, query result, DTO. Inline
+anonymous hashes passed across object boundaries, or `Struct.new(...)` lines
+hidden inside service files, are not acceptable. This was called out during
+the PR #98 cleanup epic and the pattern is enforced by
+`.cursor/rules/no-ad-hoc-structures.mdc`.
+
+**What counts as shaped data:**
+
+- Service return values with more than one field (`Lore::FactsChangeSet`,
+  `PipelineFlowResults::AwaitingRolls`, etc.).
+- Structured logging payloads — `play_log!` `parsed_response:` hashes,
+  `ai_log!` details, Sentry `context:` bags. Operators reading Admin >
+  Play Logs need the possible key set documented in one place, not
+  scattered across the service.
+- Retrieval hits returned by query objects (`Lore::FactHit`), not
+  `Struct.new(..., keyword_init: true)` one-liners.
+
+**Template for a value object:**
+
+- Own file under the owning namespace so Rails autoloading picks it up.
+- Keyword-argument constructor listing every supported attribute.
+- `#to_h` that returns the canonical hash if the consumer is logging
+  infrastructure (which serializes to JSON via `to_json`).
+- For context bags augmented at call sites, a `#with(**extra)` method
+  whose class-level comment documents the supported merge-in keys.
+- No runtime behaviour beyond shape: no AR queries, no I/O, no
+  `@log.truncate`. Callers pre-normalise what needs normalising.
+
+**Why.** Ad-hoc shapes drift — a key added in one call site and not
+another is invisible in a hash literal but obvious in a class diff.
+`Struct.new(...)` inline is functionally a class, but its definition is
+easy to miss, impossible to annotate with a class-level comment, and
+hides supported keys behind a positional-or-keyword signature.
+
+**Narrow exceptions.** Method-local intermediate maps
+(`idx -> id` accumulators that never leave the method) and hashes that
+are already the canonical ActiveRecord shape (`where(...)`,
+`create!(...)`, scope arguments) stay as plain hashes — they're
+already typed by the model. When in doubt, wrap it.
