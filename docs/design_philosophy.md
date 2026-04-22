@@ -457,6 +457,24 @@ problems that were already solved.
 - `docs/async_pipeline_design.md` — the specific problem and solution
   for async execution
 
+**Code comments: by exception, not by default.** The "document the why"
+instinct stops at the source-file boundary. Code is expected to carry
+its own explanation — well-named methods, memoized readers, predicate
+methods, value objects whose class names and attribute names spell out
+their shape. A comment that restates what the next few lines do is
+noise: it drifts out of sync with the code, trains readers to skim
+rather than read, and usually signals that the code below deserved a
+better name or a smaller surface.
+
+Comments earn their place only when they capture something the code
+cannot: a non-obvious invariant, a trade-off deliberately accepted, an
+external constraint (API quirk, DB limitation, §-rule from this
+document), or a short pointer to the `docs/` section that owns the
+full rationale. When in doubt, rename the method, extract a class, or
+cite a design doc instead of adding a paragraph. The durable "why"
+belongs in the documents listed above, not scattered across service
+files where it will silently go stale.
+
 ---
 
 ## 15. No text-parsing fallbacks
