@@ -8,6 +8,7 @@ RSpec.describe "Adventures create", type: :request do
   before do
     sign_in_via_session(user)
     allow_any_instance_of(DungeonMaster::Embellisher).to receive(:run)
+    allow(DungeonMaster::Lore::SeedFromAdventure).to receive(:call)
   end
 
   context "for a paid user" do

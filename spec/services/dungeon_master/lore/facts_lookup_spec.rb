@@ -51,6 +51,7 @@ RSpec.describe DungeonMaster::Lore::FactsLookup do
 
   before do
     allow(ai).to receive(:embeddings).and_return([vec(1.0)])
+    allow(ai).to receive(:last_usage).and_return(nil)
   end
 
   describe ".call" do

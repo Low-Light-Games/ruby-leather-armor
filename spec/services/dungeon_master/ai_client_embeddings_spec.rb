@@ -17,9 +17,11 @@ RSpec.describe DungeonMaster::AiClient, "#embeddings" do
     allow(OpenAI::Client).to receive(:new).and_return(openai_double)
   end
 
-  def stub_success(vectors)
+  def stub_success(vectors, prompt_tokens: 10)
     data = vectors.each_with_index.map { |vec, i| { "embedding" => vec, "index" => i } }
-    allow(openai_double).to receive(:embeddings).and_return({ "data" => data })
+    allow(openai_double).to receive(:embeddings).and_return(
+      { "data" => data, "usage" => { "prompt_tokens" => prompt_tokens } }
+    )
   end
 
   let(:small) { "text-embedding-3-small" }
@@ -104,6 +106,16 @@ RSpec.describe DungeonMaster::AiClient, "#embeddings" do
 
     # Index 0 ~ "a", index 1 ~ "b", index 2 ~ "c".
     expect(result).to eq([[0.0], [2.0], [1.0]])
+  end
+
+  it "populates last_usage with prompt_tokens from the API response" do
+    stub_success([[0.1]], prompt_tokens: 42)
+
+    client.embeddings(texts: ["hello"], model: small)
+
+    expect(client.last_usage).to eq(
+      input_tokens: 42, output_tokens: 0, reasoning_tokens: 0, total_tokens: 42
+    )
   end
 
   it "raises AiError on an empty texts array without hitting OpenAI" do

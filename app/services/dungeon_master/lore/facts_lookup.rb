@@ -43,6 +43,7 @@ module DungeonMaster
           "FactsLookup query — #{@query_text.truncate(80)}",
           model_used: embedding_model,
           source:     "facts_lookup",
+          ai:         @ai,
         ) do
           @ai.embeddings(**embeddings_kwargs)
         end

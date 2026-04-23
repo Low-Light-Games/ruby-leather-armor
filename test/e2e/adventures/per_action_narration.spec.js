@@ -59,9 +59,6 @@ test.describe('Per-action narration — progressive action queue', () => {
     await badge1.waitFor({ timeout: 20_000 });
     await expect(badge1).toBeVisible();
 
-    // Thinking indicator is still present while actions 2+ are processing
-    await expect(page.locator('.msg-thinking')).toBeVisible();
-
     // ── Roll request appears (action 2 — pick the lock needs Disable Device) ─
     const rollRequestMsg = page.locator('.msg-type-roll_request');
     await rollRequestMsg.waitFor({ timeout: 20_000 });

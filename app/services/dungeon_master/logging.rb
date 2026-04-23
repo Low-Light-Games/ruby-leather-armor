@@ -166,7 +166,7 @@ module DungeonMaster
     # `source` is the caller tag carried into the
     # `EmbeddingLogDetails` payload (e.g. "loremaster", "seed",
     # "facts_lookup") so Admin > Play Logs can tell sites apart.
-    def timed_embedding_call(prompt_summary, model_used:, source:)
+    def timed_embedding_call(prompt_summary, model_used:, source:, ai: nil)
       t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       vectors = yield
       ai_log!(
@@ -175,6 +175,7 @@ module DungeonMaster
         parse_status: "success",
         model_used:   model_used,
         duration_ms:  elapsed_ms(t0),
+        usage:        ai&.last_usage,
       )
       vectors
     rescue AiError => e
@@ -182,6 +183,7 @@ module DungeonMaster
         "embedding", prompt_summary, e,
         model_used:  model_used,
         duration_ms: elapsed_ms(t0),
+        usage:       ai&.last_usage,
       )
       raise
     end

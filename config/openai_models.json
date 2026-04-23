@@ -218,5 +218,23 @@
       "reasoning_model": true,
       "supports_temperature": false
     }
+  },
+  "text-embedding-3-small": {
+    "name": "text-embedding-3-small",
+    "description": "Small embedding model, 1536 dimensions",
+    "input_cost": 0.02,
+    "output_cost": 0
+  },
+  "text-embedding-3-large": {
+    "name": "text-embedding-3-large",
+    "description": "Large embedding model, 3072 dimensions",
+    "input_cost": 0.13,
+    "output_cost": 0
+  },
+  "text-embedding-ada-002": {
+    "name": "text-embedding-ada-002",
+    "description": "Legacy embedding model (deprecated)",
+    "input_cost": 0.10,
+    "output_cost": 0
   }
 }
