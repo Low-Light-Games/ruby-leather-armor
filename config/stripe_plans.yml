@@ -1,0 +1,18 @@
+free:
+  token_limit: 2354800
+  stripe_price_id: null
+
+novice:
+  stripe_product_id : prod_UOAdC3pZHOYFdH
+  stripe_price_id   : price_1TPOHtCkABKwIzb7iEVg5Dg9
+  token_limit: 117740000
+
+scout:
+  stripe_product_id : prod_UOAdt9C1MTTqN0
+  stripe_price_id   : price_1TPOHuCkABKwIzb7PjIqkez
+  token_limit: 23548000
+
+adventurer:
+  stripe_product_id : prod_UOAdJyjuQeEpkq
+  stripe_price_id   : price_1TPOHvCkABKwIzb7BAG1eVyb
+  token_limit: 47096000
