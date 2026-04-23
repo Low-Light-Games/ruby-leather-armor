@@ -37,7 +37,6 @@ class SessionsController < ApplicationController
       email: user.email,
       admin: user.admin,
       plan_key: user.plan_key,
-      tier: user.tier,
       onboarding_state: user.onboarding_state,
       banned: user.banned?,
       trusted: user.trusted?,

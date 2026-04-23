@@ -12,7 +12,7 @@
         <tr>
           <th class="col-id">#</th>
           <th class="col-email">Email</th>
-          <th class="col-tier">Tier</th>
+          <th class="col-tier">Plan</th>
           <th class="col-strikes">Strikes</th>
           <th class="col-trusted">Trusted</th>
           <th class="col-banned">Banned</th>
@@ -31,9 +31,9 @@
               <% if user.admin? %><span class="badge badge-admin">admin</span><% end %>
             </td>
             <td class="col-tier">
-              <%= form_with model: user, url: update_tier_admin_user_path(user), method: :patch, local: true, class: "tier-form" do |form| %>
-                <%= form.select :tier,
-                      options_for_select(User::TIERS.map { |tier| [tier.titleize, tier] }, user.tier),
+              <%= form_with model: user, url: update_plan_admin_user_path(user), method: :patch, local: true, class: "tier-form" do |form| %>
+                <%= form.select :plan_key,
+                      options_for_select(StripePlans::PLAN_KEYS.map { |plan_key| [plan_key.titleize, plan_key] }, user.plan_key),
                       {},
                       class: "tier-select",
                       onchange: "this.form.submit()" %>
@@ -116,7 +116,9 @@
   .badge-banned   { background: #ffebee; color: #c62828; }
   .tier-badge     { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 11px; font-weight: 600; }
   .tier-free      { background: #f5f5f5; color: #555; }
-  .tier-paid      { background: #fff8e1; color: #e65100; }
+  .tier-novice      { background: #fff8e1; color: #e65100; }
+  .tier-scout       { background: #eef2ff; color: #3730a3; }
+  .tier-adventurer  { background: #ecfeff; color: #155e75; }
   .strikes-warning { color: #c62828; font-weight: 700; }
   .banned-at      { font-size: 11px; color: #888; margin-left: 4px; }
   .empty-cell     { color: #bbb; }

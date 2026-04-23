@@ -56,7 +56,7 @@ Rails.application.routes.draw do
     resource :billing, only: [:show], controller: "billing"
     resources :users, only: [:index, :show] do
       member do
-        patch :update_tier
+        patch :update_plan
         patch :ban
         patch :unban
         patch :trust
