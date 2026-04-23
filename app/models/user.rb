@@ -41,7 +41,7 @@ class User < ApplicationRecord
   end
 
   def plan_key
-    stripe_profile&.plan_key.presence || "free"
+    stripe_profile&.effective_plan_key.presence || "free"
   end
 
   def monthly_usage_limit
