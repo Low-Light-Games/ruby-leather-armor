@@ -139,6 +139,7 @@ RSpec.describe DungeonMaster::Lore::ApplyResults do
 
     it "writes an 'embedding' error AiLog and re-raises when the embeddings call raises AiError" do
       allow(ai).to receive(:embeddings).and_raise(DungeonMaster::AiError, "OpenAI is on fire")
+      allow(ai).to receive(:last_usage).and_return(nil)
 
       expect {
         described_class.call(
@@ -155,6 +156,7 @@ RSpec.describe DungeonMaster::Lore::ApplyResults do
 
     it "reports a Sentry error via log.report_error before re-raising on embeddings failure" do
       allow(ai).to receive(:embeddings).and_raise(DungeonMaster::AiError, "boom")
+      allow(ai).to receive(:last_usage).and_return(nil)
       allow(log).to receive(:report_error).and_call_original
 
       expect {
