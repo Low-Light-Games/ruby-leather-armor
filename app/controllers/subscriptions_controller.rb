@@ -1,4 +1,13 @@
 class SubscriptionsController < ApplicationController
+  def plans
+    @plans_payload = StripePlans::PLAN_KEYS
+                               .map { |key| StripePlans.fetch(key) }
+                               .reject(&:free?)
+                               .map(&:to_h)
+  end
+
+  def success; end
+
   def checkout
     plan = resolve_checkout_plan
     return if performed?

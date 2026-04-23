@@ -16,6 +16,17 @@ class StripePlans
     def free?
       key == "free"
     end
+
+    def to_h
+      {
+        key: key,
+        token_limit: token_limit,
+        amount: amount,
+        description: description,
+        stripe_product_id: stripe_product_id,
+        stripe_price_id: stripe_price_id
+      }
+    end
   end
 
   PLANS = begin

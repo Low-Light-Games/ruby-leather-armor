@@ -23,6 +23,8 @@ Rails.application.routes.draw do
 
   # First-login wizard (API — UI is embedded in AdventureCreation)
   post "onboarding/complete", to: "onboarding#complete", as: :onboarding_complete
+  get "plans", to: "subscriptions#plans", as: :plans
+  get "subscription/success", to: "subscriptions#success", as: :subscription_success
   post "subscription/checkout", to: "subscriptions#checkout", as: :subscription_checkout
   post "subscription/portal", to: "subscriptions#portal", as: :subscription_portal
   post "webhooks/stripe", to: "stripe_webhooks#create", as: :stripe_webhooks

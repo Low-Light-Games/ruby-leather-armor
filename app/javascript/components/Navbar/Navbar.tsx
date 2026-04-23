@@ -33,6 +33,7 @@ export const Navbar = () => {
         </div>
         <div className="header-actions">
           <a href="/sheets" className="nav-link">Sheets</a>
+          <a href="/plans" className="nav-link">Plans</a>
           <a href="/adventures/new" className="adventure-cta" onClick={onAdventureClick}>
             Adventure!
           </a>

@@ -10,6 +10,8 @@ import App from "./components/App";
 import AdventureCreation from "./components/AdventureCreation";
 import AdventurePlay from "./components/AdventurePlay";
 import AdminStoryEditor from "./components/AdminStoryEditor";
+import SubscriptionPlans from "./components/SubscriptionPlans";
+import SubscriptionSuccess from "./components/SubscriptionSuccess";
 import { AuthProvider } from "./contexts/AuthContext";
 import { GameDataProvider } from "./contexts/GameDataContext";
 
@@ -78,6 +80,35 @@ document.addEventListener("DOMContentLoaded", () => {
       <React.StrictMode>
         <AuthProvider>
           <AdminStoryEditor mode={mode} storyId={storyId} />
+        </AuthProvider>
+      </React.StrictMode>
+    );
+  }
+
+  // SPA 5: Subscription plans
+  const subscriptionPlansRoot = document.getElementById("subscription-plans-root");
+  if (subscriptionPlansRoot) {
+    const plansJson = subscriptionPlansRoot.dataset.plans || "[]";
+    const plans = JSON.parse(plansJson);
+    const currentPlanKey = subscriptionPlansRoot.dataset.currentPlanKey || "free";
+    const root = createRoot(subscriptionPlansRoot);
+    root.render(
+      <React.StrictMode>
+        <AuthProvider>
+          <SubscriptionPlans plans={plans} currentPlanKey={currentPlanKey} />
+        </AuthProvider>
+      </React.StrictMode>
+    );
+  }
+
+  // SPA 6: Subscription success polling page
+  const subscriptionSuccessRoot = document.getElementById("subscription-success-root");
+  if (subscriptionSuccessRoot) {
+    const root = createRoot(subscriptionSuccessRoot);
+    root.render(
+      <React.StrictMode>
+        <AuthProvider>
+          <SubscriptionSuccess />
         </AuthProvider>
       </React.StrictMode>
     );

@@ -1,0 +1,77 @@
+.subscription-plans-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.subscription-plans-header {
+  margin-bottom: 24px;
+}
+
+.subscription-plans-header h1 {
+  margin-bottom: 6px;
+}
+
+.subscription-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.subscription-plan-card {
+  border: 1px solid #d4d4d8;
+  border-radius: 10px;
+  padding: 18px;
+  background: #fff;
+}
+
+.subscription-plan-card.current {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 1px #2563eb;
+}
+
+.subscription-plan-card h2 {
+  margin: 0 0 8px;
+  text-transform: capitalize;
+}
+
+.subscription-plan-card .price {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+
+.subscription-plan-card .limit {
+  margin: 0 0 10px;
+  color: #1f2937;
+}
+
+.subscription-plan-card .description {
+  margin: 0 0 14px;
+  color: #4b5563;
+}
+
+.subscribe-button,
+.portal-button {
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.subscribe-button[disabled],
+.portal-button[disabled] {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.subscription-manage {
+  margin-top: 20px;
+}
+
+.subscription-plans-error {
+  color: #b91c1c;
+}
