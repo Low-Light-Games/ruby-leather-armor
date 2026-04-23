@@ -8,6 +8,9 @@ export const Navbar = () => {
   const { user, logout } = useAuth()
   const sheetsCtx = useSheetsContextOptional()
   const sheetHasUnsavedChanges = sheetsCtx?.sheetHasUnsavedChanges ?? false
+  const graceEndsAt = user?.usage.grace_period_ends_at
+    ? new Date(user.usage.grace_period_ends_at).toLocaleString()
+    : null
 
   const onAdventureClick = useCallback(
     (e: MouseEvent<HTMLAnchorElement>) => {
@@ -25,6 +28,12 @@ export const Navbar = () => {
       <div className="early-access-banner" role="status">
         Early access: features, balance, and AI behavior are still changing quickly.
       </div>
+      {user.usage.delinquent && (
+        <div className="billing-delinquent-banner" role="alert">
+          Payment issue detected. Your grace period ends {graceEndsAt || 'soon'}.
+          <a href="/plans"> Fix billing</a>.
+        </div>
+      )}
 
       <div className="app-header">
         <div className="user-info">

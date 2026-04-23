@@ -104,7 +104,7 @@ export const AdventureCreation = () => {
                 </label>
               </div>
 
-              {(user.tier === 'paid' || user.admin) && (
+              {(user.plan_key !== 'free' || user.admin) && (
                 <div className="form-group">
                   <label className="toggle-row" htmlFor="skip-world-sanity-check-toggle">
                     <span className="toggle-text">

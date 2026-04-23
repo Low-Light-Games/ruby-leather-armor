@@ -19,12 +19,35 @@
   text-align: center;
 }
 
+.billing-delinquent-banner {
+  width: fit-content;
+  max-width: min(100%, 760px);
+  margin: 0 auto 14px;
+  padding: 8px 14px;
+  border: 1px solid #b91c1c;
+  background: rgba(254, 242, 242, 0.98);
+  color: #7f1d1d;
+  font-family: $font-body;
+  font-size: 13px;
+  text-align: center;
+
+  a {
+    color: inherit;
+    font-weight: 700;
+  }
+}
+
 @media (max-width: 768px) {
   .early-access-banner {
     top: 8px;
     margin-bottom: 12px;
     padding: 8px 12px;
     font-size: 11px;
+  }
+
+  .billing-delinquent-banner {
+    font-size: 12px;
+    margin-bottom: 10px;
   }
 }
 

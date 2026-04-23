@@ -21,7 +21,6 @@ interface User {
   email: string;
   admin: boolean;
   plan_key: string;
-  tier: string;
   onboarding_state: 'new' | 'in_progress' | 'completed';
   banned: boolean;
   trusted: boolean;
