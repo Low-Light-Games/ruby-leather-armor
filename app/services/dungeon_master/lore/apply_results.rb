@@ -68,6 +68,7 @@ module DungeonMaster
           "Loremaster apply — #{texts.length} fact text(s)",
           model_used: embedding_model,
           source:     @source,
+          ai:         @ai,
         ) do
           @ai.embeddings(**embeddings_kwargs(texts))
         end

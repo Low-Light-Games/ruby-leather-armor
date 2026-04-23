@@ -191,6 +191,15 @@ module DungeonMaster
         raise AiError, "Unexpected embeddings response shape (got #{data&.length || 'nil'} vectors for #{texts.length} texts)"
       end
 
+      usage = response["usage"] || {}
+      prompt_tokens = usage["prompt_tokens"].to_i
+      @last_usage = {
+        input_tokens:     prompt_tokens,
+        output_tokens:    0,
+        reasoning_tokens: 0,
+        total_tokens:     prompt_tokens,
+      }
+
       # Sort defensively by `index` — the API is spec'd to return elements
       # in input order, but aligning on `index` makes the contract explicit
       # if an upstream shim ever shuffles them.
