@@ -15,6 +15,7 @@ class User < ApplicationRecord
   has_many :adventures, dependent: :destroy
   has_many :ai_usage_records, dependent: :nullify
   has_many :moderation_events, dependent: :destroy
+  has_one :stripe_profile, class_name: "UserStripeProfile", dependent: :destroy
 
   validates :email, presence: true, uniqueness: { case_sensitive: false }
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }

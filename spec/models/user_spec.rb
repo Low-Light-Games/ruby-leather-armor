@@ -4,6 +4,7 @@ RSpec.describe User, type: :model do
   describe "associations" do
     it { should have_many(:sheets).dependent(:destroy) }
     it { should have_many(:adventures).dependent(:destroy) }
+    it { should have_one(:stripe_profile).class_name("UserStripeProfile").dependent(:destroy) }
   end
 
   describe "validations" do
