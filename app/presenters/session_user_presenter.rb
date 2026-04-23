@@ -16,6 +16,7 @@ class SessionUserPresenter
       banned: user.banned?,
       trusted: user.trusted?,
       moderation_strikes: user.moderation_strikes,
+      paying_users_allowed: FeatureFlag.enabled?("paying_users_allowed"),
       usage: {
         current_tokens: user.monthly_usage_tokens,
         limit_tokens: user.monthly_usage_limit,

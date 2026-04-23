@@ -3,7 +3,10 @@ require "rails_helper"
 RSpec.describe "Subscriptions", type: :request do
   let(:user) { create(:user) }
 
-  before { sign_in_via_session(user) }
+  before do
+    create(:feature_flag, key: "paying_users_allowed", enabled: true)
+    sign_in_via_session(user)
+  end
 
   describe "POST /subscription/checkout" do
     it "creates a checkout session for a paid plan" do

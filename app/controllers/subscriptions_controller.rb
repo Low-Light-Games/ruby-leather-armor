@@ -2,12 +2,16 @@ class SubscriptionsController < ApplicationController
   skip_before_action :require_login, only: [:plans]
 
   def plans
+    head :not_found and return unless FeatureFlag.enabled?("paying_users_allowed")
+
     presenter = SubscriptionPlansPresenter.new(user: current_user)
     @plans_payload = presenter.plans_payload
     @current_plan_key = presenter.current_plan_key
   end
 
   def success
+    head :not_found and return unless FeatureFlag.enabled?("paying_users_allowed")
+
     @preview_mode = resolve_preview_mode
     return if @preview_mode.present?
 
@@ -17,6 +21,8 @@ class SubscriptionsController < ApplicationController
   end
 
   def checkout
+    head :not_found and return unless FeatureFlag.enabled?("paying_users_allowed")
+
     plan = resolve_checkout_plan
     return if performed?
 
@@ -45,6 +51,8 @@ class SubscriptionsController < ApplicationController
   end
 
   def portal
+    head :not_found and return unless FeatureFlag.enabled?("paying_users_allowed")
+
     profile = current_user.stripe_profile
     if profile.nil? || profile.stripe_customer_id.blank?
       render json: { error: "No Stripe customer is linked to this account yet." }, status: :unprocessable_content
