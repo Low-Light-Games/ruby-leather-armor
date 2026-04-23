@@ -12,6 +12,7 @@ export interface AuthUser {
   email: string
   admin: boolean
   plan_key: string
+  has_billing_profile: boolean
   onboarding_state: 'new' | 'in_progress' | 'completed'
   banned: boolean
   trusted: boolean

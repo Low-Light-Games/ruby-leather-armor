@@ -22,6 +22,7 @@ export const Navbar = () => {
   )
 
   if (!user) return null
+  const plansCtaLabel = user.has_billing_profile ? 'Manage subscription' : 'Subscribe!'
 
   return (
     <>
@@ -38,8 +39,10 @@ export const Navbar = () => {
       <div className="app-header">
         <div className="user-info">
           <span>Logged in as: {user.email}</span>
-          <a href="/plans" className="plans-cta">Plans</a>
           {user.admin && <span className="admin-badge">Admin</span>}
+          <a href="/plans" className="plans-cta">
+            {plansCtaLabel}
+          </a>
         </div>
         <div className="header-actions">
           <a href="/sheets" className="nav-link">Sheets</a>

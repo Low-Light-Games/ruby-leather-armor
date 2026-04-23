@@ -11,6 +11,7 @@ class SessionUserPresenter
       email: user.email,
       admin: user.admin,
       plan_key: user.plan_key,
+      has_billing_profile: user.stripe_profile.present?,
       onboarding_state: user.onboarding_state,
       banned: user.banned?,
       trusted: user.trusted?,

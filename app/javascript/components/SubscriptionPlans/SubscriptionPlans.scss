@@ -74,9 +74,9 @@
 
 .subscribe-button,
 .portal-button {
-  border: 1px solid $red-ink;
+  border: 1px solid $golden-ink;
   border-radius: 0;
-  background: $red-ink;
+  background: $golden-ink;
   color: $parchment;
   padding: 8px 12px;
   cursor: pointer;
@@ -85,8 +85,8 @@
   letter-spacing: 0.03em;
 
   &:hover:not([disabled]) {
-    background: $red-ink-dk;
-    border-color: $red-ink-dk;
+    background: $golden-ink-dk;
+    border-color: $golden-ink-dk;
   }
 }
 

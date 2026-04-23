@@ -79,9 +79,9 @@
 
     .plans-cta {
       padding: 5px 14px;
-      background-color: $green-ink;
+      background-color: $golden-ink;
       color: $parchment;
-      border: 1px solid $green-ink;
+      border: 1px solid $golden-ink;
       border-radius: 0;
       cursor: pointer;
       font-size: 13px;
@@ -92,12 +92,12 @@
       transition: background-color 0.2s, border-color 0.2s;
 
       &:hover {
-        background-color: color.adjust($green-ink, $lightness: -8%);
-        border-color: color.adjust($green-ink, $lightness: -8%);
+        background-color: $golden-ink-dk;
+        border-color: $golden-ink-dk;
       }
 
       &:focus-visible {
-        outline: 2px solid $green-ink;
+        outline: 2px solid $golden-ink;
         outline-offset: 2px;
       }
     }

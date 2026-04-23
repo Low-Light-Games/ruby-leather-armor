@@ -9,9 +9,13 @@
 }
 
 .subscription-success-page h1 {
+  display: inline-block;
   margin-bottom: 10px;
   font-family: $font-display;
-  color: $red-ink;
+  color: $parchment;
+  background: $golden-ink;
+  border: 1px solid $golden-ink;
+  padding: 6px 12px;
   letter-spacing: 0.03em;
 }
 
@@ -32,9 +36,9 @@
 .subscription-success-link {
   display: inline-block;
   text-decoration: none;
-  background: $green-ink;
+  background: $golden-ink;
   color: $parchment;
-  border: 1px solid $green-ink;
+  border: 1px solid $golden-ink;
   border-radius: 0;
   padding: 8px 16px;
   font-weight: 600;
@@ -43,7 +47,7 @@
   text-transform: uppercase;
 
   &:hover {
-    background: color.adjust($green-ink, $lightness: -8%);
-    border-color: color.adjust($green-ink, $lightness: -8%);
+    background: $golden-ink-dk;
+    border-color: $golden-ink-dk;
   }
 }
