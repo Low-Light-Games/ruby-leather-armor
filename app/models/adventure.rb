@@ -16,6 +16,7 @@ class Adventure < ApplicationRecord
   has_many :story_npcs, dependent: :destroy
   has_many :story_clues, dependent: :destroy
   has_many :experience_suggestions, dependent: :destroy
+  has_many :adventure_narrative_facts, dependent: :destroy
 
   include Contextable
 

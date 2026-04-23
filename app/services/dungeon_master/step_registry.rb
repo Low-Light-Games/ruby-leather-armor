@@ -153,6 +153,21 @@ module DungeonMaster
         model_hint: "Fast, cheap model. Per-NPC combat action decision. Runs N in parallel via Node fan_out. e.g. gpt-4.1-nano, gpt-4o-mini.",
         pipeline: true,
       ),
+      "loremaster" => Entry.new(
+        token_budget: nil,
+        model_hint: "Mid-tier model. Structured fact extraction from factual outcomes — e.g. gpt-4o-mini, gpt-4.1-mini, gpt-5-nano. Runs in parallel with Narrate/ContextUpdate, so latency is Narrate-bounded.",
+        pipeline: true,
+      ),
+      "embedding" => Entry.new(
+        # Not a pipeline step in the LLM-chat sense — this registers
+        # `call_type: "embedding"` as a known event_type for AiLog rows
+        # written by `Lore::ApplyResults` (write-side) and
+        # `Lore::FactsLookup` (read-side). `AiClient#embeddings` itself
+        # does not write any AiLog rows.
+        token_budget: nil,
+        model_hint: nil,
+        pipeline: false,
+      ),
       "encounter_expand" => Entry.new(
         token_budget: nil,
         model_hint: nil,

@@ -144,7 +144,6 @@ adjust.
 
 **Current toggles:**
 - `guardrail_mode` — code-based vs. AI-based validation
-- `narration_mode` — parallel vs. subjugated output
 - `sanitization_threshold` — danger score cutoff (0-100)
 - `verbose` / `pacing_words_min` / `pacing_words_max` — narration length
 - `temperature` — creativity/randomness
@@ -241,6 +240,34 @@ provides the model's own explanation of its decision. When a verdict is
 wrong, the reasoning field often reveals *why* — "I assumed the player
 had Improved Grapple" is immediately actionable.
 
+**Errors are first-class audit artifacts:** in production and staging,
+every real error must be observable. The failure path uses
+`ApplicationErrorReporter.notify(exception, context: { ... })` — or
+patterns that already delegate to it, such as
+`DungeonMaster::Logging#report_error` and `#capture_pipeline_exception!`
+— so the exception surfaces in Sentry with a context hash rich enough
+to replay. This applies even when the surrounding operation is
+intentionally degraded rather than aborted: if a step swallows an
+`AiError`, a `TokenBudgetExceededError`, or a `StandardError` to keep a
+turn flowing (for example, a best-effort fact writer), it still has to
+notify before it continues. A play_log entry is never a substitute
+for a Sentry notification — play_log exists for in-app debugging and
+is easy to miss at a glance, while Sentry is where reliability signal
+is actually monitored. Bare `rescue StandardError; nil` is reserved
+for true last-resort shims and, when used, must still notify. The rule
+is enforced by the always-applied Cursor rule
+[`.cursor/rules/error-reporting-sentry.mdc`](/.cursor/rules/error-reporting-sentry.mdc);
+this section is the design rationale behind it.
+
+**Why:** silent failures are the worst-case AI bug, because AI pipelines
+degrade gracefully by design (per §1, honor system verdicts; per §17,
+don't code-fix AI problems). The same properties that make a pipeline
+robust to individual model hiccups — best-effort steps, lossy caches,
+fallback paths — also make it possible for a whole class of failures to
+never surface. Sentry notification is the guarantee that "degraded"
+never becomes "invisible": the data may be lossy, the error signal
+must not be.
+
 ---
 
 ## 9. Incremental decomposition of AI pipeline steps
@@ -293,11 +320,18 @@ When introducing a new approach, don't rip out the old one. Keep both
 paths alive behind a toggle and let observation determine which wins.
 
 - Code and AI guardrails coexist (`guardrail_mode` toggle)
-- Parallel and subjugated narration coexist (`narration_mode` toggle)
 
 This principle is a direct consequence of principles 4 and 9: if you
 toggle everything and split incrementally, coexistence is the natural
 result. The old path is your safety net and your control group.
+
+**Waiver.** Coexistence is the default, not a mandate. When a path has
+been demonstrably low-confidence or effectively broken, we may retire it
+outright instead of maintaining the toggle. Two precedents: the
+`narration_mode = "subjugated"` branch (retired in favor of parallel
+output), and the pre-facts-store World Consistency Check
+(retired in favor of the narrative facts store, see
+docs/pipeline_steps.md Decision 37).
 
 **Note:** the synchronous HTTP pipeline is an intentional exception.
 After async Sidekiq was validated in production, the sync path was
@@ -428,6 +462,24 @@ problems that were already solved.
   with cost analysis
 - `docs/async_pipeline_design.md` — the specific problem and solution
   for async execution
+
+**Code comments: by exception, not by default.** The "document the why"
+instinct stops at the source-file boundary. Code is expected to carry
+its own explanation — well-named methods, memoized readers, predicate
+methods, value objects whose class names and attribute names spell out
+their shape. A comment that restates what the next few lines do is
+noise: it drifts out of sync with the code, trains readers to skim
+rather than read, and usually signals that the code below deserved a
+better name or a smaller surface.
+
+Comments earn their place only when they capture something the code
+cannot: a non-obvious invariant, a trade-off deliberately accepted, an
+external constraint (API quirk, DB limitation, §-rule from this
+document), or a short pointer to the `docs/` section that owns the
+full rationale. When in doubt, rename the method, extract a class, or
+cite a design doc instead of adding a paragraph. The durable "why"
+belongs in the documents listed above, not scattered across service
+files where it will silently go stale.
 
 ---
 
@@ -627,3 +679,71 @@ existing domain, ContextUpdate can emit a `context_wishes` entry. Each wish
 is persisted as a `context_wish` play log event, visible in the admin UI as
 an amber badge. These are observability signals for future domain design, not
 errors.
+
+**World Consistency Check no longer queries micro-contexts.** As of the
+narrative facts store cutover (see `docs/pipeline_steps.md` Decision 37),
+`sanity_checker_world` reads its dynamic-state input from
+`adventure_narrative_facts` (pgvector, top-K by similarity against the
+player's intent) rather than from the six `*_context` JSONB fields.
+Micro-contexts remain the structured mutation surface for ContextUpdate
+and every other consumer that needs domain-typed state; they are simply
+no longer the retrieval target of the world sanity gate. This keeps the
+§18 single-writer principle intact for the JSONB fields (ContextUpdate
+is still the primary writer, with the same documented exceptions above)
+while introducing a second, orthogonal store with its own single writer:
+
+- **`adventure_narrative_facts` (pgvector):** sole writer is
+  `DungeonMaster::Lore::ApplyResults`, invoked from
+  `DungeonMaster::Steps::Stagehand` on every terminal narrative phase
+  (`source: "loremaster"`) and from `DungeonMaster::Lore::SeedFromAdventure`
+  at adventure creation (`source: "seed"`). No other pipeline step,
+  admin tool, or background job mutates this table. A partial unique
+  index on `(adventure_id, introduced_at_loop_id, source_idx) WHERE
+  source = 'loremaster'` makes idempotent reapply a no-op so the
+  lossy-with-Sentry write contract stays safe under higher-layer
+  retries.
+
+---
+
+## 19. No ad-hoc data structures
+
+Every piece of data with a fixed shape is a named class — value object,
+result object, event payload, presenter output, query result, DTO. Inline
+anonymous hashes passed across object boundaries, or `Struct.new(...)` lines
+hidden inside service files, are not acceptable. This was called out during
+the PR #98 cleanup epic and the pattern is enforced by
+`.cursor/rules/no-ad-hoc-structures.mdc`.
+
+**What counts as shaped data:**
+
+- Service return values with more than one field (`Lore::FactsChangeSet`,
+  `PipelineFlowResults::AwaitingRolls`, etc.).
+- Structured logging payloads — `play_log!` `parsed_response:` hashes,
+  `ai_log!` details, Sentry `context:` bags. Operators reading Admin >
+  Play Logs need the possible key set documented in one place, not
+  scattered across the service.
+- Retrieval hits returned by query objects (`Lore::FactHit`), not
+  `Struct.new(..., keyword_init: true)` one-liners.
+
+**Template for a value object:**
+
+- Own file under the owning namespace so Rails autoloading picks it up.
+- Keyword-argument constructor listing every supported attribute.
+- `#to_h` that returns the canonical hash if the consumer is logging
+  infrastructure (which serializes to JSON via `to_json`).
+- For context bags augmented at call sites, a `#with(**extra)` method
+  whose class-level comment documents the supported merge-in keys.
+- No runtime behaviour beyond shape: no AR queries, no I/O, no
+  `@log.truncate`. Callers pre-normalise what needs normalising.
+
+**Why.** Ad-hoc shapes drift — a key added in one call site and not
+another is invisible in a hash literal but obvious in a class diff.
+`Struct.new(...)` inline is functionally a class, but its definition is
+easy to miss, impossible to annotate with a class-level comment, and
+hides supported keys behind a positional-or-keyword signature.
+
+**Narrow exceptions.** Method-local intermediate maps
+(`idx -> id` accumulators that never leave the method) and hashes that
+are already the canonical ActiveRecord shape (`where(...)`,
+`create!(...)`, scope arguments) stay as plain hashes — they're
+already typed by the model. When in doubt, wrap it.

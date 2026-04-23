@@ -1,0 +1,20 @@
+{
+  "description": "Durable narrative facts extracted from a factual turn outcome, written by the Loremaster step and read by the World Consistency Check via pgvector similarity.",
+  "fields": {
+    "facts": "array of new facts to record. Each entry: { text (string — one self-contained sentence, canonical phrasing), kind (one of 'event' | 'state' | 'entity'), entities (array of strings — named NPCs / items / locations referenced, for observability), polarity ('asserts' | 'negates') }. Position in this array is the 0-based source_idx; keep it stable across retries of the same turn.",
+    "invalidates": "array of existing facts that are no longer true after this turn. Each entry: { fact_id (integer — the id of a fact from the 'Active facts' list in the prompt), reason (string — why it is no longer true), replacement_source_idx (integer or null — 0-based index into this turn's `facts` array identifying the new fact that supersedes the invalidated one; null when there is no replacement) }.",
+    "reasoning": "string — one short sentence explaining the extraction choice, for audit."
+  },
+  "kinds": {
+    "event": "Something that happened that future actions must remain consistent with. Use for discrete occurrences: 'the bridge collapsed', 'the ring was thrown into the lake', 'the innkeeper was killed'.",
+    "state": "A current condition that constrains what the player can attempt. Use for ongoing truths: 'the party is in the middle of the ocean', 'the character is blinded', 'it is currently night'. When the state changes, emit the replacement state AND an `invalidates` entry pointing at the old state fact.",
+    "entity": "An NPC, object, or location introduced in the narrative. Use for identity-bearing nouns the world now contains: 'the innkeeper is named Gerta', 'a black iron key was taken from the mayor', 'the village is called Thornfield'."
+  },
+  "notes": [
+    "Scope: record only facts a new DM joining this session would need to know that are not already on the character sheet.",
+    "Stability: prefer canonical, self-contained phrasing so the same fact retrieves for varied paraphrased intents (e.g. 'the party is in the middle of the ocean', not 'we are swimming').",
+    "State replacement: when a state transitions (e.g. 'blinded' -> 'not blinded'), emit the new state fact AND an `invalidates` entry for the old one, pairing them via `replacement_source_idx`.",
+    "replacement_source_idx: if the invalidated fact simply stopped being true with no replacement (e.g. a cause resolved), pass null. The plan's schema pairs this with the row's invalidated_by_fact_id column at apply time.",
+    "Do not invent facts not supported by what_happened / mutations / current contexts. If nothing durable changed, return { facts: [], invalidates: [], reasoning: '...' }."
+  ]
+}

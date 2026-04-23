@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_16_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_22_120001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+  enable_extension "vector"
 
   create_table "adventure_battlefields", force: :cascade do |t|
     t.bigint "adventure_id", null: false
@@ -61,6 +62,28 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_16_120000) do
     t.datetime "updated_at", null: false
     t.index ["adventure_id", "created_at"], name: "index_adventure_messages_on_adventure_id_and_created_at"
     t.index ["adventure_id"], name: "index_adventure_messages_on_adventure_id"
+  end
+
+  create_table "adventure_narrative_facts", force: :cascade do |t|
+    t.bigint "adventure_id", null: false
+    t.text "text", null: false
+    t.string "kind", null: false
+    t.text "entities", default: [], array: true
+    t.string "polarity", default: "asserts", null: false
+    t.vector "embedding", limit: 1536
+    t.bigint "introduced_at_loop_id"
+    t.bigint "invalidated_at_loop_id"
+    t.bigint "invalidated_by_fact_id"
+    t.string "source", null: false
+    t.integer "source_idx"
+    t.datetime "created_at", null: false
+    t.index ["adventure_id", "introduced_at_loop_id", "source_idx"], name: "index_narrative_facts_loremaster_source_idx_uniq", unique: true, where: "((source)::text = 'loremaster'::text)"
+    t.index ["adventure_id"], name: "index_adventure_narrative_facts_on_adventure_id"
+    t.index ["adventure_id"], name: "index_narrative_facts_active_by_adventure", where: "(invalidated_at_loop_id IS NULL)"
+    t.index ["embedding"], name: "index_narrative_facts_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["introduced_at_loop_id"], name: "index_adventure_narrative_facts_on_introduced_at_loop_id"
+    t.index ["invalidated_at_loop_id"], name: "index_adventure_narrative_facts_on_invalidated_at_loop_id"
+    t.index ["invalidated_by_fact_id"], name: "index_adventure_narrative_facts_on_invalidated_by_fact_id"
   end
 
   create_table "adventure_sheet_class_abilities", force: :cascade do |t|
@@ -664,6 +687,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_16_120000) do
   add_foreign_key "adventure_loops", "adventures", on_delete: :nullify
   add_foreign_key "adventure_loops", "pipelines"
   add_foreign_key "adventure_messages", "adventures"
+  add_foreign_key "adventure_narrative_facts", "adventure_loops", column: "introduced_at_loop_id"
+  add_foreign_key "adventure_narrative_facts", "adventure_loops", column: "invalidated_at_loop_id"
+  add_foreign_key "adventure_narrative_facts", "adventure_narrative_facts", column: "invalidated_by_fact_id"
+  add_foreign_key "adventure_narrative_facts", "adventures"
   add_foreign_key "adventure_sheet_class_abilities", "adventure_sheets"
   add_foreign_key "adventure_sheet_class_abilities", "class_ability_definitions", column: "class_ability_id"
   add_foreign_key "adventure_sheet_feats", "adventure_sheets"

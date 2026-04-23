@@ -9,6 +9,42 @@ class DmConfig < ApplicationRecord
   EMBELLISHER_MODEL_HINT = "Creative model. Flavor generation benefits from vivid writing — e.g. gpt-4.1, gpt-4o, gpt-5. Expand mode benefits from reasoning — e.g. o3-mini, gpt-5-mini."
   EMBELLISHER_MODES = %w[embellish expand].freeze
 
+  # Closed whitelist for the narrative facts store's embedding model
+  # selector (see Decision 37). The `adventure_narrative_facts.embedding`
+  # column is fixed at `vector(1536)`, so models with native dim > 1536
+  # need `dimensions: 1536` passed to OpenAI to truncate to our column
+  # width — captured here as `dimensions_override` so the read/write
+  # call sites don't have to duplicate that mapping.
+  EMBEDDING_MODELS = [
+    {
+      "id"                   => "text-embedding-3-small",
+      "name"                 => "text-embedding-3-small (default)",
+      "native_dimensions"    => 1536,
+      "dimensions_override"  => nil,
+      "input_cost"           => 0.02,
+      "description"          => "Cheap, fast, 1536-d native. Good retrieval quality for the price."
+    },
+    {
+      "id"                   => "text-embedding-3-large",
+      "name"                 => "text-embedding-3-large",
+      "native_dimensions"    => 3072,
+      "dimensions_override"  => 1536,
+      "input_cost"           => 0.13,
+      "description"          => "Best OpenAI retrieval quality; native 3072-d truncated to 1536-d for our column. ~6.5× cost of -3-small."
+    },
+    {
+      "id"                   => "text-embedding-ada-002",
+      "name"                 => "text-embedding-ada-002 (legacy)",
+      "native_dimensions"    => 1536,
+      "dimensions_override"  => nil,
+      "input_cost"           => 0.10,
+      "description"          => "Previous generation; worse quality than -3-small at 5× the cost. Kept for compatibility only."
+    },
+  ].freeze
+
+  EMBEDDING_MODEL_IDS = EMBEDDING_MODELS.map { |m| m["id"] }.freeze
+  EMBEDDING_MODEL_HINT = "Model used to embed both stored facts (write path) and player intents (read path). Switching the model invalidates existing vectors — already-stored facts will retrieve poorly until re-embedded. Pick once and only change with a deliberate backfill plan."
+
   WAIT_MESSAGES_DEFAULT = [
     "Sculpting nightmarish creatures from clay...",
     "Convincing the universe to exist...",
@@ -35,7 +71,6 @@ class DmConfig < ApplicationRecord
     "model" => "gpt-4o-mini",
     "step_models" => {},
     "embellisher_mode" => "embellish",
-    "narration_mode" => "parallel",
     "action_queue" => "progressive",
     "show_roll_dc" => true,
     "scene_history_depth" => 10,
@@ -50,6 +85,9 @@ class DmConfig < ApplicationRecord
     },
     "wait_messages" => WAIT_MESSAGES_DEFAULT,
     "token_budgets" => {},
+    "narrative_facts_top_k" => 8,
+    "narrative_facts_active_window" => 20,
+    "narrative_facts_embedding_model" => "text-embedding-3-small",
   }.freeze
 
   def self.instance
@@ -102,5 +140,27 @@ class DmConfig < ApplicationRecord
 
   def no_auto_hit_miss?
     get("no_auto_hit_miss") == true
+  end
+
+  def narrative_facts_top_k
+    get("narrative_facts_top_k").to_i
+  end
+
+  def narrative_facts_active_window
+    get("narrative_facts_active_window").to_i
+  end
+
+  def narrative_facts_embedding_model
+    val = get("narrative_facts_embedding_model").to_s
+    EMBEDDING_MODEL_IDS.include?(val) ? val : DEFAULTS["narrative_facts_embedding_model"]
+  end
+
+  # Returns the `dimensions:` parameter to pass to OpenAI for the
+  # currently-selected embedding model, or nil when the model's native
+  # dim already matches our `vector(1536)` column. Call sites pass this
+  # through to `AiClient#embeddings(dimensions:)`.
+  def narrative_facts_embedding_dimensions
+    entry = EMBEDDING_MODELS.find { |m| m["id"] == narrative_facts_embedding_model }
+    entry && entry["dimensions_override"]
   end
 end

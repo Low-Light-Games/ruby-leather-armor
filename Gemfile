@@ -11,6 +11,10 @@ gem "sprockets-rails"
 # Use PostgreSQL as the database for Active Record
 gem "pg", "~> 1.1"
 
+# pgvector client for ActiveRecord — powers the adventure_narrative_facts
+# store used by the Loremaster / World Consistency Check.
+gem "neighbor", "~> 0.5"
+
 # Use the Puma web server [https://github.com/puma/puma]
 gem "puma", ">= 5.0"
 

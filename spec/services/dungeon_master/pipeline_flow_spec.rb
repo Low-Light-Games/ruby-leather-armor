@@ -45,6 +45,14 @@ RSpec.describe "DungeonMaster::PipelineEngine — full prompt flow", type: :serv
       allow(ai_spy).to receive(:last_model_used).and_return("gpt-4o-mini-test")
       allow(ai_spy).to receive(:last_usage).and_return({})
       allow(ai_spy).to receive(:last_failed_raw_response).and_return(nil)
+      # C10: sanity_checker_world reads facts via Lore::FactsLookup,
+      # which calls ai.embeddings(texts: [...]). Without this stub,
+      # the instance_spy's default (returning itself) breaks on
+      # vectors.first. The concrete return shape only needs to be
+      # an array-of-float-arrays; retrieval scope is empty anyway.
+      allow(ai_spy).to receive(:embeddings) do |**kw|
+        Array(kw[:texts]).map { Array.new(1536, 0.0) }
+      end
 
       fresh_pipeline = build_pipeline(adventure)
       fresh_pipeline.run_prompt("I open the door carefully.")

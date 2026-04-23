@@ -11,7 +11,7 @@ module DungeonMaster
         private
 
         def run_accumulated_narrative_phase(results)
-          return { action: :narrated, narrative: "", adventure_complete: false } if results.empty?
+          return NarrativePhaseResults.narrated(narrative: "", adventure_complete: false).to_h if results.empty?
 
           narration_inputs = Narrative::AccumulatedAssembly.call(pipeline_engine: self, results: results)
           run_narrative_phase(narration_inputs.intent,

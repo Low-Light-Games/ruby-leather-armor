@@ -72,7 +72,12 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
 
   postgres:
-    image: postgres:16-alpine
+    # pgvector/pgvector:pg16 is the official pgvector extension packaged on top
+    # of Postgres 16. It keeps the pg_data on-disk layout of `postgres:16` so
+    # the existing postgres_data volume is compatible. Using the bundled image
+    # avoids having to run `CREATE EXTENSION vector` against a base postgres
+    # that lacks the extension in the first place (see .cursor/rules/docker-required-for-tests.mdc).
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_DB: exercises_development
       POSTGRES_USER: exercises

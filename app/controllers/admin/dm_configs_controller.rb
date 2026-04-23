@@ -71,6 +71,19 @@ module Admin
         new_settings["token_budgets"] = budgets if budgets.any?
       end
 
+      if params[:narrative_facts_embedding_model].present? &&
+         DmConfig::EMBEDDING_MODEL_IDS.include?(params[:narrative_facts_embedding_model])
+        new_settings["narrative_facts_embedding_model"] = params[:narrative_facts_embedding_model]
+      end
+
+      if params[:narrative_facts_top_k].present?
+        new_settings["narrative_facts_top_k"] = params[:narrative_facts_top_k].to_i.clamp(1, 50)
+      end
+
+      if params[:narrative_facts_active_window].present?
+        new_settings["narrative_facts_active_window"] = params[:narrative_facts_active_window].to_i.clamp(0, 200)
+      end
+
       @config.update!(settings: new_settings)
       redirect_to admin_dm_config_path, notice: "DM settings updated."
     end

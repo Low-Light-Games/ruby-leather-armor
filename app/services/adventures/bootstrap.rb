@@ -10,6 +10,8 @@ module Adventures
   #   3. Seed plot_state with empty tracking arrays
   #   4. Run Embellisher (non-fatal — logs and continues on AI errors)
   #   5. Ensure an opening DM message exists
+  #   6. Run Lore::SeedFromAdventure to populate the narrative facts store
+  #      (non-fatal — internal rescue + Sentry + seed_failure play_log)
   #
   # Returns the persisted (reloaded) Adventure on success.
   # Raises ActiveRecord::RecordInvalid or ActiveRecord::RecordNotSaved on failure.
@@ -34,6 +36,7 @@ module Adventures
       seed_plot_state!(adventure)
       run_embellisher(adventure)
       ensure_opening_message(adventure)
+      run_narrative_facts_seed(adventure)
       adventure.reload
     end
 
@@ -96,6 +99,18 @@ module Adventures
         content:      @story.preview,
         message_type: "narrative"
       )
+    end
+
+    # Placed after Embellisher + opening message so enriched_world and the opening narrative are visible to the seed call. Belt-and-braces rescue:
+    # SeedFromAdventure is already lossy-with-Sentry internally (see Decision 37); this rescue just guarantees adventure creation never fails because
+    # seeding did.
+    def run_narrative_facts_seed(adventure)
+      DungeonMaster::Lore::SeedFromAdventure.call(adventure: adventure, user: @user)
+    rescue StandardError => e
+      ApplicationErrorReporter.notify(
+        e, context: { source: "adventures_bootstrap_narrative_facts_seed", adventure_id: adventure.id }
+      )
+      Rails.logger.error("[Adventures::Bootstrap] Narrative facts seed failed: #{e.message}")
     end
   end
 end

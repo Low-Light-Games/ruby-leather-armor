@@ -114,6 +114,17 @@ shared_context "with mocked ai" do
       instance.instance_variable_set(:@last_usage, { "prompt_tokens" => 10, "completion_tokens" => 20 })
       response
     end
+
+    # Stub embeddings globally — C10 cut the World Consistency Check
+    # over to a pgvector-backed facts store, so every turn now embeds
+    # the player intent once at the sanity gate (read side) and one
+    # batched call at Loremaster apply (write side). Default stub
+    # returns dim-1536 zero vectors so `nearest_neighbors` still runs
+    # end-to-end but retrieves nothing interesting — individual specs
+    # can override this allow if they want to drive a specific hit.
+    allow_any_instance_of(DungeonMaster::AiClient).to receive(:embeddings) do |_inst, **kwargs|
+      Array(kwargs[:texts]).map { Array.new(1536, 0.0) }
+    end
   end
 end
 
@@ -205,6 +216,17 @@ shared_context "with evaluator stubs" do
           when "narrate"
             evaluator_entry("narrate", nil,
                             "parsed_response" => JSON.parse(AI_STEP_RESPONSES["narrate"]))
+          when "loremaster"
+            # Loremaster runs as the third prompt in the narrative-phase
+            # fan-out (C6 of narrative facts plan). Default stub emits no
+            # facts and no invalidations so existing pipeline specs see
+            # no new side effects unless they stub a richer response.
+            evaluator_entry("loremaster", nil,
+                            "parsed_response" => {
+                              "facts" => [],
+                              "invalidates" => [],
+                              "reasoning" => "stub loremaster — no facts extracted",
+                            })
           else
             domain     = p.dig("meta", "domain")
             evaluator_entry("beacon", domain,

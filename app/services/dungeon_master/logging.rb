@@ -156,6 +156,72 @@ module DungeonMaster
       text.length > length ? "#{text.first(length)}…" : text
     end
 
+    # Times an embedding-style AI call and routes to ai_log! on success
+    # or ai_log_error! on AiError, always re-raising. Parallels
+    # `Steps::Helpers#timed_ai_call` but tuned to the embedding shape:
+    # the block returns the vector Array (not `[raw, parsed]`), and the
+    # caller supplies `model_used` explicitly because embeddings don't
+    # round-trip through `AiClient#last_model_used`.
+    #
+    # `source` is the caller tag carried into the
+    # `EmbeddingLogDetails` payload (e.g. "loremaster", "seed",
+    # "facts_lookup") so Admin > Play Logs can tell sites apart.
+    def timed_embedding_call(prompt_summary, model_used:, source:)
+      t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      vectors = yield
+      ai_log!(
+        "embedding", prompt_summary, nil,
+        EmbeddingLogDetails.from_vectors(vectors, source: source).to_h,
+        parse_status: "success",
+        model_used:   model_used,
+        duration_ms:  elapsed_ms(t0),
+      )
+      vectors
+    rescue AiError => e
+      ai_log_error!(
+        "embedding", prompt_summary, e,
+        model_used:  model_used,
+        duration_ms: elapsed_ms(t0),
+      )
+      raise
+    end
+
+    # Times a chat-style AI call and routes to ai_log! on success or
+    # ai_log_error! on AiError / TokenBudgetExceededError, always
+    # re-raising. Sibling of timed_embedding_call; equivalent to
+    # Steps::Helpers#timed_ai_call but usable from non-Step services
+    # (Lore::SeedFromAdventure, Embellisher, Enricher, …) that receive
+    # `ai` explicitly rather than as an ivar. Block must return
+    # [raw_response, parsed_response].
+    def timed_chat_call(call_type, prompt_summary, ai:, request_body: nil)
+      t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      raw, parsed = yield
+      ai_log!(
+        call_type, prompt_summary, raw, parsed,
+        parse_status: ai.last_parse_status,
+        request_body: request_body,
+        model_used:   ai.last_model_used,
+        duration_ms:  elapsed_ms(t0),
+        usage:        ai.last_usage,
+      )
+      parsed
+    rescue TokenBudgetExceededError, AiError => e
+      ai_log_error!(
+        call_type, prompt_summary, e,
+        raw_response: ai.last_failed_raw_response,
+        request_body: request_body,
+        status:       e.is_a?(TokenBudgetExceededError) ? "token_budget_exceeded" : "api_error",
+        model_used:   ai.last_model_used,
+        duration_ms:  elapsed_ms(t0),
+        usage:        ai.last_usage,
+      )
+      raise
+    end
+
+    def elapsed_ms(t0)
+      ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
+    end
+
     # Sentry + Rails.error for pipeline exceptions surfaced to the player — never raises.
     def capture_pipeline_exception!(exception)
       Rails.logger.error(
@@ -180,6 +246,21 @@ module DungeonMaster
     end
 
     # When the player starts a new prompt while a roll/initiative request is still pending.
+    # Sentry + context-merged error notification. Public so best-effort
+    # services like `Lore::ApplyResults` (Loremaster apply path) can
+    # observe their lossy failures without losing the structured
+    # registry/adventure/user context. Internal callers below `private`
+    # still invoke the same method directly.
+    def report_error(exception, context: {})
+      full_context = {
+        registry_entry_uuid: @registry_entry_uuid,
+        adventure_id: @adventure&.id,
+        player_message_id: @player_message_id
+      }.merge(context)
+
+      ApplicationErrorReporter.notify(exception, context: full_context)
+    end
+
     def log_abandoned_pipeline_if_needed!
       msgs = @adventure.adventure_messages
       last_request = msgs.for_message_types(%w[roll_request initiative_request]).newest_first.first
@@ -245,16 +326,6 @@ module DungeonMaster
       ShipPipelineRegistryEntryEventJob.perform_later(@registry_entry_uuid)
     rescue => e
       report_error(e, context: { method: "enqueue_registry_entry_event!", registry_entry_uuid: @registry_entry_uuid })
-    end
-
-    def report_error(exception, context: {})
-      full_context = {
-        registry_entry_uuid: @registry_entry_uuid,
-        adventure_id: @adventure&.id,
-        player_message_id: @player_message_id
-      }.merge(context)
-
-      ApplicationErrorReporter.notify(exception, context: full_context)
     end
 
     # Last-resort write when the primary ai_log! or ai_log_error! fails.

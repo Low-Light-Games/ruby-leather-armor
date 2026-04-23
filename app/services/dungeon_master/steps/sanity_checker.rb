@@ -60,7 +60,7 @@ module DungeonMaster
       end
 
       def sanity_checker_world_evaluator_prompt(intent)
-        prompt_context = build_world_prompt_context
+        prompt_context = build_world_prompt_context(intent: intent)
 
         system_prompt = PromptRenderer.render("sanity_checker_world",
           sanity_context: prompt_context)
@@ -216,7 +216,7 @@ module DungeonMaster
       def run_world_consistency_check(intent)
         prompt_summary = "SanityChecker/world: \"#{@log.truncate(intent[:intention])}\""
 
-        prompt_context = build_world_prompt_context
+        prompt_context = build_world_prompt_context(intent: intent)
 
         system_prompt = PromptRenderer.render("sanity_checker_world",
           sanity_context: prompt_context)
@@ -246,7 +246,7 @@ module DungeonMaster
         )
       end
 
-      def build_world_prompt_context
+      def build_world_prompt_context(intent:)
         combat_ctx = @adventure.combat_context || {}
         combat_active = combat_ctx["active"] == true
         combat_roster = combat_active ? Array(combat_ctx["participants"]).filter_map { |p| p["name"] } : []
@@ -254,10 +254,19 @@ module DungeonMaster
         PromptViews::SanityCheckerPromptContext.new(
           scene_summary: @adventure.scene_summary,
           scene_history: @adventure.scene_history,
-          micro_contexts: PromptHelpers.all_micro_contexts(@adventure),
+          established_facts: retrieve_established_facts(intent),
           npc_names: @adventure.story.story_npcs.pluck(:name),
           combat_active: combat_active,
           combat_turn_order: combat_roster
+        )
+      end
+
+      def retrieve_established_facts(intent)
+        DungeonMaster::Lore::FactsLookup.call(
+          adventure:  @adventure,
+          ai:         @ai,
+          log:        @log,
+          query_text: intent[:intention],
         )
       end
     end
