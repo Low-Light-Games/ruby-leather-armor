@@ -38,7 +38,7 @@ class AdventuresController < ApplicationController
     sheet = policy_scope(Sheet).find(params[:sheet_id])
 
     directed_dm             = ActiveModel::Type::Boolean.new.cast(params.fetch(:directed_dm, false))
-    skip_world_sanity_check = ActiveModel::Type::Boolean.new.cast(params.fetch(:skip_world_sanity_check, true))
+    skip_world_sanity_check = true #ActiveModel::Type::Boolean.new.cast(params.fetch(:skip_world_sanity_check, true))
 
     @adventure = Adventures::Bootstrap.new(
       story:                   story,
