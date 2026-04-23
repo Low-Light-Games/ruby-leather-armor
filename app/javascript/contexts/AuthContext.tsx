@@ -9,9 +9,18 @@ import type { Dispatch, SetStateAction } from 'react';
 import { csrfToken } from '../utils/api';
 
 interface User {
+  usage: {
+    current_tokens: number;
+    limit_tokens: number;
+    percentage: number;
+    limit_reached: boolean;
+    delinquent: boolean;
+    grace_period_ends_at: string | null;
+  };
   id: number;
   email: string;
   admin: boolean;
+  plan_key: string;
   tier: string;
   onboarding_state: 'new' | 'in_progress' | 'completed';
   banned: boolean;

@@ -4,13 +4,6 @@ class User < ApplicationRecord
   TIERS = %w[free paid].freeze
   ONBOARDING_STATES = %w[new in_progress completed].freeze
 
-  # Monthly cost cap in microdollars ($1 = 1,000,000 microdollars).
-  # Defined in tier_limits.yml at the project root.
-  TIER_LIMITS = YAML.load_file(Rails.root.join("tier_limits.yml"))
-                    .dig("tiers")
-                    .transform_values { |v| v["monthly_limit_microdollars"] }
-                    .freeze
-
   has_many :sheets, dependent: :destroy
   has_many :adventures, dependent: :destroy
   has_many :ai_usage_records, dependent: :nullify
@@ -40,35 +33,41 @@ class User < ApplicationRecord
   end
 
   def free?
-    tier == "free"
+    plan_key == "free"
   end
 
   def paid?
-    tier == "paid"
+    !free?
+  end
+
+  def plan_key
+    stripe_profile&.plan_key.presence || "free"
   end
 
   def monthly_usage_limit
-    TIER_LIMITS[tier]
+    StripePlans.token_limit_for(plan_key)
   end
 
-  def monthly_usage_microdollars
+  def monthly_usage_tokens
     ai_usage_records
       .where("created_at >= ?", Time.current.beginning_of_month)
-      .sum(:total_cost_microdollars)
+      .sum(:total_tokens)
   end
 
   def usage_limit_reached?
+    return false if admin?
+
     limit = monthly_usage_limit
     return false if limit.nil?
 
-    monthly_usage_microdollars >= limit
+    monthly_usage_tokens >= limit
   end
 
   def usage_percentage
     limit = monthly_usage_limit
     return 0.0 if limit.nil? || limit.zero?
 
-    [(monthly_usage_microdollars.to_f / limit * 100).round(1), 100.0].min
+    [(monthly_usage_tokens.to_f / limit * 100).round(1), 100.0].min
   end
 
   def banned?

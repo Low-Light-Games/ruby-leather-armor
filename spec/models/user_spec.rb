@@ -34,19 +34,16 @@ RSpec.describe User, type: :model do
     end
   end
 
-  describe "TIER_LIMITS" do
-    it "loads from tier_limits.yml with values for all tiers" do
-      expect(User::TIER_LIMITS.keys).to match_array(User::TIERS)
+  describe "#plan_key" do
+    it "defaults to free when the user has no stripe profile" do
+      expect(create(:user).plan_key).to eq("free")
     end
 
-    it "free tier has a lower limit than paid" do
-      expect(User::TIER_LIMITS["free"]).to be < User::TIER_LIMITS["paid"]
-    end
+    it "reads from the associated stripe profile when present" do
+      user = create(:user)
+      create(:user_stripe_profile, user: user, plan_key: "scout")
 
-    it "all limits are positive integers" do
-      User::TIER_LIMITS.each_value do |limit|
-        expect(limit).to be_a(Integer).and be_positive
-      end
+      expect(user.reload.plan_key).to eq("scout")
     end
   end
 

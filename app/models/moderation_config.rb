@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 # Loads moderation settings from config/moderation.yml at boot.
-# Mirrors the pattern of User::TIER_LIMITS (tier_limits.yml).
 #
 # Usage: ModerationConfig.instance.enabled?
 #        ModerationConfig.instance.max_strikes

@@ -36,16 +36,19 @@ class SessionsController < ApplicationController
       id: user.id,
       email: user.email,
       admin: user.admin,
+      plan_key: user.plan_key,
       tier: user.tier,
       onboarding_state: user.onboarding_state,
       banned: user.banned?,
       trusted: user.trusted?,
       moderation_strikes: user.moderation_strikes,
       usage: {
-        current_microdollars: user.monthly_usage_microdollars,
-        limit_microdollars: user.monthly_usage_limit,
+        current_tokens: user.monthly_usage_tokens,
+        limit_tokens: user.monthly_usage_limit,
         percentage: user.usage_percentage,
-        limit_reached: user.usage_limit_reached?
+        limit_reached: user.usage_limit_reached?,
+        delinquent: user.stripe_profile&.grace_period_ends_at.present?,
+        grace_period_ends_at: user.stripe_profile&.grace_period_ends_at
       }
     }
   end
