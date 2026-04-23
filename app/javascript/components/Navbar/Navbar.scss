@@ -76,6 +76,31 @@
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
+
+    .plans-cta {
+      padding: 5px 14px;
+      background-color: $green-ink;
+      color: $parchment;
+      border: 1px solid $green-ink;
+      border-radius: 0;
+      cursor: pointer;
+      font-size: 13px;
+      font-family: $font-display;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      text-decoration: none;
+      transition: background-color 0.2s, border-color 0.2s;
+
+      &:hover {
+        background-color: color.adjust($green-ink, $lightness: -8%);
+        border-color: color.adjust($green-ink, $lightness: -8%);
+      }
+
+      &:focus-visible {
+        outline: 2px solid $green-ink;
+        outline-offset: 2px;
+      }
+    }
   }
 
   .header-actions {

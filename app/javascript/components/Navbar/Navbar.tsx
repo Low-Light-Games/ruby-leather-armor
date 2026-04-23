@@ -38,11 +38,11 @@ export const Navbar = () => {
       <div className="app-header">
         <div className="user-info">
           <span>Logged in as: {user.email}</span>
+          <a href="/plans" className="plans-cta">Plans</a>
           {user.admin && <span className="admin-badge">Admin</span>}
         </div>
         <div className="header-actions">
           <a href="/sheets" className="nav-link">Sheets</a>
-          <a href="/plans" className="nav-link">Plans</a>
           <a href="/adventures/new" className="adventure-cta" onClick={onAdventureClick}>
             Adventure!
           </a>

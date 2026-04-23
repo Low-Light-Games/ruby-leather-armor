@@ -8,9 +8,15 @@ import type { SubscriptionSuccessStatus } from './types'
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export const SubscriptionSuccess = () => {
+  const previewMode = document.getElementById('subscription-success-root')?.dataset.previewMode
   const [status, setStatus] = useState<SubscriptionSuccessStatus>('syncing')
 
   useEffect(() => {
+    if (previewMode === 'confirmed' || previewMode === 'pending' || previewMode === 'syncing') {
+      setStatus(previewMode)
+      return
+    }
+
     let cancelled = false
 
     const poll = async () => {
@@ -38,12 +44,17 @@ export const SubscriptionSuccess = () => {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [previewMode])
 
   return (
     <div className="app">
       <Navbar />
       <div className="subscription-success-page">
+        {previewMode && (
+          <p className="subscription-success-preview-note">
+            Admin preview mode: <strong>{previewMode}</strong>
+          </p>
+        )}
         {status === 'syncing' && (
           <>
             <h1>Finalizing your subscription...</h1>
@@ -64,7 +75,7 @@ export const SubscriptionSuccess = () => {
             <h1>Payment received, still syncing</h1>
             <p>
               Your subscription is processing. Refresh this page in a moment, or continue playing while we finish
-              webhook sync.
+              syncing the subscription details.
             </p>
             <a href="/adventures/new" className="subscription-success-link">Continue to adventures</a>
           </>

@@ -5,7 +5,14 @@ class SubscriptionsController < ApplicationController
     @current_plan_key = presenter.current_plan_key
   end
 
-  def success; end
+  def success
+    @preview_mode = resolve_preview_mode
+    return if @preview_mode.present?
+
+    unless valid_success_session?
+      redirect_to plans_path, alert: "Subscription confirmation is missing or invalid."
+    end
+  end
 
   def checkout
     plan = resolve_checkout_plan
@@ -69,5 +76,31 @@ class SubscriptionsController < ApplicationController
 
     customer = StripeGateway.create_customer(email: current_user.email)
     profile.update!(stripe_customer_id: customer.id)
+  end
+
+  def resolve_preview_mode
+    return nil unless current_user&.admin?
+
+    preview_mode = params[:preview].to_s
+    return preview_mode if %w[syncing confirmed pending].include?(preview_mode)
+
+    nil
+  end
+
+  def valid_success_session?
+    session_id = params[:session_id].to_s
+    return false if session_id.blank?
+
+    checkout_session = StripeGateway.retrieve_checkout_session(session_id)
+    return false unless checkout_session&.mode == "subscription"
+
+    customer_matches = current_user.stripe_profile&.stripe_customer_id.present? &&
+      checkout_session.customer.to_s == current_user.stripe_profile.stripe_customer_id
+    client_reference_matches = checkout_session.client_reference_id.to_s == current_user.id.to_s
+
+    customer_matches || client_reference_matches
+  rescue StandardError => e
+    ApplicationErrorReporter.notify(e, context: { source: "subscriptions_success_session_validation", user_id: current_user.id, session_id: session_id })
+    false
   end
 end

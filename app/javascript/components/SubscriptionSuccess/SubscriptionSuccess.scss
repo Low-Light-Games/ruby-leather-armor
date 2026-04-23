@@ -1,24 +1,49 @@
+@use '../tokens' as *;
+@use 'sass:color';
+
 .subscription-success-page {
   max-width: 760px;
   margin: 0 auto;
   padding: 32px 24px;
+  color: $ink;
 }
 
 .subscription-success-page h1 {
   margin-bottom: 10px;
+  font-family: $font-display;
+  color: $red-ink;
+  letter-spacing: 0.03em;
 }
 
 .subscription-success-page p {
-  color: #374151;
+  color: $ink-mid;
   margin-bottom: 18px;
+  font-family: $font-body;
+}
+
+.subscription-success-preview-note {
+  margin-top: 0;
+  margin-bottom: 14px;
+  color: $red-ink;
+  font-size: 13px;
+  font-family: $font-body;
 }
 
 .subscription-success-link {
   display: inline-block;
   text-decoration: none;
-  background: #2563eb;
-  color: #fff;
-  border-radius: 8px;
-  padding: 10px 16px;
+  background: $green-ink;
+  color: $parchment;
+  border: 1px solid $green-ink;
+  border-radius: 0;
+  padding: 8px 16px;
   font-weight: 600;
+  font-family: $font-display;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+
+  &:hover {
+    background: color.adjust($green-ink, $lightness: -8%);
+    border-color: color.adjust($green-ink, $lightness: -8%);
+  }
 }

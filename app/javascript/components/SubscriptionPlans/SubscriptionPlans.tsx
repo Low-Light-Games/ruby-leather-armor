@@ -88,6 +88,12 @@ export const SubscriptionPlans = ({ plans, currentPlanKey }: SubscriptionPlansPr
             <button type="button" className="portal-button" onClick={openPortal} disabled={portalLoading}>
               {portalLoading ? 'Opening portal...' : 'Manage billing'}
             </button>
+            {user.admin && (
+              <div className="subscription-preview-links">
+                <a href="/subscription/success?preview=confirmed">Preview success</a>
+                <a href="/subscription/success?preview=pending">Preview pending</a>
+              </div>
+            )}
           </div>
         )}
       </div>
