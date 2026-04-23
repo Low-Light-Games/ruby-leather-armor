@@ -2,6 +2,7 @@ class PlayLog < ApplicationRecord
   belongs_to :adventure, optional: true
   belongs_to :player_message, class_name: "AdventureMessage", optional: true
   belongs_to :ai_usage_record, optional: true
+  belongs_to :adventure_loop, optional: true
 
   PIPELINE_EVENT_TYPES = %w[
     capability_rejection world_check_failure

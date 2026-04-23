@@ -67,10 +67,12 @@ module DungeonMaster
 
     def bind_current_loop!(adventure_loop)
       @loop = adventure_loop
+      @log.adventure_loop = adventure_loop
     end
 
     def clear_current_loop!
       @loop = nil
+      @log.adventure_loop = nil
     end
 
     private
