@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_22_120001) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_23_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -215,7 +215,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_22_120001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "event_type"
+    t.bigint "adventure_loop_id"
+    t.integer "loop_sequence_index"
     t.index ["adventure_id"], name: "index_ai_usage_records_on_adventure_id"
+    t.index ["adventure_loop_id"], name: "index_ai_usage_records_on_adventure_loop_id"
     t.index ["ai_log_id"], name: "index_ai_usage_records_on_ai_log_id"
     t.index ["created_at"], name: "index_ai_usage_records_on_created_at"
     t.index ["event_type"], name: "index_ai_usage_records_on_event_type"
@@ -497,7 +500,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_22_120001) do
     t.integer "duration_ms"
     t.bigint "ai_usage_record_id"
     t.string "app_version"
+    t.bigint "adventure_loop_id"
+    t.integer "loop_sequence_index"
     t.index ["adventure_id"], name: "index_play_logs_on_adventure_id"
+    t.index ["adventure_loop_id"], name: "index_play_logs_on_adventure_loop_id"
     t.index ["ai_usage_record_id"], name: "index_play_logs_on_ai_usage_record_id"
     t.index ["created_at"], name: "index_play_logs_on_created_at"
     t.index ["dm_service"], name: "index_play_logs_on_dm_service"
@@ -664,15 +670,43 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_22_120001) do
     t.index ["story_id"], name: "index_story_npcs_on_story_id"
   end
 
+  create_table "stripe_webhook_events", force: :cascade do |t|
+    t.string "stripe_event_id", null: false
+    t.string "event_type", null: false
+    t.datetime "processed_at", null: false
+    t.text "payload_digest", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["stripe_event_id"], name: "index_stripe_webhook_events_on_stripe_event_id", unique: true
+  end
+
+  create_table "user_stripe_profiles", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "plan_key", default: "free", null: false
+    t.string "stripe_customer_id"
+    t.string "stripe_subscription_id"
+    t.string "stripe_subscription_status"
+    t.string "stripe_price_id"
+    t.datetime "stripe_current_period_end"
+    t.datetime "delinquent_since"
+    t.datetime "grace_period_ends_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["stripe_customer_id"], name: "index_user_stripe_profiles_on_stripe_customer_id", unique: true
+    t.index ["stripe_price_id"], name: "index_user_stripe_profiles_on_stripe_price_id"
+    t.index ["stripe_subscription_id"], name: "index_user_stripe_profiles_on_stripe_subscription_id", unique: true
+    t.index ["user_id"], name: "index_user_stripe_profiles_on_user_id", unique: true
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "email"
     t.string "password_digest"
     t.boolean "admin"
+    t.string "tier", default: "free", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "provider"
     t.string "uid"
-    t.string "tier", default: "free", null: false
     t.string "onboarding_state", default: "new", null: false
     t.integer "moderation_strikes", default: 0, null: false
     t.boolean "banned", default: false, null: false
@@ -738,4 +772,5 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_22_120001) do
   add_foreign_key "story_npcs", "adventures"
   add_foreign_key "story_npcs", "stories"
   add_foreign_key "story_npcs", "story_locations", column: "location_id", on_delete: :nullify
+  add_foreign_key "user_stripe_profiles", "users"
 end

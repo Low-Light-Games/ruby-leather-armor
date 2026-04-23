@@ -5,7 +5,8 @@ module DungeonMaster
   # and structured Rails.logger output for errors.
   # Every write is rescue'd so a logging failure never breaks gameplay.
   class Logging
-    attr_accessor :player_message_id, :registry_entry_uuid, :player_message_content, :action_label
+    attr_accessor :player_message_id, :registry_entry_uuid, :player_message_content, :action_label,
+                  :adventure_loop
 
     def initialize(adventure:, user:, dm_service: "standard")
       @adventure = adventure
@@ -14,6 +15,7 @@ module DungeonMaster
       @player_message_id = nil
       @registry_entry_uuid = nil
       @player_message_content = nil
+      @adventure_loop = nil
     end
 
     def start_registry_entry!(message_content)
@@ -84,6 +86,8 @@ module DungeonMaster
         player_message_id: @player_message_id,
         registry_entry_uuid: @registry_entry_uuid,
         player_message_content: @player_message_content,
+        adventure_loop_id: @adventure_loop&.id,
+        loop_sequence_index: @adventure_loop&.sequence_index,
         app_version: APP_VERSION
       )
       enqueue_play_log_event!(log)
@@ -115,6 +119,8 @@ module DungeonMaster
         player_message_id: @player_message_id,
         registry_entry_uuid: @registry_entry_uuid,
         player_message_content: @player_message_content,
+        adventure_loop_id: @adventure_loop&.id,
+        loop_sequence_index: @adventure_loop&.sequence_index,
         duration_ms: duration_ms,
         app_version: APP_VERSION
       )
@@ -142,6 +148,8 @@ module DungeonMaster
         player_message_id: @player_message_id,
         registry_entry_uuid: @registry_entry_uuid,
         player_message_content: @player_message_content,
+        adventure_loop_id: @adventure_loop&.id,
+        loop_sequence_index: @adventure_loop&.sequence_index,
         duration_ms: duration_ms,
         app_version: APP_VERSION
       )
@@ -296,6 +304,8 @@ module DungeonMaster
         adventure_id: @adventure&.id,
         user_id: @user&.id,
         registry_entry_uuid: @registry_entry_uuid,
+        adventure_loop_id: @adventure_loop&.id,
+        loop_sequence_index: @adventure_loop&.sequence_index,
         model_id: model_used,
         event_type: play_log.event_type,
         input_tokens: usage[:input_tokens] || 0,

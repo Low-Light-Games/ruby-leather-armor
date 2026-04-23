@@ -92,6 +92,25 @@ RSpec.describe ShipPlayLogJob, type: :job do
         )
       end
 
+      it "includes adventure_loop_id and loop_sequence_index when the log belongs to a loop" do
+        loop_record = create(:adventure_loop, adventure: adventure,
+                             registry_entry_uuid: registry_entry_uuid, sequence_index: 2)
+        play_log.update_columns(adventure_loop_id: loop_record.id, loop_sequence_index: 2)
+
+        described_class.perform_now(play_log.id)
+
+        expect(AxiomShipper).to have_received(:ingest).with(
+          hash_including(adventure_loop_id: loop_record.id, loop_sequence_index: 2)
+        )
+      end
+
+      it "ships nil adventure_loop_id and loop_sequence_index when no loop is attached" do
+        described_class.perform_now(play_log.id)
+        expect(AxiomShipper).to have_received(:ingest).with(
+          hash_including(adventure_loop_id: nil, loop_sequence_index: nil)
+        )
+      end
+
       it "sets _time to the play_log created_at, not job execution time" do
         described_class.perform_now(play_log.id)
         expect(AxiomShipper).to have_received(:ingest).with(

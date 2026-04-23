@@ -50,6 +50,8 @@ class ShipPlayLogJob < ApplicationJob
       play_log_id:            log.id,
       registry_entry_uuid:    log.registry_entry_uuid,
       adventure_id:           log.adventure_id,
+      adventure_loop_id:      log.adventure_loop_id,
+      loop_sequence_index:    log.loop_sequence_index,
       player_message_id:      log.player_message_id,
       player_message_content: log.player_message_content,
       event_type:             log.event_type,
