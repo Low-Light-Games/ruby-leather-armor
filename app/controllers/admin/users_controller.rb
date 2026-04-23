@@ -5,10 +5,7 @@ module Admin
     before_action :set_user, only: [:show, :update_plan, :ban, :unban, :trust, :untrust]
 
     def index
-      @users = User.includes(:stripe_profile)
-                   .order(created_at: :desc)
-                   .select(:id, :email, :admin, :banned, :banned_at, :trusted,
-                           :moderation_strikes, :created_at)
+      @users = User.for_admin_index
     end
 
     def show

@@ -14,6 +14,7 @@ import SubscriptionPlans from "./components/SubscriptionPlans";
 import SubscriptionSuccess from "./components/SubscriptionSuccess";
 import { AuthProvider } from "./contexts/AuthContext";
 import { GameDataProvider } from "./contexts/GameDataContext";
+import type { SubscriptionPlan } from "./types/subscriptions";
 
 // Import Stimulus controllers
 import SheetsListController from "./controllers/sheets_list_controller";
@@ -89,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const subscriptionPlansRoot = document.getElementById("subscription-plans-root");
   if (subscriptionPlansRoot) {
     const plansJson = subscriptionPlansRoot.dataset.plans || "[]";
-    const plans = JSON.parse(plansJson);
+    const plans = JSON.parse(plansJson) as SubscriptionPlan[];
     const currentPlanKey = subscriptionPlansRoot.dataset.currentPlanKey || "free";
     const root = createRoot(subscriptionPlansRoot);
     root.render(

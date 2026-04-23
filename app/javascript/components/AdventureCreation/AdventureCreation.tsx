@@ -4,6 +4,7 @@ import Navbar from '../Navbar'
 import Login from '../Login'
 import OnboardingWizard from '../OnboardingWizard'
 import { useAdventureCreationData } from './hooks/useAdventureCreationData'
+import { canAccessPaidAdventureOptions } from '../../utils/planAccess'
 import AdventureList from './AdventureList'
 import './AdventureCreation.scss'
 
@@ -104,7 +105,7 @@ export const AdventureCreation = () => {
                 </label>
               </div>
 
-              {(user.plan_key !== 'free' || user.admin) && (
+              {canAccessPaidAdventureOptions(user) && (
                 <div className="form-group">
                   <label className="toggle-row" htmlFor="skip-world-sanity-check-toggle">
                     <span className="toggle-text">

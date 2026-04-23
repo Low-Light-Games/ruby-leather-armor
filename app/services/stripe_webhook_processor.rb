@@ -3,7 +3,6 @@
 require "digest"
 
 class StripeWebhookProcessor
-  GRACE_PERIOD = 3.days
   DELINQUENT_STATUSES = %w[past_due unpaid incomplete_expired].freeze
   ACTIVE_STATUSES = %w[active trialing].freeze
 
@@ -87,7 +86,7 @@ class StripeWebhookProcessor
     profile.update!(
       stripe_subscription_status: "past_due",
       delinquent_since: started_at,
-      grace_period_ends_at: started_at + GRACE_PERIOD
+        grace_period_ends_at: started_at + grace_period_duration
     )
   end
 
@@ -105,7 +104,7 @@ class StripeWebhookProcessor
         stripe_price_id: price_id,
         stripe_current_period_end: period_end,
         delinquent_since: started_at,
-        grace_period_ends_at: started_at + GRACE_PERIOD
+        grace_period_ends_at: started_at + grace_period_duration
       }
       attrs[:plan_key] = "free" if profile.grace_expired?
       profile.update!(attrs)
@@ -158,5 +157,9 @@ class StripeWebhookProcessor
     return nil if subscription.current_period_end.blank?
 
     Time.zone.at(subscription.current_period_end)
+  end
+
+  def grace_period_duration
+    DmConfig.instance.stripe_grace_period_days.days
   end
 end

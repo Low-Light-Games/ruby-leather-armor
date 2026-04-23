@@ -9,6 +9,12 @@ class User < ApplicationRecord
   has_many :moderation_events, dependent: :destroy
   has_one :stripe_profile, class_name: "UserStripeProfile", dependent: :destroy
 
+  scope :for_admin_index, lambda {
+    includes(:stripe_profile)
+      .order(created_at: :desc)
+      .select(:id, :email, :admin, :banned, :banned_at, :trusted, :moderation_strikes, :created_at)
+  }
+
   validates :email, presence: true, uniqueness: { case_sensitive: false }
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :password, presence: true, on: :create, unless: :oauth_user?

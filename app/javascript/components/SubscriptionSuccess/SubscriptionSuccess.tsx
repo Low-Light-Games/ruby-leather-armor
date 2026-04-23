@@ -1,35 +1,29 @@
 import { useEffect, useState } from 'react'
+import { fetchCurrentUser } from '../../services/authService'
 import Navbar from '../Navbar'
 import './SubscriptionSuccess.scss'
-
-const MAX_ATTEMPTS = 15
-const POLL_INTERVAL_MS = 2000
-
-type Status = 'syncing' | 'confirmed' | 'pending'
+import { MAX_SUBSCRIPTION_SYNC_ATTEMPTS, SUBSCRIPTION_SYNC_INTERVAL_MS } from './constants'
+import type { SubscriptionSuccessStatus } from './types'
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export const SubscriptionSuccess = () => {
-  const [status, setStatus] = useState<Status>('syncing')
+  const [status, setStatus] = useState<SubscriptionSuccessStatus>('syncing')
 
   useEffect(() => {
     let cancelled = false
 
     const poll = async () => {
-      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+      for (let attempt = 0; attempt < MAX_SUBSCRIPTION_SYNC_ATTEMPTS; attempt += 1) {
         if (cancelled) return
 
-        const response = await fetch('/current_user', { credentials: 'same-origin' })
-        if (response.ok) {
-          const payload = await response.json()
-          const planKey = payload?.user?.plan_key
-          if (planKey && planKey !== 'free') {
-            setStatus('confirmed')
-            return
-          }
+        const currentUser = await fetchCurrentUser()
+        if (currentUser?.plan_key && currentUser.plan_key !== 'free') {
+          setStatus('confirmed')
+          return
         }
 
-        await wait(POLL_INTERVAL_MS)
+        await wait(SUBSCRIPTION_SYNC_INTERVAL_MS)
       }
 
       if (!cancelled) {

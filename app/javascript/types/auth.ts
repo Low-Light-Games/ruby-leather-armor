@@ -1,0 +1,24 @@
+export interface UsageSnapshot {
+  current_tokens: number
+  limit_tokens: number
+  percentage: number
+  limit_reached: boolean
+  delinquent: boolean
+  grace_period_ends_at: string | null
+}
+
+export interface AuthUser {
+  id: number
+  email: string
+  admin: boolean
+  plan_key: string
+  onboarding_state: 'new' | 'in_progress' | 'completed'
+  banned: boolean
+  trusted: boolean
+  moderation_strikes: number
+  usage: UsageSnapshot
+}
+
+export interface CurrentUserResponse {
+  user: AuthUser | null
+}

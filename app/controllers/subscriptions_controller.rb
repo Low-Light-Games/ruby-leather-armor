@@ -1,9 +1,8 @@
 class SubscriptionsController < ApplicationController
   def plans
-    @plans_payload = StripePlans::PLAN_KEYS
-                               .map { |key| StripePlans.fetch(key) }
-                               .reject(&:free?)
-                               .map(&:to_h)
+    presenter = SubscriptionPlansPresenter.new(user: current_user)
+    @plans_payload = presenter.plans_payload
+    @current_plan_key = presenter.current_plan_key
   end
 
   def success; end

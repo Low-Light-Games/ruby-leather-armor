@@ -1,20 +1,9 @@
 import { useMemo, useState } from 'react'
-import { csrfToken } from '../../utils/api'
 import { useAuth } from '../../contexts/AuthContext'
+import { createBillingPortalSession, createCheckoutSession } from '../../services/subscriptionService'
+import type { SubscriptionPlansProps } from '../../types/subscriptions'
 import Navbar from '../Navbar'
 import './SubscriptionPlans.scss'
-
-type Plan = {
-  key: string
-  token_limit: number
-  amount: number | null
-  description: string | null
-}
-
-type Props = {
-  plans: Plan[]
-  currentPlanKey: string
-}
 
 const formatPrice = (amount: number | null) => {
   if (amount == null) return 'Contact us'
@@ -23,7 +12,7 @@ const formatPrice = (amount: number | null) => {
 
 const formatLimit = (tokenLimit: number) => `${tokenLimit.toLocaleString()} tokens / month`
 
-export const SubscriptionPlans = ({ plans, currentPlanKey }: Props) => {
+export const SubscriptionPlans = ({ plans, currentPlanKey }: SubscriptionPlansProps) => {
   const { user } = useAuth()
   const [submittingPlan, setSubmittingPlan] = useState<string | null>(null)
   const [portalLoading, setPortalLoading] = useState(false)
@@ -38,22 +27,8 @@ export const SubscriptionPlans = ({ plans, currentPlanKey }: Props) => {
     try {
       setError(null)
       setSubmittingPlan(planKey)
-      const response = await fetch('/subscription/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken(),
-        },
-        credentials: 'same-origin',
-        body: JSON.stringify({ plan_key: planKey }),
-      })
-
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || 'Unable to start checkout.')
-      }
-
-      window.location.href = data.checkout_url
+      const checkoutUrl = await createCheckoutSession(planKey)
+      window.location.href = checkoutUrl
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to start checkout.')
       setSubmittingPlan(null)
@@ -64,20 +39,8 @@ export const SubscriptionPlans = ({ plans, currentPlanKey }: Props) => {
     try {
       setError(null)
       setPortalLoading(true)
-      const response = await fetch('/subscription/portal', {
-        method: 'POST',
-        headers: {
-          'X-CSRF-Token': csrfToken(),
-        },
-        credentials: 'same-origin',
-      })
-
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || 'Unable to open billing portal.')
-      }
-
-      window.location.href = data.portal_url
+      const portalUrl = await createBillingPortalSession()
+      window.location.href = portalUrl
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to open billing portal.')
       setPortalLoading(false)
