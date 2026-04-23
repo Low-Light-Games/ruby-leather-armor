@@ -6,7 +6,7 @@ class SubscriptionPlansPresenter
   end
 
   def current_plan_key
-    user.plan_key
+    user&.plan_key || "free"
   end
 
   def plans_payload

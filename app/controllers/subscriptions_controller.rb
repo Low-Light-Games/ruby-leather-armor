@@ -1,4 +1,6 @@
 class SubscriptionsController < ApplicationController
+  skip_before_action :require_login, only: [:plans]
+
   def plans
     presenter = SubscriptionPlansPresenter.new(user: current_user)
     @plans_payload = presenter.plans_payload

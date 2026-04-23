@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { createBillingPortalSession, createCheckoutSession } from '../../services/subscriptionService'
 import type { SubscriptionPlansProps } from '../../types/subscriptions'
 import Navbar from '../Navbar'
+import Login from '../Login'
 import './SubscriptionPlans.scss'
 
 const formatPrice = (amount: number | null) => {
@@ -22,6 +23,8 @@ export const SubscriptionPlans = ({ plans, currentPlanKey }: SubscriptionPlansPr
     () => [...plans].sort((a, b) => (a.amount ?? Number.MAX_SAFE_INTEGER) - (b.amount ?? Number.MAX_SAFE_INTEGER)),
     [plans],
   )
+
+  if (!user) return <Login />
 
   const startCheckout = async (planKey: string) => {
     try {

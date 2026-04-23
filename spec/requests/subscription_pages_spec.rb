@@ -11,6 +11,12 @@ RSpec.describe "Subscription pages", type: :request do
     expect(response).to have_http_status(:ok)
   end
 
+  it "renders the plans page when not logged in" do
+    sign_in_via_session(nil)
+    get plans_path
+    expect(response).to have_http_status(:ok)
+  end
+
   it "renders the subscription success page" do
     create(:user_stripe_profile, user: user, stripe_customer_id: "cus_123")
     checkout_session = OpenStruct.new(
