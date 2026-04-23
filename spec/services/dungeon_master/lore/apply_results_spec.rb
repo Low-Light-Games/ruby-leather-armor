@@ -33,6 +33,7 @@ RSpec.describe DungeonMaster::Lore::ApplyResults do
     allow(ai).to receive(:embeddings) do |**kw|
       Array(kw[:texts]).each_with_index.map { |_, i| vec(i + 1) }
     end
+    allow(ai).to receive(:last_usage).and_return(nil)
   end
 
   describe ".call" do
