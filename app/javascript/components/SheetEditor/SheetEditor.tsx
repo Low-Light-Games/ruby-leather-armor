@@ -95,6 +95,7 @@ export const SheetEditor = () => {
         <FlashMessage
           type="info"
           message={entryNotice}
+          duration={0}
           onDismiss={() => setEntryNotice(null)}
         />
       )}
@@ -102,6 +103,7 @@ export const SheetEditor = () => {
         <FlashMessage
           type={feedback.type}
           message={feedback.message}
+          duration={0}
           onDismiss={dismissFeedback}
         />
       )}

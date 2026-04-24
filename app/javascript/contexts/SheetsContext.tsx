@@ -13,17 +13,9 @@ import type { OwnedItem, Currency } from '../rules/pathfinder_items_types';
 import type { SkillRanksMap } from '../rules/pathfinder_skill_ranks';
 import { EMPTY_CURRENCY } from '../rules/pathfinder_items';
 import { getRaceById, computeRacialModifiers } from '../rules/pathfinder_races';
+import { BLANK_CHARACTER_ATTRIBUTES } from '../utils/sheetDraft';
 
 export type AttributeValues = Record<AttributeType, number>;
-
-const DEFAULT_ATTRIBUTES: AttributeValues = {
-  strength: 10,
-  intelligence: 10,
-  dexterity: 10,
-  constitution: 10,
-  wisdom: 10,
-  charisma: 10,
-};
 
 interface SheetsContextType {
   sheets: Sheet[];
@@ -90,7 +82,7 @@ export const SheetsProvider = ({ children }: { children: ReactNode }) => {
 
   const [sheets, setSheets] = useState<Sheet[]>([]);
   const [sheetToEdit, setSheetToEdit] = useState<Sheet | null>(null);
-  const [currentAttributes, setCurrentAttributes] = useState<AttributeValues>(DEFAULT_ATTRIBUTES);
+  const [currentAttributes, setCurrentAttributes] = useState<AttributeValues>(BLANK_CHARACTER_ATTRIBUTES);
   const [currentRace, setCurrentRace] = useState<string | null>(null);
   const [currentFlexibleBonus, setCurrentFlexibleBonus] = useState<AttributeType | null>(null);
   const [currentClass, setCurrentClass] = useState<string | null>(null);

@@ -6,13 +6,19 @@ import type { OwnedItem, Currency } from '../../../rules/pathfinder_items_types'
 import { csrfToken } from '../../../utils/api';
 import { getCastingStyle } from '../../../rules/pathfinder_spells';
 import { EMPTY_CURRENCY } from '../../../rules/pathfinder_items';
-import { DEFAULT_ATTRIBUTES } from './usePointBuy';
 import type { SkillRanksMap } from '../../../rules/pathfinder_skill_ranks';
 import { normalizeSkillRanksMap } from '../../../rules/pathfinder_skill_ranks';
 import { migrateFeatListToPooled } from '../../../rules/pathfinder_feat_pools';
 import type { AuthUser } from '../../../types/auth';
 import { canAccessPaidAdventureOptions } from '../../../utils/planAccess';
-import { clearSheetDraft, loadSheetDraft, saveSheetDraft, type SheetDraftData } from '../../../utils/sheetDraft';
+import {
+  clearSheetDraft,
+  emptySheetDraft,
+  isKnownEmptySheetDraft,
+  loadSheetDraft,
+  saveSheetDraft,
+  type SheetDraftData,
+} from '../../../utils/sheetDraft';
 
 /** Leaving the sheet editor (another character, adventure, etc.) with a dirty sheet. */
 export const UNSAVED_SHEET_CHANGES_CONFIRM_MESSAGE =
@@ -163,11 +169,50 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
     ctx.skillRanks,
   ]);
 
-  const persistDraft = useCallback(() => {
-    if (!user || isPristine) return
+  const buildDraftRef = useRef(buildDraft);
+  buildDraftRef.current = buildDraft;
 
-    saveSheetDraft(user.id, buildDraft())
-  }, [buildDraft, isPristine, user]);
+  // Free tier: persist WIP to localStorage on leave (pagehide, visibility, beforeunload).
+  useEffect(() => {
+    if (!user || hasPaidAccess) return;
+
+    const uid = user.id;
+    let coalescingFlush = false;
+
+    const scheduleFlush = () => {
+      if (coalescingFlush) return;
+      coalescingFlush = true;
+      queueMicrotask(() => {
+        coalescingFlush = false;
+        const draft = buildDraftRef.current();
+        if (isKnownEmptySheetDraft(draft)) return;
+        saveSheetDraft(uid, draft);
+      });
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') scheduleFlush();
+    };
+
+    window.addEventListener('pagehide', scheduleFlush);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('beforeunload', scheduleFlush);
+
+    return () => {
+      window.removeEventListener('pagehide', scheduleFlush);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('beforeunload', scheduleFlush);
+    };
+  }, [hasPaidAccess, user]);
+
+  const persistDraft = useCallback(() => {
+    if (!user) return
+
+    const d = buildDraft()
+    if (isKnownEmptySheetDraft(d)) return
+
+    saveSheetDraft(user.id, d)
+  }, [buildDraft, user]);
 
   const clearDraft = useCallback(() => {
     if (!user) return
@@ -175,7 +220,7 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
     clearSheetDraft(user.id)
   }, [user]);
 
-  const loadDraftIntoForm = useCallback((draft: SheetDraftData) => {
+  const loadDraftIntoForm = useCallback((draft: SheetDraftData, options?: { markDirty?: boolean }) => {
     setName(draft.name);
     setDescription(draft.description || '');
     ctx.setCurrentAttributes(draft.attributes);
@@ -190,8 +235,9 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
     ctx.setSkillRanks(normalizeSkillRanksMap(draft.skillRanks));
     setCurrentSheetId(null);
     ctx.setSheetToEdit(null);
-    setDirty();
-  }, [ctx, setDirty]);
+    if (options?.markDirty) setDirty();
+    else setPristine();
+  }, [ctx, setDirty, setPristine]);
 
   useEffect(() => {
     if (!user || restoredDraftRef.current || ctx.sheetToEdit || currentSheetId !== null) return
@@ -200,12 +246,17 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
     const draft = loadSheetDraft(user.id)
     if (!draft) return
 
-    loadDraftIntoForm(draft)
+    clearSheetDraft(user.id)
+    loadDraftIntoForm(draft, { markDirty: hasPaidAccess })
+
+    if (hasPaidAccess) return
+
     setFeedback({
       type: 'info',
-      message: 'We restored your last custom character draft from this browser.',
+      message:
+        'We restored your work from a previous visit. It is only kept in this browser until you save (subscription needed).',
     })
-  }, [currentSheetId, ctx.sheetToEdit, loadDraftIntoForm, user]);
+  }, [currentSheetId, ctx.sheetToEdit, hasPaidAccess, loadDraftIntoForm, user]);
 
   // ── Reset to blank sheet ────────────────────────────────────────
 
@@ -217,18 +268,19 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
       if (!confirmed) return;
     }
     setDirty();
-    setName('');
-    setDescription('');
-    ctx.setCurrentAttributes(DEFAULT_ATTRIBUTES);
-    ctx.setCurrentRace(null);
-    ctx.setCurrentFlexibleBonus(null);
-    ctx.setCurrentClass(null);
-    ctx.setCurrentLevel(1);
-    ctx.setSelectedFeats([]);
-    ctx.setSelectedSpells([]);
-    ctx.setSelectedItems([]);
-    ctx.setCurrentCurrency({ ...EMPTY_CURRENCY });
-    ctx.setSkillRanks({});
+    const blank = emptySheetDraft();
+    setName(blank.name);
+    setDescription(blank.description);
+    ctx.setCurrentAttributes({ ...blank.attributes });
+    ctx.setCurrentRace(blank.race);
+    ctx.setCurrentFlexibleBonus(blank.flexibleBonus);
+    ctx.setCurrentClass(blank.characterClass);
+    ctx.setCurrentLevel(blank.level);
+    ctx.setSelectedFeats([...blank.feats]);
+    ctx.setSelectedSpells([...blank.spells]);
+    ctx.setSelectedItems([...blank.items]);
+    ctx.setCurrentCurrency({ ...blank.currency });
+    ctx.setSkillRanks({ ...blank.skillRanks });
     setCurrentSheetId(null);
     ctx.setSheetToEdit(null);
     setPristine();
@@ -240,8 +292,11 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
 
   const saveSheet = useCallback(async () => {
     if (!hasPaidAccess) {
-      if (isPristine) return
-      persistDraft();
+      if (!user) return
+      const d = buildDraft()
+      if (isKnownEmptySheetDraft(d)) return
+      saveSheetDraft(user.id, d)
+      setPristine()
       setFeedback({
         type: 'info',
         message: 'We kept this character as a local draft in this browser. Subscribe to save it to your account and play adventures with it.',
@@ -321,7 +376,7 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
     ctx.currentRace, ctx.currentFlexibleBonus, ctx.currentClass, ctx.currentLevel,
     ctx.selectedFeats, ctx.selectedSpells, ctx.selectedItems, ctx.currentCurrency,
     ctx.skillRanks,
-    ctx.currentAttributes, ctx.sheets, hasPaidAccess, isPristine, persistDraft, resetToNew, user,
+    ctx.currentAttributes, ctx.sheets, hasPaidAccess, resetToNew, setPristine, user,
   ]);
 
   return {

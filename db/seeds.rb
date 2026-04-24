@@ -33,8 +33,15 @@ if Rails.env.development? || Rails.env.staging? || Rails.env.playwright?
   test_user.onboarding_state = "in_progress"
   test_user.save!
 
+  lead_user = User.find_or_initialize_by(email: 'lead@example.com')
+  lead_user.admin = false
+  lead_user.password = 'lead123'
+  lead_user.onboarding_state = "new"
+  lead_user.save!
+
   puts "Created/updated admin user: #{admin.email} (password: admin123)"
   puts "Created/updated test user: #{test_user.email} (password: test123)"
+  puts "Created/updated lead user (onboarding new): #{lead_user.email} (password: lead123)"
 
   minmax_sheets = [
     {
