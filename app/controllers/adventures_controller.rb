@@ -36,6 +36,9 @@ class AdventuresController < ApplicationController
   def create
     story = Story.kept.find(params[:story_id])
     sheet = policy_scope(Sheet).find(params[:sheet_id])
+    unless sheet_allowed_for_current_user?(sheet)
+      return render json: { error: ineligible_sheet_error(sheet) }, status: :forbidden
+    end
 
     directed_dm = ActiveModel::Type::Boolean.new.cast(params.fetch(:directed_dm, false))
     # `users.admin` is nullable: (paid? || admin) can be nil (false || nil => nil)
@@ -117,6 +120,22 @@ class AdventuresController < ApplicationController
       spell_rel: adv_sheet.adventure_sheet_spells,
       item_rel:  adv_sheet.adventure_sheet_items
     )
+  end
+
+  def sheet_allowed_for_current_user?(sheet)
+    return sheet.custom? if current_user.paid_or_admin?
+
+    sheet.starter?
+  end
+
+  def ineligible_sheet_error(sheet)
+    if current_user.paid_or_admin?
+      "Starter characters are reserved for free users. Choose one of your custom sheets instead."
+    elsif sheet.custom?
+      "Subscribe to play adventures with your custom character."
+    else
+      "That character is not available for adventures on your current plan."
+    end
   end
 
 end

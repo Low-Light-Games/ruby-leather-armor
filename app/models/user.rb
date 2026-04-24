@@ -44,6 +44,10 @@ class User < ApplicationRecord
     !free?
   end
 
+  def paid_or_admin?
+    admin? || paid?
+  end
+
   def plan_key
     stripe_profile&.effective_plan_key.presence || "free"
   end

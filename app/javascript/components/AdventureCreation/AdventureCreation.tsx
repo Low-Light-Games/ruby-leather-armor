@@ -62,12 +62,18 @@ export const AdventureCreation = () => {
                   value={selectedSheetId}
                   onChange={e => setSelectedSheetId(e.target.value ? Number(e.target.value) : '')}
                   required
+                  disabled={sheets.length === 0}
                 >
                   <option value="">-- Select a character --</option>
                   {sheets.map(sheet => (
                     <option key={sheet.id} value={sheet.id}>{sheet.name}</option>
                   ))}
                 </select>
+                {sheets.length === 0 && canAccessPaidAdventureOptions(user) && (
+                  <p className="form-hint">
+                    You do not have any saved custom characters yet. <a href="/sheets">Open the builder</a> to create one.
+                  </p>
+                )}
               </div>
 
               <div className="form-group">

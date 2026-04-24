@@ -53,7 +53,7 @@ export function useAdventureCreationData(user: any) {
 
     Promise.all([
       fetch('/stories').then(r => r.json()),
-      fetch('/sheets.json').then(r => r.json()),
+      fetch('/sheets/adventure_options').then(r => r.json()),
       fetch('/adventures.json').then(r => r.json()),
     ])
       .then(([storiesData, sheetsData, adventuresData]) => {

@@ -107,6 +107,47 @@
     font-size: 14px;
   }
 
+  .builder-access-note {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+    padding: 14px 16px;
+    border: 1px solid $border;
+    background: $parchment-dk;
+
+    p {
+      margin: 0;
+      color: $ink-mid;
+      line-height: 1.6;
+    }
+  }
+
+  .builder-access-note__cta {
+    flex-shrink: 0;
+    padding: 10px 16px;
+    border: 1px solid $red-ink;
+    background: $red-ink;
+    color: $parchment;
+    font-family: $font-display;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+
+    &:hover {
+      background: $red-ink-dk;
+      border-color: $red-ink-dk;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $red-ink;
+      outline-offset: 2px;
+    }
+  }
+
   /* ── Race & class (character sheet) ── */
   .sheet-race-class-row {
     display: grid;
@@ -219,6 +260,11 @@
   /* ── Mobile: collapse outer padding so game fills the screen ── */
   @media (max-width: 768px) {
     padding: 8px 0 0;
+
+    .builder-access-note {
+      flex-direction: column;
+      align-items: stretch;
+    }
   }
 
   /* ── Sheet editor actions ── */

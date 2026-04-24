@@ -79,7 +79,11 @@ Rails.application.routes.draw do
   resources :item_definitions,  only: [:index, :show]
 
   # Sheets: HTML (SPA) + JSON API
-  resources :sheets
+  resources :sheets do
+    collection do
+      get :adventure_options
+    end
+  end
 
   # API endpoints for stories and adventures
   resources :stories, only: [:index]

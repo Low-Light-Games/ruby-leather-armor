@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Sheet < ApplicationRecord
+  STARTER_KEYS = Onboarding::PrebuiltCharacters::ALL.keys.freeze
+
   belongs_to :user
 
   has_many :adventure_sheets, dependent: :nullify
@@ -11,6 +13,8 @@ class Sheet < ApplicationRecord
   has_many :sheet_items, dependent: :destroy
   has_many :item_definitions, through: :sheet_items
 
+  enum :source_kind, { custom: "custom", starter: "starter" }, default: "custom"
+
   validates :name, presence: true
   validates :strength, presence: true
   validates :intelligence, presence: true
@@ -19,8 +23,13 @@ class Sheet < ApplicationRecord
   validates :wisdom, presence: true
   validates :charisma, presence: true
   validates :level, numericality: { only_integer: true, greater_than: 0 }
+  validates :starter_key, inclusion: { in: STARTER_KEYS }, allow_nil: true
+  validates :starter_key, presence: true, if: :starter?
+  validates :starter_key, absence: true, if: :custom?
 
   validate :skill_ranks_within_pathfinder_rules
+
+  before_validation :normalize_starter_key
 
   include SheetCurrency
 
@@ -32,6 +41,10 @@ class Sheet < ApplicationRecord
   end
 
   private
+
+  def normalize_starter_key
+    self.starter_key = starter_key.presence
+  end
 
   def skill_ranks_within_pathfinder_rules
     return unless self.class.column_names.include?("skill_ranks")

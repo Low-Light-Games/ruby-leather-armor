@@ -28,5 +28,11 @@ FactoryBot.define do
       uid { nil }
       password { "password123" }
     end
+
+    trait :paid do
+      after(:create) do |user|
+        create(:user_stripe_profile, user: user, plan_key: "novice")
+      end
+    end
   end
 end

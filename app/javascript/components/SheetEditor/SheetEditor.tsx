@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { AttributeRow } from './components/AttributeRow'
 import { NameField } from './components/NameField'
 import FlashMessage from '../FlashMessage'
@@ -9,9 +9,12 @@ import { PATHFINDER_RACES, getRaceById } from '../../rules/pathfinder_races'
 import { PATHFINDER_CLASSES } from '../../rules/pathfinder_classes'
 import { usePointBuy, AVAILABLE_POINTS } from './hooks/usePointBuy'
 import { useSheetPersistence } from './hooks/useSheetPersistence'
+import { useAuth } from '../../contexts/AuthContext'
+import { canAccessPaidAdventureOptions } from '../../utils/planAccess'
 
 export const SheetEditor = () => {
   const ctx = useSheetsContext();
+  const { user } = useAuth()
   const {
     currentAttributes: attributes, setCurrentAttributes: setAttributes,
     racialModifiers,
@@ -26,12 +29,14 @@ export const SheetEditor = () => {
 
   // ── Hooks ──────────────────────────────────────────────────────
 
-  const persistence = useSheetPersistence(ctx);
+  const persistence = useSheetPersistence(ctx, user);
   const {
     name, setName, description, setDescription,
     currentSheetId, feedback, dismissFeedback,
-    saveSheet, resetToNew, setDirty, isPristine,
+    saveSheet, resetToNew, persistDraft, setDirty, isPristine,
   } = persistence;
+  const [entryNotice, setEntryNotice] = useState<string | null>(null)
+  const hasPaidAccess = !!user && canAccessPaidAdventureOptions(user)
 
   useEffect(() => {
     registerSheetDirtySource(setDirty);
@@ -41,6 +46,17 @@ export const SheetEditor = () => {
   useEffect(() => {
     syncSheetPristine(isPristine);
   }, [syncSheetPristine, isPristine]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('builder_notice') !== 'custom_character_paywall') return
+
+    setEntryNotice('Subscribe to be able to play adventures with your custom character')
+    params.delete('builder_notice')
+    const query = params.toString()
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`
+    window.history.replaceState({}, '', nextUrl)
+  }, [])
 
   const pointBuy = usePointBuy({ attributes, setAttributes, onDirty: setDirty });
   const { spentPoints, canIncrease, canDecrease, changeAttribute, clearPoints, isDefault } = pointBuy;
@@ -66,16 +82,39 @@ export const SheetEditor = () => {
     setCurrentClass(classId || null);
   };
 
+  const handleSubscribe = () => {
+    persistDraft()
+    window.location.href = '/plans'
+  }
+
   // ── Render ─────────────────────────────────────────────────────
 
   return (
     <div>
+      {entryNotice && (
+        <FlashMessage
+          type="info"
+          message={entryNotice}
+          onDismiss={() => setEntryNotice(null)}
+        />
+      )}
       {feedback && (
         <FlashMessage
           type={feedback.type}
           message={feedback.message}
           onDismiss={dismissFeedback}
         />
+      )}
+      {!hasPaidAccess && user && (
+        <div className="builder-access-note">
+          <p>
+            Explore the character builder freely. Saving custom characters and
+            using them in adventures requires a subscription.
+          </p>
+          <button type="button" className="builder-access-note__cta" onClick={handleSubscribe}>
+            Subscribe to Save and Play
+          </button>
+        </div>
       )}
       <div className="form-field">
         <label htmlFor="character-name">Character Name:</label>
@@ -206,7 +245,7 @@ export const SheetEditor = () => {
       </div>
 
       <div className="sheet-editor-actions">
-        <button onClick={saveSheet} disabled={!name.trim()}>
+        <button onClick={saveSheet} disabled={!name.trim()} type="button">
           {currentSheetId ? 'Update Sheet' : 'Save Sheet'}
         </button>
         <button onClick={resetToNew} type="button">
