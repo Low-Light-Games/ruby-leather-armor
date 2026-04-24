@@ -4,6 +4,9 @@ class AdventureSheetsController < ApplicationController
   include SheetJsonSerialization
   include PivotSync
 
+  PLAYWRIGHT_SHEET_BODY_KEYS = %w[active_buffs conditions].freeze
+  RAILS_ROUTING_PARAM_KEYS = %w[controller action adventure_id].freeze
+
   before_action :set_adventure
   before_action :set_adventure_sheet
 
@@ -12,7 +15,12 @@ class AdventureSheetsController < ApplicationController
   # Updates the adventure sheet's spell/feat/item selections via pivot tables.
   # Only the owning player can update their adventure sheet.
   def update
-    authorize @adventure, :show?
+    authorize @adventure, :update?
+
+    if playwright_sheet_test_only_request?
+      apply_playwright_sheet_test_overrides!
+      return render json: adventure_sheet_json(@adventure_sheet.reload)
+    end
 
     skill_ranks_rejected = false
 
@@ -62,7 +70,7 @@ class AdventureSheetsController < ApplicationController
   # Toggles the equipped state of a single item on the adventure sheet.
   # Expects { item_id: "warhammer" }.
   def toggle_equip
-    authorize @adventure, :show?
+    authorize @adventure, :update?
 
     AdventureSheet.transaction do
       if @adventure.combat_active?
@@ -82,6 +90,32 @@ class AdventureSheetsController < ApplicationController
   end
 
   private
+
+  # Playwright only: PATCH body may contain only active_buffs and/or conditions for UI tests.
+  def apply_playwright_sheet_test_overrides!
+    raw = params.to_unsafe_h
+    if raw.key?("active_buffs")
+      @adventure_sheet.active_buffs = DungeonMaster::CoercedMutationArray.coerce(
+        raw["active_buffs"], field: "active_buffs", log: nil
+      ).map(&:deep_stringify_keys)
+    end
+    if raw.key?("conditions")
+      @adventure_sheet.conditions = DungeonMaster::CoercedMutationArray.coerce(
+        raw["conditions"], field: "conditions", log: nil
+      ).map(&:to_s)
+    end
+    @adventure_sheet.save!
+    @adventure_sheet.recompute_derived_stats!
+  end
+
+  def playwright_sheet_test_only_request?
+    return false unless Rails.env.playwright?
+
+    body_keys = params.to_unsafe_h.keys.map(&:to_s) - RAILS_ROUTING_PARAM_KEYS
+    return false if body_keys.empty?
+
+    body_keys.all? { |key| PLAYWRIGHT_SHEET_BODY_KEYS.include?(key) }
+  end
 
   def set_adventure
     @adventure = Adventure.kept.find(params[:adventure_id])

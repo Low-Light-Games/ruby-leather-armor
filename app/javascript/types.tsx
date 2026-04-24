@@ -33,6 +33,8 @@ export interface DerivedStats {
   hp_bonus: number
   melee_attack: number
   ranged_attack: number
+  /** Flat bonus from active_buff rows targeting `damage` (e.g. inspire courage). */
+  damage_bonus: number
   speed: number
   size: string
   skills: DerivedSkill[]
@@ -86,13 +88,13 @@ export interface DerivedSkill {
   feat_bonus: number
   equip_bonus?: number
   acp_penalty?: number
-  /** Ranks contributing to the check (capped by class/cross-class max). */
   rank_bonus?: number
   total: number
 }
 
 export interface ActiveBuff {
   source: string
+  source_type?: string | null
   bonus_type: string
   target: string
   value: number
@@ -107,6 +109,8 @@ export interface Sheet {
   name: string
   description: string | null
   details: SheetDetails | null
+  /** Same shape as adventure sheets when present on `sheet_json`. */
+  class_abilities?: ClassAbilitySummary[]
   derived_stats: DerivedStats
   strength: number
   intelligence: number
@@ -248,12 +252,20 @@ export interface StoryMilestoneData {
   _destroy?: boolean
 }
 
+/** Live slice from ClassAbilityDefinition by class/level; included in builder and adventure `SheetPresenter` JSON. */
+export interface ClassAbilitySummary {
+  id: string
+  name: string
+  summary: string | null
+}
+
 export interface AdventureSheet {
   id: number
   sheet_id: number | null
   name: string
   description: string | null
   details: SheetDetails | null
+  class_abilities?: ClassAbilitySummary[]
   derived_stats: DerivedStats
   strength: number
   intelligence: number

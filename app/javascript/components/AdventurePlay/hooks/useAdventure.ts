@@ -42,6 +42,7 @@ function buildFallbackDerivedStats(sheet: AdventureSheet): DerivedStats {
     hp_bonus: 0,
     melee_attack: mods.strength ?? 0,
     ranged_attack: mods.dexterity ?? 0,
+    damage_bonus: 0,
     speed: 30,
     size: 'medium',
     skills: [],

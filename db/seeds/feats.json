@@ -57,7 +57,7 @@
     "category": "combat",
     "prerequisites": [
       {
-        "type": "class_feature",
+        "type": "class_ability",
         "feature": "ability to cast arcane spells"
       }
     ],
@@ -161,7 +161,7 @@
     "category": "combat",
     "prerequisites": [
       {
-        "type": "class_feature",
+        "type": "class_ability",
         "feature": "channel energy"
       }
     ],
@@ -2830,7 +2830,7 @@
     "category": "general",
     "prerequisites": [
       {
-        "type": "class_feature",
+        "type": "class_ability",
         "feature": "channel energy"
       }
     ],
@@ -3032,7 +3032,7 @@
         "minimum": 13
       },
       {
-        "type": "class_feature",
+        "type": "class_ability",
         "feature": "wild shape"
       }
     ],
@@ -3317,7 +3317,7 @@
     "category": "general",
     "prerequisites": [
       {
-        "type": "class_feature",
+        "type": "class_ability",
         "feature": "channel positive energy"
       }
     ],

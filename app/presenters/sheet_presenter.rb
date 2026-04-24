@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
 # Serializes a Sheet or AdventureSheet into the JSON shape expected by the
-# frontend SPA.  The pivot relations (feats, spells, items) are passed
-# explicitly so the presenter works for both model types without needing to
-# know which association names to call.
+# frontend SPA. Feat, spell, and item pivots are passed explicitly; class
+# abilities are read live from {SheetClassAbilities} when the sheet supports it.
 #
 # Usage:
 #   SheetPresenter.new(adv_sheet,
@@ -65,6 +64,11 @@ class SheetPresenter
     )
 
     serialized_sheet["details"] = details_payload.to_h
+    if @sheet.respond_to?(:class_ability_definitions)
+      serialized_sheet["class_abilities"] = @sheet.class_ability_definitions.map do |ca|
+        { id: ca.id, name: ca.name, summary: ca.summary }
+      end
+    end
     serialized_sheet
   end
 
@@ -93,7 +97,7 @@ class SheetPresenter
   def serialized_active_buffs
     current_hours = current_game_hours
 
-    Array(@sheet.try(:active_buffs)).filter_map do |buff|
+    CharacterStats::PersistedJsonArray.list(@sheet.try(:active_buffs)).filter_map do |buff|
       next unless buff.is_a?(Hash)
 
       entry = buff.deep_stringify_keys
@@ -107,7 +111,7 @@ class SheetPresenter
                           [expires_at.to_f - current_hours, 0.0].max
                         end
 
-      entry.merge(
+      entry = { "source_type" => nil }.merge(entry).merge(
         "remaining_hours" => remaining_hours,
         "duration_label" => duration_label_for(remaining_hours)
       )

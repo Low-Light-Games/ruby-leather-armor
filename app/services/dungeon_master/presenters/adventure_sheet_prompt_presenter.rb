@@ -44,6 +44,7 @@ module DungeonMaster
           hp_currency_line,
           derived_combat_block,
           skills_block,
+          class_abilities_block,
           feats_block,
           spells_block,
           items_block
@@ -56,6 +57,7 @@ module DungeonMaster
           ability_scores_line,
           hp_currency_line,
           derived_combat_block,
+          class_abilities_block,
           feats_block(categories: %w[combat general]),
           spells_block,
           items_block(types: COMBAT_ITEM_TYPES, equipped_only: true)
@@ -67,6 +69,7 @@ module DungeonMaster
           *base_parts,
           "CHA: #{@sheet.charisma}, WIS: #{@sheet.wisdom}, INT: #{@sheet.intelligence}  |  Level: #{@sheet.level}",
           skills_block(filter: SOCIAL_SKILLS),
+          class_abilities_block,
           feats_block,
           items_block(types: %w[wondrous], equipped_only: true)
         ])
@@ -78,6 +81,7 @@ module DungeonMaster
           "STR: #{@sheet.strength}, DEX: #{@sheet.dexterity}, CON: #{@sheet.constitution}, WIS: #{@sheet.wisdom}  |  Level: #{@sheet.level}",
           traversal_movement_line,
           skills_block(filter: TRAVERSAL_SKILLS),
+          class_abilities_block,
           feats_block,
           items_block
         ])
@@ -86,6 +90,7 @@ module DungeonMaster
       def buff_text
         compose([
           *base_parts,
+          class_abilities_block,
           spells_block,
           items_block(types: %w[potion wondrous])
         ])
@@ -121,21 +126,24 @@ module DungeonMaster
       end
 
       def conditions_line
-        conds = Array(@sheet.try(:conditions))
+        conds = CharacterStats::PersistedJsonArray.list(@sheet.try(:conditions))
         return nil if conds.empty?
 
         "Active Conditions: #{conds.join(', ')}"
       end
 
       def active_buffs_line
-        buffs = Array(@sheet.try(:active_buffs))
+        buffs = CharacterStats::PersistedJsonArray.list(@sheet.try(:active_buffs))
         return nil if buffs.empty?
 
         ctx = @sheet.try(:adventure)&.time_context || {}
         current_hours = (ctx["adventure_day"].to_i - 1) * 24.0 + ctx["current_hour"].to_f
 
         parts = buffs.map do |b|
-          label = "#{b['source']} (#{b['bonus_type']} +#{b['value']} → #{b['target']})"
+          st = b["source_type"].presence
+          label = b["source"].to_s
+          label += " [#{st}]" if st
+          label += " (#{b['bonus_type']} #{format_mod(b['value'].to_i)} → #{b['target']})"
           if b["expires_at_game_hours"]
             remaining_h = b["expires_at_game_hours"].to_f - current_hours
             remaining_min = (remaining_h * 60).round
@@ -176,6 +184,14 @@ module DungeonMaster
         return "" if skills.empty?
 
         "Skills: " + skills.map { |s| "#{s['name']} #{format_mod(s['total'])}" }.join(", ")
+      end
+
+      def class_abilities_block
+        abilities = @sheet.class_ability_definitions.to_a
+        return "" if abilities.empty?
+
+        lines = abilities.map { |a| "#{a.name} (#{a.id})" }
+        "Class Abilities: #{lines.join(', ')}"
       end
 
       def feats_block(categories: nil)

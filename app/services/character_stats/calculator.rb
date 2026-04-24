@@ -50,7 +50,7 @@ module CharacterStats
       # Apply active_buffs with target: "speed".
       # Stacking rule: group by bonus_type; highest per type; sum distinct types.
       # TODO: extend to target: "str", "dex", etc. when ability-score buff phase lands.
-      speed_buffs = Array(@src.try(:active_buffs)).select { |b| b["target"] == "speed" }
+      speed_buffs = PersistedJsonArray.list(@src.try(:active_buffs)).select { |b| b["target"] == "speed" }
       unless speed_buffs.empty?
         buff_speed = speed_buffs
           .group_by { |b| b["bonus_type"] }
@@ -75,6 +75,7 @@ module CharacterStats
         hp_bonus:            cbt[:hp_bonus],
         melee_attack:        cbt[:melee_attack],
         ranged_attack:       cbt[:ranged_attack],
+        damage_bonus:        cbt[:damage_bonus].to_i,
         speed:               speed,
         size:                ability[:race_info][:size],
         skills:              skills,

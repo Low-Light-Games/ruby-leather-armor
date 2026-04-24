@@ -217,7 +217,7 @@ module DungeonMaster
         return unless @sheet
 
         if time_ctx["rest_clears_fatigue"]
-          current = Array(@sheet.conditions)
+          current = CharacterStats::PersistedJsonArray.list(@sheet.conditions)
           fatigue_conds = current & %w[fatigued exhausted]
           if fatigue_conds.any?
             @sheet.update!(conditions: current - fatigue_conds)
@@ -230,7 +230,7 @@ module DungeonMaster
         thresholds.each do |t|
           next unless t[:type] == :fatigue && t[:condition]
 
-          current = Array(@sheet.conditions)
+          current = CharacterStats::PersistedJsonArray.list(@sheet.conditions)
           next if current.include?(t[:condition])
 
           upgraded = CharacterStats::Conditions.upgrade(current, t[:condition])
@@ -248,7 +248,7 @@ module DungeonMaster
         return unless @sheet&.respond_to?(:active_buffs)
 
         current_hour = Utilities::GameClock.absolute_hours(time_ctx)
-        current = Array(@sheet.active_buffs).map(&:deep_stringify_keys)
+        current = CharacterStats::PersistedJsonArray.list(@sheet.active_buffs).map(&:deep_stringify_keys)
 
         expired = current.select do |b|
           b["expires_at_game_hours"] && b["expires_at_game_hours"].to_f <= current_hour

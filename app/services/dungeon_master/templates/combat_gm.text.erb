@@ -61,8 +61,10 @@ Your job is to resolve combat consequences accurately (hits, damage, conditions,
 - If the player casts a buff spell, add `{ "id": "<spell_id>", "source_type": "spell" }` to `buffs_add`.
   For a potion, use `{ "id": "<item_id>", "source_type": "item" }`. Ruby resolves duration and bonus
   for catalog-backed sources; do not pass caster level or duration for those.
-  Class features need explicit bonus_type, target, value, and optionally duration_hours.
-  Dispelled or manually-ended buffs go in `buffs_remove`.
+  Class abilities use `"source_type": "class_ability"` with ClassAbilityDefinition IDs; catalog
+  effects/duration apply when defined. Ad-hoc combat stances (e.g. fighting defensively) use
+  `adjudicated_effects` plus optional `adjudicated_duration_hours`. Remove buffs with
+  `buffs_remove`: `[{ "id": "<source_id>", "source_type": "spell"|"item"|"class_ability" }]`.
 - When the acting character spends standard/move/swift/full-round actions, reflect that in `action_economy_delta` so Ruby can validate against the pool.
 - `outcome` is a factual summary, not purple prose.
 
@@ -79,7 +81,7 @@ Respond ONLY with valid JSON (no markdown, no code fences):
         { "id": "mage_armor", "source_type": "spell" },
         { "id": "potion_of_haste", "source_type": "item" }
       ],
-      "buffs_remove": []
+      "buffs_remove": [{ "id": "mage_armor", "source_type": "spell" }]
     },
     "npcs": [
       { "name": "NPC Name", "creature_sheet_id": null, "hp_change": 0, "conditions_add": [], "conditions_remove": [] }

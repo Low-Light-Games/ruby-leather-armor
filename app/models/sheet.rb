@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# Player-authored character sheet in the builder (feats, spells, items as pivots).
 class Sheet < ApplicationRecord
   STARTER_KEYS = Onboarding::PrebuiltCharacters::ALL.keys.freeze
 
@@ -13,7 +14,7 @@ class Sheet < ApplicationRecord
   has_many :sheet_items, dependent: :destroy
   has_many :item_definitions, through: :sheet_items
 
-  enum :source_kind, { custom: "custom", starter: "starter" }, default: "custom"
+  enum :source_kind, { custom: 'custom', starter: 'starter' }, default: 'custom'
 
   validates :name, presence: true
   validates :strength, presence: true
@@ -32,6 +33,7 @@ class Sheet < ApplicationRecord
   before_validation :normalize_starter_key
 
   include SheetCurrency
+  include SheetClassAbilities
 
   # Recompute derived stats after any save. Called explicitly after feat/spell
   # sync operations as well.
@@ -47,7 +49,7 @@ class Sheet < ApplicationRecord
   end
 
   def skill_ranks_within_pathfinder_rules
-    return unless self.class.column_names.include?("skill_ranks")
+    return unless self.class.column_names.include?('skill_ranks')
 
     CharacterStats::SkillRanksValidator.errors_for(self).each do |msg|
       errors.add(:skill_ranks, msg)
