@@ -59,6 +59,7 @@ async function setup() {
     const existingProductId = plan.stripe_product_id !== "null" ? plan.stripe_product_id : null;
     const existingPriceId = plan.stripe_price_id !== "null" ? plan.stripe_price_id : null;
     const amount = parseInt(plan.amount, 10);
+    const currency = (plan.currency || "usd").toLowerCase();
     const name = tier.charAt(0).toUpperCase() + tier.slice(1);
 
     // Sync product
@@ -81,27 +82,31 @@ async function setup() {
     let price;
     if (existingPriceId) {
       const existing = await stripe.prices.retrieve(existingPriceId);
-      if (existing.unit_amount === amount && existing.active) {
+      if (
+        existing.unit_amount === amount &&
+        existing.active &&
+        existing.currency === currency
+      ) {
         price = existing;
-        console.log(`  Price unchanged — $${(amount / 100).toFixed(2)}/mo`);
+        console.log(`  Price unchanged — ${(amount / 100).toFixed(2)} ${currency.toUpperCase()}/mo`);
       } else {
         price = await stripe.prices.create({
           product: product.id,
           unit_amount: amount,
-          currency: "usd",
+          currency,
           recurring: { interval: "month" },
         });
         await archiveOldPrices(product.id, price.id);
-        console.log(`  New price created — $${(amount / 100).toFixed(2)}/mo`);
+        console.log(`  New price created — ${(amount / 100).toFixed(2)} ${currency.toUpperCase()}/mo`);
       }
     } else {
       price = await stripe.prices.create({
         product: product.id,
         unit_amount: amount,
-        currency: "usd",
+        currency,
         recurring: { interval: "month" },
       });
-      console.log(`  Price created — $${(amount / 100).toFixed(2)}/mo`);
+      console.log(`  Price created — ${(amount / 100).toFixed(2)} ${currency.toUpperCase()}/mo`);
     }
 
     yml[tier].stripe_product_id = product.id;

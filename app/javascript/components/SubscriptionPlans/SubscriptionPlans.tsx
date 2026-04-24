@@ -6,9 +6,10 @@ import Navbar from '../Navbar'
 import Login from '../Login'
 import './SubscriptionPlans.scss'
 
-const formatPrice = (amount: number | null) => {
-  if (amount == null) return 'Contact us'
-  return `$${(amount / 100).toFixed(2)}/mo`
+const formatUsdPerMo = (usdCents: number | null | undefined, fallbackCents: number | null) => {
+  const cents = usdCents ?? fallbackCents
+  if (cents == null) return 'Contact us'
+  return `$${(cents / 100).toFixed(2)} USD/mo`
 }
 
 const formatLimit = (tokenLimit: number) => `${tokenLimit.toLocaleString()} tokens / month`
@@ -20,7 +21,11 @@ export const SubscriptionPlans = ({ plans, currentPlanKey }: SubscriptionPlansPr
   const [error, setError] = useState<string | null>(null)
 
   const sortedPlans = useMemo(
-    () => [...plans].sort((a, b) => (a.amount ?? Number.MAX_SAFE_INTEGER) - (b.amount ?? Number.MAX_SAFE_INTEGER)),
+    () =>
+      [...plans].sort(
+        (a, b) =>
+          (a.usd ?? a.amount ?? Number.MAX_SAFE_INTEGER) - (b.usd ?? b.amount ?? Number.MAX_SAFE_INTEGER),
+      ),
     [plans],
   )
 
@@ -69,7 +74,7 @@ export const SubscriptionPlans = ({ plans, currentPlanKey }: SubscriptionPlansPr
             return (
               <article key={plan.key} className={`subscription-plan-card ${current ? 'current' : ''}`}>
                 <h2>{plan.key}</h2>
-                <p className="price">{formatPrice(plan.amount)}</p>
+                <p className="price">{formatUsdPerMo(plan.usd, plan.amount)}</p>
                 <p className="limit">{formatLimit(plan.token_limit)}</p>
                 {plan.description && <p className="description">{plan.description}</p>}
 

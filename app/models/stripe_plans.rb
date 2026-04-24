@@ -2,12 +2,13 @@
 
 class StripePlans
   class Plan
-    attr_reader :key, :token_limit, :amount, :description, :stripe_product_id, :stripe_price_id
+    attr_reader :key, :token_limit, :amount, :usd, :description, :stripe_product_id, :stripe_price_id
 
     def initialize(key:, attributes:)
       @key = key
       @token_limit = attributes.fetch("token_limit")
       @amount = attributes["amount"]
+      @usd = attributes["usd"]&.to_i
       @description = attributes["description"]
       @stripe_product_id = attributes["stripe_product_id"]
       @stripe_price_id = attributes["stripe_price_id"]
@@ -22,6 +23,7 @@ class StripePlans
         key: key,
         token_limit: token_limit,
         amount: amount,
+        usd: usd,
         description: description,
         stripe_product_id: stripe_product_id,
         stripe_price_id: stripe_price_id
