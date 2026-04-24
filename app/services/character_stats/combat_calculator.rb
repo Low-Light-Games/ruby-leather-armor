@@ -71,19 +71,21 @@ module CharacterStats
       # Same bonus_type → highest wins (replacement). Different types → additive.
       # armor_bonus and shield_bonus also compete with equipped item values.
       ac_buffs = active_buff_rows.select { |b| b["target"] == "ac" }
-      buff_by_type = ac_buffs.group_by { |b| b["bonus_type"] }
-                              .transform_values { |g| g.map { |b| b["value"].to_i }.max }
+      ac_max_by_bonus_type = ac_buffs.group_by { |b| b["bonus_type"] }
+                                     .transform_values { |g| g.map { |b| b["value"].to_i }.max }
 
       # ── AC ───────────────────────────────────────────────────────
       cond_ac_mod = ac_modifier_from_conditions(active_conds)
 
       # Equipped armor/shield compete with same-type buff: take highest
-      armor_ac  = [equip[:armor_bonus],  buff_by_type.delete("armor")  || 0].max
-      shield_ac = [equip[:shield_bonus], buff_by_type.delete("shield") || 0].max
+      armor_buff  = ac_max_by_bonus_type.delete("armor") || 0
+      shield_buff = ac_max_by_bonus_type.delete("shield") || 0
+      armor_ac  = [equip[:armor_bonus],  armor_buff].max
+      shield_ac = [equip[:shield_bonus], shield_buff].max
 
       # Remaining distinct AC bonus types all stack with each other and with armor/shield
       # TODO: full typed-bonus enforcement for feat/equipment :ac bucket belongs here
-      other_buff_ac = buff_by_type.values.sum
+      other_buff_ac = ac_max_by_bonus_type.values.sum
 
       ac    = 10 + effective_dex_mod + ac_size + armor_ac + shield_ac +
               feat_stat_bonuses[:ac] + equip_stat_bonuses[:ac] + cond_ac_mod + other_buff_ac
@@ -108,14 +110,11 @@ module CharacterStats
                       feat_stat_bonuses[:ranged_attack] + equip_stat_bonuses[:ranged_attack] + attack_buff
 
       # ── Breakdowns ───────────────────────────────────────────────
-      buff_breakdown_entries = ac_buffs
-        .group_by { |b| b["bonus_type"] }
-        .transform_values { |g| g.map { |b| b["value"].to_i }.max }
-        .filter_map do |btype, val|
-          next if btype == "armor" || btype == "shield" # shown in Armor/Shield lines
+      buff_breakdown_entries = ac_max_by_bonus_type.filter_map do |btype, val|
+        next if btype == "armor" || btype == "shield" # shown in Armor/Shield lines
 
-          { label: "Buff (#{btype})", value: val } if val.nonzero?
-        end
+        { label: "Buff (#{btype})", value: val } if val.nonzero?
+      end
 
       ac_breakdown   = build_breakdown(
         { label: "Base",      value: 10 },
