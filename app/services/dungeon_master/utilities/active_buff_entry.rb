@@ -13,7 +13,8 @@ module DungeonMaster
         @meta = meta
       end
 
-      # Key-by-key build avoids a large literal Hash, which trips Cursor/ServiceLiteralHashBoundary in CI.
+      # Build the row key-by-key instead of one big literal Hash: the repo enforces a max literal
+      # entry count in service files (ServiceLiteralHashBoundary) so large inline hashes fail CI.
       def to_h
         row = {}
         row["source"] = @source
