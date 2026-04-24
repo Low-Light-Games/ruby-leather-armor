@@ -12,7 +12,13 @@ import { normalizeSkillRanksMap } from '../../../rules/pathfinder_skill_ranks';
 import { migrateFeatListToPooled } from '../../../rules/pathfinder_feat_pools';
 import type { AuthUser } from '../../../types/auth';
 import { canAccessPaidAdventureOptions } from '../../../utils/planAccess';
-import { clearSheetDraft, loadSheetDraft, saveSheetDraft, type SheetDraftData } from '../../../utils/sheetDraft';
+import {
+  clearSheetDraft,
+  isKnownEmptySheetDraft,
+  loadSheetDraft,
+  saveSheetDraft,
+  type SheetDraftData,
+} from '../../../utils/sheetDraft';
 
 /** Leaving the sheet editor (another character, adventure, etc.) with a dirty sheet. */
 export const UNSAVED_SHEET_CHANGES_CONFIRM_MESSAGE =
@@ -162,6 +168,42 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
     ctx.currentCurrency,
     ctx.skillRanks,
   ]);
+
+  const buildDraftRef = useRef(buildDraft);
+  buildDraftRef.current = buildDraft;
+
+  // Free tier: persist WIP to localStorage on leave (pagehide, visibility, beforeunload).
+  useEffect(() => {
+    if (!user || hasPaidAccess) return;
+
+    const uid = user.id;
+    let coalescingFlush = false;
+
+    const scheduleFlush = () => {
+      if (coalescingFlush) return;
+      coalescingFlush = true;
+      queueMicrotask(() => {
+        coalescingFlush = false;
+        const draft = buildDraftRef.current();
+        if (isKnownEmptySheetDraft(draft)) return;
+        saveSheetDraft(uid, draft);
+      });
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') scheduleFlush();
+    };
+
+    window.addEventListener('pagehide', scheduleFlush);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('beforeunload', scheduleFlush);
+
+    return () => {
+      window.removeEventListener('pagehide', scheduleFlush);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('beforeunload', scheduleFlush);
+    };
+  }, [hasPaidAccess, user]);
 
   const persistDraft = useCallback(() => {
     if (!user || isPristine) return
