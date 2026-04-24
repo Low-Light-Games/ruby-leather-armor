@@ -5,6 +5,10 @@
 #   or: bin/rails db:seed (if referenced from seeds.rb)
 #
 # Production is populated via migrations; this file mirrors catalog effects for dev.
+#
+# Follow-ups (product): RAGE_DURATION fixed rounds are a v1 placeholder until Con/class-based
+# rage length exists. INSPIRE_DURATION fixed rounds approximates sustained performance — replace
+# with CHA/level-appropriate duration when the resolver supports it.
 
 RAGE_DURATION = { "unit" => "rounds", "fixed" => 10 }.freeze
 RAGE_EFFECTS = [
