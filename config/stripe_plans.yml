@@ -5,35 +5,45 @@ free:
 
 novice:
   token_limit         : 2857477
-  amount              : 150
+  amount              : 900
+  usd:                : 150
   description         : "This is the tier for you to try this out a bit longer, with your own custom sheet. The tokens allow for roughly 1 hour of play / month"
   stripe_product_id   : prod_UOAdC3pZHOYFdH
-  stripe_price_id     : price_1TPOxiCkABKwIzb73mJc8Vtx
+  stripe_price_id     : price_1TPlifCkABKwIzb7cvuZcVD1
+  currency            : brl
 
 scout:
   token_limit         : 8857178
-  amount              : 500
+  amount              : 2900
+  usd:                : 500
   description         : "If you have been enjoying the app, this is the tier for you to try it out for a longer period of time, with your own custom sheet. The tokens allow for roughly 3 hours of play / month"
   stripe_product_id   : prod_UOAdt9C1MTTqN0
-  stripe_price_id     : price_1TPaDbCkABKwIzb7li355zVo
+  stripe_price_id     : price_1TPlihCkABKwIzb7oAc4afGy
+  currency            : brl
 
 adventurer:
   token_limit         : 17714357
-  amount              : 1000
+  amount              : 5800
+  usd:                : 1000
   description         : "If you have been enjoying the app, this is the tier for you to have some extra tokens for longer play sessions. Average play time is 6 hours / month."
   stripe_product_id   : prod_UOAdJyjuQeEpkq
-  stripe_price_id     : price_1TPaDdCkABKwIzb7M76BHTvb
+  stripe_price_id     : price_1TPlijCkABKwIzb7psTkY3mz
+  currency            : brl
 
 hero:
   token_limit         : 28574770
-  amount              : 1500
+  amount              : 8700
+  usd:                : 1500
   description         : "If your sessions have been a bit longer and you enjoy the app, this is the tier for you to have some extra tokens. Average play time is 10 hours / month."
   stripe_product_id   : prod_UOMxiip50xX3C4
-  stripe_price_id     : price_1TPaDeCkABKwIzb7rWZWK9cK
+  stripe_price_id     : price_1TPlilCkABKwIzb7UCyqzs0f
+  currency            : brl
 
 legend:
   token_limit         : 57149540
-  amount              : 3000
+  amount              : 17400
+  usd:                : 3000
   description         : "If you need the time to become a proper legend, then this will get you covered. Average play time is 20 hours / month."
   stripe_product_id   : prod_UOMxzz7PMNs1aM
-  stripe_price_id     : price_1TPaDfCkABKwIzb7XCwJJlUI
+  stripe_price_id     : price_1TPlimCkABKwIzb7BgkllFTn
+  currency            : brl
