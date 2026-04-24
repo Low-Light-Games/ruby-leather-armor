@@ -44,6 +44,7 @@ module DungeonMaster
           hp_currency_line,
           derived_combat_block,
           skills_block,
+          class_abilities_block,
           feats_block,
           spells_block,
           items_block
@@ -56,6 +57,7 @@ module DungeonMaster
           ability_scores_line,
           hp_currency_line,
           derived_combat_block,
+          class_abilities_block,
           feats_block(categories: %w[combat general]),
           spells_block,
           items_block(types: COMBAT_ITEM_TYPES, equipped_only: true)
@@ -67,6 +69,7 @@ module DungeonMaster
           *base_parts,
           "CHA: #{@sheet.charisma}, WIS: #{@sheet.wisdom}, INT: #{@sheet.intelligence}  |  Level: #{@sheet.level}",
           skills_block(filter: SOCIAL_SKILLS),
+          class_abilities_block,
           feats_block,
           items_block(types: %w[wondrous], equipped_only: true)
         ])
@@ -78,6 +81,7 @@ module DungeonMaster
           "STR: #{@sheet.strength}, DEX: #{@sheet.dexterity}, CON: #{@sheet.constitution}, WIS: #{@sheet.wisdom}  |  Level: #{@sheet.level}",
           traversal_movement_line,
           skills_block(filter: TRAVERSAL_SKILLS),
+          class_abilities_block,
           feats_block,
           items_block
         ])
@@ -86,6 +90,7 @@ module DungeonMaster
       def buff_text
         compose([
           *base_parts,
+          class_abilities_block,
           spells_block,
           items_block(types: %w[potion wondrous])
         ])
@@ -179,6 +184,14 @@ module DungeonMaster
         return "" if skills.empty?
 
         "Skills: " + skills.map { |s| "#{s['name']} #{format_mod(s['total'])}" }.join(", ")
+      end
+
+      def class_abilities_block
+        abilities = @sheet.class_ability_definitions.order(:name).to_a
+        return "" if abilities.empty?
+
+        lines = abilities.map { |a| "#{a.name} (#{a.id})" }
+        "Class Abilities: #{lines.join(', ')}"
       end
 
       def feats_block(categories: nil)

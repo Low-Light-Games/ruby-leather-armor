@@ -2,7 +2,7 @@
 
 module Adventures
   # Copies a player Sheet into an AdventureSheet for a given adventure,
-  # including all feat, spell, and item pivot records.
+  # including feat, spell, item pivots, and class ability definitions for the PC's class/level.
   class SheetCopier
     def initialize(adventure, sheet, max_hp:, currency:)
       @adventure = adventure
@@ -25,6 +25,7 @@ module Adventures
       copy_feats(adv_sheet)
       copy_spells(adv_sheet)
       copy_items(adv_sheet)
+      ClassAbilitySync.sync!(adv_sheet)
 
       adv_sheet.recompute_derived_stats!
       adv_sheet

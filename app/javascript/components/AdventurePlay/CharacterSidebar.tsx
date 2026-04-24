@@ -24,6 +24,7 @@ import SkillsAccordion from './CharacterSidebar/SkillsAccordion'
 import WeaponsAccordion from './CharacterSidebar/WeaponsAccordion'
 import InventoryAccordion from './CharacterSidebar/InventoryAccordion'
 import FeatsAccordion from './CharacterSidebar/FeatsAccordion'
+import ClassAbilitiesAccordion from './CharacterSidebar/ClassAbilitiesAccordion'
 
 interface CharacterSidebarProps {
   sheet: AdventureSheet
@@ -68,7 +69,7 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
 }) => {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     attributes: true, weapons: false, inventory: false,
-    skills: false, feats: false, spells: false,
+    skills: false, classAbilities: false, feats: false, spells: false,
   })
   const toggleSection = (section: string) =>
     setOpenSections(prev => ({ ...prev, [section]: !prev[section] }))
@@ -206,6 +207,11 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
           equipError={equipError}
           toggleEquip={toggleEquip}
           equipSaving={equipSaving}
+        />
+        <ClassAbilitiesAccordion
+          isOpen={openSections.classAbilities}
+          onToggle={() => toggleSection('classAbilities')}
+          classAbilities={sheet.class_abilities ?? []}
         />
         <FeatsAccordion
           isOpen={openSections.feats}

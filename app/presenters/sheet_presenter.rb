@@ -65,6 +65,11 @@ class SheetPresenter
     )
 
     serialized_sheet["details"] = details_payload.to_h
+    if @sheet.respond_to?(:class_ability_definitions)
+      serialized_sheet["class_abilities"] = @sheet.class_ability_definitions.order(:name).map do |ca|
+        { id: ca.id, name: ca.name, summary: ca.summary }
+      end
+    end
     serialized_sheet
   end
 

@@ -250,12 +250,20 @@ export interface StoryMilestoneData {
   _destroy?: boolean
 }
 
+export interface ClassAbilitySummary {
+  id: string
+  name: string
+  summary: string | null
+}
+
 export interface AdventureSheet {
   id: number
   sheet_id: number | null
   name: string
   description: string | null
   details: SheetDetails | null
+  /** Populated for adventure runtime sheets from ClassAbilityDefinition. */
+  class_abilities?: ClassAbilitySummary[]
   derived_stats: DerivedStats
   strength: number
   intelligence: number
