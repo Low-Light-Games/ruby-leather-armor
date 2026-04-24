@@ -32,6 +32,7 @@ class Sheet < ApplicationRecord
   before_validation :normalize_starter_key
 
   include SheetCurrency
+  include SheetClassAbilities
 
   # Recompute derived stats after any save. Called explicitly after feat/spell
   # sync operations as well.

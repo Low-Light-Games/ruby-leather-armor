@@ -10,8 +10,6 @@ class AdventureSheet < ApplicationRecord
   has_many :spell_definitions, through: :adventure_sheet_spells
   has_many :adventure_sheet_items, dependent: :destroy
   has_many :item_definitions, through: :adventure_sheet_items
-  has_many :adventure_sheet_class_abilities, dependent: :destroy
-  has_many :class_ability_definitions, through: :adventure_sheet_class_abilities
 
   validates :name, presence: true
   validates :strength, :intelligence, :dexterity, :constitution, :wisdom, :charisma, presence: true
@@ -20,11 +18,12 @@ class AdventureSheet < ApplicationRecord
   validate :skill_ranks_within_pathfinder_rules
 
   include SheetCurrency
+  include SheetClassAbilities
 
   # Primary sheet for prompts / pipeline (eager-loads associations CharacterBlock presenters need).
   def self.for_adventure(adventure)
     adventure.adventure_sheets
-      .includes(:feat_definitions, :spell_definitions, :class_ability_definitions,
+      .includes(:feat_definitions, :spell_definitions,
                 adventure_sheet_items: :item_definition)
       .first
   end
