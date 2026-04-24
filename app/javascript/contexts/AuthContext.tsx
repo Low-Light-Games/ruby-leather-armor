@@ -7,21 +7,13 @@ import {
 } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { csrfToken } from '../utils/api';
-
-interface User {
-  id: number;
-  email: string;
-  admin: boolean;
-  tier: string;
-  onboarding_state: 'new' | 'in_progress' | 'completed';
-  banned: boolean;
-  trusted: boolean;
-  moderation_strikes: number;
-}
+import { API_ROUTES } from '../constants/apiRoutes';
+import { fetchCurrentUser } from '../services/authService';
+import type { AuthUser } from '../types/auth';
 
 interface AuthContextType {
-  user: User | null;
-  setUser: Dispatch<SetStateAction<User | null>>;
+  user: AuthUser | null;
+  setUser: Dispatch<SetStateAction<AuthUser | null>>;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -31,18 +23,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('/current_user');
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-      } else {
-        setUser(null);
-      }
+      const currentUser = await fetchCurrentUser();
+      setUser(currentUser);
     } catch (error) {
       console.error('Auth check failed:', error);
       setUser(null);
@@ -52,7 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = async (email: string, password: string) => {
-    const response = await fetch('/login', {
+    const response = await fetch(API_ROUTES.login, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -79,7 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
-      await fetch('/logout', {
+      await fetch(API_ROUTES.logout, {
         method: 'DELETE',
         headers: {
           'X-CSRF-Token': csrfToken(),

@@ -88,6 +88,7 @@ class DmConfig < ApplicationRecord
     "narrative_facts_top_k" => 8,
     "narrative_facts_active_window" => 20,
     "narrative_facts_embedding_model" => "text-embedding-3-small",
+    "stripe_grace_period_days" => 3,
   }.freeze
 
   def self.instance
@@ -162,5 +163,9 @@ class DmConfig < ApplicationRecord
   def narrative_facts_embedding_dimensions
     entry = EMBEDDING_MODELS.find { |m| m["id"] == narrative_facts_embedding_model }
     entry && entry["dimensions_override"]
+  end
+
+  def stripe_grace_period_days
+    get("stripe_grace_period_days").to_i.clamp(1, 30)
   end
 end

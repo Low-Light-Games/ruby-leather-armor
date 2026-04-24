@@ -702,7 +702,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_23_180000) do
     t.string "email"
     t.string "password_digest"
     t.boolean "admin"
-    t.string "tier", default: "free", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "provider"

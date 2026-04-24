@@ -1,25 +1,23 @@
 class User < ApplicationRecord
   has_secure_password validations: false
 
-  TIERS = %w[free paid].freeze
   ONBOARDING_STATES = %w[new in_progress completed].freeze
-
-  # Monthly cost cap in microdollars ($1 = 1,000,000 microdollars).
-  # Defined in tier_limits.yml at the project root.
-  TIER_LIMITS = YAML.load_file(Rails.root.join("tier_limits.yml"))
-                    .dig("tiers")
-                    .transform_values { |v| v["monthly_limit_microdollars"] }
-                    .freeze
 
   has_many :sheets, dependent: :destroy
   has_many :adventures, dependent: :destroy
   has_many :ai_usage_records, dependent: :nullify
   has_many :moderation_events, dependent: :destroy
+  has_one :stripe_profile, class_name: "UserStripeProfile", dependent: :destroy
+
+  scope :for_admin_index, lambda {
+    includes(:stripe_profile)
+      .order(created_at: :desc)
+      .select(:id, :email, :admin, :banned, :banned_at, :trusted, :moderation_strikes, :created_at)
+  }
 
   validates :email, presence: true, uniqueness: { case_sensitive: false }
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :password, presence: true, on: :create, unless: :oauth_user?
-  validates :tier, inclusion: { in: TIERS }
   validates :onboarding_state, inclusion: { in: ONBOARDING_STATES }
 
   def self.from_omniauth(auth)
@@ -39,35 +37,41 @@ class User < ApplicationRecord
   end
 
   def free?
-    tier == "free"
+    plan_key == "free"
   end
 
   def paid?
-    tier == "paid"
+    !free?
+  end
+
+  def plan_key
+    stripe_profile&.effective_plan_key.presence || "free"
   end
 
   def monthly_usage_limit
-    TIER_LIMITS[tier]
+    StripePlans.token_limit_for(plan_key)
   end
 
-  def monthly_usage_microdollars
+  def monthly_usage_tokens
     ai_usage_records
       .where("created_at >= ?", Time.current.beginning_of_month)
-      .sum(:total_cost_microdollars)
+      .sum(:total_tokens)
   end
 
   def usage_limit_reached?
+    return false if admin?
+
     limit = monthly_usage_limit
     return false if limit.nil?
 
-    monthly_usage_microdollars >= limit
+    monthly_usage_tokens >= limit
   end
 
   def usage_percentage
     limit = monthly_usage_limit
     return 0.0 if limit.nil? || limit.zero?
 
-    [(monthly_usage_microdollars.to_f / limit * 100).round(1), 100.0].min
+    [(monthly_usage_tokens.to_f / limit * 100).round(1), 100.0].min
   end
 
   def banned?

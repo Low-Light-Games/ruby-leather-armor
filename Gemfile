@@ -45,6 +45,9 @@ gem "ruby-openai"
 # Resend for transactional email delivery
 gem "resend"
 
+# Stripe billing API client
+gem "stripe"
+
 # AWS S3 for play log payload archiving
 gem "aws-sdk-s3"
 

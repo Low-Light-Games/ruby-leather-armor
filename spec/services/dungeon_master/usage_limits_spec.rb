@@ -13,21 +13,21 @@ RSpec.describe "AI usage limit enforcement", type: :service do
       expect(user.usage_limit_reached?).to be false
     end
 
-    it "returns true when monthly usage meets the free tier limit" do
-      limit = User::TIER_LIMITS["free"]
+    it "returns true when monthly usage meets the free plan token limit" do
+      limit = StripePlans.token_limit_for("free")
       user.ai_usage_records.create!(
         model_id: "gpt-4o-mini",
-        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
-        input_cost_microdollars: limit / 2,
-        output_cost_microdollars: limit / 2,
-        total_cost_microdollars: limit
+        input_tokens: limit / 2, output_tokens: limit / 2, reasoning_tokens: 0, total_tokens: limit,
+        input_cost_microdollars: 100,
+        output_cost_microdollars: 100,
+        total_cost_microdollars: 200
       )
 
       expect(user.usage_limit_reached?).to be true
     end
 
     it "returns false when usage is below the limit" do
-      limit = User::TIER_LIMITS["free"]
+      limit = StripePlans.token_limit_for("free")
       user.ai_usage_records.create!(
         model_id: "gpt-4o-mini",
         input_tokens: 10, output_tokens: 5, reasoning_tokens: 0, total_tokens: 15,
@@ -40,32 +40,46 @@ RSpec.describe "AI usage limit enforcement", type: :service do
     end
 
     it "only counts records from the current month" do
-      limit = User::TIER_LIMITS["free"]
+      limit = StripePlans.token_limit_for("free")
       user.ai_usage_records.create!(
         model_id: "gpt-4o-mini",
-        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
-        input_cost_microdollars: limit / 2,
-        output_cost_microdollars: limit / 2,
-        total_cost_microdollars: limit,
+        input_tokens: limit / 2, output_tokens: limit / 2, reasoning_tokens: 0, total_tokens: limit,
+        input_cost_microdollars: 100,
+        output_cost_microdollars: 100,
+        total_cost_microdollars: 200,
         created_at: 2.months.ago
       )
 
       expect(user.usage_limit_reached?).to be false
     end
 
-    it "respects the paid tier limit" do
-      user.update!(tier: "paid")
-      free_limit = User::TIER_LIMITS["free"]
+    it "respects the higher paid plan limits" do
+      create(:user_stripe_profile, user: user, plan_key: "scout")
+      free_limit = StripePlans.token_limit_for("free")
 
       user.ai_usage_records.create!(
         model_id: "gpt-4o-mini",
-        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
-        input_cost_microdollars: free_limit / 2,
-        output_cost_microdollars: free_limit / 2,
-        total_cost_microdollars: free_limit
+        input_tokens: free_limit / 2, output_tokens: free_limit / 2, reasoning_tokens: 0, total_tokens: free_limit,
+        input_cost_microdollars: 100,
+        output_cost_microdollars: 100,
+        total_cost_microdollars: 200
       )
 
       expect(user.usage_limit_reached?).to be false
+    end
+
+    it "does not enforce plan limits for admins" do
+      admin = create(:user, :admin)
+      limit = StripePlans.token_limit_for("free")
+      admin.ai_usage_records.create!(
+        model_id: "gpt-4o-mini",
+        input_tokens: limit, output_tokens: 0, reasoning_tokens: 0, total_tokens: limit,
+        input_cost_microdollars: 100,
+        output_cost_microdollars: 100,
+        total_cost_microdollars: 200
+      )
+
+      expect(admin.usage_limit_reached?).to be false
     end
   end
 
@@ -75,26 +89,26 @@ RSpec.describe "AI usage limit enforcement", type: :service do
     end
 
     it "returns 100.0 when at limit" do
-      limit = User::TIER_LIMITS["free"]
+      limit = StripePlans.token_limit_for("free")
       user.ai_usage_records.create!(
         model_id: "gpt-4o-mini",
-        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
-        input_cost_microdollars: limit,
+        input_tokens: limit, output_tokens: 0, reasoning_tokens: 0, total_tokens: limit,
+        input_cost_microdollars: 100,
         output_cost_microdollars: 0,
-        total_cost_microdollars: limit
+        total_cost_microdollars: 100
       )
 
       expect(user.usage_percentage).to eq(100.0)
     end
 
     it "caps at 100.0 when over limit" do
-      limit = User::TIER_LIMITS["free"]
+      limit = StripePlans.token_limit_for("free")
       user.ai_usage_records.create!(
         model_id: "gpt-4o-mini",
-        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
-        input_cost_microdollars: limit * 2,
+        input_tokens: limit * 2, output_tokens: 0, reasoning_tokens: 0, total_tokens: limit * 2,
+        input_cost_microdollars: 100,
         output_cost_microdollars: 0,
-        total_cost_microdollars: limit * 2
+        total_cost_microdollars: 100
       )
 
       expect(user.usage_percentage).to eq(100.0)
@@ -109,13 +123,13 @@ RSpec.describe "AI usage limit enforcement", type: :service do
     end
 
     it "is false when the user has hit the usage limit" do
-      limit = User::TIER_LIMITS["free"]
+      limit = StripePlans.token_limit_for("free")
       user.ai_usage_records.create!(
         model_id: "gpt-4o-mini",
-        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
-        input_cost_microdollars: limit,
+        input_tokens: limit, output_tokens: 0, reasoning_tokens: 0, total_tokens: limit,
+        input_cost_microdollars: 100,
         output_cost_microdollars: 0,
-        total_cost_microdollars: limit
+        total_cost_microdollars: 100
       )
 
       expect(policy.pipeline?).to be false
@@ -127,13 +141,13 @@ RSpec.describe "AI usage limit enforcement", type: :service do
     end
 
     it "raises UsageLimitExceeded from DungeonMasterService when pipeline? is false" do
-      limit = User::TIER_LIMITS["free"]
+      limit = StripePlans.token_limit_for("free")
       user.ai_usage_records.create!(
         model_id: "gpt-4o-mini",
-        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
-        input_cost_microdollars: limit,
+        input_tokens: limit, output_tokens: 0, reasoning_tokens: 0, total_tokens: limit,
+        input_cost_microdollars: 100,
         output_cost_microdollars: 0,
-        total_cost_microdollars: limit
+        total_cost_microdollars: 100
       )
 
       service = DungeonMasterService.new(adventure, user: user)
@@ -141,13 +155,13 @@ RSpec.describe "AI usage limit enforcement", type: :service do
     end
 
     it "includes a player-friendly message on UsageLimitExceeded from enforce_pipeline_policy!" do
-      limit = User::TIER_LIMITS["free"]
+      limit = StripePlans.token_limit_for("free")
       user.ai_usage_records.create!(
         model_id: "gpt-4o-mini",
-        input_tokens: 100, output_tokens: 50, reasoning_tokens: 0, total_tokens: 150,
-        input_cost_microdollars: limit,
+        input_tokens: limit, output_tokens: 0, reasoning_tokens: 0, total_tokens: limit,
+        input_cost_microdollars: 100,
         output_cost_microdollars: 0,
-        total_cost_microdollars: limit
+        total_cost_microdollars: 100
       )
 
       service = DungeonMasterService.new(adventure, user: user)

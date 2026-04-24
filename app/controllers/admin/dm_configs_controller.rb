@@ -84,6 +84,10 @@ module Admin
         new_settings["narrative_facts_active_window"] = params[:narrative_facts_active_window].to_i.clamp(0, 200)
       end
 
+      if params[:stripe_grace_period_days].present?
+        new_settings["stripe_grace_period_days"] = params[:stripe_grace_period_days].to_i.clamp(1, 30)
+      end
+
       @config.update!(settings: new_settings)
       redirect_to admin_dm_config_path, notice: "DM settings updated."
     end

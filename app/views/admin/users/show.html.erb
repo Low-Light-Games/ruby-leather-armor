@@ -5,7 +5,7 @@
       <% if @user.admin? %><span class="badge badge-admin">admin</span><% end %>
       <% if @user.trusted? %><span class="badge badge-trusted">trusted</span><% end %>
       <% if @user.banned? %><span class="badge badge-banned">banned</span><% end %>
-      <span class="tier-badge tier-<%= @user.tier %>"><%= @user.tier %></span>
+      <span class="tier-badge tier-<%= @user.plan_key %>"><%= @user.plan_key %></span>
     </div>
   </div>
 
@@ -87,7 +87,9 @@
   .badge-banned   { background: #ffebee; color: #c62828; }
   .tier-badge     { display: inline-block; padding: 3px 9px; border-radius: 10px; font-size: 12px; font-weight: 600; }
   .tier-free      { background: #f5f5f5; color: #555; }
-  .tier-paid      { background: #fff8e1; color: #e65100; }
+  .tier-novice      { background: #fff8e1; color: #e65100; }
+  .tier-scout       { background: #eef2ff; color: #3730a3; }
+  .tier-adventurer  { background: #ecfeff; color: #155e75; }
   .user-meta {
     display: flex; gap: 24px; background: #f8f9fa; padding: 14px 18px;
     border-radius: 6px; margin-bottom: 20px; font-size: 14px;

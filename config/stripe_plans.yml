@@ -1,0 +1,25 @@
+free:
+  token_limit         : 2354800
+  stripe_price_id     : null
+  stripe_product_id   : null
+
+novice:
+  token_limit         : 117740000
+  amount              : 150
+  description         : "Even if you play 3 hours every day for a month, you'll never hit a limit."
+  stripe_product_id   : prod_UOAdC3pZHOYFdH
+  stripe_price_id     : price_1TPOxiCkABKwIzb73mJc8Vtx
+
+scout:
+  token_limit         : 235480000
+  amount              : 250
+  description         : "Even if you play 6 hours every day for a month, you'll never hit a limit."
+  stripe_product_id   : prod_UOAdt9C1MTTqN0
+  stripe_price_id     : price_1TPOxkCkABKwIzb7T0v0x6DM
+
+adventurer:
+  token_limit         : 470960000
+  amount              : 450
+  description         : "Even if you play 12 hours every day for a month, you'll never hit a limit."
+  stripe_product_id   : prod_UOAdJyjuQeEpkq
+  stripe_price_id     : price_1TPOxlCkABKwIzb7bslXFlUo

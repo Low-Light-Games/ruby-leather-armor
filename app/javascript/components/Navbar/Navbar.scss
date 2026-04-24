@@ -19,12 +19,35 @@
   text-align: center;
 }
 
+.billing-delinquent-banner {
+  width: fit-content;
+  max-width: min(100%, 760px);
+  margin: 0 auto 14px;
+  padding: 8px 14px;
+  border: 1px solid #b91c1c;
+  background: rgba(254, 242, 242, 0.98);
+  color: #7f1d1d;
+  font-family: $font-body;
+  font-size: 13px;
+  text-align: center;
+
+  a {
+    color: inherit;
+    font-weight: 700;
+  }
+}
+
 @media (max-width: 768px) {
   .early-access-banner {
     top: 8px;
     margin-bottom: 12px;
     padding: 8px 12px;
     font-size: 11px;
+  }
+
+  .billing-delinquent-banner {
+    font-size: 12px;
+    margin-bottom: 10px;
   }
 }
 
@@ -52,6 +75,31 @@
       font-family: $font-mono;
       letter-spacing: 0.08em;
       text-transform: uppercase;
+    }
+
+    .plans-cta {
+      padding: 5px 14px;
+      background-color: $golden-ink;
+      color: $parchment;
+      border: 1px solid $golden-ink;
+      border-radius: 0;
+      cursor: pointer;
+      font-size: 13px;
+      font-family: $font-display;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      text-decoration: none;
+      transition: background-color 0.2s, border-color 0.2s;
+
+      &:hover {
+        background-color: $golden-ink-dk;
+        border-color: $golden-ink-dk;
+      }
+
+      &:focus-visible {
+        outline: 2px solid $golden-ink;
+        outline-offset: 2px;
+      }
     }
   }
 

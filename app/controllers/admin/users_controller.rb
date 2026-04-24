@@ -2,27 +2,26 @@
 
 module Admin
   class UsersController < BaseController
-    before_action :set_user, only: [:show, :update_tier, :ban, :unban, :trust, :untrust]
+    before_action :set_user, only: [:show, :update_plan, :ban, :unban, :trust, :untrust]
 
     def index
-      @users = User.order(created_at: :desc)
-                   .select(:id, :email, :admin, :tier, :banned, :banned_at, :trusted,
-                           :moderation_strikes, :created_at)
+      @users = User.for_admin_index
     end
 
     def show
       @moderation_events = @user.moderation_events.recent.limit(20)
     end
 
-    def update_tier
-      target_tier = tier_params[:tier]
-      unless valid_tier?(target_tier)
-        render_invalid_tier_selection!
+    def update_plan
+      target_plan_key = plan_params[:plan_key]
+      unless valid_plan_key?(target_plan_key)
+        render_invalid_plan_selection!
         return
       end
 
-      @user.update!(tier: target_tier)
-      redirect_to admin_users_path, notice: "#{@user.email} plan updated to #{target_tier}."
+      profile = @user.stripe_profile || @user.create_stripe_profile!
+      profile.update!(plan_key: target_plan_key)
+      redirect_to admin_users_path, notice: "#{@user.email} plan updated to #{target_plan_key}."
     end
 
     def ban
@@ -55,15 +54,15 @@ module Admin
       @user = User.find(params[:id])
     end
 
-    def tier_params
-      params.require(:user).permit(:tier)
+    def plan_params
+      params.require(:user).permit(:plan_key)
     end
 
-    def valid_tier?(target_tier)
-      User::TIERS.include?(target_tier)
+    def valid_plan_key?(target_plan_key)
+      StripePlans::PLAN_KEYS.include?(target_plan_key)
     end
 
-    def render_invalid_tier_selection!
+    def render_invalid_plan_selection!
       redirect_to admin_users_path, alert: "Invalid plan selected."
     end
   end
