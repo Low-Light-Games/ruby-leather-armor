@@ -102,6 +102,13 @@ module DungeonMaster
       current = Array(sheet.active_buffs).map(&:deep_stringify_keys)
       changed = false
 
+      add_array = Array(add)
+      class_ability_sheet_ids =
+        if add_array.any? { |spec| spec.is_a?(Hash) && spec["source_type"].to_s == "class_ability" } &&
+           sheet.respond_to?(:class_ability_definitions)
+          sheet.class_ability_definitions.pluck(:id).map(&:to_s)
+        end
+
       Array(remove).each do |entry|
         unless entry.is_a?(Hash)
           @log&.log!(:warn, "[buffs] buffs_remove entry must be a Hash with id and source_type — skipped #{entry.inspect}")
@@ -124,7 +131,7 @@ module DungeonMaster
         changed = true if current.size != before
       end
 
-      Array(add).each do |buff_spec|
+      add_array.each do |buff_spec|
         buff_spec = buff_spec.deep_stringify_keys if buff_spec.is_a?(Hash)
         source_id   = buff_spec["id"]
         source_type = buff_spec["source_type"]
@@ -138,7 +145,8 @@ module DungeonMaster
           sheet:           sheet,
           explicit:        explicit,
           buff_add_spec:   buff_spec,
-          log:             @log
+          log:             @log,
+          class_ability_sheet_ids: class_ability_sheet_ids
         )
         next if entries.empty?
 

@@ -23,7 +23,7 @@ module DungeonMaster
 
       # @param log [Object,#log!] optional pipeline log (DungeonMaster::Log)
       # @param buff_add_spec [Hash] full buffs_add row for class_ability adjudicated fields
-      def resolve(source_id:, source_type:, adventure:, sheet:, explicit: {}, buff_add_spec: {}, log: nil)
+      def resolve(source_id:, source_type:, adventure:, sheet:, explicit: {}, buff_add_spec: {}, log: nil, class_ability_sheet_ids: nil)
         current_game_hours = current_hours(adventure)
 
         case source_type.to_s
@@ -37,7 +37,8 @@ module DungeonMaster
             sheet: sheet,
             current_game_hours: current_game_hours,
             buff_add_spec: buff_add_spec,
-            log: log
+            log: log,
+            class_ability_sheet_ids: class_ability_sheet_ids
           )
         else
           log_warn(log, "[ActiveBuffResolver] Unknown source_type '#{source_type}' for '#{source_id}' — skipped")
@@ -89,7 +90,7 @@ module DungeonMaster
         )
       end
 
-      def resolve_class_ability(source_id, sheet:, current_game_hours:, buff_add_spec:, log: nil)
+      def resolve_class_ability(source_id, sheet:, current_game_hours:, buff_add_spec:, log: nil, class_ability_sheet_ids: nil)
         buff_add_spec = buff_add_spec.deep_stringify_keys if buff_add_spec.is_a?(Hash)
         defn = ClassAbilityDefinition.find_by(id: source_id)
         unless defn
@@ -102,7 +103,12 @@ module DungeonMaster
           return []
         end
 
-        unless sheet.class_ability_definitions.exists?(id: source_id.to_s)
+        on_sheet = if class_ability_sheet_ids
+                     class_ability_sheet_ids.include?(source_id.to_s)
+                   else
+                     sheet.class_ability_definitions.exists?(id: source_id.to_s)
+                   end
+        unless on_sheet
           log_warn(log, "[ActiveBuffResolver] class_ability '#{source_id}' not on adventure sheet — skipped")
           return []
         end
