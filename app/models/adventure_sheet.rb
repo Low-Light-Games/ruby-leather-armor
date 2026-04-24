@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# Runtime player character sheet for one adventure (copy of builder sheet + pivots).
 class AdventureSheet < ApplicationRecord
   belongs_to :adventure
   belongs_to :sheet, optional: true # reference to the original player sheet (nullable)
@@ -23,9 +24,9 @@ class AdventureSheet < ApplicationRecord
   # Primary sheet for prompts / pipeline (eager-loads associations CharacterBlock presenters need).
   def self.for_adventure(adventure)
     adventure.adventure_sheets
-      .includes(:feat_definitions, :spell_definitions,
-                adventure_sheet_items: :item_definition)
-      .first
+             .includes(:feat_definitions, :spell_definitions,
+                       adventure_sheet_items: :item_definition)
+             .first
   end
 
   # Recompute derived stats after any save. Called explicitly after feat/spell
@@ -38,7 +39,7 @@ class AdventureSheet < ApplicationRecord
   private
 
   def skill_ranks_within_pathfinder_rules
-    return unless self.class.column_names.include?("skill_ranks")
+    return unless self.class.column_names.include?('skill_ranks')
 
     CharacterStats::SkillRanksValidator.errors_for(self).each do |msg|
       errors.add(:skill_ranks, msg)

@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
+# Global catalog row for a Pathfinder 1e class-granted ability (effects, duration, etc.).
 class ClassAbilityDefinition < ApplicationRecord
   self.primary_key = :id
 
   MIN_LEVEL_BY_ID = {
-    "greater_rage" => 11,
-    "mighty_rage" => 20,
+    'greater_rage' => 11,
+    'mighty_rage' => 20
   }.freeze
 
   validates :name,       presence: true
