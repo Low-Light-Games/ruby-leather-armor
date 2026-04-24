@@ -17,7 +17,6 @@ export interface AuthUser {
   banned: boolean
   trusted: boolean
   moderation_strikes: number
-  paying_users_allowed: boolean
   usage: UsageSnapshot
 }
 

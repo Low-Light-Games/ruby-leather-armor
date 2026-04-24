@@ -40,11 +40,9 @@ export const Navbar = () => {
         <div className="user-info">
           <span>Logged in as: {user.email}</span>
           {user.admin && <span className="admin-badge">Admin</span>}
-          {user.paying_users_allowed && (
-            <a href="/plans" className="plans-cta">
-              {plansCtaLabel}
-            </a>
-          )}
+          <a href="/plans" className="plans-cta">
+            {plansCtaLabel}
+          </a>
         </div>
         <div className="header-actions">
           <a href="/sheets" className="nav-link">Sheets</a>

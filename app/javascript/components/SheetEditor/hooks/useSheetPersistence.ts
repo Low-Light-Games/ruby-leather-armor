@@ -242,9 +242,7 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
       persistDraft();
       setFeedback({
         type: 'info',
-        message: user?.paying_users_allowed
-          ? 'We kept this character as a local draft in this browser. Subscribe to save it to your account and play adventures with it.'
-          : 'We kept this character as a local draft in this browser. Saving custom characters requires a paid plan.',
+        message: 'We kept this character as a local draft in this browser. Subscribe to save it to your account and play adventures with it.',
       });
       return;
     }

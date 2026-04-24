@@ -4,10 +4,7 @@ RSpec.describe "Subscription pages", type: :request do
   let(:user) { create(:user, :password_auth) }
   let(:admin_user) { create(:user, :admin, :password_auth) }
 
-  before do
-    create(:feature_flag, key: "paying_users_allowed", enabled: true)
-    sign_in(user)
-  end
+  before { sign_in(user) }
 
   it "renders the plans page" do
     get plans_path

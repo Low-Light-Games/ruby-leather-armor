@@ -111,11 +111,9 @@ export const SheetEditor = () => {
             Explore the character builder freely. Saving custom characters and
             using them in adventures requires a subscription.
           </p>
-          {user.paying_users_allowed && (
-            <button type="button" className="builder-access-note__cta" onClick={handleSubscribe}>
-              Subscribe to Save and Play
-            </button>
-          )}
+          <button type="button" className="builder-access-note__cta" onClick={handleSubscribe}>
+            Subscribe to Save and Play
+          </button>
         </div>
       )}
       <div className="form-field">
