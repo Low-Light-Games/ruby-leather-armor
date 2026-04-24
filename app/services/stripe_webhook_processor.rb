@@ -98,14 +98,7 @@ class StripeWebhookProcessor
 
     if DELINQUENT_STATUSES.include?(status)
       started_at = profile.delinquent_since || Time.current
-      attrs = {
-        stripe_subscription_id: subscription.id,
-        stripe_subscription_status: status,
-        stripe_price_id: price_id,
-        stripe_current_period_end: period_end,
-        delinquent_since: started_at,
-        grace_period_ends_at: started_at + grace_period_duration
-      }
+      attrs = delinquent_subscription_attributes(subscription, status, price_id, period_end, started_at)
       attrs[:plan_key] = "free" if profile.grace_expired?
       profile.update!(attrs)
       return
@@ -161,5 +154,16 @@ class StripeWebhookProcessor
 
   def grace_period_duration
     DmConfig.instance.stripe_grace_period_days.days
+  end
+
+  def delinquent_subscription_attributes(subscription, status, price_id, period_end, started_at)
+    {
+      stripe_subscription_id: subscription.id,
+      stripe_subscription_status: status,
+      stripe_price_id: price_id,
+      stripe_current_period_end: period_end,
+      delinquent_since: started_at,
+      grace_period_ends_at: started_at + grace_period_duration
+    }
   end
 end

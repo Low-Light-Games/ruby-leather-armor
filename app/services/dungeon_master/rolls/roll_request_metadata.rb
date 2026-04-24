@@ -15,19 +15,7 @@ module DungeonMaster
         # +result+ is the pipeline halt hash for +:awaiting_rolls+ (:merged, :intent, :remaining_actions).
         def build_persist_metadata(result, adventure)
           merged = result[:merged]
-          meta = {
-            roll_requests: merged[:player_rolls],
-            pending_npc_actions: MechanicalEvaluationNpcActions.filter_for_combat_finish(
-              merged[:npc_actions],
-              combat_active: adventure.combat_active?
-            ),
-            pending_consequences: merged[:consequences],
-            mechanical_summaries: merged[:mechanical_summaries],
-            pending_roll_chain: merged[:roll_chain],
-            intent: result[:intent],
-            show_dc: adventure.effective_dm_setting("show_roll_dc"),
-            remaining_actions: result[:remaining_actions]
-          }
+          meta = persisted_roll_request_metadata(result, merged, adventure)
           if adventure.combat_active?
             ::DungeonMaster::Battlefield::EnsureForActiveCombat.call(adventure: adventure)
             adventure.reload
@@ -63,6 +51,22 @@ module DungeonMaster
 
         def deep_symbolize_array(value)
           Array(value).map(&:deep_symbolize_keys)
+        end
+
+        def persisted_roll_request_metadata(result, merged, adventure)
+          {
+            roll_requests: merged[:player_rolls],
+            pending_npc_actions: MechanicalEvaluationNpcActions.filter_for_combat_finish(
+              merged[:npc_actions],
+              combat_active: adventure.combat_active?
+            ),
+            pending_consequences: merged[:consequences],
+            mechanical_summaries: merged[:mechanical_summaries],
+            pending_roll_chain: merged[:roll_chain],
+            intent: result[:intent],
+            show_dc: adventure.effective_dm_setting("show_roll_dc"),
+            remaining_actions: result[:remaining_actions]
+          }
         end
       end
     end

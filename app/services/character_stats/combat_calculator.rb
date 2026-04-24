@@ -162,13 +162,7 @@ module CharacterStats
 
     # Exposed for EncumbranceCalculator (needs speed_30/speed_20) and Calculator.
     def compute_equipment_bonuses
-      result = {
-        armor_bonus: 0, shield_bonus: 0,
-        max_dex_bonus: nil,
-        armor_check_penalty: 0,
-        arcane_spell_failure: 0,
-        speed_30: nil, speed_20: nil,
-      }
+      result = empty_equipment_bonuses
 
       @items.select(&:equipped?).each do |si|
         item = si.item_definition
@@ -216,11 +210,7 @@ module CharacterStats
     # ── Feat stat bonuses ────────────────────────────────────────────
 
     def compute_feat_stat_bonuses
-      result = {
-        ac: 0, fort_save: 0, ref_save: 0, will_save: 0,
-        initiative: 0, melee_attack: 0, ranged_attack: 0,
-        hp: 0, cmb_by_maneuver: {}, cmd_by_maneuver: {},
-      }
+      result = empty_stat_bonuses
 
       @feats.each do |sf|
         fd = sf.feat_definition
@@ -250,11 +240,7 @@ module CharacterStats
     # ── Equipment stat bonuses ───────────────────────────────────────
 
     def compute_equipment_stat_bonuses
-      result = {
-        ac: 0, fort_save: 0, ref_save: 0, will_save: 0,
-        initiative: 0, melee_attack: 0, ranged_attack: 0,
-        hp: 0, cmb_by_maneuver: {}, cmd_by_maneuver: {},
-      }
+      result = empty_stat_bonuses
 
       @items.select(&:equipped?).each do |si|
         item = si.item_definition
@@ -298,6 +284,33 @@ module CharacterStats
     end
 
     # ── Conditions ───────────────────────────────────────────────────
+
+    def empty_equipment_bonuses
+      {
+        armor_bonus: 0,
+        shield_bonus: 0,
+        max_dex_bonus: nil,
+        armor_check_penalty: 0,
+        arcane_spell_failure: 0,
+        speed_30: nil,
+        speed_20: nil,
+      }
+    end
+
+    def empty_stat_bonuses
+      {
+        ac: 0,
+        fort_save: 0,
+        ref_save: 0,
+        will_save: 0,
+        initiative: 0,
+        melee_attack: 0,
+        ranged_attack: 0,
+        hp: 0,
+        cmb_by_maneuver: {},
+        cmd_by_maneuver: {},
+      }
+    end
 
     def ac_modifier_from_conditions(conds)
       conds.sum do |cond_name|

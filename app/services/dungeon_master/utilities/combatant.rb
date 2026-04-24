@@ -60,17 +60,9 @@ module DungeonMaster
       end
 
       def to_context_hash
-        h = {
-          "name" => name,
-          "type" => type,
-          "initiative" => initiative,
-          "hp" => hp,
-          "max_hp" => max_hp,
-          "conditions" => conditions,
-          "position" => position
-        }
-        h["creature_sheet_id"] = creature_sheet_id if creature_sheet_id.present?
-        h
+        context_hash = base_context_hash
+        context_hash["creature_sheet_id"] = creature_sheet_id if creature_sheet_id.present?
+        context_hash
       end
 
       def self.from_creature_sheet(sheet, initiative:)
@@ -125,6 +117,18 @@ module DungeonMaster
         else
           combatant.to_context_hash
         end
+      end
+
+      def base_context_hash
+        {
+          "name" => name,
+          "type" => type,
+          "initiative" => initiative,
+          "hp" => hp,
+          "max_hp" => max_hp,
+          "conditions" => conditions,
+          "position" => position
+        }
       end
     end
   end

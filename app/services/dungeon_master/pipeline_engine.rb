@@ -101,14 +101,7 @@ module DungeonMaster
     # ----------------------------------------------------------------
 
     def create_adventure_loop(action_text, sequence_index)
-      attrs = {
-        adventure:           @adventure,
-        registry_entry_uuid: @log.registry_entry_uuid,
-        sequence_index:      sequence_index,
-        raw_action:          action_text&.truncate(500),
-        player_intent:       action_text&.truncate(500),
-        status:              "pending"
-      }
+      attrs = adventure_loop_attributes(action_text, sequence_index)
       attrs[:pipeline] = @run_pipeline if @run_pipeline
       AdventureLoop.create!(attrs)
     end
@@ -123,6 +116,17 @@ module DungeonMaster
 
     def tl(step, summary)
       { "step" => step.to_s, "summary" => summary.to_s.truncate(200), "at" => Time.current.iso8601 }
+    end
+
+    def adventure_loop_attributes(action_text, sequence_index)
+      {
+        adventure:           @adventure,
+        registry_entry_uuid: @log.registry_entry_uuid,
+        sequence_index:      sequence_index,
+        raw_action:          action_text&.truncate(500),
+        player_intent:       action_text&.truncate(500),
+        status:              "pending"
+      }
     end
   end
 end

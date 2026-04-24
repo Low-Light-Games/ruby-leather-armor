@@ -7,7 +7,15 @@ module DungeonMaster
       module_function
 
       def as_json(message, admin: false)
-        json = {
+        json = base_message_json(message)
+        if admin && message.role != "player"
+          json[:registry_entry_uuid] = message.metadata&.dig("registry_entry_uuid")
+        end
+        json
+      end
+
+      def base_message_json(message)
+        {
           id: message.id,
           role: message.role,
           content: message.content,
@@ -15,10 +23,6 @@ module DungeonMaster
           metadata: message.metadata,
           created_at: message.created_at
         }
-        if admin && message.role != "player"
-          json[:registry_entry_uuid] = message.metadata&.dig("registry_entry_uuid")
-        end
-        json
       end
     end
   end
