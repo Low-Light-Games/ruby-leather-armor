@@ -3,7 +3,6 @@
 # The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
 
 # Reference / catalog data — needed in all environments
-load Rails.root.join("db", "seeds", "feature_flags.rb")
 load Rails.root.join("db", "seeds", "feats.rb")
 load Rails.root.join("db", "seeds", "spells.rb")
 load Rails.root.join("db", "seeds", "items.rb")
