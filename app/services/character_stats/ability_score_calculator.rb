@@ -23,7 +23,8 @@ module CharacterStats
 
       racial_mods   = compute_racial_mods(race_info)
       pre_condition = compute_final_scores(racial_mods)
-      final_scores  = apply_condition_penalties(pre_condition)
+      buffed_scores = apply_active_buff_score_deltas(pre_condition)
+      final_scores  = apply_condition_penalties(buffed_scores)
       mods          = compute_ability_mods(final_scores)
 
       good_saves = class_info ? class_info[:good_saves] : []
@@ -83,6 +84,18 @@ module CharacterStats
 
     def compute_ability_mods(final_scores)
       final_scores.transform_values { |v| ((v - 10).to_f / 2).floor }
+    end
+
+    def apply_active_buff_score_deltas(scores)
+      buffs = Array(@src.try(:active_buffs))
+      return scores if buffs.empty?
+
+      adjusted = scores.dup
+      ABILITIES.each do |ability|
+        delta = ActiveBuffStacking.stacked_value_for_target(buffs, ability)
+        adjusted[ability] += delta if delta.nonzero?
+      end
+      adjusted
     end
 
     # ── BAB & saves ─────────────────────────────────────────────────

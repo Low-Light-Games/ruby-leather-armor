@@ -3,8 +3,9 @@
 module DungeonMaster
   module Utilities
     class ActiveBuffEntry
-      def initialize(source:, bonus_type:, target:, value:, expires_at_game_hours:, meta: nil)
+      def initialize(source:, source_type:, bonus_type:, target:, value:, expires_at_game_hours:, meta: nil)
         @source = source
+        @source_type = source_type
         @bonus_type = bonus_type
         @target = target
         @value = value
@@ -13,15 +14,15 @@ module DungeonMaster
       end
 
       def to_h
-        payload = {
-          "source" => @source,
-          "bonus_type" => @bonus_type.to_s,
-          "target" => @target.to_s,
-          "value" => @value,
-          "expires_at_game_hours" => @expires_at_game_hours
-        }
-        payload["meta"] = @meta if @meta.present?
-        payload
+        row = {}
+        row["source"] = @source
+        row["source_type"] = @source_type.to_s
+        row["bonus_type"] = @bonus_type.to_s
+        row["target"] = @target.to_s
+        row["value"] = @value
+        row["expires_at_game_hours"] = @expires_at_game_hours
+        row["meta"] = @meta if @meta.present?
+        row
       end
     end
   end

@@ -17,7 +17,7 @@ export type Prerequisite =
   | { type: 'feat'; feat: string }              // references FeatDefinition.id
   | { type: 'skill'; skill: string; ranks: number }
   | { type: 'caster_level'; minimum: number }
-  | { type: 'class_feature'; feature: string }
+  | { type: 'class_ability'; feature: string }
   | { type: 'class_level'; classId: string; level: number }
   | { type: 'character_level'; minimum: number }
   | { type: 'proficiency'; weapon: string };

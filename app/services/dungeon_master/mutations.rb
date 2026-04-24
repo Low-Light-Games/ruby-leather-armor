@@ -93,8 +93,8 @@ module DungeonMaster
     # ── Buff mutations ──────────────────────────────────────────────
 
     # Applies buffs_add and buffs_remove to a sheet's active_buffs.
-    # buffs_add entries: { id:, source_type:, [bonus_type:, target:, value:, duration_hours:] }
-    # buffs_remove entries: array of source ID strings
+    # buffs_add: { id, source_type, optional adjudicated_effects / adjudicated_duration_hours for class_ability }.
+    # buffs_remove: only [{ "id", "source_type" }] — composite key matches persisted rows.
     # Returns true if anything changed.
     def apply_buffs(sheet, add, remove)
       return false unless sheet.respond_to?(:active_buffs)
@@ -102,9 +102,20 @@ module DungeonMaster
       current = Array(sheet.active_buffs).map(&:deep_stringify_keys)
       changed = false
 
-      Array(remove).each do |source_id|
+      Array(remove).each do |entry|
+        unless entry.is_a?(Hash)
+          @log&.log!(:warn, "[buffs] buffs_remove entry must be a Hash with id and source_type — skipped #{entry.inspect}")
+          next
+        end
+        h = entry.deep_stringify_keys
+        rid = h["id"].presence || h["source"].presence
+        rst = h["source_type"].presence
+        unless rid && rst
+          @log&.log!(:warn, "[buffs] buffs_remove entry missing id or source_type — skipped #{h.inspect}")
+          next
+        end
         before = current.size
-        current.reject! { |e| e["source"] == source_id.to_s }
+        current.reject! { |e| e["source"].to_s == rid.to_s && e["source_type"].to_s == rst.to_s }
         changed = true if current.size != before
       end
 
@@ -116,22 +127,27 @@ module DungeonMaster
 
         explicit = buff_spec.slice("bonus_type", "target", "value", "duration_hours")
         entries  = Utilities::ActiveBuffResolver.resolve(
-          source_id:   source_id,
-          source_type: source_type,
-          adventure:   @adventure,
-          sheet:       sheet,
-          explicit:    explicit
+          source_id:      source_id,
+          source_type:     source_type,
+          adventure:       @adventure,
+          sheet:           sheet,
+          explicit:        explicit,
+          buff_add_spec:   buff_spec,
+          log:             @log
         )
         next if entries.empty?
 
-        current.reject! { |e| e["source"] == source_id.to_s }
+        current.reject! do |e|
+          e["source"].to_s == source_id.to_s && e["source_type"].to_s == source_type.to_s
+        end
         current.concat(entries)
         changed = true
       end
 
       if changed
         sheet.update!(active_buffs: current)
-        @log.log!(:info, "[buffs] updated active_buffs on sheet #{sheet.id}: #{current.map { _1['source'] }.join(', ')}")
+        labels = current.map { |e| "#{e['source']}:#{e['source_type']}" }.join(", ")
+        @log.log!(:info, "[buffs] updated active_buffs on sheet #{sheet.id}: #{labels}")
       end
 
       changed

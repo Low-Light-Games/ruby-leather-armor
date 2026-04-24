@@ -33,6 +33,8 @@ export interface DerivedStats {
   hp_bonus: number
   melee_attack: number
   ranged_attack: number
+  /** Flat bonus from active_buff rows targeting `damage` (e.g. inspire courage). */
+  damage_bonus: number
   speed: number
   size: string
   skills: DerivedSkill[]
@@ -93,6 +95,8 @@ export interface DerivedSkill {
 
 export interface ActiveBuff {
   source: string
+  /** spell | item | class_ability — used with source for buffs_remove composite key */
+  source_type?: string | null
   bonus_type: string
   target: string
   value: number

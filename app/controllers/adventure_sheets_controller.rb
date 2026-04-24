@@ -14,6 +14,11 @@ class AdventureSheetsController < ApplicationController
   def update
     authorize @adventure, :show?
 
+    if playwright_sheet_test_only_request?
+      apply_playwright_sheet_test_overrides!
+      return render json: adventure_sheet_json(@adventure_sheet.reload)
+    end
+
     skill_ranks_rejected = false
 
     AdventureSheet.transaction do
@@ -82,6 +87,28 @@ class AdventureSheetsController < ApplicationController
   end
 
   private
+
+  # Playwright only: PATCH body may contain only active_buffs and/or conditions for UI tests.
+  def apply_playwright_sheet_test_overrides!
+    raw = params.to_unsafe_h
+    if raw.key?("active_buffs")
+      @adventure_sheet.active_buffs = Array(raw["active_buffs"]).map(&:deep_stringify_keys)
+    end
+    if raw.key?("conditions")
+      @adventure_sheet.conditions = Array(raw["conditions"]).map(&:to_s)
+    end
+    @adventure_sheet.save!
+    @adventure_sheet.recompute_derived_stats!
+  end
+
+  def playwright_sheet_test_only_request?
+    return false unless Rails.env.playwright?
+
+    raw = params.to_unsafe_h.keys.map(&:to_s) - %w[controller action adventure_id]
+    return false if raw.empty?
+
+    raw.all? { |k| %w[active_buffs conditions].include?(k) }
+  end
 
   def set_adventure
     @adventure = Adventure.kept.find(params[:adventure_id])

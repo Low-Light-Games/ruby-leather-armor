@@ -135,7 +135,10 @@ module DungeonMaster
         current_hours = (ctx["adventure_day"].to_i - 1) * 24.0 + ctx["current_hour"].to_f
 
         parts = buffs.map do |b|
-          label = "#{b['source']} (#{b['bonus_type']} +#{b['value']} → #{b['target']})"
+          st = b["source_type"].presence
+          label = b["source"].to_s
+          label += " [#{st}]" if st
+          label += " (#{b['bonus_type']} #{format_mod(b['value'].to_i)} → #{b['target']})"
           if b["expires_at_game_hours"]
             remaining_h = b["expires_at_game_hours"].to_f - current_hours
             remaining_min = (remaining_h * 60).round

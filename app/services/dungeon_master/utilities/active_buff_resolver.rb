@@ -5,73 +5,54 @@ module DungeonMaster
     # Resolves a buff source into one or more active_buffs entries ready to be
     # persisted on an AdventureSheet.
     #
-    # Each returned entry:
-    #   {
-    #     "source"               => String,   # source ID (de-dup key)
-    #     "bonus_type"           => String,   # PF1e bonus type token
-    #     "target"               => String,   # routing key: "ac", "speed", "saves", …
-    #     "value"                => Integer,  # resolved numeric bonus
-    #     "expires_at_game_hours"=> Float|nil # absolute game-hour or nil = no expiry
-    #   }
-    #
-    # Source types
-    # ────────────
-    #   "spell"         — looks up SpellDefinition by id; uses duration_formula + effects
-    #   "item"          — looks up ItemDefinition by id; uses properties["duration_formula"] + effects
-    #   "class_feature" — AI supplies explicit: bonus_type, target, value, duration_hours (optional)
-    #
-    # The resolver returns ALL bonus components regardless of target. The calculator
-    # layer (CombatCalculator for "ac", Calculator for "speed") decides what to apply;
-    # unknown targets are stored and ignored until a handler is added — zero changes
-    # needed here or in Mutations for future expansions.
-    #
-    # Stacking rule (enforced by calculators, not here):
-    #   same bonus_type  → highest value wins (replacement)
-    #   different types  → all values stack (additive)
-    #
-    # TODO: caster level is assumed equal to sheet.level. Revisit when multiclass
-    #       support is added and a character can have different caster/class levels.
+    # Each returned entry includes source_type (spell | item | class_ability) for
+    # composite de-duplication with buffs_remove { id, source_type }.
     module ActiveBuffResolver
       UNIT_TO_HOURS = {
         "hours"   => 1.0,
         "minutes" => 1.0 / 60.0,
-        "rounds"  => 1.0 / 600.0, # 1 round = 6 seconds; 600 rounds = 1 hour
+        "rounds"  => 1.0 / 600.0,
       }.freeze
+
+      ALLOWED_BUFF_TARGETS = %w[
+        ac speed saves attack damage
+        strength dexterity constitution intelligence wisdom charisma
+      ].freeze
 
       module_function
 
-      # @param source_id   [String]
-      # @param source_type [String]  "spell" | "item" | "class_feature"
-      # @param adventure   [Adventure]
-      # @param sheet       [AdventureSheet]
-      # @param explicit    [Hash]  only used for class_feature
-      # @return [Array<Hash>]
-      def resolve(source_id:, source_type:, adventure:, sheet:, explicit: {})
+      # @param log [Object,#log!] optional pipeline log (DungeonMaster::Log)
+      # @param buff_add_spec [Hash] full buffs_add row for class_ability adjudicated fields
+      def resolve(source_id:, source_type:, adventure:, sheet:, explicit: {}, buff_add_spec: {}, log: nil)
         current_game_hours = current_hours(adventure)
 
-        case source_type
+        case source_type.to_s
         when "spell"
-          resolve_spell(source_id, sheet: sheet, current_game_hours: current_game_hours)
+          resolve_spell(source_id, sheet: sheet, current_game_hours: current_game_hours, log: log)
         when "item"
-          resolve_item(source_id, current_game_hours: current_game_hours)
-        when "class_feature"
-          resolve_class_feature(source_id, explicit: explicit, current_game_hours: current_game_hours)
+          resolve_item(source_id, current_game_hours: current_game_hours, log: log)
+        when "class_ability"
+          resolve_class_ability(
+            source_id,
+            sheet: sheet,
+            current_game_hours: current_game_hours,
+            buff_add_spec: buff_add_spec,
+            log: log
+          )
         else
-          Rails.logger.info("[ActiveBuffResolver] Unknown source_type '#{source_type}' for '#{source_id}' — skipped")
+          log_warn(log, "[ActiveBuffResolver] Unknown source_type '#{source_type}' for '#{source_id}' — skipped")
           []
         end
       end
-
-      # ── Helpers ──────────────────────────────────────────────────────────
 
       def current_hours(adventure)
         Utilities::GameClock.absolute_hours(adventure.time_context)
       end
 
-      def resolve_spell(source_id, sheet:, current_game_hours:)
+      def resolve_spell(source_id, sheet:, current_game_hours:, log: nil)
         defn = SpellDefinition.find_by(id: source_id)
         unless defn
-          Rails.logger.info("[ActiveBuffResolver] SpellDefinition '#{source_id}' not found — skipped")
+          log_warn(log, "[ActiveBuffResolver] SpellDefinition '#{source_id}' not found — skipped")
           return []
         end
 
@@ -79,13 +60,19 @@ module DungeonMaster
         duration_hours = compute_duration_hours(defn.duration_formula, level: caster_level)
         expires_at = duration_hours ? current_game_hours + duration_hours : nil
 
-        build_entries(source_id, Array(defn.effects), expires_at: expires_at, caster_level: caster_level)
+        build_entries(
+          source_id,
+          "spell",
+          filter_effects(Array(defn.effects)),
+          expires_at: expires_at,
+          caster_level: caster_level
+        )
       end
 
-      def resolve_item(source_id, current_game_hours:)
+      def resolve_item(source_id, current_game_hours:, log: nil)
         defn = ItemDefinition.find_by(id: source_id)
         unless defn
-          Rails.logger.info("[ActiveBuffResolver] ItemDefinition '#{source_id}' not found — skipped")
+          log_warn(log, "[ActiveBuffResolver] ItemDefinition '#{source_id}' not found — skipped")
           return []
         end
 
@@ -93,34 +80,58 @@ module DungeonMaster
         duration_hours = compute_duration_hours(formula, level: nil)
         expires_at = duration_hours ? current_game_hours + duration_hours : nil
 
-        build_entries(source_id, Array(defn.effects), expires_at: expires_at, caster_level: nil)
+        build_entries(
+          source_id,
+          "item",
+          filter_effects(Array(defn.effects)),
+          expires_at: expires_at,
+          caster_level: nil
+        )
       end
 
-      def resolve_class_feature(source_id, explicit:, current_game_hours:)
-        bonus_type   = explicit["bonus_type"] || explicit[:bonus_type]
-        target       = explicit["target"]      || explicit[:target]
-        value        = (explicit["value"]      || explicit[:value]).to_i
-        duration_h   = (explicit["duration_hours"] || explicit[:duration_hours])&.to_f
-
-        unless bonus_type && target && value.nonzero?
-          Rails.logger.info("[ActiveBuffResolver] class_feature '#{source_id}' missing bonus_type/target/value — skipped")
+      def resolve_class_ability(source_id, sheet:, current_game_hours:, buff_add_spec:, log: nil)
+        buff_add_spec = buff_add_spec.deep_stringify_keys if buff_add_spec.is_a?(Hash)
+        defn = ClassAbilityDefinition.find_by(id: source_id)
+        unless defn
+          log_warn(log, "[ActiveBuffResolver] ClassAbilityDefinition '#{source_id}' not found — skipped")
           return []
         end
 
-        expires_at = duration_h ? current_game_hours + duration_h : nil
+        unless sheet.respond_to?(:class_ability_definitions)
+          log_warn(log, "[ActiveBuffResolver] class_ability '#{source_id}' sheet has no class abilities — skipped")
+          return []
+        end
 
-        [ActiveBuffEntry.new(
-          source: source_id,
-          bonus_type: bonus_type,
-          target: target,
-          value: value,
-          expires_at_game_hours: expires_at
-        ).to_h]
+        unless sheet.class_ability_definitions.exists?(id: source_id.to_s)
+          log_warn(log, "[ActiveBuffResolver] class_ability '#{source_id}' not on adventure sheet — skipped")
+          return []
+        end
+
+        catalog = filter_effects(Array(defn.effects))
+        adjudicated = normalize_adjudicated_effects(buff_add_spec["adjudicated_effects"], log: log)
+        merged = catalog + adjudicated
+
+        if merged.empty?
+          log_warn(log, "[ActiveBuffResolver] class_ability '#{source_id}' has no catalog or adjudicated effects — skipped")
+          return []
+        end
+
+        duration_hours = if buff_add_spec["adjudicated_duration_hours"].present?
+                           buff_add_spec["adjudicated_duration_hours"].to_f
+                         else
+                           compute_duration_hours(defn.duration_formula, level: sheet.level.to_i)
+                         end
+        expires_at = duration_hours ? current_game_hours + duration_hours : nil
+
+        build_entries(
+          source_id,
+          "class_ability",
+          merged,
+          expires_at: expires_at,
+          caster_level: sheet.level.to_i
+        )
       end
 
-      # ── Duration ─────────────────────────────────────────────────────────
-
-      # Returns duration in hours, or nil if no formula / no expiry.
       def compute_duration_hours(formula, level:)
         return nil unless formula.is_a?(Hash)
 
@@ -134,15 +145,44 @@ module DungeonMaster
         nil
       end
 
-      # ── Effect building ───────────────────────────────────────────────────
+      def filter_effects(effects)
+        effects.select do |effect|
+          next false unless effect.is_a?(Hash)
 
-      def build_entries(source_id, effects, expires_at:, caster_level: nil)
+          ALLOWED_BUFF_TARGETS.include?(effect["target"].to_s)
+        end
+      end
+
+      def normalize_adjudicated_effects(raw, log: nil)
+        Array(raw).filter_map do |effect|
+          unless effect.is_a?(Hash)
+            log_warn(log, "[ActiveBuffResolver] adjudicated_effects entry must be a Hash — skipped")
+            next
+          end
+          h = effect.deep_stringify_keys
+          target = h["target"].to_s
+          unless ALLOWED_BUFF_TARGETS.include?(target)
+            log_warn(log, "[ActiveBuffResolver] adjudicated effect dropped unknown target '#{target}'")
+            next
+          end
+          bonus_type = h["bonusType"] || h["bonus_type"]
+          unless bonus_type.present?
+            log_warn(log, "[ActiveBuffResolver] adjudicated effect dropped missing bonusType for target '#{target}'")
+            next
+          end
+          h["bonusType"] = bonus_type
+          h["target"] = target
+          h
+        end
+      end
+
+      def build_entries(source_id, buff_source_type, effects, expires_at:, caster_level: nil)
         entries = []
 
         effects.each do |effect|
           next unless effect.is_a?(Hash)
 
-          target = effect["target"]
+          target = effect["target"].to_s
           next unless target.present?
 
           bonus_type = effect["bonusType"] || effect["bonus_type"]
@@ -151,15 +191,12 @@ module DungeonMaster
           value = resolve_bonus_value(effect, caster_level: caster_level)
           next unless value && value.nonzero?
 
-          # Persist all effect keys that are not already captured in the top-level
-          # entry. This lets future target handlers (saves, attacks, etc.) access
-          # conditional metadata (e.g. applies_vs, save_type, school) without
-          # requiring a migration or resolver rewrite.
           reserved = %w[type bonusType bonus_type target bonus bonus_formula]
           meta = effect.reject { |k, _| reserved.include?(k) }
 
           entries << ActiveBuffEntry.new(
             source: source_id,
+            source_type: buff_source_type,
             bonus_type: bonus_type,
             target: target,
             value: value,
@@ -171,10 +208,6 @@ module DungeonMaster
         entries
       end
 
-      # Resolves the numeric bonus for a single effect.
-      # Evaluates bonus_formula when caster_level is available.
-      # Formula shape: { "base": N, "per_n_cl": D, "max": M }
-      #   value = base + floor(caster_level / per_n_cl), capped at max
       def resolve_bonus_value(effect, caster_level: nil)
         raw = effect["bonus"]
 
@@ -211,6 +244,14 @@ module DungeonMaster
 
       def capped_bonus_for_formula(value, bonus_formula)
         bonus_formula["max"] ? [value, bonus_formula["max"].to_i].min : value
+      end
+
+      def log_warn(log, msg)
+        if log&.respond_to?(:log!)
+          log.log!(:warn, msg)
+        else
+          Rails.logger.warn(msg)
+        end
       end
     end
   end

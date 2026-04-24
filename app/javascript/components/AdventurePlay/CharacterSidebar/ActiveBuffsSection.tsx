@@ -5,6 +5,14 @@ const TARGET_LABELS: Record<string, string> = {
   ac: 'AC',
   speed: 'Speed',
   saves: 'Saves',
+  attack: 'Attack',
+  damage: 'Damage',
+  strength: 'STR',
+  dexterity: 'DEX',
+  constitution: 'CON',
+  intelligence: 'INT',
+  wisdom: 'WIS',
+  charisma: 'CHA',
 }
 
 function targetLabelFor(target: string): string {
@@ -31,7 +39,10 @@ const ActiveBuffsSection: React.FC<ActiveBuffsSectionProps> = ({ buffs }) => {
       </div>
       <div className="active-buffs-list">
         {buffs.map(buff => (
-          <div key={`${buff.source}-${buff.target}-${buff.bonus_type}`} className="active-buff-row">
+          <div
+            key={`${buff.source}-${buff.source_type ?? 'legacy'}-${buff.target}-${buff.bonus_type}`}
+            className="active-buff-row"
+          >
             <div className="active-buff-main">
               <span className="active-buff-source">{buff.source}</span>
               <span className="active-buff-effect">{effectSummaryFor(buff)}</span>

@@ -75,6 +75,7 @@ module CharacterStats
         hp_bonus:            cbt[:hp_bonus],
         melee_attack:        cbt[:melee_attack],
         ranged_attack:       cbt[:ranged_attack],
+        damage_bonus:        cbt[:damage_bonus].to_i,
         speed:               speed,
         size:                ability[:race_info][:size],
         skills:              skills,

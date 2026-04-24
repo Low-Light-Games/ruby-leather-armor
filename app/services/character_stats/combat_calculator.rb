@@ -34,13 +34,18 @@ module CharacterStats
       equip              = compute_equipment_bonuses
       equip_stat_bonuses = compute_equipment_stat_bonuses
 
+      active_buff_rows = Array(@src.try(:active_buffs))
+      save_buff        = ActiveBuffStacking.stacked_value_for_target(active_buff_rows, "saves")
+      attack_buff      = ActiveBuffStacking.stacked_value_for_target(active_buff_rows, "attack")
+      damage_buff      = ActiveBuffStacking.stacked_value_for_target(active_buff_rows, "damage")
+
       # ── Saves ────────────────────────────────────────────────────
       fort = compute_base_save(good_saves.include?("fort"), @src.level) +
-             mods["constitution"] + feat_stat_bonuses[:fort_save] + equip_stat_bonuses[:fort_save]
+             mods["constitution"] + feat_stat_bonuses[:fort_save] + equip_stat_bonuses[:fort_save] + save_buff
       ref  = compute_base_save(good_saves.include?("ref"),  @src.level) +
-             mods["dexterity"] + feat_stat_bonuses[:ref_save] + equip_stat_bonuses[:ref_save]
+             mods["dexterity"] + feat_stat_bonuses[:ref_save] + equip_stat_bonuses[:ref_save] + save_buff
       will = compute_base_save(good_saves.include?("will"), @src.level) +
-             mods["wisdom"] + feat_stat_bonuses[:will_save] + equip_stat_bonuses[:will_save]
+             mods["wisdom"] + feat_stat_bonuses[:will_save] + equip_stat_bonuses[:will_save] + save_buff
 
       # ── Encumbrance limits → max DEX and ACP ─────────────────────
       enc_limits    = enc[:enc_limits]
@@ -63,10 +68,7 @@ module CharacterStats
       # Stacking rule: group by bonus_type; take highest per group; sum across groups.
       # Same bonus_type → highest wins (replacement). Different types → additive.
       # armor_bonus and shield_bonus also compete with equipped item values.
-      #
-      # TODO: extend this block to handle target: "saves", "attack", etc. when those
-      #       expansion phases are implemented. Add the handler here; no other files change.
-      ac_buffs = Array(@src.try(:active_buffs)).select { |b| b["target"] == "ac" }
+      ac_buffs = active_buff_rows.select { |b| b["target"] == "ac" }
       buff_by_type = ac_buffs.group_by { |b| b["bonus_type"] }
                               .transform_values { |g| g.map { |b| b["value"].to_i }.max }
 
@@ -99,9 +101,9 @@ module CharacterStats
 
       # ── Attacks ──────────────────────────────────────────────────
       melee_attack  = bab + mods["strength"] + ac_size +
-                      feat_stat_bonuses[:melee_attack] + equip_stat_bonuses[:melee_attack]
+                      feat_stat_bonuses[:melee_attack] + equip_stat_bonuses[:melee_attack] + attack_buff
       ranged_attack = bab + effective_dex_mod + ac_size +
-                      feat_stat_bonuses[:ranged_attack] + equip_stat_bonuses[:ranged_attack]
+                      feat_stat_bonuses[:ranged_attack] + equip_stat_bonuses[:ranged_attack] + attack_buff
 
       # ── Breakdowns ───────────────────────────────────────────────
       buff_breakdown_entries = ac_buffs
@@ -129,18 +131,21 @@ module CharacterStats
         { label: "CON Mod",   value: mods["constitution"] },
         { label: "Feat",      value: feat_stat_bonuses[:fort_save] },
         { label: "Equipment", value: equip_stat_bonuses[:fort_save] },
+        buff_save_breakdown_line(save_buff),
       )
       ref_breakdown = build_breakdown(
         { label: "Base Save", value: compute_base_save(good_saves.include?("ref"), @src.level) },
         { label: "DEX Mod",   value: mods["dexterity"] },
         { label: "Feat",      value: feat_stat_bonuses[:ref_save] },
         { label: "Equipment", value: equip_stat_bonuses[:ref_save] },
+        buff_save_breakdown_line(save_buff),
       )
       will_breakdown = build_breakdown(
         { label: "Base Save", value: compute_base_save(good_saves.include?("will"), @src.level) },
         { label: "WIS Mod",   value: mods["wisdom"] },
         { label: "Feat",      value: feat_stat_bonuses[:will_save] },
         { label: "Equipment", value: equip_stat_bonuses[:will_save] },
+        buff_save_breakdown_line(save_buff),
       )
 
       {
@@ -149,6 +154,7 @@ module CharacterStats
         fort: fort, ref: ref, will: will,
         max_hp: max_hp, hp_bonus: hp_bonus,
         melee_attack: melee_attack, ranged_attack: ranged_attack,
+        damage_bonus: damage_buff,
         feat_stat_bonuses: feat_stat_bonuses,
         armor_bonus: armor_ac, shield_bonus: shield_ac,
         armor_check_penalty: total_acp,
@@ -297,6 +303,12 @@ module CharacterStats
       }
     end
 
+    def buff_save_breakdown_line(save_buff)
+      return nil if save_buff.to_i.zero?
+
+      { label: "Buff (saves target)", value: save_buff, type: "bonus" }
+    end
+
     def empty_stat_bonuses
       {
         ac: 0,
@@ -322,7 +334,7 @@ module CharacterStats
     # ── Breakdowns ───────────────────────────────────────────────────
 
     def build_breakdown(*entries)
-      entries.flatten.select { |e| e[:value].to_i != 0 || e[:label] == "Base" }
+      entries.flatten.compact.select { |e| e[:value].to_i != 0 || e[:label] == "Base" }
     end
 
     def condition_breakdown_entries(conds, effect_key, sub_key)

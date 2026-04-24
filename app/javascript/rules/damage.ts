@@ -112,6 +112,12 @@ export function rollWeaponDamage(
     }
   }
 
+  const buffDmg = ds.damage_bonus ?? 0
+  if (buffDmg !== 0) {
+    flatBonus += buffDmg
+    breakdown.push(`Active buffs ${formatMod(buffDmg)}`)
+  }
+
   // Power Attack / Deadly Aim (optional toggle — show as note)
   for (const feat of feats) {
     for (const effect of feat.effects) {
@@ -181,6 +187,12 @@ export function rollUnarmedDamage(
         breakdown.push(`${feat.name} ${formatMod(effect.bonus)}`)
       }
     }
+  }
+
+  const buffDmgUnarmed = ds.damage_bonus ?? 0
+  if (buffDmgUnarmed !== 0) {
+    flatBonus += buffDmgUnarmed
+    breakdown.push(`Active buffs ${formatMod(buffDmgUnarmed)}`)
   }
 
   // Power Attack (optional toggle — show as note)

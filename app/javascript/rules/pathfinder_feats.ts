@@ -169,7 +169,7 @@ export function prerequisiteLabel(prereq: Prerequisite): string {
       return `${prereq.skill} ${prereq.ranks} ranks`;
     case 'caster_level':
       return `Caster level ${prereq.minimum}`;
-    case 'class_feature':
+    case 'class_ability':
       return prereq.feature;
     case 'class_level': {
       const name = prereq.classId.charAt(0).toUpperCase() + prereq.classId.slice(1);
@@ -215,7 +215,7 @@ export function checkAllPrerequisites(
         status = (ctx.classId === prereq.classId && ctx.level >= prereq.level) ? 'met' : 'unmet';
         break;
       default:
-        // skill, caster_level, class_feature, proficiency — can't fully verify
+        // skill, caster_level, class_ability, proficiency — can't fully verify
         status = 'unknown';
     }
 

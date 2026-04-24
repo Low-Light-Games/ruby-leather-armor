@@ -31,11 +31,15 @@ determine the factual outcome and produce structured mutations.
   SpellDefinition ID and `"source_type": "spell"` (e.g. `{ "id": "mage_armor", "source_type": "spell" }`).
 - If the action consumes a potion (e.g. drinking a Potion of Haste), include it with the ItemDefinition ID
   and `"source_type": "item"` (e.g. `{ "id": "potion_of_haste", "source_type": "item" }`).
-- For class features with no catalog entry, use `"source_type": "class_feature"` and supply
-  bonus_type, target, value, and optionally duration_hours.
-- Ruby resolves duration and bonus automatically for catalog-backed sources (spell/item) — do not
-  compute or pass caster level or duration in those cases.
-- If a buff ends or is dispelled, list its source ID in `buffs_remove`.
+- For class abilities, use `"source_type": "class_ability"` with the ClassAbilityDefinition ID.
+  Ruby applies catalog `effects` and `duration_formula` when present. For catalog-only rows
+  (e.g. rage, inspire courage), `{ "id": "rage", "source_type": "class_ability" }` is enough.
+  For adjudicated-only rows (e.g. fighting defensively), include `adjudicated_effects` as an array
+  of spell-style effect objects (`target`, `bonusType`, `bonus`) and optional `adjudicated_duration_hours`.
+- Ruby resolves duration and bonus automatically for catalog-backed spell/item sources — do not
+  compute or pass caster level or duration for those.
+- To remove a buff, use `buffs_remove` as an array of objects `{ "id", "source_type" }` matching
+  the composite key on each active buff row (same id can exist for different source types).
 - The outcome field should be a factual summary (not narrative prose).
 - Do NOT estimate travel time or distance — the TimeKeeper step handles that separately.
   Focus only on whether the action mechanically succeeded or failed.
@@ -64,9 +68,9 @@ Respond ONLY with valid JSON (no markdown, no code fences):
       "conditions_remove": [],
       "buffs_add": [
         { "id": "mage_armor", "source_type": "spell" },
-        { "id": "fighting_defensively", "source_type": "class_feature", "bonus_type": "dodge_bonus", "target": "ac", "value": 2, "duration_hours": 0.0017 }
+        { "id": "fighting_defensively", "source_type": "class_ability", "adjudicated_effects": [{ "target": "ac", "bonusType": "dodge", "bonus": 2 }], "adjudicated_duration_hours": 0.0017 }
       ],
-      "buffs_remove": ["mage_armor"]
+      "buffs_remove": [{ "id": "mage_armor", "source_type": "spell" }]
     },
     "npcs": [
       { "name": "NPC Name", "hp_change": -8, "conditions_add": [], "conditions_remove": [], "defeated": false, "attitude_change": null }
