@@ -2,6 +2,7 @@ import { useMemo, useCallback } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { AttributeType } from '../../../types';
 import type { AttributeValues } from '../../../contexts/SheetsContext';
+import { BLANK_CHARACTER_ATTRIBUTES } from '../../../utils/sheetDraft';
 
 export const AVAILABLE_POINTS = 27;
 
@@ -10,14 +11,8 @@ const POINT_COSTS: Record<number, number> = {
   13: 3, 14: 5, 15: 7, 16: 10, 17: 13, 18: 17,
 };
 
-export const DEFAULT_ATTRIBUTES: AttributeValues = {
-  strength: 10,
-  intelligence: 10,
-  dexterity: 10,
-  constitution: 10,
-  wisdom: 10,
-  charisma: 10,
-};
+/** Same as `BLANK_CHARACTER_ATTRIBUTES` / `emptySheetDraft().attributes` (single source in sheetDraft). */
+export const DEFAULT_ATTRIBUTES: AttributeValues = BLANK_CHARACTER_ATTRIBUTES;
 
 interface UsePointBuyParams {
   attributes: AttributeValues;

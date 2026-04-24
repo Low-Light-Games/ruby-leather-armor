@@ -6,7 +6,6 @@ import type { OwnedItem, Currency } from '../../../rules/pathfinder_items_types'
 import { csrfToken } from '../../../utils/api';
 import { getCastingStyle } from '../../../rules/pathfinder_spells';
 import { EMPTY_CURRENCY } from '../../../rules/pathfinder_items';
-import { DEFAULT_ATTRIBUTES } from './usePointBuy';
 import type { SkillRanksMap } from '../../../rules/pathfinder_skill_ranks';
 import { normalizeSkillRanksMap } from '../../../rules/pathfinder_skill_ranks';
 import { migrateFeatListToPooled } from '../../../rules/pathfinder_feat_pools';
@@ -14,6 +13,7 @@ import type { AuthUser } from '../../../types/auth';
 import { canAccessPaidAdventureOptions } from '../../../utils/planAccess';
 import {
   clearSheetDraft,
+  emptySheetDraft,
   isKnownEmptySheetDraft,
   loadSheetDraft,
   saveSheetDraft,
@@ -268,18 +268,19 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
       if (!confirmed) return;
     }
     setDirty();
-    setName('');
-    setDescription('');
-    ctx.setCurrentAttributes(DEFAULT_ATTRIBUTES);
-    ctx.setCurrentRace(null);
-    ctx.setCurrentFlexibleBonus(null);
-    ctx.setCurrentClass(null);
-    ctx.setCurrentLevel(1);
-    ctx.setSelectedFeats([]);
-    ctx.setSelectedSpells([]);
-    ctx.setSelectedItems([]);
-    ctx.setCurrentCurrency({ ...EMPTY_CURRENCY });
-    ctx.setSkillRanks({});
+    const blank = emptySheetDraft();
+    setName(blank.name);
+    setDescription(blank.description);
+    ctx.setCurrentAttributes({ ...blank.attributes });
+    ctx.setCurrentRace(blank.race);
+    ctx.setCurrentFlexibleBonus(blank.flexibleBonus);
+    ctx.setCurrentClass(blank.characterClass);
+    ctx.setCurrentLevel(blank.level);
+    ctx.setSelectedFeats([...blank.feats]);
+    ctx.setSelectedSpells([...blank.spells]);
+    ctx.setSelectedItems([...blank.items]);
+    ctx.setCurrentCurrency({ ...blank.currency });
+    ctx.setSkillRanks({ ...blank.skillRanks });
     setCurrentSheetId(null);
     ctx.setSheetToEdit(null);
     setPristine();
