@@ -132,6 +132,7 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
     setCurrentSheetId(sheet.id);
     setPristine();
     ctx.setSheetToEdit(null);
+    if (user) clearSheetDraft(user.id);
   };
 
   const buildDraft = useCallback((): SheetDraftData => ({
