@@ -6,11 +6,10 @@
 #
 # Production is populated via migrations; this file mirrors catalog effects for dev.
 #
-# Follow-ups (product): RAGE_DURATION fixed rounds are a v1 placeholder until Con/class-based
-# rage length exists. INSPIRE_DURATION fixed rounds approximates sustained performance — replace
-# with CHA/level-appropriate duration when the resolver supports it.
+# Follow-ups (product): PLACEHOLDER_* round counts mirror the migration seeds — not full PF 1e
+# (rage should be Con/class-based; inspire should follow bard level / performance rules).
 
-RAGE_DURATION = { "unit" => "rounds", "fixed" => 10 }.freeze
+PLACEHOLDER_RAGE_ROUNDS = { "unit" => "rounds", "fixed" => 10 }.freeze
 RAGE_EFFECTS = [
   { "target" => "strength", "bonusType" => "morale", "bonus" => 2 },
   { "target" => "constitution", "bonusType" => "morale", "bonus" => 2 },
@@ -33,18 +32,18 @@ INSPIRE_COURAGE_EFFECTS = [
   { "target" => "attack", "bonusType" => "competence", "bonus" => 1 },
   { "target" => "damage", "bonusType" => "competence", "bonus" => 1 },
 ].freeze
-INSPIRE_DURATION = { "unit" => "rounds", "fixed" => 100 }.freeze
+PLACEHOLDER_INSPIRE_ROUNDS = { "unit" => "rounds", "fixed" => 100 }.freeze
 
 STAPLES = [
   { id: "rage", name: "Rage", pf1e_class: "barbarian",
     summary: "Enter a powerful battle rage, gaining bonus to Str/Con and Will saves.",
-    effects: RAGE_EFFECTS, duration_formula: RAGE_DURATION },
+    effects: RAGE_EFFECTS, duration_formula: PLACEHOLDER_RAGE_ROUNDS },
   { id: "greater_rage", name: "Greater Rage", pf1e_class: "barbarian",
     summary: "Enhanced rage with larger bonuses than standard Rage.",
-    effects: GREATER_RAGE_EFFECTS, duration_formula: RAGE_DURATION },
+    effects: GREATER_RAGE_EFFECTS, duration_formula: PLACEHOLDER_RAGE_ROUNDS },
   { id: "mighty_rage", name: "Mighty Rage", pf1e_class: "barbarian",
     summary: "Maximum rage bonuses, available at high barbarian levels.",
-    effects: MIGHTY_RAGE_EFFECTS, duration_formula: RAGE_DURATION },
+    effects: MIGHTY_RAGE_EFFECTS, duration_formula: PLACEHOLDER_RAGE_ROUNDS },
   { id: "smite_evil", name: "Smite Evil", pf1e_class: "paladin",
     summary: "Add Cha bonus to attack and level bonus to damage against an evil target." },
   { id: "lay_on_hands", name: "Lay on Hands", pf1e_class: "paladin",
@@ -57,7 +56,7 @@ STAPLES = [
     summary: "Use performance to inspire allies or hinder enemies." },
   { id: "inspire_courage", name: "Inspire Courage", pf1e_class: "bard",
     summary: "Boost attack, damage, and save bonuses for allies via performance.",
-    effects: INSPIRE_COURAGE_EFFECTS, duration_formula: INSPIRE_DURATION },
+    effects: INSPIRE_COURAGE_EFFECTS, duration_formula: PLACEHOLDER_INSPIRE_ROUNDS },
   { id: "wild_shape", name: "Wild Shape", pf1e_class: "druid",
     summary: "Polymorph into an animal or elemental form." },
   { id: "flurry_of_blows", name: "Flurry of Blows", pf1e_class: "monk",
