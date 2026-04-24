@@ -1,13 +1,13 @@
 require "rails_helper"
 
 RSpec.describe "Admin user plan updates", type: :request do
-  let(:admin_user) { create(:user, :admin) }
-  let(:normal_user) { create(:user) }
-  let(:target_user) { create(:user) }
+  let(:admin_user) { create(:user, :admin, :password_auth) }
+  let(:normal_user) { create(:user, :password_auth) }
+  let(:target_user) { create(:user, :password_auth) }
 
   describe "PATCH /admin/users/:id/update_plan" do
     it "updates the plan when performed by an admin" do
-      sign_in_via_session(admin_user)
+      sign_in(admin_user)
 
       patch update_plan_admin_user_path(target_user), params: { user: { plan_key: "scout" } }
 
@@ -16,7 +16,7 @@ RSpec.describe "Admin user plan updates", type: :request do
     end
 
     it "does not update the plan for invalid values" do
-      sign_in_via_session(admin_user)
+      sign_in(admin_user)
 
       patch update_plan_admin_user_path(target_user), params: { user: { plan_key: "enterprise" } }
 
@@ -25,7 +25,7 @@ RSpec.describe "Admin user plan updates", type: :request do
     end
 
     it "rejects non-admin users" do
-      sign_in_via_session(normal_user)
+      sign_in(normal_user)
 
       patch update_plan_admin_user_path(target_user), params: { user: { plan_key: "scout" } }
 

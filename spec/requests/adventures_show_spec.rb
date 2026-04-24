@@ -1,12 +1,12 @@
 require "rails_helper"
 
 RSpec.describe "Adventures show", type: :request do
-  let(:user)      { create(:user) }
+  let(:user)      { create(:user, :password_auth) }
   let(:story)     { create(:story) }
   let(:adventure) { create(:adventure, user: user, story: story) }
   let!(:sheet)    { create(:adventure_sheet, adventure: adventure) }
 
-  before { sign_in_via_session(user) }
+  before { sign_in(user) }
 
   it "includes ended state fields in the JSON response" do
     adventure.update!(ended_at: Time.zone.parse("2026-04-15 12:34:00 UTC"), end_reason: "player_death")
