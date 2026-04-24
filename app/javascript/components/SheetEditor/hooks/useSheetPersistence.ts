@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { Sheet, AttributeType } from '../../../types';
 import type { AttributeValues } from '../../../contexts/SheetsContext';
@@ -10,6 +10,9 @@ import { DEFAULT_ATTRIBUTES } from './usePointBuy';
 import type { SkillRanksMap } from '../../../rules/pathfinder_skill_ranks';
 import { normalizeSkillRanksMap } from '../../../rules/pathfinder_skill_ranks';
 import { migrateFeatListToPooled } from '../../../rules/pathfinder_feat_pools';
+import type { AuthUser } from '../../../types/auth';
+import { canAccessPaidAdventureOptions } from '../../../utils/planAccess';
+import { clearSheetDraft, loadSheetDraft, saveSheetDraft, type SheetDraftData } from '../../../utils/sheetDraft';
 
 /** Leaving the sheet editor (another character, adventure, etc.) with a dirty sheet. */
 export const UNSAVED_SHEET_CHANGES_CONFIRM_MESSAGE =
@@ -45,7 +48,7 @@ interface ContextSetters {
 }
 
 export interface Feedback {
-  type: 'success' | 'error';
+  type: 'success' | 'error' | 'info';
   message: string;
 }
 
@@ -65,18 +68,21 @@ interface UseSheetPersistenceResult {
   // Actions
   saveSheet: () => Promise<void>;
   resetToNew: () => void;
+  persistDraft: () => void;
 }
 
-export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceResult {
+export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null): UseSheetPersistenceResult {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [currentSheetId, setCurrentSheetId] = useState<number | null>(null);
   const [isPristine, setIsPristine] = useState(true);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
+  const restoredDraftRef = useRef(false);
 
   const setDirty = useCallback(() => setIsPristine(false), []);
   const setPristine = useCallback(() => setIsPristine(true), []);
   const dismissFeedback = useCallback(() => setFeedback(null), []);
+  const hasPaidAccess = !!user && canAccessPaidAdventureOptions(user);
 
   // ── Load sheet when sheetToEdit changes ─────────────────────────
 
@@ -128,6 +134,78 @@ export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceRes
     ctx.setSheetToEdit(null);
   };
 
+  const buildDraft = useCallback((): SheetDraftData => ({
+    name,
+    description,
+    attributes: ctx.currentAttributes,
+    race: ctx.currentRace,
+    flexibleBonus: ctx.currentFlexibleBonus,
+    characterClass: ctx.currentClass,
+    level: ctx.currentLevel,
+    feats: ctx.selectedFeats,
+    spells: ctx.selectedSpells,
+    items: ctx.selectedItems,
+    currency: ctx.currentCurrency,
+    skillRanks: ctx.skillRanks,
+  }), [
+    name,
+    description,
+    ctx.currentAttributes,
+    ctx.currentRace,
+    ctx.currentFlexibleBonus,
+    ctx.currentClass,
+    ctx.currentLevel,
+    ctx.selectedFeats,
+    ctx.selectedSpells,
+    ctx.selectedItems,
+    ctx.currentCurrency,
+    ctx.skillRanks,
+  ]);
+
+  const persistDraft = useCallback(() => {
+    if (!user) return
+
+    saveSheetDraft(user.id, buildDraft())
+  }, [buildDraft, user]);
+
+  const clearDraft = useCallback(() => {
+    if (!user) return
+
+    clearSheetDraft(user.id)
+  }, [user]);
+
+  const loadDraftIntoForm = useCallback((draft: SheetDraftData) => {
+    setName(draft.name);
+    setDescription(draft.description || '');
+    ctx.setCurrentAttributes(draft.attributes);
+    ctx.setCurrentRace(draft.race);
+    ctx.setCurrentFlexibleBonus(draft.flexibleBonus);
+    ctx.setCurrentClass(draft.characterClass);
+    ctx.setCurrentLevel(draft.level || 1);
+    ctx.setSelectedFeats(draft.feats || []);
+    ctx.setSelectedSpells(draft.spells || []);
+    ctx.setSelectedItems(draft.items || []);
+    ctx.setCurrentCurrency(draft.currency || { ...EMPTY_CURRENCY });
+    ctx.setSkillRanks(normalizeSkillRanksMap(draft.skillRanks));
+    setCurrentSheetId(null);
+    ctx.setSheetToEdit(null);
+    setDirty();
+  }, [ctx, setDirty]);
+
+  useEffect(() => {
+    if (!user || restoredDraftRef.current || ctx.sheetToEdit || currentSheetId !== null) return
+
+    restoredDraftRef.current = true
+    const draft = loadSheetDraft(user.id)
+    if (!draft) return
+
+    loadDraftIntoForm(draft)
+    setFeedback({
+      type: 'info',
+      message: 'We restored your last custom character draft from this browser.',
+    })
+  }, [currentSheetId, ctx.sheetToEdit, loadDraftIntoForm, user]);
+
   // ── Reset to blank sheet ────────────────────────────────────────
 
   const resetToNew = useCallback(() => {
@@ -153,12 +231,24 @@ export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceRes
     setCurrentSheetId(null);
     ctx.setSheetToEdit(null);
     setPristine();
+    clearDraft();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPristine]);
+  }, [clearDraft, isPristine]);
 
   // ── Save (create / update) ──────────────────────────────────────
 
   const saveSheet = useCallback(async () => {
+    if (!hasPaidAccess) {
+      persistDraft();
+      setFeedback({
+        type: 'info',
+        message: user?.paying_users_allowed
+          ? 'We kept this character as a local draft in this browser. Subscribe to save it to your account and play adventures with it.'
+          : 'We kept this character as a local draft in this browser. Saving custom characters requires a paid plan.',
+      });
+      return;
+    }
+
     try {
       const isUpdate = currentSheetId !== null;
       const url = isUpdate ? `/sheets/${currentSheetId}` : '/sheets';
@@ -200,7 +290,7 @@ export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceRes
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
-          errorData.errors?.join(', ') || `HTTP error! status: ${response.status}`,
+          errorData.errors?.join(', ') || errorData.error || `HTTP error! status: ${response.status}`,
         );
       }
 
@@ -216,6 +306,7 @@ export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceRes
         ctx.setSheets([...ctx.sheets, savedSheet]);
       }
 
+      clearDraft();
       setCurrentSheetId(savedSheet.id);
       setPristine();
       ctx.setSheetToEdit(savedSheet);
@@ -225,11 +316,12 @@ export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceRes
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
+    clearDraft,
     currentSheetId, name, description,
     ctx.currentRace, ctx.currentFlexibleBonus, ctx.currentClass, ctx.currentLevel,
     ctx.selectedFeats, ctx.selectedSpells, ctx.selectedItems, ctx.currentCurrency,
     ctx.skillRanks,
-    ctx.currentAttributes, ctx.sheets, resetToNew,
+    ctx.currentAttributes, ctx.sheets, hasPaidAccess, persistDraft, resetToNew, user,
   ]);
 
   return {
@@ -244,5 +336,6 @@ export function useSheetPersistence(ctx: ContextSetters): UseSheetPersistenceRes
     dismissFeedback,
     saveSheet,
     resetToNew,
+    persistDraft,
   };
 }

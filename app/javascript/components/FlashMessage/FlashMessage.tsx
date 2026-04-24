@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import './FlashMessage.scss'
 
 interface FlashMessageProps {
-  type: 'success' | 'error'
+  type: 'success' | 'error' | 'info'
   message: string
   /** Auto-dismiss after this many ms. 0 = no auto-dismiss. Default: 4000 */
   duration?: number
@@ -40,7 +40,7 @@ export const FlashMessage = ({ type, message, duration = 4000, onDismiss }: Flas
       onClick={() => { setVisible(false); onDismiss?.() }}
     >
       <span className="flash-toast__icon">
-        {type === 'success' ? '✓' : '✕'}
+        {type === 'success' ? '✓' : type === 'error' ? '✕' : 'i'}
       </span>
       <span className="flash-toast__message">{message}</span>
     </div>

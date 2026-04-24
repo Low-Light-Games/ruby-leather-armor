@@ -2,10 +2,13 @@ import { useEffect, useState } from "react"
 import { useSheetsContext } from "../../contexts/SheetsContext"
 import { Sheet } from "../../types"
 import { csrfToken } from "../../utils/api"
+import { useAuth } from "../../contexts/AuthContext"
+import { canAccessPaidAdventureOptions } from "../../utils/planAccess"
 import './SheetList.scss'
 
 export const SheetList = () => {
   const { sheets, setSheets, setSheetToEdit } = useSheetsContext()
+  const { user } = useAuth()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -70,7 +73,11 @@ export const SheetList = () => {
   return (
     <div>
       {sheets.length === 0 ? (
-        <p>No character sheets yet. Create one to get started!</p>
+        <p className="sheet-list-empty">
+          {user && !canAccessPaidAdventureOptions(user)
+            ? 'No saved custom sheets yet. Free users can explore the builder here, but saving custom characters requires a subscription.'
+            : 'No character sheets yet. Create one to get started!'}
+        </p>
       ) : (
         <ul className="sheet-list">
           {sheets.map((character: Sheet) => (

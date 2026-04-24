@@ -179,8 +179,9 @@ const OnboardingWizard = () => {
           You may take up either one as your own.
         </p>
         <p>
-          Alternatively, you may arrive with your own character. The dungeon does not
-          grade on a curve.
+          Alternatively, you may draft your own adventurer in the builder. Only
+          paying users can save custom characters and take them into adventures,
+          so you will know the terms before you invest your time.
         </p>
       </div>
 
@@ -192,7 +193,7 @@ const OnboardingWizard = () => {
         <div className="onboarding-wizard__error">
           <p>{error}</p>
           {error.toLowerCase().includes('no adventure') && (
-            <a href="/sheets">Build your own character instead</a>
+            <a href="/sheets?builder_notice=custom_character_paywall">Build your own character instead</a>
           )}
         </div>
       )}
@@ -213,10 +214,10 @@ const OnboardingWizard = () => {
       <div className="onboarding-wizard__own">
         <h2 className="onboarding-wizard__section-heading">Or, Arrive Unknown</h2>
         <p className="onboarding-wizard__own-desc">
-          Bring your own. First-level characters only. The system will accept what
-          you provide and hold you to it.
+          Sketch your own first-level character in the builder. Only subscribers
+          can save custom characters and use them in adventures.
         </p>
-        <a href="/sheets" className="onboarding-wizard__own-link">
+        <a href="/sheets?builder_notice=custom_character_paywall" className="onboarding-wizard__own-link">
           Create a Character
         </a>
       </div>

@@ -33,6 +33,13 @@
     border-left: 4px solid $red-ink;
   }
 
+  &--info {
+    background-color: $parchment-dk;
+    color: $ink;
+    border: 1px solid $border;
+    border-left: 4px solid $amber;
+  }
+
   &--fading {
     opacity: 0;
     transform: translateX(-50%) translateY(-10px);
