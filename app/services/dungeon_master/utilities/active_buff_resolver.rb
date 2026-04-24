@@ -42,7 +42,7 @@ module DungeonMaster
         ActiveBuffEffectRows.build_buff_rows(
           source_id,
           "spell",
-          ActiveBuffEffectRows.filter_effects(Array(defn.effects)),
+          ActiveBuffEffectRows.filter_effects(CharacterStats::PersistedJsonArray.list(defn.effects)),
           expires_at: expires_at,
           caster_level: caster_level
         )
@@ -62,7 +62,7 @@ module DungeonMaster
         ActiveBuffEffectRows.build_buff_rows(
           source_id,
           "item",
-          ActiveBuffEffectRows.filter_effects(Array(defn.effects)),
+          ActiveBuffEffectRows.filter_effects(CharacterStats::PersistedJsonArray.list(defn.effects)),
           expires_at: expires_at,
           caster_level: nil
         )
@@ -92,7 +92,7 @@ module DungeonMaster
           return []
         end
 
-        from_definition = ActiveBuffEffectRows.filter_effects(Array(defn.effects))
+        from_definition = ActiveBuffEffectRows.filter_effects(CharacterStats::PersistedJsonArray.list(defn.effects))
         from_mutation = ActiveBuffEffectRows.normalize_adjudicated_effects(entry["adjudicated_effects"], log: log)
         merged = from_definition + from_mutation
 

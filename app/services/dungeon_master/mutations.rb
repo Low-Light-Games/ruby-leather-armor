@@ -66,7 +66,7 @@ module DungeonMaster
         config: @config
       )
 
-      Array(creature_names).each do |name|
+      CoercedMutationArray.coerce(creature_names, field: "new_creatures", log: @log).each do |name|
         factory.create_for_name(name)
       end
     rescue => e
@@ -86,21 +86,25 @@ module DungeonMaster
       end
 
       conditions_changed = apply_conditions(@sheet, player_muts[:conditions_add], player_muts[:conditions_remove])
-      buffs_changed      = apply_buffs(@sheet, player_muts[:buffs_add], player_muts[:buffs_remove])
+      buff_lists         = BuffMutationLists.from_payload(
+        buffs_add: player_muts[:buffs_add],
+        buffs_remove: player_muts[:buffs_remove],
+        log: @log
+      )
+      buffs_changed      = apply_buffs(@sheet, buff_lists)
       @sheet.recompute_derived_stats! if conditions_changed || buffs_changed
     end
 
     # ── Buff mutations ──────────────────────────────────────────────
 
-    def apply_buffs(sheet, add, remove)
+    def apply_buffs(sheet, buff_lists)
       return false unless sheet.respond_to?(:active_buffs)
 
-      rows = Array(sheet.active_buffs).map(&:deep_stringify_keys)
-      additions = Array(add)
-      class_ability_ids = class_ability_ids_for_buff_adds(sheet, additions)
+      rows = BuffMutationLists.active_buff_rows_from_sheet(sheet, log: @log)
+      class_ability_ids = class_ability_ids_for_buff_adds(sheet, buff_lists.additions)
 
-      changed = apply_buff_removals!(rows, remove)
-      changed = apply_buff_additions!(rows, additions, sheet, class_ability_ids) || changed
+      changed = apply_buff_removals!(rows, buff_lists.removals)
+      changed = apply_buff_additions!(rows, buff_lists.additions, sheet, class_ability_ids) || changed
 
       if changed
         sheet.update!(active_buffs: rows)
@@ -114,7 +118,7 @@ module DungeonMaster
     # ── NPC mutations ───────────────────────────────────────────────
 
     def apply_npc_mutations(npc_muts)
-      Array(npc_muts).each do |npc_mut|
+      CoercedMutationArray.coerce(npc_muts, field: "npcs", log: @log).each do |npc_mut|
         npc_mut  = npc_mut.deep_symbolize_keys if npc_mut.is_a?(Hash)
         creature = resolve_creature_sheet_for_npc_mutation(npc_mut)
         next unless creature
@@ -216,9 +220,9 @@ module DungeonMaster
       sheet.class_ability_definitions.pluck(:id).map(&:to_s)
     end
 
-    def apply_buff_removals!(rows, remove_list)
+    def apply_buff_removals!(rows, removals)
       changed = false
-      Array(remove_list).each do |raw_spec|
+      removals.each do |raw_spec|
         changed = remove_buff_rows_for_spec!(rows, raw_spec) || changed
       end
       changed
@@ -286,16 +290,16 @@ module DungeonMaster
     # ── Conditions shared helper ────────────────────────────────────
 
     def apply_conditions(sheet, add, remove)
-      current = Array(sheet.conditions).dup
+      current = CoercedMutationArray.coerce(sheet.conditions, field: "sheet.conditions", log: @log).dup
       changed = false
 
-      Array(remove).each do |cond|
+      CoercedMutationArray.coerce(remove, field: "conditions_remove", log: @log).each do |cond|
         next unless CharacterStats::Conditions.valid?(cond)
 
         changed = true if current.delete(cond)
       end
 
-      Array(add).each do |cond|
+      CoercedMutationArray.coerce(add, field: "conditions_add", log: @log).each do |cond|
         next unless CharacterStats::Conditions.valid?(cond)
 
         current = CharacterStats::Conditions.upgrade(current, cond)

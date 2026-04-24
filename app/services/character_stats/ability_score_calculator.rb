@@ -46,7 +46,7 @@ module CharacterStats
     # ── Conditions ──────────────────────────────────────────────────
 
     def active_conditions
-      @active_conditions ||= Array(@src.try(:conditions))
+      @active_conditions ||= PersistedJsonArray.list(@src.try(:conditions))
     end
 
     def apply_condition_penalties(scores)
@@ -87,7 +87,7 @@ module CharacterStats
     end
 
     def apply_active_buff_score_deltas(scores)
-      buffs = Array(@src.try(:active_buffs))
+      buffs = PersistedJsonArray.list(@src.try(:active_buffs))
       return scores if buffs.empty?
 
       adjusted = scores.dup

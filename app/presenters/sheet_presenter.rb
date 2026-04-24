@@ -93,7 +93,7 @@ class SheetPresenter
   def serialized_active_buffs
     current_hours = current_game_hours
 
-    Array(@sheet.try(:active_buffs)).filter_map do |buff|
+    CharacterStats::PersistedJsonArray.list(@sheet.try(:active_buffs)).filter_map do |buff|
       next unless buff.is_a?(Hash)
 
       entry = buff.deep_stringify_keys

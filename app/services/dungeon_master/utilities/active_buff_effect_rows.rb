@@ -20,7 +20,7 @@ module DungeonMaster
       end
 
       def normalize_adjudicated_effects(raw, log: nil)
-        Array(raw).filter_map do |effect|
+        DungeonMaster::CoercedMutationArray.coerce(raw, field: "adjudicated_effects", log: log).filter_map do |effect|
           unless effect.is_a?(Hash)
             PipelineWarn.emit(log, "[ActiveBuffResolver] adjudicated_effects entry must be a Hash — skipped")
             next

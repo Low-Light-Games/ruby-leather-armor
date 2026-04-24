@@ -121,14 +121,14 @@ module DungeonMaster
       end
 
       def conditions_line
-        conds = Array(@sheet.try(:conditions))
+        conds = CharacterStats::PersistedJsonArray.list(@sheet.try(:conditions))
         return nil if conds.empty?
 
         "Active Conditions: #{conds.join(', ')}"
       end
 
       def active_buffs_line
-        buffs = Array(@sheet.try(:active_buffs))
+        buffs = CharacterStats::PersistedJsonArray.list(@sheet.try(:active_buffs))
         return nil if buffs.empty?
 
         ctx = @sheet.try(:adventure)&.time_context || {}

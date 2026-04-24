@@ -34,7 +34,7 @@ module CharacterStats
       equip              = compute_equipment_bonuses
       equip_stat_bonuses = compute_equipment_stat_bonuses
 
-      active_buff_rows = Array(@src.try(:active_buffs))
+      active_buff_rows = PersistedJsonArray.list(@src.try(:active_buffs))
       save_buff        = ActiveBuffStacking.stacked_value_for_target(active_buff_rows, "saves")
       attack_buff      = ActiveBuffStacking.stacked_value_for_target(active_buff_rows, "attack")
       damage_buff      = ActiveBuffStacking.stacked_value_for_target(active_buff_rows, "damage")

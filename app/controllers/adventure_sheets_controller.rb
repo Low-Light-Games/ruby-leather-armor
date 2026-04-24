@@ -95,10 +95,14 @@ class AdventureSheetsController < ApplicationController
   def apply_playwright_sheet_test_overrides!
     raw = params.to_unsafe_h
     if raw.key?("active_buffs")
-      @adventure_sheet.active_buffs = Array(raw["active_buffs"]).map(&:deep_stringify_keys)
+      @adventure_sheet.active_buffs = DungeonMaster::CoercedMutationArray.coerce(
+        raw["active_buffs"], field: "active_buffs", log: nil
+      ).map(&:deep_stringify_keys)
     end
     if raw.key?("conditions")
-      @adventure_sheet.conditions = Array(raw["conditions"]).map(&:to_s)
+      @adventure_sheet.conditions = DungeonMaster::CoercedMutationArray.coerce(
+        raw["conditions"], field: "conditions", log: nil
+      ).map(&:to_s)
     end
     @adventure_sheet.save!
     @adventure_sheet.recompute_derived_stats!
