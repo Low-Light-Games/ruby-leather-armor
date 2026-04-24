@@ -12,7 +12,7 @@ class AdventureSheetsController < ApplicationController
   # Updates the adventure sheet's spell/feat/item selections via pivot tables.
   # Only the owning player can update their adventure sheet.
   def update
-    authorize @adventure, :show?
+    authorize @adventure, :update?
 
     if playwright_sheet_test_only_request?
       apply_playwright_sheet_test_overrides!
@@ -67,7 +67,7 @@ class AdventureSheetsController < ApplicationController
   # Toggles the equipped state of a single item on the adventure sheet.
   # Expects { item_id: "warhammer" }.
   def toggle_equip
-    authorize @adventure, :show?
+    authorize @adventure, :update?
 
     AdventureSheet.transaction do
       if @adventure.combat_active?

@@ -7,6 +7,11 @@ class AdventurePolicy < ApplicationPolicy
     admin? || owner?
   end
 
+  # Sheet mutations (PATCH adventure_sheet, equip toggles): same gate as show — explicit verb for writes.
+  def update?
+    show?
+  end
+
   # AI pipeline (prompt, rolls, initiative): same access as show, plus room under the user's usage cap.
   def pipeline?
     return false unless show?
