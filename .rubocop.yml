@@ -1,9 +1,25 @@
 require:
   - ./.rubocop/cop/cursor/blank_line_after_guard_clause.rb
+  - ./.rubocop/cop/cursor/no_struct_new.rb
+  - ./.rubocop/cop/cursor/controller_query_chains.rb
+  - ./.rubocop/cop/cursor/complex_guard_condition.rb
+  - ./.rubocop/cop/cursor/service_literal_hash_boundary.rb
 
 AllCops:
   TargetRubyVersion: 3.3
   NewCops: enable
 
 Cursor/BlankLineAfterGuardClause:
+  Enabled: true
+
+Cursor/NoStructNew:
+  Enabled: true
+
+Cursor/ControllerQueryChains:
+  Enabled: true
+
+Cursor/ComplexGuardCondition:
+  Enabled: true
+
+Cursor/ServiceLiteralHashBoundary:
   Enabled: true

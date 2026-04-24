@@ -6,10 +6,20 @@ on:
     branches: [main]
 
 jobs:
-  rspec:
-    name: RSpec
+  request-specs:
+    name: Request Specs (${{ matrix.shard_name }})
     runs-on: ubuntu-latest
     environment: Test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard_index: 0
+            shard_total: 2
+            shard_name: 1/2
+          - shard_index: 1
+            shard_total: 2
+            shard_name: 2/2
 
     services:
       postgres:
@@ -55,8 +65,8 @@ jobs:
       - name: Load schema
         run: bundle exec rails db:schema:load
 
-      - name: Enforce blank line after guard clauses
-        run: bundle exec rubocop --only Cursor/BlankLineAfterGuardClause
+      - name: Enforce Cursor RuboCop architecture cops
+        run: bundle exec rubocop --only Cursor/BlankLineAfterGuardClause,Cursor/NoStructNew,Cursor/ControllerQueryChains,Cursor/ComplexGuardCondition,Cursor/ServiceLiteralHashBoundary
 
       - name: Forbid Thread.new in app/ (use Node fan_out or Sidekiq)
         run: |
@@ -65,5 +75,8 @@ jobs:
             exit 1
           fi
 
-      - name: Run RSpec
-        run: bundle exec rspec
+      - name: Run request specs for shard
+        run: |
+          mapfile -t SPEC_FILES < <(ruby scripts/ci/request_spec_shard.rb ${{ matrix.shard_index }} ${{ matrix.shard_total }})
+          test "${#SPEC_FILES[@]}" -gt 0
+          bundle exec rspec --format progress "${SPEC_FILES[@]}"
