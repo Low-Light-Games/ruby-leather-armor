@@ -8,14 +8,18 @@ class SheetPolicy < ApplicationPolicy
   end
 
   def create?
-    true # All authenticated users can create sheets
+    user&.paid_or_admin?
   end
 
   def update?
-    admin? || owner?
+    return false if record&.starter?
+
+    admin? || (owner? && user&.paid_or_admin?)
   end
 
   def destroy?
+    return false if record&.starter?
+
     admin? || owner?
   end
 

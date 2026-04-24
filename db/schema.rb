@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_23_180000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_23_224533) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -569,8 +569,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_23_180000) do
     t.jsonb "equipped_weapons", default: [], null: false
     t.jsonb "currency", default: {"gold"=>0, "copper"=>0, "silver"=>0, "platinum"=>0}, null: false
     t.jsonb "skill_ranks", default: {}, null: false
+    t.string "source_kind", default: "custom", null: false
+    t.string "starter_key"
     t.index ["equipped_armor_id"], name: "index_sheets_on_equipped_armor_id"
     t.index ["equipped_shield_id"], name: "index_sheets_on_equipped_shield_id"
+    t.index ["source_kind"], name: "index_sheets_on_source_kind"
+    t.index ["user_id", "starter_key"], name: "index_sheets_on_user_id_and_starter_key", unique: true, where: "(starter_key IS NOT NULL)"
     t.index ["user_id"], name: "index_sheets_on_user_id"
   end
 

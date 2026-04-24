@@ -16,6 +16,7 @@ class SheetsController < ApplicationController
         return head :unauthorized unless current_user
 
         @sheets = policy_scope(Sheet)
+                    .custom
                     .includes(:sheet_feats, :sheet_spells, :sheet_items)
                     .order(created_at: :desc)
         render json: @sheets.map { |s| sheet_json(s) }
@@ -23,10 +24,21 @@ class SheetsController < ApplicationController
     end
   end
 
+  def adventure_options
+    ensure_free_user_starter_sheets! unless current_user.paid_or_admin?
+
+    sheets = adventure_option_scope
+              .includes(:sheet_feats, :sheet_spells, :sheet_items)
+              .order(current_user.paid_or_admin? ? { created_at: :desc } : { starter_key: :asc })
+
+    render json: sheets.map { |sheet| sheet_json(sheet) }
+  end
+
   def create
     feat_data, spell_data, item_data = extract_feat_spell_item_params!
     @sheet = current_user.sheets.build(sheet_params)
     authorize(@sheet)
+    return if performed?
 
     if @sheet.save
       sync_feats!(@sheet.sheet_feats, feat_data)
@@ -70,6 +82,15 @@ class SheetsController < ApplicationController
 
   def authorize_sheet
     authorize(@sheet)
+  end
+
+  def adventure_option_scope
+    base_scope = policy_scope(Sheet)
+    current_user.paid_or_admin? ? base_scope.custom : base_scope.starter
+  end
+
+  def ensure_free_user_starter_sheets!
+    Sheets::StarterProvisioner.ensure_all_for(user: current_user)
   end
 
   def sheet_params
