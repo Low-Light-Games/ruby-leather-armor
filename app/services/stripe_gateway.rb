@@ -24,10 +24,14 @@ module StripeGateway
 
   def retrieve_subscription(subscription_id)
     configure!
-    # Ensure subscription items are expanded (Basil+ API exposes billing period on items).
+    id = coerce_subscription_id(subscription_id)
+    return if id.blank?
+
+    # stripe-ruby v19+: the second positional hash is treated as request *options* (api key, headers),
+    # not query params—`expand` there becomes a header value and can trigger `strip` on an Array.
+    # Pass `id` and `expand` in a single Hash so they become retrieve params (see APIResource#retrieve).
     Stripe::Subscription.retrieve(
-      subscription_id,
-      { expand: %w[items.data] }
+      { id: id, expand: %w[items.data] }
     )
   end
 
@@ -39,4 +43,17 @@ module StripeGateway
   def configure!
     Stripe.api_key = ENV.fetch("STRIPE_SECRET_KEY")
   end
+
+  # :nodoc: — resolve String / expandable object / webhook quirks to a subscription id.
+  def coerce_subscription_id(raw)
+    case raw
+    when nil, "" then nil
+    when String then raw.strip.presence
+    when Array then coerce_subscription_id(raw.first)
+    when Hash then coerce_subscription_id(raw[:id] || raw["id"])
+    else
+      coerce_subscription_id(raw.respond_to?(:id) ? raw.id : nil)
+    end
+  end
+  private :coerce_subscription_id
 end
