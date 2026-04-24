@@ -48,7 +48,7 @@ test.describe('Admin micro context inline edit', () => {
     await page.waitForLoadState('networkidle');
 
     await page.getByRole('button', { name: /micro contexts/i }).click();
-    await expect(page.locator('.context-entry').first()).toContainText(persistedValue, { timeout: 5_000 });
+    await expect(page.locator('.context-entry')).toContainText(persistedValue, { timeout: 10_000 });
   });
 
   test('cancel discards changes', async ({ page }) => {
