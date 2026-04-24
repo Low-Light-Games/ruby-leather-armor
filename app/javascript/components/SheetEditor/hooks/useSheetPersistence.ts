@@ -254,7 +254,7 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
     setFeedback({
       type: 'info',
       message:
-        'We restored your work from a previous visit. It is only kept in this browser until you save or subscribe. If you leave without making new changes, it will not be kept again.',
+        'We restored your work from a previous visit. It is only kept in this browser until you save (subscription needed).',
     })
   }, [currentSheetId, ctx.sheetToEdit, hasPaidAccess, loadDraftIntoForm, user]);
 
