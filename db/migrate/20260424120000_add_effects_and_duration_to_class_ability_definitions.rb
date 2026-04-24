@@ -2,9 +2,11 @@
 
 # Adds spell-like catalog columns for class abilities. Seeds exemplar effects for
 # rage tree, inspire courage, and leaves fighting_defensively empty for adjudicated_effects.
-# Rage duration v1: fixed 10 rounds (placeholder until Con-based formula exists).
+#
+# Duration constants below are placeholders only (not full PF 1e rules): rage should eventually
+# follow Con-based rounds; inspire should follow bard level / rounds-per-performance, etc.
 class AddEffectsAndDurationToClassAbilityDefinitions < ActiveRecord::Migration[7.1]
-  RAGE_DURATION = { "unit" => "rounds", "fixed" => 10 }.freeze
+  PLACEHOLDER_RAGE_ROUNDS = { "unit" => "rounds", "fixed" => 10 }.freeze
 
   # PF1e-style morale bonuses; AC penalty is morale -2 on ac target.
   RAGE_EFFECTS = [
@@ -34,7 +36,8 @@ class AddEffectsAndDurationToClassAbilityDefinitions < ActiveRecord::Migration[7
     { "target" => "damage", "bonusType" => "competence", "bonus" => 1 },
   ].freeze
 
-  INSPIRE_DURATION = { "unit" => "rounds", "fixed" => 100 }.freeze
+  # Large round count stands in until performance-duration rules are modeled.
+  PLACEHOLDER_INSPIRE_ROUNDS = { "unit" => "rounds", "fixed" => 100 }.freeze
 
   def up
     add_column :class_ability_definitions, :effects, :jsonb, null: false, default: []
@@ -42,10 +45,10 @@ class AddEffectsAndDurationToClassAbilityDefinitions < ActiveRecord::Migration[7
 
     say_with_time "Seeding class_ability_definitions effects" do
       ClassAbilityDefinition.reset_column_information
-      update_row!("rage", RAGE_EFFECTS, RAGE_DURATION)
-      update_row!("greater_rage", GREATER_RAGE_EFFECTS, RAGE_DURATION)
-      update_row!("mighty_rage", MIGHTY_RAGE_EFFECTS, RAGE_DURATION)
-      update_row!("inspire_courage", INSPIRE_COURAGE_EFFECTS, INSPIRE_DURATION)
+      update_row!("rage", RAGE_EFFECTS, PLACEHOLDER_RAGE_ROUNDS)
+      update_row!("greater_rage", GREATER_RAGE_EFFECTS, PLACEHOLDER_RAGE_ROUNDS)
+      update_row!("mighty_rage", MIGHTY_RAGE_EFFECTS, PLACEHOLDER_RAGE_ROUNDS)
+      update_row!("inspire_courage", INSPIRE_COURAGE_EFFECTS, PLACEHOLDER_INSPIRE_ROUNDS)
       ensure_stub!("fighting_defensively", "Fighting Defensively", "fighter",
         "Fight defensively to trade offense for AC; use adjudicated_effects when applying as a buff.")
     end
