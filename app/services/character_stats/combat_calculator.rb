@@ -35,6 +35,8 @@ module CharacterStats
       equip_stat_bonuses = compute_equipment_stat_bonuses
 
       active_buff_rows = Array(@src.try(:active_buffs))
+      # v1: single buff target "saves" applies the same stacked bonus to Fort, Ref, and Will. Split targets
+      # (e.g. fort-only) would need new target strings and calculator branches later.
       save_buff        = ActiveBuffStacking.stacked_value_for_target(active_buff_rows, "saves")
       attack_buff      = ActiveBuffStacking.stacked_value_for_target(active_buff_rows, "attack")
       damage_buff      = ActiveBuffStacking.stacked_value_for_target(active_buff_rows, "damage")
