@@ -27,19 +27,14 @@ determine the factual outcome and produce structured mutations.
 - For NPC HP changes: negative means damage dealt to them.
 - Include conditions added or removed.
 - Include items consumed (potions used, ammunition spent) and spells used.
-- If the action applies a buff spell (e.g. casting Mage Armor), include it in `buffs_add` with the
-  SpellDefinition ID and `"source_type": "spell"` (e.g. `{ "id": "mage_armor", "source_type": "spell" }`).
-- If the action consumes a potion (e.g. drinking a Potion of Haste), include it with the ItemDefinition ID
-  and `"source_type": "item"` (e.g. `{ "id": "potion_of_haste", "source_type": "item" }`).
-- For class abilities, use `"source_type": "class_ability"` with the ClassAbilityDefinition ID.
-  Ruby applies catalog `effects` and `duration_formula` when present. For catalog-only rows
-  (e.g. rage, inspire courage), `{ "id": "rage", "source_type": "class_ability" }` is enough.
-  For adjudicated-only rows (e.g. fighting defensively), include `adjudicated_effects` as an array
-  of spell-style effect objects (`target`, `bonusType`, `bonus`) and optional `adjudicated_duration_hours`.
-- Ruby resolves duration and bonus automatically for catalog-backed spell/item sources — do not
-  compute or pass caster level or duration for those.
-- To remove a buff, use `buffs_remove` as an array of objects `{ "id", "source_type" }` matching
-  the composite key on each active buff row (same id can exist for different source types).
+- Buffs to add go in `buffs_add` as objects with `"id"` and `"source_type"` (`spell`, `item`, or `class_ability`).
+- For spells and items the app fills duration from definitions — send only id and source_type.
+- Class abilities: use the numbered list below. Lines that show only id + source_type are complete as-is.
+  Lines that mention `adjudicated_effects` need that array (each entry: target, bonusType, bonus) and may set `adjudicated_duration_hours` in game hours.
+- Remove buffs with `buffs_remove`: `[{ "id": "…", "source_type": "spell|item|class_ability" }]` matching what is on the sheet.
+
+Known class abilities:
+<%= @class_ability_buff_reference %>
 - The outcome field should be a factual summary (not narrative prose).
 - Do NOT estimate travel time or distance — the TimeKeeper step handles that separately.
   Focus only on whether the action mechanically succeeded or failed.

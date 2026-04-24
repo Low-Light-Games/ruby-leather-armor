@@ -4,6 +4,9 @@ class AdventureSheetsController < ApplicationController
   include SheetJsonSerialization
   include PivotSync
 
+  PLAYWRIGHT_SHEET_BODY_KEYS = %w[active_buffs conditions].freeze
+  RAILS_ROUTING_PARAM_KEYS = %w[controller action adventure_id].freeze
+
   before_action :set_adventure
   before_action :set_adventure_sheet
 
@@ -104,10 +107,10 @@ class AdventureSheetsController < ApplicationController
   def playwright_sheet_test_only_request?
     return false unless Rails.env.playwright?
 
-    raw = params.to_unsafe_h.keys.map(&:to_s) - %w[controller action adventure_id]
-    return false if raw.empty?
+    body_keys = params.to_unsafe_h.keys.map(&:to_s) - RAILS_ROUTING_PARAM_KEYS
+    return false if body_keys.empty?
 
-    raw.all? { |k| %w[active_buffs conditions].include?(k) }
+    body_keys.all? { |key| PLAYWRIGHT_SHEET_BODY_KEYS.include?(key) }
   end
 
   def set_adventure

@@ -35,8 +35,6 @@ module CharacterStats
       equip_stat_bonuses = compute_equipment_stat_bonuses
 
       active_buff_rows = Array(@src.try(:active_buffs))
-      # v1: single buff target "saves" applies the same stacked bonus to Fort, Ref, and Will. Split targets
-      # (e.g. fort-only) would need new target strings and calculator branches later.
       save_buff        = ActiveBuffStacking.stacked_value_for_target(active_buff_rows, "saves")
       attack_buff      = ActiveBuffStacking.stacked_value_for_target(active_buff_rows, "attack")
       damage_buff      = ActiveBuffStacking.stacked_value_for_target(active_buff_rows, "damage")
@@ -66,26 +64,17 @@ module CharacterStats
       ac_size  = size == "Small" ? 1 : 0
       cmb_size = size == "Small" ? -1 : 0
 
-      # ── Active buffs (target: "ac") ───────────────────────────────
-      # Stacking rule: group by bonus_type; take highest per group; sum across groups.
-      # Same bonus_type → highest wins (replacement). Different types → additive.
-      # armor_bonus and shield_bonus also compete with equipped item values.
-      ac_buffs = active_buff_rows.select { |b| b["target"] == "ac" }
-      ac_max_by_bonus_type = ac_buffs.group_by { |b| b["bonus_type"] }
-                                     .transform_values { |g| g.map { |b| b["value"].to_i }.max }
+      ac_buff_max_by_type = ActiveBuffStacking.max_per_bonus_type_for_target(active_buff_rows, "ac")
 
       # ── AC ───────────────────────────────────────────────────────
       cond_ac_mod = ac_modifier_from_conditions(active_conds)
 
-      # Equipped armor/shield compete with same-type buff: take highest
-      armor_buff  = ac_max_by_bonus_type.delete("armor") || 0
-      shield_buff = ac_max_by_bonus_type.delete("shield") || 0
+      armor_buff  = ac_buff_max_by_type.delete("armor") || 0
+      shield_buff = ac_buff_max_by_type.delete("shield") || 0
       armor_ac  = [equip[:armor_bonus],  armor_buff].max
       shield_ac = [equip[:shield_bonus], shield_buff].max
 
-      # Remaining distinct AC bonus types all stack with each other and with armor/shield
-      # TODO: full typed-bonus enforcement for feat/equipment :ac bucket belongs here
-      other_buff_ac = ac_max_by_bonus_type.values.sum
+      other_buff_ac = ac_buff_max_by_type.values.sum
 
       ac    = 10 + effective_dex_mod + ac_size + armor_ac + shield_ac +
               feat_stat_bonuses[:ac] + equip_stat_bonuses[:ac] + cond_ac_mod + other_buff_ac
@@ -110,10 +99,8 @@ module CharacterStats
                       feat_stat_bonuses[:ranged_attack] + equip_stat_bonuses[:ranged_attack] + attack_buff
 
       # ── Breakdowns ───────────────────────────────────────────────
-      buff_breakdown_entries = ac_max_by_bonus_type.filter_map do |btype, val|
-        next if btype == "armor" || btype == "shield" # shown in Armor/Shield lines
-
-        { label: "Buff (#{btype})", value: val } if val.nonzero?
+      buff_breakdown_entries = ac_buff_max_by_type.filter_map do |bonus_type, val|
+        { label: "Buff (#{bonus_type})", value: val } if val.nonzero?
       end
 
       ac_breakdown   = build_breakdown(

@@ -88,14 +88,12 @@ export interface DerivedSkill {
   feat_bonus: number
   equip_bonus?: number
   acp_penalty?: number
-  /** Ranks contributing to the check (capped by class/cross-class max). */
   rank_bonus?: number
   total: number
 }
 
 export interface ActiveBuff {
   source: string
-  /** spell | item | class_ability — used with source for buffs_remove composite key */
   source_type?: string | null
   bonus_type: string
   target: string

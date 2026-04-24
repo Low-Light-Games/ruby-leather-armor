@@ -92,78 +92,20 @@ module DungeonMaster
 
     # ── Buff mutations ──────────────────────────────────────────────
 
-    # Applies buffs_add and buffs_remove to a sheet's active_buffs.
-    # buffs_add: { id, source_type, optional adjudicated_effects / adjudicated_duration_hours for class_ability }.
-    # buffs_remove: only [{ "id", "source_type" }] — composite key matches persisted rows.
-    # Returns true if anything changed.
     def apply_buffs(sheet, add, remove)
       return false unless sheet.respond_to?(:active_buffs)
 
-      current = Array(sheet.active_buffs).map(&:deep_stringify_keys)
-      changed = false
+      rows = Array(sheet.active_buffs).map(&:deep_stringify_keys)
+      additions = Array(add)
+      class_ability_ids = class_ability_ids_for_buff_adds(sheet, additions)
 
-      add_array = Array(add)
-      class_ability_sheet_ids =
-        if add_array.any? { |spec| spec.is_a?(Hash) && spec["source_type"].to_s == "class_ability" } &&
-           sheet.respond_to?(:class_ability_definitions)
-          sheet.class_ability_definitions.pluck(:id).map(&:to_s)
-        end
-
-      Array(remove).each do |entry|
-        unless entry.is_a?(Hash)
-          @log&.log!(:warn, "[buffs] buffs_remove entry must be a Hash with id and source_type — skipped #{entry.inspect}")
-          next
-        end
-        h = entry.deep_stringify_keys
-        rid = h["id"].presence || h["source"].presence
-        rst = h["source_type"].presence
-        unless rid && rst
-          @log&.log!(:warn, "[buffs] buffs_remove entry missing id or source_type — skipped #{h.inspect}")
-          next
-        end
-        before = current.size
-        current.reject! do |e|
-          next false unless e["source"].to_s == rid.to_s
-
-          stored = e["source_type"].to_s
-          stored == rst.to_s || stored.empty?
-        end
-        changed = true if current.size != before
-      end
-
-      add_array.each do |buff_spec|
-        buff_spec = buff_spec.deep_stringify_keys if buff_spec.is_a?(Hash)
-        source_id   = buff_spec["id"]
-        source_type = buff_spec["source_type"]
-        next unless source_id.present? && source_type.present?
-
-        explicit = buff_spec.slice("bonus_type", "target", "value", "duration_hours")
-        entries  = Utilities::ActiveBuffResolver.resolve(
-          source_id:      source_id,
-          source_type:     source_type,
-          adventure:       @adventure,
-          sheet:           sheet,
-          explicit:        explicit,
-          buff_add_spec:   buff_spec,
-          log:             @log,
-          class_ability_sheet_ids: class_ability_sheet_ids
-        )
-        next if entries.empty?
-
-        current.reject! do |e|
-          next false unless e["source"].to_s == source_id.to_s
-
-          est = e["source_type"].to_s
-          est.empty? || est == source_type.to_s
-        end
-        current.concat(entries)
-        changed = true
-      end
+      changed = apply_buff_removals!(rows, remove)
+      changed = apply_buff_additions!(rows, additions, sheet, class_ability_ids) || changed
 
       if changed
-        sheet.update!(active_buffs: current)
-        labels = current.map { |e| "#{e['source']}:#{e['source_type']}" }.join(", ")
-        @log.log!(:info, "[buffs] updated active_buffs on sheet #{sheet.id}: #{labels}")
+        sheet.update!(active_buffs: rows)
+        summary = rows.map { |r| "#{r['source']}:#{r['source_type']}" }.join(", ")
+        @log.log!(:info, "[buffs] updated active_buffs on sheet #{sheet.id}: #{summary}")
       end
 
       changed
@@ -265,6 +207,80 @@ module DungeonMaster
     rescue ActiveRecord::RecordInvalid => e
       @log.log!(:error, "Failed to create item definition for '#{item_name}': #{e.message}")
       nil
+    end
+
+    def class_ability_ids_for_buff_adds(sheet, additions)
+      wants = additions.any? { |row| row.is_a?(Hash) && row["source_type"].to_s == "class_ability" }
+      return unless wants && sheet.respond_to?(:class_ability_definitions)
+
+      sheet.class_ability_definitions.pluck(:id).map(&:to_s)
+    end
+
+    def apply_buff_removals!(rows, remove_list)
+      changed = false
+      Array(remove_list).each do |raw_spec|
+        changed = remove_buff_rows_for_spec!(rows, raw_spec) || changed
+      end
+      changed
+    end
+
+    def remove_buff_rows_for_spec!(rows, raw_spec)
+      unless raw_spec.is_a?(Hash)
+        @log&.log!(:warn, "[buffs] buffs_remove entry must be a Hash with id and source_type — skipped #{raw_spec.inspect}")
+        return false
+      end
+      spec = raw_spec.deep_stringify_keys
+      source_id = spec["id"].presence || spec["source"].presence
+      source_type = spec["source_type"].presence
+      unless source_id && source_type
+        @log&.log!(:warn, "[buffs] buffs_remove entry missing id or source_type — skipped #{spec.inspect}")
+        return false
+      end
+      before = rows.size
+      rows.reject! do |row|
+        next false unless row["source"].to_s == source_id.to_s
+
+        stored_type = row["source_type"].to_s
+        stored_type == source_type.to_s || stored_type.empty?
+      end
+      rows.size != before
+    end
+
+    def apply_buff_additions!(rows, additions, sheet, class_ability_ids)
+      changed = false
+      additions.each do |raw_row|
+        changed = merge_resolved_buff_add_row!(rows, raw_row, sheet, class_ability_ids) || changed
+      end
+      changed
+    end
+
+    def merge_resolved_buff_add_row!(rows, raw_row, sheet, class_ability_ids)
+      return false unless raw_row.is_a?(Hash)
+
+      row = raw_row.deep_stringify_keys
+      source_id = row["id"]
+      source_type = row["source_type"]
+      return false unless source_id.present? && source_type.present?
+
+      resolved = Utilities::ActiveBuffResolver.resolve(
+        source_id: source_id,
+        source_type: source_type,
+        adventure: @adventure,
+        sheet: sheet,
+        log: @log,
+        class_ability_sheet_ids: class_ability_ids,
+        buffs_add_entry: row
+      )
+      return false if resolved.empty?
+
+      rows.reject! do |existing|
+        next false unless existing["source"].to_s == source_id.to_s
+
+        existing_type = existing["source_type"].to_s
+        existing_type.empty? || existing_type == source_type.to_s
+      end
+      rows.concat(resolved)
+      true
     end
 
     # ── Conditions shared helper ────────────────────────────────────

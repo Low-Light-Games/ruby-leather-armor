@@ -10,7 +10,11 @@ module RuboCop
 
         def on_hash(node)
           return unless target_service_file?
+
+          return if inside_excluded_def?(node)
+
           return unless boundary_hash?(node)
+
           return unless node.pairs.length >= MIN_PAIRS
 
           add_offense(node)
@@ -34,12 +38,17 @@ module RuboCop
         def returned_hash?(node)
           parent = node.parent
           return false unless parent&.send_type?
+
           return false unless parent.receiver.nil?
 
           parent.method?(:return) && !inside_serializer_method?(node)
         end
 
         def inside_serializer_method?(node)
+          inside_excluded_def?(node)
+        end
+
+        def inside_excluded_def?(node)
           node.each_ancestor(:def, :defs).any? { |ancestor| EXCLUDED_METHOD_NAMES.include?(ancestor.method_name) }
         end
       end

@@ -24,6 +24,7 @@ module DungeonMaster
           roll_results: all_roll_results,
           consequences: merged[:consequences].present? ? merged[:consequences].to_json : nil,
           contexts_text: PromptHelpers.format_contexts(micro_contexts),
+          class_ability_buff_reference: class_ability_buff_reference_for_prompt,
           no_auto_hit_miss: @config.no_auto_hit_miss?)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
@@ -41,6 +42,16 @@ module DungeonMaster
           outcome: parsed["outcome"],
           mutations: parsed["mutations"] || {}
         }
+      end
+
+      def class_ability_buff_reference_for_prompt
+        ClassAbilityDefinition.order(:id).map do |definition|
+          if definition.effects.present?
+            %(• #{definition.id} (#{definition.name}): {"id":"#{definition.id}","source_type":"class_ability"})
+          else
+            %(• #{definition.id} (#{definition.name}): {"id":"#{definition.id}","source_type":"class_ability","adjudicated_effects":[{"target":"…","bonusType":"…","bonus":N}],"adjudicated_duration_hours": hours})
+          end
+        end.join("\n")
       end
     end
   end

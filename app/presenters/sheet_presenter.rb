@@ -107,9 +107,7 @@ class SheetPresenter
                           [expires_at.to_f - current_hours, 0.0].max
                         end
 
-      # Client JSON contract: always include source_type (spell | item | class_ability); nil only
-      # until legacy rows are backfilled. reverse_merge makes the intent obvious vs merge(self).
-      entry.reverse_merge("source_type" => nil).merge(
+      entry = { "source_type" => nil }.merge(entry).merge(
         "remaining_hours" => remaining_hours,
         "duration_label" => duration_label_for(remaining_hours)
       )

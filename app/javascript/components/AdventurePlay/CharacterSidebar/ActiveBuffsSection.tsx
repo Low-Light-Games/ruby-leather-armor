@@ -24,14 +24,13 @@ function effectSummaryFor(buff: ActiveBuff): string {
   return `${buff.bonus_type} ${sign}${buff.value} -> ${targetLabelFor(buff.target)}`
 }
 
-/** Stable list key: composite identity plus expiry/value so duplicate-looking rows stay distinct. */
 function rowKey(buff: ActiveBuff, index: number): string {
   const exp = buff.expires_at_game_hours ?? '—'
   const metaKeys =
     buff.meta && typeof buff.meta === 'object' ? Object.keys(buff.meta).sort().join(',') : ''
   return [
     buff.source,
-    buff.source_type ?? 'legacy',
+    buff.source_type ?? '',
     buff.target,
     buff.bonus_type,
     String(buff.value),

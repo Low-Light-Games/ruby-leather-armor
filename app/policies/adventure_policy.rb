@@ -7,7 +7,6 @@ class AdventurePolicy < ApplicationPolicy
     admin? || owner?
   end
 
-  # Sheet mutations (PATCH adventure_sheet, equip toggles): same gate as show — explicit verb for writes.
   def update?
     show?
   end
