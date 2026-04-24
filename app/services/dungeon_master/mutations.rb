@@ -115,7 +115,12 @@ module DungeonMaster
           next
         end
         before = current.size
-        current.reject! { |e| e["source"].to_s == rid.to_s && e["source_type"].to_s == rst.to_s }
+        current.reject! do |e|
+          next false unless e["source"].to_s == rid.to_s
+
+          stored = e["source_type"].to_s
+          stored == rst.to_s || stored.empty?
+        end
         changed = true if current.size != before
       end
 
@@ -138,7 +143,10 @@ module DungeonMaster
         next if entries.empty?
 
         current.reject! do |e|
-          e["source"].to_s == source_id.to_s && e["source_type"].to_s == source_type.to_s
+          next false unless e["source"].to_s == source_id.to_s
+
+          est = e["source_type"].to_s
+          est.empty? || est == source_type.to_s
         end
         current.concat(entries)
         changed = true
