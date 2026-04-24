@@ -170,6 +170,19 @@ module DungeonMaster
             log_warn(log, "[ActiveBuffResolver] adjudicated effect dropped missing bonusType for target '#{target}'")
             next
           end
+          if (camel_formula = h["bonusFormula"]).is_a?(Hash)
+            h["bonus_formula"] = camel_formula.deep_stringify_keys
+          elsif h["bonus_formula"].is_a?(Hash)
+            h["bonus_formula"] = h["bonus_formula"].deep_stringify_keys
+          end
+
+          has_formula = h["bonus_formula"].is_a?(Hash)
+          bonus_blank = !h.key?("bonus") || h["bonus"].nil? || (h["bonus"].is_a?(String) && h["bonus"].strip.empty?)
+          unless has_formula || !bonus_blank
+            log_warn(log, "[ActiveBuffResolver] adjudicated effect dropped missing bonus/bonus_formula for target '#{target}'")
+            next
+          end
+
           h["bonusType"] = bonus_type
           h["target"] = target
           h
