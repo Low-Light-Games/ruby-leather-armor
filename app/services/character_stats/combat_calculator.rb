@@ -335,6 +335,7 @@ module CharacterStats
 
     # ── Breakdowns ───────────────────────────────────────────────────
 
+    # compact drops optional nil lines (e.g. buff_save_breakdown_line when save_buff is zero).
     def build_breakdown(*entries)
       entries.flatten.compact.select { |e| e[:value].to_i != 0 || e[:label] == "Base" }
     end
