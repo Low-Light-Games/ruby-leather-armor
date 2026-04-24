@@ -175,7 +175,7 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
     clearSheetDraft(user.id)
   }, [user]);
 
-  const loadDraftIntoForm = useCallback((draft: SheetDraftData) => {
+  const loadDraftIntoForm = useCallback((draft: SheetDraftData, options?: { markDirty?: boolean }) => {
     setName(draft.name);
     setDescription(draft.description || '');
     ctx.setCurrentAttributes(draft.attributes);
@@ -190,8 +190,9 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
     ctx.setSkillRanks(normalizeSkillRanksMap(draft.skillRanks));
     setCurrentSheetId(null);
     ctx.setSheetToEdit(null);
-    setDirty();
-  }, [ctx, setDirty]);
+    if (options?.markDirty) setDirty();
+    else setPristine();
+  }, [ctx, setDirty, setPristine]);
 
   useEffect(() => {
     if (!user || restoredDraftRef.current || ctx.sheetToEdit || currentSheetId !== null) return
@@ -200,12 +201,17 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
     const draft = loadSheetDraft(user.id)
     if (!draft) return
 
-    loadDraftIntoForm(draft)
+    clearSheetDraft(user.id)
+    loadDraftIntoForm(draft, { markDirty: hasPaidAccess })
+
+    if (hasPaidAccess) return
+
     setFeedback({
       type: 'info',
-      message: 'We restored your last custom character draft from this browser.',
+      message:
+        'We restored your work from a previous visit. It is only kept in this browser until you save or subscribe. If you leave without making new changes, it will not be kept again.',
     })
-  }, [currentSheetId, ctx.sheetToEdit, loadDraftIntoForm, user]);
+  }, [currentSheetId, ctx.sheetToEdit, hasPaidAccess, loadDraftIntoForm, user]);
 
   // ── Reset to blank sheet ────────────────────────────────────────
 
