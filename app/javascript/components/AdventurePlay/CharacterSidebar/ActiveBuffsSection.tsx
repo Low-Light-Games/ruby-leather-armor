@@ -24,6 +24,24 @@ function effectSummaryFor(buff: ActiveBuff): string {
   return `${buff.bonus_type} ${sign}${buff.value} -> ${targetLabelFor(buff.target)}`
 }
 
+/** Stable list key: composite identity plus expiry/value so duplicate-looking rows stay distinct. */
+function rowKey(buff: ActiveBuff, index: number): string {
+  const exp = buff.expires_at_game_hours ?? '—'
+  const metaKeys =
+    buff.meta && typeof buff.meta === 'object' ? Object.keys(buff.meta).sort().join(',') : ''
+  return [
+    buff.source,
+    buff.source_type ?? 'legacy',
+    buff.target,
+    buff.bonus_type,
+    String(buff.value),
+    String(exp),
+    buff.duration_label,
+    metaKeys,
+    String(index),
+  ].join('|')
+}
+
 interface ActiveBuffsSectionProps {
   buffs: ActiveBuff[]
 }
@@ -38,9 +56,9 @@ const ActiveBuffsSection: React.FC<ActiveBuffsSectionProps> = ({ buffs }) => {
         <span className="active-buffs-count">{buffs.length}</span>
       </div>
       <div className="active-buffs-list">
-        {buffs.map(buff => (
+        {buffs.map((buff, index) => (
           <div
-            key={`${buff.source}-${buff.source_type ?? 'legacy'}-${buff.target}-${buff.bonus_type}`}
+            key={rowKey(buff, index)}
             className="active-buff-row"
           >
             <div className="active-buff-main">
