@@ -1,8 +1,8 @@
 ## Summary
 <!-- 2–4 sentences: what changed and why. -->
 
-## Trello
-<!-- https://trello.com/c/CARD_ID/card-title -->
+## Trello / Sentry
+<!-- Trello: https://trello.com/c/CARD_ID/card-title — Sentry: link to issue or event (e.g. https://…sentry.io/issues/…) -->
 
 ## Type of change
 - [ ] New feature
