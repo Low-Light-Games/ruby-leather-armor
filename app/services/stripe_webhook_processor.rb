@@ -31,7 +31,8 @@ class StripeWebhookProcessor
     case event.type
     when "checkout.session.completed"
       handle_checkout_completed!
-    when "customer.subscription.updated"
+    when "customer.subscription.updated", "customer.subscription.created"
+      # Created and updated payloads are both full Subscription objects; checkout may not run for all flows.
       handle_subscription_updated!
     when "customer.subscription.deleted"
       handle_subscription_deleted!
