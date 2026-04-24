@@ -206,10 +206,13 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
   }, [hasPaidAccess, user]);
 
   const persistDraft = useCallback(() => {
-    if (!user || isPristine) return
+    if (!user) return
 
-    saveSheetDraft(user.id, buildDraft())
-  }, [buildDraft, isPristine, user]);
+    const d = buildDraft()
+    if (isKnownEmptySheetDraft(d)) return
+
+    saveSheetDraft(user.id, d)
+  }, [buildDraft, user]);
 
   const clearDraft = useCallback(() => {
     if (!user) return
@@ -288,8 +291,11 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
 
   const saveSheet = useCallback(async () => {
     if (!hasPaidAccess) {
-      if (isPristine) return
-      persistDraft();
+      if (!user) return
+      const d = buildDraft()
+      if (isKnownEmptySheetDraft(d)) return
+      saveSheetDraft(user.id, d)
+      setPristine()
       setFeedback({
         type: 'info',
         message: 'We kept this character as a local draft in this browser. Subscribe to save it to your account and play adventures with it.',
@@ -369,7 +375,7 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
     ctx.currentRace, ctx.currentFlexibleBonus, ctx.currentClass, ctx.currentLevel,
     ctx.selectedFeats, ctx.selectedSpells, ctx.selectedItems, ctx.currentCurrency,
     ctx.skillRanks,
-    ctx.currentAttributes, ctx.sheets, hasPaidAccess, isPristine, persistDraft, resetToNew, user,
+    ctx.currentAttributes, ctx.sheets, hasPaidAccess, resetToNew, setPristine, user,
   ]);
 
   return {
