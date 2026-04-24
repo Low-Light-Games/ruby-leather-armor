@@ -5,7 +5,7 @@ module DungeonMaster
     module ActiveBuffResolver
       module_function
 
-      def resolve(source_id:, source_type:, adventure:, sheet:, log: nil, class_ability_sheet_ids: nil, buffs_add_entry: {})
+      def resolve(source_id:, source_type:, adventure:, sheet:, log: nil, allowed_class_ability_ids: nil, buffs_add_entry: {})
         current_game_hours = Utilities::GameClock.absolute_hours(adventure.time_context)
 
         case source_type.to_s
@@ -20,7 +20,7 @@ module DungeonMaster
             current_game_hours: current_game_hours,
             buffs_add_entry: buffs_add_entry,
             log: log,
-            class_ability_sheet_ids: class_ability_sheet_ids
+            allowed_class_ability_ids: allowed_class_ability_ids
           )
         else
           PipelineWarn.emit(log, "[ActiveBuffResolver] Unknown source_type '#{source_type}' for '#{source_id}' — skipped")
@@ -68,7 +68,7 @@ module DungeonMaster
         )
       end
 
-      def resolve_class_ability(source_id, sheet:, current_game_hours:, buffs_add_entry:, log: nil, class_ability_sheet_ids: nil)
+      def resolve_class_ability(source_id, sheet:, current_game_hours:, buffs_add_entry:, log: nil, allowed_class_ability_ids: nil)
         entry = buffs_add_entry.deep_stringify_keys if buffs_add_entry.is_a?(Hash)
         entry ||= {}
         defn = ClassAbilityDefinition.find_by(id: source_id)
@@ -82,13 +82,13 @@ module DungeonMaster
           return []
         end
 
-        on_sheet = if class_ability_sheet_ids
-                     class_ability_sheet_ids.include?(source_id.to_s)
-                   else
-                     sheet.class_ability_definitions.exists?(id: source_id.to_s)
-                   end
-        unless on_sheet
-          PipelineWarn.emit(log, "[ActiveBuffResolver] class_ability '#{source_id}' not on adventure sheet — skipped")
+        allowed = if allowed_class_ability_ids
+                    allowed_class_ability_ids.include?(source_id.to_s)
+                  else
+                    sheet.class_ability_definitions.exists?(id: source_id.to_s)
+                  end
+        unless allowed
+          PipelineWarn.emit(log, "[ActiveBuffResolver] class_ability '#{source_id}' not available for this character — skipped")
           return []
         end
 

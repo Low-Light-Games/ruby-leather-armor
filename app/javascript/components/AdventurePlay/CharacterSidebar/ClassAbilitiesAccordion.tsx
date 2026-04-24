@@ -25,7 +25,7 @@ const ClassAbilitiesAccordion: React.FC<ClassAbilitiesAccordionProps> = ({
   >
     <div className="feats-spells-list">
       {classAbilities.length === 0 ? (
-        <p className="empty-hint">No class abilities on record for this character.</p>
+        <p className="empty-hint">No class abilities for this class and level.</p>
       ) : (
         classAbilities.map(entry => (
           <div key={entry.id} className="fs-item" title={entry.summary ?? undefined}>

@@ -87,7 +87,7 @@ module DungeonMaster
           adventure: @adventure,
           sheet: sheet,
           log: @log,
-          class_ability_sheet_ids: class_ability_ids,
+          allowed_class_ability_ids: class_ability_ids,
           buffs_add_entry: row
         )
         return false if resolved.empty?

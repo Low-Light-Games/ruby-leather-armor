@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
 # Serializes a Sheet or AdventureSheet into the JSON shape expected by the
-# frontend SPA.  The pivot relations (feats, spells, items) are passed
-# explicitly so the presenter works for both model types without needing to
-# know which association names to call.
+# frontend SPA. Feat, spell, and item pivots are passed explicitly; class
+# abilities are read live from {SheetClassAbilities} when the sheet supports it.
 #
 # Usage:
 #   SheetPresenter.new(adv_sheet,
@@ -66,7 +65,7 @@ class SheetPresenter
 
     serialized_sheet["details"] = details_payload.to_h
     if @sheet.respond_to?(:class_ability_definitions)
-      serialized_sheet["class_abilities"] = @sheet.class_ability_definitions.order(:name).map do |ca|
+      serialized_sheet["class_abilities"] = @sheet.class_ability_definitions.map do |ca|
         { id: ca.id, name: ca.name, summary: ca.summary }
       end
     end

@@ -187,7 +187,7 @@ module DungeonMaster
       end
 
       def class_abilities_block
-        abilities = @sheet.class_ability_definitions.order(:name).to_a
+        abilities = @sheet.class_ability_definitions.to_a
         return "" if abilities.empty?
 
         lines = abilities.map { |a| "#{a.name} (#{a.id})" }

@@ -109,6 +109,8 @@ export interface Sheet {
   name: string
   description: string | null
   details: SheetDetails | null
+  /** Same shape as adventure sheets when present on `sheet_json`. */
+  class_abilities?: ClassAbilitySummary[]
   derived_stats: DerivedStats
   strength: number
   intelligence: number
@@ -250,6 +252,7 @@ export interface StoryMilestoneData {
   _destroy?: boolean
 }
 
+/** Live slice from ClassAbilityDefinition by class/level; included in builder and adventure `SheetPresenter` JSON. */
 export interface ClassAbilitySummary {
   id: string
   name: string
@@ -262,7 +265,6 @@ export interface AdventureSheet {
   name: string
   description: string | null
   details: SheetDetails | null
-  /** Populated for adventure runtime sheets from ClassAbilityDefinition. */
   class_abilities?: ClassAbilitySummary[]
   derived_stats: DerivedStats
   strength: number
