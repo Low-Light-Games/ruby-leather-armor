@@ -51,7 +51,7 @@ export const FlashMessage = ({ type, message, duration = 4000, onDismiss }: Flas
       <span className="flash-toast__message">{message}</span>
       {persist && (
         <button type="button" className="flash-toast__dismiss" aria-label="Dismiss notification" onClick={dismiss}>
-          Dismiss
+          ×
         </button>
       )}
     </div>
