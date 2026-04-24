@@ -217,7 +217,7 @@ module DungeonMaster
 
         return formula_bonus_value(effect["bonus_formula"], caster_level) if effect["bonus_formula"].is_a?(Hash)
 
-        return raw.to_i if raw.is_a?(String)
+        return Integer(raw, 10) if raw.is_a?(String) && raw.match?(/\A-?\d+\z/)
 
         nil
       end
