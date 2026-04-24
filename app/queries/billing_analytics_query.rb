@@ -20,9 +20,23 @@
 #   result.by_day       # → AR relation
 #   result.by_step      # → AR relation
 class BillingAnalyticsQuery
-  Result = Struct.new(:totals, :by_model, :by_user, :by_adventure, :by_day,
-                       :by_step, :pipeline_count, :available_models, :available_users,
-                       keyword_init: true)
+  class Result
+    attr_reader :totals, :by_model, :by_user, :by_adventure, :by_day,
+                :by_step, :pipeline_count, :available_models, :available_users
+
+    def initialize(totals:, by_model:, by_user:, by_adventure:, by_day:,
+      by_step:, pipeline_count:, available_models:, available_users:)
+      @totals = totals
+      @by_model = by_model
+      @by_user = by_user
+      @by_adventure = by_adventure
+      @by_day = by_day
+      @by_step = by_step
+      @pipeline_count = pipeline_count
+      @available_models = available_models
+      @available_users = available_users
+    end
+  end
 
   def initialize(start_date:, end_date:, model: nil, adventure_id: nil, user_id: nil)
     @start_date   = start_date

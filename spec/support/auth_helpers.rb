@@ -3,8 +3,8 @@ module AuthHelpers
     post "/login", params: { email: user.email, password: "password123" }
   end
 
-  def sign_in_via_session(user)
-    allow_any_instance_of(ApplicationController).to receive(:current_user).and_return(user)
+  def sign_out
+    delete "/logout"
   end
 end
 

@@ -11,7 +11,16 @@ module DungeonMaster
         "touch_ac" => "touch_ac",
         "flat_footed_ac" => "flat_footed_ac"
       }.freeze
-      LookupContext = Struct.new(:combat_ctx, :player_sheet, :adventure, keyword_init: true)
+
+      class LookupContext
+        attr_reader :combat_ctx, :player_sheet, :adventure
+
+        def initialize(combat_ctx:, player_sheet:, adventure:)
+          @combat_ctx = combat_ctx
+          @player_sheet = player_sheet
+          @adventure = adventure
+        end
+      end
 
       def creature_sheet_id_for_name(name, combat_ctx)
         participant = Array(combat_ctx["participants"]).find { |entry| entry["name"].to_s == name.to_s }

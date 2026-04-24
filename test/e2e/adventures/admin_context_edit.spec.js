@@ -29,6 +29,28 @@ test.describe('Admin micro context inline edit', () => {
     await expect(page.locator('.context-entry').first()).toBeVisible();
   });
 
+  test('saved context value persists after page reload', async ({ page }) => {
+    await page.getByRole('button', { name: /micro contexts/i }).click();
+
+    const editBtn = page.locator('.context-edit-btn').first();
+    await editBtn.waitFor({ timeout: 5_000 });
+    await editBtn.click();
+
+    const editor = page.locator('.context-json-editor').first();
+    await expect(editor).toBeVisible();
+
+    const persistedValue = `persisted_${Date.now()}`;
+    await editor.fill(`{"test_key":"${persistedValue}"}`);
+    await page.locator('.context-save-btn').first().click();
+
+    await expect(editor).not.toBeVisible();
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    await page.getByRole('button', { name: /micro contexts/i }).click();
+    await expect(page.locator('.context-entry')).toContainText(persistedValue, { timeout: 10_000 });
+  });
+
   test('cancel discards changes', async ({ page }) => {
     await page.getByRole('button', { name: /micro contexts/i }).click();
 

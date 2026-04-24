@@ -1,10 +1,9 @@
 require "rails_helper"
 
 RSpec.describe "Player routes", type: :request do
-  let(:user) { create(:user) }
+  let(:user) { create(:user, :password_auth) }
 
-  # Stubs current_user so we don't need to replicate OAuth session setup.
-  before { sign_in_via_session(user) }
+  before { sign_in(user) }
 
   describe "GET /sheets" do
     it "returns 200 (React SPA)" do
@@ -13,7 +12,7 @@ RSpec.describe "Player routes", type: :request do
     end
 
     context "when not authenticated" do
-      before { sign_in_via_session(nil) }
+      before { sign_out }
 
       it "returns 200 even without auth (SPA shell is public)" do
         get "/sheets"
@@ -84,7 +83,7 @@ RSpec.describe "Player routes", type: :request do
   end
 
   describe "unauthenticated access to protected routes" do
-    before { sign_in_via_session(nil) }
+    before { sign_out }
 
     it "GET /adventures returns 401" do
       get "/adventures", headers: { "Accept" => "application/json" }

@@ -116,3 +116,12 @@ For local development without Docker: `bundle install && yarn install && bin/dev
 ## Documentation
 
 The `docs/` folder contains detailed design documents for the pipeline, individual steps, utilities, and architectural decisions. This README is an abridged overview — refer to the docs for implementation specifics.
+
+## Testing Philosophy
+
+The automated spec suite is intentionally narrow.
+
+- Keep request specs that verify deterministic, user-visible behavior from the HTTP boundary.
+- Do not keep specs as documentation or to restate implementation details.
+- If a behavior requires heavy mocking to appear testable, it is out of scope for the spec suite.
+- AI-integration internals, prompt wording, and orchestration details are validated outside this suite.
