@@ -107,7 +107,9 @@ class SheetPresenter
                           [expires_at.to_f - current_hours, 0.0].max
                         end
 
+      # source_type is part of the composite identity contract (spell | item | class_ability).
       entry.merge(
+        "source_type" => entry["source_type"],
         "remaining_hours" => remaining_hours,
         "duration_label" => duration_label_for(remaining_hours)
       )
