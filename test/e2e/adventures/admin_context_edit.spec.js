@@ -1,6 +1,15 @@
 const { test, expect } = require('@playwright/test');
 const { login, createAdventure } = require('../support/auth');
 
+/** Context edit controls mount only after expanding the admin Micro Contexts drawer. */
+async function expandMicroContextsPanel(page) {
+  const toggle = page.locator('.context-debug-toggle');
+  await expect(toggle).toBeVisible({ timeout: 15_000 });
+  await toggle.scrollIntoViewIfNeeded();
+  await toggle.click();
+  await expect(page.locator('.context-edit-btn').first()).toBeVisible({ timeout: 15_000 });
+}
+
 test.describe('Admin micro context inline edit', () => {
   test.beforeEach(async ({ page }) => {
     await login(page, 'admin');
@@ -8,12 +17,10 @@ test.describe('Admin micro context inline edit', () => {
   });
 
   test('admin can edit a context and save', async ({ page }) => {
-    // Open Micro Contexts panel
-    await page.getByRole('button', { name: /micro contexts/i }).click();
+    await expandMicroContextsPanel(page);
 
     // Click Edit on first visible context
     const editBtn = page.locator('.context-edit-btn').first();
-    await editBtn.waitFor({ timeout: 5_000 });
     await editBtn.click();
 
     // Editor should be visible
@@ -30,10 +37,9 @@ test.describe('Admin micro context inline edit', () => {
   });
 
   test('saved context value persists after page reload', async ({ page }) => {
-    await page.getByRole('button', { name: /micro contexts/i }).click();
+    await expandMicroContextsPanel(page);
 
     const editBtn = page.locator('.context-edit-btn').first();
-    await editBtn.waitFor({ timeout: 5_000 });
     await editBtn.click();
 
     const editor = page.locator('.context-json-editor').first();
@@ -47,15 +53,14 @@ test.describe('Admin micro context inline edit', () => {
     await page.reload();
     await page.waitForLoadState('networkidle');
 
-    await page.getByRole('button', { name: /micro contexts/i }).click();
+    await expandMicroContextsPanel(page);
     await expect(page.locator('.context-entry')).toContainText(persistedValue, { timeout: 10_000 });
   });
 
   test('cancel discards changes', async ({ page }) => {
-    await page.getByRole('button', { name: /micro contexts/i }).click();
+    await expandMicroContextsPanel(page);
 
     const editBtn = page.locator('.context-edit-btn').first();
-    await editBtn.waitFor({ timeout: 5_000 });
     await editBtn.click();
 
     const editor = page.locator('.context-json-editor').first();

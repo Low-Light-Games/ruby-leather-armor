@@ -132,6 +132,7 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
     setCurrentSheetId(sheet.id);
     setPristine();
     ctx.setSheetToEdit(null);
+    if (user) clearSheetDraft(user.id);
   };
 
   const buildDraft = useCallback((): SheetDraftData => ({
@@ -163,10 +164,10 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
   ]);
 
   const persistDraft = useCallback(() => {
-    if (!user) return
+    if (!user || isPristine) return
 
     saveSheetDraft(user.id, buildDraft())
-  }, [buildDraft, user]);
+  }, [buildDraft, isPristine, user]);
 
   const clearDraft = useCallback(() => {
     if (!user) return
@@ -239,6 +240,7 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
 
   const saveSheet = useCallback(async () => {
     if (!hasPaidAccess) {
+      if (isPristine) return
       persistDraft();
       setFeedback({
         type: 'info',
@@ -319,7 +321,7 @@ export function useSheetPersistence(ctx: ContextSetters, user: AuthUser | null):
     ctx.currentRace, ctx.currentFlexibleBonus, ctx.currentClass, ctx.currentLevel,
     ctx.selectedFeats, ctx.selectedSpells, ctx.selectedItems, ctx.currentCurrency,
     ctx.skillRanks,
-    ctx.currentAttributes, ctx.sheets, hasPaidAccess, persistDraft, resetToNew, user,
+    ctx.currentAttributes, ctx.sheets, hasPaidAccess, isPristine, persistDraft, resetToNew, user,
   ]);
 
   return {
