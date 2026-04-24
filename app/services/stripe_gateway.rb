@@ -24,7 +24,11 @@ module StripeGateway
 
   def retrieve_subscription(subscription_id)
     configure!
-    Stripe::Subscription.retrieve(subscription_id)
+    # Ensure subscription items are expanded (Basil+ API exposes billing period on items).
+    Stripe::Subscription.retrieve(
+      subscription_id,
+      { expand: %w[items.data] }
+    )
   end
 
   def retrieve_checkout_session(session_id)

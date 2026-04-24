@@ -147,9 +147,44 @@ class StripeWebhookProcessor
   end
 
   def period_end_for(subscription)
-    return nil if subscription.current_period_end.blank?
+    ts = subscription_period_end_unix(subscription)
+    if (ts.nil? || ts.to_i <= 0) && subscription.respond_to?(:id) && subscription.id.present?
+      subscription = StripeGateway.retrieve_subscription(subscription.id)
+      ts = subscription_period_end_unix(subscription)
+    end
+    return nil if ts.nil? || ts.to_i <= 0
 
-    Time.zone.at(subscription.current_period_end)
+    Time.zone.at(ts.to_i)
+  end
+
+  # Stripe API 2025-03-31+ (Basil): current_period_end lives on subscription items, not the root.
+  # Older accounts still return it on the subscription object — support both.
+  def subscription_period_end_unix(subscription)
+    unix = read_period_end_unix(subscription)
+    return unix if unix
+
+    subscription.items&.data&.each do |item|
+      u = read_period_end_unix(item)
+      return u if u
+    end
+
+    nil
+  end
+
+  def read_period_end_unix(obj)
+    return nil unless obj
+
+    if obj.respond_to?(:current_period_end)
+      v = obj.current_period_end
+      return v.to_i if v.present?
+    end
+
+    if obj.respond_to?(:[])
+      v = obj[:current_period_end].presence || obj["current_period_end"].presence
+      return v.to_i if v.present?
+    end
+
+    nil
   end
 
   def grace_period_duration
