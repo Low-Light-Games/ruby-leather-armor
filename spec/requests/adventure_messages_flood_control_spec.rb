@@ -125,10 +125,11 @@ RSpec.describe "Adventure Messages flood control", type: :request do
       users = create_list(:user, 11, :password_auth)
 
       users.first(10).each do |other_user|
+        other_adventure = create(:adventure, user: other_user, story: story)
         sign_in(other_user)
 
         11.times do
-          post "/adventures/#{adventure.id}/messages/roll",
+          post "/adventures/#{other_adventure.id}/messages/roll",
                params: { roll_value: 15, roll_description: "Perception check", resolution_method: "roll" },
                headers: { "Accept" => "application/json" }
 
@@ -137,16 +138,17 @@ RSpec.describe "Adventure Messages flood control", type: :request do
       end
 
       sign_in(users.last)
+      last_adventure = create(:adventure, user: users.last, story: story)
 
       10.times do
-        post "/adventures/#{adventure.id}/messages/roll",
+        post "/adventures/#{last_adventure.id}/messages/roll",
              params: { roll_value: 15, roll_description: "Perception check", resolution_method: "roll" },
              headers: { "Accept" => "application/json" }
 
         expect(response).to have_http_status(:unprocessable_entity)
       end
 
-      post "/adventures/#{adventure.id}/messages/roll",
+      post "/adventures/#{last_adventure.id}/messages/roll",
            params: { roll_value: 15, roll_description: "Perception check", resolution_method: "roll" },
            headers: { "Accept" => "application/json" }
 
