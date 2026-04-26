@@ -53,6 +53,14 @@ module DungeonMaster
           !msgs.for_message_types(["initiative_result"]).where("id > ?", init_msg.id).exists?
         end
       end
+
+      def latest_pending_roll_request(adventure)
+        msgs = adventure.adventure_messages
+        msgs.for_message_types(["roll_request"]).newest_first.detect do |roll_msg|
+          roll_msg.metadata&.dig("intent").present? &&
+            !msgs.for_message_types(["roll_result"]).where("id > ?", roll_msg.id).exists?
+        end
+      end
     end
   end
 end

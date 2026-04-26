@@ -4,14 +4,17 @@ class PipelineJob < ApplicationJob
   queue_as :dm_pipeline
   discard_on ActiveRecord::RecordNotFound
 
-  def perform(adventure_id, player_message_id, player_input, mode, user_id)
+  def perform(adventure_id, player_message_id, player_input, mode, user_id, options = nil)
     log_queue_wait!(adventure_id: adventure_id, user_id: user_id)
 
     adventure = Adventure.find(adventure_id)
     user = User.find(user_id)
     service = DungeonMasterService.new(adventure, user: user)
+    admission = options.is_a?(Hash) ? options["prompt_admission"] : nil
 
-    result_messages = service.execute_prompt(player_input, player_message_id: player_message_id, mode: mode)
+    result_messages = DungeonMaster::FloodControl.with_prompt_submission_heartbeat(admission) do
+      service.execute_prompt(player_input, player_message_id: player_message_id, mode: mode)
+    end
     broadcast(adventure, result_messages, admin: user.admin?)
   rescue => e
     broadcast_error(adventure_id)

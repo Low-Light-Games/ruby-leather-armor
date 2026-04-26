@@ -1,0 +1,163 @@
+# frozen_string_literal: true
+
+require "securerandom"
+
+module DungeonMaster
+  module FloodControl
+    extend self
+
+    PROMPT_SLOT_TTL_SECONDS = ENV.fetch("DM_PROMPT_SLOT_TTL_SECONDS", "120").to_i
+    PROMPT_SLOT_HEARTBEAT_SECONDS = ENV.fetch("DM_PROMPT_SLOT_HEARTBEAT_SECONDS", "30").to_i
+    REDIS_NAMESPACE = ENV.fetch("DM_FLOOD_CONTROL_NAMESPACE", "dm_flood_control")
+
+    RESERVE_PROMPT_SLOT_SCRIPT = <<~LUA.freeze
+      if redis.call("EXISTS", KEYS[1]) == 1 then
+        return 0
+      end
+
+      redis.call("SET", KEYS[1], ARGV[1], "EX", ARGV[2])
+      return 1
+    LUA
+
+    REFRESH_PROMPT_SLOT_SCRIPT = <<~LUA.freeze
+      if redis.call("GET", KEYS[1]) ~= ARGV[1] then
+        return 0
+      end
+
+      redis.call("EXPIRE", KEYS[1], ARGV[2])
+      return 1
+    LUA
+
+    RELEASE_PROMPT_SLOT_SCRIPT = <<~LUA.freeze
+      if redis.call("GET", KEYS[1]) ~= ARGV[1] then
+        return 0
+      end
+
+      redis.call("DEL", KEYS[1])
+      return 1
+    LUA
+
+    class PromptBacklogExceeded < StandardError; end
+
+    def admit_prompt_submission(user_id:)
+      owner_token = SecureRandom.uuid
+      key = prompt_slot_key(user_id)
+
+      result = with_fail_open("prompt_backlog_reserve", user_id: user_id, fallback: :fail_open) do
+        redis.eval(
+          RESERVE_PROMPT_SLOT_SCRIPT,
+          keys: [key],
+          argv: [owner_token, PROMPT_SLOT_TTL_SECONDS]
+        )
+      end
+
+      case result
+      when 1
+        { "user_id" => user_id, "owner_token" => owner_token }
+      when 0
+        raise PromptBacklogExceeded, "You already have an action in progress. Wait for it to finish before sending another."
+      else
+        nil
+      end
+    end
+
+    def refresh_prompt_submission(admission)
+      return false unless prompt_admission?(admission)
+
+      with_fail_open("prompt_backlog_refresh", user_id: admission["user_id"], fallback: false) do
+        redis.eval(
+          REFRESH_PROMPT_SLOT_SCRIPT,
+          keys: [prompt_slot_key(admission["user_id"])],
+          argv: [admission["owner_token"], PROMPT_SLOT_TTL_SECONDS]
+        ) == 1
+      end
+    end
+
+    def release_prompt_submission(admission)
+      return false unless prompt_admission?(admission)
+
+      with_fail_open("prompt_backlog_release", user_id: admission["user_id"], fallback: false) do
+        redis.eval(
+          RELEASE_PROMPT_SLOT_SCRIPT,
+          keys: [prompt_slot_key(admission["user_id"])],
+          argv: [admission["owner_token"]]
+        ) == 1
+      end
+    end
+
+    def with_prompt_submission_heartbeat(admission)
+      return yield unless prompt_admission?(admission)
+
+      stop = false
+      heartbeat = Thread.new do
+        Thread.current.abort_on_exception = false
+
+        until stop
+          sleep PROMPT_SLOT_HEARTBEAT_SECONDS
+          break if stop
+
+          refresh_prompt_submission(admission)
+        end
+      end
+
+      yield
+    ensure
+      stop = true
+      heartbeat&.join(1)
+    end
+
+    def extract_prompt_admission(job_hash)
+      raw_args = job_hash["args"]
+      wrapper = raw_args.is_a?(Array) ? raw_args.first : nil
+      arguments = wrapper.is_a?(Hash) ? wrapper["arguments"] : raw_args
+      return nil unless arguments.is_a?(Array)
+
+      options = normalize_hash(arguments.last)
+      admission = normalize_hash(options["prompt_admission"])
+      return nil unless prompt_admission?(admission)
+
+      admission
+    rescue StandardError => e
+      report_fail_open("prompt_backlog_extract", exception: e, context: {})
+      nil
+    end
+
+    def prompt_admission?(admission)
+      admission.is_a?(Hash) && admission["user_id"].present? && admission["owner_token"].present?
+    end
+
+    private
+
+    def prompt_slot_key(user_id)
+      "#{REDIS_NAMESPACE}:user:#{user_id}:prompt_slot"
+    end
+
+    def redis
+      @redis ||= Redis.new(url: ENV.fetch("REDIS_URL", "redis://localhost:6379/1"))
+    end
+
+    def normalize_hash(value)
+      return {} unless value.is_a?(Hash)
+
+      value.each_with_object({}) do |(key, inner_value), normalized|
+        next if key.to_s == "_aj_symbol_keys"
+
+        normalized[key.to_s] = inner_value.is_a?(Hash) ? normalize_hash(inner_value) : inner_value
+      end
+    end
+
+    def with_fail_open(event, user_id:, fallback:)
+      yield
+    rescue Redis::BaseError, IOError, SystemCallError, Timeout::Error => e
+      report_fail_open(event, exception: e, context: { user_id: user_id })
+      fallback
+    end
+
+    def report_fail_open(event, exception:, context:)
+      payload = context.merge(event: event, error_class: exception.class.name, error_message: exception.message)
+      ActiveSupport::Notifications.instrument("dm.flood_control.fail_open", payload)
+      Rails.logger.error("[DM flood_control fail_open] #{payload}")
+      ApplicationErrorReporter.notify(exception, context: payload.merge(source: "dm_flood_control_fail_open"))
+    end
+  end
+end
