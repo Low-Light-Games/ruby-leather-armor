@@ -123,7 +123,7 @@ RSpec.describe "Adventure Messages flood control", type: :request do
 
     it "returns an ip_rate 429 only after aggregate traffic exceeds the looser IP ceiling" do
       users = create_list(:user, 11, :password_auth)
-      requests_per_user = RackAttackConfig::IP_RATE_LIMIT / users.count
+      requests_per_user = RackAttackConfig::USER_RATE_LIMIT - 1
 
       users.first(10).each do |other_user|
         other_adventure = create(:adventure, user: other_user, story: story)
