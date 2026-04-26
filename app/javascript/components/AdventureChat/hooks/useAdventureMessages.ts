@@ -278,7 +278,7 @@ export function useAdventureMessages({
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || body.error_code || `HTTP ${res.status}`)
+        throw new Error(body.error || `HTTP ${res.status}`)
       }
 
       const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()
@@ -315,7 +315,7 @@ export function useAdventureMessages({
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || body.error_code || `HTTP ${res.status}`)
+        throw new Error(body.error || `HTTP ${res.status}`)
       }
 
       const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()
@@ -345,7 +345,7 @@ export function useAdventureMessages({
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || body.error_code || `HTTP ${res.status}`)
+        throw new Error(body.error || `HTTP ${res.status}`)
       }
 
       const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()

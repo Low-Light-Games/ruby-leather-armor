@@ -103,7 +103,7 @@ RSpec.describe "Adventure Messages flood control", type: :request do
 
   describe "Rack::Attack throttles" do
     it "returns a user_rate 429 after the per-user burst is exceeded" do
-      12.times do
+      RackAttackConfig::USER_RATE_LIMIT.times do
         post "/adventures/#{adventure.id}/messages/roll",
              params: { roll_value: 15, roll_description: "Perception check", resolution_method: "roll" },
              headers: { "Accept" => "application/json" }
@@ -123,12 +123,13 @@ RSpec.describe "Adventure Messages flood control", type: :request do
 
     it "returns an ip_rate 429 only after aggregate traffic exceeds the looser IP ceiling" do
       users = create_list(:user, 11, :password_auth)
+      requests_per_user = RackAttackConfig::IP_RATE_LIMIT / users.count
 
       users.first(10).each do |other_user|
         other_adventure = create(:adventure, user: other_user, story: story)
         sign_in(other_user)
 
-        11.times do
+        requests_per_user.times do
           post "/adventures/#{other_adventure.id}/messages/roll",
                params: { roll_value: 15, roll_description: "Perception check", resolution_method: "roll" },
                headers: { "Accept" => "application/json" }
@@ -140,7 +141,9 @@ RSpec.describe "Adventure Messages flood control", type: :request do
       sign_in(users.last)
       last_adventure = create(:adventure, user: users.last, story: story)
 
-      10.times do
+      final_burst = RackAttackConfig::IP_RATE_LIMIT - (requests_per_user * (users.count - 1))
+
+      final_burst.times do
         post "/adventures/#{last_adventure.id}/messages/roll",
              params: { roll_value: 15, roll_description: "Perception check", resolution_method: "roll" },
              headers: { "Accept" => "application/json" }
