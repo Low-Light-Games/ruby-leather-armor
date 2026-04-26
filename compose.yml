@@ -25,7 +25,7 @@ services:
       - "traefik.http.services.app.loadbalancer.healthcheck.path=/up"
       - "traefik.http.services.app.loadbalancer.healthcheck.interval=5s"
 
-  worker:
+  worker_dm:
     build:
       context: ./
       args:
@@ -42,7 +42,24 @@ services:
     environment:
       RAILS_MAX_THREADS: "12"
       EVALUATOR_URL: http://evaluator:3001
-    command: bundle exec sidekiq -C config/sidekiq.yml
+    command: bundle exec sidekiq -C config/sidekiq_dm_pipeline.yml
+
+  worker_aux:
+    build:
+      context: ./
+      args:
+        RAILS_ENV: development
+    volumes:
+      - .:/app
+      - bundle_cache:/bundle
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - .env
+    environment:
+      RAILS_MAX_THREADS: "12"
+    command: bundle exec sidekiq -C config/sidekiq_aux.yml
 
   evaluator:
     build:
@@ -57,6 +74,8 @@ services:
     env_file:
       - .env
     command: node evaluator/src/index.js
+    environment:
+      EVALUATOR_MAX_PARALLEL: "2"
 
   proxy:
     image: traefik:v3.4
