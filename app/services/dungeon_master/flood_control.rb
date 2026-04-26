@@ -101,11 +101,22 @@ module DungeonMaster
       heartbeat = Thread.new do
         Thread.current.abort_on_exception = false
 
-        until stop
-          sleep PROMPT_SLOT_HEARTBEAT_SECONDS
-          break if stop
+        begin
+          until stop
+            sleep PROMPT_SLOT_HEARTBEAT_SECONDS
+            break if stop
 
-          refresh_prompt_submission(admission)
+            refresh_prompt_submission(admission)
+          end
+        rescue StandardError => e
+          ApplicationErrorReporter.notify(
+            e,
+            context: {
+              source: "dm_flood_control_heartbeat",
+              user_id: admission["user_id"],
+              owner_token: admission["owner_token"]
+            }
+          )
         end
       end
 
