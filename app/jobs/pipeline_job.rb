@@ -4,6 +4,8 @@ class PipelineJob < ApplicationJob
   queue_as :dm_pipeline
   discard_on ActiveRecord::RecordNotFound
 
+  QUEUE_WAIT_TARGET_MS = 2_000
+
   def perform(adventure_id, player_message_id, player_input, mode, user_id, options = nil)
     log_queue_wait!(adventure_id: adventure_id, user_id: user_id)
 
@@ -22,8 +24,6 @@ class PipelineJob < ApplicationJob
   end
 
   private
-
-  QUEUE_WAIT_TARGET_MS = 2_000
 
   def log_queue_wait!(adventure_id:, user_id:)
     return if enqueued_at.blank?

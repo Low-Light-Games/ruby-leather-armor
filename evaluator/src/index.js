@@ -74,16 +74,22 @@ async function mapWithConcurrency(items, limit, iteratee) {
       if (currentIndex >= items.length) return;
 
       try {
-        results[currentIndex] = await iteratee(items[currentIndex], currentIndex);
+        results[currentIndex] = {
+          status: "fulfilled",
+          value: await iteratee(items[currentIndex], currentIndex),
+        };
       } catch (error) {
-        results[currentIndex] = Promise.reject(error);
+        results[currentIndex] = {
+          status: "rejected",
+          reason: error,
+        };
       }
     }
   }
 
   const workers = Array.from({ length: Math.min(limit, items.length) }, () => worker());
   await Promise.all(workers);
-  return Promise.allSettled(results);
+  return results;
 }
 
 // ----------------------------------------------------------------
@@ -114,7 +120,7 @@ app.post("/moderate", async (req, res) => {
 // ----------------------------------------------------------------
 // POST /fan_out
 //
-// Runs N prompts in parallel (Promise.all). Returns results in input order.
+// Runs N prompts with bounded concurrency. Returns results in input order.
 // All-or-nothing: if any call fails, returns 500 with { error, partial_results }.
 // ----------------------------------------------------------------
 app.post("/fan_out", async (req, res) => {
