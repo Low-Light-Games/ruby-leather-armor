@@ -101,7 +101,7 @@ export function useAdventureMessages({
       id: ERROR_ID, role: 'system', content: `${errorPrefix}: ${err.message}`,
       message_type: 'narrative', metadata: {}, created_at: new Date().toISOString(),
     }
-    setMessages(prev => [...prev.filter(m => m.id !== THINKING_ID && m.id !== ERROR_ID), errorMsg])
+    setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), errorMsg])
     setSending(false)
   }, [])
 
@@ -278,10 +278,11 @@ export function useAdventureMessages({
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || `HTTP ${res.status}`)
+        throw new Error(body.error || body.error_code || `HTTP ${res.status}`)
       }
 
       const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()
+      setPendingRolls(null)
       if (data.async) handleAsyncResponse(data)
       else handleSyncResponse(data)
     } catch (err: any) {
@@ -314,7 +315,7 @@ export function useAdventureMessages({
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || `HTTP ${res.status}`)
+        throw new Error(body.error || body.error_code || `HTTP ${res.status}`)
       }
 
       const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()
@@ -344,7 +345,7 @@ export function useAdventureMessages({
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || `HTTP ${res.status}`)
+        throw new Error(body.error || body.error_code || `HTTP ${res.status}`)
       }
 
       const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()

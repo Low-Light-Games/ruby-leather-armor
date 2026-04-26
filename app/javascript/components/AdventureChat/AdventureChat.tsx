@@ -135,7 +135,6 @@ export const AdventureChat = ({
       resolution_method: e.resolution_method || 'manual',
     }))
 
-    setPendingRolls(null)
     sendRolls(rolls)
   }
 

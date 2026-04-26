@@ -153,11 +153,13 @@ module DungeonMaster
       fallback
     end
 
-    def report_fail_open(event, exception:, context:)
+    def record_fail_open(event, exception:, context:)
       payload = context.merge(event: event, error_class: exception.class.name, error_message: exception.message)
       ActiveSupport::Notifications.instrument("dm.flood_control.fail_open", payload)
       Rails.logger.error("[DM flood_control fail_open] #{payload}")
       ApplicationErrorReporter.notify(exception, context: payload.merge(source: "dm_flood_control_fail_open"))
     end
+
+    alias_method :report_fail_open, :record_fail_open
   end
 end
