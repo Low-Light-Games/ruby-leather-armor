@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "connection_pool"
 require "securerandom"
 
 module DungeonMaster
@@ -9,6 +10,8 @@ module DungeonMaster
     PROMPT_SLOT_TTL_SECONDS = ENV.fetch("DM_PROMPT_SLOT_TTL_SECONDS", "120").to_i
     PROMPT_SLOT_HEARTBEAT_SECONDS = ENV.fetch("DM_PROMPT_SLOT_HEARTBEAT_SECONDS", "30").to_i
     REDIS_NAMESPACE = ENV.fetch("DM_FLOOD_CONTROL_NAMESPACE", "dm_flood_control")
+    REDIS_POOL_SIZE = ENV.fetch("DM_FLOOD_CONTROL_REDIS_POOL_SIZE", ENV.fetch("RAILS_MAX_THREADS", "5")).to_i
+    REDIS_POOL_TIMEOUT_SECONDS = ENV.fetch("DM_FLOOD_CONTROL_REDIS_POOL_TIMEOUT_SECONDS", "1").to_f
 
     RESERVE_PROMPT_SLOT_SCRIPT = <<~LUA.freeze
       if redis.call("EXISTS", KEYS[1]) == 1 then
@@ -44,11 +47,13 @@ module DungeonMaster
       key = prompt_slot_key(user_id)
 
       result = with_fail_open("prompt_backlog_reserve", user_id: user_id, fallback: :fail_open) do
-        redis.eval(
-          RESERVE_PROMPT_SLOT_SCRIPT,
-          keys: [key],
-          argv: [owner_token, PROMPT_SLOT_TTL_SECONDS]
-        )
+        with_redis do |redis|
+          redis.eval(
+            RESERVE_PROMPT_SLOT_SCRIPT,
+            keys: [key],
+            argv: [owner_token, PROMPT_SLOT_TTL_SECONDS]
+          )
+        end
       end
 
       case result
@@ -65,11 +70,13 @@ module DungeonMaster
       return false unless prompt_admission?(admission)
 
       with_fail_open("prompt_backlog_refresh", user_id: admission["user_id"], fallback: false) do
-        redis.eval(
-          REFRESH_PROMPT_SLOT_SCRIPT,
-          keys: [prompt_slot_key(admission["user_id"])],
-          argv: [admission["owner_token"], PROMPT_SLOT_TTL_SECONDS]
-        ) == 1
+        with_redis do |redis|
+          redis.eval(
+            REFRESH_PROMPT_SLOT_SCRIPT,
+            keys: [prompt_slot_key(admission["user_id"])],
+            argv: [admission["owner_token"], PROMPT_SLOT_TTL_SECONDS]
+          ) == 1
+        end
       end
     end
 
@@ -77,11 +84,13 @@ module DungeonMaster
       return false unless prompt_admission?(admission)
 
       with_fail_open("prompt_backlog_release", user_id: admission["user_id"], fallback: false) do
-        redis.eval(
-          RELEASE_PROMPT_SLOT_SCRIPT,
-          keys: [prompt_slot_key(admission["user_id"])],
-          argv: [admission["owner_token"]]
-        ) == 1
+        with_redis do |redis|
+          redis.eval(
+            RELEASE_PROMPT_SLOT_SCRIPT,
+            keys: [prompt_slot_key(admission["user_id"])],
+            argv: [admission["owner_token"]]
+          ) == 1
+        end
       end
     end
 
@@ -118,7 +127,7 @@ module DungeonMaster
 
       admission
     rescue StandardError => e
-      report_fail_open("prompt_backlog_extract", exception: e, context: {})
+      record_fail_open("prompt_backlog_extract", exception: e, context: {})
       nil
     end
 
@@ -132,8 +141,14 @@ module DungeonMaster
       "#{REDIS_NAMESPACE}:user:#{user_id}:prompt_slot"
     end
 
-    def redis
-      @redis ||= Redis.new(url: ENV.fetch("REDIS_URL", "redis://localhost:6379/1"))
+    def redis_pool
+      @redis_pool ||= ConnectionPool.new(size: REDIS_POOL_SIZE, timeout: REDIS_POOL_TIMEOUT_SECONDS) do
+        Redis.new(url: ENV.fetch("REDIS_URL", "redis://localhost:6379/1"))
+      end
+    end
+
+    def with_redis(&block)
+      redis_pool.with(&block)
     end
 
     def normalize_hash(value)
@@ -148,8 +163,8 @@ module DungeonMaster
 
     def with_fail_open(event, user_id:, fallback:)
       yield
-    rescue Redis::BaseError, IOError, SystemCallError, Timeout::Error => e
-      report_fail_open(event, exception: e, context: { user_id: user_id })
+    rescue ConnectionPool::TimeoutError, Redis::BaseError, IOError, SystemCallError, Timeout::Error => e
+      record_fail_open(event, exception: e, context: { user_id: user_id })
       fallback
     end
 
@@ -159,7 +174,5 @@ module DungeonMaster
       Rails.logger.error("[DM flood_control fail_open] #{payload}")
       ApplicationErrorReporter.notify(exception, context: payload.merge(source: "dm_flood_control_fail_open"))
     end
-
-    alias_method :report_fail_open, :record_fail_open
   end
 end
