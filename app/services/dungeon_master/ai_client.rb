@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'bigdecimal'
+
 module DungeonMaster
   # Thin wrapper around the OpenAI API.
   # Handles request construction, JSON parsing with fallbacks,
@@ -52,7 +54,7 @@ module DungeonMaster
         response_format: { type: "json_object" }
       }
       params[:max_completion_tokens] = max_tokens if max_tokens
-      params[:temperature] = @config.temperature if supports_temp && @config.temperature != 1.0
+      params[:temperature] = @config.temperature if supports_temp && custom_temperature?
 
       response = begin
         with_openai_retries(call_type: "chat", model: effective_model) do
@@ -309,6 +311,10 @@ module DungeonMaster
 
     def openai_retry_max_delay_seconds
       ENV.fetch("DM_OPENAI_RETRY_MAX_DELAY_SECONDS", DEFAULT_RETRY_MAX_DELAY_SECONDS.to_s).to_f
+    end
+
+    def custom_temperature?
+      BigDecimal(@config.temperature.to_s) != BigDecimal('1.0')
     end
   end
 end
