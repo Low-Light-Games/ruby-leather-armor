@@ -9,6 +9,10 @@ module DungeonMaster
 
     PROMPT_SLOT_TTL_SECONDS = ENV.fetch("DM_PROMPT_SLOT_TTL_SECONDS", "120").to_i
     PROMPT_SLOT_HEARTBEAT_SECONDS = ENV.fetch("DM_PROMPT_SLOT_HEARTBEAT_SECONDS", "30").to_i
+    PROMPT_SLOT_HEARTBEAT_ATTEMPTS = ENV.fetch(
+      "DM_PROMPT_SLOT_HEARTBEAT_ATTEMPTS",
+      ((PROMPT_SLOT_TTL_SECONDS / PROMPT_SLOT_HEARTBEAT_SECONDS.to_f).ceil + 2).to_s
+    ).to_i
     REDIS_NAMESPACE = ENV.fetch("DM_FLOOD_CONTROL_NAMESPACE", "dm_flood_control")
     REDIS_POOL_SIZE = ENV.fetch("DM_FLOOD_CONTROL_REDIS_POOL_SIZE", ENV.fetch("RAILS_MAX_THREADS", "5")).to_i
     REDIS_POOL_TIMEOUT_SECONDS = ENV.fetch("DM_FLOOD_CONTROL_REDIS_POOL_TIMEOUT_SECONDS", "1").to_f
@@ -97,33 +101,8 @@ module DungeonMaster
     def with_prompt_submission_heartbeat(admission)
       return yield unless prompt_admission?(admission)
 
-      stop = false
-      heartbeat = Thread.new do
-        Thread.current.abort_on_exception = false
-
-        begin
-          until stop
-            sleep PROMPT_SLOT_HEARTBEAT_SECONDS
-            break if stop
-
-            refresh_prompt_submission(admission)
-          end
-        rescue StandardError => e
-          ApplicationErrorReporter.notify(
-            e,
-            context: {
-              source: "dm_flood_control_heartbeat",
-              user_id: admission["user_id"],
-              owner_token: admission["owner_token"]
-            }
-          )
-        end
-      end
-
+      schedule_prompt_submission_heartbeats(admission)
       yield
-    ensure
-      stop = true
-      heartbeat&.join(1)
     end
 
     def extract_prompt_admission(job_hash)
@@ -150,6 +129,21 @@ module DungeonMaster
 
     def prompt_slot_key(user_id)
       "#{REDIS_NAMESPACE}:user:#{user_id}:prompt_slot"
+    end
+
+    def schedule_prompt_submission_heartbeats(admission)
+      1.upto(PROMPT_SLOT_HEARTBEAT_ATTEMPTS) do |attempt|
+        PromptSubmissionHeartbeatJob.set(wait: attempt * PROMPT_SLOT_HEARTBEAT_SECONDS.seconds).perform_later(admission)
+      end
+    rescue StandardError => e
+      ApplicationErrorReporter.notify(
+        e,
+        context: {
+          source: "dm_flood_control_heartbeat_schedule",
+          user_id: admission["user_id"],
+          owner_token: admission["owner_token"]
+        }
+      )
     end
 
     def redis_pool
