@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "digest"
+require 'digest'
 
 module DungeonMaster
   module Rules
@@ -63,8 +63,8 @@ module DungeonMaster
         vectors = @log.timed_embedding_call(
           "RulesLookup query — #{@query_text.truncate(80)}",
           model_used: embedding_model,
-          source:     "rules_lookup",
-          ai:         @ai,
+          source: 'rules_lookup',
+          ai: @ai
         ) do
           @ai.embeddings(**embeddings_kwargs)
         end
@@ -93,12 +93,12 @@ module DungeonMaster
         scope = scope.for_domain(@domain) if @domain
         scope.nearest_to(query_embedding, limit: @limit).map do |row|
           {
-            slug:     row.slug,
-            domain:   row.domain,
-            name:     row.name,
-            brief:    row.brief,
-            body:     row.body,
-            distance: row.try(:neighbor_distance),
+            slug: row.slug,
+            domain: row.domain,
+            name: row.name,
+            brief: row.brief,
+            body: row.body,
+            distance: row.try(:neighbor_distance)
           }
         end
       end
@@ -107,24 +107,24 @@ module DungeonMaster
         return unless @log.respond_to?(:play_log!)
 
         @log.play_log!(
-          "rules_retrieved",
+          'rules_retrieved',
           "Rules RAG retrieved #{hits.length} rule(s) for intent",
           parsed_response: {
             query_text: @query_text.truncate(160),
-            limit:      @limit,
-            domain:     @domain,
-            hits:       hits.map { |h| h.slice(:slug, :domain, :distance) },
-          },
+            limit: @limit,
+            domain: @domain,
+            hits: hits.map { |h| h.slice(:slug, :domain, :distance) }
+          }
         )
       end
 
       def error_context_payload
         {
-          step:           "rules_lookup",
-          source:         "rules_lookup",
-          query_preview:  @query_text.truncate(120),
-          limit:          @limit,
-          domain:         @domain,
+          step: 'rules_lookup',
+          source: 'rules_lookup',
+          query_preview: @query_text.truncate(120),
+          limit: @limit,
+          domain: @domain
         }
       end
     end

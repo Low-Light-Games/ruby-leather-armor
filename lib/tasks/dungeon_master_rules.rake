@@ -2,9 +2,9 @@
 
 namespace :dungeon_master do
   namespace :rules do
-    desc "Embed every rule entry from rules/entries/*.yml into rule_embeddings (idempotent — skips rows whose text_digest is unchanged)."
+    desc 'Embed every rule entry from rules/entries into rule_embeddings (idempotent on text_digest).'
     task embed: :environment do
-      require "digest"
+      require 'digest'
 
       DungeonMaster::Rules.clear_cache!
       entries = DungeonMaster::Rules.all_entries
@@ -14,7 +14,7 @@ namespace :dungeon_master do
         next
       end
 
-      ai = DungeonMaster::AiClient.new(DmConfig.instance)
+      ai     = DungeonMaster::AiClient.new(DmConfig.instance)
       model  = DmConfig.instance.narrative_facts_embedding_model
       dims   = DmConfig.instance.narrative_facts_embedding_dimensions
 
@@ -24,7 +24,7 @@ namespace :dungeon_master do
       entries.each do |slug, entry|
         body   = entry[:text].to_s
         brief  = body.split(/\.(\s|\z)/).first&.strip
-        brief  = "#{brief}." if brief.present? && !brief.end_with?(".")
+        brief  = "#{brief}." if brief.present? && !brief.end_with?('.')
         digest = Digest::SHA1.hexdigest("#{slug}|#{entry[:name]}|#{body}")
 
         existing = RuleEmbedding.find_by(slug: slug)
@@ -34,14 +34,14 @@ namespace :dungeon_master do
         end
 
         to_embed << {
-          slug:        slug,
-          domain:      entry[:domain],
-          name:        entry[:name],
-          brief:       brief,
-          body:        body,
+          slug: slug,
+          domain: entry[:domain],
+          name: entry[:name],
+          brief: brief,
+          body: body,
           text_digest: digest,
-          existing:    existing,
-          embed_text:  embed_text_for(entry),
+          existing: existing,
+          embed_text: embed_text_for(entry)
         }
       end
 
@@ -60,12 +60,12 @@ namespace :dungeon_master do
       to_embed.each_with_index do |row, idx|
         vector = vectors[idx]
         attrs  = {
-          domain:      row[:domain],
-          name:        row[:name],
-          brief:       row[:brief],
-          body:        row[:body],
+          domain: row[:domain],
+          name: row[:name],
+          brief: row[:brief],
+          body: row[:body],
           text_digest: row[:text_digest],
-          embedding:   vector,
+          embedding: vector
         }
 
         if row[:existing]
@@ -78,7 +78,7 @@ namespace :dungeon_master do
       puts "[rules:embed] done. embedded=#{to_embed.length} reused=#{reused} total=#{RuleEmbedding.count}"
     end
 
-    desc "Drop every rule_embeddings row. Useful when changing the embedding model."
+    desc 'Drop every rule_embeddings row. Useful when changing the embedding model.'
     task reset: :environment do
       n = RuleEmbedding.count
       RuleEmbedding.delete_all
