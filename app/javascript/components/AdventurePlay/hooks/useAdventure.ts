@@ -131,7 +131,7 @@ export function useAdventure(adventureId: number, user: unknown): UseAdventureRe
   const loadAdventure = useCallback(() => {
     if (!user) return;
 
-    fetch(`/adventures/${adventureId}.json`)
+    fetch(`/adventures/${adventureId}.json`, { cache: 'no-store' })
       .then(response => {
         if (!response.ok) throw new Error('Failed to load adventure');
         return response.json();
