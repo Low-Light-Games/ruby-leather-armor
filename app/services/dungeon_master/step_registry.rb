@@ -23,142 +23,155 @@ module DungeonMaster
     end
 
     STEPS = {
-      "intake" => Entry.new(
+      'intake' => Entry.new(
         token_budget: nil,
-        model_hint: "Fast, cheap model. Security + dm_query detection + context suggestion — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
-        pipeline: true,
+        model_hint: 'Fast, cheap model. Security + dm_query detection + context suggestion — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.',
+        pipeline: true
       ),
-      "dm_query" => Entry.new(
+      'dm_query' => Entry.new(
         token_budget: nil,
-        model_hint: "Fast, cheap model. Straightforward Q&A — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
-        pipeline: true,
+        model_hint: 'Fast, cheap model. Straightforward Q&A — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.',
+        pipeline: true
       ),
-      "sequencer" => Entry.new(
+      'sequencer' => Entry.new(
         token_budget: nil,
-        model_hint: "Fast, cheap model. Compound action detection — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
-        pipeline: true,
+        model_hint: 'Fast, cheap model. Compound action detection — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.',
+        pipeline: true
       ),
-      "sanity_checker" => Entry.new(
+      'sanity_checker' => Entry.new(
         token_budget: nil,
-        model_hint: "Fast, cheap model. Sheet validation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini. Only used in AI mode.",
-        pipeline: true,
+        model_hint: 'Fast, cheap model. Sheet validation — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini. Only used in AI mode.',
+        pipeline: true
       ),
-      "sanity_checker_world" => Entry.new(
+      'sanity_checker_world' => Entry.new(
         token_budget: nil,
-        model_hint: "⚠️ Capable model REQUIRED. Cross-references player actions against full game state. Unlikely to perform well with budget models. Recommended: gpt-4o-mini or better (gpt-4.1-mini, o3-mini, gpt-5-mini).",
-        pipeline: true,
+        model_hint: '⚠️ Capable model REQUIRED. Cross-references player actions against full game state. Unlikely to perform well with budget models. Recommended: gpt-4o-mini or better (gpt-4.1-mini, o3-mini, gpt-5-mini).',
+        pipeline: true
       ),
-      "mechanic" => Entry.new(
+      'mechanic' => Entry.new(
         token_budget: nil,
-        model_hint: "➡️ Capable model suggested. Post-roll arbitration and mutation generation — e.g. o3-mini, o4-mini, gpt-5-mini.",
-        pipeline: true,
+        model_hint: '➡️ Capable model suggested. Post-roll arbitration and mutation generation — e.g. o3-mini, o4-mini, gpt-5-mini.',
+        pipeline: true
       ),
-      "combat_gm" => Entry.new(
+      'combat_gm' => Entry.new(
         token_budget: 900,
-        model_hint: "➡️ Capable model required for active combat adjudication (battlefield + PF1e) — e.g. o3-mini, gpt-5-mini.",
-        pipeline: true,
+        model_hint: '➡️ Capable model required for active combat adjudication (battlefield + PF1e) — e.g. o3-mini, gpt-5-mini.',
+        pipeline: true
       ),
-      "momentum" => Entry.new(
+      'momentum' => Entry.new(
         token_budget: nil,
-        model_hint: "Mid-tier model. Non-mechanical outcome determination and context-domain assessment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
-        pipeline: true,
+        model_hint: 'Mid-tier model. Non-mechanical outcome determination and context-domain assessment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.',
+        pipeline: true
       ),
-      "social_expansion" => Entry.new(
+      'social_expansion' => Entry.new(
         token_budget: nil,
-        model_hint: "Mid-tier model. Scene creation with NPC personality and attitude — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
-        pipeline: true,
+        model_hint: 'Mid-tier model. Scene creation with NPC personality and attitude — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.',
+        pipeline: true
       ),
-      "time_keeper" => Entry.new(
+      'time_keeper' => Entry.new(
         token_budget: nil,
-        model_hint: "Fast, cheap model. Estimates in-game time for an action — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.",
-        pipeline: true,
+        model_hint: 'Fast, cheap model. Estimates in-game time for an action — e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.',
+        pipeline: true
       ),
-      "chronicler" => Entry.new(
+      'chronicler' => Entry.new(
         token_budget: nil,
-        model_hint: "➡️ Capable model suggested. Receives social, traversal, and exploration context; condition matching and scene-aware NPC reactions. Use a capable model and sufficient token budget — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
-        pipeline: true,
+        model_hint: '➡️ Capable model suggested. Receives social, traversal, and exploration context; condition matching and scene-aware NPC reactions. Use a capable model and sufficient token budget — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.',
+        pipeline: true
       ),
-      "narrate" => Entry.new(
+      'narrate' => Entry.new(
         token_budget: nil,
-        model_hint: "Creative model. Narrative quality scales with capability — e.g. gpt-4.1, gpt-4o, gpt-5.",
-        pipeline: true,
+        model_hint: 'Creative model. Narrative quality scales with capability — e.g. gpt-4.1, gpt-4o, gpt-5.',
+        pipeline: true
       ),
-      "micro_context_update" => Entry.new(
+      'micro_context_update' => Entry.new(
         token_budget: nil,
-        model_hint: "Mid-tier model. Structured JSON with moderate judgment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
-        pipeline: true,
+        model_hint: 'Mid-tier model. Structured JSON with moderate judgment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.',
+        pipeline: true
       ),
-      "traversal_context_update" => Entry.new(
+      'traversal_context_update' => Entry.new(
         token_budget: nil,
-        model_hint: "Mid-tier model. Domain-scoped traversal JSON update — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
-        pipeline: true,
+        model_hint: 'Mid-tier model. Domain-scoped traversal JSON update — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.',
+        pipeline: true
       ),
-      "combat_context_update" => Entry.new(
+      'combat_context_update' => Entry.new(
         token_budget: nil,
-        model_hint: "Mid-tier model. Domain-scoped combat JSON update that must preserve canonical combat identity — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
-        pipeline: true,
+        model_hint: 'Mid-tier model. Domain-scoped combat JSON update that must preserve canonical combat identity — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.',
+        pipeline: true
       ),
-      "social_context_update" => Entry.new(
+      'social_context_update' => Entry.new(
         token_budget: nil,
-        model_hint: "Mid-tier model. Domain-scoped social JSON update — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
-        pipeline: true,
+        model_hint: 'Mid-tier model. Domain-scoped social JSON update — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.',
+        pipeline: true
       ),
-      "exploration_context_update" => Entry.new(
+      'exploration_context_update' => Entry.new(
         token_budget: nil,
-        model_hint: "Mid-tier model. Domain-scoped exploration JSON update — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
-        pipeline: true,
+        model_hint: 'Mid-tier model. Domain-scoped exploration JSON update — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.',
+        pipeline: true
       ),
-      "rest_context_update" => Entry.new(
+      'rest_context_update' => Entry.new(
         token_budget: nil,
-        model_hint: "Mid-tier model. Domain-scoped rest JSON update — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
-        pipeline: true,
+        model_hint: 'Mid-tier model. Domain-scoped rest JSON update — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.',
+        pipeline: true
       ),
-      "inventory_context_update" => Entry.new(
+      'inventory_context_update' => Entry.new(
         token_budget: nil,
-        model_hint: "Mid-tier model. Domain-scoped inventory JSON update — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
-        pipeline: true,
+        model_hint: 'Mid-tier model. Domain-scoped inventory JSON update — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.',
+        pipeline: true
       ),
-      "meta_context_update" => Entry.new(
+      'meta_context_update' => Entry.new(
         token_budget: nil,
-        model_hint: "Fast, cheap model. Scene summary and auxiliary context signals — e.g. gpt-4.1-nano, gpt-4o-mini, gpt-5-nano.",
-        pipeline: true,
+        model_hint: 'Fast, cheap model. Scene summary and auxiliary context signals — e.g. gpt-4.1-nano, gpt-4o-mini, gpt-5-nano.',
+        pipeline: true
       ),
-      "macro_narrative_update" => Entry.new(
+      'macro_narrative_update' => Entry.new(
         token_budget: nil,
-        model_hint: "Mid-tier model. Judges narrative significance — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.",
-        pipeline: true,
+        model_hint: 'Mid-tier model. Judges narrative significance — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.',
+        pipeline: true
       ),
-      "creature_generation" => Entry.new(
+      'creature_generation' => Entry.new(
         token_budget: nil,
-        model_hint: "Mid-tier model recommended. Must produce valid PF1e stat blocks — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
-        pipeline: true,
+        model_hint: 'Mid-tier model recommended. Must produce valid PF1e stat blocks — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.',
+        pipeline: true
       ),
-      "beacon" => Entry.new(
+      'beacon' => Entry.new(
         token_budget: nil,
-        model_hint: "Fast, cheap model. Per-domain intent classification — runs 6 in parallel via the Node evaluator microservice. e.g. gpt-4.1-nano, gpt-4o-mini, gpt-4.1-mini.",
-        pipeline: true,
+        model_hint: 'Fast, cheap model. Per-domain intent classification — runs 6 in parallel via the Node evaluator microservice. e.g. gpt-4.1-nano, gpt-4o-mini, gpt-4.1-mini.',
+        pipeline: true
       ),
-      "mechanical_evaluation" => Entry.new(
+      'mechanical_evaluation' => Entry.new(
         token_budget: nil,
-        model_hint: "Mid-tier model. Per-domain mechanical resolution, run sequentially with cross-domain awareness via the Node evaluator microservice. e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.",
-        pipeline: true,
+        model_hint: 'Mid-tier model. Per-domain mechanical resolution, run sequentially with cross-domain awareness via the Node evaluator microservice. e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.',
+        pipeline: true
       ),
-      "roll_qualifier" => Entry.new(
+      'roll_qualifier' => Entry.new(
         token_budget: nil,
-        model_hint: "Fast, cheap model. Determines Take 10/20 eligibility and situational modifiers. Run in parallel per domain via the Node evaluator microservice. e.g. gpt-4.1-nano, gpt-4o-mini.",
-        pipeline: true,
+        model_hint: 'Fast, cheap model. Determines Take 10/20 eligibility and situational modifiers. Run in parallel per domain via the Node evaluator microservice. e.g. gpt-4.1-nano, gpt-4o-mini.',
+        pipeline: true
       ),
-      "npc_action" => Entry.new(
+      'roll_request' => Entry.new(
+        token_budget: nil,
+        model_hint: 'Fast, cheap model. Single-call replacement for beacon→mech_eval→roll_qualifier. Decides if a roll is needed and emits one roll spec, with rules retrieved via RAG and beats from the narrative facts store. No character block in prompt — code resolves modifiers post-call. e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.',
+        pipeline: true
+      ),
+      'rules_retrieval' => Entry.new(
+        # Logged event_type for `play_log!("rules_retrieved", ...)` rows
+        # written by `Rules::Lookup`. Not configurable — registered so
+        # PlayLog::EVENT_TYPES recognizes the event.
+        token_budget: nil,
+        model_hint: nil,
+        pipeline: false
+      ),
+      'npc_action' => Entry.new(
         token_budget: 300,
-        model_hint: "Fast, cheap model. Per-NPC combat action decision. Runs N in parallel via Node fan_out. e.g. gpt-4.1-nano, gpt-4o-mini.",
-        pipeline: true,
+        model_hint: 'Fast, cheap model. Per-NPC combat action decision. Runs N in parallel via Node fan_out. e.g. gpt-4.1-nano, gpt-4o-mini.',
+        pipeline: true
       ),
-      "loremaster" => Entry.new(
+      'loremaster' => Entry.new(
         token_budget: nil,
-        model_hint: "Mid-tier model. Structured fact extraction from factual outcomes — e.g. gpt-4o-mini, gpt-4.1-mini, gpt-5-nano. Runs in parallel with Narrate/ContextUpdate, so latency is Narrate-bounded.",
-        pipeline: true,
+        model_hint: 'Mid-tier model. Structured fact extraction from factual outcomes — e.g. gpt-4o-mini, gpt-4.1-mini, gpt-5-nano. Runs in parallel with Narrate/ContextUpdate, so latency is Narrate-bounded.',
+        pipeline: true
       ),
-      "embedding" => Entry.new(
+      'embedding' => Entry.new(
         # Not a pipeline step in the LLM-chat sense — this registers
         # `call_type: "embedding"` as a known event_type for AiLog rows
         # written by `Lore::ApplyResults` (write-side) and
@@ -166,23 +179,23 @@ module DungeonMaster
         # does not write any AiLog rows.
         token_budget: nil,
         model_hint: nil,
-        pipeline: false,
+        pipeline: false
       ),
-      "encounter_expand" => Entry.new(
+      'encounter_expand' => Entry.new(
         token_budget: nil,
         model_hint: nil,
-        pipeline: false,
+        pipeline: false
       ),
-      "enricher" => Entry.new(
+      'enricher' => Entry.new(
         token_budget: nil,
         model_hint: nil,
-        pipeline: false,
+        pipeline: false
       ),
-      "embellisher" => Entry.new(
+      'embellisher' => Entry.new(
         token_budget: nil,
         model_hint: nil,
-        pipeline: false,
-      ),
+        pipeline: false
+      )
     }.freeze
 
     def self.all_call_types
@@ -196,6 +209,5 @@ module DungeonMaster
     def self.model_hints
       STEPS.select { |_, e| e.model_hint }.transform_values(&:model_hint)
     end
-
   end
 end
