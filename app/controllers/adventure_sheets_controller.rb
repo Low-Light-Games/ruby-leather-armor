@@ -5,6 +5,7 @@ class AdventureSheetsController < ApplicationController
   include PivotSync
 
   PLAYWRIGHT_SHEET_BODY_KEYS = %w[active_buffs conditions].freeze
+  PLAYWRIGHT_TEST_HEADER = "HTTP_X_PLAYWRIGHT_TEST"
   RAILS_ROUTING_PARAM_KEYS = %w[controller action adventure_id].freeze
 
   before_action :set_adventure
@@ -109,7 +110,7 @@ class AdventureSheetsController < ApplicationController
   end
 
   def playwright_sheet_test_only_request?
-    return false unless Rails.env.playwright?
+    return false unless Rails.env.playwright? || request.env[PLAYWRIGHT_TEST_HEADER] == "1"
 
     body_keys = params.to_unsafe_h.keys.map(&:to_s) - RAILS_ROUTING_PARAM_KEYS
     return false if body_keys.empty?

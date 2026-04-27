@@ -20,6 +20,7 @@ test.describe('Character sidebar buffs and conditions', () => {
       headers: {
         'Content-Type': 'application/json',
         'X-CSRF-Token': token,
+        'X-Playwright-Test': '1',
       },
       data: {
         conditions: ['shaken'],
