@@ -8,6 +8,94 @@ const client = new OpenAI({
   maxRetries: 0,
 });
 
+const OPENAI_MAX_RETRIES = Math.max(0, parseInt(process.env.DM_OPENAI_MAX_RETRIES || "2", 10));
+const OPENAI_RETRY_BASE_DELAY_SECONDS = Math.max(
+  0,
+  parseFloat(process.env.DM_OPENAI_RETRY_BASE_DELAY_SECONDS || "0.5")
+);
+const OPENAI_RETRY_MAX_DELAY_SECONDS = Math.max(
+  OPENAI_RETRY_BASE_DELAY_SECONDS,
+  parseFloat(process.env.DM_OPENAI_RETRY_MAX_DELAY_SECONDS || "8")
+);
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function extractRetryAfterSeconds(error) {
+  const raw =
+    error?.headers?.["retry-after"] ??
+    error?.headers?.["Retry-After"] ??
+    error?.response?.headers?.["retry-after"] ??
+    error?.response?.headers?.["Retry-After"];
+
+  if (raw == null) return null;
+
+  const value = Number.parseFloat(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
+function isRetryableOpenAIError(error) {
+  const status = error?.status ?? error?.response?.status;
+
+  if (status === 408 || status === 429) return true;
+  if (typeof status === "number" && status >= 500) return true;
+
+  return [
+    "APIConnectionError",
+    "APIConnectionTimeoutError",
+    "InternalServerError",
+  ].includes(error?.name);
+}
+
+function jitteredBackoffDelaySeconds(attempt) {
+  const ceiling = Math.min(
+    OPENAI_RETRY_BASE_DELAY_SECONDS * (2 ** (attempt - 1)),
+    OPENAI_RETRY_MAX_DELAY_SECONDS
+  );
+
+  return Math.random() * ceiling;
+}
+
+function retryDelaySeconds(attempt, error) {
+  const retryAfterSeconds = extractRetryAfterSeconds(error);
+  if (retryAfterSeconds != null) {
+    return {
+      delaySeconds: Math.min(retryAfterSeconds, OPENAI_RETRY_MAX_DELAY_SECONDS),
+      usedRetryAfter: true,
+    };
+  }
+
+  return {
+    delaySeconds: jitteredBackoffDelaySeconds(attempt),
+    usedRetryAfter: false,
+  };
+}
+
+async function withOpenAIRetries(callType, model, fn) {
+  let attempt = 0;
+
+  while (true) {
+    attempt += 1;
+
+    try {
+      return await fn();
+    } catch (error) {
+      if (!isRetryableOpenAIError(error) || attempt > OPENAI_MAX_RETRIES) {
+        throw error;
+      }
+
+      const { delaySeconds, usedRetryAfter } = retryDelaySeconds(attempt, error);
+      console.warn(
+        `[evaluator] ${callType} ${error?.name || error?.constructor?.name || "Error"} ` +
+        `(attempt ${attempt}/${OPENAI_MAX_RETRIES + 1}, model=${model}, ` +
+        `delay=${delaySeconds.toFixed(3)}s, retry_after=${usedRetryAfter})`
+      );
+      await sleep(delaySeconds * 1000);
+    }
+  }
+}
+
 /**
  * Makes a single chat completion call and returns structured result data.
  *
@@ -31,7 +119,9 @@ async function chat({ systemPrompt, userMessage, model, maxTokens, meta = {} }) 
     ],
   };
 
-  const response = await client.chat.completions.create(requestBody);
+  const response = await withOpenAIRetries("chat", model, () =>
+    client.chat.completions.create(requestBody)
+  );
 
   const durationMs = Date.now() - t0;
   const rawContent = response.choices[0]?.message?.content ?? "";
@@ -95,10 +185,12 @@ async function chat({ systemPrompt, userMessage, model, maxTokens, meta = {} }) 
  * @returns {Promise<Object>} { flagged, categories, category_scores }
  */
 async function moderate(input) {
-  const response = await client.moderations.create({
-    model: "omni-moderation-latest",
-    input,
-  });
+  const response = await withOpenAIRetries("moderate", "omni-moderation-latest", () =>
+    client.moderations.create({
+      model: "omni-moderation-latest",
+      input,
+    })
+  );
   const result = response.results[0];
   return {
     flagged: result.flagged,
