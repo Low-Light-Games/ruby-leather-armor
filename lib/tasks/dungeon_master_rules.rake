@@ -14,7 +14,7 @@ namespace :dungeon_master do
         next
       end
 
-      ai     = DungeonMaster::AiClient.new
+      ai = DungeonMaster::AiClient.new(DmConfig.instance)
       model  = DmConfig.instance.narrative_facts_embedding_model
       dims   = DmConfig.instance.narrative_facts_embedding_dimensions
 
