@@ -6,6 +6,10 @@ module DungeonMaster
     # Included by ParallelEvaluation so all pipeline steps can batch LLM calls
     # without Ruby Thread.new.
     module EvaluatorTransport
+      DEFAULT_EVALUATOR_HTTP_MAX_RETRIES = 1
+      DEFAULT_EVALUATOR_HTTP_RETRY_BASE_DELAY_SECONDS = 0.25
+      DEFAULT_EVALUATOR_HTTP_RETRY_MAX_DELAY_SECONDS = 1.0
+
       private
 
       # POST /fan_out returns one result per prompt in the same order as the request body
@@ -46,32 +50,46 @@ module DungeonMaster
       end
 
       def call_evaluator!(url, prompts, intention, phase:)
-        uri  = URI(url)
-        http = Net::HTTP.new(uri.host, uri.port)
-        http.read_timeout = 150
-        http.open_timeout = 5
-
-        request = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json")
-        request.body = prompts.to_json
-
-        response = http.request(request)
+        attempt = 0
 
         begin
-          body = JSON.parse(response.body)
-        rescue JSON::ParserError => e
-          raise AiError, "Evaluator #{phase} returned non-JSON body (HTTP #{response.code}): #{e.message} — raw: #{response.body.truncate(500)}"
+          attempt += 1
+          uri  = URI(url)
+          http = Net::HTTP.new(uri.host, uri.port)
+          http.read_timeout = 150
+          http.open_timeout = 5
+
+          request = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json")
+          request.body = prompts.to_json
+
+          response = http.request(request)
+
+          begin
+            body = JSON.parse(response.body)
+          rescue JSON::ParserError => e
+            raise AiError, "Evaluator #{phase} returned non-JSON body (HTTP #{response.code}): #{e.message} — raw: #{response.body.truncate(500)}"
+          end
+
+          if response.code.to_i >= 400
+            persist_partial_logs(Array(body.dig("partial_results")), intention)
+            raise AiError, "Evaluator #{phase} failed (HTTP #{response.code}): #{body.dig('error') || response.body.truncate(500)}"
+          end
+
+          persist_node_logs(Array(body), intention)
+          body
+        rescue Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::ETIMEDOUT, Net::OpenTimeout, SocketError => e
+          raise AiError, "Evaluator unreachable during #{phase}: #{e.message}" if attempt > evaluator_http_max_retries
+
+          delay = jittered_evaluator_http_retry_delay(attempt)
+          Rails.logger.warn(
+            "[EvaluatorTransport] #{e.class} during #{phase} " \
+            "(attempt #{attempt}/#{evaluator_http_max_retries + 1}, delay=#{format('%.3f', delay)}s)"
+          )
+          sleep(delay)
+          retry
+        rescue Net::ReadTimeout => e
+          raise AiError, "Evaluator unreachable during #{phase}: #{e.message}"
         end
-
-        if response.code.to_i >= 400
-          persist_partial_logs(Array(body.dig("partial_results")), intention)
-          raise AiError, "Evaluator #{phase} failed (HTTP #{response.code}): #{body.dig('error') || response.body.truncate(500)}"
-        end
-
-        persist_node_logs(Array(body), intention)
-
-        body
-      rescue Errno::ECONNREFUSED, Errno::ETIMEDOUT, Net::ReadTimeout, Net::OpenTimeout => e
-        raise AiError, "Evaluator unreachable during #{phase}: #{e.message}"
       end
 
       def persist_node_logs(results, intention)
@@ -105,6 +123,26 @@ module DungeonMaster
 
       def persist_partial_logs(partial_results, intention)
         persist_node_logs(partial_results, intention) if partial_results.any?
+      end
+
+      def evaluator_http_max_retries
+        ENV.fetch("DM_EVALUATOR_HTTP_MAX_RETRIES", DEFAULT_EVALUATOR_HTTP_MAX_RETRIES.to_s).to_i
+      end
+
+      def evaluator_http_retry_base_delay_seconds
+        ENV.fetch("DM_EVALUATOR_HTTP_RETRY_BASE_DELAY_SECONDS",
+                  DEFAULT_EVALUATOR_HTTP_RETRY_BASE_DELAY_SECONDS.to_s).to_f
+      end
+
+      def evaluator_http_retry_max_delay_seconds
+        ENV.fetch("DM_EVALUATOR_HTTP_RETRY_MAX_DELAY_SECONDS",
+                  DEFAULT_EVALUATOR_HTTP_RETRY_MAX_DELAY_SECONDS.to_s).to_f
+      end
+
+      def jittered_evaluator_http_retry_delay(attempt)
+        ceiling = [ evaluator_http_retry_base_delay_seconds * (2**(attempt - 1)),
+                    evaluator_http_retry_max_delay_seconds ].min
+        rand * ceiling
       end
     end
   end
