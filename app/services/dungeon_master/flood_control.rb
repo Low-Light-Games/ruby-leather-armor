@@ -101,6 +101,8 @@ module DungeonMaster
     def with_prompt_submission_heartbeat(admission)
       return yield unless prompt_admission?(admission)
 
+      return yield unless heartbeat_scheduling_supported?
+
       schedule_prompt_submission_heartbeats(admission)
       yield
     end
@@ -154,6 +156,10 @@ module DungeonMaster
 
     def with_redis(&block)
       redis_pool.with(&block)
+    end
+
+    def heartbeat_scheduling_supported?
+      !ActiveJob::Base.queue_adapter.is_a?(ActiveJob::QueueAdapters::InlineAdapter)
     end
 
     def normalize_hash(value)

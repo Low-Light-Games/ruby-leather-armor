@@ -22,6 +22,8 @@ class PipelineJob < ApplicationJob
   rescue => e
     broadcast_error(adventure_id)
     raise
+  ensure
+    DungeonMaster::FloodControl.release_prompt_submission(admission) if defined?(admission)
   end
 
   private

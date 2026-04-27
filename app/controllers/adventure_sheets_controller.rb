@@ -6,7 +6,8 @@ class AdventureSheetsController < ApplicationController
 
   PLAYWRIGHT_SHEET_BODY_KEYS = %w[active_buffs conditions].freeze
   PLAYWRIGHT_TEST_HEADER = "HTTP_X_PLAYWRIGHT_TEST"
-  RAILS_ROUTING_PARAM_KEYS = %w[controller action adventure_id].freeze
+  RAILS_ROUTING_PARAM_KEYS = %w[controller action adventure_id format].freeze
+  PLAYWRIGHT_WRAPPER_PARAM_KEYS = %w[adventure_sheet].freeze
 
   before_action :set_adventure
   before_action :set_adventure_sheet
@@ -112,10 +113,27 @@ class AdventureSheetsController < ApplicationController
   def playwright_sheet_test_only_request?
     return false unless Rails.env.playwright? || request.env[PLAYWRIGHT_TEST_HEADER] == "1"
 
-    body_keys = params.to_unsafe_h.keys.map(&:to_s) - RAILS_ROUTING_PARAM_KEYS
+    body_keys = params.to_unsafe_h.keys.map(&:to_s) - RAILS_ROUTING_PARAM_KEYS - ignorable_playwright_wrapper_keys
     return false if body_keys.empty?
 
     body_keys.all? { |key| PLAYWRIGHT_SHEET_BODY_KEYS.include?(key) }
+  end
+
+  def ignorable_playwright_wrapper_keys
+    PLAYWRIGHT_WRAPPER_PARAM_KEYS.select do |key|
+      value = params[key]
+      next true if value.respond_to?(:blank?) && value.blank?
+      next false unless value.respond_to?(:to_unsafe_h) || value.respond_to?(:to_h)
+
+      wrapped_keys =
+        if value.respond_to?(:to_unsafe_h)
+          value.to_unsafe_h.keys.map(&:to_s)
+        else
+          value.to_h.keys.map(&:to_s)
+        end
+
+      wrapped_keys.present? && wrapped_keys.all? { |wrapped_key| PLAYWRIGHT_SHEET_BODY_KEYS.include?(wrapped_key) }
+    end
   end
 
   def set_adventure
