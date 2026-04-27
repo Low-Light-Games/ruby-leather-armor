@@ -16,6 +16,50 @@ export { OPTIMISTIC_ID, THINKING_ID, ERROR_ID, isSentinel }
 
 const cable = createConsumer()
 
+function findLastIndex<T>(items: T[], predicate: (item: T) => boolean) {
+  for (let i = items.length - 1; i >= 0; i -= 1) {
+    if (predicate(items[i])) return i
+  }
+  return -1
+}
+
+function derivePendingInteractionState(
+  messages: AdventureMessage[],
+  derivedStats?: DerivedStats | null,
+) {
+  const latestRollRequestIndex = findLastIndex(
+    messages,
+    m => m.role === 'dm' && m.message_type === 'roll_request',
+  )
+  const latestInitiativeRequestIndex = findLastIndex(
+    messages,
+    m => m.role === 'dm' && m.message_type === 'initiative_request',
+  )
+
+  const unresolvedRollRequestIndex = latestRollRequestIndex >= 0 &&
+    !messages.slice(latestRollRequestIndex + 1).some(m => m.message_type === 'roll_result')
+    ? latestRollRequestIndex
+    : -1
+
+  const unresolvedInitiativeRequestIndex = latestInitiativeRequestIndex >= 0 &&
+    !messages.slice(latestInitiativeRequestIndex + 1).some(m => m.message_type === 'initiative_result')
+    ? latestInitiativeRequestIndex
+    : -1
+
+  if (unresolvedRollRequestIndex > unresolvedInitiativeRequestIndex) {
+    return {
+      pendingRolls: buildPendingRollsFromMessage(messages[unresolvedRollRequestIndex], derivedStats),
+      pendingInitiative: false,
+    }
+  }
+
+  if (unresolvedInitiativeRequestIndex > unresolvedRollRequestIndex) {
+    return { pendingRolls: null, pendingInitiative: true }
+  }
+
+  return { pendingRolls: null, pendingInitiative: false }
+}
+
 interface UseAdventureMessagesArgs {
   adventureId: number
   derivedStats?: DerivedStats | null
@@ -105,6 +149,17 @@ export function useAdventureMessages({
     setSending(false)
   }, [])
 
+  const reloadAuthoritativeMessages = useCallback(async () => {
+    const res = await fetch(`/adventures/${adventureId}/messages`, {
+      headers: { Accept: 'application/json' },
+    })
+    if (!res.ok) throw new Error('Failed to reload messages')
+
+    const data: { messages: AdventureMessage[]; pipeline_running: boolean } = await res.json()
+    setMessages(data.messages)
+    setSending(false)
+  }, [adventureId])
+
   // Stable ref that always holds the latest handler versions. The subscription
   // effect closes over this ref (not the handlers directly) so it never needs
   // to be recreated when callbacks or derivedStats change — which would briefly
@@ -133,6 +188,13 @@ export function useAdventureMessages({
       onAdventureComplete,
     }
   })
+
+  useEffect(() => {
+    const authoritativeMessages = messages.filter(m => !isSentinel(m.id))
+    const nextState = derivePendingInteractionState(authoritativeMessages, derivedStats)
+    setPendingRolls(nextState.pendingRolls)
+    setPendingInitiative(nextState.pendingInitiative)
+  }, [messages]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ActionCable subscription for async pipeline results.
   // Depends ONLY on adventureId — never recreated due to callback churn,
@@ -220,20 +282,6 @@ export function useAdventureMessages({
           setMessages(msgs)
         }
 
-        const lastDm = [...msgs].reverse().find(m => m.role === 'dm')
-        if (lastDm?.message_type === 'roll_request') {
-          const lastDmIdx = msgs.findIndex(m => m.id === lastDm.id)
-          const hasRollResult = msgs.slice(lastDmIdx + 1).some(m => m.message_type === 'roll_result')
-          if (!hasRollResult) {
-            activatePendingRolls(lastDm)
-          }
-        } else if (lastDm?.message_type === 'initiative_request') {
-          const lastDmIdx = msgs.findIndex(m => m.id === lastDm.id)
-          const hasInitResult = msgs.slice(lastDmIdx + 1).some(m => m.message_type === 'initiative_result')
-          if (!hasInitResult) {
-            setPendingInitiative(true)
-          }
-        }
       } catch (err) {
         console.error('Error loading chat history:', err)
       } finally {
@@ -322,6 +370,7 @@ export function useAdventureMessages({
       if (data.async) handleAsyncResponse(data)
       else handleSyncResponse(data)
     } catch (err: any) {
+      await reloadAuthoritativeMessages().catch(() => {})
       handleError('Failed to submit rolls', err)
     }
   }
@@ -349,10 +398,10 @@ export function useAdventureMessages({
       }
 
       const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()
-      setPendingInitiative(false)
       if (data.async) handleAsyncResponse(data)
       else handleSyncResponse(data)
     } catch (err: any) {
+      await reloadAuthoritativeMessages().catch(() => {})
       handleError('Failed to submit initiative', err)
     }
   }
