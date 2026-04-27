@@ -60,6 +60,29 @@ function derivePendingInteractionState(
   return { pendingRolls: null, pendingInitiative: false }
 }
 
+function shouldShowThinking(messages: AdventureMessage[], pipelineRunning: boolean) {
+  if (pipelineRunning) return true
+
+  const lastMessage = messages[messages.length - 1]
+  return lastMessage?.role === 'player'
+}
+
+function withThinkingSentinel(messages: AdventureMessage[], thinking: boolean): AdventureMessage[] {
+  if (!thinking) return messages
+
+  return [
+    ...messages,
+    {
+      id: THINKING_ID,
+      role: 'dm',
+      content: '',
+      message_type: 'narrative',
+      metadata: {},
+      created_at: new Date().toISOString(),
+    },
+  ]
+}
+
 interface UseAdventureMessagesArgs {
   adventureId: number
   derivedStats?: DerivedStats | null
@@ -156,8 +179,9 @@ export function useAdventureMessages({
     if (!res.ok) throw new Error('Failed to reload messages')
 
     const data: { messages: AdventureMessage[]; pipeline_running: boolean } = await res.json()
-    setMessages(data.messages)
-    setSending(false)
+    const thinking = shouldShowThinking(data.messages, data.pipeline_running)
+    setMessages(withThinkingSentinel(data.messages, thinking))
+    setSending(thinking)
   }, [adventureId])
 
   // Stable ref that always holds the latest handler versions. The subscription
@@ -268,19 +292,9 @@ export function useAdventureMessages({
         if (!res.ok) throw new Error('Failed to load messages')
         const data: { messages: AdventureMessage[]; pipeline_running: boolean } = await res.json()
         const msgs = data.messages
-
-        if (data.pipeline_running) {
-          // Pipeline is still running (e.g. player refreshed mid-turn).
-          // Restore the thinking indicator so the player knows the GM is still working.
-          const thinkingSentinel: AdventureMessage = {
-            id: THINKING_ID, role: 'dm', content: '',
-            message_type: 'narrative', metadata: {}, created_at: new Date().toISOString(),
-          }
-          setMessages([...msgs, thinkingSentinel])
-          setSending(true)
-        } else {
-          setMessages(msgs)
-        }
+        const thinking = shouldShowThinking(msgs, data.pipeline_running)
+        setMessages(withThinkingSentinel(msgs, thinking))
+        setSending(thinking)
 
       } catch (err) {
         console.error('Error loading chat history:', err)
