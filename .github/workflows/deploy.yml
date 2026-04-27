@@ -64,4 +64,8 @@ jobs:
             docker compose -f docker-compose.prod.yml exec -T app \
               bundle exec rails db:prepare RAILS_ENV=production
 
+            echo "--- Embedding rules into rule_embeddings (idempotent) ---"
+            docker compose -f docker-compose.prod.yml exec -T app \
+              bundle exec rake dungeon_master:rules:embed RAILS_ENV=production
+
             echo "--- Deploy complete ---"

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_26_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_27_182515) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -503,6 +503,21 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_26_120000) do
     t.index ["player_message_id"], name: "index_play_logs_on_player_message_id"
     t.index ["registry_entry_uuid"], name: "index_play_logs_on_registry_entry_uuid"
     t.index ["status"], name: "index_play_logs_on_status"
+  end
+
+  create_table "rule_embeddings", force: :cascade do |t|
+    t.string "slug", null: false
+    t.string "domain", null: false
+    t.string "name", null: false
+    t.text "brief"
+    t.text "body", null: false
+    t.string "text_digest", null: false
+    t.vector "embedding", limit: 1536
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["domain"], name: "index_rule_embeddings_on_domain"
+    t.index ["embedding"], name: "index_rule_embeddings_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["slug"], name: "index_rule_embeddings_on_slug", unique: true
   end
 
   create_table "sheet_feats", force: :cascade do |t|

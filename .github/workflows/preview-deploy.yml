@@ -106,6 +106,11 @@ jobs:
             docker compose -f docker-compose.preview.yml exec -T app \
               bundle exec rails db:seed RAILS_ENV=staging
 
+            # Embed rules into rule_embeddings (idempotent on text_digest;
+            # re-runs are free if no rule entry changed since the last deploy).
+            docker compose -f docker-compose.preview.yml exec -T app \
+              bundle exec rake dungeon_master:rules:embed RAILS_ENV=staging
+
             # Add Nginx vhost
             sudo /home/ubuntu/scripts/add_vhost.sh $SAFE_BRANCH $PORT
 
