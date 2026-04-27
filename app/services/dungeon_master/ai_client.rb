@@ -24,7 +24,7 @@ module DungeonMaster
     end
 
     # Send a chat completion request and return the raw content string.
-    # Retries up to MAX_RETRIES times on transient network errors and rate limits.
+    # Retries up to the configured retry budget on transient network errors and rate limits.
     #
     # @param system_prompt [String]
     # @param user_message  [String, nil]  single user message (convenience)
@@ -121,7 +121,7 @@ module DungeonMaster
     # a 1-element array and use `embeddings(...).first`.
     #
     # Retries follow the same transient-error pattern as `#chat` (rate
-    # limits + generic Faraday errors retried up to MAX_RETRIES times,
+    # limits + retryable Faraday failures retried up to the configured retry budget,
     # bad-request errors raised immediately).
     #
     # AiLog writes are intentionally the caller's responsibility — `AiClient`

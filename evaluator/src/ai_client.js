@@ -61,7 +61,7 @@ function retryDelaySeconds(attempt, error) {
   const retryAfterSeconds = extractRetryAfterSeconds(error);
   if (retryAfterSeconds != null) {
     return {
-      delaySeconds: Math.min(retryAfterSeconds, OPENAI_RETRY_MAX_DELAY_SECONDS),
+      delaySeconds: Math.max(0, Math.min(retryAfterSeconds, OPENAI_RETRY_MAX_DELAY_SECONDS)),
       usedRetryAfter: true,
     };
   }
