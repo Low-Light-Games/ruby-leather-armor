@@ -10,6 +10,7 @@ AllCops:
   NewCops: enable
   Exclude:
     - '.env.example'
+    - 'vendor/bundle/**/*'
 
 Metrics/BlockLength:
   Exclude:
