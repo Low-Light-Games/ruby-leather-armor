@@ -75,7 +75,7 @@ services:
       - .env
     command: node evaluator/src/index.js
     environment:
-      EVALUATOR_MAX_PARALLEL: "3"
+      EVALUATOR_MAX_PARALLEL: "7"
 
   proxy:
     image: traefik:v3.4
