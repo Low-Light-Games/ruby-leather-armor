@@ -5,7 +5,6 @@ require 'securerandom'
 
 module DungeonMaster
   # Redis-backed admission control for one in-flight prompt per user, with lease refresh support.
-  # rubocop:disable Metrics/ModuleLength
   module FloodControl
     extend self
 
@@ -48,7 +47,6 @@ module DungeonMaster
 
     class PromptBacklogExceeded < StandardError; end
 
-    # rubocop:disable Metrics/MethodLength
     def admit_prompt_submission(user_id:)
       owner_token = SecureRandom.uuid
       key = prompt_slot_key(user_id)
@@ -71,7 +69,6 @@ module DungeonMaster
               'You already have an action in progress. Wait for it to finish before sending another.'
       end
     end
-    # rubocop:enable Metrics/MethodLength
 
     def refresh_prompt_submission(admission)
       return false unless prompt_admission?(admission)
@@ -110,7 +107,6 @@ module DungeonMaster
       yield
     end
 
-    # rubocop:disable Metrics/MethodLength
     def extract_prompt_admission(job_hash)
       raw_args = job_hash['args']
       wrapper = raw_args.is_a?(Array) ? raw_args.first : nil
@@ -126,7 +122,6 @@ module DungeonMaster
       record_fail_open('prompt_backlog_extract', exception: e, context: {})
       nil
     end
-    # rubocop:enable Metrics/MethodLength
 
     def prompt_admission?(admission)
       admission.is_a?(Hash) && admission['user_id'].present? && admission['owner_token'].present?
@@ -138,7 +133,6 @@ module DungeonMaster
       "#{REDIS_NAMESPACE}:user:#{user_id}:prompt_slot"
     end
 
-    # rubocop:disable Metrics/MethodLength
     def schedule_prompt_submission_heartbeats(admission)
       1.upto(PROMPT_SLOT_HEARTBEAT_ATTEMPTS) do |attempt|
         PromptSubmissionHeartbeatJob.set(wait: attempt * PROMPT_SLOT_HEARTBEAT_SECONDS.seconds).perform_later(admission)
@@ -153,7 +147,6 @@ module DungeonMaster
         }
       )
     end
-    # rubocop:enable Metrics/MethodLength
 
     def redis_pool
       @redis_pool ||= ConnectionPool.new(size: REDIS_POOL_SIZE, timeout: REDIS_POOL_TIMEOUT_SECONDS) do
@@ -193,5 +186,4 @@ module DungeonMaster
       ApplicationErrorReporter.notify(exception, context: payload.merge(source: 'dm_flood_control_fail_open'))
     end
   end
-  # rubocop:enable Metrics/ModuleLength
 end

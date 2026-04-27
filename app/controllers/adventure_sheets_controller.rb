@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 # Adventure-sheet API endpoints for live adventure sheet updates and Playwright test overrides.
-# rubocop:disable Metrics/ClassLength
 class AdventureSheetsController < ApplicationController
   include SheetJsonSerialization
   include PivotSync
@@ -18,66 +17,18 @@ class AdventureSheetsController < ApplicationController
   #
   # Updates the adventure sheet's spell/feat/item selections via pivot tables.
   # Only the owning player can update their adventure sheet.
-  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
   def update
     authorize @adventure, :update?
 
-    if playwright_sheet_test_only_request?
-      apply_playwright_sheet_test_overrides!
-      return render json: adventure_sheet_json(@adventure_sheet.reload)
-    end
+    return render_playwright_override if playwright_sheet_test_only_request?
 
-    skill_ranks_rejected = false
-
-    # rubocop:disable Metrics/BlockLength
-    AdventureSheet.transaction do
-      if params.key?(:spellbook)
-        spellbook_ids = Array(params[:spellbook]).map(&:to_s)
-        sync_spells_by_type!(@adventure_sheet.adventure_sheet_spells, 'spellbook', spellbook_ids)
-      end
-
-      if params.key?(:known_spells)
-        known_ids = Array(params[:known_spells]).map(&:to_s)
-        sync_spells_by_type!(@adventure_sheet.adventure_sheet_spells, 'known', known_ids)
-      end
-
-      if params.key?(:feats)
-        feat_entries = Array(params[:feats]).map(&:to_s)
-        sync_feats!(@adventure_sheet.adventure_sheet_feats, feat_entries)
-      end
-
-      if params.key?(:items)
-        item_entries = Array(params[:items]).map do |e|
-          e.respond_to?(:to_h) ? e.to_h.with_indifferent_access : e
-        end
-        sync_items!(@adventure_sheet.adventure_sheet_items, item_entries)
-      end
-
-      if params.key?(:skill_ranks) && AdventureSheet.column_names.include?('skill_ranks')
-        @adventure_sheet.skill_ranks = normalize_skill_ranks_param(params[:skill_ranks])
-        unless @adventure_sheet.save
-          skill_ranks_rejected = true
-          raise ActiveRecord::Rollback
-        end
-      end
-
-      @adventure_sheet.recompute_derived_stats!
-    end
-    # rubocop:enable Metrics/BlockLength
-
-    if skill_ranks_rejected
-      return render json: { errors: @adventure_sheet.errors.full_messages }, status: :unprocessable_entity
-    end
-
-    render json: adventure_sheet_json(@adventure_sheet.reload)
+    render_update_result(perform_sheet_update)
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
   # PATCH /adventures/:adventure_id/adventure_sheet/toggle_equip
   #
   # Toggles the equipped state of a single item on the adventure sheet.
   # Expects { item_id: "warhammer" }.
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def toggle_equip
     authorize @adventure, :update?
 
@@ -97,28 +48,17 @@ class AdventureSheetsController < ApplicationController
   rescue ActiveRecord::RecordInvalid => e
     render json: { error: e.record.errors.full_messages.join(', ') }, status: :unprocessable_entity
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   private
 
   # Playwright only: PATCH body may contain only active_buffs and/or conditions for UI tests.
-  # rubocop:disable Metrics/MethodLength
   def apply_playwright_sheet_test_overrides!
     raw = params.to_unsafe_h
-    if raw.key?('active_buffs')
-      @adventure_sheet.active_buffs = DungeonMaster::CoercedMutationArray.coerce(
-        raw['active_buffs'], field: 'active_buffs', log: nil
-      ).map(&:deep_stringify_keys)
-    end
-    if raw.key?('conditions')
-      @adventure_sheet.conditions = DungeonMaster::CoercedMutationArray.coerce(
-        raw['conditions'], field: 'conditions', log: nil
-      ).map(&:to_s)
-    end
+    assign_playwright_active_buffs(raw)
+    assign_playwright_conditions(raw)
     @adventure_sheet.save!
     @adventure_sheet.recompute_derived_stats!
   end
-  # rubocop:enable Metrics/MethodLength
 
   def playwright_sheet_test_only_request?
     return false unless Rails.env.playwright? || request.env[PLAYWRIGHT_TEST_HEADER] == '1'
@@ -129,25 +69,15 @@ class AdventureSheetsController < ApplicationController
     body_keys.all? { |key| PLAYWRIGHT_SHEET_BODY_KEYS.include?(key) }
   end
 
-  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
   def ignorable_playwright_wrapper_keys
     PLAYWRIGHT_WRAPPER_PARAM_KEYS.select do |key|
       value = params[key]
       next true if value.respond_to?(:blank?) && value.blank?
 
-      next false unless value.respond_to?(:to_unsafe_h) || value.respond_to?(:to_h)
-
-      wrapped_keys =
-        if value.respond_to?(:to_unsafe_h)
-          value.to_unsafe_h.keys.map(&:to_s)
-        else
-          value.to_h.keys.map(&:to_s)
-        end
-
+      wrapped_keys = wrapped_param_keys(value)
       wrapped_keys.present? && wrapped_keys.all? { |wrapped_key| PLAYWRIGHT_SHEET_BODY_KEYS.include?(wrapped_key) }
     end
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
   def set_adventure
     @adventure = Adventure.kept.find(params[:adventure_id])
@@ -170,5 +100,96 @@ class AdventureSheetsController < ApplicationController
     h = raw.respond_to?(:to_unsafe_h) ? raw.to_unsafe_h : raw.to_h
     h.transform_keys(&:to_s).transform_values(&:to_i)
   end
+
+  def render_playwright_override
+    apply_playwright_sheet_test_overrides!
+    render json: adventure_sheet_json(@adventure_sheet.reload)
+  end
+
+  def render_update_result(skill_ranks_rejected)
+    if skill_ranks_rejected
+      render json: { errors: @adventure_sheet.errors.full_messages }, status: :unprocessable_entity
+    else
+      render json: adventure_sheet_json(@adventure_sheet.reload)
+    end
+  end
+
+  def perform_sheet_update
+    skill_ranks_rejected = false
+
+    AdventureSheet.transaction do
+      sync_spellbook_if_present
+      sync_known_spells_if_present
+      sync_feats_if_present
+      sync_items_if_present
+      skill_ranks_rejected = skill_ranks_rejected?
+      @adventure_sheet.recompute_derived_stats!
+      raise ActiveRecord::Rollback if skill_ranks_rejected
+    end
+
+    skill_ranks_rejected
+  end
+
+  def sync_spellbook_if_present
+    return unless params.key?(:spellbook)
+
+    spellbook_ids = Array(params[:spellbook]).map(&:to_s)
+    sync_spells_by_type!(@adventure_sheet.adventure_sheet_spells, 'spellbook', spellbook_ids)
+  end
+
+  def sync_known_spells_if_present
+    return unless params.key?(:known_spells)
+
+    known_ids = Array(params[:known_spells]).map(&:to_s)
+    sync_spells_by_type!(@adventure_sheet.adventure_sheet_spells, 'known', known_ids)
+  end
+
+  def sync_feats_if_present
+    return unless params.key?(:feats)
+
+    feat_entries = Array(params[:feats]).map(&:to_s)
+    sync_feats!(@adventure_sheet.adventure_sheet_feats, feat_entries)
+  end
+
+  def sync_items_if_present
+    return unless params.key?(:items)
+
+    item_entries = Array(params[:items]).map do |entry|
+      entry.respond_to?(:to_h) ? entry.to_h.with_indifferent_access : entry
+    end
+    sync_items!(@adventure_sheet.adventure_sheet_items, item_entries)
+  end
+
+  def skill_ranks_rejected?
+    return false unless params.key?(:skill_ranks) && AdventureSheet.column_names.include?('skill_ranks')
+
+    @adventure_sheet.skill_ranks = normalize_skill_ranks_param(params[:skill_ranks])
+    !@adventure_sheet.save
+  end
+
+  def assign_playwright_active_buffs(raw)
+    return unless raw.key?('active_buffs')
+
+    @adventure_sheet.active_buffs = DungeonMaster::CoercedMutationArray.coerce(
+      raw['active_buffs'], field: 'active_buffs', log: nil
+    ).map(&:deep_stringify_keys)
+  end
+
+  def assign_playwright_conditions(raw)
+    return unless raw.key?('conditions')
+
+    @adventure_sheet.conditions = DungeonMaster::CoercedMutationArray.coerce(
+      raw['conditions'], field: 'conditions', log: nil
+    ).map(&:to_s)
+  end
+
+  def wrapped_param_keys(value)
+    return [] unless value.respond_to?(:to_unsafe_h) || value.respond_to?(:to_h)
+
+    if value.respond_to?(:to_unsafe_h)
+      value.to_unsafe_h.keys.map(&:to_s)
+    else
+      value.to_h.keys.map(&:to_s)
+    end
+  end
 end
-# rubocop:enable Metrics/ClassLength

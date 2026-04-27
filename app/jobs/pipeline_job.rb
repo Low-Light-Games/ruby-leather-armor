@@ -7,7 +7,6 @@ class PipelineJob < ApplicationJob
 
   QUEUE_WAIT_TARGET_MS = 2_000
 
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def perform(*args)
     adventure_id, player_message_id, player_input, mode, user_id, options = normalize_arguments(args)
     log_queue_wait!(adventure_id: adventure_id, user_id: user_id)
@@ -27,7 +26,6 @@ class PipelineJob < ApplicationJob
   ensure
     DungeonMaster::FloodControl.release_prompt_submission(admission) if defined?(admission)
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   private
 
@@ -42,7 +40,6 @@ class PipelineJob < ApplicationJob
     end
   end
 
-  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def log_queue_wait!(adventure_id:, user_id:)
     return if enqueued_at.blank?
 
@@ -65,14 +62,12 @@ class PipelineJob < ApplicationJob
                                     context: { source: 'pipeline_job_queue_wait', adventure_id: adventure_id,
                                                user_id: user_id })
   end
-  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   def broadcast(adventure, messages, admin: false)
     serialized = messages.map { |m| DungeonMasterService.message_json(m, admin: admin) }
     AdventureChannel.broadcast_to(adventure, { type: 'pipeline_result', messages: serialized })
   end
 
-  # rubocop:disable Metrics/MethodLength
   def broadcast_error(adventure_id)
     adventure = Adventure.find_by(id: adventure_id)
     return unless adventure
@@ -91,5 +86,4 @@ class PipelineJob < ApplicationJob
     ApplicationErrorReporter.notify(e, context: { source: 'pipeline_job_broadcast_error', adventure_id: adventure_id })
     nil
   end
-  # rubocop:enable Metrics/MethodLength
 end
