@@ -6,7 +6,8 @@ class PipelineJob < ApplicationJob
 
   QUEUE_WAIT_TARGET_MS = 2_000
 
-  def perform(adventure_id, player_message_id, player_input, mode, user_id, options = nil)
+  def perform(*args)
+    adventure_id, player_message_id, player_input, mode, user_id, options = normalize_arguments(args)
     log_queue_wait!(adventure_id: adventure_id, user_id: user_id)
 
     adventure = Adventure.find(adventure_id)
@@ -24,6 +25,17 @@ class PipelineJob < ApplicationJob
   end
 
   private
+
+  def normalize_arguments(args)
+    case args.length
+    when 5
+      [*args, nil]
+    when 6
+      args
+    else
+      raise ArgumentError, "wrong number of arguments (given #{args.length}, expected 5 or 6)"
+    end
+  end
 
   def log_queue_wait!(adventure_id:, user_id:)
     return if enqueued_at.blank?
