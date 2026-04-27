@@ -24,7 +24,7 @@ test.describe('Free user custom character drafts', () => {
       'A custom character saved only in this browser.',
     );
     await expect(page.locator('.flash-toast')).toContainText(
-      'We restored your last custom character draft from this browser.',
+      'We restored your work from a previous visit.',
     );
   });
 });

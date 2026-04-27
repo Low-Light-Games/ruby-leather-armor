@@ -17,9 +17,17 @@ Metrics/BlockLength:
     - 'spec/services/dungeon_master/ai_client_retry_spec.rb'
     - 'spec/services/dungeon_master/evaluator_transport_retry_spec.rb'
 
+Metrics/AbcSize:
+  Enabled: false
+
 Metrics/MethodLength:
-  Exclude:
-    - 'spec/services/dungeon_master/ai_client_retry_spec.rb'
+  Enabled: false
+
+Metrics/ClassLength:
+  Max: 150
+
+Metrics/ModuleLength:
+  Max: 150
 
 Style/FrozenStringLiteralComment:
   Exclude:

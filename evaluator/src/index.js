@@ -38,7 +38,7 @@ const { chat, moderate } = require("./ai_client");
 const app = express();
 app.use(express.json({ limit: "4mb" }));
 
-const MAX_PARALLEL_FAN_OUT = Math.max(1, parseInt(process.env.EVALUATOR_MAX_PARALLEL || "3", 10));
+const MAX_PARALLEL_FAN_OUT = Math.max(1, parseInt(process.env.EVALUATOR_MAX_PARALLEL || "7", 10));
 
 app.use((req, _res, next) => {
   const count = Array.isArray(req.body) ? ` (${req.body.length} items)` : "";
