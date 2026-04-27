@@ -1,19 +1,71 @@
+# frozen_string_literal: true
+
 # This file should ensure the existence of records required to run the application in every environment (production,
 # development, test). The code here should be idempotent so that it can be executed at any point in every environment.
 # The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
 
 # Reference / catalog data — needed in all environments
-load Rails.root.join("db", "seeds", "feats.rb")
-load Rails.root.join("db", "seeds", "spells.rb")
-load Rails.root.join("db", "seeds", "items.rb")
-load Rails.root.join("db", "seeds", "class_abilities.rb")
-load Rails.root.join("db", "seeds", "bestiary.rb")
+load Rails.root.join('db', 'seeds', 'feats.rb')
+load Rails.root.join('db', 'seeds', 'spells.rb')
+load Rails.root.join('db', 'seeds', 'items.rb')
+load Rails.root.join('db', 'seeds', 'class_abilities.rb')
+load Rails.root.join('db', 'seeds', 'bestiary.rb')
 
 # Story content — must run before encounter_tables, which depends on stories existing
-load Rails.root.join("db", "seeds", "traversal_story.rb")
-load Rails.root.join("db", "seeds", "combat_story.rb")
-load Rails.root.join("db", "seeds", "social_story.rb")
-load Rails.root.join("db", "seeds", "encounter_tables.rb")
+load Rails.root.join('db', 'seeds', 'traversal_story.rb')
+load Rails.root.join('db', 'seeds', 'combat_story.rb')
+load Rails.root.join('db', 'seeds', 'social_story.rb')
+load Rails.root.join('db', 'seeds', 'encounter_tables.rb')
+
+def seed_playwright_sidebar_fixture!
+  fixture_user = User.find_or_initialize_by(email: 'sidebar-fixture@example.com')
+  fixture_user.admin = false
+  fixture_user.password = 'sidebar123'
+  fixture_user.onboarding_state = 'in_progress'
+  fixture_user.save!
+
+  fixture_sheet = Sheets::StarterProvisioner.ensure_for(user: fixture_user, starter_key: 'fighter')
+  fixture_sheet.update!(name: 'Aldric Buff Fixture')
+  fixture_sheet.recompute_derived_stats!
+
+  story = Story.find_by!(title: 'The Bloodfield March')
+  adventure = fixture_user.adventures.kept.find_by(story: story)
+  adventure ||= Adventures::Bootstrap.new(story: story, sheet: fixture_sheet, user: fixture_user).call
+
+  adventure_sheet = adventure.adventure_sheets.first!
+  adventure_sheet.update!(
+    active_buffs: [
+      {
+        'source' => 'rage',
+        'source_type' => 'class_ability',
+        'bonus_type' => 'morale',
+        'target' => 'strength',
+        'value' => 2,
+        'expires_at_game_hours' => nil
+      },
+      {
+        'source' => 'mage_armor',
+        'source_type' => 'spell',
+        'bonus_type' => 'armor',
+        'target' => 'ac',
+        'value' => 4,
+        'expires_at_game_hours' => nil
+      },
+      {
+        'source' => 'fighting_defensively',
+        'source_type' => 'class_ability',
+        'bonus_type' => 'dodge',
+        'target' => 'ac',
+        'value' => 2,
+        'expires_at_game_hours' => nil
+      }
+    ],
+    conditions: ['shaken']
+  )
+  adventure_sheet.recompute_derived_stats!
+
+  puts "Created/updated Playwright sidebar fixture: #{fixture_user.email} -> adventure ##{adventure.id}"
+end
 
 # Only bootstrap local development — production admin accounts should be
 # created through a secure out-of-band process.
@@ -24,19 +76,19 @@ if Rails.env.development? || Rails.env.staging? || Rails.env.playwright?
   admin = User.find_or_initialize_by(email: 'admin@example.com')
   admin.admin = true
   admin.password = 'admin123'
-  admin.onboarding_state = "in_progress"
+  admin.onboarding_state = 'in_progress'
   admin.save!
 
   test_user = User.find_or_initialize_by(email: 'test@example.com')
   test_user.admin = false
   test_user.password = 'test123'
-  test_user.onboarding_state = "in_progress"
+  test_user.onboarding_state = 'in_progress'
   test_user.save!
 
   lead_user = User.find_or_initialize_by(email: 'lead@example.com')
   lead_user.admin = false
   lead_user.password = 'lead123'
-  lead_user.onboarding_state = "new"
+  lead_user.onboarding_state = 'new'
   lead_user.save!
 
   puts "Created/updated admin user: #{admin.email} (password: admin123)"
@@ -45,10 +97,10 @@ if Rails.env.development? || Rails.env.staging? || Rails.env.playwright?
 
   minmax_sheets = [
     {
-      name: "Aldric Ironwall",
-      character_class: "Fighter",
-      race: "Human",
-      subclass: "Two-Handed Fighter",
+      name: 'Aldric Ironwall',
+      character_class: 'Fighter',
+      race: 'Human',
+      subclass: 'Two-Handed Fighter',
       level: 5,
       strength: 20,
       dexterity: 12,
@@ -56,13 +108,13 @@ if Rails.env.development? || Rails.env.staging? || Rails.env.playwright?
       intelligence: 8,
       wisdom: 10,
       charisma: 7,
-      currency: { "gold" => 150, "silver" => 0, "copper" => 0, "platinum" => 0 }
+      currency: { 'gold' => 150, 'silver' => 0, 'copper' => 0, 'platinum' => 0 }
     },
     {
-      name: "Vex Nightwhisper",
-      character_class: "Rogue",
-      race: "Elf",
-      subclass: "Knife Master",
+      name: 'Vex Nightwhisper',
+      character_class: 'Rogue',
+      race: 'Elf',
+      subclass: 'Knife Master',
       level: 5,
       strength: 8,
       dexterity: 20,
@@ -70,7 +122,7 @@ if Rails.env.development? || Rails.env.staging? || Rails.env.playwright?
       intelligence: 14,
       wisdom: 10,
       charisma: 10,
-      currency: { "gold" => 200, "silver" => 50, "copper" => 0, "platinum" => 0 }
+      currency: { 'gold' => 200, 'silver' => 50, 'copper' => 0, 'platinum' => 0 }
     }
   ]
 
@@ -80,4 +132,6 @@ if Rails.env.development? || Rails.env.staging? || Rails.env.playwright?
       puts "Created sheet '#{minmax_sheets[sheet_idx][:name]}' for #{user.email}"
     end
   end
+
+  seed_playwright_sidebar_fixture! if Rails.env.playwright?
 end
