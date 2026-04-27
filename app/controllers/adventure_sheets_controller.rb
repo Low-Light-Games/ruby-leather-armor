@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
+# Adventure-sheet API endpoints for live adventure sheet updates and Playwright test overrides.
+# rubocop:disable Metrics/ClassLength
 class AdventureSheetsController < ApplicationController
   include SheetJsonSerialization
   include PivotSync
 
   PLAYWRIGHT_SHEET_BODY_KEYS = %w[active_buffs conditions].freeze
-  PLAYWRIGHT_TEST_HEADER = "HTTP_X_PLAYWRIGHT_TEST"
+  PLAYWRIGHT_TEST_HEADER = 'HTTP_X_PLAYWRIGHT_TEST'
   RAILS_ROUTING_PARAM_KEYS = %w[controller action adventure_id format].freeze
   PLAYWRIGHT_WRAPPER_PARAM_KEYS = %w[adventure_sheet].freeze
 
@@ -16,6 +18,7 @@ class AdventureSheetsController < ApplicationController
   #
   # Updates the adventure sheet's spell/feat/item selections via pivot tables.
   # Only the owning player can update their adventure sheet.
+  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
   def update
     authorize @adventure, :update?
 
@@ -26,15 +29,16 @@ class AdventureSheetsController < ApplicationController
 
     skill_ranks_rejected = false
 
+    # rubocop:disable Metrics/BlockLength
     AdventureSheet.transaction do
       if params.key?(:spellbook)
         spellbook_ids = Array(params[:spellbook]).map(&:to_s)
-        sync_spells_by_type!(@adventure_sheet.adventure_sheet_spells, "spellbook", spellbook_ids)
+        sync_spells_by_type!(@adventure_sheet.adventure_sheet_spells, 'spellbook', spellbook_ids)
       end
 
       if params.key?(:known_spells)
         known_ids = Array(params[:known_spells]).map(&:to_s)
-        sync_spells_by_type!(@adventure_sheet.adventure_sheet_spells, "known", known_ids)
+        sync_spells_by_type!(@adventure_sheet.adventure_sheet_spells, 'known', known_ids)
       end
 
       if params.key?(:feats)
@@ -43,13 +47,13 @@ class AdventureSheetsController < ApplicationController
       end
 
       if params.key?(:items)
-        item_entries = Array(params[:items]).map { |e|
+        item_entries = Array(params[:items]).map do |e|
           e.respond_to?(:to_h) ? e.to_h.with_indifferent_access : e
-        }
+        end
         sync_items!(@adventure_sheet.adventure_sheet_items, item_entries)
       end
 
-      if params.key?(:skill_ranks) && AdventureSheet.column_names.include?("skill_ranks")
+      if params.key?(:skill_ranks) && AdventureSheet.column_names.include?('skill_ranks')
         @adventure_sheet.skill_ranks = normalize_skill_ranks_param(params[:skill_ranks])
         unless @adventure_sheet.save
           skill_ranks_rejected = true
@@ -59,6 +63,7 @@ class AdventureSheetsController < ApplicationController
 
       @adventure_sheet.recompute_derived_stats!
     end
+    # rubocop:enable Metrics/BlockLength
 
     if skill_ranks_rejected
       return render json: { errors: @adventure_sheet.errors.full_messages }, status: :unprocessable_entity
@@ -66,11 +71,13 @@ class AdventureSheetsController < ApplicationController
 
     render json: adventure_sheet_json(@adventure_sheet.reload)
   end
+  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
   # PATCH /adventures/:adventure_id/adventure_sheet/toggle_equip
   #
   # Toggles the equipped state of a single item on the adventure sheet.
   # Expects { item_id: "warhammer" }.
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
   def toggle_equip
     authorize @adventure, :update?
 
@@ -88,30 +95,33 @@ class AdventureSheetsController < ApplicationController
   rescue AdventureSheets::CombatUiActionEconomy::Error => e
     render json: { error: e.message }, status: :unprocessable_entity
   rescue ActiveRecord::RecordInvalid => e
-    render json: { error: e.record.errors.full_messages.join(", ") }, status: :unprocessable_entity
+    render json: { error: e.record.errors.full_messages.join(', ') }, status: :unprocessable_entity
   end
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   private
 
   # Playwright only: PATCH body may contain only active_buffs and/or conditions for UI tests.
+  # rubocop:disable Metrics/MethodLength
   def apply_playwright_sheet_test_overrides!
     raw = params.to_unsafe_h
-    if raw.key?("active_buffs")
+    if raw.key?('active_buffs')
       @adventure_sheet.active_buffs = DungeonMaster::CoercedMutationArray.coerce(
-        raw["active_buffs"], field: "active_buffs", log: nil
+        raw['active_buffs'], field: 'active_buffs', log: nil
       ).map(&:deep_stringify_keys)
     end
-    if raw.key?("conditions")
+    if raw.key?('conditions')
       @adventure_sheet.conditions = DungeonMaster::CoercedMutationArray.coerce(
-        raw["conditions"], field: "conditions", log: nil
+        raw['conditions'], field: 'conditions', log: nil
       ).map(&:to_s)
     end
     @adventure_sheet.save!
     @adventure_sheet.recompute_derived_stats!
   end
+  # rubocop:enable Metrics/MethodLength
 
   def playwright_sheet_test_only_request?
-    return false unless Rails.env.playwright? || request.env[PLAYWRIGHT_TEST_HEADER] == "1"
+    return false unless Rails.env.playwright? || request.env[PLAYWRIGHT_TEST_HEADER] == '1'
 
     body_keys = params.to_unsafe_h.keys.map(&:to_s) - RAILS_ROUTING_PARAM_KEYS - ignorable_playwright_wrapper_keys
     return false if body_keys.empty?
@@ -119,10 +129,12 @@ class AdventureSheetsController < ApplicationController
     body_keys.all? { |key| PLAYWRIGHT_SHEET_BODY_KEYS.include?(key) }
   end
 
+  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
   def ignorable_playwright_wrapper_keys
     PLAYWRIGHT_WRAPPER_PARAM_KEYS.select do |key|
       value = params[key]
       next true if value.respond_to?(:blank?) && value.blank?
+
       next false unless value.respond_to?(:to_unsafe_h) || value.respond_to?(:to_h)
 
       wrapped_keys =
@@ -135,6 +147,7 @@ class AdventureSheetsController < ApplicationController
       wrapped_keys.present? && wrapped_keys.all? { |wrapped_key| PLAYWRIGHT_SHEET_BODY_KEYS.include?(wrapped_key) }
     end
   end
+  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
   def set_adventure
     @adventure = Adventure.kept.find(params[:adventure_id])
@@ -147,14 +160,15 @@ class AdventureSheetsController < ApplicationController
   def adventure_sheet_json(adv_sheet)
     serialize_sheet_json(
       adv_sheet,
-      feat_rel:  adv_sheet.adventure_sheet_feats,
+      feat_rel: adv_sheet.adventure_sheet_feats,
       spell_rel: adv_sheet.adventure_sheet_spells,
-      item_rel:  adv_sheet.adventure_sheet_items
+      item_rel: adv_sheet.adventure_sheet_items
     )
   end
 
   def normalize_skill_ranks_param(raw)
     h = raw.respond_to?(:to_unsafe_h) ? raw.to_unsafe_h : raw.to_h
-    h.transform_keys(&:to_s).transform_values { |v| v.to_i }
+    h.transform_keys(&:to_s).transform_values(&:to_i)
   end
 end
+# rubocop:enable Metrics/ClassLength
