@@ -56,11 +56,11 @@ test.describe('Character sidebar buffs and conditions', () => {
     await page.reload();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('.condition-badge').first()).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('.active-buffs-section')).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('.active-buff-row')).toHaveCount(3);
     await expect(page.locator('.active-buff-effect').filter({ hasText: 'STR' })).toBeVisible();
     await expect(page.locator('.active-buff-source').filter({ hasText: 'mage_armor' })).toBeVisible();
     await expect(page.locator('.active-buff-source').filter({ hasText: 'fighting_defensively' })).toBeVisible();
+    await expect(page.locator('.condition-badge')).toHaveCount(0);
   });
 });
