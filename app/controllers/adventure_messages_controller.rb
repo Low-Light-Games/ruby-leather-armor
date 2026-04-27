@@ -28,14 +28,30 @@ class AdventureMessagesController < ApplicationController
 
     mode = params[:mode]&.strip
     service = dm_service
-
+    admission = DungeonMaster::FloodControl.admit_prompt_submission(user_id: current_user.id)
     player_msg = service.prepare_prompt(player_input)
-    PipelineJob.perform_later(@adventure.id, player_msg.id, player_input, mode, current_user.id)
+    PipelineJob.perform_later(
+      @adventure.id,
+      player_msg.id,
+      player_input,
+      mode,
+      current_user.id,
+      { "prompt_admission" => admission }
+    )
     render json: { async: true, messages: [message_json(player_msg)] }, status: :accepted
+  rescue DungeonMaster::FloodControl::PromptBacklogExceeded => e
+    render_limit_error(e.message, code: "prompt_backlog", reason: "prompt_backlog")
+  rescue StandardError
+    DungeonMaster::FloodControl.release_prompt_submission(admission)
+    raise
   end
 
   # POST /adventures/:adventure_id/messages/initiative
   def initiative
+    unless DungeonMaster::Rolls::AdventureMechanicalState.latest_pending_initiative_request(@adventure)
+      return render json: { error: "There is no pending initiative request to resolve.", error_code: "initiative_not_requested" }, status: :unprocessable_entity
+    end
+
     player_initiative = params[:initiative].to_i
     unless (1..40).include?(player_initiative)
       return render json: { error: "Initiative must be between 1 and 40" }, status: :unprocessable_entity
@@ -50,6 +66,10 @@ class AdventureMessagesController < ApplicationController
 
   # POST /adventures/:adventure_id/messages/roll
   def roll
+    unless DungeonMaster::Rolls::AdventureMechanicalState.latest_pending_roll_request(@adventure)
+      return render json: { error: "There is no pending roll request to resolve.", error_code: "roll_not_requested" }, status: :unprocessable_entity
+    end
+
     rolls = if params[:rolls].present?
               Array(params[:rolls]).map do |r|
                 { roll_value: r[:roll_value].to_i,
@@ -107,5 +127,10 @@ class AdventureMessagesController < ApplicationController
 
   def message_json(message)
     DungeonMasterService.message_json(message, admin: current_user&.admin?)
+  end
+
+  def render_limit_error(message, code:, reason:)
+    response.set_header("X-RateLimit-Reason", reason)
+    render json: { error: message, error_code: code }, status: :too_many_requests
   end
 end

@@ -18,6 +18,12 @@ RSpec.configure do |config|
   config.filter_rails_from_backtrace!
 
   config.include FactoryBot::Syntax::Methods
+
+  config.before do
+    next unless defined?(Rack::Attack)
+
+    Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
+  end
 end
 
 Shoulda::Matchers.configure do |config|

@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
+require 'bigdecimal'
+
 module DungeonMaster
   # Thin wrapper around the OpenAI API.
   # Handles request construction, JSON parsing with fallbacks,
   # and HTTP-level error mapping.
   class AiClient
-    MAX_RETRIES = 2
-    RETRY_BASE_DELAY = 1.0 # seconds; doubles each retry
+    DEFAULT_MAX_RETRIES = 2
+    DEFAULT_RETRY_BASE_DELAY_SECONDS = 0.5
+    DEFAULT_RETRY_MAX_DELAY_SECONDS = 8.0
 
     attr_reader :last_failed_raw_response, :last_parse_status, :last_model_used, :last_usage
 
@@ -21,7 +24,7 @@ module DungeonMaster
     end
 
     # Send a chat completion request and return the raw content string.
-    # Retries up to MAX_RETRIES times on transient network errors and rate limits.
+    # Retries up to the configured retry budget on transient network errors and rate limits.
     #
     # @param system_prompt [String]
     # @param user_message  [String, nil]  single user message (convenience)
@@ -51,34 +54,26 @@ module DungeonMaster
         response_format: { type: "json_object" }
       }
       params[:max_completion_tokens] = max_tokens if max_tokens
-      params[:temperature] = @config.temperature if supports_temp && @config.temperature != 1.0
+      params[:temperature] = @config.temperature if supports_temp && custom_temperature?
 
-      attempt = 0
-      begin
-        attempt += 1
-        response = @client.chat(parameters: params)
-      rescue Faraday::TooManyRequestsError => e
-        if attempt <= MAX_RETRIES
-          delay = RETRY_BASE_DELAY * (2**(attempt - 1))
-          Rails.logger.warn("[DungeonMaster::AiClient] Rate limited (attempt #{attempt}/#{MAX_RETRIES + 1}), retrying in #{delay}s")
-          sleep(delay)
-          retry
+      response = begin
+        with_openai_retries(call_type: "chat", model: effective_model) do
+          @client.chat(parameters: params)
         end
-        raise AiError, "Rate limited by OpenAI after #{attempt} attempts"
       rescue Faraday::BadRequestError => e
         body = begin; e.response&.dig(:body); rescue StandardError; nil; end
         msg = body.is_a?(Hash) ? body.dig("error", "message") : e.message
         Rails.logger.error("[DungeonMaster::AiClient] Bad request: #{msg}")
         raise AiError, "AI request rejected: #{msg}"
-      rescue Faraday::Error => e
-        if attempt <= MAX_RETRIES
-          delay = RETRY_BASE_DELAY * (2**(attempt - 1))
-          Rails.logger.warn("[DungeonMaster::AiClient] #{e.class} (attempt #{attempt}/#{MAX_RETRIES + 1}), retrying in #{delay}s: #{e.message}")
-          sleep(delay)
-          retry
-        end
-        Rails.logger.error("[DungeonMaster::AiClient] #{e.class} after #{attempt} attempts: #{e.message}")
-        raise AiError, "Could not reach the AI service after #{attempt} attempts. Please try again shortly."
+      rescue Faraday::TooManyRequestsError => e
+        Rails.logger.error("[DungeonMaster::AiClient] Rate limited after #{openai_max_retries + 1} attempts: #{e.message}")
+        raise AiError, "Rate limited by OpenAI after #{openai_max_retries + 1} attempts"
+      rescue Faraday::ClientError => e
+        Rails.logger.error("[DungeonMaster::AiClient] #{e.class}: #{e.message}")
+        raise AiError, "AI request rejected: #{e.message}"
+      rescue Faraday::ServerError, Faraday::ConnectionFailed, Faraday::TimeoutError => e
+        Rails.logger.error("[DungeonMaster::AiClient] #{e.class} after #{openai_max_retries + 1} attempts: #{e.message}")
+        raise AiError, "Could not reach the AI service after #{openai_max_retries + 1} attempts. Please try again shortly."
       end
 
       if response.dig("error")
@@ -126,7 +121,7 @@ module DungeonMaster
     # a 1-element array and use `embeddings(...).first`.
     #
     # Retries follow the same transient-error pattern as `#chat` (rate
-    # limits + generic Faraday errors retried up to MAX_RETRIES times,
+    # limits + retryable Faraday failures retried up to the configured retry budget,
     # bad-request errors raised immediately).
     #
     # AiLog writes are intentionally the caller's responsibility — `AiClient`
@@ -154,32 +149,24 @@ module DungeonMaster
       params = { model: model, input: texts }
       params[:dimensions] = dimensions if dimensions
 
-      attempt = 0
-      begin
-        attempt += 1
-        response = @client.embeddings(parameters: params)
-      rescue Faraday::TooManyRequestsError
-        if attempt <= MAX_RETRIES
-          delay = RETRY_BASE_DELAY * (2**(attempt - 1))
-          Rails.logger.warn("[DungeonMaster::AiClient] Embeddings rate limited (attempt #{attempt}/#{MAX_RETRIES + 1}), retrying in #{delay}s")
-          sleep(delay)
-          retry
+      response = begin
+        with_openai_retries(call_type: "embeddings", model: model) do
+          @client.embeddings(parameters: params)
         end
-        raise AiError, "Embeddings rate limited by OpenAI after #{attempt} attempts"
       rescue Faraday::BadRequestError => e
         body = begin; e.response&.dig(:body); rescue StandardError; nil; end
         msg = body.is_a?(Hash) ? body.dig("error", "message") : e.message
         Rails.logger.error("[DungeonMaster::AiClient] Embeddings bad request: #{msg}")
         raise AiError, "AI embeddings request rejected: #{msg}"
-      rescue Faraday::Error => e
-        if attempt <= MAX_RETRIES
-          delay = RETRY_BASE_DELAY * (2**(attempt - 1))
-          Rails.logger.warn("[DungeonMaster::AiClient] Embeddings #{e.class} (attempt #{attempt}/#{MAX_RETRIES + 1}), retrying in #{delay}s: #{e.message}")
-          sleep(delay)
-          retry
-        end
-        Rails.logger.error("[DungeonMaster::AiClient] Embeddings #{e.class} after #{attempt} attempts: #{e.message}")
-        raise AiError, "Could not reach the AI embeddings service after #{attempt} attempts."
+      rescue Faraday::TooManyRequestsError => e
+        Rails.logger.error("[DungeonMaster::AiClient] Embeddings rate limited after #{openai_max_retries + 1} attempts: #{e.message}")
+        raise AiError, "Embeddings rate limited by OpenAI after #{openai_max_retries + 1} attempts"
+      rescue Faraday::ClientError => e
+        Rails.logger.error("[DungeonMaster::AiClient] Embeddings #{e.class}: #{e.message}")
+        raise AiError, "AI embeddings request rejected: #{e.message}"
+      rescue Faraday::ServerError, Faraday::ConnectionFailed, Faraday::TimeoutError => e
+        Rails.logger.error("[DungeonMaster::AiClient] Embeddings #{e.class} after #{openai_max_retries + 1} attempts: #{e.message}")
+        raise AiError, "Could not reach the AI embeddings service after #{openai_max_retries + 1} attempts."
       end
 
       if response.is_a?(Hash) && response.dig("error")
@@ -239,6 +226,95 @@ module DungeonMaster
         @last_parse_status = "parse_error"
         raise AiError, "Failed to parse AI response as JSON"
       end
+    end
+
+    private
+
+    def with_openai_retries(call_type:, model:)
+      attempt = 0
+
+      begin
+        attempt += 1
+        yield
+      rescue Faraday::TooManyRequestsError, Faraday::ServerError, Faraday::ConnectionFailed, Faraday::TimeoutError => e
+        raise unless retry_openai_error?(attempt, e)
+
+        delay, retry_after = retry_delay_for(attempt:, exception: e)
+        log_retry(call_type:, model:, attempt:, exception: e, delay:, retry_after:)
+        sleep(delay)
+        retry
+      end
+    end
+
+    def retry_openai_error?(attempt, exception)
+      return false if attempt > openai_max_retries
+
+      exception.is_a?(Faraday::TooManyRequestsError) ||
+        exception.is_a?(Faraday::ServerError) ||
+        exception.is_a?(Faraday::ConnectionFailed) ||
+        exception.is_a?(Faraday::TimeoutError)
+    end
+
+    def retry_delay_for(attempt:, exception:)
+      retry_after_seconds = retry_after_seconds_for(exception)
+      return [ [retry_after_seconds, openai_retry_max_delay_seconds].min, true ] if retry_after_seconds
+
+      [ jittered_backoff_delay(attempt), false ]
+    end
+
+    def retry_after_seconds_for(exception)
+      headers = faraday_response_headers(exception)
+      value = headers["retry-after"] || headers["Retry-After"]
+      return nil if value.blank?
+
+      Float(value)
+    rescue ArgumentError, TypeError
+      nil
+    end
+
+    def faraday_response_headers(exception)
+      response = exception.respond_to?(:response) ? exception.response : nil
+      return {} unless response.is_a?(Hash)
+
+      direct = response[:headers] || response["headers"]
+      nested = response.dig(:response, :headers) || response.dig("response", "headers")
+      normalize_headers(direct || nested || {})
+    end
+
+    def normalize_headers(headers)
+      return {} unless headers.respond_to?(:each)
+
+      headers.each_with_object({}) do |(key, value), memo|
+        memo[key.to_s] = value
+      end
+    end
+
+    def jittered_backoff_delay(attempt)
+      ceiling = [ openai_retry_base_delay_seconds * (2**(attempt - 1)), openai_retry_max_delay_seconds ].min
+      rand * ceiling
+    end
+
+    def log_retry(call_type:, model:, attempt:, exception:, delay:, retry_after:)
+      Rails.logger.warn(
+        "[DungeonMaster::AiClient] #{call_type} #{exception.class} " \
+        "(attempt #{attempt}/#{openai_max_retries + 1}, model=#{model}, delay=#{format('%.3f', delay)}s, retry_after=#{retry_after})"
+      )
+    end
+
+    def openai_max_retries
+      ENV.fetch("DM_OPENAI_MAX_RETRIES", DEFAULT_MAX_RETRIES.to_s).to_i
+    end
+
+    def openai_retry_base_delay_seconds
+      ENV.fetch("DM_OPENAI_RETRY_BASE_DELAY_SECONDS", DEFAULT_RETRY_BASE_DELAY_SECONDS.to_s).to_f
+    end
+
+    def openai_retry_max_delay_seconds
+      ENV.fetch("DM_OPENAI_RETRY_MAX_DELAY_SECONDS", DEFAULT_RETRY_MAX_DELAY_SECONDS.to_s).to_f
+    end
+
+    def custom_temperature?
+      BigDecimal(@config.temperature.to_s) != BigDecimal('1.0')
     end
   end
 end

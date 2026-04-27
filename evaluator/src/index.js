@@ -38,6 +38,8 @@ const { chat, moderate } = require("./ai_client");
 const app = express();
 app.use(express.json({ limit: "4mb" }));
 
+const MAX_PARALLEL_FAN_OUT = Math.max(1, parseInt(process.env.EVALUATOR_MAX_PARALLEL || "3", 10));
+
 app.use((req, _res, next) => {
   const count = Array.isArray(req.body) ? ` (${req.body.length} items)` : "";
   console.log(`[evaluator] ${req.method} ${req.path}${count}`);
@@ -59,6 +61,36 @@ app.use((req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3001;
+
+async function mapWithConcurrency(items, limit, iteratee) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (true) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+
+      if (currentIndex >= items.length) return;
+
+      try {
+        results[currentIndex] = {
+          status: "fulfilled",
+          value: await iteratee(items[currentIndex], currentIndex),
+        };
+      } catch (error) {
+        results[currentIndex] = {
+          status: "rejected",
+          reason: error,
+        };
+      }
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, items.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
 
 // ----------------------------------------------------------------
 // Health check
@@ -88,7 +120,7 @@ app.post("/moderate", async (req, res) => {
 // ----------------------------------------------------------------
 // POST /fan_out
 //
-// Runs N prompts in parallel (Promise.all). Returns results in input order.
+// Runs N prompts with bounded concurrency. Returns results in input order.
 // All-or-nothing: if any call fails, returns 500 with { error, partial_results }.
 // ----------------------------------------------------------------
 app.post("/fan_out", async (req, res) => {
@@ -98,16 +130,20 @@ app.post("/fan_out", async (req, res) => {
     return res.status(400).json({ error: "Request body must be a non-empty array of prompt objects." });
   }
 
-  const settled = await Promise.allSettled(
-    prompts.map((p) =>
-      chat({
-        systemPrompt: p.system_prompt,
-        userMessage:  p.user_message,
-        model:        p.model,
-        maxTokens:    p.max_tokens,
-        meta:         p.meta ?? {},
-      })
-    )
+  if (prompts.length > MAX_PARALLEL_FAN_OUT) {
+    console.log(
+      `[evaluator] fan_out saturated: ${prompts.length} prompts limited to ${MAX_PARALLEL_FAN_OUT} concurrent calls`
+    );
+  }
+
+  const settled = await mapWithConcurrency(prompts, MAX_PARALLEL_FAN_OUT, (p) =>
+    chat({
+      systemPrompt: p.system_prompt,
+      userMessage:  p.user_message,
+      model:        p.model,
+      maxTokens:    p.max_tokens,
+      meta:         p.meta ?? {},
+    })
   );
 
   const results = [];

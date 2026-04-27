@@ -101,7 +101,7 @@ export function useAdventureMessages({
       id: ERROR_ID, role: 'system', content: `${errorPrefix}: ${err.message}`,
       message_type: 'narrative', metadata: {}, created_at: new Date().toISOString(),
     }
-    setMessages(prev => [...prev.filter(m => m.id !== THINKING_ID && m.id !== ERROR_ID), errorMsg])
+    setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), errorMsg])
     setSending(false)
   }, [])
 
@@ -282,6 +282,7 @@ export function useAdventureMessages({
       }
 
       const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()
+      setPendingRolls(null)
       if (data.async) handleAsyncResponse(data)
       else handleSyncResponse(data)
     } catch (err: any) {

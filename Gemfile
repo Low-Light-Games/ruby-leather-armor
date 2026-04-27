@@ -29,6 +29,7 @@ gem "httparty"
 
 # Use Redis adapter to run Action Cable in production
 gem "redis", ">= 4.0.1"
+gem "rack-attack"
 
 # Background job processing
 gem "sidekiq"
@@ -72,6 +73,7 @@ group :development, :test do
   gem "debug", platforms: %i[ mri windows ]
 
   gem "rubocop", require: false
+  gem "rubocop-rspec", require: false
 
   gem "rspec-rails"
   gem "factory_bot_rails"
