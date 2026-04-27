@@ -29,6 +29,7 @@ module DungeonMaster
     include Steps::MechanicalEvaluation
     include Steps::SanityChecker
     include Steps::ParallelEvaluation
+    include Steps::RollRequest
     include Steps::Mechanic
     include Steps::CombatGm
     include Steps::Momentum
