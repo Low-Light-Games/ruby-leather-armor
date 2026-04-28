@@ -38,7 +38,9 @@ module DungeonMaster
     end
 
     def run_evaluation_phase(intention)
-      if @config.respond_to?(:roll_request_mode?) && @config.roll_request_mode? && !combat_active?
+      if combat_active? && @config.respond_to?(:combat_roll_request_mode?) && @config.combat_roll_request_mode?
+        run_combat_roll_request(intention)
+      elsif @config.respond_to?(:roll_request_mode?) && @config.roll_request_mode? && !combat_active?
         run_roll_request(intention)
       else
         run_parallel_evaluation(intention)

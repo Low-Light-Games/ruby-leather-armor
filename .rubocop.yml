@@ -18,6 +18,7 @@ Metrics/BlockLength:
     - 'spec/services/dungeon_master/evaluator_transport_retry_spec.rb'
     - 'spec/services/dungeon_master/rules/lookup_spec.rb'
     - 'spec/services/dungeon_master/steps/roll_request/adapter_spec.rb'
+    - 'spec/services/dungeon_master/steps/combat_roll_request/adapter_spec.rb'
     - 'lib/tasks/dungeon_master_rules.rake'
 
 Metrics/AbcSize:

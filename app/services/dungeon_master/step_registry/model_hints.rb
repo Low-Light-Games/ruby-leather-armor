@@ -76,6 +76,14 @@ module DungeonMaster
                      'character block in the prompt. Override only if you want non-reasoning ' \
                      'behavior, a more capable model, or higher reasoning effort on this step.'
 
+      COMBAT_ROLL_REQUEST = 'Cheapest reasoning model — defaults to gpt-5-nano at ' \
+                            'reasoning_effort=minimal. Single-call combat-active replacement ' \
+                            'for beacon→mech_eval→roll_qualifier when the player types ' \
+                            'free-text mid-combat. Carries attack options, action economy, ' \
+                            'threats, and battlefield text; emits attack_option_id (never DC) ' \
+                            'for combat rolls. Combat math resolves post-call from the sheet ' \
+                            'via CombatMechanicResolution.'
+
       NPC_ACTION = "#{FAST_CHEAP} Per-NPC combat action decision. Runs N in parallel via Node fan_out.".freeze
 
       LOREMASTER = 'Mid-tier model. Structured fact extraction from factual outcomes — ' \

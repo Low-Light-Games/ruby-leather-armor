@@ -91,11 +91,13 @@ class DmConfig < ApplicationRecord
     'narrative_facts_active_window' => 20,
     'narrative_facts_embedding_model' => 'text-embedding-3-small',
     'evaluation_mode' => 'parallel',
+    'combat_evaluation_mode' => 'parallel',
     'step_reasoning_efforts' => { 'roll_request' => 'minimal' }.freeze,
     'stripe_grace_period_days' => 3
   }.freeze
 
   EVALUATION_MODES = %w[parallel roll_request].freeze
+  COMBAT_EVALUATION_MODES = %w[parallel combat_roll_request].freeze
   REASONING_EFFORTS = %w[minimal low medium high].freeze
 
   def self.instance
@@ -182,6 +184,20 @@ class DmConfig < ApplicationRecord
 
   def roll_request_mode?
     evaluation_mode == 'roll_request'
+  end
+
+  # Combat-active free-text routing toggle. When set to
+  # 'combat_roll_request', `AdventureLoopResolution#run_evaluation_phase`
+  # routes free-text combat through `Steps::CombatRollRequest` instead
+  # of `Steps::ParallelEvaluation`. The HUD-driven button path
+  # (Combat::PlayerActionResolver) is unaffected — it bypasses both.
+  def combat_evaluation_mode
+    val = get('combat_evaluation_mode').to_s
+    COMBAT_EVALUATION_MODES.include?(val) ? val : DEFAULTS['combat_evaluation_mode']
+  end
+
+  def combat_roll_request_mode?
+    combat_evaluation_mode == 'combat_roll_request'
   end
 
   def narrative_facts_active_window
