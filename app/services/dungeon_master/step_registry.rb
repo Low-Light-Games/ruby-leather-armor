@@ -11,14 +11,21 @@ module DungeonMaster
   # admin UI (token budgets, model selection). Non-pipeline steps (enricher,
   # embellisher) are logged but not configurable per-run.
   module StepRegistry
-    # One row in STEPS: token budget, admin UI model hint, and whether the step is pipeline-configurable.
+    # One row in STEPS: token budget, admin UI model hint, default model, and whether the step is pipeline-configurable.
+    #
+    # `default_model` lets a step pin its preferred model independently of
+    # the global `DmConfig#model` default. Consulted by
+    # `DmConfig#model_for` when no admin override exists. nil means "use
+    # the global default" — the historical behavior for every step that
+    # doesn't pin one.
     class Entry
-      attr_reader :token_budget, :model_hint, :pipeline
+      attr_reader :token_budget, :model_hint, :pipeline, :default_model
 
-      def initialize(token_budget:, model_hint:, pipeline:)
-        @token_budget = token_budget
-        @model_hint   = model_hint
-        @pipeline     = pipeline
+      def initialize(token_budget:, model_hint:, pipeline:, default_model: nil)
+        @token_budget  = token_budget
+        @model_hint    = model_hint
+        @pipeline      = pipeline
+        @default_model = default_model
       end
     end
 
@@ -150,8 +157,9 @@ module DungeonMaster
       ),
       'roll_request' => Entry.new(
         token_budget: nil,
-        model_hint: 'Fast, cheap model. Single-call replacement for beacon→mech_eval→roll_qualifier. Decides if a roll is needed and emits one roll spec, with rules retrieved via RAG and beats from the narrative facts store. No character block in prompt — code resolves modifiers post-call. e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.',
-        pipeline: true
+        model_hint: 'Cheapest reasoning model — defaults to gpt-5-nano ($0.05/$0.40 per M, reasoning). Single-call replacement for beacon→mech_eval→roll_qualifier with RAG-retrieved rules + beats and no character block in the prompt. Override only if you want non-reasoning behavior or a more capable model on this step.',
+        pipeline: true,
+        default_model: 'gpt-5-nano'
       ),
       'rules_retrieval' => Entry.new(
         # Logged event_type for `play_log!("rules_retrieved", ...)` rows
@@ -208,6 +216,13 @@ module DungeonMaster
 
     def self.model_hints
       STEPS.select { |_, e| e.model_hint }.transform_values(&:model_hint)
+    end
+
+    # Step → preferred default model, for steps that pin one (currently
+    # only `roll_request`). DmConfig#model_for consults this before
+    # falling back to the global `model` default.
+    def self.default_model_for(step)
+      STEPS[step.to_s]&.default_model
     end
   end
 end

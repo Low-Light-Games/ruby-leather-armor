@@ -131,7 +131,9 @@ class DmConfig < ApplicationRecord
 
   def model_for(step)
     overrides = get('step_models') || {}
-    overrides[step.to_s].presence || model
+    overrides[step.to_s].presence ||
+      DungeonMaster::StepRegistry.default_model_for(step) ||
+      model
   end
 
   def token_budget_for(step)
