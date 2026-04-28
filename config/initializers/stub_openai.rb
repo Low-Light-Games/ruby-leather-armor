@@ -42,15 +42,86 @@ if ENV["STUB_OPENAI"].present?
       { "outcome" => "The lock clicks open with a satisfying clunk.", "mutations" => {} }.to_json,
   }.freeze
 
+  # RollRequest / CombatRollRequest stubs — added when PR-I flipped
+  # DmConfig#evaluation_mode default to 'roll_request', sending free-text
+  # turns through Steps::RollRequest (and combat free-text through
+  # Steps::CombatRollRequest) instead of the legacy beacon→mech_eval
+  # chain. Both steps hit OpenAI directly with their own prompts; the
+  # stubs below mirror the lock-pick branching the legacy /sequential
+  # stub already does, so existing E2E expectations keep passing.
+  ROLL_REQUEST_NO_ROLL = lambda do |intention, mechanical_summary|
+    {
+      "needs_roll" => false,
+      "no_roll_reason" => "no rule fits",
+      "roll" => nil,
+      "affected_domains" => ["exploration"],
+      "expand_scene" => false,
+      "transition" => nil,
+      "combatants" => [],
+      "destination" => nil,
+      "consequences" => [],
+      "ability_use_claimed" => nil,
+      "mechanical_summary" => mechanical_summary,
+      "reasoning" => "Stubbed: #{intention}"
+    }.to_json
+  end
+
+  ROLL_REQUEST_LOCK_PICK = lambda do
+    {
+      "needs_roll" => true,
+      "no_roll_reason" => nil,
+      "roll" => {
+        "type" => "skill_check",
+        "skill" => "Disable Device",
+        "save" => nil,
+        "dc" => 15,
+        "description" => "Pick the lock",
+        "take_10_eligible" => false,
+        "take_20_eligible" => false,
+        "situational_modifiers" => [],
+        "rule_slug" => "disable_device"
+      },
+      "affected_domains" => ["exploration"],
+      "expand_scene" => false,
+      "transition" => nil,
+      "combatants" => [],
+      "destination" => nil,
+      "consequences" => [],
+      "ability_use_claimed" => nil,
+      "mechanical_summary" => "Player must beat DC 15 Disable Device",
+      "reasoning" => "Lock pick action"
+    }.to_json
+  end
+
+  COMBAT_ROLL_REQUEST_NO_ROLL = lambda do |intention|
+    {
+      "needs_roll" => false,
+      "no_roll_reason" => "positioning only",
+      "roll" => nil,
+      "action_cost" => "free",
+      "affected_domains" => ["combat"],
+      "consequences" => [],
+      "mechanical_summary" => "Stubbed combat free-text: #{intention}",
+      "reasoning" => "Stub fallback"
+    }.to_json
+  end
+
   # ── OpenAI HTTP stub ───────────────────────────────────────────────────────
   WebMock.stub_request(:post, /api\.openai\.com/)
          .to_return do |request|
     body       = JSON.parse(request.body) rescue {}
     sys_msg    = Array(body["messages"]).find { |m| m["role"] == "system" }
     first_line = sys_msg&.[]("content").to_s.lines.first.to_s.strip
+    user_msg   = Array(body["messages"]).find { |m| m["role"] == "user" }&.[]("content").to_s
 
-    match   = OPENAI_STEP_RESPONSES.find { |key, _| first_line.include?(key) }
-    content = match ? match[1] : '{"result":"ok"}'
+    content = if first_line.include?("Pathfinder 1e combat rules adjudicator")
+                COMBAT_ROLL_REQUEST_NO_ROLL.call(user_msg)
+              elsif first_line.include?("Pathfinder 1e rules adjudicator")
+                user_msg.downcase.include?("lock") ? ROLL_REQUEST_LOCK_PICK.call : ROLL_REQUEST_NO_ROLL.call(user_msg, "No mechanical interaction")
+              else
+                match = OPENAI_STEP_RESPONSES.find { |key, _| first_line.include?(key) }
+                match ? match[1] : '{"result":"ok"}'
+              end
 
     {
       status: 200,
