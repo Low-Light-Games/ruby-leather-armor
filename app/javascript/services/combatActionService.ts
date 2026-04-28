@@ -65,10 +65,20 @@ export interface CombatAttackResult {
   message: string
 }
 
+export interface NpcTurnEvent {
+  kind: 'npc_attack' | 'npc_move' | 'npc_flee' | 'npc_skip'
+  creature_id: number | null
+  creature_name: string
+  message?: string
+  outcome?: AoOOutcome
+  from?: { x: number; y: number }
+  to?: { x: number; y: number }
+}
+
 export interface CombatEndTurnResult {
   kind: 'end_turn'
   round_advanced_to: number
-  npc_actions_skipped: boolean
+  npc_events: NpcTurnEvent[]
   message: string
 }
 

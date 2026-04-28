@@ -106,6 +106,20 @@ export const CombatActionPanel = ({
           })
         })
       }
+      if (result.kind === 'end_turn') {
+        result.npc_events.forEach((evt, i) => {
+          const message = evt.kind === 'npc_attack' && evt.outcome
+            ? `${evt.creature_name} (${evt.kind}) — ${evt.outcome.message}`
+            : evt.message || `${evt.creature_name} ${evt.kind}`
+          const npcHit = evt.kind === 'npc_attack' && !!evt.outcome?.hit
+          entries.push({
+            id: `${Date.now()}-${Math.random()}-npc-${i}`,
+            message: message,
+            hit: !npcHit, // NPC HIT is bad for the player — flip styling
+            target_dropped: !!evt.outcome?.target_dropped,
+          })
+        })
+      }
       setHistory(prev => [...prev, ...entries])
       onCombatContextUpdate?.(resolved.combat_context)
     },

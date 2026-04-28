@@ -369,7 +369,7 @@ RSpec.describe Combat::PlayerActionResolver do
 
       expect(result[:status]).to eq(:resolved)
       expect(result[:result][:round_advanced_to]).to eq(2)
-      expect(result[:result][:npc_actions_skipped]).to be(true)
+      expect(result[:result][:npc_events]).to be_an(Array)
 
       ctx = adventure.reload.combat_context
       expect(ctx['round']).to eq(2)

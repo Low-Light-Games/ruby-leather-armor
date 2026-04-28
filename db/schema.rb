@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_28_141241) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -319,6 +319,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_28_141241) do
     t.datetime "updated_at", null: false
     t.string "origin", default: "unknown"
     t.jsonb "conditions", default: [], null: false
+    t.jsonb "behavior_policy", default: {}, null: false
     t.index ["adventure_id", "name"], name: "index_creature_sheets_on_adventure_id_and_name"
     t.index ["adventure_id"], name: "index_creature_sheets_on_adventure_id"
   end

@@ -5,15 +5,55 @@ module Combat
     # End-turn resolution for Combat::PlayerActionResolver. Mixed in to
     # keep the dispatcher class small.
     #
-    # PR-B intentionally skips NPC actions on end-turn; the
-    # deterministic NPC turn engine (Combat::NpcTurn) lands in PR-F.
-    # Until then we cycle the round counter, reseed the player's action
-    # economy, and log a row noting that NPCs were skipped so play
-    # history makes sense.
+    # PR-F wires the deterministic NPC turn engine (Combat::NpcTurn) in
+    # here. Each NPC walks its BehaviorPolicy: pick the right attack at
+    # the current range, approach if out of reach, flee under morale.
+    # Player HP is updated immediately when an NPC hits — same model as
+    # the AoO leg of PR-D's move resolver.
     module EndTurn
       private
 
       def resolve_end_turn
+        npc_events = run_npc_turns
+        next_round = advance_round_and_refresh_economy!
+
+        payload = end_turn_payload(next_round, npc_events)
+        log_action_event!(payload)
+        { status: :resolved, result: payload }
+      end
+
+      def run_npc_turns
+        creatures = active_npcs_in_initiative_order
+        creatures.flat_map { |creature| Combat::NpcTurn.call(creature: creature, adventure: @adventure, target_sheet: @sheet) }
+      rescue StandardError => e
+        Rails.logger.warn("[EndTurn] NPC turn engine failed: #{e.message}")
+        [{ kind: 'npc_skip', creature_id: nil, creature_name: '(engine error)', message: e.message }]
+      end
+
+      def active_npcs_in_initiative_order
+        ids = ordered_npc_creature_sheet_ids(@adventure.combat_context || {})
+        @adventure.creature_sheets.where(id: ids).where('hp > 0').order(:id).to_a
+      end
+
+      def ordered_npc_creature_sheet_ids(ctx)
+        participants = Array(ctx['participants'])
+        names_to_ids = participants_name_to_id(participants)
+        ordered_names = Array(ctx['turn_order'])
+                        .reject { |n| n.to_s == Combat::PlayerActionResolver::PLAYER_NAME }
+        ids = ordered_names.filter_map { |n| names_to_ids[n.to_s] }
+        return ids unless ids.empty?
+
+        participants.filter_map { |p| p['creature_sheet_id']&.to_i }
+      end
+
+      def participants_name_to_id(participants)
+        participants.each_with_object({}) do |p, acc|
+          sid = p['creature_sheet_id']
+          acc[p['name'].to_s] = sid.to_i if sid
+        end
+      end
+
+      def advance_round_and_refresh_economy!
         ctx = @adventure.combat_context.deep_dup.deep_stringify_keys
         next_round = ctx['round'].to_i.then { |r| [r, 1].max + 1 }
         player = Combat::PlayerActionResolver::PLAYER_NAME
@@ -26,18 +66,19 @@ module Combat
           @adventure.update!(combat_context: ctx)
         end
 
-        payload = end_turn_payload(next_round)
-        log_action_event!(payload)
-        { status: :resolved, result: payload }
+        next_round
       end
 
-      def end_turn_payload(next_round)
+      def end_turn_payload(next_round, npc_events)
+        npc_hits = npc_events.count do |e|
+          e[:kind] == 'npc_attack' && e.dig(:outcome, 'hit') == true
+        end
+
         {
           kind: 'end_turn',
           round_advanced_to: next_round,
-          npc_actions_skipped: true,
-          message: "Turn ended. Round #{next_round} begins. " \
-                   '(NPC actions are deterministic in PR-F; none ran this round.)'
+          npc_events: npc_events,
+          message: "Turn ended. #{npc_events.length} NPC action(s), #{npc_hits} hit(s). Round #{next_round} begins."
         }
       end
     end

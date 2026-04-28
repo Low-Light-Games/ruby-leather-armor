@@ -55,16 +55,22 @@ module Combat
     # bumps the version. Returns the updated battlefield. Caller must already
     # hold a transaction if it needs strict atomicity with other mutations.
     def move_player_token!(adventure, at_x:, at_y:)
+      move_token!(adventure, token_id: PLAYER_TOKEN_ID, at_x: at_x, at_y: at_y)
+    end
+
+    # Generic token mover used for both player (PR-C) and NPCs (PR-F).
+    # Same atomicity contract as move_player_token!.
+    def move_token!(adventure, token_id:, at_x:, at_y:)
       battlefield = active_battlefield(adventure)
       raise ArgumentError, 'no active battlefield' unless battlefield
 
       tokens = battlefield.tokens.deep_dup
-      player_token = tokens[PLAYER_TOKEN_ID]
-      raise ArgumentError, 'player token missing from battlefield' unless player_token.is_a?(Hash)
+      token = tokens[token_id.to_s]
+      raise ArgumentError, "token missing from battlefield: #{token_id.inspect}" unless token.is_a?(Hash)
 
-      player_token['x'] = at_x.to_i
-      player_token['y'] = at_y.to_i
-      tokens[PLAYER_TOKEN_ID] = player_token
+      token['x'] = at_x.to_i
+      token['y'] = at_y.to_i
+      tokens[token_id.to_s] = token
 
       battlefield.update!(tokens: tokens, version: battlefield.version.to_i + 1)
       sync_battlefield_ref!(adventure, battlefield)
