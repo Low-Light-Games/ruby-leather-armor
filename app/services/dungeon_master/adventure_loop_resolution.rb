@@ -19,12 +19,30 @@ module DungeonMaster
     private
 
     # Full resolution: evaluation → sanity gate → [verdict + mutations + time_keeper]
-    # Always uses Steps::ParallelEvaluation (Node microservice: beacon + mech_eval + roll_qualifier).
+    #
+    # Two evaluation routes selected by `DmConfig#evaluation_mode`:
+    #
+    #   * `"parallel"` (default) — `Steps::ParallelEvaluation` (Node
+    #     microservice: beacon + mech_eval + roll_qualifier).
+    #   * `"roll_request"` — `Steps::RollRequest` (single AI call with
+    #     RAG-retrieved rules + beats; no character block, no
+    #     micro-contexts).
+    #
+    # Combat-active turns ALWAYS use ParallelEvaluation regardless of the
+    # toggle, so the Combat GM path stays bit-for-bit unchanged.
     def resolve(intention)
-      intent, evaluations = run_parallel_evaluation(intention)
+      intent, evaluations = run_evaluation_phase(intention)
       return resolve_with_mechanics(intent, evaluations) if intent[:affected_contexts].any?
 
       resolve_without_mechanics(intent)
+    end
+
+    def run_evaluation_phase(intention)
+      if @config.respond_to?(:roll_request_mode?) && @config.roll_request_mode? && !combat_active?
+        run_roll_request(intention)
+      else
+        run_parallel_evaluation(intention)
+      end
     end
 
     def resolve_with_mechanics(intent, evaluations)

@@ -20,7 +20,7 @@ class RuleEmbedding < ApplicationRecord
   validates :text_digest, presence: true
 
   scope :for_domain, ->(domain) { where(domain: domain) }
-  scope :nearest_to, ->(embedding, limit:) {
-    nearest_neighbors(:embedding, embedding, distance: "cosine").limit(limit)
+  scope :nearest_to, lambda { |embedding, limit:|
+    nearest_neighbors(:embedding, embedding, distance: 'cosine').limit(limit)
   }
 end

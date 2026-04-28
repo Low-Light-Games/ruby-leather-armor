@@ -16,6 +16,8 @@ class PlayLog < ApplicationRecord
     pipeline_error
     narrative_fact_stored narrative_fact_invalidated narrative_facts_retrieved
     loremaster_failure seed_failure
+    rules_retrieved
+    roll_request_invented_slug
   ].freeze
 
   EVENT_TYPES = (DungeonMaster::StepRegistry.all_call_types + PIPELINE_EVENT_TYPES).freeze

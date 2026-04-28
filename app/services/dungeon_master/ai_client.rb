@@ -29,16 +29,21 @@ module DungeonMaster
     # @param system_prompt [String]
     # @param user_message  [String, nil]  single user message (convenience)
     # @param messages       [Array, nil]   full message list (takes precedence)
-    # @param max_tokens     [Integer, nil] token budget for this step; nil means no limit
-    # @param step_name      [String, nil]  pipeline step name for error messages
-    # @param model          [String, nil]  per-step model override (falls back to default)
+    # @param max_tokens       [Integer, nil] token budget for this step; nil means no limit
+    # @param step_name        [String, nil]  pipeline step name for error messages
+    # @param model            [String, nil]  per-step model override (falls back to default)
+    # @param reasoning_effort [String, nil]  one of "minimal" | "low" | "medium" | "high".
+    #                                        Only sent when the model is a reasoning model
+    #                                        (per OpenaiModelCatalog#reasoning_model?). Non-reasoning
+    #                                        models would 400 if we passed it.
     # @return [String] raw content from the AI
     # @raise [DungeonMaster::AiError]
-    def chat(system_prompt:, user_message: nil, messages: nil, max_tokens: nil, step_name: nil, model: nil)
+    def chat(system_prompt:, user_message: nil, messages: nil, max_tokens: nil, step_name: nil, model: nil, reasoning_effort: nil)
       @last_usage = nil
       effective_model = model || @default_model
       @last_model_used = effective_model
       supports_temp = OpenaiModelCatalog.supports_temperature?(effective_model)
+      is_reasoning  = OpenaiModelCatalog.reasoning_model?(effective_model)
 
       chat_messages = [{ role: "system", content: system_prompt }]
 
@@ -55,6 +60,7 @@ module DungeonMaster
       }
       params[:max_completion_tokens] = max_tokens if max_tokens
       params[:temperature] = @config.temperature if supports_temp && custom_temperature?
+      params[:reasoning_effort] = reasoning_effort if reasoning_effort.present? && is_reasoning
 
       response = begin
         with_openai_retries(call_type: "chat", model: effective_model) do

@@ -44,6 +44,6 @@ class CreateRuleEmbeddings < ActiveRecord::Migration[7.1]
               :embedding,
               using: :hnsw,
               opclass: :vector_cosine_ops,
-              name: "index_rule_embeddings_on_embedding_hnsw"
+              name: 'index_rule_embeddings_on_embedding_hnsw'
   end
 end
