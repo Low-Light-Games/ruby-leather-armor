@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_27_182515) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_28_141241) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -723,6 +723,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_27_182515) do
     t.boolean "banned", default: false, null: false
     t.datetime "banned_at"
     t.boolean "trusted", default: false, null: false
+    t.string "combat_dice_strategy", default: "client", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["onboarding_state"], name: "index_users_on_onboarding_state"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true, where: "(provider IS NOT NULL)"

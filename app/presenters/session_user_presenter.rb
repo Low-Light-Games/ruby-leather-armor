@@ -16,6 +16,7 @@ class SessionUserPresenter
       banned: user.banned?,
       trusted: user.trusted?,
       moderation_strikes: user.moderation_strikes,
+      combat_dice_strategy: user.combat_dice_strategy,
       usage: {
         current_tokens: user.monthly_usage_tokens,
         limit_tokens: user.monthly_usage_limit,

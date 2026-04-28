@@ -2,6 +2,7 @@ class User < ApplicationRecord
   has_secure_password validations: false
 
   ONBOARDING_STATES = %w[new in_progress completed].freeze
+  COMBAT_DICE_STRATEGIES = %w[client server].freeze
 
   has_many :sheets, dependent: :destroy
   has_many :adventures, dependent: :destroy
@@ -19,6 +20,7 @@ class User < ApplicationRecord
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :password, presence: true, on: :create, unless: :oauth_user?
   validates :onboarding_state, inclusion: { in: ONBOARDING_STATES }
+  validates :combat_dice_strategy, inclusion: { in: COMBAT_DICE_STRATEGIES }
 
   def self.from_omniauth(auth)
     user = find_by(provider: auth.provider, uid: auth.uid)
