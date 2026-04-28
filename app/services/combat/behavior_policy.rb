@@ -34,6 +34,39 @@ module Combat
       @raw = (raw || {}).deep_stringify_keys
     end
 
+    # Returns the stored policy if any preferred_attacks are set;
+    # otherwise derives a sensible default from the creature's
+    # equipped_weapons so existing bestiary entries (and any
+    # AI-generated creatures without an explicit policy) aren't inert.
+    def self.for(creature)
+      stored = new(creature.behavior_policy)
+      return stored if stored.preferred_attacks.any?
+
+      new(derive_from_creature(creature))
+    end
+
+    def self.derive_from_creature(creature)
+      preferred = derive_attacks_from_weapons(creature)
+      preferred = [{ 'name' => 'natural attack', 'max_range_squares' => 1 }] if preferred.empty?
+      { 'preferred_attacks' => preferred, 'approach_when_out_of_reach' => true }
+    end
+
+    def self.derive_attacks_from_weapons(creature)
+      Array(creature.equipped_weapons).filter_map do |w|
+        next unless w.is_a?(Hash)
+
+        name = w['name'] || w[:name]
+        next unless name.to_s.match?(/\S/)
+
+        ranged = (w['weapon_type'] || w[:weapon_type]).to_s == 'ranged'
+        if ranged
+          { 'name' => name.to_s, 'min_range_squares' => 2 }
+        else
+          { 'name' => name.to_s, 'max_range_squares' => 1 }
+        end
+      end
+    end
+
     def preferred_attacks
       Array(@raw['preferred_attacks']).map { |a| AttackPreference.new((a || {}).deep_stringify_keys) }
     end

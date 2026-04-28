@@ -27,7 +27,7 @@ module Combat
     def call(creature:, adventure:, target_sheet:)
       return [skip_event(creature, 'creature is down')] if creature.hp.to_i <= 0
 
-      policy = BehaviorPolicy.new(creature.behavior_policy)
+      policy = BehaviorPolicy.for(creature)
       npc_pos = Positions.position_for_creature_sheet(adventure, creature.id)
       target_pos = Positions.player_position(adventure)
 
