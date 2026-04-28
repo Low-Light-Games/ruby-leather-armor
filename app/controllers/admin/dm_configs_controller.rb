@@ -107,8 +107,9 @@ module Admin
       client = OpenAI::Client.new
       response = client.models.list
       response.fetch("data", [])
-        .map { |m| m["id"] }
+        .map { |m| OpenaiModelCatalog.normalize(m["id"]) }
         .select { |id| OpenaiModelCatalog.chat_model?(id) }
+        .uniq
         .sort
     rescue StandardError => e
       ApplicationErrorReporter.notify(e, context: { source: "dm_configs_fetch_openai_models" })
