@@ -1,0 +1,86 @@
+# frozen_string_literal: true
+
+module DungeonMaster
+  module StepRegistry
+    # Long-form model_hint strings for the admin UI, kept out of the
+    # main registry hash so step_registry.rb itself stays a focused
+    # table of contents.
+    module ModelHints
+      FAST_CHEAP = 'Fast, cheap model. e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.'
+
+      INTAKE = "#{FAST_CHEAP} Security + dm_query detection + context suggestion.".freeze
+      DM_QUERY = "#{FAST_CHEAP} Straightforward Q&A.".freeze
+      SEQUENCER = "#{FAST_CHEAP} Compound action detection.".freeze
+      SANITY_CHECKER = "#{FAST_CHEAP} Sheet validation. Only used in AI mode.".freeze
+
+      SANITY_CHECKER_WORLD = '⚠️ Capable model REQUIRED. Cross-references player actions ' \
+                             'against full game state. Unlikely to perform well with budget ' \
+                             'models. Recommended: gpt-4o-mini or better (gpt-4.1-mini, ' \
+                             'o3-mini, gpt-5-mini).'
+
+      MECHANIC = '➡️ Capable model suggested. Post-roll arbitration and mutation generation — ' \
+                 'e.g. o3-mini, o4-mini, gpt-5-mini.'
+
+      COMBAT_GM = '➡️ Capable model required for active combat adjudication ' \
+                  '(battlefield + PF1e) — e.g. o3-mini, gpt-5-mini.'
+
+      MOMENTUM = 'Mid-tier model. Non-mechanical outcome determination and context-domain ' \
+                 'assessment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
+
+      SOCIAL_EXPANSION = 'Mid-tier model. Scene creation with NPC personality and attitude — ' \
+                         'e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
+
+      TIME_KEEPER = "#{FAST_CHEAP} Estimates in-game time for an action.".freeze
+
+      CHRONICLER = '➡️ Capable model suggested. Receives social, traversal, and exploration ' \
+                   'context; condition matching and scene-aware NPC reactions. Use a capable ' \
+                   'model and sufficient token budget — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.'
+
+      NARRATE = 'Creative model. Narrative quality scales with capability — ' \
+                'e.g. gpt-4.1, gpt-4o, gpt-5.'
+
+      MICRO_CONTEXT_UPDATE = 'Mid-tier model. Structured JSON with moderate judgment — ' \
+                             'e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
+
+      DOMAIN_CONTEXT_UPDATE_BASE = 'Mid-tier model. Domain-scoped JSON update — ' \
+                                   'e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
+
+      TRAVERSAL_CONTEXT_UPDATE = "#{DOMAIN_CONTEXT_UPDATE_BASE} (traversal)".freeze
+      COMBAT_CONTEXT_UPDATE    = "#{DOMAIN_CONTEXT_UPDATE_BASE} Must preserve canonical combat identity.".freeze
+      SOCIAL_CONTEXT_UPDATE    = "#{DOMAIN_CONTEXT_UPDATE_BASE} (social)".freeze
+      EXPLORATION_CONTEXT_UPDATE = "#{DOMAIN_CONTEXT_UPDATE_BASE} (exploration)".freeze
+      REST_CONTEXT_UPDATE      = "#{DOMAIN_CONTEXT_UPDATE_BASE} (rest)".freeze
+      INVENTORY_CONTEXT_UPDATE = "#{DOMAIN_CONTEXT_UPDATE_BASE} (inventory)".freeze
+
+      META_CONTEXT_UPDATE = "#{FAST_CHEAP} Scene summary and auxiliary context signals.".freeze
+
+      MACRO_NARRATIVE_UPDATE = 'Mid-tier model. Judges narrative significance — ' \
+                               'e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
+
+      CREATURE_GENERATION = 'Mid-tier model recommended. Must produce valid PF1e stat blocks ' \
+                            '— e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.'
+
+      BEACON = "#{FAST_CHEAP} Per-domain intent classification — runs 6 in parallel via the " \
+               'Node evaluator microservice.'.freeze
+
+      MECHANICAL_EVALUATION = 'Mid-tier model. Per-domain mechanical resolution, run ' \
+                              'sequentially with cross-domain awareness via the Node ' \
+                              'evaluator microservice. e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.'
+
+      ROLL_QUALIFIER = "#{FAST_CHEAP} Determines Take 10/20 eligibility and situational " \
+                       'modifiers. Run in parallel per domain via the Node evaluator microservice.'.freeze
+
+      ROLL_REQUEST = 'Cheapest reasoning model — defaults to gpt-5-nano ($0.05/$0.40 per M, ' \
+                     'reasoning) at reasoning_effort=minimal. Single-call replacement for ' \
+                     'beacon→mech_eval→roll_qualifier with RAG-retrieved rules + beats and no ' \
+                     'character block in the prompt. Override only if you want non-reasoning ' \
+                     'behavior, a more capable model, or higher reasoning effort on this step.'
+
+      NPC_ACTION = "#{FAST_CHEAP} Per-NPC combat action decision. Runs N in parallel via Node fan_out.".freeze
+
+      LOREMASTER = 'Mid-tier model. Structured fact extraction from factual outcomes — ' \
+                   'e.g. gpt-4o-mini, gpt-4.1-mini, gpt-5-nano. Runs in parallel with ' \
+                   'Narrate/ContextUpdate, so latency is Narrate-bounded.'
+    end
+  end
+end
