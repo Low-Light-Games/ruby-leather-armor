@@ -93,6 +93,41 @@ RSpec.describe Combat::NpcTurn do
     expect(events.first[:kind]).to eq('npc_skip')
   end
 
+  it 'uses the policy-named weapon (longbow) and the ranged attack bonus' do
+    # Multi-weapon goblin: a longbow listed FIRST and a shortsword listed
+    # second. Without the attack_pref → weapon plumbing, NpcAttackResolver
+    # would pick the longbow regardless and use the melee bonus, breaking
+    # the policy intent.
+    creature.update!(
+      equipped_weapons: [
+        { 'name' => 'longbow', 'damage_dice' => '1d8', 'damage_type' => 'piercing', 'weapon_type' => 'ranged' },
+        { 'name' => 'shortsword', 'damage_dice' => '1d6', 'damage_type' => 'piercing' }
+      ],
+      derived_stats: creature.derived_stats.merge('melee_attack' => 4, 'ranged_attack' => 7),
+      behavior_policy: { 'preferred_attacks' => [
+        { 'name' => 'longbow', 'min_range_squares' => 2 },
+        { 'name' => 'shortsword', 'max_range_squares' => 1 }
+      ] }
+    )
+    setup_grid(player_xy: [5, 5], goblin_xy: [10, 5])
+    allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_d20).and_return(10)
+    allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_damage_expression).and_return(3)
+
+    actual_outcome = Combat::NpcAttackResolver.method(:call)
+    captured = nil
+    allow(Combat::NpcAttackResolver).to receive(:call) do |**kwargs|
+      captured = kwargs
+      actual_outcome.call(**kwargs)
+    end
+
+    events = described_class.call(creature: creature, adventure: adventure, target_sheet: sheet)
+    attack = events.find { |e| e[:kind] == 'npc_attack' }
+
+    expect(captured[:attack_pref]&.name).to eq('longbow')
+    # natural 10 + ranged_attack 7 = 17; melee_attack would have been 14.
+    expect(attack[:outcome]['total']).to eq(17)
+  end
+
   it 'skips when no preferred attack matches and approach is disabled' do
     creature.update!(behavior_policy: { 'preferred_attacks' => [{ 'name' => 'shortsword', 'max_range_squares' => 1 }],
                                         'approach_when_out_of_reach' => false })

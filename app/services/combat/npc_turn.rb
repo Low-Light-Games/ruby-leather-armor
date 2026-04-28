@@ -89,7 +89,10 @@ module Combat
     end
 
     def attack_event(creature:, target_sheet:, attack_pref:)
-      outcome = NpcAttackResolver.call(attacker: creature, target_sheet: target_sheet, target_kind: :player)
+      outcome = NpcAttackResolver.call(
+        attacker: creature, target_sheet: target_sheet,
+        target_kind: :player, attack_pref: attack_pref
+      )
       {
         kind: 'npc_attack',
         creature_id: creature.id,
