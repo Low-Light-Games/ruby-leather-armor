@@ -45,7 +45,14 @@ module Combat
 
       def active_npcs_in_initiative_order
         ids = ordered_npc_creature_sheet_ids(@adventure.combat_context || {})
-        @adventure.creature_sheets.where(id: ids).where('hp > 0').order(:id).to_a
+        return [] if ids.empty?
+
+        # Preserve the initiative order encoded in `ids` — DB row id is
+        # creation order, not initiative. .where(id: ids) returns rows in
+        # arbitrary order, so re-sort by index_of(creature.id) and drop
+        # any that are already down.
+        by_id = @adventure.creature_sheets.where(id: ids).where('hp > 0').index_by(&:id)
+        ids.filter_map { |id| by_id[id] }
       end
 
       def ordered_npc_creature_sheet_ids(ctx)

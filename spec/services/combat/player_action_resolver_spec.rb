@@ -356,6 +356,48 @@ RSpec.describe Combat::PlayerActionResolver do
   end
 
   describe 'end turn' do
+    context 'NPC initiative order' do
+      let(:goblin_a) do
+        CreatureSheet.create!(
+          adventure: adventure, name: 'Goblin Skirmisher', creature_type: 'monster',
+          origin: 'ai', attitude: 'hostile', level: 1,
+          strength: 11, dexterity: 13, constitution: 12, intelligence: 10, wisdom: 9, charisma: 6,
+          hp: 6, max_hp: 6, derived_stats: { 'ac' => 14 }
+        )
+      end
+      let(:goblin_b) do
+        CreatureSheet.create!(
+          adventure: adventure, name: 'Goblin Boss', creature_type: 'monster',
+          origin: 'ai', attitude: 'hostile', level: 1,
+          strength: 11, dexterity: 13, constitution: 12, intelligence: 10, wisdom: 9, charisma: 6,
+          hp: 6, max_hp: 6, derived_stats: { 'ac' => 14 }
+        )
+      end
+
+      it 'runs NPCs in turn_order, not by creature_sheet id' do
+        # Lower id (goblin_a) goes SECOND in initiative; higher id (goblin_b) goes FIRST.
+        adventure.update!(combat_context: adventure.combat_context.merge(
+                            'turn_order' => ['Goblin Boss', 'Player', 'Goblin Skirmisher'],
+                            'participants' => [
+                              { 'name' => 'Goblin Skirmisher', 'type' => 'npc', 'creature_sheet_id' => goblin_a.id },
+                              { 'name' => 'Player', 'type' => 'player' },
+                              { 'name' => 'Goblin Boss', 'type' => 'npc', 'creature_sheet_id' => goblin_b.id }
+                            ]
+                          ))
+
+        invocations = []
+        allow(Combat::NpcTurn).to receive(:call) do |creature:, **_kwargs|
+          invocations << creature.id
+          []
+        end
+
+        described_class.call(adventure: adventure, sheet: sheet, user: user,
+                             params: { kind: 'end_turn' })
+
+        expect(invocations).to eq([goblin_b.id, goblin_a.id])
+      end
+    end
+
     it 'advances the round, resets the action economy, and stays on the player' do
       adventure.update!(combat_context: adventure.combat_context.deep_merge(
         'action_economy' => { 'standard_available' => false, 'move_available' => false }
