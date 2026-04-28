@@ -14,12 +14,25 @@ module Combat
       private
 
       def resolve_end_turn
+        previous_round = (@adventure.combat_context || {})['round'].to_i
         npc_events = run_npc_turns
         next_round = advance_round_and_refresh_economy!
 
         payload = end_turn_payload(next_round, npc_events)
         log_action_event!(payload)
+        enqueue_combat_narrator!(round: previous_round, npc_events: npc_events)
         { status: :resolved, result: payload }
+      end
+
+      def enqueue_combat_narrator!(round:, npc_events:)
+        config = DmConfig.instance
+        return unless config.combat_narrator_enabled?
+
+        return if npc_events.empty?
+
+        CombatNarratorJob.perform_later(@adventure.id, round, npc_events.map(&:deep_stringify_keys))
+      rescue StandardError => e
+        Rails.logger.warn("[EndTurn] failed to enqueue CombatNarratorJob: #{e.message}")
       end
 
       def run_npc_turns

@@ -85,7 +85,9 @@ module DungeonMaster
       'enricher' => Entry.new(token_budget: nil, model_hint: nil,
                               pipeline: false),
       'embellisher' => Entry.new(token_budget: nil, model_hint: nil,
-                                 pipeline: false)
+                                 pipeline: false),
+      'combat_narrator' => Entry.new(token_budget: 220, model_hint: H::COMBAT_NARRATOR,
+                                     pipeline: true)
     }.freeze
 
     def self.all_call_types

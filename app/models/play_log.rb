@@ -20,6 +20,7 @@ class PlayLog < ApplicationRecord
     roll_request_invented_slug
     combat_action
     combat_mech_eval_resolution_error
+    combat_narrator_failure
   ].freeze
 
   EVENT_TYPES = (DungeonMaster::StepRegistry.all_call_types + PIPELINE_EVENT_TYPES).freeze

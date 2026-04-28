@@ -92,6 +92,7 @@ class DmConfig < ApplicationRecord
     'narrative_facts_embedding_model' => 'text-embedding-3-small',
     'evaluation_mode' => 'parallel',
     'combat_evaluation_mode' => 'parallel',
+    'combat_narrator_enabled' => false,
     'step_reasoning_efforts' => { 'roll_request' => 'minimal' }.freeze,
     'stripe_grace_period_days' => 3
   }.freeze
@@ -198,6 +199,13 @@ class DmConfig < ApplicationRecord
 
   def combat_roll_request_mode?
     combat_evaluation_mode == 'combat_roll_request'
+  end
+
+  # PR-G — when on, End Turn enqueues a CombatNarratorJob that posts a
+  # one-paragraph flavor narration of the round to the chat. Off by
+  # default until the prompt is tuned and a model picked.
+  def combat_narrator_enabled?
+    get('combat_narrator_enabled') == true
   end
 
   def narrative_facts_active_window
