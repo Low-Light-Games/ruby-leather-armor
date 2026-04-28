@@ -301,29 +301,40 @@ context update without bloating the combat hot path.
   context update; drawing a weapon mid-battle does not.
 - Spec coverage for the trigger heuristic.
 
-### PR-I — Retire `Steps::ParallelEvaluation`
+### PR-I — Retire `Steps::ParallelEvaluation` (split into two passes)
 
-**Goal:** remove the legacy chain and the Node evaluator microservice if
-nothing else uses it.
+**Pass 1 — landed in this PR (default flip + deprecation):**
+- `DmConfig#DEFAULTS['evaluation_mode']` flipped from `'parallel'` to
+  `'roll_request'` so out-of-combat turns now route through
+  `Steps::RollRequest` by default.
+- `DmConfig#DEFAULTS['combat_evaluation_mode']` flipped from
+  `'parallel'` to `'combat_roll_request'` so combat free-text turns
+  now route through `Steps::CombatRollRequest` by default.
+- `Steps::ParallelEvaluation` carries a deprecation comment naming the
+  follow-up. The class itself stays callable so admin-overridden
+  adventures (and existing test fixtures) keep working.
+- `ensure_damage_metadata_for_active_hit!` retry path stays for now —
+  it's the safety net for any combat that still ends up in the legacy
+  chain via the override.
 
-**Scope:**
+**Pass 2 — follow-up after staging soak (NOT in this PR):**
 - Delete `Steps::ParallelEvaluation`, `Phases::BeaconPhase`,
   `Phases::MechEvalPhase`, `Phases::RollQualifierPhase`,
   `EvaluatorTransport`, the legacy mech_eval prompt templates, and the
   `evaluator/` Node service if no other caller remains.
 - Delete `ensure_damage_metadata_for_active_hit!` and the
-  `build_mech_eval_prompts(["combat"], ...)` retry — unreachable after
-  PR-E + PR-F.
-- Drop the `evaluation_mode` toggle from `DmConfig` (or pin it as the
-  only mode that remains, and remove the setter from the admin UI).
+  `build_mech_eval_prompts(["combat"], ...)` retry.
+- Drop the `evaluation_mode` and `combat_evaluation_mode` toggles from
+  `DmConfig` (or pin them as the only modes that remain, and remove
+  the setters from the admin UI).
 - StepRegistry cleanup: remove `beacon`, `mechanical_evaluation`,
   `roll_qualifier` entries.
 - Update `docs/pipeline_steps.md` and `docs/pipeline_diagram.md`.
 
-**Ship criteria:**
-- Test suite passes with zero references to the deleted code.
+**Ship criteria for pass 2:**
 - A staging soak confirms no regressions in either combat or
-  out-of-combat for a full session.
+  out-of-combat for a full session under the new defaults.
+- Test suite passes with zero references to the deleted code.
 
 ---
 

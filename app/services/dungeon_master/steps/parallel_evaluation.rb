@@ -2,6 +2,20 @@
 
 module DungeonMaster
   module Steps
+    # DEPRECATED — scheduled for removal once PR #118's combat-determinism
+    # arc has soaked in production. As of PR-I, both DmConfig defaults
+    # (`evaluation_mode` and `combat_evaluation_mode`) point at the new
+    # single-call replacements (`Steps::RollRequest` out of combat,
+    # `Steps::CombatRollRequest` in-combat free-text), and the
+    # deterministic combat HUD path bypasses this chain entirely. The
+    # only remaining caller is admin-overridden adventures with the
+    # legacy mode pinned, plus the
+    # `ensure_damage_metadata_for_active_hit!` retry path in
+    # `AdventureLoopResolution`. A follow-up PR will delete this
+    # module, the three Phases::* siblings, EvaluatorTransport, the
+    # mech_eval prompt templates, and (if no other caller remains)
+    # the Node evaluator microservice.
+    #
     # Pipeline Step: Parallel Evaluation — orchestrates the beacon →
     # mechanical evaluation → roll qualifier chain via the Node evaluator
     # microservice.

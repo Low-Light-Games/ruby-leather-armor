@@ -90,8 +90,8 @@ class DmConfig < ApplicationRecord
     'narrative_facts_top_k' => 8,
     'narrative_facts_active_window' => 20,
     'narrative_facts_embedding_model' => 'text-embedding-3-small',
-    'evaluation_mode' => 'parallel',
-    'combat_evaluation_mode' => 'parallel',
+    'evaluation_mode' => 'roll_request',
+    'combat_evaluation_mode' => 'combat_roll_request',
     'combat_narrator_enabled' => false,
     'step_reasoning_efforts' => { 'roll_request' => 'minimal' }.freeze,
     'stripe_grace_period_days' => 3
