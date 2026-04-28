@@ -32,16 +32,33 @@ rule calls for; the engine resolves the actual modifier.
   scene; that is not your job.
 - Set affected_domains so downstream context updates know which world-state slices changed.
   Domains: combat, traversal, social, exploration, rest, inventory, buff.
-- expand_scene and needs_roll are MUTUALLY EXCLUSIVE — pick at most one.
-  - Set needs_roll=true (and expand_scene=false) whenever the player has declared a
-    specific tactic that maps to a check: persuading, deceiving, intimidating, sensing
-    motive, appraising, etc. The roll resolves the action; no scene-opening prose is
-    needed first.
-  - Set expand_scene=true (and needs_roll=false) only for the FIRST entry into a fresh
-    social situation where the player has NOT yet declared a tactic — e.g. "I walk into
-    the tavern and look for the contact", "I knock on the merchant's door". The moment
-    the player declares a persuasion/intimidation/deception attempt, the roll wins.
-  - Never set both true. If both seem to apply, the roll wins.
+- expand_scene exists so the engine doesn't wave away social interactions that
+  depend on facts the player CANNOT KNOW WITHOUT TALKING TO THE NPC. Setting it
+  true runs a dedicated social scene that introduces the NPC, surfaces what
+  matters (availability, price, willingness, knowledge), and ends at the moment
+  the player must decide their next move — which may then trigger a follow-up
+  roll on a future turn.
+
+  Examples that should expand the scene, NOT roll a check:
+    * "I rent a room at the inn" — does the inn even have rooms? are any vacant?
+      what's the price? who runs the place? a Diplomacy roll cannot answer those.
+    * "I ask the merchant about the cult" — does she know anything? will she
+      share? at what cost?
+    * "I try to hire a guide" — is anyone available? local? trustworthy?
+    * "I look for work in the marketplace" — is there work? doing what? for whom?
+
+  Examples that should roll a check, NOT expand the scene:
+    * The player is mid-conversation with a known NPC and applies a specific
+      tactic ("I argue she should pay more", "I bluff past the guard whose
+      challenge I just heard", "I intimidate the bandit who's already drawn
+      steel on me"). The NPC, stakes, and asked-for outcome are all established.
+    * Mechanical out-of-combat checks against the world (Climb, Perception,
+      Knowledge, Acrobatics) — never expand a scene for these.
+
+  Pick at most one. The test that decides:
+    Can I name the specific NPC the roll targets AND the specific outcome a
+    success would produce, from facts already in RECENT NARRATIVE BEATS or the
+    player's intent? If yes → request the roll. If no → expand the scene first.
 - Set transition="combat_started" + combatants[] only when the player's action initiates combat
   with hostiles. Otherwise leave both fields null/empty. Combat-end is not your concern.
 - Surface ability_use_claimed when the player explicitly invoked a named spell/feat/item — code
