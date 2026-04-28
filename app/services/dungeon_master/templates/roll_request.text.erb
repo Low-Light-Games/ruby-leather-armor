@@ -70,5 +70,32 @@ rule calls for; the engine resolves the actual modifier.
 - Writing prose narration (the narrate step does that).
 - Combat tactical adjudication during active combat (the Combat GM does that on a different path).
 
-Respond ONLY with valid JSON (no markdown, no code fences):
+=== FIELD REFERENCE ===
 <%= @response_schema %>
+
+Respond ONLY with valid JSON in the FLAT shape below — do NOT echo the field
+reference's wrapper keys (no "description", no "fields", no "notes"):
+{
+  "needs_roll": true,
+  "no_roll_reason": null,
+  "roll": {
+    "type": "skill_check",
+    "skill": "Climb",
+    "save": null,
+    "dc": 15,
+    "description": "Short player-facing description.",
+    "take_10_eligible": true,
+    "take_20_eligible": false,
+    "situational_modifiers": [],
+    "rule_slug": "climbing"
+  },
+  "affected_domains": ["traversal"],
+  "expand_scene": false,
+  "transition": null,
+  "combatants": [],
+  "destination": null,
+  "consequences": [],
+  "ability_use_claimed": null,
+  "mechanical_summary": "One-sentence factual summary.",
+  "reasoning": "One short sentence explaining the call."
+}
