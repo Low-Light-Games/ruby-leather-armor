@@ -134,28 +134,39 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
         />
 
         {/* MIDDLE COLUMN — Chat */}
-        <div className={`adventure-column middle-column${adventure.combat_context?.active ? ' active-combat' : ''}`}>
-          {user.onboarding_state === 'in_progress' && (
-            <div className="first-time-hint">
-              <p>
-                <strong>Your first adventure.</strong> Type what your character does and the DM will respond.
-                Directed play is on — each turn ends with concrete choices to keep things moving.
-              </p>
+        {/* Combat HUD only appears once it's actually the player's turn —
+            an "active combat where the player can't act yet" UI feels
+            broken even though it isn't. Lets NPCs that went first
+            resolve their round (and possibly drop the player) before the
+            grid + chips show up. */}
+        {(() => {
+          const isPlayerTurn = adventure.combat_context?.current_turn === 'Player'
+          const showCombatHud = adventure.combat_context?.active === true && isPlayerTurn
+          return (
+            <div className={`adventure-column middle-column${showCombatHud ? ' active-combat' : ''}`}>
+              {user.onboarding_state === 'in_progress' && (
+                <div className="first-time-hint">
+                  <p>
+                    <strong>Your first adventure.</strong> Type what your character does and the DM will respond.
+                    Directed play is on — each turn ends with concrete choices to keep things moving.
+                  </p>
+                </div>
+              )}
+              <AdventureChat
+                adventureId={adventureId}
+                derivedStats={ds}
+                adventureSheet={advSheet}
+                adventureEnded={adventure.ended}
+                endReason={adventure.end_reason}
+                isCombatActive={showCombatHud}
+                combatContext={adventure.combat_context}
+                onAdventureComplete={reload}
+                onDmResponse={reload}
+                onSheetUpdate={reload}
+              />
             </div>
-          )}
-          <AdventureChat
-            adventureId={adventureId}
-            derivedStats={ds}
-            adventureSheet={advSheet}
-            adventureEnded={adventure.ended}
-            endReason={adventure.end_reason}
-            isCombatActive={adventure.combat_context?.active === true}
-            combatContext={adventure.combat_context}
-            onAdventureComplete={reload}
-            onDmResponse={reload}
-            onSheetUpdate={reload}
-          />
-        </div>
+          )
+        })()}
 
         {/* RIGHT COLUMN — Story */}
         <StorySidebar
