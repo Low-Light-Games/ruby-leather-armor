@@ -618,6 +618,15 @@
           &:hover {
             fill: rgba(0, 100, 0, 0.30);
           }
+
+          &.withdraw {
+            fill: rgba(180, 120, 0, 0.15);
+            stroke: $amber;
+
+            &:hover {
+              fill: rgba(180, 120, 0, 0.35);
+            }
+          }
         }
       }
 
@@ -635,6 +644,40 @@
 
         &.player circle { fill: $blue-ink; }
         &.npc circle    { fill: $red-ink; }
+      }
+    }
+
+    .combat-grid-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+
+      .withdraw-toggle {
+        font-family: $font-display;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        padding: 2px 8px;
+        background: $parchment-mid;
+        color: $ink-mid;
+        border: 1px solid $border-light;
+        border-radius: 4px;
+        cursor: pointer;
+
+        &:hover:not(:disabled) {
+          background: $amber-lt;
+          color: $amber;
+          border-color: $amber;
+        }
+
+        &.active {
+          background: $amber-lt;
+          color: $amber;
+          border-color: $amber;
+        }
+
+        &:disabled { opacity: 0.4; cursor: not-allowed; }
       }
     }
 

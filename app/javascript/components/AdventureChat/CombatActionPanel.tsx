@@ -59,6 +59,7 @@ export const CombatActionPanel = ({
   const [selectedTargetId, setSelectedTargetId] = useState<number | null>(null)
   const [history, setHistory] = useState<ResolvedEntry[]>([])
   const [pending, setPending] = useState<CombatAttackPending['request'] | null>(null)
+  const [withdrawMode, setWithdrawMode] = useState(false)
 
   const refreshOptions = useCallback(async () => {
     setLoading(true)
@@ -127,8 +128,11 @@ export const CombatActionPanel = ({
     setSubmitting(true)
     setError(null)
     try {
-      const response = await postCombatAction(adventureId, { kind: 'move', x, y })
+      const body: { kind: 'move'; x: number; y: number; withdraw?: boolean } = { kind: 'move', x, y }
+      if (withdrawMode) body.withdraw = true
+      const response = await postCombatAction(adventureId, body)
       handleResponse(response)
+      setWithdrawMode(false)
       await refreshOptions()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -234,6 +238,14 @@ export const CombatActionPanel = ({
           playerPosition={options.player_position}
           speedSquares={options.player_speed_squares}
           canMove={options.action_economy?.move_available !== false && pending === null}
+          canWithdraw={
+            options.action_economy?.standard_available !== false &&
+            options.action_economy?.move_available !== false &&
+            options.action_economy?.full_round_claimed !== true &&
+            pending === null
+          }
+          withdrawMode={withdrawMode}
+          onWithdrawToggle={() => setWithdrawMode(prev => !prev)}
           onSquareClick={handleMove}
           busy={submitting}
         />

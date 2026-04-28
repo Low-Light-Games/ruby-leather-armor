@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Combat::Rules do
   def pos(token_id, x, y)
-    Combat::Positions::Position.new(token_id: token_id, label: token_id, x: x, y: y)
+    Combat::Position.new(token_id: token_id, label: token_id, coordinates: { x: x, y: y })
   end
 
   describe '.flanking?' do

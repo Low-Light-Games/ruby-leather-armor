@@ -140,6 +140,7 @@ export interface CombatMoveBody {
   kind: 'move'
   x: number
   y: number
+  withdraw?: boolean
 }
 
 export type CombatActionBody = CombatAttackBody | CombatEndTurnBody | CombatMoveBody

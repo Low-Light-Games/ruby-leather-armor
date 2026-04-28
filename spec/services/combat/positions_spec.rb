@@ -45,15 +45,15 @@ RSpec.describe Combat::Positions do
 
   describe '.occupied?' do
     it 'returns true for the goblin square' do
-      expect(described_class.occupied?(adventure, x: 7, y: 4)).to be(true)
+      expect(described_class.occupied?(adventure, at_x: 7, at_y: 4)).to be(true)
     end
 
     it 'returns false for an empty square' do
-      expect(described_class.occupied?(adventure, x: 9, y: 9)).to be(false)
+      expect(described_class.occupied?(adventure, at_x: 9, at_y: 9)).to be(false)
     end
 
     it 'ignores the player when except_token_id is "player"' do
-      expect(described_class.occupied?(adventure, x: 5, y: 5, except_token_id: 'player')).to be(false)
+      expect(described_class.occupied?(adventure, at_x: 5, at_y: 5, except_token_id: 'player')).to be(false)
     end
   end
 
@@ -71,7 +71,7 @@ RSpec.describe Combat::Positions do
 
   describe '.move_player_token!' do
     it 'updates the player x/y, bumps version, and syncs battlefield_ref' do
-      described_class.move_player_token!(adventure, x: 8, y: 8)
+      described_class.move_player_token!(adventure, at_x: 8, at_y: 8)
 
       battlefield.reload
       expect(battlefield.tokens['player']).to include('x' => 8, 'y' => 8)
@@ -82,8 +82,8 @@ RSpec.describe Combat::Positions do
 
   describe 'Position#distance_to (Chebyshev)' do
     it 'is the max of |dx| and |dy|' do
-      a = described_class::Position.new(token_id: 'a', label: 'A', x: 0, y: 0)
-      b = described_class::Position.new(token_id: 'b', label: 'B', x: 3, y: 4)
+      a = Combat::Position.new(token_id: 'a', label: 'A', coordinates: { x: 0, y: 0 })
+      b = Combat::Position.new(token_id: 'b', label: 'B', coordinates: { x: 3, y: 4 })
       expect(a.distance_to(b)).to eq(4)
     end
   end

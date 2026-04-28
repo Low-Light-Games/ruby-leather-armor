@@ -6,6 +6,9 @@ interface Props {
   playerPosition: { x: number; y: number } | null
   speedSquares: number
   canMove: boolean
+  canWithdraw: boolean
+  withdrawMode: boolean
+  onWithdrawToggle: () => void
   onSquareClick: (x: number, y: number) => void
   busy: boolean
 }
@@ -50,7 +53,8 @@ function readTokens(tokens: Record<string, Record<string, unknown>>): ResolvedTo
 }
 
 export const CombatGrid = ({
-  battlefield, playerPosition, speedSquares, canMove, onSquareClick, busy,
+  battlefield, playerPosition, speedSquares, canMove, canWithdraw, withdrawMode,
+  onWithdrawToggle, onSquareClick, busy,
 }: Props) => {
   const viewport = useMemo(() => readViewport(battlefield.viewport), [battlefield.viewport])
   const tokens = useMemo(() => readTokens(battlefield.tokens), [battlefield.tokens])
@@ -104,7 +108,7 @@ export const CombatGrid = ({
       const y = tightView.minY + row
       const key = `${x},${y}`
       const isReachable = reachable.has(key)
-      const className = `combat-grid-cell${isReachable ? ' reachable' : ''}`
+      const className = `combat-grid-cell${isReachable ? ' reachable' : ''}${isReachable && withdrawMode ? ' withdraw' : ''}`
       cells.push(
         <rect
           key={key}
@@ -150,10 +154,23 @@ export const CombatGrid = ({
         {cells}
         {tokenEls}
       </svg>
-      <div className="combat-grid-hint">
-        {canMove
-          ? <>Click a highlighted square to move. Speed {speedSquares} squares ({speedSquares * 5} ft).</>
-          : <>Move action spent — click <em>End Turn</em> to refresh.</>}
+      <div className="combat-grid-controls">
+        <button
+          type="button"
+          className={`withdraw-toggle${withdrawMode ? ' active' : ''}`}
+          disabled={!canWithdraw || busy}
+          onClick={onWithdrawToggle}
+          title="Withdraw — full-round action; the square you leave does NOT provoke. Costs both standard and move."
+        >
+          {withdrawMode ? '↩ Withdrawing' : '↩ Withdraw'}
+        </button>
+        <span className="combat-grid-hint">
+          {canMove
+            ? withdrawMode
+              ? <>Withdrawing — click a square to safely leave melee. Costs your full round.</>
+              : <>Click a highlighted square to move. Speed {speedSquares} squares ({speedSquares * 5} ft).</>
+            : <>Move action spent — click <em>End Turn</em> to refresh.</>}
+        </span>
       </div>
     </div>
   )

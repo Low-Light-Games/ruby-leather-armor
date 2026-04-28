@@ -72,7 +72,7 @@ class CombatActionsController < ApplicationController
   end
 
   def combat_action_params
-    params.permit(:kind, :attack_option_id, :target_creature_sheet_id, :x, :y).to_h
+    params.permit(:kind, :attack_option_id, :target_creature_sheet_id, :x, :y, :withdraw).to_h
   end
 
   def submitted_dice_params

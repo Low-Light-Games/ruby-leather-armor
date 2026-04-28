@@ -311,6 +311,37 @@ RSpec.describe Combat::PlayerActionResolver do
       expect(result[:result][:attacks_of_opportunity]).to eq([])
     end
 
+    it 'withdraws as a full-round action and skips departure-square AoO' do
+      creature.update!(equipped_weapons: [{ 'name' => 'shortsword', 'damage_dice' => '1d6', 'damage_type' => 'piercing' }],
+                       derived_stats: creature.derived_stats.merge('melee_attack' => 5, 'mods' => { 'strength' => 1 }))
+      sheet.update!(hp: 12, derived_stats: sheet.derived_stats.merge('ac' => 10))
+      AdventureBattlefield.find(battlefield.id).update!(tokens: {
+        'player' => { 'label' => 'Player', 'x' => 5, 'y' => 5, 'type' => 'player' },
+        "creature_#{creature.id}" => { 'label' => 'Goblin', 'x' => 6, 'y' => 5, 'type' => 'npc', 'creature_sheet_id' => creature.id }
+      })
+
+      result = described_class.call(adventure: adventure, sheet: sheet, user: user,
+                                     params: { kind: 'move', x: 5, y: 9, withdraw: true })
+
+      expect(result[:result][:movement_mode]).to eq('withdraw')
+      expect(result[:result][:attacks_of_opportunity]).to eq([])
+      expect(sheet.reload.hp).to eq(12)
+      econ = adventure.reload.combat_context['action_economy']
+      expect(econ['standard_available']).to be(false)
+      expect(econ['move_available']).to be(false)
+      expect(econ['full_round_claimed']).to be(true)
+    end
+
+    it 'rejects withdraw when standard is already spent' do
+      adventure.update!(combat_context: adventure.combat_context.deep_merge(
+                          'action_economy' => { 'standard_available' => false }
+                        ))
+      expect {
+        described_class.call(adventure: adventure, sheet: sheet, user: user,
+                             params: { kind: 'move', x: 6, y: 6, withdraw: true })
+      }.to raise_error(described_class::Error, /withdraw requires both standard and move/)
+    end
+
     it 'rejects when no move action remains' do
       adventure.update!(combat_context: adventure.combat_context.deep_merge(
                           'action_economy' => { 'move_available' => false }
