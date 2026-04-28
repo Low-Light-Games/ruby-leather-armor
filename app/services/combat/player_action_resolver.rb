@@ -41,8 +41,8 @@ module Combat
     }.freeze
     PLAYER_NAME = DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME
 
-    def self.call(**kwargs)
-      new(**kwargs).call
+    def self.call(**)
+      new(**).call
     end
 
     def initialize(adventure:, sheet:, user:, params:, submitted_dice: nil)
@@ -163,6 +163,7 @@ module Combat
 
     def damage_ability_bonus(option)
       return 0 if option[:source_type].to_s == 'spell'
+
       return 0 if ranged_mode?(option[:attack_mode])
 
       mods = (@sheet.derived_stats || {})['mods'] || {}
@@ -288,7 +289,7 @@ module Combat
       core = "#{option[:label]} vs #{target_name}: #{attack_total} vs AC #{defense_dc} — #{verb}"
       return "#{core}." unless hit && damage_total
 
-      damage_phrase = "#{damage_total}#{option[:damage_type].present? ? " #{option[:damage_type]}" : ''}"
+      damage_phrase = "#{damage_total}#{" #{option[:damage_type]}" if option[:damage_type].present?}"
       tail = target_dropped ? ", dropping #{target_name}" : ''
       "#{core} for #{damage_phrase} damage#{tail}."
     end
@@ -302,7 +303,7 @@ module Combat
         status: 'pipeline_event',
         app_version: defined?(APP_VERSION) ? APP_VERSION : nil
       )
-    rescue => e
+    rescue StandardError => e
       Rails.logger.warn("[PlayerActionResolver] play_log persist failed: #{e.message}")
     end
 
