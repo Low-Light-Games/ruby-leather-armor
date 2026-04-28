@@ -593,6 +593,59 @@
     animation: combatBannerIn 1s ease both;
   }
 
+  /* ===== Combat grid (click-to-move tactical surface) ===== */
+  .combat-grid-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+
+    .combat-grid {
+      background: $parchment;
+      border: 1px solid $border-light;
+      display: block;
+
+      .combat-grid-cell {
+        fill: transparent;
+        stroke: $border-light;
+        stroke-width: 0.5;
+
+        &.reachable {
+          fill: rgba(0, 100, 0, 0.10);
+          stroke: $green-ink;
+          stroke-width: 1;
+
+          &:hover {
+            fill: rgba(0, 100, 0, 0.30);
+          }
+        }
+      }
+
+      .combat-grid-token {
+        circle {
+          stroke: $ink;
+          stroke-width: 1;
+        }
+
+        text {
+          font-family: $font-display;
+          fill: $parchment;
+          pointer-events: none;
+        }
+
+        &.player circle { fill: $blue-ink; }
+        &.npc circle    { fill: $red-ink; }
+      }
+    }
+
+    .combat-grid-hint {
+      font-family: $font-mono;
+      font-size: 10px;
+      color: $ink-faint;
+      text-align: center;
+    }
+  }
+
   /* ===== Combat action panel (deterministic attack HUD) ===== */
   .combat-action-panel {
     flex-shrink: 0;

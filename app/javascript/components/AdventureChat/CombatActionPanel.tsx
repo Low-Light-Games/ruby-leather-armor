@@ -12,6 +12,7 @@ import {
 } from '../../services/combatActionService'
 import type { CombatDiceStrategy } from '../../types/auth'
 import { rollD20 } from '../../rules/dice'
+import CombatGrid from './CombatGrid'
 
 interface Props {
   adventureId: number
@@ -111,6 +112,20 @@ export const CombatActionPanel = ({
     [recordResolution],
   )
 
+  const handleMove = async (x: number, y: number) => {
+    setSubmitting(true)
+    setError(null)
+    try {
+      const response = await postCombatAction(adventureId, { kind: 'move', x, y })
+      handleResponse(response)
+      await refreshOptions()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const handleEndTurn = async () => {
     setSubmitting(true)
     setError(null)
@@ -201,6 +216,17 @@ export const CombatActionPanel = ({
           {diceStrategy === 'server' ? '⚄ Auto-roll' : '🎲 Self-roll'}
         </button>
       </div>
+
+      {options.battlefield && (
+        <CombatGrid
+          battlefield={options.battlefield}
+          playerPosition={options.player_position}
+          speedSquares={options.player_speed_squares}
+          canMove={options.action_economy?.move_available !== false && pending === null}
+          onSquareClick={handleMove}
+          busy={submitting}
+        />
+      )}
 
       {aliveTargets.length > 0 && (
         <div className="target-row">

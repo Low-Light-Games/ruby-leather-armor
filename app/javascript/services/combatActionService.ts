@@ -1,5 +1,6 @@
 import { apiFetch } from '../utils/api'
 import type { CombatDiceStrategy } from '../types/auth'
+import type { BattlefieldSnapshot } from '../types'
 
 export interface CombatTarget {
   creature_sheet_id: number
@@ -35,6 +36,9 @@ export interface CombatActionOptionsResponse {
   targets: CombatTarget[]
   action_economy: CombatActionEconomy | null
   dice_strategy: CombatDiceStrategy
+  battlefield: BattlefieldSnapshot | null
+  player_position: { x: number; y: number } | null
+  player_speed_squares: number
 }
 
 export interface CombatAttackResult {
@@ -68,9 +72,19 @@ export interface CombatEndTurnResult {
   message: string
 }
 
+export interface CombatMoveResult {
+  kind: 'move'
+  from: { x: number; y: number }
+  to: { x: number; y: number }
+  distance_squares: number
+  movement_mode: string
+  battlefield_version: number | null
+  message: string
+}
+
 export interface CombatAttackResolved {
   status: 'resolved'
-  result: CombatAttackResult | CombatEndTurnResult
+  result: CombatAttackResult | CombatEndTurnResult | CombatMoveResult
   combat_context: Record<string, unknown> | null
 }
 
@@ -105,7 +119,13 @@ export interface CombatEndTurnBody {
   kind: 'end_turn'
 }
 
-export type CombatActionBody = CombatAttackBody | CombatEndTurnBody
+export interface CombatMoveBody {
+  kind: 'move'
+  x: number
+  y: number
+}
+
+export type CombatActionBody = CombatAttackBody | CombatEndTurnBody | CombatMoveBody
 
 export async function fetchCombatActionOptions(adventureId: number): Promise<CombatActionOptionsResponse> {
   return apiFetch(`/adventures/${adventureId}/combat_action/options`, { method: 'GET', credentials: 'same-origin' })
