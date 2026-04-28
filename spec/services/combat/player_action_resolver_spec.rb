@@ -249,6 +249,22 @@ RSpec.describe Combat::PlayerActionResolver do
       expect(result[:result][:movement_mode]).to eq('5-foot step')
     end
 
+    it 'still tags a 1-square move as a 5-foot step after standard is spent' do
+      # PF1e: a 5-foot step is legal as long as the move slot is unspent
+      # and no full-round was claimed. Spending the standard action on
+      # an attack does NOT block it.
+      adventure.update!(combat_context: adventure.combat_context.deep_merge(
+                          'action_economy' => { 'standard_available' => false }
+                        ))
+
+      result = described_class.call(
+        adventure: adventure, sheet: sheet, user: user,
+        params: { kind: 'move', x: 5, y: 6 }
+      )
+      expect(result[:result][:movement_mode]).to eq('5-foot step')
+      expect(result[:result][:attacks_of_opportunity]).to eq([])
+    end
+
     it 'rejects moves beyond speed' do
       expect {
         described_class.call(

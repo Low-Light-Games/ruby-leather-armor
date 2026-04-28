@@ -133,11 +133,14 @@ module Combat
 
       # Three movement modes:
       #
-      #   * 5-foot step — 1 square when both standard and move are still
-      #     available; never provokes; spends the move slot.
+      #   * 5-foot step — 1 square; legal as long as the move slot has
+      #     not been spent this round and no full-round action was
+      #     claimed. The standard action does NOT need to still be
+      #     available — textbook PF1e lets a character 5-ft step after
+      #     a standard attack. Never provokes; spends the move slot.
       #   * withdraw    — full-round; departure square does NOT provoke
-      #     (textbook PF1e safe-retreat); requires both standard and move
-      #     unspent so spend_full_round can claim them together.
+      #     (textbook PF1e safe-retreat); requires both standard and
+      #     move unspent so spend_full_round can claim them together.
       #   * move        — anything else; standard provoke from the
       #     departure square.
       def movement_cost_delta(distance, withdraw: false)
@@ -145,7 +148,6 @@ module Combat
         return withdraw_delta!(econ) if withdraw
 
         return [{ 'spend_move' => true }, '5-foot step'] if can_5ft_step?(distance, econ)
-
         return [{ 'spend_move' => true }, 'move'] if econ['move_available'] == true
 
         raise Combat::ResolverError.new('no move action available this turn', code: :no_move_available)
@@ -167,7 +169,9 @@ module Combat
       end
 
       def can_5ft_step?(distance, econ)
-        distance == 1 && full_round_available?(econ)
+        distance == 1 &&
+          econ['move_available'] == true &&
+          econ['full_round_claimed'] != true
       end
     end
   end
