@@ -109,6 +109,7 @@ module Combat
         status: 'pipeline_event',
         app_version: defined?(APP_VERSION) ? APP_VERSION : nil
       )
+      Combat::SocialEventTrigger.maybe_log!(@adventure, payload)
     rescue StandardError => e
       Rails.logger.warn("[PlayerActionResolver] play_log persist failed: #{e.message}")
     end

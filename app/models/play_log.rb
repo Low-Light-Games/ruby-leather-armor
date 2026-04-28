@@ -21,6 +21,7 @@ class PlayLog < ApplicationRecord
     combat_action
     combat_mech_eval_resolution_error
     combat_narrator_failure
+    social_event_triggered
   ].freeze
 
   EVENT_TYPES = (DungeonMaster::StepRegistry.all_call_types + PIPELINE_EVENT_TYPES).freeze
