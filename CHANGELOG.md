@@ -7,10 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [0.4.0] - 2026-04-27
 
-- Renamed `PipelineRun` to `PipelineRegistryEntry`; correlation id is `registry_entry_uuid` on `play_logs`, `adventure_loops`, `ai_usage_records`, `experience_suggestions`, and related admin routes / message metadata. Axiom shipper keys and the lifecycle job were renamed accordingly.
-- Renamed `DungeonMaster::CoreResolver` to `DungeonMaster::AdventureLoopResolution` (file `adventure_loop_resolution.rb`) for clarity: one module resolves a single `AdventureLoop` row per pipeline run, not the whole compound queue.
+Shipped since **[0.1.0]** (~100 merged PRs). Grouped by theme; representative PRs cited where helpful.
+
+### Pipeline & Dungeon Master
+
+- **Parallel evaluator**: Beacon → mechanical evaluation → roll qualifier runs through the Node microservice (`EVALUATOR_URL`); Ruby parallel fan-out migrated off threads to Node `/fan_out` (#55, #62).
+- **Structure**: Former monolithic pipeline split into `PipelineEngine` modules and phased concerns (#88, #89); large refactor series (#91–#94); follow-up cleanup epic (#98, #106).
+- **Token budgets**: Remove blanket default caps so DM-configured budgets apply as written (#96).
+- **Loop semantics**: `AdventureLoop#pipeline_outcome` is the authoritative narrative seed; DB assembly covered by specs (#33, #34).
+- **Naming**: `PipelineRun` → **`PipelineRegistryEntry`** (`registry_entry_uuid` on play logs, adventure loops, AI usage, suggestions); **`DungeonMaster::CoreResolver`** → **`DungeonMaster::AdventureLoopResolution`** (#114, #115).
+- **Evaluation**: Retire legacy “unified evaluation only” path; parallel beacon/mech chain is the supported mode (#36, #28, #60).
+- **Steps**: Remove standalone intent step (#26); AI response schemas live in JSON (#27); iterative compound actions UI (#59); similarity-based dedup of roll requests (#83).
+- **Moderation**: Dedicated moderation stage in pipeline (#78).
+- **World sanity checker**: Optional, then defaulted off during early access (#58, #99, #104); adventure loop ids on logs (#105).
+
+### Billing & accounts
+
+- Stripe plans, Checkout, webhook-driven subscription sync (#103); payment options and gates (#107); plan pricing updates (#109); follow-up Stripe/Webhook fixes (#110, #111, #113).
+
+### Retrieval, embeddings & rules
+
+- **Narrative memory**: pgvector-backed narrative facts store for world-consistency checks (#101).
+- **Cost observability**: Token usage and cost for embedding API calls (#102).
+- **Rules RAG**: `rule_embeddings` + rules lookup service for retrieval-driven prompts (#116).
+
+### Combat, encounters & rolls
+
+- Initiative roll UI and encounter context when combat starts (#31); Harbinger post-time initiative gap (#84); combat turn control (#95).
+
+### Character sheet & progression
+
+- Conditions tracked in adventure (#3); skill rank-up flow (#86); class abilities (#108); inventory mutations in pipeline (#49); dynamic items embedded in sheet JSON (#51); sheet draft restoration (#112).
+
+### Observability & infrastructure
+
+- Play logs + pipeline telemetry shipped to **Axiom** and **S3** (#53).
+- **Sentry** for staging/production (#22); preview deploy/teardown (#24); env-specific credentials (#23).
+- Email delivery **SES → Resend** (#52).
+
+### Product UI & routing
+
+- Mobile-friendly adventure UI and navigation (#10, #13); first-time tutorials / subdomain onboarding (#64, #74).
+- Landing and OAuth/subdomain fixes (#65–#72, #76); legal pages (#79); Google Analytics on front page (#80).
+
+### Admin & tooling
+
+- Inline adventure context editing with Playwright coverage (#14); richer pipeline debug view + log export (#30); DM config keys surfaced (#29).
 
 ---
 
@@ -80,5 +124,6 @@ and the start of the app's public life.
 - Missing message types in adventure pipeline
 - Silent AI fallbacks replaced with loud failures in dev / graceful degradation in prod
 
-[Unreleased]: https://github.com/matheuscosta/app/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/matheuscosta/app/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Leather-Armor-IO/rpg-tools/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Leather-Armor-IO/rpg-tools/releases/tag/v0.4.0
+[0.1.0]: https://github.com/Leather-Armor-IO/rpg-tools/releases/tag/v0.1.0
