@@ -13,15 +13,31 @@ rule calls for; the engine resolves the actual modifier.
 <% end -%>
 
 <% end -%>
-=== RELEVANT RULES (top matches by similarity to the intent) ===
+=== RELEVANT RULES (RAG-retrieved, ordered closest match first) ===
+These are the ONLY authoritative rules for this turn. The first entry
+is the closest semantic match to the player's intent — favor it unless
+its body is plainly unrelated to what the player declared.
 <% if @roll_request_context.relevant_rules.any? -%>
-<% @roll_request_context.relevant_rules.each do |rule| -%>
-- **<%= rule[:name] %>** (slug: `<%= rule[:slug] %>`, domain: <%= rule[:domain] %>)
-  <%= rule[:body].to_s.strip.gsub("\n", "\n  ") %>
+<% @roll_request_context.relevant_rules.each_with_index do |rule, idx| -%>
+<%= idx + 1 %>. **<%= rule[:name] %>** (slug: `<%= rule[:slug] %>`, domain: <%= rule[:domain] %>)
+   <%= rule[:body].to_s.strip.gsub("\n", "\n   ") %>
 
 <% end -%>
+HARD CONSTRAINTS for the `roll` object:
+- `skill` MUST be the exact skill name from the chosen rule's heading (e.g. for
+  rule "**Swim (Str)**", emit `"skill": "Swim"`). Do NOT invent skill names.
+- `rule_slug` MUST be one of the slugs above, copied verbatim. Do NOT invent
+  slugs or use slugs that are not in this list.
+- `dc` MUST be the DC stated in the chosen rule's body for the matching
+  scenario (e.g. Swim calm water DC 10). Do NOT invent DCs.
+- PF1e SPECIFIC: there is no "Jump" skill in PF1e — jumping is part of Acrobatics.
+  There is no "Listen" skill — listening is Perception. There is no "Spot" skill —
+  spotting is Perception. Do not fall back to D&D 3.5 skill names.
+- If NONE of the listed rules clearly applies to what the player declared,
+  set `needs_roll: false` with a `no_roll_reason` that names what was
+  retrieved and why it doesn't fit. Do not request a roll under a fabricated rule.
 <% else -%>
-(no rules retrieved — proceed using your general PF1e knowledge but prefer needs_roll=false when uncertain)
+(no rules retrieved — set `needs_roll: false` with `no_roll_reason: "no rule retrieved"` unless the action is unambiguously routine PF1e)
 <% end -%>
 
 === WHAT YOU OWN ===

@@ -73,10 +73,41 @@ module DungeonMaster
 
         intent, evaluations = RollRequest::Adapter.call(parsed: parsed, intention: intention)
 
+        warn_on_invented_rule_slug!(parsed, rules)
         log_roll_request_to_loop(intent, evaluations)
 
         evaluations = evaluations.map { |e| compute_take_values(e) }
         [intent, evaluations]
+      end
+
+      # Observability only — does NOT alter the roll. When the AI emits a
+      # rule_slug that is not one of the slugs returned by Rules::Lookup,
+      # write a `roll_request_invented_slug` play_log row so we can
+      # measure how often the model ignores its own RAG context. The
+      # roll still flows downstream as-emitted; this is signal for prompt
+      # tuning, not enforcement.
+      def warn_on_invented_rule_slug!(parsed, retrieved_rules)
+        return unless parsed.is_a?(Hash) && parsed['needs_roll'] == true
+
+        roll = parsed['roll']
+        return unless roll.is_a?(Hash)
+
+        emitted_slug = roll['rule_slug'].to_s
+        return if emitted_slug.empty?
+
+        retrieved_slugs = retrieved_rules.map { |r| r[:slug].to_s }
+        return if retrieved_slugs.include?(emitted_slug)
+
+        @log.play_log!(
+          'roll_request_invented_slug',
+          "RollRequest: AI emitted rule_slug '#{emitted_slug}' not in retrieved set #{retrieved_slugs.inspect}",
+          parsed_response: {
+            emitted_skill:   roll['skill'],
+            emitted_dc:      roll['dc'],
+            emitted_slug:    emitted_slug,
+            retrieved_slugs: retrieved_slugs
+          }
+        )
       end
 
       def retrieve_beats_for_roll_request(intention)
