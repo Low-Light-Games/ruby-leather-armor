@@ -57,6 +57,37 @@ RSpec.describe 'CombatActions', type: :request do
       expect(body['targets']).to contain_exactly(
         a_hash_including('creature_sheet_id' => creature.id, 'name' => 'Goblin')
       )
+      expect(body).to include('player_speed_squares')
+    end
+  end
+
+  describe 'POST /adventures/:id/combat_action move' do
+    let!(:battlefield) do
+      AdventureBattlefield.create!(
+        adventure: adventure, status: 'active', topology: 'square', version: 1,
+        tokens: {
+          'player' => { 'label' => 'Player', 'x' => 5, 'y' => 5, 'type' => 'player' }
+        },
+        world: {}, viewport: {}
+      )
+    end
+
+    before do
+      adventure.update!(combat_context: adventure.combat_context.merge(
+                          'battlefield_ref' => { 'id' => battlefield.id, 'version' => battlefield.version, 'topology' => 'square' }
+                        ))
+      sheet.update!(derived_stats: sheet.derived_stats.merge('speed' => 30))
+    end
+
+    it 'moves the player to the target square' do
+      post "/adventures/#{adventure.id}/combat_action",
+           params: { kind: 'move', x: 8, y: 8 }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      data = JSON.parse(response.body)
+      expect(data['result']['kind']).to eq('move')
+      expect(data['result']['to']).to eq('x' => 8, 'y' => 8)
+      expect(data['combat_context']['action_economy']['move_available']).to be(false)
     end
   end
 

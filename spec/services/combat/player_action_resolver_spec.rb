@@ -179,6 +179,85 @@ RSpec.describe Combat::PlayerActionResolver do
     end
   end
 
+  describe 'movement' do
+    let!(:battlefield) do
+      AdventureBattlefield.create!(
+        adventure: adventure, status: 'active', topology: 'square', version: 1,
+        tokens: {
+          'player' => { 'label' => 'Player', 'x' => 5, 'y' => 5, 'type' => 'player' },
+          "creature_#{creature.id}" => { 'label' => 'Goblin', 'x' => 7, 'y' => 4, 'type' => 'npc', 'creature_sheet_id' => creature.id }
+        },
+        world: {}, viewport: {}
+      )
+    end
+
+    before do
+      adventure.update!(combat_context: adventure.combat_context.merge(
+                          'battlefield_ref' => { 'id' => battlefield.id, 'version' => battlefield.version, 'topology' => 'square' }
+                        ))
+      sheet.update!(derived_stats: sheet.derived_stats.merge('speed' => 30))
+    end
+
+    it 'moves the player and spends the move action' do
+      result = described_class.call(
+        adventure: adventure, sheet: sheet, user: user,
+        params: { kind: 'move', x: 9, y: 8 }
+      )
+      expect(result[:status]).to eq(:resolved)
+      expect(result[:result][:to]).to eq(x: 9, y: 8)
+      expect(result[:result][:movement_mode]).to eq('move')
+      expect(adventure.reload.combat_context.dig('action_economy', 'move_available')).to be(false)
+      expect(battlefield.reload.tokens.dig('player', 'x')).to eq(9)
+    end
+
+    it 'tags a 1-square move as a 5-foot step' do
+      result = described_class.call(
+        adventure: adventure, sheet: sheet, user: user,
+        params: { kind: 'move', x: 5, y: 6 }
+      )
+      expect(result[:result][:movement_mode]).to eq('5-foot step')
+    end
+
+    it 'rejects moves beyond speed' do
+      expect {
+        described_class.call(
+          adventure: adventure, sheet: sheet, user: user,
+          params: { kind: 'move', x: 20, y: 20 }
+        )
+      }.to raise_error(described_class::Error, /squares away/)
+    end
+
+    it 'rejects moves onto another combatant' do
+      expect {
+        described_class.call(
+          adventure: adventure, sheet: sheet, user: user,
+          params: { kind: 'move', x: 7, y: 4 }
+        )
+      }.to raise_error(described_class::Error, /occupied/)
+    end
+
+    it 'rejects no-op moves to the current square' do
+      expect {
+        described_class.call(
+          adventure: adventure, sheet: sheet, user: user,
+          params: { kind: 'move', x: 5, y: 5 }
+        )
+      }.to raise_error(described_class::Error, /already on that square/)
+    end
+
+    it 'rejects when no move action remains' do
+      adventure.update!(combat_context: adventure.combat_context.deep_merge(
+                          'action_economy' => { 'move_available' => false }
+                        ))
+      expect {
+        described_class.call(
+          adventure: adventure, sheet: sheet, user: user,
+          params: { kind: 'move', x: 6, y: 6 }
+        )
+      }.to raise_error(described_class::Error, /no move action available/)
+    end
+  end
+
   describe 'end turn' do
     it 'advances the round, resets the action economy, and stays on the player' do
       adventure.update!(combat_context: adventure.combat_context.deep_merge(

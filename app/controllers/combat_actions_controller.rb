@@ -17,11 +17,16 @@ class CombatActionsController < ApplicationController
   # action-economy availability) and the live participant list so the
   # frontend can pick a target. Cheap, no AI, no mutations.
   def options
+    battlefield = DungeonMaster::Battlefield::ApiSnapshot.for_adventure(@adventure)
+    player_pos = Combat::Positions.player_position(@adventure)
     render json: {
       attack_options: attack_options_for_render,
       targets: hostile_targets,
       action_economy: @adventure.combat_context.is_a?(Hash) ? @adventure.combat_context['action_economy'] : nil,
-      dice_strategy: current_user.combat_dice_strategy
+      dice_strategy: current_user.combat_dice_strategy,
+      battlefield: battlefield,
+      player_position: player_pos&.coordinates_present? ? { x: player_pos.x, y: player_pos.y } : nil,
+      player_speed_squares: Combat::Positions.speed_squares_for(@adventure_sheet)
     }
   end
 
@@ -67,7 +72,7 @@ class CombatActionsController < ApplicationController
   end
 
   def combat_action_params
-    params.permit(:kind, :attack_option_id, :target_creature_sheet_id).to_h
+    params.permit(:kind, :attack_option_id, :target_creature_sheet_id, :x, :y).to_h
   end
 
   def submitted_dice_params

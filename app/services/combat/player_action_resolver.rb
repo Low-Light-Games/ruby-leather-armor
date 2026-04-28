@@ -33,7 +33,7 @@ module Combat
       end
     end
 
-    SUPPORTED_KINDS = %w[attack end_turn].freeze
+    SUPPORTED_KINDS = %w[attack move end_turn].freeze
     DEFENSE_KIND_TO_STAT = {
       'full_ac' => 'ac',
       'touch_ac' => 'touch_ac',
@@ -60,6 +60,7 @@ module Combat
 
       case @params[:kind].to_s
       when 'attack'   then resolve_attack
+      when 'move'     then resolve_move
       when 'end_turn' then resolve_end_turn
       end
     end
@@ -86,6 +87,91 @@ module Combat
                        defense_dc: defense_dc, attack_natural: attack_natural,
                        attack_total: attack_total, hit: hit,
                        damage_natural: damage_natural, damage_total: damage_total)
+    end
+
+    # ── Movement ────────────────────────────────────────────────────────
+
+    # Click-to-move on the tactical grid. The frontend posts the target
+    # square in world coordinates; here we validate it's in range, not
+    # occupied, and pay the right action-economy cost (5-foot step when
+    # distance == 1 and a move action is still available, otherwise a
+    # standard move limited to player speed).
+    #
+    # PR-C is intentionally narrow:
+    #   * No facing.
+    #   * No AoO trigger from leaving threatened squares (PR-D).
+    #   * No pathfinding around obstacles (no obstacles modeled yet).
+    #   * No diagonal-cost asymmetry (Chebyshev distance — every diagonal
+    #     counts as 1 square — diverges from canonical PF1e but is the
+    #     simplest correct rule until PR-D needs more.)
+    def resolve_move
+      x = @params[:x]
+      y = @params[:y]
+      raise Error.new('x and y are required', code: :missing_coordinates) if x.nil? || y.nil?
+
+      target_x = x.to_i
+      target_y = y.to_i
+
+      origin = Combat::Positions.player_position(@adventure)
+      raise Error.new('player has no canonical position on the battlefield', code: :missing_player_position) unless origin&.coordinates_present?
+
+      if origin.x.to_i == target_x && origin.y.to_i == target_y
+        raise Error.new('player is already on that square', code: :no_op_move)
+      end
+
+      raise Error.new('target square is occupied', code: :square_occupied) if Combat::Positions.occupied?(@adventure, x: target_x, y: target_y, except_token_id: Combat::Positions::PLAYER_TOKEN_ID)
+
+      distance = [(origin.x.to_i - target_x).abs, (origin.y.to_i - target_y).abs].max
+      speed_squares = Combat::Positions.speed_squares_for(@sheet)
+      raise Error.new("target is #{distance} squares away — speed allows up to #{speed_squares}", code: :out_of_reach) if distance > speed_squares
+
+      delta, mode = movement_cost_delta(distance)
+
+      battlefield = nil
+      ApplicationRecord.transaction do
+        battlefield = Combat::Positions.move_player_token!(@adventure, x: target_x, y: target_y)
+        decrement_action_economy_with_delta!(delta, label: "#{mode} (#{distance} squares)")
+      end
+
+      payload = {
+        kind: 'move',
+        from: { x: origin.x.to_i, y: origin.y.to_i },
+        to: { x: target_x, y: target_y },
+        distance_squares: distance,
+        movement_mode: mode,
+        battlefield_version: battlefield&.version,
+        message: "Moved #{distance} squares (#{mode})."
+      }
+      log_action_event!(payload)
+      { status: :resolved, result: payload }
+    end
+
+    # 5-foot step is one square when a move action is still available AND
+    # standard hasn't been claimed via full_round; otherwise spend the move
+    # action proper. Both are subject to the speed cap above.
+    def movement_cost_delta(distance)
+      econ = (@adventure.combat_context || {})['action_economy'] || {}
+      can_5ft_step = distance == 1 && econ['standard_available'] == true && econ['full_round_claimed'] != true && econ['move_available'] == true
+
+      if can_5ft_step
+        # 5-ft step traditionally consumes neither standard nor move slots,
+        # but for the simplified PR-C economy we still spend the move slot
+        # so the chip surfaces a cost. Refine in PR-D once AoO + true 5-ft
+        # step semantics matter.
+        [{ 'spend_move' => true }, '5-foot step']
+      elsif econ['move_available'] == true
+        [{ 'spend_move' => true }, 'move']
+      else
+        raise Error.new('no move action available this turn', code: :no_move_available)
+      end
+    end
+
+    def decrement_action_economy_with_delta!(delta, label:)
+      ctx = @adventure.combat_context.deep_dup.deep_stringify_keys
+      ctx['action_economy'] = DungeonMaster::Battlefield::ActionEconomy.apply_delta!(ctx['action_economy'], delta)
+      @adventure.update!(combat_context: ctx)
+    rescue ArgumentError => e
+      raise Error.new("action economy refused #{label}: #{e.message}", code: :action_economy_refused)
     end
 
     # ── End turn ────────────────────────────────────────────────────────
