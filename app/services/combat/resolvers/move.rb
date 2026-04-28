@@ -148,6 +148,7 @@ module Combat
         return withdraw_delta!(econ) if withdraw
 
         return [{ 'spend_move' => true }, '5-foot step'] if can_5ft_step?(distance, econ)
+
         return [{ 'spend_move' => true }, 'move'] if econ['move_available'] == true
 
         raise Combat::ResolverError.new('no move action available this turn', code: :no_move_available)
