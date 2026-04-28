@@ -70,12 +70,14 @@ module Combat
     def resolve_attack
       option = lookup_attack_option!
       target = lookup_target!
-      attack_bonus = attack_bonus_for(option)
-      defense_dc = defense_dc_for(target, option)
+      situational = situational_modifiers_for(option, target)
+      attack_bonus = attack_bonus_for(option) + situational[:flanking_bonus]
+      defense_dc = defense_dc_for(target, option) + situational[:cover_bonus]
 
       if @submitted_dice.nil? && client_dice?
         return awaiting_player_dice(option: option, target: target,
-                                    attack_bonus: attack_bonus, defense_dc: defense_dc)
+                                    attack_bonus: attack_bonus, defense_dc: defense_dc,
+                                    situational: situational)
       end
 
       attack_natural, attack_total, hit = resolve_attack_dice(option: option,
@@ -86,7 +88,37 @@ module Combat
       apply_resolution(option: option, target: target, attack_bonus: attack_bonus,
                        defense_dc: defense_dc, attack_natural: attack_natural,
                        attack_total: attack_total, hit: hit,
-                       damage_natural: damage_natural, damage_total: damage_total)
+                       damage_natural: damage_natural, damage_total: damage_total,
+                       situational: situational)
+    end
+
+    # Computes flanking + cover modifiers from grid positions when both
+    # the player and the target have canonical coordinates. When the
+    # battlefield is missing a position we silently return zeros — PR-B's
+    # bare-AC behavior is the safe fallback.
+    def situational_modifiers_for(option, target)
+      creature = target.first
+      attacker_pos = Combat::Positions.player_position(@adventure)
+      target_pos = Combat::Positions.position_for_creature_sheet(@adventure, creature.id)
+      return zero_situational unless attacker_pos&.coordinates_present? && target_pos&.coordinates_present?
+
+      others = Combat::Positions.for_adventure(@adventure)
+      reach = Combat::Rules.reach_for(option)
+
+      flanking = Combat::Rules.flanking?(attacker: attacker_pos, target: target_pos,
+                                         allies: others, reach_squares: reach)
+      cover = Combat::Rules.cover_between(attacker: attacker_pos, target: target_pos, others: others)
+
+      {
+        flanking: flanking,
+        flanking_bonus: flanking ? Combat::Rules::FLANKING_BONUS : 0,
+        cover: cover,
+        cover_bonus: cover
+      }
+    end
+
+    def zero_situational
+      { flanking: false, flanking_bonus: 0, cover: 0, cover_bonus: 0 }
     end
 
     # ── Movement ────────────────────────────────────────────────────────
@@ -126,6 +158,8 @@ module Combat
       raise Error.new("target is #{distance} squares away — speed allows up to #{speed_squares}", code: :out_of_reach) if distance > speed_squares
 
       delta, mode = movement_cost_delta(distance)
+      provoke_aoo = mode == 'move'
+      aoo_outcomes = provoke_aoo ? resolve_aoo_against_player(origin) : []
 
       battlefield = nil
       ApplicationRecord.transaction do
@@ -140,10 +174,46 @@ module Combat
         distance_squares: distance,
         movement_mode: mode,
         battlefield_version: battlefield&.version,
-        message: "Moved #{distance} squares (#{mode})."
+        attacks_of_opportunity: aoo_outcomes.map(&:to_h),
+        message: build_move_message(distance, mode, aoo_outcomes)
       }
       log_action_event!(payload)
       { status: :resolved, result: payload }
+    end
+
+    # 5-foot step does NOT provoke; standard move does. PR-D models the
+    # textbook PF1e rule: any combatant that threatens the square the
+    # mover *leaves* gets one free swing. We resolve those AoOs server-
+    # side regardless of dice strategy — the player doesn't roll for
+    # NPC reactions.
+    def resolve_aoo_against_player(origin)
+      others = Combat::Positions.for_adventure(@adventure).reject { |p| p.token_id == Combat::Positions::PLAYER_TOKEN_ID }
+      threats = Combat::Rules.aoo_threats_against(mover: origin, mover_from: origin, others: others)
+      return [] if threats.empty?
+
+      threats.filter_map do |threat|
+        creature = creature_for_position(threat.position)
+        next unless creature
+
+        next if creature.hp.to_i <= 0
+
+        Combat::NpcAttackResolver.call(attacker: creature, target_sheet: @sheet, target_kind: :player)
+      end
+    end
+
+    def creature_for_position(position)
+      sid = position.creature_sheet_id
+      return nil if sid.blank?
+
+      @adventure.creature_sheets.find_by(id: sid.to_i)
+    end
+
+    def build_move_message(distance, mode, aoo_outcomes)
+      base = "Moved #{distance} squares (#{mode})."
+      return base if aoo_outcomes.empty?
+
+      hit_count = aoo_outcomes.count(&:hit)
+      "#{base} Provoked #{aoo_outcomes.size} AoO#{aoo_outcomes.size == 1 ? '' : 's'} (#{hit_count} hit)."
     end
 
     # 5-foot step is one square when a move action is still available AND
@@ -323,7 +393,7 @@ module Combat
     # ── Resolution side effects ─────────────────────────────────────────
 
     def apply_resolution(option:, target:, attack_bonus:, defense_dc:, attack_natural:,
-                         attack_total:, hit:, damage_natural:, damage_total:)
+                         attack_total:, hit:, damage_natural:, damage_total:, situational: zero_situational)
       creature, target_name = target
       hp_before = creature.hp.to_i
       hp_after = hp_before
@@ -343,7 +413,8 @@ module Combat
         option: option, target_name: target_name, attack_bonus: attack_bonus,
         defense_dc: defense_dc, attack_natural: attack_natural, attack_total: attack_total,
         hit: hit, damage_natural: damage_natural, damage_total: damage_total,
-        hp_before: hp_before, hp_after: hp_after, target_dropped: target_dropped
+        hp_before: hp_before, hp_after: hp_after, target_dropped: target_dropped,
+        situational: situational
       )
 
       log_action_event!(payload)
@@ -371,7 +442,8 @@ module Combat
 
     def build_resolution_payload(option:, target_name:, attack_bonus:, defense_dc:,
                                  attack_natural:, attack_total:, hit:, damage_natural:,
-                                 damage_total:, hp_before:, hp_after:, target_dropped:)
+                                 damage_total:, hp_before:, hp_after:, target_dropped:,
+                                 situational: zero_situational)
       {
         kind: 'attack',
         attack_option_id: option[:id].to_s,
@@ -393,16 +465,24 @@ module Combat
         target_hp_before: hp_before,
         target_hp_after: hp_after,
         target_dropped: target_dropped,
+        flanking: situational[:flanking],
+        flanking_bonus: situational[:flanking_bonus],
+        cover_bonus: situational[:cover_bonus],
         message: human_message(option: option, target_name: target_name, hit: hit,
                                attack_total: attack_total, defense_dc: defense_dc,
-                               damage_total: damage_total, target_dropped: target_dropped)
+                               damage_total: damage_total, target_dropped: target_dropped,
+                               situational: situational)
       }
     end
 
     def human_message(option:, target_name:, hit:, attack_total:, defense_dc:,
-                      damage_total:, target_dropped:)
+                      damage_total:, target_dropped:, situational: zero_situational)
       verb = hit ? 'hits' : 'misses'
-      core = "#{option[:label]} vs #{target_name}: #{attack_total} vs AC #{defense_dc} — #{verb}"
+      tags = []
+      tags << '+2 flanking' if situational[:flanking]
+      tags << '+4 cover' if situational[:cover_bonus].to_i.positive?
+      tag_str = tags.any? ? " (#{tags.join(', ')})" : ''
+      core = "#{option[:label]} vs #{target_name}: #{attack_total} vs AC #{defense_dc} — #{verb}#{tag_str}"
       return "#{core}." unless hit && damage_total
 
       damage_phrase = "#{damage_total}#{" #{option[:damage_type]}" if option[:damage_type].present?}"
@@ -423,7 +503,7 @@ module Combat
       Rails.logger.warn("[PlayerActionResolver] play_log persist failed: #{e.message}")
     end
 
-    def awaiting_player_dice(option:, target:, attack_bonus:, defense_dc:)
+    def awaiting_player_dice(option:, target:, attack_bonus:, defense_dc:, situational: zero_situational)
       _creature, target_name = target
       damage_ability = damage_ability_bonus(option)
       {
@@ -439,7 +519,10 @@ module Combat
           defense_kind: option[:defense_kind],
           damage_expression: option[:damage],
           damage_type: option[:damage_type],
-          damage_ability_bonus: damage_ability
+          damage_ability_bonus: damage_ability,
+          flanking: situational[:flanking],
+          flanking_bonus: situational[:flanking_bonus],
+          cover_bonus: situational[:cover_bonus]
         }
       }
     end

@@ -179,6 +179,37 @@ RSpec.describe Combat::PlayerActionResolver do
     end
   end
 
+  describe 'situational modifiers' do
+    let!(:battlefield) do
+      AdventureBattlefield.create!(
+        adventure: adventure, status: 'active', topology: 'square', version: 1,
+        tokens: {
+          'player' => { 'label' => 'Player', 'x' => 4, 'y' => 5, 'type' => 'player' },
+          "creature_#{creature.id}" => { 'label' => 'Goblin', 'x' => 5, 'y' => 5, 'type' => 'npc', 'creature_sheet_id' => creature.id },
+          'creature_99' => { 'label' => 'Fighter', 'x' => 6, 'y' => 5, 'type' => 'npc', 'creature_sheet_id' => 99 }
+        },
+        world: {}, viewport: {}
+      )
+    end
+
+    before do
+      adventure.update!(combat_context: adventure.combat_context.merge(
+                          'battlefield_ref' => { 'id' => battlefield.id, 'version' => battlefield.version, 'topology' => 'square' }
+                        ))
+    end
+
+    it 'adds the flanking bonus when an ally sits opposite' do
+      allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_d20).and_return(10)
+      allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_damage_expression).and_return(1)
+
+      result = described_class.call(adventure: adventure, sheet: sheet, user: user, params: base_params)
+      expect(result[:result][:flanking]).to be(true)
+      expect(result[:result][:flanking_bonus]).to eq(2)
+      expect(result[:result][:attack_bonus]).to eq(player_attack_bonus + 2)
+      expect(result[:result][:message]).to include('+2 flanking')
+    end
+  end
+
   describe 'movement' do
     let!(:battlefield) do
       AdventureBattlefield.create!(
@@ -243,6 +274,41 @@ RSpec.describe Combat::PlayerActionResolver do
           params: { kind: 'move', x: 5, y: 5 }
         )
       }.to raise_error(described_class::Error, /already on that square/)
+    end
+
+    it 'provokes AoO from adjacent enemies and applies damage to the player' do
+      creature.update!(equipped_weapons: [{ 'name' => 'shortsword', 'damage_dice' => '1d6', 'damage_type' => 'piercing' }],
+                       derived_stats: creature.derived_stats.merge('melee_attack' => 5, 'mods' => { 'strength' => 1 }))
+      sheet.update!(hp: 12, derived_stats: sheet.derived_stats.merge('ac' => 10))
+      AdventureBattlefield.find(battlefield.id).update!(tokens: {
+        'player' => { 'label' => 'Player', 'x' => 5, 'y' => 5, 'type' => 'player' },
+        "creature_#{creature.id}" => { 'label' => 'Goblin', 'x' => 6, 'y' => 5, 'type' => 'npc', 'creature_sheet_id' => creature.id }
+      })
+
+      allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_d20).and_return(15)
+      allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_damage_expression).and_return(4)
+
+      result = described_class.call(adventure: adventure, sheet: sheet, user: user,
+                                     params: { kind: 'move', x: 5, y: 9 })
+
+      expect(result[:result][:attacks_of_opportunity].length).to eq(1)
+      aoo = result[:result][:attacks_of_opportunity].first
+      expect(aoo['hit']).to be(true)
+      expect(aoo['damage_total']).to eq(5)
+      expect(sheet.reload.hp).to eq(12 - 5)
+    end
+
+    it 'does not provoke on a 5-foot step' do
+      creature.update!(derived_stats: creature.derived_stats.merge('melee_attack' => 5))
+      AdventureBattlefield.find(battlefield.id).update!(tokens: {
+        'player' => { 'label' => 'Player', 'x' => 5, 'y' => 5, 'type' => 'player' },
+        "creature_#{creature.id}" => { 'label' => 'Goblin', 'x' => 6, 'y' => 5, 'type' => 'npc', 'creature_sheet_id' => creature.id }
+      })
+
+      result = described_class.call(adventure: adventure, sheet: sheet, user: user,
+                                     params: { kind: 'move', x: 5, y: 6 })
+      expect(result[:result][:movement_mode]).to eq('5-foot step')
+      expect(result[:result][:attacks_of_opportunity]).to eq([])
     end
 
     it 'rejects when no move action remains' do

@@ -72,6 +72,22 @@ export interface CombatEndTurnResult {
   message: string
 }
 
+export interface AoOOutcome {
+  attacker_name: string
+  target_name: string
+  hit: boolean
+  natural: number
+  total: number
+  defense_dc: number
+  damage_total: number | null
+  damage_type: string | null
+  target_hp_before: number
+  target_hp_after: number
+  target_dropped: boolean
+  weapon_label: string
+  message: string
+}
+
 export interface CombatMoveResult {
   kind: 'move'
   from: { x: number; y: number }
@@ -79,6 +95,7 @@ export interface CombatMoveResult {
   distance_squares: number
   movement_mode: string
   battlefield_version: number | null
+  attacks_of_opportunity: AoOOutcome[]
   message: string
 }
 

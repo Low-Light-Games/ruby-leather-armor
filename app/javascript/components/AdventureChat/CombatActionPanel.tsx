@@ -86,15 +86,26 @@ export const CombatActionPanel = ({
     (resolved: CombatAttackResolved) => {
       const result = resolved.result
       const isAttack = result.kind === 'attack'
-      setHistory(prev => [
-        ...prev,
+      const isMove = result.kind === 'move'
+      const entries: ResolvedEntry[] = [
         {
-          id: `${Date.now()}-${Math.random()}`,
+          id: `${Date.now()}-${Math.random()}-main`,
           message: result.message,
           hit: isAttack ? result.hit : true,
           target_dropped: isAttack ? result.target_dropped : false,
         },
-      ])
+      ]
+      if (isMove) {
+        result.attacks_of_opportunity.forEach((aoo, i) => {
+          entries.push({
+            id: `${Date.now()}-${Math.random()}-aoo-${i}`,
+            message: `AoO — ${aoo.message}`,
+            hit: !aoo.hit, // a player-side AoO HIT is bad for the player; flip the styling
+            target_dropped: aoo.target_dropped,
+          })
+        })
+      }
+      setHistory(prev => [...prev, ...entries])
       onCombatContextUpdate?.(resolved.combat_context)
     },
     [onCombatContextUpdate],
