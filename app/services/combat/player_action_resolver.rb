@@ -1,0 +1,334 @@
+# frozen_string_literal: true
+
+module Combat
+  # Deterministic resolver for a single player combat action initiated from the
+  # combat HUD (PR-B of the combat-determinism arc — see
+  # docs/combat_redesign.md). The AI is NOT in this path; for the routine cases
+  # — pick an attack option, pick a target, resolve hit + damage + HP delta —
+  # this is the entire pipeline.
+  #
+  # Two dice strategies, selected by `User#combat_dice_strategy`:
+  #
+  #   * "server" — RNG happens here, the resolver returns the final
+  #     `:resolved` result in one round-trip.
+  #   * "client" — the resolver returns a `:awaiting_player_dice` payload
+  #     describing the rolls the player needs to make. The frontend posts the
+  #     natural results back; a second `.call` with `submitted_dice:` resolves
+  #     the action.
+  #
+  # The same shape comes back to the controller in both branches so the
+  # frontend has one rendering surface.
+  #
+  # PR-B is intentionally narrow: full AC vs the bare attack bonus from the
+  # sheet. Flanking, AoO, cover, and reach are PR-D's job. Grid authority is
+  # PR-C. Free-text combat ("I tip the brazier") still flows through the
+  # existing `Steps::CombatGm` chain until PR-E.
+  class PlayerActionResolver
+    class Error < StandardError
+      attr_reader :code
+
+      def initialize(message, code: :resolver_error)
+        super(message)
+        @code = code
+      end
+    end
+
+    SUPPORTED_KINDS = %w[attack].freeze
+    DEFENSE_KIND_TO_STAT = {
+      'full_ac' => 'ac',
+      'touch_ac' => 'touch_ac',
+      'flat_footed_ac' => 'flat_footed_ac'
+    }.freeze
+    PLAYER_NAME = DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME
+
+    def self.call(**kwargs)
+      new(**kwargs).call
+    end
+
+    def initialize(adventure:, sheet:, user:, params:, submitted_dice: nil)
+      @adventure = adventure
+      @sheet = sheet
+      @user = user
+      @params = (params || {}).deep_symbolize_keys
+      @submitted_dice = submitted_dice&.deep_symbolize_keys
+    end
+
+    def call
+      ensure_combat_active!
+      ensure_player_turn!
+      ensure_supported_kind!
+
+      case @params[:kind].to_s
+      when 'attack' then resolve_attack
+      end
+    end
+
+    private
+
+    def resolve_attack
+      option = lookup_attack_option!
+      target = lookup_target!
+      attack_bonus = attack_bonus_for(option)
+      defense_dc = defense_dc_for(target, option)
+
+      if @submitted_dice.nil? && client_dice?
+        return awaiting_player_dice(option: option, target: target,
+                                    attack_bonus: attack_bonus, defense_dc: defense_dc)
+      end
+
+      attack_natural, attack_total, hit = resolve_attack_dice(option: option,
+                                                              attack_bonus: attack_bonus,
+                                                              defense_dc: defense_dc)
+      damage_natural, damage_total = resolve_damage_dice(option: option, hit: hit)
+
+      apply_resolution(option: option, target: target, attack_bonus: attack_bonus,
+                       defense_dc: defense_dc, attack_natural: attack_natural,
+                       attack_total: attack_total, hit: hit,
+                       damage_natural: damage_natural, damage_total: damage_total)
+    end
+
+    # ── Validation ──────────────────────────────────────────────────────
+
+    def ensure_combat_active!
+      return if @adventure.combat_active?
+
+      raise Error.new('combat is not active', code: :combat_not_active)
+    end
+
+    def ensure_player_turn!
+      ctx = @adventure.combat_context || {}
+      turn = ctx['current_turn'].to_s
+      return if turn == PLAYER_NAME
+
+      raise Error.new("not the player's turn (current: #{turn.presence || 'unknown'})", code: :not_player_turn)
+    end
+
+    def ensure_supported_kind!
+      kind = @params[:kind].to_s
+      return if SUPPORTED_KINDS.include?(kind)
+
+      raise Error.new("unsupported combat action kind: #{kind.inspect}", code: :unsupported_kind)
+    end
+
+    # ── Lookups ─────────────────────────────────────────────────────────
+
+    def lookup_attack_option!
+      option_id = @params[:attack_option_id].to_s
+      raise Error.new('attack_option_id is required', code: :missing_attack_option_id) if option_id.empty?
+
+      DungeonMaster::Combat::AttackOptionBuilder.resolve_option_id!(
+        sheet: @sheet, adventure: @adventure, option_id: option_id
+      )
+    rescue DungeonMaster::CombatMechanicResolutionError => e
+      raise Error.new(e.message, code: e.code || :unknown_attack_option)
+    end
+
+    # Returns [:player|:creature, sheet, name].
+    def lookup_target!
+      target_id = @params[:target_creature_sheet_id]
+      raise Error.new('target_creature_sheet_id is required', code: :missing_target) if target_id.blank?
+
+      creature = @adventure.creature_sheets.find_by(id: target_id.to_i)
+      raise Error.new("creature not found: id=#{target_id}", code: :target_not_found) unless creature
+
+      raise Error.new("target is already down: #{creature.name}", code: :target_down) if creature.hp.to_i <= 0
+
+      [creature, creature.name]
+    end
+
+    # ── Math ────────────────────────────────────────────────────────────
+
+    def attack_bonus_for(option)
+      stats = @sheet.derived_stats || {}
+      key = ranged_mode?(option[:attack_mode]) ? 'ranged_attack' : 'melee_attack'
+      bonus = stats[key] || stats[key.to_sym]
+      raise Error.new("missing #{key} on player sheet", code: :missing_attack_bonus) if bonus.nil?
+
+      bonus.to_i
+    end
+
+    def defense_dc_for(target, option)
+      creature = target.first
+      stats = creature.derived_stats || {}
+      stat_key = DEFENSE_KIND_TO_STAT[option[:defense_kind].to_s] || 'ac'
+      dc = stats[stat_key] || stats[stat_key.to_sym] || stats['ac'] || stats[:ac]
+      raise Error.new("missing #{stat_key} on target derived_stats", code: :missing_defense_stat) if dc.nil?
+
+      dc.to_i
+    end
+
+    def ranged_mode?(attack_mode)
+      attack_mode.to_s.start_with?('ranged')
+    end
+
+    def damage_ability_bonus(option)
+      return 0 if option[:source_type].to_s == 'spell'
+      return 0 if ranged_mode?(option[:attack_mode])
+
+      mods = (@sheet.derived_stats || {})['mods'] || {}
+      mods['strength'].to_i
+    end
+
+    # ── Dice ────────────────────────────────────────────────────────────
+
+    def resolve_attack_dice(option:, attack_bonus:, defense_dc:)
+      natural = if @submitted_dice
+                  validate_natural!(@submitted_dice[:attack_natural], 1..20, 'attack_natural')
+                else
+                  DungeonMaster::Rolls::CombatDice.roll_d20
+                end
+      total = natural + attack_bonus
+      hit = total >= defense_dc || natural == 20
+      hit = false if natural == 1
+      [natural, total, hit]
+    end
+
+    def resolve_damage_dice(option:, hit:)
+      return [nil, nil] unless hit
+
+      ability = damage_ability_bonus(option)
+      base = if @submitted_dice
+               validate_natural!(@submitted_dice[:damage_natural], 1..1000, 'damage_natural')
+             else
+               DungeonMaster::Rolls::CombatDice.roll_damage_expression(option[:damage].to_s)
+             end
+      total = [base + ability, 1].max
+      [base, total]
+    end
+
+    def validate_natural!(value, range, label)
+      n = value.to_i
+      raise Error.new("invalid #{label}: #{value.inspect}", code: :invalid_dice_submission) unless range.cover?(n)
+
+      n
+    end
+
+    # ── Resolution side effects ─────────────────────────────────────────
+
+    def apply_resolution(option:, target:, attack_bonus:, defense_dc:, attack_natural:,
+                         attack_total:, hit:, damage_natural:, damage_total:)
+      creature, target_name = target
+      hp_before = creature.hp.to_i
+      hp_after = hp_before
+      target_dropped = false
+
+      ApplicationRecord.transaction do
+        if hit && damage_total
+          hp_after = (hp_before - damage_total).clamp(0, creature.max_hp.to_i)
+          creature.update!(hp: hp_after)
+          target_dropped = hp_after <= 0
+        end
+
+        decrement_action_economy!(option)
+      end
+
+      payload = build_resolution_payload(
+        option: option, target_name: target_name, attack_bonus: attack_bonus,
+        defense_dc: defense_dc, attack_natural: attack_natural, attack_total: attack_total,
+        hit: hit, damage_natural: damage_natural, damage_total: damage_total,
+        hp_before: hp_before, hp_after: hp_after, target_dropped: target_dropped
+      )
+
+      log_action_event!(payload)
+
+      { status: :resolved, result: payload }
+    end
+
+    def decrement_action_economy!(option)
+      ctx = @adventure.combat_context.deep_dup.deep_stringify_keys
+      delta = action_cost_delta(option)
+      ctx['action_economy'] = DungeonMaster::Battlefield::ActionEconomy.apply_delta!(ctx['action_economy'], delta)
+      @adventure.update!(combat_context: ctx)
+    rescue ArgumentError => e
+      raise Error.new("action economy refused the cost: #{e.message}", code: :action_economy_refused)
+    end
+
+    def action_cost_delta(option)
+      case option[:action_cost].to_s
+      when 'full_round' then { 'spend_full_round' => true }
+      when 'move'       then { 'spend_move' => true }
+      when 'swift'      then { 'spend_swift' => true }
+      else                   { 'spend_standard' => true }
+      end
+    end
+
+    def build_resolution_payload(option:, target_name:, attack_bonus:, defense_dc:,
+                                 attack_natural:, attack_total:, hit:, damage_natural:,
+                                 damage_total:, hp_before:, hp_after:, target_dropped:)
+      {
+        kind: 'attack',
+        attack_option_id: option[:id].to_s,
+        attack_label: option[:label].to_s,
+        target_name: target_name,
+        attack_mode: option[:attack_mode],
+        defense_kind: option[:defense_kind],
+        attack_bonus: attack_bonus,
+        attack_natural: attack_natural,
+        attack_total: attack_total,
+        defense_dc: defense_dc,
+        crit_threat: attack_natural == 20,
+        natural_one: attack_natural == 1,
+        hit: hit,
+        damage_expression: option[:damage],
+        damage_type: option[:damage_type],
+        damage_natural: damage_natural,
+        damage_total: damage_total,
+        target_hp_before: hp_before,
+        target_hp_after: hp_after,
+        target_dropped: target_dropped,
+        message: human_message(option: option, target_name: target_name, hit: hit,
+                               attack_total: attack_total, defense_dc: defense_dc,
+                               damage_total: damage_total, target_dropped: target_dropped)
+      }
+    end
+
+    def human_message(option:, target_name:, hit:, attack_total:, defense_dc:,
+                      damage_total:, target_dropped:)
+      verb = hit ? 'hits' : 'misses'
+      core = "#{option[:label]} vs #{target_name}: #{attack_total} vs AC #{defense_dc} — #{verb}"
+      return "#{core}." unless hit && damage_total
+
+      damage_phrase = "#{damage_total}#{option[:damage_type].present? ? " #{option[:damage_type]}" : ''}"
+      tail = target_dropped ? ", dropping #{target_name}" : ''
+      "#{core} for #{damage_phrase} damage#{tail}."
+    end
+
+    def log_action_event!(payload)
+      PlayLog.create!(
+        adventure: @adventure,
+        event_type: 'combat_action',
+        prompt_summary: payload[:message].to_s.truncate(200),
+        parsed_response: payload.to_json,
+        status: 'pipeline_event',
+        app_version: defined?(APP_VERSION) ? APP_VERSION : nil
+      )
+    rescue => e
+      Rails.logger.warn("[PlayerActionResolver] play_log persist failed: #{e.message}")
+    end
+
+    def awaiting_player_dice(option:, target:, attack_bonus:, defense_dc:)
+      _creature, target_name = target
+      damage_ability = damage_ability_bonus(option)
+      {
+        status: :awaiting_player_dice,
+        request: {
+          kind: 'attack',
+          attack_option_id: option[:id].to_s,
+          attack_label: option[:label].to_s,
+          target_name: target_name,
+          target_creature_sheet_id: target.first.id,
+          attack_bonus: attack_bonus,
+          defense_dc: defense_dc,
+          defense_kind: option[:defense_kind],
+          damage_expression: option[:damage],
+          damage_type: option[:damage_type],
+          damage_ability_bonus: damage_ability
+        }
+      }
+    end
+
+    def client_dice?
+      @user&.combat_dice_strategy.to_s == 'client'
+    end
+  end
+end

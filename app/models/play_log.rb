@@ -18,6 +18,7 @@ class PlayLog < ApplicationRecord
     loremaster_failure seed_failure
     rules_retrieved
     roll_request_invented_slug
+    combat_action
   ].freeze
 
   EVENT_TYPES = (DungeonMaster::StepRegistry.all_call_types + PIPELINE_EVENT_TYPES).freeze
