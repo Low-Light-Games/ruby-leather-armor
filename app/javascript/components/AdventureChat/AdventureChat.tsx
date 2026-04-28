@@ -10,6 +10,8 @@ import MechanicsGroup, { isMechanicalMessage } from './MechanicsGroup'
 import PendingRollsPanel from './PendingRollsPanel'
 import PendingInitiativePanel from './PendingInitiativePanel'
 import CombatActionEconomyChips from './CombatActionEconomyChips'
+import CombatActionPanel from './CombatActionPanel'
+import type { CombatDiceStrategy } from '../../types/auth'
 import './AdventureChat.scss'
 
 type MessageGroup =
@@ -64,8 +66,9 @@ export const AdventureChat = ({
   onDmResponse,
   onSheetUpdate,
 }: AdventureChatProps) => {
-  const { user } = useAuth()
+  const { user, setUser } = useAuth()
   const [input, setInput] = useState('')
+  const [liveCombatContext, setLiveCombatContext] = useState<Record<string, unknown> | null>(combatContext)
   const [askDm, setAskDm] = useState(false)
   const [rollModalDisplay, setRollModalDisplay] = useState<RollResultDisplay | null>(null)
   const [damageModalDisplay, setDamageModalDisplay] = useState<DamageRollResult | null>(null)
@@ -84,6 +87,14 @@ export const AdventureChat = ({
   }, [])
 
   useEffect(() => { scrollToBottom() }, [messages, scrollToBottom])
+
+  useEffect(() => { setLiveCombatContext(combatContext) }, [combatContext])
+
+  const handleDiceStrategyChange = (next: CombatDiceStrategy) => {
+    setUser(prev => (prev ? { ...prev, combat_dice_strategy: next } : prev))
+  }
+
+  const diceStrategy: CombatDiceStrategy = user?.combat_dice_strategy ?? 'client'
 
   const handleSend = () => {
     const text = input.trim()
@@ -218,7 +229,15 @@ export const AdventureChat = ({
             </div>
           )}
           {isCombatActive && (
-            <CombatActionEconomyChips combatContext={combatContext} />
+            <CombatActionEconomyChips combatContext={liveCombatContext} />
+          )}
+          {isCombatActive && (
+            <CombatActionPanel
+              adventureId={adventureId}
+              diceStrategy={diceStrategy}
+              onDiceStrategyChange={handleDiceStrategyChange}
+              onCombatContextUpdate={setLiveCombatContext}
+            />
           )}
           <div className="chat-input-area">
           <button
@@ -235,7 +254,7 @@ export const AdventureChat = ({
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={askDm ? 'Ask the GM a question...' : (pendingInitiative ? 'Roll for initiative above...' : (pendingRolls ? 'Submit your rolls above, or describe another action...' : 'What does your character do?'))}
+              placeholder={askDm ? 'Ask the GM a question...' : (pendingInitiative ? 'Roll for initiative above...' : (pendingRolls ? 'Submit your rolls above, or describe another action...' : (isCombatActive ? 'Try something creative outside of normal attacks and maneuvers...' : 'What does your character do?')))}
               disabled={sending}
               rows={2}
               maxLength={500}
