@@ -150,6 +150,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
             adventureEnded={adventure.ended}
             endReason={adventure.end_reason}
             isCombatActive={adventure.combat_context?.active === true}
+            combatContext={adventure.combat_context}
             onAdventureComplete={reload}
             onDmResponse={reload}
             onSheetUpdate={reload}

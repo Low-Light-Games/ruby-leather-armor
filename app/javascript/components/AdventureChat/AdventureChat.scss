@@ -593,6 +593,54 @@
     animation: combatBannerIn 1s ease both;
   }
 
+  /* ===== Action economy chips (Standard/Move/Swift/Free) ===== */
+  .combat-action-economy {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 4px 12px;
+    background: $red-ink-lt;
+    border-left: 1px solid $red-ink;
+    border-right: 1px solid $red-ink;
+    border-bottom: 1px solid $red-ink;
+    user-select: none;
+
+    .action-economy-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border: 1px solid $red-ink;
+      border-radius: 10px;
+      font-family: $font-display;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: help;
+      transition: opacity 0.2s ease, background-color 0.2s ease;
+
+      .chip-dot {
+        font-size: 12px;
+        line-height: 1;
+      }
+
+      &.available {
+        background: $red-ink-lt;
+        color: $red-ink;
+        opacity: 1;
+      }
+
+      &.spent {
+        background: transparent;
+        color: $red-ink;
+        opacity: 0.45;
+        text-decoration: line-through;
+      }
+    }
+  }
+
   /* ===== Mechanics group (combat_log / action_result run) ===== */
   .mechanics-group {
     align-self: flex-start;

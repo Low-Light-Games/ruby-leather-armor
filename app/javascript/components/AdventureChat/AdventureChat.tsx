@@ -9,6 +9,7 @@ import ChatMessage from './ChatMessage'
 import MechanicsGroup, { isMechanicalMessage } from './MechanicsGroup'
 import PendingRollsPanel from './PendingRollsPanel'
 import PendingInitiativePanel from './PendingInitiativePanel'
+import CombatActionEconomyChips from './CombatActionEconomyChips'
 import './AdventureChat.scss'
 
 type MessageGroup =
@@ -45,6 +46,7 @@ interface AdventureChatProps {
   adventureEnded?: boolean
   endReason?: 'player_death' | 'adventure_complete' | null
   isCombatActive?: boolean
+  combatContext?: Record<string, unknown> | null
   onAdventureComplete?: () => void
   onDmResponse?: () => void
   onSheetUpdate?: () => void
@@ -57,6 +59,7 @@ export const AdventureChat = ({
   adventureEnded = false,
   endReason = null,
   isCombatActive = false,
+  combatContext = null,
   onAdventureComplete,
   onDmResponse,
   onSheetUpdate,
@@ -213,6 +216,9 @@ export const AdventureChat = ({
             <div className="combat-banner" aria-live="polite">
               ⚔&nbsp;&nbsp;Combat Active&nbsp;&nbsp;⚔
             </div>
+          )}
+          {isCombatActive && (
+            <CombatActionEconomyChips combatContext={combatContext} />
           )}
           <div className="chat-input-area">
           <button
