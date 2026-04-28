@@ -32,8 +32,16 @@ rule calls for; the engine resolves the actual modifier.
   scene; that is not your job.
 - Set affected_domains so downstream context updates know which world-state slices changed.
   Domains: combat, traversal, social, exploration, rest, inventory, buff.
-- Flag expand_scene=true only for significant social interactions (transactions, negotiations,
-  confrontations) AND only when no social interaction is already active in RECENT NARRATIVE BEATS.
+- expand_scene and needs_roll are MUTUALLY EXCLUSIVE — pick at most one.
+  - Set needs_roll=true (and expand_scene=false) whenever the player has declared a
+    specific tactic that maps to a check: persuading, deceiving, intimidating, sensing
+    motive, appraising, etc. The roll resolves the action; no scene-opening prose is
+    needed first.
+  - Set expand_scene=true (and needs_roll=false) only for the FIRST entry into a fresh
+    social situation where the player has NOT yet declared a tactic — e.g. "I walk into
+    the tavern and look for the contact", "I knock on the merchant's door". The moment
+    the player declares a persuasion/intimidation/deception attempt, the roll wins.
+  - Never set both true. If both seem to apply, the roll wins.
 - Set transition="combat_started" + combatants[] only when the player's action initiates combat
   with hostiles. Otherwise leave both fields null/empty. Combat-end is not your concern.
 - Surface ability_use_claimed when the player explicitly invoked a named spell/feat/item — code

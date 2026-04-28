@@ -103,8 +103,18 @@ module DungeonMaster
           affected_contexts.first
         end
 
+        # When the model contradicts itself by setting BOTH expand_scene=true and
+        # needs_roll=true, the prompt's stated tiebreaker is "the roll wins" — a
+        # declared mechanical tactic is more specific than a scene opener. Honor
+        # that here so a contradicting AI output cannot silently route the turn
+        # through Social Expansion and discard the roll. Pure tiebreaker on
+        # contradictory output, not a heuristic that interprets text.
         def expand_scene?
-          @parsed[:expand_scene] == true && affected_contexts.include?('social')
+          return false unless @parsed[:expand_scene] == true
+          return false unless affected_contexts.include?('social')
+          return false if needs_roll?
+
+          true
         end
 
         def transition

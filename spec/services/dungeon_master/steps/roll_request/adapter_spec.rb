@@ -115,6 +115,26 @@ RSpec.describe DungeonMaster::Steps::RollRequest::Adapter do
       expect(intent[:expand_scene]).to eq(false)
     end
 
+    it 'wins the roll when AI contradicts itself with both needs_roll and expand_scene true' do
+      parsed = {
+        'needs_roll' => true,
+        'roll' => {
+          'type' => 'skill_check',
+          'skill' => 'Diplomacy',
+          'dc' => 15
+        },
+        'affected_domains' => ['social'],
+        'expand_scene' => true,
+        'mechanical_summary' => 'Diplomacy DC 15 to persuade the merchant.'
+      }
+
+      intent, evaluations = described_class.call(parsed: parsed, intention: 'I haggle')
+
+      expect(intent[:expand_scene]).to eq(false)
+      expect(intent[:domain_results]['social'][:expand_scene]).to eq(false)
+      expect(evaluations.first[:player_rolls].first).to include(skill: 'Diplomacy', dc: 15)
+    end
+
     it 'honors expand_scene when social is affected' do
       parsed = {
         'needs_roll' => false,
