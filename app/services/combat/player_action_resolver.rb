@@ -33,7 +33,7 @@ module Combat
       end
     end
 
-    SUPPORTED_KINDS = %w[attack].freeze
+    SUPPORTED_KINDS = %w[attack end_turn].freeze
     DEFENSE_KIND_TO_STAT = {
       'full_ac' => 'ac',
       'touch_ac' => 'touch_ac',
@@ -59,7 +59,8 @@ module Combat
       ensure_supported_kind!
 
       case @params[:kind].to_s
-      when 'attack' then resolve_attack
+      when 'attack'   then resolve_attack
+      when 'end_turn' then resolve_end_turn
       end
     end
 
@@ -85,6 +86,35 @@ module Combat
                        defense_dc: defense_dc, attack_natural: attack_natural,
                        attack_total: attack_total, hit: hit,
                        damage_natural: damage_natural, damage_total: damage_total)
+    end
+
+    # ── End turn ────────────────────────────────────────────────────────
+
+    # PR-B intentionally skips NPC actions on end-turn; the deterministic
+    # NPC turn engine (Combat::NpcTurn) lands in PR-F. Until then we
+    # cycle the round counter, reseed the player's action economy, and
+    # log a row noting that NPCs were skipped so play history makes sense.
+    def resolve_end_turn
+      ctx = @adventure.combat_context.deep_dup.deep_stringify_keys
+      next_round = ctx['round'].to_i.then { |r| (r < 1 ? 1 : r) + 1 }
+
+      ApplicationRecord.transaction do
+        ctx['round'] = next_round
+        ctx['current_turn'] = PLAYER_NAME
+        ctx['action_economy'] = DungeonMaster::Battlefield::ActionEconomy.build_for_turn_holder(
+          PLAYER_NAME, combat_ctx: ctx
+        )
+        @adventure.update!(combat_context: ctx)
+      end
+
+      payload = {
+        kind: 'end_turn',
+        round_advanced_to: next_round,
+        npc_actions_skipped: true,
+        message: "Turn ended. Round #{next_round} begins. (NPC actions are deterministic in PR-F; none ran this round.)"
+      }
+      log_action_event!(payload)
+      { status: :resolved, result: payload }
     end
 
     # ── Validation ──────────────────────────────────────────────────────

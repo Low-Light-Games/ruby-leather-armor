@@ -733,6 +733,31 @@
       }
     }
 
+    .end-turn-row {
+      display: flex;
+      justify-content: flex-end;
+
+      .end-turn-btn {
+        font-family: $font-display;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        padding: 4px 12px;
+        background: $parchment-mid;
+        color: $ink-mid;
+        border: 1px solid $border-light;
+        border-radius: 4px;
+        cursor: pointer;
+
+        &:hover:not(:disabled) {
+          background: $red-ink-lt;
+          color: $red-ink;
+          border-color: $red-ink;
+        }
+
+        &:disabled { opacity: 0.5; cursor: not-allowed; }
+      }
+    }
+
     .combat-action-log {
       list-style: none;
       margin: 0;

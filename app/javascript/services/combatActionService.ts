@@ -37,31 +37,40 @@ export interface CombatActionOptionsResponse {
   dice_strategy: CombatDiceStrategy
 }
 
+export interface CombatAttackResult {
+  kind: 'attack'
+  attack_option_id: string
+  attack_label: string
+  target_name: string
+  attack_mode: string
+  defense_kind: string
+  attack_bonus: number
+  attack_natural: number
+  attack_total: number
+  defense_dc: number
+  crit_threat: boolean
+  natural_one: boolean
+  hit: boolean
+  damage_expression: string | null
+  damage_type: string | null
+  damage_natural: number | null
+  damage_total: number | null
+  target_hp_before: number
+  target_hp_after: number
+  target_dropped: boolean
+  message: string
+}
+
+export interface CombatEndTurnResult {
+  kind: 'end_turn'
+  round_advanced_to: number
+  npc_actions_skipped: boolean
+  message: string
+}
+
 export interface CombatAttackResolved {
   status: 'resolved'
-  result: {
-    kind: 'attack'
-    attack_option_id: string
-    attack_label: string
-    target_name: string
-    attack_mode: string
-    defense_kind: string
-    attack_bonus: number
-    attack_natural: number
-    attack_total: number
-    defense_dc: number
-    crit_threat: boolean
-    natural_one: boolean
-    hit: boolean
-    damage_expression: string | null
-    damage_type: string | null
-    damage_natural: number | null
-    damage_total: number | null
-    target_hp_before: number
-    target_hp_after: number
-    target_dropped: boolean
-    message: string
-  }
+  result: CombatAttackResult | CombatEndTurnResult
   combat_context: Record<string, unknown> | null
 }
 
@@ -92,11 +101,17 @@ export interface CombatAttackBody {
   submitted_dice?: { attack_natural: number; damage_natural: number }
 }
 
+export interface CombatEndTurnBody {
+  kind: 'end_turn'
+}
+
+export type CombatActionBody = CombatAttackBody | CombatEndTurnBody
+
 export async function fetchCombatActionOptions(adventureId: number): Promise<CombatActionOptionsResponse> {
   return apiFetch(`/adventures/${adventureId}/combat_action/options`, { method: 'GET', credentials: 'same-origin' })
 }
 
-export async function postCombatAction(adventureId: number, body: CombatAttackBody): Promise<CombatAttackResponse> {
+export async function postCombatAction(adventureId: number, body: CombatActionBody): Promise<CombatAttackResponse> {
   return apiFetch(`/adventures/${adventureId}/combat_action`, {
     method: 'POST',
     credentials: 'same-origin',

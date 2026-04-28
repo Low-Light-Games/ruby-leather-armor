@@ -179,6 +179,39 @@ RSpec.describe Combat::PlayerActionResolver do
     end
   end
 
+  describe 'end turn' do
+    it 'advances the round, resets the action economy, and stays on the player' do
+      adventure.update!(combat_context: adventure.combat_context.deep_merge(
+        'action_economy' => { 'standard_available' => false, 'move_available' => false }
+      ))
+
+      result = nil
+      expect {
+        result = described_class.call(adventure: adventure, sheet: sheet, user: user,
+                                       params: { kind: 'end_turn' })
+      }.to change { PlayLog.where(event_type: 'combat_action').count }.by(1)
+
+      expect(result[:status]).to eq(:resolved)
+      expect(result[:result][:round_advanced_to]).to eq(2)
+      expect(result[:result][:npc_actions_skipped]).to be(true)
+
+      ctx = adventure.reload.combat_context
+      expect(ctx['round']).to eq(2)
+      expect(ctx['current_turn']).to eq('Player')
+      expect(ctx['action_economy']['standard_available']).to be(true)
+      expect(ctx['action_economy']['move_available']).to be(true)
+      expect(ctx['action_economy']['swift_available']).to be(true)
+    end
+
+    it 'rejects when not the player turn' do
+      adventure.update!(combat_context: adventure.combat_context.merge('current_turn' => 'Goblin'))
+      expect {
+        described_class.call(adventure: adventure, sheet: sheet, user: user,
+                             params: { kind: 'end_turn' })
+      }.to raise_error(described_class::Error, /not the player's turn/)
+    end
+  end
+
   describe 'client dice strategy' do
     let(:user) { create(:user, :password_auth, combat_dice_strategy: 'client') }
 
@@ -211,6 +244,15 @@ RSpec.describe Combat::PlayerActionResolver do
       # 6 HP - 7 dmg = -1, clamped to the [0, max_hp] floor.
       expect(creature.reload.hp).to eq(0)
       expect(result[:result][:target_dropped]).to be(true)
+    end
+
+    it 'has no effect on end_turn (no dice involved)' do
+      result = described_class.call(
+        adventure: adventure, sheet: sheet, user: user,
+        params: { kind: 'end_turn' }
+      )
+      expect(result[:status]).to eq(:resolved)
+      expect(result[:result][:kind]).to eq('end_turn')
     end
 
     it 'rejects an out-of-range natural roll' do

@@ -83,13 +83,15 @@ export const CombatActionPanel = ({
 
   const recordResolution = useCallback(
     (resolved: CombatAttackResolved) => {
+      const result = resolved.result
+      const isAttack = result.kind === 'attack'
       setHistory(prev => [
         ...prev,
         {
           id: `${Date.now()}-${Math.random()}`,
-          message: resolved.result.message,
-          hit: resolved.result.hit,
-          target_dropped: resolved.result.target_dropped,
+          message: result.message,
+          hit: isAttack ? result.hit : true,
+          target_dropped: isAttack ? result.target_dropped : false,
         },
       ])
       onCombatContextUpdate?.(resolved.combat_context)
@@ -108,6 +110,20 @@ export const CombatActionPanel = ({
     },
     [recordResolution],
   )
+
+  const handleEndTurn = async () => {
+    setSubmitting(true)
+    setError(null)
+    try {
+      const response = await postCombatAction(adventureId, { kind: 'end_turn' })
+      handleResponse(response)
+      await refreshOptions()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const handleAttack = async (option: CombatAttackOption, target: CombatTarget) => {
     setSubmitting(true)
@@ -240,6 +256,18 @@ export const CombatActionPanel = ({
           </button>
         </div>
       )}
+
+      <div className="end-turn-row">
+        <button
+          type="button"
+          className="end-turn-btn"
+          disabled={submitting || pending !== null}
+          onClick={handleEndTurn}
+          title="End your turn — advances the round and refreshes your action economy. NPC actions are deterministic in PR-F (none run for now)."
+        >
+          End Turn ⏭
+        </button>
+      </div>
 
       {history.length > 0 && (
         <ul className="combat-action-log">
