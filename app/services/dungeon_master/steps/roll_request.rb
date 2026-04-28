@@ -55,8 +55,7 @@ module DungeonMaster
 
         prompt_summary = "RollRequest: \"#{@log.truncate(intention)}\""
         system_prompt  = PromptRenderer.render('roll_request',
-                                               roll_request_context: ctx,
-                                               response_schema: PromptRenderer.load_schema('roll_request'))
+                                               roll_request_context: ctx)
         request_body   = { system_prompt: system_prompt, user_message: intention }
 
         parsed = timed_ai_call('roll_request', prompt_summary, request_body) do
