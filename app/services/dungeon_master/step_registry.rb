@@ -18,14 +18,21 @@ module DungeonMaster
     # `DmConfig#model_for` when no admin override exists. nil means "use
     # the global default" — the historical behavior for every step that
     # doesn't pin one.
+    #
+    # `default_reasoning_effort` is the fallback `reasoning_effort`
+    # ("minimal"|"low"|"medium"|"high") sent to OpenAI when the resolved
+    # model is a reasoning model AND no admin override is set in
+    # `DmConfig#step_reasoning_efforts`. nil means "use the OpenAI default"
+    # — the historical behavior for every step that doesn't pin one.
     class Entry
-      attr_reader :token_budget, :model_hint, :pipeline, :default_model
+      attr_reader :token_budget, :model_hint, :pipeline, :default_model, :default_reasoning_effort
 
-      def initialize(token_budget:, model_hint:, pipeline:, default_model: nil)
-        @token_budget  = token_budget
-        @model_hint    = model_hint
-        @pipeline      = pipeline
-        @default_model = default_model
+      def initialize(token_budget:, model_hint:, pipeline:, default_model: nil, default_reasoning_effort: nil)
+        @token_budget             = token_budget
+        @model_hint               = model_hint
+        @pipeline                 = pipeline
+        @default_model            = default_model
+        @default_reasoning_effort = default_reasoning_effort
       end
     end
 
@@ -157,9 +164,10 @@ module DungeonMaster
       ),
       'roll_request' => Entry.new(
         token_budget: nil,
-        model_hint: 'Cheapest reasoning model — defaults to gpt-5-nano ($0.05/$0.40 per M, reasoning). Single-call replacement for beacon→mech_eval→roll_qualifier with RAG-retrieved rules + beats and no character block in the prompt. Override only if you want non-reasoning behavior or a more capable model on this step.',
+        model_hint: 'Cheapest reasoning model — defaults to gpt-5-nano ($0.05/$0.40 per M, reasoning) at reasoning_effort=minimal. Single-call replacement for beacon→mech_eval→roll_qualifier with RAG-retrieved rules + beats and no character block in the prompt. Override only if you want non-reasoning behavior, a more capable model, or higher reasoning effort on this step.',
         pipeline: true,
-        default_model: 'gpt-5-nano'
+        default_model: 'gpt-5-nano',
+        default_reasoning_effort: 'minimal'
       ),
       'rules_retrieval' => Entry.new(
         # Logged event_type for `play_log!("rules_retrieved", ...)` rows
@@ -223,6 +231,13 @@ module DungeonMaster
     # falling back to the global `model` default.
     def self.default_model_for(step)
       STEPS[step.to_s]&.default_model
+    end
+
+    # Step → preferred default `reasoning_effort`, for steps that pin one
+    # (currently only `roll_request` at "minimal"). DmConfig#reasoning_effort_for
+    # consults this when no admin override is set.
+    def self.default_reasoning_effort_for(step)
+      STEPS[step.to_s]&.default_reasoning_effort
     end
   end
 end

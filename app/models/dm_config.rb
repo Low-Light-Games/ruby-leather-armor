@@ -91,10 +91,12 @@ class DmConfig < ApplicationRecord
     'narrative_facts_active_window' => 20,
     'narrative_facts_embedding_model' => 'text-embedding-3-small',
     'evaluation_mode' => 'parallel',
+    'step_reasoning_efforts' => { 'roll_request' => 'minimal' }.freeze,
     'stripe_grace_period_days' => 3
   }.freeze
 
   EVALUATION_MODES = %w[parallel roll_request].freeze
+  REASONING_EFFORTS = %w[minimal low medium high].freeze
 
   def self.instance
     first_or_create!(settings: DEFAULTS)
@@ -134,6 +136,19 @@ class DmConfig < ApplicationRecord
     overrides[step.to_s].presence ||
       DungeonMaster::StepRegistry.default_model_for(step) ||
       model
+  end
+
+  # Returns "minimal" | "low" | "medium" | "high" | nil for the given
+  # step. Resolution order: admin override → registry default → nil.
+  # AiClient drops the `reasoning_effort` param when the resolved value
+  # is nil OR when the resolved model is not a reasoning model, so
+  # non-reasoning steps and non-reasoning model overrides stay safe.
+  def reasoning_effort_for(step)
+    overrides = get('step_reasoning_efforts') || {}
+    override  = overrides[step.to_s].to_s
+    return override if REASONING_EFFORTS.include?(override)
+
+    DungeonMaster::StepRegistry.default_reasoning_effort_for(step)
   end
 
   def token_budget_for(step)
