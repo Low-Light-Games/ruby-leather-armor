@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { BattlefieldSnapshot } from '../../types'
+import type { CombatTarget } from '../../services/combatActionService'
 
 interface Props {
   battlefield: BattlefieldSnapshot
@@ -11,14 +12,17 @@ interface Props {
   onWithdrawToggle: () => void
   onSquareClick: (x: number, y: number) => void
   busy: boolean
+  targets?: CombatTarget[]
 }
 
 interface ResolvedToken {
   id: string
   label: string
+  displayLabel: string
   x: number
   y: number
   type: string
+  creatureSheetId: number | null
   isPlayer: boolean
 }
 
@@ -34,27 +38,50 @@ function readViewport(viewport: Record<string, unknown>): { minX: number; minY: 
 }
 
 function readTokens(tokens: Record<string, Record<string, unknown>>): ResolvedToken[] {
-  const out: ResolvedToken[] = []
+  const intermediate: Omit<ResolvedToken, 'displayLabel'>[] = []
   for (const [id, raw] of Object.entries(tokens)) {
     if (!raw || typeof raw !== 'object') continue
     const x = typeof raw.x === 'number' ? raw.x : null
     const y = typeof raw.y === 'number' ? raw.y : null
     if (x == null || y == null) continue
-    out.push({
+    const csid = typeof raw.creature_sheet_id === 'number' ? raw.creature_sheet_id : null
+    intermediate.push({
       id,
       label: typeof raw.label === 'string' ? raw.label : id,
       x,
       y,
       type: typeof raw.type === 'string' ? raw.type : 'npc',
+      creatureSheetId: csid,
       isPlayer: id === 'player',
     })
   }
-  return out
+
+  // Disambiguate same-name NPCs with a #N suffix (Goblin → "Goblin #1",
+  // "Goblin #2") so the tooltip can tell two of the same kind apart.
+  const labelCounts = new Map<string, number>()
+  intermediate.forEach(t => {
+    if (t.isPlayer) return
+    labelCounts.set(t.label, (labelCounts.get(t.label) || 0) + 1)
+  })
+  const labelSeen = new Map<string, number>()
+  return intermediate.map(t => {
+    if (t.isPlayer || (labelCounts.get(t.label) || 0) <= 1) {
+      return { ...t, displayLabel: t.label }
+    }
+    const seen = (labelSeen.get(t.label) || 0) + 1
+    labelSeen.set(t.label, seen)
+    return { ...t, displayLabel: `${t.label} #${seen}` }
+  })
+}
+
+function findCreatureHp(targets: CombatTarget[] | undefined, creatureSheetId: number | null) {
+  if (!targets || creatureSheetId == null) return null
+  return targets.find(t => t.creature_sheet_id === creatureSheetId) || null
 }
 
 export const CombatGrid = ({
   battlefield, playerPosition, speedSquares, canMove, canWithdraw, withdrawMode,
-  onWithdrawToggle, onSquareClick, busy,
+  onWithdrawToggle, onSquareClick, busy, targets,
 }: Props) => {
   const viewport = useMemo(() => readViewport(battlefield.viewport), [battlefield.viewport])
   const tokens = useMemo(() => readTokens(battlefield.tokens), [battlefield.tokens])
@@ -131,13 +158,19 @@ export const CombatGrid = ({
     const cy = row * cellPx + cellPx / 2
     const r = Math.max(4, cellPx * 0.35)
     const className = `combat-grid-token ${t.isPlayer ? 'player' : 'npc'}`
+    const target = findCreatureHp(targets, t.creatureSheetId)
+    const hpPart = target ? ` — ${target.hp}/${target.max_hp} HP${target.dropped ? ' (down)' : ''}` : ''
+    const tooltip = `${t.displayLabel} (${t.x}, ${t.y})${hpPart}`
     return (
       <g key={t.id} className={className}>
+        {/* SVG <title> as the first child gives browsers the most reliable
+            hover-tooltip behavior — keeps the disambiguated label + HP
+            visible without occluding the grid. */}
+        <title>{tooltip}</title>
         <circle cx={cx} cy={cy} r={r} />
         <text x={cx} y={cy + 1} textAnchor="middle" dominantBaseline="middle" fontSize={Math.max(8, cellPx * 0.4)}>
-          {t.isPlayer ? '@' : (t.label[0] || '?').toUpperCase()}
+          {t.isPlayer ? '@' : (t.displayLabel[0] || '?').toUpperCase()}
         </text>
-        <title>{t.label} ({t.x}, {t.y})</title>
       </g>
     )
   })

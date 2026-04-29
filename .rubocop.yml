@@ -21,6 +21,7 @@ Metrics/BlockLength:
     - 'spec/services/dungeon_master/steps/combat_roll_request/adapter_spec.rb'
     - 'spec/services/combat/narrator_spec.rb'
     - 'spec/services/combat/social_event_trigger_spec.rb'
+    - 'spec/services/combat/player_action_resolver_spec.rb'
     - 'lib/tasks/dungeon_master_rules.rake'
 
 Metrics/AbcSize:

@@ -262,6 +262,7 @@ export const CombatActionPanel = ({
           onWithdrawToggle={() => setWithdrawMode(prev => !prev)}
           onSquareClick={handleMove}
           busy={submitting}
+          targets={options.targets}
         />
       )}
 

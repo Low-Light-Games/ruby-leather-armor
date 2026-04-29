@@ -1195,6 +1195,28 @@
     }
   }
 
+  /* ===== Combat HUD center column (replaces chat during player's turn) ===== */
+  .combat-hud-column {
+    flex: 1;
+    overflow-y: auto;
+
+    .combat-hud {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+  }
+
+  /* ===== RIGHT: Chat column during combat (takes story-column slot) ===== */
+  .combat-chat-column {
+    flex: 0 0 380px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    max-height: calc(100vh - 120px);
+    background: $parchment;
+  }
+
   /* ===== RIGHT: Story column ===== */
   .story-column {
     flex: 0 0 300px;

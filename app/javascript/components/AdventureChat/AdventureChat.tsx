@@ -49,6 +49,12 @@ interface AdventureChatProps {
   endReason?: 'player_death' | 'adventure_complete' | null
   isCombatActive?: boolean
   combatContext?: Record<string, unknown> | null
+  /** When true, AdventureChat renders the combat banner + chips +
+   *  CombatActionPanel inline. When false (combat HUD lives in a
+   *  separate column), this just hides those panels — the input
+   *  textarea + message log still know about combat for placeholder
+   *  hints and styling. */
+  renderCombatPanels?: boolean
   onAdventureComplete?: () => void
   onDmResponse?: () => void
   onSheetUpdate?: () => void
@@ -62,6 +68,7 @@ export const AdventureChat = ({
   endReason = null,
   isCombatActive = false,
   combatContext = null,
+  renderCombatPanels = true,
   onAdventureComplete,
   onDmResponse,
   onSheetUpdate,
@@ -223,15 +230,15 @@ export const AdventureChat = ({
         </div>
       ) : (
         <>
-          {isCombatActive && (
+          {isCombatActive && renderCombatPanels && (
             <div className="combat-banner" aria-live="polite">
               ⚔&nbsp;&nbsp;Combat Active&nbsp;&nbsp;⚔
             </div>
           )}
-          {isCombatActive && (
+          {isCombatActive && renderCombatPanels && (
             <CombatActionEconomyChips combatContext={liveCombatContext} />
           )}
-          {isCombatActive && (
+          {isCombatActive && renderCombatPanels && (
             <CombatActionPanel
               adventureId={adventureId}
               diceStrategy={diceStrategy}

@@ -64,44 +64,44 @@ RSpec.describe Combat::PlayerActionResolver do
   describe 'guards' do
     it 'rejects when combat is not active' do
       adventure.update!(combat_context: { 'active' => false })
-      expect {
+      expect do
         described_class.call(adventure: adventure, sheet: sheet, user: user, params: base_params)
-      }.to raise_error(described_class::Error, /combat is not active/)
+      end.to raise_error(described_class::Error, /combat is not active/)
     end
 
     it "rejects when it isn't the player's turn" do
       adventure.update!(combat_context: adventure.combat_context.merge('current_turn' => 'Goblin'))
-      expect {
+      expect do
         described_class.call(adventure: adventure, sheet: sheet, user: user, params: base_params)
-      }.to raise_error(described_class::Error, /not the player's turn/)
+      end.to raise_error(described_class::Error, /not the player's turn/)
     end
 
     it 'rejects unsupported kinds' do
-      expect {
+      expect do
         described_class.call(adventure: adventure, sheet: sheet, user: user,
                              params: base_params.merge(kind: 'cast'))
-      }.to raise_error(described_class::Error, /unsupported combat action kind/)
+      end.to raise_error(described_class::Error, /unsupported combat action kind/)
     end
 
     it 'rejects an unknown attack_option_id' do
-      expect {
+      expect do
         described_class.call(adventure: adventure, sheet: sheet, user: user,
                              params: base_params.merge(attack_option_id: 'mythical_blade'))
-      }.to raise_error(described_class::Error, /unknown or unavailable attack_option_id/)
+      end.to raise_error(described_class::Error, /unknown or unavailable attack_option_id/)
     end
 
     it 'rejects a missing target' do
-      expect {
+      expect do
         described_class.call(adventure: adventure, sheet: sheet, user: user,
                              params: base_params.merge(target_creature_sheet_id: 999_999))
-      }.to raise_error(described_class::Error, /creature not found/)
+      end.to raise_error(described_class::Error, /creature not found/)
     end
 
     it 'rejects a target already at 0 HP' do
       creature.update!(hp: 0)
-      expect {
+      expect do
         described_class.call(adventure: adventure, sheet: sheet, user: user, params: base_params)
-      }.to raise_error(described_class::Error, /already down/)
+      end.to raise_error(described_class::Error, /already down/)
     end
   end
 
@@ -111,9 +111,9 @@ RSpec.describe Combat::PlayerActionResolver do
       allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_damage_expression).and_return(3)
 
       result = nil
-      expect {
+      expect do
         result = described_class.call(adventure: adventure, sheet: sheet, user: user, params: base_params)
-      }.to change { PlayLog.where(event_type: 'combat_action').count }.by(1)
+      end.to change { PlayLog.where(event_type: 'combat_action').count }.by(1)
 
       expect(result[:status]).to eq(:resolved)
       expect(result[:result][:hit]).to be(true)
@@ -157,6 +157,22 @@ RSpec.describe Combat::PlayerActionResolver do
       expect(result[:result][:natural_one]).to be(true)
     end
 
+    it 'ends combat when the last hostile NPC drops' do
+      allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_d20).and_return(20)
+      allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_damage_expression).and_return(99)
+
+      result = described_class.call(adventure: adventure, sheet: sheet, user: user, params: base_params)
+
+      expect(result[:result][:target_dropped]).to be(true)
+      expect(result[:result][:combat_ended]).to be(true)
+      expect(result[:result][:combat_end_reason]).to eq('all_npcs_defeated')
+      ctx = adventure.reload.combat_context
+      expect(ctx['active']).to be(false)
+      expect(ctx['current_turn']).to be_nil
+      expect(ctx['action_economy']).to be_nil
+      expect(ctx['combat_end_reason']).to eq('all_npcs_defeated')
+    end
+
     it 'flags target_dropped when HP reaches 0' do
       allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_d20).and_return(20)
       allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_damage_expression).and_return(99)
@@ -172,9 +188,9 @@ RSpec.describe Combat::PlayerActionResolver do
         'action_economy' => { 'standard_available' => false }
       ))
 
-      expect {
+      expect do
         described_class.call(adventure: adventure, sheet: sheet, user: user, params: base_params)
-      }.to raise_error(described_class::Error, /unknown or unavailable attack_option_id/)
+      end.to raise_error(described_class::Error, /unknown or unavailable attack_option_id/)
       # AttackOptionBuilder hides options when the standard slot is gone.
     end
   end
@@ -185,7 +201,8 @@ RSpec.describe Combat::PlayerActionResolver do
         adventure: adventure, status: 'active', topology: 'square', version: 1,
         tokens: {
           'player' => { 'label' => 'Player', 'x' => 4, 'y' => 5, 'type' => 'player' },
-          "creature_#{creature.id}" => { 'label' => 'Goblin', 'x' => 5, 'y' => 5, 'type' => 'npc', 'creature_sheet_id' => creature.id },
+          "creature_#{creature.id}" => { 'label' => 'Goblin', 'x' => 5, 'y' => 5, 'type' => 'npc',
+                                         'creature_sheet_id' => creature.id },
           'creature_99' => { 'label' => 'Fighter', 'x' => 6, 'y' => 5, 'type' => 'npc', 'creature_sheet_id' => 99 }
         },
         world: {}, viewport: {}
@@ -194,8 +211,9 @@ RSpec.describe Combat::PlayerActionResolver do
 
     before do
       adventure.update!(combat_context: adventure.combat_context.merge(
-                          'battlefield_ref' => { 'id' => battlefield.id, 'version' => battlefield.version, 'topology' => 'square' }
-                        ))
+        'battlefield_ref' => { 'id' => battlefield.id, 'version' => battlefield.version,
+                               'topology' => 'square' }
+      ))
     end
 
     it 'adds the flanking bonus when an ally sits opposite' do
@@ -216,7 +234,8 @@ RSpec.describe Combat::PlayerActionResolver do
         adventure: adventure, status: 'active', topology: 'square', version: 1,
         tokens: {
           'player' => { 'label' => 'Player', 'x' => 5, 'y' => 5, 'type' => 'player' },
-          "creature_#{creature.id}" => { 'label' => 'Goblin', 'x' => 7, 'y' => 4, 'type' => 'npc', 'creature_sheet_id' => creature.id }
+          "creature_#{creature.id}" => { 'label' => 'Goblin', 'x' => 7, 'y' => 4, 'type' => 'npc',
+                                         'creature_sheet_id' => creature.id }
         },
         world: {}, viewport: {}
       )
@@ -224,8 +243,9 @@ RSpec.describe Combat::PlayerActionResolver do
 
     before do
       adventure.update!(combat_context: adventure.combat_context.merge(
-                          'battlefield_ref' => { 'id' => battlefield.id, 'version' => battlefield.version, 'topology' => 'square' }
-                        ))
+        'battlefield_ref' => { 'id' => battlefield.id, 'version' => battlefield.version,
+                               'topology' => 'square' }
+      ))
       sheet.update!(derived_stats: sheet.derived_stats.merge('speed' => 30))
     end
 
@@ -254,8 +274,8 @@ RSpec.describe Combat::PlayerActionResolver do
       # and no full-round was claimed. Spending the standard action on
       # an attack does NOT block it.
       adventure.update!(combat_context: adventure.combat_context.deep_merge(
-                          'action_economy' => { 'standard_available' => false }
-                        ))
+        'action_economy' => { 'standard_available' => false }
+      ))
 
       result = described_class.call(
         adventure: adventure, sheet: sheet, user: user,
@@ -266,46 +286,53 @@ RSpec.describe Combat::PlayerActionResolver do
     end
 
     it 'rejects moves beyond speed' do
-      expect {
+      expect do
         described_class.call(
           adventure: adventure, sheet: sheet, user: user,
           params: { kind: 'move', x: 20, y: 20 }
         )
-      }.to raise_error(described_class::Error, /squares away/)
+      end.to raise_error(described_class::Error, /squares away/)
     end
 
     it 'rejects moves onto another combatant' do
-      expect {
+      expect do
         described_class.call(
           adventure: adventure, sheet: sheet, user: user,
           params: { kind: 'move', x: 7, y: 4 }
         )
-      }.to raise_error(described_class::Error, /occupied/)
+      end.to raise_error(described_class::Error, /occupied/)
     end
 
     it 'rejects no-op moves to the current square' do
-      expect {
+      expect do
         described_class.call(
           adventure: adventure, sheet: sheet, user: user,
           params: { kind: 'move', x: 5, y: 5 }
         )
-      }.to raise_error(described_class::Error, /already on that square/)
+      end.to raise_error(described_class::Error, /already on that square/)
     end
 
     it 'provokes AoO from adjacent enemies and applies damage to the player' do
-      creature.update!(equipped_weapons: [{ 'name' => 'shortsword', 'damage_dice' => '1d6', 'damage_type' => 'piercing' }],
-                       derived_stats: creature.derived_stats.merge('melee_attack' => 5, 'mods' => { 'strength' => 1 }))
+      creature.update!(
+        equipped_weapons: [{ 'name' => 'shortsword', 'damage_dice' => '1d6', 'damage_type' => 'piercing' }],
+        derived_stats: creature.derived_stats.merge('melee_attack' => 5, 'mods' => { 'strength' => 1 })
+      )
       sheet.update!(hp: 12, derived_stats: sheet.derived_stats.merge('ac' => 10))
       AdventureBattlefield.find(battlefield.id).update!(tokens: {
-        'player' => { 'label' => 'Player', 'x' => 5, 'y' => 5, 'type' => 'player' },
-        "creature_#{creature.id}" => { 'label' => 'Goblin', 'x' => 6, 'y' => 5, 'type' => 'npc', 'creature_sheet_id' => creature.id }
-      })
+                                                          'player' => { 'label' => 'Player', 'x' => 5, 'y' => 5,
+                                                                        'type' => 'player' },
+                                                          "creature_#{creature.id}" => {
+                                                            'label' => 'Goblin', 'x' => 6, 'y' => 5,
+                                                            'type' => 'npc',
+                                                            'creature_sheet_id' => creature.id
+                                                          }
+                                                        })
 
       allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_d20).and_return(15)
       allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_damage_expression).and_return(4)
 
       result = described_class.call(adventure: adventure, sheet: sheet, user: user,
-                                     params: { kind: 'move', x: 5, y: 9 })
+                                    params: { kind: 'move', x: 5, y: 9 })
 
       expect(result[:result][:attacks_of_opportunity].length).to eq(1)
       aoo = result[:result][:attacks_of_opportunity].first
@@ -317,27 +344,39 @@ RSpec.describe Combat::PlayerActionResolver do
     it 'does not provoke on a 5-foot step' do
       creature.update!(derived_stats: creature.derived_stats.merge('melee_attack' => 5))
       AdventureBattlefield.find(battlefield.id).update!(tokens: {
-        'player' => { 'label' => 'Player', 'x' => 5, 'y' => 5, 'type' => 'player' },
-        "creature_#{creature.id}" => { 'label' => 'Goblin', 'x' => 6, 'y' => 5, 'type' => 'npc', 'creature_sheet_id' => creature.id }
-      })
+                                                          'player' => { 'label' => 'Player', 'x' => 5, 'y' => 5,
+                                                                        'type' => 'player' },
+                                                          "creature_#{creature.id}" => {
+                                                            'label' => 'Goblin', 'x' => 6, 'y' => 5,
+                                                            'type' => 'npc',
+                                                            'creature_sheet_id' => creature.id
+                                                          }
+                                                        })
 
       result = described_class.call(adventure: adventure, sheet: sheet, user: user,
-                                     params: { kind: 'move', x: 5, y: 6 })
+                                    params: { kind: 'move', x: 5, y: 6 })
       expect(result[:result][:movement_mode]).to eq('5-foot step')
       expect(result[:result][:attacks_of_opportunity]).to eq([])
     end
 
     it 'withdraws as a full-round action and skips departure-square AoO' do
-      creature.update!(equipped_weapons: [{ 'name' => 'shortsword', 'damage_dice' => '1d6', 'damage_type' => 'piercing' }],
-                       derived_stats: creature.derived_stats.merge('melee_attack' => 5, 'mods' => { 'strength' => 1 }))
+      creature.update!(
+        equipped_weapons: [{ 'name' => 'shortsword', 'damage_dice' => '1d6', 'damage_type' => 'piercing' }],
+        derived_stats: creature.derived_stats.merge('melee_attack' => 5, 'mods' => { 'strength' => 1 })
+      )
       sheet.update!(hp: 12, derived_stats: sheet.derived_stats.merge('ac' => 10))
       AdventureBattlefield.find(battlefield.id).update!(tokens: {
-        'player' => { 'label' => 'Player', 'x' => 5, 'y' => 5, 'type' => 'player' },
-        "creature_#{creature.id}" => { 'label' => 'Goblin', 'x' => 6, 'y' => 5, 'type' => 'npc', 'creature_sheet_id' => creature.id }
-      })
+                                                          'player' => { 'label' => 'Player', 'x' => 5, 'y' => 5,
+                                                                        'type' => 'player' },
+                                                          "creature_#{creature.id}" => {
+                                                            'label' => 'Goblin', 'x' => 6, 'y' => 5,
+                                                            'type' => 'npc',
+                                                            'creature_sheet_id' => creature.id
+                                                          }
+                                                        })
 
       result = described_class.call(adventure: adventure, sheet: sheet, user: user,
-                                     params: { kind: 'move', x: 5, y: 9, withdraw: true })
+                                    params: { kind: 'move', x: 5, y: 9, withdraw: true })
 
       expect(result[:result][:movement_mode]).to eq('withdraw')
       expect(result[:result][:attacks_of_opportunity]).to eq([])
@@ -350,24 +389,24 @@ RSpec.describe Combat::PlayerActionResolver do
 
     it 'rejects withdraw when standard is already spent' do
       adventure.update!(combat_context: adventure.combat_context.deep_merge(
-                          'action_economy' => { 'standard_available' => false }
-                        ))
-      expect {
+        'action_economy' => { 'standard_available' => false }
+      ))
+      expect do
         described_class.call(adventure: adventure, sheet: sheet, user: user,
                              params: { kind: 'move', x: 6, y: 6, withdraw: true })
-      }.to raise_error(described_class::Error, /withdraw requires both standard and move/)
+      end.to raise_error(described_class::Error, /withdraw requires both standard and move/)
     end
 
     it 'rejects when no move action remains' do
       adventure.update!(combat_context: adventure.combat_context.deep_merge(
-                          'action_economy' => { 'move_available' => false }
-                        ))
-      expect {
+        'action_economy' => { 'move_available' => false }
+      ))
+      expect do
         described_class.call(
           adventure: adventure, sheet: sheet, user: user,
           params: { kind: 'move', x: 6, y: 6 }
         )
-      }.to raise_error(described_class::Error, /no move action available/)
+      end.to raise_error(described_class::Error, /no move action available/)
     end
   end
 
@@ -393,13 +432,13 @@ RSpec.describe Combat::PlayerActionResolver do
       it 'runs NPCs in turn_order, not by creature_sheet id' do
         # Lower id (goblin_a) goes SECOND in initiative; higher id (goblin_b) goes FIRST.
         adventure.update!(combat_context: adventure.combat_context.merge(
-                            'turn_order' => ['Goblin Boss', 'Player', 'Goblin Skirmisher'],
-                            'participants' => [
-                              { 'name' => 'Goblin Skirmisher', 'type' => 'npc', 'creature_sheet_id' => goblin_a.id },
-                              { 'name' => 'Player', 'type' => 'player' },
-                              { 'name' => 'Goblin Boss', 'type' => 'npc', 'creature_sheet_id' => goblin_b.id }
-                            ]
-                          ))
+          'turn_order' => ['Goblin Boss', 'Player', 'Goblin Skirmisher'],
+          'participants' => [
+            { 'name' => 'Goblin Skirmisher', 'type' => 'npc', 'creature_sheet_id' => goblin_a.id },
+            { 'name' => 'Player', 'type' => 'player' },
+            { 'name' => 'Goblin Boss', 'type' => 'npc', 'creature_sheet_id' => goblin_b.id }
+          ]
+        ))
 
         invocations = []
         allow(Combat::NpcTurn).to receive(:call) do |creature:, **_kwargs|
@@ -420,10 +459,10 @@ RSpec.describe Combat::PlayerActionResolver do
       ))
 
       result = nil
-      expect {
+      expect do
         result = described_class.call(adventure: adventure, sheet: sheet, user: user,
-                                       params: { kind: 'end_turn' })
-      }.to change { PlayLog.where(event_type: 'combat_action').count }.by(1)
+                                      params: { kind: 'end_turn' })
+      end.to change { PlayLog.where(event_type: 'combat_action').count }.by(1)
 
       expect(result[:status]).to eq(:resolved)
       expect(result[:result][:round_advanced_to]).to eq(2)
@@ -439,10 +478,10 @@ RSpec.describe Combat::PlayerActionResolver do
 
     it 'rejects when not the player turn' do
       adventure.update!(combat_context: adventure.combat_context.merge('current_turn' => 'Goblin'))
-      expect {
+      expect do
         described_class.call(adventure: adventure, sheet: sheet, user: user,
                              params: { kind: 'end_turn' })
-      }.to raise_error(described_class::Error, /not the player's turn/)
+      end.to raise_error(described_class::Error, /not the player's turn/)
     end
   end
 
@@ -490,12 +529,12 @@ RSpec.describe Combat::PlayerActionResolver do
     end
 
     it 'rejects an out-of-range natural roll' do
-      expect {
+      expect do
         described_class.call(
           adventure: adventure, sheet: sheet, user: user, params: base_params,
           submitted_dice: { attack_natural: 25, damage_natural: 3 }
         )
-      }.to raise_error(described_class::Error, /invalid attack_natural/)
+      end.to raise_error(described_class::Error, /invalid attack_natural/)
     end
   end
 end

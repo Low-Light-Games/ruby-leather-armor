@@ -57,11 +57,13 @@ module Combat
       ensure_player_turn!
       ensure_supported_kind!
 
-      case @params[:kind].to_s
-      when 'attack'   then resolve_attack
-      when 'move'     then resolve_move
-      when 'end_turn' then resolve_end_turn
-      end
+      result = case @params[:kind].to_s
+               when 'attack'   then resolve_attack
+               when 'move'     then resolve_move
+               when 'end_turn' then resolve_end_turn
+               end
+
+      maybe_end_combat!(result)
     end
 
     private
@@ -98,6 +100,43 @@ module Combat
       @adventure.update!(combat_context: ctx)
     rescue ArgumentError => e
       raise Combat::ResolverError.new("action economy refused #{label}: #{e.message}", code: :action_economy_refused)
+    end
+
+    # If the action just dropped the last hostile NPC (or otherwise satisfies
+    # CombatEndResolver), flip combat_context['active'] to false and tag the
+    # response so the frontend can react. Idempotent — ContextUpdate stays
+    # the sole writer of the rest of the context fields, but this single
+    # boolean is fair game from the deterministic HUD path.
+    def maybe_end_combat!(result)
+      return result unless result.is_a?(Hash)
+
+      end_state = DungeonMaster::Utilities::CombatEndResolver.check_combat_end(
+        adventure: @adventure, sheet: @sheet,
+        instant_death: defined?(DmConfig) ? DmConfig.instance.instant_death? : false
+      )
+      return result if end_state[:combat][:combat_active]
+
+      apply_combat_ended!(end_state)
+      annotate_result_with_combat_end(result, end_state)
+    end
+
+    def apply_combat_ended!(end_state)
+      ctx = @adventure.combat_context.deep_dup.deep_stringify_keys
+      ctx['active'] = false
+      ctx['current_turn'] = nil
+      ctx['action_economy'] = nil
+      ctx['combat_end_reason'] = end_state[:combat][:combat_end_reason].to_s
+      @adventure.update!(combat_context: ctx)
+    rescue StandardError => e
+      Rails.logger.warn("[PlayerActionResolver] combat-end persist failed: #{e.message}")
+    end
+
+    def annotate_result_with_combat_end(result, end_state)
+      payload = (result[:result] || {}).merge(
+        combat_ended: true,
+        combat_end_reason: end_state[:combat][:combat_end_reason].to_s
+      )
+      result.merge(result: payload)
     end
 
     def log_action_event!(payload)
