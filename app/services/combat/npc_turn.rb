@@ -104,33 +104,15 @@ module Combat
         attacker: creature, target_sheet: target_sheet,
         target_kind: :player, attack_pref: attack_pref
       )
-      {
-        kind: 'npc_attack',
-        creature_id: creature.id,
-        creature_name: creature.name,
-        attack_label: attack_pref.name,
-        outcome: outcome.to_h
-      }
+      NpcTurnEvent::Attack.new(creature: creature, attack_pref: attack_pref, outcome: outcome).to_h
     end
 
     def move_event(creature, from:, to:)
-      {
-        kind: 'npc_move',
-        creature_id: creature.id,
-        creature_name: creature.name,
-        from: from,
-        to: to,
-        message: "#{creature.name} closes to (#{to[:x]}, #{to[:y]})."
-      }
+      NpcTurnEvent::Move.new(creature: creature, from: from, to: to).to_h
     end
 
     def skip_event(creature, reason)
-      {
-        kind: 'npc_skip',
-        creature_id: creature.id,
-        creature_name: creature.name,
-        message: "#{creature.name} holds — #{reason}."
-      }
+      NpcTurnEvent::Skip.new(creature: creature, reason: reason).to_h
     end
 
     def flee_event(ctx)
@@ -144,14 +126,11 @@ module Combat
 
       Positions.move_token!(adventure, token_id: npc_token_id_for(creature),
                                        at_x: retreat[:x], at_y: retreat[:y])
-      {
-        kind: 'npc_flee',
-        creature_id: creature.id,
-        creature_name: creature.name,
+      NpcTurnEvent::Flee.new(
+        creature: creature,
         from: { x: npc_pos.x.to_i, y: npc_pos.y.to_i },
-        to: retreat,
-        message: "#{creature.name} flees to (#{retreat[:x]}, #{retreat[:y]})."
-      }
+        to: retreat
+      ).to_h
     end
 
     # ── helpers ──────────────────────────────────────────────────────
