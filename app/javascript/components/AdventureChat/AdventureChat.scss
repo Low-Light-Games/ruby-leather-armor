@@ -574,365 +574,6 @@
     }
   }
 
-  /* ===== Combat banner (shown above input area during active combat) ===== */
-  .combat-banner {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 5px 12px;
-    background: $red-ink-lt;
-    border: 1px solid $red-ink;
-    border-bottom: none;
-    font-family: $font-display;
-    font-size: 11px;
-    letter-spacing: 0.16em;
-    color: $red-ink;
-    text-transform: uppercase;
-    user-select: none;
-    animation: combatBannerIn 1s ease both;
-  }
-
-  /* ===== Combat grid (click-to-move tactical surface) ===== */
-  .combat-grid-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-
-    .combat-grid {
-      background: $parchment;
-      border: 1px solid $border-light;
-      display: block;
-
-      .combat-grid-cell {
-        fill: transparent;
-        stroke: $border-light;
-        stroke-width: 0.5;
-
-        &.reachable {
-          fill: rgba(0, 100, 0, 0.10);
-          stroke: $green-ink;
-          stroke-width: 1;
-
-          &:hover {
-            fill: rgba(0, 100, 0, 0.30);
-          }
-
-          &.withdraw {
-            fill: rgba(180, 120, 0, 0.15);
-            stroke: $amber;
-
-            &:hover {
-              fill: rgba(180, 120, 0, 0.35);
-            }
-          }
-        }
-      }
-
-      .combat-grid-token {
-        circle {
-          stroke: $ink;
-          stroke-width: 1;
-        }
-
-        text {
-          font-family: $font-display;
-          fill: $parchment;
-          pointer-events: none;
-        }
-
-        &.player circle { fill: $blue-ink; }
-        &.npc circle    { fill: $red-ink; }
-      }
-    }
-
-    .combat-grid-controls {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-      justify-content: center;
-
-      .withdraw-toggle {
-        font-family: $font-display;
-        font-size: 10px;
-        letter-spacing: 0.1em;
-        padding: 2px 8px;
-        background: $parchment-mid;
-        color: $ink-mid;
-        border: 1px solid $border-light;
-        border-radius: 4px;
-        cursor: pointer;
-
-        &:hover:not(:disabled) {
-          background: $amber-lt;
-          color: $amber;
-          border-color: $amber;
-        }
-
-        &.active {
-          background: $amber-lt;
-          color: $amber;
-          border-color: $amber;
-        }
-
-        &:disabled { opacity: 0.4; cursor: not-allowed; }
-      }
-    }
-
-    .combat-grid-hint {
-      font-family: $font-mono;
-      font-size: 10px;
-      color: $ink-faint;
-      text-align: center;
-    }
-  }
-
-  /* ===== Combat action panel (deterministic attack HUD) ===== */
-  .combat-action-panel {
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 8px 12px;
-    background: $parchment-mid;
-    border: 1px solid $red-ink;
-    border-bottom: none;
-
-    &.loading {
-      color: $ink-faint;
-      font-style: italic;
-      text-align: center;
-    }
-
-    .combat-action-panel-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-
-      .panel-title {
-        font-family: $font-display;
-        font-size: 12px;
-        letter-spacing: 0.12em;
-        text-transform: uppercase;
-        color: $red-ink;
-      }
-
-      .dice-strategy-toggle {
-        font-family: $font-mono;
-        font-size: 11px;
-        padding: 2px 8px;
-        border: 1px solid $border-light;
-        background: $parchment;
-        color: $ink-mid;
-        cursor: pointer;
-        border-radius: 4px;
-
-        &:hover {
-          background: $parchment-mid;
-          color: $red-ink;
-        }
-      }
-    }
-
-    .target-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-family: $font-mono;
-      font-size: 12px;
-      color: $ink-mid;
-
-      select {
-        flex: 1;
-        font-family: $font-mono;
-        font-size: 12px;
-        padding: 2px 6px;
-        border: 1px solid $border-light;
-        background: $parchment;
-      }
-    }
-
-    .panel-empty {
-      font-family: $font-mono;
-      font-size: 11px;
-      color: $ink-faint;
-      font-style: italic;
-      padding: 4px 0;
-    }
-
-    .attack-options {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-
-      .attack-option-btn {
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        padding: 6px 10px;
-        background: $parchment;
-        border: 1px solid $red-ink;
-        border-radius: 4px;
-        cursor: pointer;
-        min-width: 110px;
-        transition: background-color 0.15s ease, transform 0.05s ease;
-
-        &:hover:not(:disabled) {
-          background: $red-ink-lt;
-          transform: translateY(-1px);
-        }
-
-        &:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        .attack-label {
-          font-family: $font-display;
-          font-size: 12px;
-          color: $red-ink;
-        }
-
-        .attack-damage {
-          font-family: $font-mono;
-          font-size: 10px;
-          color: $ink-mid;
-        }
-      }
-    }
-
-    .pending-self-roll {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      padding: 6px 8px;
-      background: $red-ink-lt;
-      border: 1px dashed $red-ink;
-      border-radius: 4px;
-      font-family: $font-mono;
-      font-size: 12px;
-
-      .self-roll-btn {
-        align-self: flex-start;
-        padding: 3px 10px;
-        background: $red-ink;
-        color: $parchment;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-family: $font-display;
-        letter-spacing: 0.08em;
-
-        &:disabled { opacity: 0.5; cursor: not-allowed; }
-      }
-    }
-
-    .end-turn-row {
-      display: flex;
-      justify-content: flex-end;
-
-      .end-turn-btn {
-        font-family: $font-display;
-        font-size: 11px;
-        letter-spacing: 0.1em;
-        padding: 4px 12px;
-        background: $parchment-mid;
-        color: $ink-mid;
-        border: 1px solid $border-light;
-        border-radius: 4px;
-        cursor: pointer;
-
-        &:hover:not(:disabled) {
-          background: $red-ink-lt;
-          color: $red-ink;
-          border-color: $red-ink;
-        }
-
-        &:disabled { opacity: 0.5; cursor: not-allowed; }
-      }
-    }
-
-    .combat-action-log {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-
-      .log-entry {
-        font-family: $font-mono;
-        font-size: 11px;
-        color: $ink-mid;
-        padding: 2px 4px;
-        border-left: 2px solid $border-light;
-
-        &.hit { border-left-color: $red-ink; }
-        &.miss { color: $ink-faint; }
-        &.dropped { font-weight: bold; color: $red-ink; }
-      }
-    }
-
-    .combat-action-error {
-      font-family: $font-mono;
-      font-size: 11px;
-      color: $red-ink;
-      padding: 4px 6px;
-      background: $red-ink-lt;
-      border-radius: 3px;
-    }
-  }
-
-  /* ===== Action economy chips (Standard/Move/Swift/Free) ===== */
-  .combat-action-economy {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 4px 12px;
-    background: $red-ink-lt;
-    border-left: 1px solid $red-ink;
-    border-right: 1px solid $red-ink;
-    border-bottom: 1px solid $red-ink;
-    user-select: none;
-
-    .action-economy-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 2px 8px;
-      border: 1px solid $red-ink;
-      border-radius: 10px;
-      font-family: $font-display;
-      font-size: 10px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      cursor: default;
-      transition: opacity 0.2s ease, background-color 0.2s ease;
-
-      .chip-dot {
-        font-size: 12px;
-        line-height: 1;
-      }
-
-      &.available {
-        background: $red-ink-lt;
-        color: $red-ink;
-        opacity: 1;
-      }
-
-      &.spent {
-        background: transparent;
-        color: $red-ink;
-        opacity: 0.45;
-        text-decoration: line-through;
-      }
-    }
-  }
-
   /* ===== Mechanics group (combat_log / action_result run) ===== */
   .mechanics-group {
     align-self: flex-start;
@@ -1007,3 +648,362 @@
   0%, 80%, 100% { opacity: 0.3; transform: scale(1); }
   40%           { opacity: 1;   transform: scale(1.15); }
 }
+/* ===== Combat banner (shown above input area during active combat) ===== */
+.combat-banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  background: $red-ink-lt;
+  border: 1px solid $red-ink;
+  border-bottom: none;
+  font-family: $font-display;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: $red-ink;
+  text-transform: uppercase;
+  user-select: none;
+  animation: combatBannerIn 1s ease both;
+}
+
+/* ===== Combat grid (click-to-move tactical surface) ===== */
+.combat-grid-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+
+  .combat-grid {
+    background: $parchment;
+    border: 1px solid $border-light;
+    display: block;
+
+    .combat-grid-cell {
+      fill: transparent;
+      stroke: $border-light;
+      stroke-width: 0.5;
+
+      &.reachable {
+        fill: rgba(0, 100, 0, 0.10);
+        stroke: $green-ink;
+        stroke-width: 1;
+
+        &:hover {
+          fill: rgba(0, 100, 0, 0.30);
+        }
+
+        &.withdraw {
+          fill: rgba(180, 120, 0, 0.15);
+          stroke: $amber;
+
+          &:hover {
+            fill: rgba(180, 120, 0, 0.35);
+          }
+        }
+      }
+    }
+
+    .combat-grid-token {
+      circle {
+        stroke: $ink;
+        stroke-width: 1;
+      }
+
+      text {
+        font-family: $font-display;
+        fill: $parchment;
+        pointer-events: none;
+      }
+
+      &.player circle { fill: $blue-ink; }
+      &.npc circle    { fill: $red-ink; }
+    }
+  }
+
+  .combat-grid-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+
+    .withdraw-toggle {
+      font-family: $font-display;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      padding: 2px 8px;
+      background: $parchment-mid;
+      color: $ink-mid;
+      border: 1px solid $border-light;
+      border-radius: 4px;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        background: $amber-lt;
+        color: $amber;
+        border-color: $amber;
+      }
+
+      &.active {
+        background: $amber-lt;
+        color: $amber;
+        border-color: $amber;
+      }
+
+      &:disabled { opacity: 0.4; cursor: not-allowed; }
+    }
+  }
+
+  .combat-grid-hint {
+    font-family: $font-mono;
+    font-size: 10px;
+    color: $ink-faint;
+    text-align: center;
+  }
+}
+
+/* ===== Combat action panel (deterministic attack HUD) ===== */
+.combat-action-panel {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px;
+  background: $parchment-mid;
+  border: 1px solid $red-ink;
+  border-bottom: none;
+
+  &.loading {
+    color: $ink-faint;
+    font-style: italic;
+    text-align: center;
+  }
+
+  .combat-action-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    .panel-title {
+      font-family: $font-display;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: $red-ink;
+    }
+
+    .dice-strategy-toggle {
+      font-family: $font-mono;
+      font-size: 11px;
+      padding: 2px 8px;
+      border: 1px solid $border-light;
+      background: $parchment;
+      color: $ink-mid;
+      cursor: pointer;
+      border-radius: 4px;
+
+      &:hover {
+        background: $parchment-mid;
+        color: $red-ink;
+      }
+    }
+  }
+
+  .target-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: $font-mono;
+    font-size: 12px;
+    color: $ink-mid;
+
+    select {
+      flex: 1;
+      font-family: $font-mono;
+      font-size: 12px;
+      padding: 2px 6px;
+      border: 1px solid $border-light;
+      background: $parchment;
+    }
+  }
+
+  .panel-empty {
+    font-family: $font-mono;
+    font-size: 11px;
+    color: $ink-faint;
+    font-style: italic;
+    padding: 4px 0;
+  }
+
+  .attack-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    .attack-option-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 6px 10px;
+      background: $parchment;
+      border: 1px solid $red-ink;
+      border-radius: 4px;
+      cursor: pointer;
+      min-width: 110px;
+      transition: background-color 0.15s ease, transform 0.05s ease;
+
+      &:hover:not(:disabled) {
+        background: $red-ink-lt;
+        transform: translateY(-1px);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .attack-label {
+        font-family: $font-display;
+        font-size: 12px;
+        color: $red-ink;
+      }
+
+      .attack-damage {
+        font-family: $font-mono;
+        font-size: 10px;
+        color: $ink-mid;
+      }
+    }
+  }
+
+  .pending-self-roll {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px 8px;
+    background: $red-ink-lt;
+    border: 1px dashed $red-ink;
+    border-radius: 4px;
+    font-family: $font-mono;
+    font-size: 12px;
+
+    .self-roll-btn {
+      align-self: flex-start;
+      padding: 3px 10px;
+      background: $red-ink;
+      color: $parchment;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: $font-display;
+      letter-spacing: 0.08em;
+
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
+  }
+
+  .end-turn-row {
+    display: flex;
+    justify-content: flex-end;
+
+    .end-turn-btn {
+      font-family: $font-display;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      padding: 4px 12px;
+      background: $parchment-mid;
+      color: $ink-mid;
+      border: 1px solid $border-light;
+      border-radius: 4px;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        background: $red-ink-lt;
+        color: $red-ink;
+        border-color: $red-ink;
+      }
+
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+    }
+  }
+
+  .combat-action-log {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .log-entry {
+      font-family: $font-mono;
+      font-size: 11px;
+      color: $ink-mid;
+      padding: 2px 4px;
+      border-left: 2px solid $border-light;
+
+      &.hit { border-left-color: $red-ink; }
+      &.miss { color: $ink-faint; }
+      &.dropped { font-weight: bold; color: $red-ink; }
+    }
+  }
+
+  .combat-action-error {
+    font-family: $font-mono;
+    font-size: 11px;
+    color: $red-ink;
+    padding: 4px 6px;
+    background: $red-ink-lt;
+    border-radius: 3px;
+  }
+}
+
+/* ===== Action economy chips (Standard/Move/Swift/Free) ===== */
+.combat-action-economy {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: $red-ink-lt;
+  border-left: 1px solid $red-ink;
+  border-right: 1px solid $red-ink;
+  border-bottom: 1px solid $red-ink;
+  user-select: none;
+
+  .action-economy-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border: 1px solid $red-ink;
+    border-radius: 10px;
+    font-family: $font-display;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    cursor: default;
+    transition: opacity 0.2s ease, background-color 0.2s ease;
+
+    .chip-dot {
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    &.available {
+      background: $red-ink-lt;
+      color: $red-ink;
+      opacity: 1;
+    }
+
+    &.spent {
+      background: transparent;
+      color: $red-ink;
+      opacity: 0.45;
+      text-decoration: line-through;
+    }
+  }
+}
+
