@@ -110,7 +110,7 @@ module DungeonMaster
             rule_slug: raw[:rule_slug],
             take_10_eligible: raw[:take_10_eligible] == true,
             take_20_eligible: raw[:take_20_eligible] == true,
-            situational_modifiers: Array(raw[:situational_modifiers]).map(&:deep_symbolize_keys)
+            situational_modifiers: DungeonMaster::Rolls::SituationalModifiers.normalize(raw[:situational_modifiers])
           }.compact
         end
 
