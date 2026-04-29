@@ -92,7 +92,7 @@ class DmConfig < ApplicationRecord
     'narrative_facts_embedding_model' => 'text-embedding-3-small',
     'evaluation_mode' => 'roll_request',
     'combat_evaluation_mode' => 'combat_roll_request',
-    'combat_narrator_enabled' => false,
+    'combat_narrator_enabled' => true,
     'step_reasoning_efforts' => { 'roll_request' => 'minimal' }.freeze,
     'stripe_grace_period_days' => 3
   }.freeze
@@ -172,12 +172,8 @@ class DmConfig < ApplicationRecord
     get('narrative_facts_top_k').to_i
   end
 
-  # Drives `AdventureLoopResolution#resolve` choice between the legacy
-  # `Steps::ParallelEvaluation` chain (beacon → mech_eval → roll_qualifier
-  # via the Node evaluator) and `Steps::RollRequest` (single-call AI step
-  # with RAG-retrieved rules and beats). Combat-active turns ignore this
-  # toggle and always use ParallelEvaluation so the Combat GM path stays
-  # bit-for-bit unchanged.
+  # Combat-active turns ignore this toggle — they always use
+  # ParallelEvaluation regardless of the value.
   def evaluation_mode
     val = get('evaluation_mode').to_s
     EVALUATION_MODES.include?(val) ? val : DEFAULTS['evaluation_mode']
@@ -187,11 +183,6 @@ class DmConfig < ApplicationRecord
     evaluation_mode == 'roll_request'
   end
 
-  # Combat-active free-text routing toggle. When set to
-  # 'combat_roll_request', `AdventureLoopResolution#run_evaluation_phase`
-  # routes free-text combat through `Steps::CombatRollRequest` instead
-  # of `Steps::ParallelEvaluation`. The HUD-driven button path
-  # (Combat::PlayerActionResolver) is unaffected — it bypasses both.
   def combat_evaluation_mode
     val = get('combat_evaluation_mode').to_s
     COMBAT_EVALUATION_MODES.include?(val) ? val : DEFAULTS['combat_evaluation_mode']
