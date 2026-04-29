@@ -145,11 +145,6 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           dismissRankErrors={skillRanks.dismissRankErrors}
         />
 
-        {/* MIDDLE + RIGHT COLUMNS — layout swaps during the player's turn
-            in active combat: combat HUD takes the center column, chat
-            history moves to the right (replacing StorySidebar) so the
-            grid + attack panel + message log don't pile on top of each
-            other on average screens. */}
         {(() => {
           const isPlayerTurn = adventure.combat_context?.current_turn === 'Player'
           const showCombatHud = adventure.combat_context?.active === true && isPlayerTurn
@@ -164,7 +159,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
               endReason={adventure.end_reason}
               isCombatActive={showCombatHud}
               combatContext={adventure.combat_context}
-              renderCombatPanels={!showCombatHud}
+              renderCombatHudInChat={!showCombatHud}
               onAdventureComplete={reload}
               onDmResponse={reload}
               onSheetUpdate={reload}

@@ -11,19 +11,6 @@ interface Props {
   onCombatEnded?: () => void
 }
 
-/**
- * Center-column combat HUD lifted out of AdventureChat so the message
- * log can move to the right column during combat (PR-J playtest
- * feedback — too much UI in one stack on average screens).
- *
- * Owns the local liveCombatContext so the action-economy chips can
- * refresh immediately after each resolved action without waiting for
- * the parent adventure record to refetch. When the panel reports a
- * context whose .active flipped to false (last NPC down, player
- * death), bubble it via onCombatEnded so AdventurePlay can refetch
- * the adventure and tear down the combat layout — otherwise the
- * parent's stale combat_context keeps showCombatHud true.
- */
 export const CombatHud = ({ adventureId, combatContext, diceStrategy, onDiceStrategyChange, onCombatEnded }: Props) => {
   const [liveCombatContext, setLiveCombatContext] = useState<Record<string, unknown> | null>(combatContext)
 
