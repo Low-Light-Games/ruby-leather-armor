@@ -19,7 +19,13 @@ RSpec.configure do |config|
 
   config.include FactoryBot::Syntax::Methods
 
+  # Default ActiveJob queue adapter is :async — Concurrent::ScheduledTask
+  # threads keep running after the spec returns and can hold connections
+  # or hit unstubbed external services (OpenAI, Redis). Use the in-memory
+  # :test adapter so perform_later just records the enqueue.
   config.before do
+    ActiveJob::Base.queue_adapter = :test
+
     next unless defined?(Rack::Attack)
 
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new

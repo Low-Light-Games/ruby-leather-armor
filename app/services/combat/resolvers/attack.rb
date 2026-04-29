@@ -20,8 +20,8 @@ module Combat
 
         return awaiting_player_dice(inputs: inputs) if @submitted_dice.nil? && client_dice?
 
-        attack = roll_player_attack(inputs[:attack_bonus], inputs[:defense_dc])
-        damage = roll_player_damage(inputs[:option], attack[:hit])
+        attack = roll_player_attack(inputs.attack_bonus, inputs.defense_dc)
+        damage = roll_player_damage(inputs.option, attack[:hit])
 
         apply_attack_resolution(
           inputs: inputs,
@@ -29,22 +29,20 @@ module Combat
         )
       end
 
-      # Bundled resolver-input record. Computed once at the top of
-      # resolve_attack and threaded through the rest of the flow so the
-      # individual helpers stay under the parameter-list cap.
+      # @return [Combat::Resolvers::AttackInput]
       def build_attack_inputs!
         option = lookup_attack_option!
         target = lookup_target!
         ensure_target_in_reach!(option, target)
         situational = situational_modifiers_for(option, target)
-        attack_bonus = attack_bonus_for(option) + situational[:flanking_bonus]
-        defense_dc = defense_dc_for(target, option) + situational[:cover_bonus]
+        attack_bonus = attack_bonus_for(option) + situational.flanking_bonus
+        defense_dc = defense_dc_for(target, option) + situational.cover_bonus
 
-        {
+        Combat::Resolvers::AttackInput.new(
           option: option, target: target,
           attack_bonus: attack_bonus, defense_dc: defense_dc,
           situational: situational
-        }
+        )
       end
 
       # Refuse melee/melee_touch attacks against targets outside reach. Ranged
@@ -70,11 +68,14 @@ module Combat
         )
       end
 
+      # @return [Combat::Resolvers::SituationalModifiers]
       def situational_modifiers_for(option, target)
         creature = target.first
         attacker_pos = Combat::Positions.player_position(@adventure)
         target_pos = Combat::Positions.position_for_creature_sheet(@adventure, creature.id)
-        return zero_situational unless attacker_pos&.coordinates_present? && target_pos&.coordinates_present?
+        unless attacker_pos&.coordinates_present? && target_pos&.coordinates_present?
+          return Combat::Resolvers::SituationalModifiers.zero
+        end
 
         others = Combat::Positions.for_adventure(@adventure)
         reach = Combat::Rules.reach_for(option)
@@ -82,32 +83,19 @@ module Combat
                                            allies: others, reach_squares: reach)
         cover = Combat::Rules.cover_between(attacker: attacker_pos, target: target_pos, others: others)
 
-        situational_payload(flanking: flanking, cover: cover)
-      end
-
-      def situational_payload(flanking:, cover:)
-        {
-          flanking: flanking,
-          flanking_bonus: flanking ? Combat::Rules::FLANKING_BONUS : 0,
-          cover: cover,
-          cover_bonus: cover
-        }
-      end
-
-      def zero_situational
-        situational_payload(flanking: false, cover: 0)
+        Combat::Resolvers::SituationalModifiers.new(flanking: flanking, cover: cover)
       end
 
       def apply_attack_resolution(inputs:, outcome:)
-        creature, target_name = inputs[:target]
+        creature, target_name = inputs.target
         target_state = apply_attack_damage(creature, outcome[:attack][:hit], outcome[:damage][:total])
-        decrement_action_economy_for(inputs[:option])
+        decrement_action_economy_for(inputs.option)
 
         payload = Combat::AttackResolutionPayload.new(
-          attack_input: { option: inputs[:option], target_name: target_name,
-                          attack_bonus: inputs[:attack_bonus], defense_dc: inputs[:defense_dc] },
+          attack_input: { option: inputs.option, target_name: target_name,
+                          attack_bonus: inputs.attack_bonus, defense_dc: inputs.defense_dc },
           attack_outcome: { attack: outcome[:attack], damage: outcome[:damage], target_state: target_state },
-          situational: inputs[:situational]
+          situational: inputs.situational.to_h
         ).to_h
         log_action_event!(payload)
         { status: :resolved, result: payload }
@@ -143,30 +131,12 @@ module Combat
       end
 
       def awaiting_player_dice(inputs:)
-        creature, target_name = inputs[:target]
-        { status: :awaiting_player_dice,
-          request: pending_request(creature: creature, target_name: target_name, inputs: inputs) }
-      end
-
-      def pending_request(creature:, target_name:, inputs:)
-        option = inputs[:option]
-        situational = inputs[:situational]
-        {
-          kind: 'attack',
-          attack_option_id: option[:id].to_s,
-          attack_label: option[:label].to_s,
-          target_name: target_name,
-          target_creature_sheet_id: creature.id,
-          attack_bonus: inputs[:attack_bonus],
-          defense_dc: inputs[:defense_dc],
-          defense_kind: option[:defense_kind],
-          damage_expression: option[:damage],
-          damage_type: option[:damage_type],
-          damage_ability_bonus: damage_ability_bonus(option),
-          flanking: situational[:flanking],
-          flanking_bonus: situational[:flanking_bonus],
-          cover_bonus: situational[:cover_bonus]
-        }
+        creature, target_name = inputs.target
+        request = Combat::Resolvers::PendingDiceRequest.new(
+          inputs: inputs, creature: creature, target_name: target_name,
+          damage_ability_bonus: damage_ability_bonus(inputs.option)
+        ).to_h
+        { status: :awaiting_player_dice, request: request }
       end
 
       def client_dice?
