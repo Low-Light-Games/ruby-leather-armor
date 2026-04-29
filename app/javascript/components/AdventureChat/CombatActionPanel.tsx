@@ -12,7 +12,7 @@ import {
 } from '../../services/combatActionService'
 import type { CombatDiceStrategy } from '../../types/auth'
 import { rollD20 } from '../../rules/dice'
-import CombatGrid from './CombatGrid'
+import CombatGrid from './CombatGrid/index'
 
 interface Props {
   adventureId: number
