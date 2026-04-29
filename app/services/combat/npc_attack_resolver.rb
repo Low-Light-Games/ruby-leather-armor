@@ -33,21 +33,22 @@ module Combat
     end
 
     # @param creature [CreatureSheet]
-    # @param weapon [Hash]
+    # @param weapon [Combat::EquippedWeapon]
     def attack_bonus_for(creature, weapon)
       stats = creature.derived_stats || {}
-      key = weapon[:ranged] ? 'ranged_attack' : 'melee_attack'
+      key = weapon.ranged? ? 'ranged_attack' : 'melee_attack'
       bonus = stats[key] || stats[key.to_sym] || stats['bab'] || stats[:bab]
       bonus.to_i
     end
 
     # @param creature [CreatureSheet]
     # @param attack_pref [Combat::ProgrammedBehavior::AttackPreference, nil]
+    # @return [Combat::EquippedWeapon]
     def pick_weapon_for_attack(creature, attack_pref)
       weapons = Array(creature.equipped_weapons)
       if attack_pref&.name.to_s.match?(/\S/)
         named = weapons.find { |w| weapon_with_dice?(w) && weapon_label_matches?(w, attack_pref.name) }
-        return weapon_payload(named) if named
+        return Combat::EquippedWeapon.from_raw(named) if named
       end
 
       primary_weapon_for(creature)
@@ -76,11 +77,12 @@ module Combat
     end
 
     # @param creature [CreatureSheet]
+    # @return [Combat::EquippedWeapon]
     def primary_weapon_for(creature)
       first = Array(creature.equipped_weapons).find { |w| weapon_with_dice?(w) }
-      return weapon_payload(first) if first
+      return Combat::EquippedWeapon.from_raw(first) if first
 
-      { label: 'natural attack', damage: DEFAULT_NATURAL_DAMAGE, damage_type: nil, ranged: false }
+      Combat::EquippedWeapon.natural_attack(DEFAULT_NATURAL_DAMAGE)
     end
 
     def roll_attack(attack_bonus, defense_dc)
@@ -91,22 +93,23 @@ module Combat
     end
 
     # @param attacker [CreatureSheet]
-    # @param weapon [Hash]
+    # @param weapon [Combat::EquippedWeapon]
+    # @return [Combat::DamageRoll]
     def roll_damage(attacker, weapon)
-      base = DungeonMaster::Rolls::CombatDice.roll_damage_expression(weapon[:damage].to_s)
+      base = DungeonMaster::Rolls::CombatDice.roll_damage_expression(weapon.damage_dice.to_s)
       total = [base + str_mod(attacker), 1].max
-      { total: total, type: weapon[:damage_type] }
+      Combat::DamageRoll.new(total: total, type: weapon.damage_type)
     end
 
     # @param sheet [CreatureSheet, AdventureSheet]
-    # @param damage [Hash, nil]
+    # @param damage [Combat::DamageRoll, nil] nil when the attack missed
     def apply_damage_to(sheet, damage)
       hp_before = sheet.hp.to_i
       hp_after = hp_before
       dropped = false
 
-      if damage&.fetch(:total, nil)
-        hp_after = (hp_before - damage[:total]).clamp(0, sheet.max_hp.to_i)
+      if damage&.total
+        hp_after = (hp_before - damage.total).clamp(0, sheet.max_hp.to_i)
         sheet.update!(hp: hp_after)
         dropped = hp_after <= 0
       end
@@ -114,19 +117,9 @@ module Combat
       { hp_before: hp_before, hp_after: hp_after, dropped: dropped }
     end
 
-    # @param weapon [Hash, nil]
+    # @param weapon [Hash, nil] raw entry from CreatureSheet#equipped_weapons
     def weapon_with_dice?(weapon)
       weapon.is_a?(Hash) && (weapon['damage_dice'] || weapon[:damage_dice]).to_s.match?(/\d+d\d+/)
-    end
-
-    # @param weapon [Hash]
-    def weapon_payload(weapon)
-      {
-        label: weapon['name'].presence || weapon[:name].presence || 'weapon',
-        damage: weapon['damage_dice'] || weapon[:damage_dice],
-        damage_type: weapon['damage_type'] || weapon[:damage_type],
-        ranged: (weapon['weapon_type'] || weapon[:weapon_type]).to_s == 'ranged'
-      }
     end
   end
 end

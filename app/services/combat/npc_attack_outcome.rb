@@ -12,10 +12,10 @@ module Combat
   class NpcAttackOutcome
     attr_reader :summary, :attack_roll, :damage, :target_state
 
-    # @param summary [Hash] attacker_name, target_name, weapon_label, message
-    # @param attack_roll [Hash] hit, natural, total, defense_dc
-    # @param damage [Hash, nil] total, type — nil on a miss
-    # @param target_state [Hash] hp_before, hp_after, dropped
+    # @param summary [Hash{attacker_name:, target_name:, weapon_label:, message:}]
+    # @param attack_roll [Hash{hit:, natural:, total:, defense_dc:}]
+    # @param damage [Combat::DamageRoll, nil] nil when the attack missed
+    # @param target_state [Hash{hp_before:, hp_after:, dropped:}]
     def initialize(summary:, attack_roll:, damage:, target_state:)
       @summary = summary
       @attack_roll = attack_roll

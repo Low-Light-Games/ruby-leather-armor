@@ -8,6 +8,12 @@ module Combat
     class PendingDiceRequest
       attr_reader :inputs, :creature, :target_name, :damage_ability_bonus
 
+      # @param inputs [Combat::Resolvers::AttackInput] resolved option +
+      #   target + bonus/DC + situational, threaded from build_attack_inputs!
+      # @param creature [CreatureSheet] the chosen target
+      # @param target_name [String] display label for the prompt
+      # @param damage_ability_bonus [Integer] STR/DEX/etc bonus the
+      #   client adds to its rolled natural before posting the result
       def initialize(inputs:, creature:, target_name:, damage_ability_bonus:)
         @inputs = inputs
         @creature = creature

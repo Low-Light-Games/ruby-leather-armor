@@ -130,6 +130,7 @@ module Combat
         end
       end
 
+      # @param inputs [Combat::Resolvers::AttackInput]
       def awaiting_player_dice(inputs:)
         creature, target_name = inputs.target
         request = Combat::Resolvers::PendingDiceRequest.new(
