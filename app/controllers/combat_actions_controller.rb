@@ -22,7 +22,7 @@ class CombatActionsController < ApplicationController
     render json: {
       attack_options: attack_options_for_render,
       targets: hostile_targets,
-      action_economy: @adventure.combat_context.is_a?(Hash) ? @adventure.combat_context['action_economy'] : nil,
+      action_economy: combat_context_hash['action_economy'],
       dice_strategy: current_user.combat_dice_strategy,
       battlefield: battlefield,
       player_position: player_pos&.coordinates_present? ? { x: player_pos.x, y: player_pos.y } : nil,
@@ -86,23 +86,28 @@ class CombatActionsController < ApplicationController
   end
 
   def hostile_targets
-    Array(@adventure.combat_context.is_a?(Hash) ? @adventure.combat_context['participants'] : nil)
-      .filter_map do |participant|
-        next if participant['name'].to_s.casecmp(DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME).zero?
+    @hostile_targets ||= combat_participants.filter_map do |participant|
+      next if participant_is_player?(participant)
 
-        sid = participant['creature_sheet_id']
-        next if sid.blank?
+      sid = participant['creature_sheet_id']
+      next if sid.blank?
 
-        creature = @adventure.creature_sheets.find_by(id: sid.to_i)
-        next unless creature
+      creature = @adventure.creature_sheets.find_by(id: sid.to_i)
+      next unless creature
 
-        {
-          creature_sheet_id: creature.id,
-          name: creature.name,
-          hp: creature.hp,
-          max_hp: creature.max_hp,
-          dropped: creature.hp.to_i <= 0
-        }
-      end
+      Combat::HostileTarget.new(creature).to_h
+    end
+  end
+
+  def combat_participants
+    @combat_participants ||= Array(combat_context_hash['participants'])
+  end
+
+  def combat_context_hash
+    @adventure.combat_context.is_a?(Hash) ? @adventure.combat_context : {}
+  end
+
+  def participant_is_player?(participant)
+    participant['name'].to_s.casecmp(DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME).zero?
   end
 end
