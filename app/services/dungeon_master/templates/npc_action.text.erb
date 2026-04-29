@@ -21,7 +21,7 @@ Choose one action for this NPC's turn: attack (melee or ranged against a valid t
 - Target must be "Player" or another participant name listed in combat.
 - For attack: provide attack modifier and damage dice (e.g. "1d6+2").
 - flee / surrender: set action accordingly; no damage.
-- If this NPC moves on the grid or shifts the scene, include `battlefield_patches` (same ops as Combat GM: move_token, shift_viewport, set_cells). Otherwise use an empty array.
+- If this NPC moves on the grid or shifts the scene, include `battlefield_patches`. Use the exact key names: `{ "op": "move_token", "id": "creature_<id>", "x": <int>, "y": <int> }` (NOT `operation`/`token_id`/`to_x`/`to_y`). Other ops: `shift_viewport`, `set_cells`. Otherwise use an empty array.
 - Do not emit action-slot or action-economy fields here; NPC turn action budgeting is not consumed from this JSON (world turn owns sequencing).
 
 Respond ONLY with valid JSON (no markdown):
