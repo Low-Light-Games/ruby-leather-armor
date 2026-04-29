@@ -21,15 +21,16 @@ module DungeonMaster
           return result if result
 
           apply_prompt_phase(Phases::OrchestrateCompoundActions, pipeline_phase_state) ||
-            raise("run_prompt: terminal phase did not halt")
+            raise('run_prompt: terminal phase did not halt')
         end
 
         def run_initiative(player_initiative, metadata)
           restore_paused_loop!
-          @loop&.batch_update!(new_status: "resolved",
-            timeline_entry: tl("initiative_resolved", "Player initiative: #{player_initiative}"))
+          @loop&.batch_update!(new_status: 'resolved',
+                               timeline_entry: tl('initiative_resolved',
+                                                  "Player initiative: #{player_initiative}"))
 
-          creature_data = metadata["creature_data"] || []
+          creature_data = metadata['creature_data'] || []
           combat_data = Utilities::Warmaster.compute_combat_initialization(
             combat_initialization_request: Utilities::Warmaster::CombatInitializationRequest.new(
               adventure: @adventure,
@@ -39,15 +40,15 @@ module DungeonMaster
             )
           )
 
-          intent = metadata["intent"]&.deep_symbolize_keys
-          raise AiError, "Initiative metadata missing intent — state integrity failure" unless intent
+          intent = metadata['intent']&.deep_symbolize_keys
+          raise AiError, 'Initiative metadata missing intent — state integrity failure' unless intent
 
           # Atomic combat start: battlefield row + battlefield_ref + action_economy in one transaction.
           Battlefield::PersistCombatStart.call(adventure: @adventure, combat_data: combat_data, sheet: @sheet)
           @adventure.reload
 
-          base_mutations = metadata["mutations"] || {}
-          opener_outcome = metadata["opener_outcome"].to_s.presence
+          base_mutations = metadata['mutations'] || {}
+          opener_outcome = metadata['opener_outcome'].to_s.presence
           initiative_resume_result = InitiativeResumeResult.new(
             intent: intent,
             mutations: base_mutations,
@@ -58,8 +59,8 @@ module DungeonMaster
 
           if opening_merged
             if opening_merged[:player_rolls].any?
-              @loop&.batch_update!(new_status: "paused",
-                timeline_entry: tl("awaiting_rolls", "Paused for player rolls"))
+              @loop&.batch_update!(new_status: 'paused',
+                                   timeline_entry: tl('awaiting_rolls', 'Paused for player rolls'))
               ContextUpdatePause.run(pipeline_engine: self, intent: intent, merged: opening_merged)
               return AwaitingRollsResumePayload.new(
                 intent: intent,
@@ -69,12 +70,13 @@ module DungeonMaster
             end
 
             opening_result = finish_resolution(intent, opening_merged, Rolls::PlayerRolls.auto_success_roll_message(opening_merged))
-            return continue_or_narrate_after_resume(metadata, accumulated_row: opening_result, only_continue_if_resolved: true)
+            return continue_or_narrate_after_resume(metadata, accumulated_row: opening_result,
+                                                              only_continue_if_resolved: true)
           end
 
           npcs_go_first = npcs_have_opening_turn?(combat_data)
           if npcs_go_first && opener_outcome.present? && opening_merged.blank?
-            @loop&.batch_update!(new_data: { "pipeline_outcome" => "" })
+            @loop&.batch_update!(new_data: { 'pipeline_outcome' => '' })
           end
           initiative_result_payload = maybe_run_world_turn(initiative_result_payload) if npcs_go_first
 
@@ -98,33 +100,33 @@ module DungeonMaster
           restore_paused_loop!
 
           if battlefield_roll_version_mismatch?(metadata)
-            row = @adventure.adventure_battlefields.find_by(id: metadata["battlefield_id"].to_i)
+            row = @adventure.adventure_battlefields.find_by(id: metadata['battlefield_id'].to_i)
             @log.play_log!(
-              "battlefield_version_mismatch",
+              'battlefield_version_mismatch',
               "Roll request battlefield snapshot stale — metadata v#{metadata['battlefield_version']} vs row v#{row&.version}",
               parsed_response: {
-                battlefield_id: metadata["battlefield_id"],
-                expected_version: metadata["battlefield_version"],
+                battlefield_id: metadata['battlefield_id'],
+                expected_version: metadata['battlefield_version'],
                 actual_version: row&.version
               }
             )
             return {
               action: :battlefield_version_mismatch,
-              message: "Combat map changed since these rolls were requested. Submit again using the updated prompt."
+              message: 'Combat map changed since these rolls were requested. Submit again using the updated prompt.'
             }
           end
 
           Rolls::PlayerRolls.tag_roll_resolution!(@loop, roll_results)
 
           intent, merged = restore_roll_pause_inputs(metadata)
-          restored_roll_requests = Array(metadata["roll_requests"]).map(&:deep_symbolize_keys)
+          restored_roll_requests = ::DungeonMaster::Rolls::HashArray.symbolize_strict(metadata['roll_requests'])
           result = finish_resolution(intent, merged, roll_results,
-            requested_rolls: restored_roll_requests,
-            submitted_rolls: submitted_rolls)
+                                     requested_rolls: restored_roll_requests,
+                                     submitted_rolls: submitted_rolls)
 
           if result[:status] == :awaiting_rolls
-            @loop&.batch_update!(new_status: "paused",
-              timeline_entry: tl("awaiting_rolls", "Paused for player rolls"))
+            @loop&.batch_update!(new_status: 'paused',
+                                 timeline_entry: tl('awaiting_rolls', 'Paused for player rolls'))
             ContextUpdatePause.run(pipeline_engine: self, intent: result[:intent], merged: result[:merged])
             return {
               action: :awaiting_rolls,
@@ -135,9 +137,10 @@ module DungeonMaster
           end
 
           if result[:status] == :awaiting_initiative
-            @loop&.batch_update!(new_status: "paused",
-              new_tags: { "combat_started" => true },
-              timeline_entry: tl("awaiting_initiative", "Paused for player initiative"))
+            @loop&.batch_update!(new_status: 'paused',
+                                 new_tags: { 'combat_started' => true },
+                                 timeline_entry: tl('awaiting_initiative',
+                                                    'Paused for player initiative'))
             run_context_updates_at_encounter_pause(result[:mutations])
             return {
               action: :awaiting_initiative,
@@ -149,9 +152,10 @@ module DungeonMaster
             }
           end
 
-          final_status = result[:status] == :encounter ? "encounter" : "resolved"
+          final_status = result[:status] == :encounter ? 'encounter' : 'resolved'
           @loop&.batch_update!(new_status: final_status,
-            timeline_entry: tl("rolls_resolved", "Rolls submitted, status: #{final_status}"))
+                               timeline_entry: tl('rolls_resolved',
+                                                  "Rolls submitted, status: #{final_status}"))
 
           continue_or_narrate_after_resume(metadata, accumulated_row: result, only_continue_if_resolved: true)
         end
@@ -161,27 +165,27 @@ module DungeonMaster
         # Fail closed when roll_request metadata carries a battlefield snapshot that no longer matches the row.
         # Uses the persisted snapshot only — not combat_active?, so stale roll resumes still guard after combat ends or context desync.
         def battlefield_roll_version_mismatch?(metadata)
-          return false if metadata["battlefield_id"].blank?
+          return false if metadata['battlefield_id'].blank?
 
-          bid = metadata["battlefield_id"].to_i
+          bid = metadata['battlefield_id'].to_i
           row = @adventure.adventure_battlefields.find_by(id: bid)
           return true unless row
 
-          metadata["battlefield_version"].to_i != row.version.to_i
+          metadata['battlefield_version'].to_i != row.version.to_i
         end
 
         def remaining_actions_from(metadata)
-          metadata["remaining_actions"] || []
+          metadata['remaining_actions'] || []
         end
 
         def restore_opening_action_merged(metadata)
-          raw = metadata["pending_opening_merged"]
+          raw = metadata['pending_opening_merged']
           return nil unless raw.is_a?(Hash)
 
           merged = raw.deep_symbolize_keys
-          merged[:player_rolls] = Array(merged[:player_rolls]).map(&:deep_symbolize_keys)
-          merged[:npc_actions] = Array(merged[:npc_actions]).map(&:deep_symbolize_keys)
-          merged[:consequences] = Array(merged[:consequences]).map(&:deep_symbolize_keys)
+          merged[:player_rolls] = ::DungeonMaster::Rolls::HashArray.symbolize_strict(merged[:player_rolls])
+          merged[:npc_actions] = ::DungeonMaster::Rolls::HashArray.symbolize_strict(merged[:npc_actions])
+          merged[:consequences] = ::DungeonMaster::Rolls::Consequences.normalize(merged[:consequences])
           merged[:mechanical_summaries] = Array(merged[:mechanical_summaries])
           merged
         end
@@ -191,8 +195,8 @@ module DungeonMaster
         def continue_or_narrate_after_resume(metadata, accumulated_row:, only_continue_if_resolved: false)
           remaining = remaining_actions_from(metadata)
           status = accumulated_row[:status]
-          intent = accumulated_row[:intent]
-          mutations = accumulated_row[:mutations]
+          accumulated_row[:intent]
+          accumulated_row[:mutations]
           queue_allowed = remaining.any? &&
                           (!only_continue_if_resolved || status == :resolved) &&
                           !terminal_combat_result?(accumulated_row)
@@ -208,11 +212,11 @@ module DungeonMaster
         end
 
         def npcs_have_opening_turn?(combat_data)
-          combat_data["current_turn"] != Utilities::CombatTurnCalculator::PLAYER_NAME
+          combat_data['current_turn'] != Utilities::CombatTurnCalculator::PLAYER_NAME
         end
 
         def player_turn_combat_start_message(combat_data)
-          turn_order = Array(combat_data["turn_order"]).presence
+          turn_order = Array(combat_data['turn_order']).presence
           if turn_order
             "Combat begins. Turn order: #{turn_order.join(', ')}. It's your turn."
           else

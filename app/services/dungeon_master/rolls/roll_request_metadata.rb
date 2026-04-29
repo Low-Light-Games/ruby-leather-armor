@@ -19,10 +19,10 @@ module DungeonMaster
           if adventure.combat_active?
             ::DungeonMaster::Battlefield::EnsureForActiveCombat.call(adventure: adventure)
             adventure.reload
-            ref = adventure.combat_context["battlefield_ref"]
+            ref = adventure.combat_context['battlefield_ref']
             if ref.is_a?(Hash)
-              meta["battlefield_id"] = ref["id"]
-              meta["battlefield_version"] = ref["version"]
+              meta['battlefield_id'] = ref['id']
+              meta['battlefield_version'] = ref['version']
             end
           end
           meta
@@ -31,27 +31,21 @@ module DungeonMaster
         # @param metadata [Hash] string-keyed JSON from the roll_request message
         # @return [Array<(Hash, Hash)>] [intent, merged] for finish_resolution
         def resume_inputs(metadata)
-          intent = metadata["intent"]&.deep_symbolize_keys
-          unless intent
-            raise AiError, "Roll-request message metadata missing intent — state integrity failure"
-          end
+          intent = metadata['intent']&.deep_symbolize_keys
+          raise AiError, 'Roll-request message metadata missing intent — state integrity failure' unless intent
 
           merged = {
             player_rolls: [],
-            npc_actions: deep_symbolize_array(metadata["pending_npc_actions"]),
-            consequences: deep_symbolize_array(metadata["pending_consequences"]),
-            mechanical_summaries: metadata["mechanical_summaries"] || [],
-            roll_chain: metadata["pending_roll_chain"]&.deep_symbolize_keys
+            npc_actions: HashArray.symbolize_strict(metadata['pending_npc_actions']),
+            consequences: Consequences.normalize(metadata['pending_consequences']),
+            mechanical_summaries: metadata['mechanical_summaries'] || [],
+            roll_chain: metadata['pending_roll_chain']&.deep_symbolize_keys
           }
 
           [intent, merged]
         end
 
         private
-
-        def deep_symbolize_array(value)
-          Array(value).map(&:deep_symbolize_keys)
-        end
 
         def persisted_roll_request_metadata(result, merged, adventure)
           {
@@ -64,7 +58,7 @@ module DungeonMaster
             mechanical_summaries: merged[:mechanical_summaries],
             pending_roll_chain: merged[:roll_chain],
             intent: result[:intent],
-            show_dc: adventure.effective_dm_setting("show_roll_dc"),
+            show_dc: adventure.effective_dm_setting('show_roll_dc'),
             remaining_actions: result[:remaining_actions]
           }
         end

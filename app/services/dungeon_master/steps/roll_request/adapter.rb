@@ -117,7 +117,7 @@ module DungeonMaster
         end
 
         def consequences
-          Array(@parsed[:consequences]).map(&:to_s)
+          DungeonMaster::Rolls::Consequences.normalize(@parsed[:consequences])
         end
 
         def mechanical_summary

@@ -51,7 +51,7 @@ RSpec.describe DungeonMaster::Steps::RollRequest::Adapter do
       expect(evaluations.length).to eq(1)
       expect(evaluations.first).to include(
         domain: 'exploration',
-        consequences: ['wall examined'],
+        consequences: [{ description: 'wall examined' }],
         mechanical_summary: 'Climb DC 15.'
       )
 
