@@ -6,6 +6,7 @@ import {
   ACTION_ECONOMY_STANDARD_TOOLTIP,
   ACTION_ECONOMY_SWIFT_TOOLTIP,
 } from './CombatActionEconomyChips.constants'
+import './CombatActionEconomyChips.scss'
 
 function readActionEconomy(combatContext: Record<string, unknown> | null): ActionEconomyShape | null {
   if (!combatContext) return null

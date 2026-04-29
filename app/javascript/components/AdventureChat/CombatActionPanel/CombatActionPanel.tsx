@@ -9,85 +9,20 @@ import {
   type CombatAttackResolved,
   type CombatAttackResponse,
   type CombatTarget,
-} from '../../services/combatActionService'
-import type { CombatDiceStrategy } from '../../types/auth'
-import { rollD20 } from '../../rules/dice'
-import CombatGrid from './CombatGrid/index'
-
-interface Props {
-  adventureId: number
-  diceStrategy: CombatDiceStrategy
-  onDiceStrategyChange: (next: CombatDiceStrategy) => void
-  onCombatContextUpdate?: (combatContext: Record<string, unknown> | null) => void
-  externalCombatContext?: Record<string, unknown> | null
-}
-
-interface ResolvedEntry {
-  id: string
-  message: string
-  hit: boolean
-  target_dropped: boolean
-}
-
-function normalizeDiceExpression(expression: string): string {
-  return expression.trim().toLowerCase().replace(/\s+/g, '')
-}
-
-function parseDiceExpression(expression: string): { count: number; sides: number; mod: number } | null {
-  const match = expression.match(/^(\d+)d(\d+)([+-]\d+)?$/)
-  if (!match) return null
-  return {
-    count: parseInt(match[1], 10),
-    sides: parseInt(match[2], 10),
-    mod: match[3] ? parseInt(match[3], 10) : 0,
-  }
-}
-
-function rollParsedDice(parsed: { count: number; sides: number; mod: number }): number {
-  let total = parsed.mod
-  for (let i = 0; i < parsed.count; i++) total += Math.floor(Math.random() * parsed.sides) + 1
-  return Math.max(1, total)
-}
-
-function rollDamageExpression(expression: string | null | undefined): number {
-  if (!expression) return 0
-  const parsed = parseDiceExpression(normalizeDiceExpression(expression))
-  return parsed ? rollParsedDice(parsed) : 1
-}
-
-function describeAttackOption(option: CombatAttackOption): string {
-  const dmg = option.damage_type ? `${option.damage} ${option.damage_type}` : option.damage
-  return `${option.label} — ${dmg}`
-}
-
-function pickAliveTargetId(targets: CombatTarget[], previousId: number | null): number | null {
-  const previousStillAlive = previousId != null && targets.some(t => t.creature_sheet_id === previousId && !t.dropped)
-  if (previousStillAlive) return previousId
-
-  const firstAlive = targets.find(t => !t.dropped)
-  return firstAlive ? firstAlive.creature_sheet_id : null
-}
-
-function makeResolvedEntry(suffix: string, message: string, hitFromPlayerPerspective: boolean, targetDropped: boolean): ResolvedEntry {
-  return {
-    id: `${Date.now()}-${Math.random()}-${suffix}`,
-    message,
-    hit: hitFromPlayerPerspective,
-    target_dropped: targetDropped,
-  }
-}
-
-function entriesForAttackOfOpportunity(aoo: { message: string; hit: boolean; target_dropped: boolean }, index: number): ResolvedEntry {
-  return makeResolvedEntry(`aoo-${index}`, `AoO — ${aoo.message}`, !aoo.hit, aoo.target_dropped)
-}
-
-function entriesForNpcEvent(evt: { kind: string; creature_name: string; message?: string; outcome?: { hit?: boolean; target_dropped?: boolean; message?: string } }, index: number): ResolvedEntry {
-  const message = evt.kind === 'npc_attack' && evt.outcome
-    ? `${evt.creature_name} (${evt.kind}) — ${evt.outcome.message}`
-    : evt.message || `${evt.creature_name} ${evt.kind}`
-  const npcHit = evt.kind === 'npc_attack' && !!evt.outcome?.hit
-  return makeResolvedEntry(`npc-${index}`, message, !npcHit, !!evt.outcome?.target_dropped)
-}
+} from '../../../services/combatActionService'
+import type { CombatDiceStrategy } from '../../../types/auth'
+import { rollD20 } from '../../../rules/dice'
+import CombatGrid from '../CombatGrid'
+import {
+  describeAttackOption,
+  entriesForAttackOfOpportunity,
+  entriesForNpcEvent,
+  makeResolvedEntry,
+  pickAliveTargetId,
+  rollDamageExpression,
+} from './helpers'
+import type { CombatActionPanelProps, ResolvedEntry } from './types'
+import './CombatActionPanel.scss'
 
 export const CombatActionPanel = ({
   adventureId,
@@ -95,7 +30,7 @@ export const CombatActionPanel = ({
   diceStrategy,
   onDiceStrategyChange,
   onCombatContextUpdate,
-}: Props) => {
+}: CombatActionPanelProps) => {
   const [options, setOptions] = useState<CombatActionOptionsResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -356,7 +291,7 @@ export const CombatActionPanel = ({
           className="end-turn-btn"
           disabled={submitting || pending !== null}
           onClick={handleEndTurn}
-          title="End your turn — advances the round and refreshes your action economy. NPC actions are deterministic in PR-F (none run for now)."
+          title="End your turn — advances the round and refreshes your action economy."
         >
           End Turn ⏭
         </button>
