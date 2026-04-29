@@ -2,15 +2,13 @@
 
 module Combat
   module Resolvers
-    # End-turn resolution for Combat::PlayerActionResolver. Mixed in to
-    # keep the dispatcher class small.
-    #
-    # PR-F wires the deterministic NPC turn engine (Combat::NpcTurn) in
-    # here. Each NPC walks its ProgrammedBehavior: pick the right attack at
-    # the current range, approach if out of reach, flee under morale.
-    # Player HP is updated immediately when an NPC hits — same model as
-    # the AoO leg of PR-D's move resolver.
-    module EndTurn
+    # End-of-player-turn resolution: spends what's left of the player's
+    # action economy, fans out the NPC initiative band via Combat::NpcTurn
+    # (each NPC walks its ProgrammedBehavior — attack at range, approach
+    # if out of reach, flee under morale), and refreshes the player's
+    # economy for the next round. The wire-protocol kind stays
+    # 'end_turn' since the frontend payload union depends on it.
+    module EndPlayerTurn
       private
 
       def resolve_end_turn
@@ -32,14 +30,14 @@ module Combat
 
         CombatNarratorJob.perform_later(@adventure.id, round, npc_events.map(&:deep_stringify_keys))
       rescue StandardError => e
-        Rails.logger.warn("[EndTurn] failed to enqueue CombatNarratorJob: #{e.message}")
+        Rails.logger.warn("[EndPlayerTurn] failed to enqueue CombatNarratorJob: #{e.message}")
       end
 
       def run_npc_turns
         creatures = active_npcs_in_initiative_order
         creatures.flat_map { |creature| Combat::NpcTurn.call(creature: creature, adventure: @adventure, target_sheet: @sheet) }
       rescue StandardError => e
-        Rails.logger.warn("[EndTurn] NPC turn engine failed: #{e.message}")
+        Rails.logger.warn("[EndPlayerTurn] NPC turn engine failed: #{e.message}")
         [{ kind: 'npc_skip', creature_id: nil, creature_name: '(engine error)', message: e.message }]
       end
 

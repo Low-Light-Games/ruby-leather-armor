@@ -38,7 +38,7 @@ module Combat
 
     include Combat::Resolvers::Attack
     include Combat::Resolvers::Move
-    include Combat::Resolvers::EndTurn
+    include Combat::Resolvers::EndPlayerTurn
 
     def self.call(**)
       new(**).call

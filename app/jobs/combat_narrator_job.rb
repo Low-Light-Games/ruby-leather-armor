@@ -3,7 +3,7 @@
 # Async narrator for the End Turn round log (PR-G of the
 # combat-determinism arc — see docs/combat_redesign.md).
 #
-# Combat::Resolvers::EndTurn enqueues this job after the round resolves
+# Combat::Resolvers::EndPlayerTurn enqueues this job after the round resolves
 # so the HTTP response can return immediately. The job loads the
 # adventure, builds an AiClient, asks Combat::Narrator for a paragraph,
 # persists it as a DM message, and broadcasts the new message so the
