@@ -29,22 +29,64 @@ interface ResolvedEntry {
   target_dropped: boolean
 }
 
+function normalizeDiceExpression(expression: string): string {
+  return expression.trim().toLowerCase().replace(/\s+/g, '')
+}
+
+function parseDiceExpression(expression: string): { count: number; sides: number; mod: number } | null {
+  const match = expression.match(/^(\d+)d(\d+)([+-]\d+)?$/)
+  if (!match) return null
+  return {
+    count: parseInt(match[1], 10),
+    sides: parseInt(match[2], 10),
+    mod: match[3] ? parseInt(match[3], 10) : 0,
+  }
+}
+
+function rollParsedDice(parsed: { count: number; sides: number; mod: number }): number {
+  let total = parsed.mod
+  for (let i = 0; i < parsed.count; i++) total += Math.floor(Math.random() * parsed.sides) + 1
+  return Math.max(1, total)
+}
+
 function rollDamageExpression(expression: string | null | undefined): number {
   if (!expression) return 0
-  const trimmed = expression.trim().toLowerCase().replace(/\s+/g, '')
-  const match = trimmed.match(/^(\d+)d(\d+)([+-]\d+)?$/)
-  if (!match) return 1
-  const count = parseInt(match[1], 10)
-  const sides = parseInt(match[2], 10)
-  const mod = match[3] ? parseInt(match[3], 10) : 0
-  let total = mod
-  for (let i = 0; i < count; i++) total += Math.floor(Math.random() * sides) + 1
-  return Math.max(1, total)
+  const parsed = parseDiceExpression(normalizeDiceExpression(expression))
+  return parsed ? rollParsedDice(parsed) : 1
 }
 
 function describeAttackOption(option: CombatAttackOption): string {
   const dmg = option.damage_type ? `${option.damage} ${option.damage_type}` : option.damage
   return `${option.label} — ${dmg}`
+}
+
+function pickAliveTargetId(targets: CombatTarget[], previousId: number | null): number | null {
+  const previousStillAlive = previousId != null && targets.some(t => t.creature_sheet_id === previousId && !t.dropped)
+  if (previousStillAlive) return previousId
+
+  const firstAlive = targets.find(t => !t.dropped)
+  return firstAlive ? firstAlive.creature_sheet_id : null
+}
+
+function makeResolvedEntry(suffix: string, message: string, hitFromPlayerPerspective: boolean, targetDropped: boolean): ResolvedEntry {
+  return {
+    id: `${Date.now()}-${Math.random()}-${suffix}`,
+    message,
+    hit: hitFromPlayerPerspective,
+    target_dropped: targetDropped,
+  }
+}
+
+function entriesForAttackOfOpportunity(aoo: { message: string; hit: boolean; target_dropped: boolean }, index: number): ResolvedEntry {
+  return makeResolvedEntry(`aoo-${index}`, `AoO — ${aoo.message}`, !aoo.hit, aoo.target_dropped)
+}
+
+function entriesForNpcEvent(evt: { kind: string; creature_name: string; message?: string; outcome?: { hit?: boolean; target_dropped?: boolean; message?: string } }, index: number): ResolvedEntry {
+  const message = evt.kind === 'npc_attack' && evt.outcome
+    ? `${evt.creature_name} (${evt.kind}) — ${evt.outcome.message}`
+    : evt.message || `${evt.creature_name} ${evt.kind}`
+  const npcHit = evt.kind === 'npc_attack' && !!evt.outcome?.hit
+  return makeResolvedEntry(`npc-${index}`, message, !npcHit, !!evt.outcome?.target_dropped)
 }
 
 export const CombatActionPanel = ({
@@ -63,17 +105,13 @@ export const CombatActionPanel = ({
   const [pending, setPending] = useState<CombatAttackPending['request'] | null>(null)
   const [withdrawMode, setWithdrawMode] = useState(false)
 
-  const refreshOptions = useCallback(async () => {
+  const refreshCombatTargetOptions = useCallback(async () => {
     setLoading(true)
     try {
       const data = await fetchCombatActionOptions(adventureId)
       setOptions(data)
       setError(null)
-      setSelectedTargetId(prev => {
-        if (prev != null && data.targets.some(t => t.creature_sheet_id === prev && !t.dropped)) return prev
-        const firstAlive = data.targets.find(t => !t.dropped)
-        return firstAlive ? firstAlive.creature_sheet_id : null
-      })
+      setSelectedTargetId(prev => pickAliveTargetId(data.targets, prev))
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -82,56 +120,34 @@ export const CombatActionPanel = ({
   }, [adventureId])
 
   useEffect(() => {
-    void refreshOptions()
-  }, [refreshOptions])
+    void refreshCombatTargetOptions()
+  }, [refreshCombatTargetOptions])
 
-  // Refresh options when the parent's combat_context changes from outside the
-  // panel (e.g. equip toggle spending a move). Internal HUD actions update
-  // CombatHud's local mirror, not the parent prop, so this won't double-fetch.
+  // Internal HUD actions update CombatHud's local mirror only — they don't
+  // change the parent prop — so refetching on this signal won't double-fire
+  // on every attack/move.
   const externalEconomySignal = externalCombatContext
     ? JSON.stringify((externalCombatContext as { action_economy?: unknown }).action_economy ?? null)
     : null
   useEffect(() => {
     if (externalEconomySignal === null) return
-    void refreshOptions()
-  }, [externalEconomySignal, refreshOptions])
+    void refreshCombatTargetOptions()
+  }, [externalEconomySignal, refreshCombatTargetOptions])
 
   const recordResolution = useCallback(
     (resolved: CombatAttackResolved) => {
       const result = resolved.result
       const isAttack = result.kind === 'attack'
-      const isMove = result.kind === 'move'
       const entries: ResolvedEntry[] = [
-        {
-          id: `${Date.now()}-${Math.random()}-main`,
-          message: result.message,
-          hit: isAttack ? result.hit : true,
-          target_dropped: isAttack ? result.target_dropped : false,
-        },
+        makeResolvedEntry('main', result.message,
+          isAttack ? result.hit : true,
+          isAttack ? result.target_dropped : false),
       ]
-      if (isMove) {
-        result.attacks_of_opportunity.forEach((aoo, i) => {
-          entries.push({
-            id: `${Date.now()}-${Math.random()}-aoo-${i}`,
-            message: `AoO — ${aoo.message}`,
-            hit: !aoo.hit, // a player-side AoO HIT is bad for the player; flip the styling
-            target_dropped: aoo.target_dropped,
-          })
-        })
+      if (result.kind === 'move') {
+        result.attacks_of_opportunity.forEach((aoo, i) => entries.push(entriesForAttackOfOpportunity(aoo, i)))
       }
       if (result.kind === 'end_turn') {
-        result.npc_events.forEach((evt, i) => {
-          const message = evt.kind === 'npc_attack' && evt.outcome
-            ? `${evt.creature_name} (${evt.kind}) — ${evt.outcome.message}`
-            : evt.message || `${evt.creature_name} ${evt.kind}`
-          const npcHit = evt.kind === 'npc_attack' && !!evt.outcome?.hit
-          entries.push({
-            id: `${Date.now()}-${Math.random()}-npc-${i}`,
-            message: message,
-            hit: !npcHit, // NPC HIT is bad for the player — flip styling
-            target_dropped: !!evt.outcome?.target_dropped,
-          })
-        })
+        result.npc_events.forEach((evt, i) => entries.push(entriesForNpcEvent(evt, i)))
       }
       setHistory(prev => [...prev, ...entries])
       onCombatContextUpdate?.(resolved.combat_context)
@@ -160,7 +176,7 @@ export const CombatActionPanel = ({
       const response = await postCombatAction(adventureId, body)
       handleResponse(response)
       setWithdrawMode(false)
-      await refreshOptions()
+      await refreshCombatTargetOptions()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -174,7 +190,7 @@ export const CombatActionPanel = ({
     try {
       const response = await postCombatAction(adventureId, { kind: 'end_turn' })
       handleResponse(response)
-      await refreshOptions()
+      await refreshCombatTargetOptions()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -192,7 +208,7 @@ export const CombatActionPanel = ({
         target_creature_sheet_id: target.creature_sheet_id,
       })
       handleResponse(response)
-      await refreshOptions()
+      await refreshCombatTargetOptions()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -214,7 +230,7 @@ export const CombatActionPanel = ({
         submitted_dice: { attack_natural: attack.natural, damage_natural: damage },
       })
       handleResponse(response)
-      await refreshOptions()
+      await refreshCombatTargetOptions()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
