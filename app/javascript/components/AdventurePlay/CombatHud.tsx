@@ -1,17 +1,9 @@
 import { useEffect, useState } from 'react'
 import CombatActionEconomyChips from '../AdventureChat/CombatActionEconomyChips'
 import CombatActionPanel from '../AdventureChat/CombatActionPanel'
-import type { CombatDiceStrategy } from '../../types/auth'
+import type { CombatHudProps } from '../../types'
 
-interface Props {
-  adventureId: number
-  combatContext: Record<string, unknown> | null
-  diceStrategy: CombatDiceStrategy
-  onDiceStrategyChange: (next: CombatDiceStrategy) => void
-  onCombatEnded?: () => void
-}
-
-export const CombatHud = ({ adventureId, combatContext, diceStrategy, onDiceStrategyChange, onCombatEnded }: Props) => {
+export const CombatHud = ({ adventureId, combatContext, diceStrategy, onDiceStrategyChange, onCombatEnded }: CombatHudProps) => {
   const [liveCombatContext, setLiveCombatContext] = useState<Record<string, unknown> | null>(combatContext)
 
   useEffect(() => {
