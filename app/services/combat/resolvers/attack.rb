@@ -35,6 +35,7 @@ module Combat
       def build_attack_inputs!
         option = lookup_attack_option!
         target = lookup_target!
+        ensure_target_in_reach!(option, target)
         situational = situational_modifiers_for(option, target)
         attack_bonus = attack_bonus_for(option) + situational[:flanking_bonus]
         defense_dc = defense_dc_for(target, option) + situational[:cover_bonus]
@@ -44,6 +45,29 @@ module Combat
           attack_bonus: attack_bonus, defense_dc: defense_dc,
           situational: situational
         }
+      end
+
+      # Refuse melee/melee_touch attacks against targets outside reach. Ranged
+      # modes are unrestricted here. When either combatant has no grid position
+      # (e.g. legacy combats started before the battlefield grid existed) we
+      # skip the check rather than blocking — the attack just resolves like
+      # before.
+      def ensure_target_in_reach!(option, target)
+        return if ranged_mode?(option[:attack_mode])
+
+        creature = target.first
+        attacker_pos = Combat::Positions.player_position(@adventure)
+        target_pos = Combat::Positions.position_for_creature_sheet(@adventure, creature.id)
+        return unless attacker_pos&.coordinates_present? && target_pos&.coordinates_present?
+
+        reach = Combat::Rules.reach_for(option)
+        distance = attacker_pos.distance_to(target_pos)
+        return if distance <= reach
+
+        raise Combat::ResolverError.new(
+          "#{creature.name} is out of melee reach (#{distance} squares away, reach #{reach}). Move closer first.",
+          code: :target_out_of_reach
+        )
       end
 
       def situational_modifiers_for(option, target)

@@ -28,9 +28,6 @@ export const CombatHud = ({ adventureId, combatContext, diceStrategy, onDiceStra
 
   return (
     <div className="combat-hud">
-      <div className="combat-banner" aria-live="polite">
-        ⚔&nbsp;&nbsp;Combat Active&nbsp;&nbsp;⚔
-      </div>
       <CombatActionEconomyChips combatContext={liveCombatContext} />
       <CombatActionPanel
         adventureId={adventureId}

@@ -226,6 +226,17 @@ RSpec.describe Combat::PlayerActionResolver do
       expect(result[:result][:attack_bonus]).to eq(player_attack_bonus + 2)
       expect(result[:result][:message]).to include('+2 flanking')
     end
+
+    it 'refuses a melee attack when the target is out of reach' do
+      battlefield.update!(tokens: battlefield.tokens.merge(
+        "creature_#{creature.id}" => { 'label' => 'Goblin', 'x' => 8, 'y' => 5, 'type' => 'npc',
+                                       'creature_sheet_id' => creature.id }
+      ))
+
+      expect {
+        described_class.call(adventure: adventure, sheet: sheet, user: user, params: base_params)
+      }.to raise_error(Combat::ResolverError, /out of melee reach/)
+    end
   end
 
   describe 'movement' do

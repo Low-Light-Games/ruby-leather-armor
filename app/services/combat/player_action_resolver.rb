@@ -125,10 +125,33 @@ module Combat
       ctx['active'] = false
       ctx['current_turn'] = nil
       ctx['action_economy'] = nil
-      ctx['combat_end_reason'] = end_state[:combat][:combat_end_reason].to_s
+      reason = end_state[:combat][:combat_end_reason].to_s
+      ctx['combat_end_reason'] = reason
       @adventure.update!(combat_context: ctx)
+      apply_player_death_terminus! if reason == 'player_death'
     rescue StandardError => e
       Rails.logger.warn("[PlayerActionResolver] combat-end persist failed: #{e.message}")
+    end
+
+    # When the deterministic NPC turn engine just killed the player (instant_death
+    # homebrew or HP <= -CON), the AI pipeline path that normally calls
+    # PipelineMessenger#persist_event_messages is bypassed entirely. Mark the
+    # adventure ended here and broadcast a player_death message so the UI's
+    # AdventureChannel listener flips to the death screen.
+    def apply_player_death_terminus!
+      return if @adventure.ended?
+
+      @adventure.mark_ended!(reason: 'player_death')
+      msg = @adventure.adventure_messages.create!(
+        role: 'system',
+        content: 'Your character has died.',
+        message_type: 'player_death'
+      )
+      AdventureChannel.broadcast_to(
+        @adventure,
+        type: 'pipeline_action_result',
+        messages: [DungeonMaster::AdventurePlay::MessageSerializer.as_json(msg, admin: @user&.admin?)]
+      )
     end
 
     def annotate_result_with_combat_end(result, end_state)
