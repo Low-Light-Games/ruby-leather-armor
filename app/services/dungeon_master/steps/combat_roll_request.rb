@@ -107,14 +107,7 @@ module DungeonMaster
                                   .reject { |p| p.token_id == Combat::Positions::PLAYER_TOKEN_ID }
 
         threats = Combat::Rules.aoo_threats_against(mover: player_pos, mover_from: player_pos, others: others)
-        threats.map do |threat|
-          {
-            name: threat.position.label,
-            x: threat.position.x.to_i,
-            y: threat.position.y.to_i,
-            distance_squares: threat.position.distance_to(player_pos)
-          }
-        end
+        threats.map { |threat| CombatRollRequest::ThreatSummary.new(threat: threat, player_pos: player_pos).to_h }
       end
 
       def retrieve_beats_for_combat_roll_request(intention)
@@ -141,9 +134,7 @@ module DungeonMaster
         return unless @loop
 
         affected = intent[:affected_contexts]
-        rolls_desc = evaluations.flat_map { |e| e[:player_rolls] }
-                                .map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc] || '?'} (#{r[:domain]})" }
-                                .join(', ')
+        rolls_desc = describe_player_rolls(evaluations)
 
         @loop.batch_update!(
           new_data: { 'affected_contexts' => affected, 'combat_roll_request' => true },
@@ -152,15 +143,14 @@ module DungeonMaster
         )
       end
 
+      def describe_player_rolls(evaluations)
+        evaluations.flat_map { |e| e[:player_rolls] }
+                   .map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc] || '?'} (#{r[:domain]})" }
+                   .join(', ')
+      end
+
       def combat_roll_request_timeline_entry(affected, rolls_desc)
-        {
-          'step' => 'combat_roll_request',
-          'summary' => [
-            "Affected: #{affected.join(', ').presence || 'none'}",
-            rolls_desc.presence || 'No rolls'
-          ].join(' | '),
-          'at' => Time.current.iso8601
-        }
+        CombatRollRequest::TimelineEntry.new(affected: affected, rolls_desc: rolls_desc).to_h
       end
     end
   end
