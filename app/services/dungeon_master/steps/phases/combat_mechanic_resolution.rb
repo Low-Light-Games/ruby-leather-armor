@@ -10,11 +10,15 @@ module DungeonMaster
       # exposes concentration state (see combat mech-eval plan).
       module CombatMechanicResolution
         SAVE_TO_SKILL_LABEL = {
-          "fort" => "Fortitude",
-          "ref" => "Reflex",
-          "will" => "Will"
+          'fort' => 'Fortitude',
+          'ref' => 'Reflex',
+          'will' => 'Will'
         }.freeze
 
+        # Bundles the inputs every CombatMechanicResolution helper
+        # needs (combat_context snapshot, adventure, player sheet,
+        # WorldTurn::ParticipantLookup context) so the helper signatures
+        # don't have to thread four args each.
         class CombatResolutionContext
           attr_reader :combat_ctx, :adventure, :sheet, :lookup_context
 
@@ -27,9 +31,10 @@ module DungeonMaster
         end
 
         class << self
-          # @param parsed [Hash] symbolized parsed_response from evaluator
-          def call(parsed:, domain:, adventure:, sheet:, log: nil, parsed_mech_eval_response: nil)
-            parsed_mech_eval_response ||= parsed
+          # @param parsed [Hash] symbolized mech-eval response from the evaluator
+          #   envelope (caller is responsible for extracting the inner payload)
+          def call(parsed:, domain:, adventure:, sheet:, log: nil)
+            parsed_mech_eval_response = parsed
             combat_ctx = adventure.combat_context.is_a?(Hash) ? adventure.combat_context : {}
             context = CombatResolutionContext.new(
               combat_ctx: combat_ctx,
@@ -48,10 +53,10 @@ module DungeonMaster
             summary = parsed_mech_eval_response[:mechanical_summary].to_s
 
             {
-              domain:             domain,
-              player_rolls:       rolls,
-              npc_actions:        npc_actions,
-              consequences:       Array(parsed_mech_eval_response[:consequences]).map(&:deep_symbolize_keys),
+              domain: domain,
+              player_rolls: rolls,
+              npc_actions: npc_actions,
+              consequences: normalize_consequences(parsed_mech_eval_response[:consequences]),
               mechanical_summary: summary
             }
           end
@@ -68,7 +73,7 @@ module DungeonMaster
             type = raw[:type].to_s
 
             case type
-            when "attack_roll"
+            when 'attack_roll'
               if raw[:dc].present?
                 raise DungeonMaster::CombatMechanicResolutionError.new(
                   "attack_roll must not include dc from model (roll index #{idx})",
@@ -100,7 +105,7 @@ module DungeonMaster
                 :damage, :damage_type, :source_type, :source_id, :attack_mode
               )
 
-              { domain: "combat" }.merge(attrs).merge(
+              { domain: 'combat' }.merge(attrs).merge(
                 attack_mode: option[:attack_mode],
                 defense_kind: option[:defense_kind],
                 source_type: option[:source_type],
@@ -109,7 +114,7 @@ module DungeonMaster
                 damage_type: option[:damage_type],
                 dc: dc
               ).compact
-            when "saving_throw"
+            when 'saving_throw'
               if raw[:dc].present?
                 raise DungeonMaster::CombatMechanicResolutionError.new(
                   "saving_throw must not include dc from model (roll index #{idx})",
@@ -121,7 +126,7 @@ module DungeonMaster
               save = TextNormalizer.normalized_key(raw[:save])
               skill = SAVE_TO_SKILL_LABEL[save] || save.capitalize
               attrs = raw.except(:dc_formula)
-              { domain: "combat" }.merge(attrs).merge(dc: dc, save: save, skill: skill)
+              { domain: 'combat' }.merge(attrs).merge(dc: dc, save: save, skill: skill)
             else
               raise DungeonMaster::CombatMechanicResolutionError.new(
                 "unsupported player_roll type: #{type.inspect}",
@@ -130,13 +135,27 @@ module DungeonMaster
             end
           end
 
+          # The combat_mechanic prompt's example shows `"consequences": []`
+          # but does not pin the entry shape — models occasionally emit an
+          # array of plain strings ("Aldric closes to melee.") instead of
+          # the hash shape downstream code assumes. Coerce defensively so
+          # one stylistic drift doesn't crash the whole turn.
+          def normalize_consequences(value)
+            Array(value).filter_map do |entry|
+              case entry
+              when Hash   then entry.deep_symbolize_keys
+              when String then { description: entry }
+              end
+            end
+          end
+
           def resolve_dc_formula(formula, idx, context:)
             formula_payload = formula.is_a?(Hash) ? formula.deep_symbolize_keys : {}
             kind = formula_payload[:kind].to_s
             case kind
-            when "spell_dc"
+            when 'spell_dc'
               resolve_spell_dc(formula_payload, context.sheet)
-            when "ability_dc"
+            when 'ability_dc'
               resolve_ability_dc(formula_payload, context: context)
             else
               raise DungeonMaster::CombatMechanicResolutionError.new(
@@ -148,7 +167,7 @@ module DungeonMaster
 
           def resolve_spell_dc(formula_payload, sheet)
             name = TextNormalizer.strip(formula_payload[:spell_name])
-            raise DungeonMaster::CombatMechanicResolutionError, "spell_name required" if name.blank?
+            raise DungeonMaster::CombatMechanicResolutionError, 'spell_name required' if name.blank?
 
             spell = SpellDefinition.find_by_name_case_insensitive(name)
             unless spell
@@ -158,17 +177,19 @@ module DungeonMaster
               )
             end
 
-            caster = formula_payload[:caster].to_s.presence || "player"
-            unless caster == "player"
+            caster = formula_payload[:caster].to_s.presence || 'player'
+            unless caster == 'player'
               raise DungeonMaster::CombatMechanicResolutionError.new(
-                "spell_dc only supports player-cast spells (caster must be \"player\"); use ability_dc for NPC abilities",
+                'spell_dc only supports player-cast spells (caster must be "player"); use ability_dc for NPC abilities',
                 code: :unsupported_npc_spell_dc
               )
             end
 
             character_class_name = sheet.character_class.to_s
             levels = spell.class_levels || {}
-            slug = TextNormalizer.class_slug_tokens(character_class_name).find { |class_token| levels.key?(class_token) }
+            slug = TextNormalizer.class_slug_tokens(character_class_name).find do |class_token|
+              levels.key?(class_token)
+            end
             unless slug
               raise DungeonMaster::CombatMechanicResolutionError,
                     "spell #{name} not on character class #{character_class_name.inspect}"
@@ -191,13 +212,13 @@ module DungeonMaster
             pattern = formula_payload[:pattern].to_s
             ability = TextNormalizer.normalized_key(formula_payload[:ability])
             unless valid_ability_name?(ability)
-              raise DungeonMaster::CombatMechanicResolutionError, "invalid ability for ability_dc"
+              raise DungeonMaster::CombatMechanicResolutionError, 'invalid ability for ability_dc'
             end
 
             case pattern
-            when "half_hd_plus_ability"
+            when 'half_hd_plus_ability'
               origin = TextNormalizer.strip(formula_payload[:origin_target])
-              raise DungeonMaster::CombatMechanicResolutionError, "origin_target required" if origin.blank?
+              raise DungeonMaster::CombatMechanicResolutionError, 'origin_target required' if origin.blank?
 
               origin_sheet = DungeonMaster::WorldTurn::ParticipantLookup.target_sheet!(
                 origin,
@@ -224,7 +245,7 @@ module DungeonMaster
             end
 
             derived_stats = sheet.derived_stats || {}
-            mods = derived_stats["mods"] || {}
+            mods = derived_stats['mods'] || {}
             m = mods[name]
             return m.to_i if m
 
@@ -242,9 +263,11 @@ module DungeonMaster
               action_payload = a.is_a?(Hash) ? a.deep_symbolize_keys : {}
               next if action_payload.blank?
 
-              if action_payload[:action].to_s != "attack_of_opportunity"
-                log&.play_log!("combat_mech_eval_npc_action_dropped",
-                  "Dropped npc_action #{action_payload[:action].inspect} (only attack_of_opportunity allowed)")
+              if action_payload[:action].to_s != 'attack_of_opportunity'
+                log&.play_log!(
+                  'combat_mech_eval_npc_action_dropped',
+                  "Dropped npc_action #{action_payload[:action].inspect} (only attack_of_opportunity allowed)"
+                )
                 next
               end
 
