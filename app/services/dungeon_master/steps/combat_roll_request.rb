@@ -99,14 +99,17 @@ module DungeonMaster
         }
       end
 
+      # Force top-level ::Combat constants — inside the DungeonMaster::
+      # namespace `Combat::` resolves to DungeonMaster::Combat first
+      # (where AttackOptionBuilder lives) and never finds Positions.
       def build_threats_for_player
-        player_pos = Combat::Positions.player_position(@adventure)
+        player_pos = ::Combat::Positions.player_position(@adventure)
         return [] unless player_pos&.coordinates_present?
 
-        others = Combat::Positions.for_adventure(@adventure)
-                                  .reject { |p| p.token_id == Combat::Positions::PLAYER_TOKEN_ID }
+        others = ::Combat::Positions.for_adventure(@adventure)
+                                    .reject { |p| p.token_id == ::Combat::Positions::PLAYER_TOKEN_ID }
 
-        threats = Combat::Rules.aoo_threats_against(mover: player_pos, mover_from: player_pos, others: others)
+        threats = ::Combat::Rules.aoo_threats_against(mover: player_pos, mover_from: player_pos, others: others)
         threats.map { |threat| CombatRollRequest::ThreatSummary.new(threat: threat, player_pos: player_pos).to_h }
       end
 
