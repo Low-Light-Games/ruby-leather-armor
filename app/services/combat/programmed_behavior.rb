@@ -1,11 +1,12 @@
 # frozen_string_literal: true
 
 module Combat
-  # Bestiary behavior policy (PR-F of the combat-determinism arc — see
-  # docs/combat_redesign.md). Encodes how a creature picks an attack +
-  # whether to approach when out of reach + when to flee. Applied
-  # deterministically by Combat::NpcTurn so big battles don't spend an
-  # AI call per NPC per round.
+  # Programmed (deterministic) behavior for a single creature in
+  # combat — which attack to pick, whether to approach when out of
+  # reach, when to flee. Persisted as the creature_sheets.behavior_policy
+  # JSONB column (column name kept for migration + bestiary compatibility)
+  # and applied by Combat::NpcTurn so big battles don't spend an AI call
+  # per NPC per round.
   #
   # v1 schema is intentionally tiny — most monsters need
   # "throw javelins until in melee range, then swing the axe" and not
@@ -24,7 +25,7 @@ module Combat
   #     "morale": { "flee_at_hp_pct": 0.15 },
   #     "ability_triggers": []
   #   }
-  class BehaviorPolicy
+  class ProgrammedBehavior
     DEFAULT_FLEE_HP_PCT = 0.0
     INFINITE = 1_000
 
@@ -107,7 +108,7 @@ module Combat
       end
 
       def max_reach_squares
-        @max_range_squares || BehaviorPolicy::INFINITE
+        @max_range_squares || ProgrammedBehavior::INFINITE
       end
     end
   end

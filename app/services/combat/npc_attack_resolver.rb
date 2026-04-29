@@ -9,7 +9,7 @@ module Combat
 
     module_function
 
-    # @param attack_pref [Combat::BehaviorPolicy::AttackPreference, nil]
+    # @param attack_pref [Combat::ProgrammedBehavior::AttackPreference, nil]
     #   When provided, the resolver looks up the equipped weapon whose
     #   name matches the preference and uses its attack-mode-appropriate
     #   bonus (ranged → ranged_attack, melee → melee_attack). When nil

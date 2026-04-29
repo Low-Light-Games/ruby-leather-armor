@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Combat::BehaviorPolicy do
+RSpec.describe Combat::ProgrammedBehavior do
   describe 'defaults' do
     let(:policy) { described_class.new({}) }
 

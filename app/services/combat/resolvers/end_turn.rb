@@ -6,7 +6,7 @@ module Combat
     # keep the dispatcher class small.
     #
     # PR-F wires the deterministic NPC turn engine (Combat::NpcTurn) in
-    # here. Each NPC walks its BehaviorPolicy: pick the right attack at
+    # here. Each NPC walks its ProgrammedBehavior: pick the right attack at
     # the current range, approach if out of reach, flee under morale.
     # Player HP is updated immediately when an NPC hits — same model as
     # the AoO leg of PR-D's move resolver.

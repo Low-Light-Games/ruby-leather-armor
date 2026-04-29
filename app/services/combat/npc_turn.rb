@@ -3,7 +3,7 @@
 module Combat
   # Deterministic engine for one NPC's combat turn (PR-F of the
   # combat-determinism arc — see docs/combat_redesign.md). Walks the
-  # creature's BehaviorPolicy and the grid to pick:
+  # creature's ProgrammedBehavior and the grid to pick:
   #
   #   1. The first preferred attack whose engagement range matches the
   #      current distance to the player.
@@ -27,7 +27,7 @@ module Combat
     def call(creature:, adventure:, target_sheet:)
       return [skip_event(creature, 'creature is down')] if creature.hp.to_i <= 0
 
-      policy = BehaviorPolicy.for(creature)
+      policy = ProgrammedBehavior.for(creature)
       npc_pos = Positions.position_for_creature_sheet(adventure, creature.id)
       target_pos = Positions.player_position(adventure)
 
