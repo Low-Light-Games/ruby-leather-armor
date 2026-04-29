@@ -364,7 +364,7 @@ export interface AdventureMessage {
   content: string
   message_type: 'narrative' | 'sanitization_fail' | 'adventure_complete' | 'player_death'
     | 'player_incapacitated'
-    | 'combat_log' | 'action_result'
+    | 'combat_log' | 'combat_end' | 'action_result'
     | 'roll_request' | 'roll_result'
     | 'initiative_request' | 'initiative_result'
     | 'dm_query' | 'usage_limit' | 'system_notice' | 'moderation_flagged'

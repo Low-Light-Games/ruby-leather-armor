@@ -72,9 +72,20 @@ module Combat
     end
 
     def best_approach_step(ctx)
-      approach_step(npc_pos: ctx.npc_pos, target_pos: ctx.target_pos,
-                    speed: npc_speed_squares(ctx.creature),
-                    adventure: ctx.adventure, npc_id: npc_token_id_for(ctx.creature))
+      speed = npc_speed_squares(ctx.creature)
+      npc_id = npc_token_id_for(ctx.creature)
+      inputs = FlankApproach::Inputs.new(
+        adventure: ctx.adventure, npc_pos: ctx.npc_pos, target_pos: ctx.target_pos,
+        self_creature: ctx.creature, speed: speed
+      )
+      destination = FlankApproach.preferred_destination(inputs)
+      if destination
+        FlankApproach.walk_toward(adventure: ctx.adventure, start_pos: ctx.npc_pos,
+                                  destination: destination, speed: speed, npc_id: npc_id)
+      else
+        approach_step(npc_pos: ctx.npc_pos, target_pos: ctx.target_pos, speed: speed,
+                      adventure: ctx.adventure, npc_id: npc_id)
+      end
     end
 
     def post_approach_action(ctx)
@@ -167,42 +178,9 @@ module Combat
       "creature_#{creature.id}"
     end
 
-    # Greedy single-step approach: move up to `speed` squares toward the
-    # target, stopping 1 square away. Returns the destination
-    # coordinates or nil if blocked.
-    def approach_step(npc_pos:, target_pos:, speed:, adventure:, npc_id:)
-      direction = unit_step(from: npc_pos, to: target_pos)
-      max_steps = [speed, npc_pos.distance_to(target_pos) - 1].min
-      return nil if max_steps <= 0
-
-      walk_until_blocked(npc_pos: npc_pos, direction: direction, steps: max_steps,
-                         adventure: adventure, npc_id: npc_id)
-    end
-
-    def retreat_step(npc_pos:, target_pos:, speed:, adventure:, npc_id:)
-      direction = unit_step(from: target_pos, to: npc_pos)
-      walk_until_blocked(npc_pos: npc_pos, direction: direction, steps: speed,
-                         adventure: adventure, npc_id: npc_id)
-    end
-
-    def unit_step(from:, to:)
-      dx = (to.x.to_i - from.x.to_i).clamp(-1, 1)
-      dy = (to.y.to_i - from.y.to_i).clamp(-1, 1)
-      { x: dx, y: dy }
-    end
-
-    def walk_until_blocked(npc_pos:, direction:, steps:, adventure:, npc_id:)
-      x = npc_pos.x.to_i
-      y = npc_pos.y.to_i
-      last_open = nil
-      steps.times do
-        x += direction[:x]
-        y += direction[:y]
-        break if Positions.occupied?(adventure, at_x: x, at_y: y, except_token_id: npc_id)
-
-        last_open = { x: x, y: y }
-      end
-      last_open
-    end
+    # Approach/retreat walkers extracted to Combat::Movement so the
+    # module stays under the length cap.
+    def approach_step(**) = Movement.approach_step(**)
+    def retreat_step(**)  = Movement.retreat_step(**)
   end
 end

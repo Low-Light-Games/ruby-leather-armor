@@ -173,6 +173,18 @@ RSpec.describe Combat::PlayerActionResolver do
       expect(ctx['combat_end_reason']).to eq('all_npcs_defeated')
     end
 
+    it 'persists a combat_end system message describing how the fight wrapped up' do
+      allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_d20).and_return(20)
+      allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_damage_expression).and_return(99)
+
+      described_class.call(adventure: adventure, sheet: sheet, user: user, params: base_params)
+
+      msg = adventure.adventure_messages.where(message_type: 'combat_end').last
+      expect(msg).to be_present
+      expect(msg.role).to eq('system')
+      expect(msg.content).to include('Combat ends')
+    end
+
     it 'flags target_dropped when HP reaches 0' do
       allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_d20).and_return(20)
       allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_damage_expression).and_return(99)

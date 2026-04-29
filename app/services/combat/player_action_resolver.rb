@@ -140,8 +140,36 @@ module Combat
         @adventure.update!(combat_context: ctx)
       end
       apply_player_death_terminus! if reason == 'player_death'
+      broadcast_combat_end_narration!(reason)
     rescue StandardError => e
       Rails.logger.warn("[PlayerActionResolver] combat-end persist failed: #{e.message}")
+    end
+
+    # Drop a single system message describing how the fight wrapped up so
+    # the chat doesn't just go silent when combat ends. Skipped on
+    # player_death — apply_player_death_terminus! already persists +
+    # broadcasts its own message.
+    def broadcast_combat_end_narration!(reason)
+      return if reason == 'player_death'
+
+      content = combat_end_narration_for(reason)
+      return if content.blank?
+
+      msg = @adventure.adventure_messages.create!(
+        role: 'system', content: content, message_type: 'combat_end'
+      )
+      AdventureChannel.broadcast_to(
+        @adventure,
+        type: 'pipeline_action_result',
+        messages: [DungeonMaster::AdventurePlay::MessageSerializer.as_json(msg, admin: @user&.admin?)]
+      )
+    end
+
+    def combat_end_narration_for(reason)
+      case reason
+      when 'all_npcs_defeated' then 'Combat ends — every hostile is down. The battlefield falls quiet.'
+      else 'Combat ends.'
+      end
     end
 
     # When the deterministic NPC turn engine just killed the player (instant_death

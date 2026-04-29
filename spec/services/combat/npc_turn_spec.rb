@@ -38,7 +38,7 @@ RSpec.describe Combat::NpcTurn do
     ).tap do |bf|
       adventure.update!(combat_context: {
                           'active' => true, 'round' => 1, 'current_turn' => 'Player',
-                          'turn_order' => ['Player', 'Goblin'],
+                          'turn_order' => %w[Player Goblin],
                           'participants' => [
                             { 'name' => 'Player', 'type' => 'player' },
                             { 'name' => 'Goblin', 'type' => 'npc', 'creature_sheet_id' => creature.id }
@@ -68,7 +68,7 @@ RSpec.describe Combat::NpcTurn do
 
     events = described_class.call(creature: creature, adventure: adventure, target_sheet: sheet)
 
-    expect(events.map { |e| e[:kind] }).to eq(['npc_move', 'npc_attack'])
+    expect(events.map { |e| e[:kind] }).to eq(%w[npc_move npc_attack])
     new_pos = Combat::Positions.position_for_creature_sheet(adventure, creature.id)
     expect(new_pos.distance_to(Combat::Positions.player_position(adventure))).to eq(1)
   end
@@ -135,5 +135,61 @@ RSpec.describe Combat::NpcTurn do
 
     events = described_class.call(creature: creature, adventure: adventure, target_sheet: sheet)
     expect(events.first[:kind]).to eq('npc_skip')
+  end
+
+  describe 'flank-aware approach' do
+    let!(:ally) do
+      CreatureSheet.create!(
+        adventure: adventure,
+        name: 'Goblin Ally', creature_type: 'monster', origin: 'ai', attitude: 'hostile',
+        level: 1,
+        strength: 11, dexterity: 13, constitution: 12,
+        intelligence: 10, wisdom: 9, charisma: 6,
+        hp: 6, max_hp: 6,
+        derived_stats: { 'ac' => 14, 'speed' => 30, 'mods' => { 'strength' => 0 } },
+        equipped_weapons: [{ 'name' => 'shortsword', 'damage_dice' => '1d6', 'damage_type' => 'piercing' }],
+        behavior_policy: { 'preferred_attacks' => [{ 'name' => 'shortsword', 'max_range_squares' => 1 }] }
+      )
+    end
+
+    def setup_grid_with_ally(player_xy:, goblin_xy:, ally_xy:)
+      AdventureBattlefield.create!(
+        adventure: adventure, status: 'active', topology: 'square', version: 1,
+        tokens: {
+          'player' => { 'label' => 'Player', 'x' => player_xy[0], 'y' => player_xy[1], 'type' => 'player' },
+          "creature_#{creature.id}" => { 'label' => 'Goblin', 'x' => goblin_xy[0], 'y' => goblin_xy[1],
+                                         'type' => 'npc', 'creature_sheet_id' => creature.id },
+          "creature_#{ally.id}" => { 'label' => 'Goblin Ally', 'x' => ally_xy[0], 'y' => ally_xy[1],
+                                     'type' => 'npc', 'creature_sheet_id' => ally.id }
+        }, world: {}, viewport: {}
+      ).tap do |bf|
+        adventure.update!(combat_context: {
+                            'active' => true, 'round' => 1, 'current_turn' => 'Player',
+                            'turn_order' => ['Player', 'Goblin', 'Goblin Ally'],
+                            'participants' => [
+                              { 'name' => 'Player', 'type' => 'player' },
+                              { 'name' => 'Goblin', 'type' => 'npc', 'creature_sheet_id' => creature.id },
+                              { 'name' => 'Goblin Ally', 'type' => 'npc', 'creature_sheet_id' => ally.id }
+                            ],
+                            'battlefield_ref' => { 'id' => bf.id, 'version' => bf.version, 'topology' => 'square' }
+                          })
+      end
+    end
+
+    it 'lands on the flank square opposite an existing ally' do
+      # Player at (5,5), ally already adjacent at (4,5) (west of player).
+      # Goblin starts to the east-northeast at (8,3) — within speed 6 of
+      # multiple adjacency squares around the player. The opposite-of-ally
+      # square is (6,5); flanking should pull the goblin there even though
+      # several other adjacency squares are equally close.
+      setup_grid_with_ally(player_xy: [5, 5], goblin_xy: [8, 3], ally_xy: [4, 5])
+      allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_d20).and_return(15)
+      allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_damage_expression).and_return(1)
+
+      described_class.call(creature: creature, adventure: adventure, target_sheet: sheet)
+
+      new_pos = Combat::Positions.position_for_creature_sheet(adventure, creature.id)
+      expect([new_pos.x, new_pos.y]).to eq([6, 5])
+    end
   end
 end
