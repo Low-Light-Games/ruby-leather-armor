@@ -8,6 +8,7 @@ import {
   type CombatAttackPending,
   type CombatAttackResolved,
   type CombatAttackResponse,
+  type CombatBuffOption,
   type CombatTarget,
 } from '../../../services/combatActionService'
 import type { CombatDiceStrategy } from '../../../types/auth'
@@ -151,6 +152,20 @@ export const CombatActionPanel = ({
     }
   }
 
+  const handleBuff = async (option: CombatBuffOption) => {
+    setSubmitting(true)
+    setError(null)
+    try {
+      const response = await postCombatAction(adventureId, { kind: 'buff', spell_id: option.id })
+      handleResponse(response)
+      await refreshCombatTargetOptions()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const handleSubmitClientDice = async () => {
     if (!pending) return
     setSubmitting(true)
@@ -265,6 +280,27 @@ export const CombatActionPanel = ({
               <span className="attack-damage">{option.damage}{option.damage_type ? ` ${option.damage_type}` : ''}</span>
             </button>
           ))}
+        </div>
+      )}
+
+      {options.buff_options.length > 0 && (
+        <div className="buff-options">
+          <span className="buff-options-label">Buffs</span>
+          <div className="buff-options-grid">
+            {options.buff_options.map(option => (
+              <button
+                key={option.id}
+                type="button"
+                className="buff-option-btn"
+                disabled={submitting || pending !== null}
+                onClick={() => handleBuff(option)}
+                title={[option.summary, option.duration ? `Duration: ${option.duration}` : null].filter(Boolean).join(' — ')}
+              >
+                <span className="buff-label">✨ {option.label}</span>
+                {option.duration && <span className="buff-duration">{option.duration}</span>}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

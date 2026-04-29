@@ -21,6 +21,7 @@ class CombatActionsController < ApplicationController
     player_pos = Combat::Positions.player_position(@adventure)
     render json: {
       attack_options: attack_options_for_render,
+      buff_options: buff_options_for_render,
       targets: hostile_targets,
       action_economy: combat_context_hash['action_economy'],
       dice_strategy: current_user.combat_dice_strategy,
@@ -72,7 +73,7 @@ class CombatActionsController < ApplicationController
   end
 
   def combat_action_params
-    params.permit(:kind, :attack_option_id, :target_creature_sheet_id, :x, :y, :withdraw).to_h
+    params.permit(:kind, :attack_option_id, :target_creature_sheet_id, :x, :y, :withdraw, :spell_id).to_h
   end
 
   def submitted_dice_params
@@ -83,6 +84,10 @@ class CombatActionsController < ApplicationController
 
   def attack_options_for_render
     DungeonMaster::Combat::AttackOptionBuilder.call(sheet: @adventure_sheet, adventure: @adventure)
+  end
+
+  def buff_options_for_render
+    DungeonMaster::Combat::BuffOptionBuilder.call(sheet: @adventure_sheet, adventure: @adventure)
   end
 
   def hostile_targets

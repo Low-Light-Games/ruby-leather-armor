@@ -31,8 +31,19 @@ export interface CombatActionEconomy {
   full_round_claimed?: boolean
 }
 
+export interface CombatBuffOption {
+  id: string
+  label: string
+  source_type: string
+  source_id: string | number
+  duration: string | null
+  summary: string | null
+  action_cost: string
+}
+
 export interface CombatActionOptionsResponse {
   attack_options: CombatAttackOption[]
+  buff_options: CombatBuffOption[]
   targets: CombatTarget[]
   action_economy: CombatActionEconomy | null
   dice_strategy: CombatDiceStrategy
@@ -109,9 +120,19 @@ export interface CombatMoveResult {
   message: string
 }
 
+export interface CombatBuffResult {
+  kind: 'buff'
+  spell_id: string
+  spell_name: string
+  duration: string | null
+  summary: string | null
+  action_cost: string
+  message: string
+}
+
 export interface CombatAttackResolved {
   status: 'resolved'
-  result: CombatAttackResult | CombatEndTurnResult | CombatMoveResult
+  result: CombatAttackResult | CombatEndTurnResult | CombatMoveResult | CombatBuffResult
   combat_context: Record<string, unknown> | null
 }
 
@@ -153,7 +174,12 @@ export interface CombatMoveBody {
   withdraw?: boolean
 }
 
-export type CombatActionBody = CombatAttackBody | CombatEndTurnBody | CombatMoveBody
+export interface CombatBuffBody {
+  kind: 'buff'
+  spell_id: string
+}
+
+export type CombatActionBody = CombatAttackBody | CombatEndTurnBody | CombatMoveBody | CombatBuffBody
 
 export async function fetchCombatActionOptions(adventureId: number): Promise<CombatActionOptionsResponse> {
   return apiFetch(`/adventures/${adventureId}/combat_action/options`, { method: 'GET', credentials: 'same-origin' })

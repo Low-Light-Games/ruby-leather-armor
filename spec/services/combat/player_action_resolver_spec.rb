@@ -593,4 +593,47 @@ RSpec.describe Combat::PlayerActionResolver do
       end.to raise_error(described_class::Error, /invalid attack_natural/)
     end
   end
+
+  describe 'self-buff spell' do
+    let!(:spell) do
+      SpellDefinition.find_or_create_by!(id: 'shield') do |s|
+        s.name = 'Shield'
+        s.school = 'abjuration'
+        s.range = 'personal'
+        s.duration = '1 min/level'
+        s.duration_formula = { 'unit' => 'minutes', 'per_level' => 1 }
+        s.saving_throw = 'none'
+        s.spell_resistance = false
+        s.class_levels = { 'wizard' => 1 }
+        s.effects = [{ 'type' => 'ac_bonus', 'bonus' => 4, 'target' => 'ac', 'bonusType' => 'shield' }]
+        s.summary = '+4 shield bonus to AC.'
+      end
+    end
+
+    before do
+      sheet.update!(character_class: 'wizard', level: 1)
+      AdventureSheetSpell.create!(adventure_sheet: sheet, spell_definition: spell, storage_type: 'spellbook')
+    end
+
+    it 'applies the buff, spends standard, and emits a buff payload' do
+      result = described_class.call(
+        adventure: adventure, sheet: sheet, user: user,
+        params: { kind: 'buff', spell_id: 'spell:shield' }
+      )
+
+      expect(result[:status]).to eq(:resolved)
+      expect(result[:result]).to include(kind: 'buff', spell_id: 'shield', spell_name: 'Shield')
+      expect(sheet.reload.active_buffs).to be_present
+      expect(adventure.reload.combat_context.dig('action_economy', 'standard_available')).to be(false)
+    end
+
+    it 'rejects an unknown spell_id' do
+      expect do
+        described_class.call(
+          adventure: adventure, sheet: sheet, user: user,
+          params: { kind: 'buff', spell_id: 'spell:not_a_real_spell' }
+        )
+      end.to raise_error(described_class::Error, /unknown or unavailable buff option_id/)
+    end
+  end
 end
