@@ -32,18 +32,11 @@ module Combat
     end
 
     def chat_params(round, npc_events, deps)
-      ctx = Narrator::Context.new(
+      context = Narrator::Context.new(
         round: round, npc_events: npc_events,
         adventure: deps[:adventure], sheet: deps[:sheet]
       )
-      config = deps.fetch(:config)
-      {
-        system_prompt: DungeonMaster::PromptRenderer.render('combat_narrator', combat_narrator_context: ctx),
-        user_message: 'Narrate the round.',
-        max_tokens: config.token_budget_for('combat_narrator') || DEFAULT_MAX_TOKENS,
-        step_name: 'combat_narrator',
-        model: config.model_for('combat_narrator')
-      }
+      Narrator::StepParams.new(context: context, config: deps.fetch(:config)).to_h
     end
   end
 end

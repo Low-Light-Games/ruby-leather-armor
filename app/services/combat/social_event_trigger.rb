@@ -32,15 +32,13 @@ module Combat
       witnesses = social_witnesses_for(adventure)
       return nil if witnesses.empty?
 
-      {
-        'kind' => 'social_event_triggered',
-        'action_kind' => kind,
-        'action_label' => payload['attack_label'] || payload['message'],
-        'target_name' => payload['target_name'],
-        'witnesses' => witnesses,
-        'location' => location_label_for(adventure),
-        'at' => Time.current.iso8601
-      }
+      Combat::SocialEventResolution.new(
+        action_kind: kind,
+        action_label: payload['attack_label'] || payload['message'],
+        target_name: payload['target_name'],
+        witnesses: witnesses,
+        location: location_label_for(adventure)
+      ).to_h
     end
 
     # Witnesses are non-hostile NPCs known to the current location's

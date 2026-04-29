@@ -26,6 +26,11 @@ module Combat
     # opposite the attacker through the target's square. Faction-aware
     # ally selection is deferred — every non-target combatant counts as
     # a potential flanking partner.
+    #
+    # @param attacker [Combat::Position]
+    # @param target [Combat::Position]
+    # @param allies [Array<Combat::Position>]
+    # @param reach_squares [Integer]
     def flanking?(attacker:, target:, allies:, reach_squares: DEFAULT_REACH_SQUARES)
       return false unless can_flank_from?(attacker, target, reach_squares)
 
@@ -33,8 +38,14 @@ module Combat
       Array(allies).any? { |ally| ally_at_mirror?(ally, attacker, target, mirror_x, mirror_y) }
     end
 
-    # Returns Combat::Threat structs for combatants whose reach covers
+    # Returns Combat::Threat records for combatants whose reach covers
     # +mover_from+ — they get a free swing if +mover_from+ leaves it.
+    #
+    # @param mover [Combat::Position]
+    # @param mover_from [Combat::Position, nil]
+    # @param others [Array<Combat::Position>]
+    # @param default_reach_squares [Integer]
+    # @return [Array<Combat::Threat>]
     def aoo_threats_against(mover:, mover_from:, others:, default_reach_squares: DEFAULT_REACH_SQUARES)
       return [] unless mover_from
 
@@ -48,6 +59,10 @@ module Combat
     # Soft cover only — terrain cover lands when world.cells carries
     # cover types. An intervening creature on the straight line (or
     # diagonal) between attacker and target grants +4 AC to the target.
+    #
+    # @param attacker [Combat::Position]
+    # @param target [Combat::Position]
+    # @param others [Array<Combat::Position>]
     def cover_between(attacker:, target:, others:)
       return 0 unless cover_eligible?(attacker, target)
 
