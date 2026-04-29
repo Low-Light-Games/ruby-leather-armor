@@ -180,6 +180,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
                     combatContext={adventure.combat_context}
                     diceStrategy={diceStrategy}
                     onDiceStrategyChange={handleDiceStrategyChange}
+                    onCombatEnded={reload}
                   />
                 </div>
                 <div className="adventure-column combat-chat-column">

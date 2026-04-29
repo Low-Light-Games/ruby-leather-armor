@@ -8,6 +8,7 @@ interface Props {
   combatContext: Record<string, unknown> | null
   diceStrategy: CombatDiceStrategy
   onDiceStrategyChange: (next: CombatDiceStrategy) => void
+  onCombatEnded?: () => void
 }
 
 /**
@@ -17,14 +18,23 @@ interface Props {
  *
  * Owns the local liveCombatContext so the action-economy chips can
  * refresh immediately after each resolved action without waiting for
- * the parent adventure record to refetch.
+ * the parent adventure record to refetch. When the panel reports a
+ * context whose .active flipped to false (last NPC down, player
+ * death), bubble it via onCombatEnded so AdventurePlay can refetch
+ * the adventure and tear down the combat layout — otherwise the
+ * parent's stale combat_context keeps showCombatHud true.
  */
-export const CombatHud = ({ adventureId, combatContext, diceStrategy, onDiceStrategyChange }: Props) => {
+export const CombatHud = ({ adventureId, combatContext, diceStrategy, onDiceStrategyChange, onCombatEnded }: Props) => {
   const [liveCombatContext, setLiveCombatContext] = useState<Record<string, unknown> | null>(combatContext)
 
   useEffect(() => {
     setLiveCombatContext(combatContext)
   }, [combatContext])
+
+  const handleCombatContextUpdate = (next: Record<string, unknown> | null) => {
+    setLiveCombatContext(next)
+    if (next && next.active === false) onCombatEnded?.()
+  }
 
   return (
     <div className="combat-hud">
@@ -33,7 +43,7 @@ export const CombatHud = ({ adventureId, combatContext, diceStrategy, onDiceStra
         adventureId={adventureId}
         diceStrategy={diceStrategy}
         onDiceStrategyChange={onDiceStrategyChange}
-        onCombatContextUpdate={setLiveCombatContext}
+        onCombatContextUpdate={handleCombatContextUpdate}
         externalCombatContext={combatContext}
       />
     </div>
