@@ -94,10 +94,19 @@ module Combat
 
     # ── Shared helpers used across resolver concerns ────────────────────
 
+    # Read-modify-write of combat_context.action_economy. Wrapped in
+    # @adventure.with_lock so it serializes against any other writer
+    # (notably AdventureSheets::CombatUiActionEconomy.apply_equip_toggle!).
+    # Without the lock, two near-simultaneous spends on independent slots
+    # (e.g. equip → spend_move racing attack → spend_standard) could each
+    # read the old context and the second write would silently clobber the
+    # first slot's spend.
     def decrement_action_economy_with_delta!(delta, label:)
-      ctx = @adventure.combat_context.deep_dup.deep_stringify_keys
-      ctx['action_economy'] = DungeonMaster::Battlefield::ActionEconomy.apply_delta!(ctx['action_economy'], delta)
-      @adventure.update!(combat_context: ctx)
+      @adventure.with_lock do
+        ctx = @adventure.combat_context.deep_dup.deep_stringify_keys
+        ctx['action_economy'] = DungeonMaster::Battlefield::ActionEconomy.apply_delta!(ctx['action_economy'], delta)
+        @adventure.update!(combat_context: ctx)
+      end
     rescue ArgumentError => e
       raise Combat::ResolverError.new("action economy refused #{label}: #{e.message}", code: :action_economy_refused)
     end
@@ -121,13 +130,15 @@ module Combat
     end
 
     def apply_combat_ended!(end_state)
-      ctx = @adventure.combat_context.deep_dup.deep_stringify_keys
-      ctx['active'] = false
-      ctx['current_turn'] = nil
-      ctx['action_economy'] = nil
       reason = end_state[:combat][:combat_end_reason].to_s
-      ctx['combat_end_reason'] = reason
-      @adventure.update!(combat_context: ctx)
+      @adventure.with_lock do
+        ctx = @adventure.combat_context.deep_dup.deep_stringify_keys
+        ctx['active'] = false
+        ctx['current_turn'] = nil
+        ctx['action_economy'] = nil
+        ctx['combat_end_reason'] = reason
+        @adventure.update!(combat_context: ctx)
+      end
       apply_player_death_terminus! if reason == 'player_death'
     rescue StandardError => e
       Rails.logger.warn("[PlayerActionResolver] combat-end persist failed: #{e.message}")

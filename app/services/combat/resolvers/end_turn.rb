@@ -74,11 +74,11 @@ module Combat
       end
 
       def advance_round_and_refresh_economy!
-        ctx = @adventure.combat_context.deep_dup.deep_stringify_keys
-        next_round = ctx['round'].to_i.then { |r| [r, 1].max + 1 }
-        player = Combat::PlayerActionResolver::PLAYER_NAME
-
-        ApplicationRecord.transaction do
+        next_round = nil
+        @adventure.with_lock do
+          ctx = @adventure.combat_context.deep_dup.deep_stringify_keys
+          next_round = ctx['round'].to_i.then { |r| [r, 1].max + 1 }
+          player = Combat::PlayerActionResolver::PLAYER_NAME
           ctx['round'] = next_round
           ctx['current_turn'] = player
           ctx['action_economy'] = DungeonMaster::Battlefield::ActionEconomy

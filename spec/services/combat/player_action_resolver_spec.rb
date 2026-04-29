@@ -193,6 +193,39 @@ RSpec.describe Combat::PlayerActionResolver do
       end.to raise_error(described_class::Error, /unknown or unavailable attack_option_id/)
       # AttackOptionBuilder hides options when the standard slot is gone.
     end
+
+    describe 'action-economy locking' do
+      it 'reads + writes combat_context inside @adventure.with_lock' do
+        allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_d20).and_return(15)
+        allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_damage_expression).and_return(1)
+
+        # The resolver re-fetches Adventure inside its own session, so we have to
+        # spy on the AR instance the resolver actually uses. Hook the class-level
+        # find to return our test instance with with_lock instrumented.
+        expect(adventure).to receive(:with_lock).at_least(:once).and_call_original
+        allow(Adventure).to receive(:find).and_call_original
+
+        described_class.call(adventure: adventure, sheet: sheet, user: user, params: base_params)
+      end
+
+      it 'does not lose a prior equip-toggle move spend when an attack lands right after' do
+        # Simulate the racy interleave by spending the move via the equip path
+        # first, then resolving the attack. With the lock both spends compose;
+        # without it, the attack would clobber action_economy back to {std:f, move:t}.
+        AdventureSheets::CombatUiActionEconomy.apply_equip_toggle!(adventure: adventure, sheet: sheet)
+        adventure.reload
+        expect(adventure.combat_context.dig('action_economy', 'move_available')).to be(false)
+
+        allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_d20).and_return(15)
+        allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_damage_expression).and_return(1)
+        described_class.call(adventure: adventure, sheet: sheet, user: user, params: base_params)
+
+        adventure.reload
+        econ = adventure.combat_context['action_economy']
+        expect(econ['standard_available']).to be(false)
+        expect(econ['move_available']).to be(false)
+      end
+    end
   end
 
   describe 'situational modifiers' do
@@ -233,9 +266,9 @@ RSpec.describe Combat::PlayerActionResolver do
                                        'creature_sheet_id' => creature.id }
       ))
 
-      expect {
+      expect do
         described_class.call(adventure: adventure, sheet: sheet, user: user, params: base_params)
-      }.to raise_error(Combat::ResolverError, /out of melee reach/)
+      end.to raise_error(Combat::ResolverError, /out of melee reach/)
     end
   end
 
