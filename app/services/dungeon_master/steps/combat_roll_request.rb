@@ -99,9 +99,6 @@ module DungeonMaster
         }
       end
 
-      # Force top-level ::Combat constants — inside the DungeonMaster::
-      # namespace `Combat::` resolves to DungeonMaster::Combat first
-      # (where AttackOptionBuilder lives) and never finds Positions.
       def build_threats_for_player
         player_pos = ::Combat::Positions.player_position(@adventure)
         return [] unless player_pos&.coordinates_present?

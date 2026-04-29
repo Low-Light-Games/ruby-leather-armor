@@ -19,6 +19,7 @@ Metrics/BlockLength:
     - 'spec/services/dungeon_master/rules/lookup_spec.rb'
     - 'spec/services/dungeon_master/steps/roll_request/adapter_spec.rb'
     - 'spec/services/dungeon_master/steps/combat_roll_request/adapter_spec.rb'
+    - 'spec/services/dungeon_master/steps/combat_roll_request/threat_builder_spec.rb'
     - 'spec/services/combat/narrator_spec.rb'
     - 'spec/services/combat/social_event_trigger_spec.rb'
     - 'spec/services/combat/player_action_resolver_spec.rb'
