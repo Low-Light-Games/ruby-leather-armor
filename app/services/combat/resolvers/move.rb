@@ -17,9 +17,10 @@ module Combat
         emit_move_payload(plan, battlefield)
       end
 
+      # @return [Combat::Resolvers::MovePlan]
       def build_move_plan!
         target_x, target_y = lookup_move_coordinates!
-        withdraw_requested = truthy?(@params[:withdraw])
+        withdraw_requested = ActiveModel::Type::Boolean.new.cast(@params[:withdraw]) == true
         origin = lookup_player_origin!
         ensure_move_is_legal!(origin, target_x, target_y)
 
@@ -29,10 +30,12 @@ module Combat
         delta, mode = movement_cost_delta(distance, withdraw: withdraw_requested)
         aoo_outcomes = aoo_outcomes_for(mode, origin)
 
-        {
-          origin: origin, target_x: target_x, target_y: target_y,
-          distance: distance, delta: delta, mode: mode, aoo_outcomes: aoo_outcomes
-        }
+        Combat::Resolvers::MovePlan.new(
+          origin: origin,
+          destination: { x: target_x, y: target_y },
+          movement: { distance: distance, delta: delta, mode: mode },
+          aoo_outcomes: aoo_outcomes
+        )
       end
 
       def lookup_move_coordinates!
@@ -75,10 +78,6 @@ module Combat
                                         code: :out_of_reach)
       end
 
-      def truthy?(value)
-        value == true || value.to_s == 'true'
-      end
-
       # Withdraw is the only mode whose departure square does NOT provoke.
       # Standard move provokes from the departure square. 5-foot step
       # never provokes.
@@ -114,18 +113,18 @@ module Combat
       def commit_move!(plan)
         battlefield = nil
         ApplicationRecord.transaction do
-          battlefield = Combat::Positions.move_player_token!(@adventure, at_x: plan[:target_x], at_y: plan[:target_y])
-          decrement_action_economy_with_delta!(plan[:delta], label: "#{plan[:mode]} (#{plan[:distance]} squares)")
+          battlefield = Combat::Positions.move_player_token!(@adventure, at_x: plan.target_x, at_y: plan.target_y)
+          decrement_action_economy_with_delta!(plan.delta, label: plan.economy_label)
         end
         battlefield
       end
 
       def emit_move_payload(plan, battlefield)
         payload = Combat::MoveResolutionPayload.new(
-          origin: plan[:origin],
-          destination: { x: plan[:target_x], y: plan[:target_y] },
-          movement: { distance: plan[:distance], mode: plan[:mode], battlefield_version: battlefield&.version },
-          aoo_outcomes: plan[:aoo_outcomes]
+          origin: plan.origin,
+          destination: plan.destination,
+          movement: { distance: plan.distance, mode: plan.mode, battlefield_version: battlefield&.version },
+          aoo_outcomes: plan.aoo_outcomes
         ).to_h
         log_action_event!(payload)
         { status: :resolved, result: payload }

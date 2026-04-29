@@ -88,16 +88,7 @@ module Combat
       end
 
       def end_turn_payload(next_round, npc_events)
-        npc_hits = npc_events.count do |e|
-          e[:kind] == 'npc_attack' && e.dig(:outcome, 'hit') == true
-        end
-
-        {
-          kind: 'end_turn',
-          round_advanced_to: next_round,
-          npc_events: npc_events,
-          message: "Turn ended. #{npc_events.length} NPC action(s), #{npc_hits} hit(s). Round #{next_round} begins."
-        }
+        Combat::Resolvers::EndTurnSummary.new(next_round: next_round, npc_events: npc_events).to_h
       end
     end
   end
