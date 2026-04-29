@@ -34,7 +34,10 @@ class AdventureSheetsController < ApplicationController
       item.save!
       @adventure_sheet.recompute_derived_stats!
     end
-    render json: adventure_sheet_json(@adventure_sheet.reload)
+    render json: {
+      adventure_sheet: adventure_sheet_json(@adventure_sheet.reload),
+      combat_context: @adventure.reload.combat_context
+    }
   rescue AdventureSheets::CombatUiActionEconomy::Error => e
     render json: { error: e.message }, status: :unprocessable_entity
   rescue ActiveRecord::RecordInvalid => e

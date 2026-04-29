@@ -34,6 +34,7 @@ export const CombatHud = ({ adventureId, combatContext, diceStrategy, onDiceStra
         diceStrategy={diceStrategy}
         onDiceStrategyChange={onDiceStrategyChange}
         onCombatContextUpdate={setLiveCombatContext}
+        externalCombatContext={combatContext}
       />
     </div>
   )

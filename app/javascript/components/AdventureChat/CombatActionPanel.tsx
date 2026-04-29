@@ -19,6 +19,7 @@ interface Props {
   diceStrategy: CombatDiceStrategy
   onDiceStrategyChange: (next: CombatDiceStrategy) => void
   onCombatContextUpdate?: (combatContext: Record<string, unknown> | null) => void
+  externalCombatContext?: Record<string, unknown> | null
 }
 
 interface ResolvedEntry {
@@ -48,6 +49,7 @@ function describeAttackOption(option: CombatAttackOption): string {
 
 export const CombatActionPanel = ({
   adventureId,
+  externalCombatContext,
   diceStrategy,
   onDiceStrategyChange,
   onCombatContextUpdate,
@@ -82,6 +84,17 @@ export const CombatActionPanel = ({
   useEffect(() => {
     void refreshOptions()
   }, [refreshOptions])
+
+  // Refresh options when the parent's combat_context changes from outside the
+  // panel (e.g. equip toggle spending a move). Internal HUD actions update
+  // CombatHud's local mirror, not the parent prop, so this won't double-fetch.
+  const externalEconomySignal = externalCombatContext
+    ? JSON.stringify((externalCombatContext as { action_economy?: unknown }).action_economy ?? null)
+    : null
+  useEffect(() => {
+    if (externalEconomySignal === null) return
+    void refreshOptions()
+  }, [externalEconomySignal, refreshOptions])
 
   const recordResolution = useCallback(
     (resolved: CombatAttackResolved) => {

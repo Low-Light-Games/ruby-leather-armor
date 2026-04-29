@@ -28,8 +28,13 @@ export function useInventory(
       });
 
       if (res.ok) {
-        const updatedSheet = await res.json();
-        setAdventure(prev => prev ? { ...prev, adventure_sheet: updatedSheet } : prev);
+        const data = await res.json();
+        setAdventure(prev => {
+          if (!prev) return prev;
+          const next = { ...prev, adventure_sheet: data.adventure_sheet };
+          if (data.combat_context !== undefined) next.combat_context = data.combat_context;
+          return next;
+        });
       } else {
         const data = await res.json().catch(() => ({}));
         setEquipError(data.error || 'Failed to toggle equip');
