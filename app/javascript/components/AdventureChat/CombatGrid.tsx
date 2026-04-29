@@ -157,9 +157,10 @@ export const CombatGrid = ({
     const cx = col * cellPx + cellPx / 2
     const cy = row * cellPx + cellPx / 2
     const r = Math.max(4, cellPx * 0.35)
-    const className = `combat-grid-token ${t.isPlayer ? 'player' : 'npc'}`
     const target = findCreatureHp(targets, t.creatureSheetId)
-    const hpPart = target ? ` — ${target.hp}/${target.max_hp} HP${target.dropped ? ' (down)' : ''}` : ''
+    const isDown = !!target?.dropped
+    const className = `combat-grid-token ${t.isPlayer ? 'player' : 'npc'}${isDown ? ' down' : ''}`
+    const hpPart = target ? ` — ${target.hp}/${target.max_hp} HP${isDown ? ' (down)' : ''}` : ''
     const tooltip = `${t.displayLabel} (${t.x}, ${t.y})${hpPart}`
     return (
       <g key={t.id} className={className}>

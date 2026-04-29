@@ -718,6 +718,19 @@
 
       &.player circle { fill: $blue-ink; }
       &.npc circle    { fill: $red-ink; }
+
+      &.down {
+        opacity: 0.35;
+
+        circle {
+          fill: $ink-mid;
+          stroke-dasharray: 2 2;
+        }
+
+        text {
+          text-decoration: line-through;
+        }
+      }
     }
   }
 
