@@ -67,6 +67,64 @@ def seed_playwright_sidebar_fixture!
   puts "Created/updated Playwright sidebar fixture: #{fixture_user.email} -> adventure ##{adventure.id}"
 end
 
+def seed_playwright_combat_fixture!
+  fixture_user = User.find_or_initialize_by(email: 'combat-fixture@example.com')
+  fixture_user.admin = false
+  fixture_user.password = 'combat123'
+  fixture_user.onboarding_state = 'in_progress'
+  fixture_user.combat_dice_strategy = 'server'
+  fixture_user.save!
+
+  fixture_sheet = Sheets::StarterProvisioner.ensure_for(user: fixture_user, starter_key: 'fighter')
+  fixture_sheet.update!(name: 'Combat Aldric')
+  fixture_sheet.recompute_derived_stats!
+
+  story = Story.find_by!(title: 'The Bloodfield March')
+  fixture_user.adventures.kept.where(story: story).find_each(&:discard!)
+  adventure = Adventures::Bootstrap.new(story: story, sheet: fixture_sheet, user: fixture_user).call
+  adventure_sheet = adventure.adventure_sheets.first!
+
+  %w[mage_armor cure_light_wounds].each do |spell_id|
+    spell = SpellDefinition.find_by(id: spell_id)
+    next unless spell
+
+    adventure_sheet.adventure_sheet_spells.find_or_create_by!(spell_id: spell.id, storage_type: 'spellbook')
+    fixture_sheet.sheet_spells.find_or_create_by!(spell_id: spell.id, storage_type: 'spellbook')
+  end
+
+  adventure.creature_sheets.where(name: ['Goblin Scout', 'Goblin Soldier']).destroy_all
+  goblin_attrs = {
+    creature_type: 'npc',
+    origin: 'template',
+    strength: 11, dexterity: 15, constitution: 12, intelligence: 10, wisdom: 9, charisma: 6,
+    level: 1, hp: 1, max_hp: 1,
+    derived_stats: { 'ac' => 5, 'flat_footed_ac' => 5, 'touch_ac' => 5, 'bab' => 1, 'speed' => 30 },
+    equipped_weapons: [{ 'name' => 'short sword', 'weapon_type' => 'melee',
+                         'damage' => '1d4', 'damage_type' => 'slashing',
+                         'crit_range' => 19, 'crit_multiplier' => 2 }]
+  }
+  goblins = ['Goblin Scout', 'Goblin Soldier'].map do |name|
+    sheet = adventure.creature_sheets.create!(goblin_attrs.merge(name: name))
+    sheet.recompute_derived_stats!
+    sheet
+  end
+
+  creature_data = goblins.map { |g| { creature_sheet_id: g.id, name: g.name, initiative: 1 } }
+
+  combat_data = DungeonMaster::Utilities::Warmaster.compute_combat_initialization(
+    adventure: adventure,
+    player_sheet: adventure_sheet,
+    creature_data: creature_data,
+    player_initiative: 99
+  )
+
+  DungeonMaster::Battlefield::PersistCombatStart.call(
+    adventure: adventure, combat_data: combat_data, sheet: adventure_sheet
+  )
+
+  puts "Created/updated Playwright combat fixture: #{fixture_user.email} -> adventure ##{adventure.id}"
+end
+
 # Only bootstrap local development — production admin accounts should be
 # created through a secure out-of-band process.
 if Rails.env.development? || Rails.env.staging? || Rails.env.playwright?
@@ -133,5 +191,8 @@ if Rails.env.development? || Rails.env.staging? || Rails.env.playwright?
     end
   end
 
-  seed_playwright_sidebar_fixture! if Rails.env.playwright?
+  if Rails.env.playwright?
+    seed_playwright_sidebar_fixture!
+    seed_playwright_combat_fixture!
+  end
 end

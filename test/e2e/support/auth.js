@@ -2,6 +2,7 @@ const CREDENTIALS = {
   admin: { email: 'admin@example.com', password: 'admin123' },
   user:  { email: 'test@example.com',  password: 'test123'  },
   sidebarFixture: { email: 'sidebar-fixture@example.com', password: 'sidebar123' },
+  combatFixture:  { email: 'combat-fixture@example.com',  password: 'combat123'  },
 };
 
 async function login(page, role = 'user') {
