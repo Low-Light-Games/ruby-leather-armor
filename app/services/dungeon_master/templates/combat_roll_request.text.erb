@@ -89,12 +89,6 @@ Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
   },
   "action_cost": "standard",
   "affected_domains": ["combat"],
-  "consequences": [],
   "mechanical_summary": "One-sentence factual summary.",
   "reasoning": "One short sentence explaining the call."
 }
-
-`consequences` are rare — leave the array empty unless the action has
-an automatic non-roll side-effect that the player needs to see in the
-log. When present, each entry MUST be `{ "description": "<text>" }`,
-never a bare string.
