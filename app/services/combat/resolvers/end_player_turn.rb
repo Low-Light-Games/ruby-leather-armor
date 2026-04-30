@@ -9,17 +9,30 @@ module Combat
     # economy for the next round. The wire-protocol kind stays
     # 'end_turn' since the frontend payload union depends on it.
     module EndPlayerTurn
+      # PF1e round = 6 seconds. Advance the GameClock by one round whenever
+      # the player ends a turn so per-minute / per-hour buff durations
+      # actually tick down across long combats — without this, a 20-minute
+      # Shield reads "20 min remaining" round 1 and round 50 alike.
+      ROUND_DURATION_HOURS = 6.0 / 3600
+
       private
 
       def resolve_end_turn
         previous_round = (@adventure.combat_context || {})['round'].to_i
         npc_events = run_npc_turns
         next_round = advance_round_and_refresh_economy!
+        advance_game_clock_one_round!
 
         payload = end_turn_payload(next_round, npc_events)
         log_action_event!(payload)
         enqueue_combat_narrator!(round: previous_round, npc_events: npc_events)
         { status: :resolved, result: payload }
+      end
+
+      def advance_game_clock_one_round!
+        DungeonMaster::Utilities::GameClock.advance_clock!(@adventure, ROUND_DURATION_HOURS)
+      rescue StandardError => e
+        Rails.logger.warn("[EndPlayerTurn] failed to tick GameClock: #{e.message}")
       end
 
       def enqueue_combat_narrator!(round:, npc_events:)

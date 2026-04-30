@@ -118,6 +118,13 @@ test.describe('Combat encounter — multi-turn HUD coverage', () => {
 
     // ── Round 1: end player turn — NPCs take their turns ────────────────────
     const logEntriesBeforeEndTurn = await page.locator('.log-entry').count();
+    const adventureJsonUrl = `/adventures/${adventures[0].id}.json`;
+    const fetchTimeContext = async () => {
+      const res = await page.request.get(adventureJsonUrl);
+      expect(res.ok()).toBeTruthy();
+      return (await res.json()).time_context;
+    };
+    const timeBeforeEndTurn = await fetchTimeContext();
     await endTurnAndRefresh();
 
     // NPC events render as additional log lines within the rolling window.
@@ -125,6 +132,12 @@ test.describe('Combat encounter — multi-turn HUD coverage', () => {
       async () => page.locator('.log-entry').count(),
       { timeout: 10_000 }
     ).toBeGreaterThanOrEqual(Math.min(logEntriesBeforeEndTurn + 1, 3));
+
+    // Each end-of-turn must tick the GameClock by 1 PF1e round (6 s) so
+    // per-minute / per-hour buff durations actually decay. Without it Shield /
+    // Mage Armor would show the same "20 min remaining" forever.
+    await expect.poll(async () => (await fetchTimeContext()).current_hour, { timeout: 10_000 })
+      .toBeGreaterThan(timeBeforeEndTurn.current_hour);
 
     // ── Drop both goblins; loop guards against the rare miss ────────────────
     await dropTarget('Goblin Scout');
