@@ -7,6 +7,8 @@ export interface UsageSnapshot {
   grace_period_ends_at: string | null
 }
 
+export type CombatDiceStrategy = 'client' | 'server'
+
 export interface AuthUser {
   id: number
   email: string
@@ -17,6 +19,7 @@ export interface AuthUser {
   banned: boolean
   trusted: boolean
   moderation_strikes: number
+  combat_dice_strategy: CombatDiceStrategy
   usage: UsageSnapshot
 }
 

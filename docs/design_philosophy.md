@@ -463,23 +463,9 @@ problems that were already solved.
 - `docs/async_pipeline_design.md` — the specific problem and solution
   for async execution
 
-**Code comments: by exception, not by default.** The "document the why"
-instinct stops at the source-file boundary. Code is expected to carry
-its own explanation — well-named methods, memoized readers, predicate
-methods, value objects whose class names and attribute names spell out
-their shape. A comment that restates what the next few lines do is
-noise: it drifts out of sync with the code, trains readers to skim
-rather than read, and usually signals that the code below deserved a
-better name or a smaller surface.
-
-Comments earn their place only when they capture something the code
-cannot: a non-obvious invariant, a trade-off deliberately accepted, an
-external constraint (API quirk, DB limitation, §-rule from this
-document), or a short pointer to the `docs/` section that owns the
-full rationale. When in doubt, rename the method, extract a class, or
-cite a design doc instead of adding a paragraph. The durable "why"
-belongs in the documents listed above, not scattered across service
-files where it will silently go stale.
+**Code comments are a separate discipline** — see §20 for when to add
+one and when a comment is a smell signalling that the code below
+deserved a better name.
 
 ---
 
@@ -596,6 +582,27 @@ not warning accumulation.
   deterministic seam already owns the data (counts, HP, roster shape, turn order).
 - If a prompt-only fix cannot be expressed as simplification/replacement, stop and
   look for the owned deterministic seam first.
+- **Don't hand-hold cheap models.** A long wall of CRITICAL RULES, hard
+  ceilings restated three ways, and SRD anchor tables tells you the
+  prompt is doing the model's job. Strip the prompt to: what we want,
+  the JSON shape, and concrete examples of any non-obvious field. If a
+  cheap model still can't comply, it isn't up to the task — swap the
+  model, don't pile more guardrails into the prompt.
+
+**Clamp at the receiving seam.** A prompt is a request, not a contract;
+the contract lives in the Ruby that receives the response. Anywhere the
+AI's answer feeds a deterministic system (creature stats, dice formulas,
+JSON shapes, numeric ranges with defensible bounds), the receiving code
+clamps it before persisting:
+- `Warmaster.create_from_ai_static` clamps `cr` to `[1, party_level + 2]`
+  and HP to `12·cr + 5` regardless of what the AI returned.
+- `roll_hp_static` flattens array-shaped formulas (`["1d8", "+2"]`) so
+  cheap models that return wrapped values still parse correctly.
+- Ability scores get `.clamp(1, 40)` at the same boundary.
+
+The pattern: prompt asks politely with concrete examples; code enforces
+the actual invariant. Don't add a lengthy "DO NOT exceed CR X" section
+to the prompt and hope. If the bound is real, write the clamp.
 
 **Examples:**
 
@@ -747,3 +754,71 @@ hides supported keys behind a positional-or-keyword signature.
 are already the canonical ActiveRecord shape (`where(...)`,
 `create!(...)`, scope arguments) stay as plain hashes — they're
 already typed by the model. When in doubt, wrap it.
+
+**Sibling builders share a base class.** When two `*OptionBuilder` /
+`*Resolver` / `*Payload` classes do the same outer work and differ only
+in a `match?` predicate or a per-element wrapper, the shared loop is a
+base class — not a copy-pasted iteration with one line different.
+`SpellOptionBuilderBase` owns the action-economy gate, the
+`adventure_sheet_spells` iteration, and `resolve_option_id!`;
+`BuffOptionBuilder` and `HealOptionBuilder` declare only `match?` and
+`option_for`. The same applies to value-object pairs: `BuffOption` and
+`HealOption` both `to_h` into the wire shape, neither contains
+flow-control logic that the other should also have.
+
+**Why:** drift between siblings is the most common bug we see in this
+repo's PR reviews. Two builders that "look about the same" silently
+diverge on what counts as available, what gets logged, what raises
+which error class. A shared base makes the divergence either
+impossible (the loop is in one place) or explicit (the override is
+visible in a `def` line, not buried five branches deep).
+
+---
+
+## 20. Code is self-documenting; comments are exceptions
+
+Code is expected to carry its own explanation — well-named methods,
+memoized readers, predicate methods, value objects whose class names
+and attribute names spell out their shape. A comment that restates
+what the next few lines do is noise: it drifts out of sync with the
+code, trains readers to skim rather than read, and usually signals
+that the code below deserved a better name or a smaller surface.
+
+**Default to writing no comment.** Before adding one, try to rename
+the method, extract a class, replace a flag with a predicate, or pull
+the magic number into a named constant. Most "explanatory" comments
+disappear once the code itself is shaped to be the explanation.
+
+**Comments earn their place only when they capture something the
+code cannot:**
+- YARD documentation of param types (no explanation, just the class, and if it's a HASH, it's format)
+- A non-obvious invariant the type system can't express.
+- A trade-off deliberately accepted (with a one-line reason).
+- An external constraint — API quirk, DB limitation, browser bug,
+  third-party-library footgun.
+- A short pointer to the `docs/` section or `§N` of this file that
+  owns the full rationale.
+- A workaround for a specific bug or incident, with enough context
+  that a future reader knows when it's safe to remove.
+
+**Anti-patterns we remove on sight:**
+
+- Comments that re-state the next line in English ("Set the count to
+  zero"). The line already says that.
+- Comments that reference the current task or PR ("added for the X
+  flow", "used by Y"). Those belong in the commit message; they rot
+  immediately when callers move.
+- Multi-paragraph docstrings on private methods. If it needs that
+  much explanation, the method's name or boundary is wrong.
+- Section-divider banner comments inside one method. If the method
+  has sections, it's two methods.
+- Stale "TODO" / "FIXME" lines older than the most recent rewrite of
+  the surrounding code.
+
+**The bar:** if removing the comment wouldn't confuse a future
+reader, don't write it. If the WHY is non-obvious enough that a
+reader would wonder, write the shortest possible note that captures
+it — one line if you can, never more than three.
+
+The durable "why" belongs in the documents listed in §14, not
+scattered across service files where it will silently go stale.

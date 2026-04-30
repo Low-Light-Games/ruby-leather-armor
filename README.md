@@ -119,9 +119,40 @@ The `docs/` folder contains detailed design documents for the pipeline, individu
 
 ## Testing Philosophy
 
-The automated spec suite is intentionally narrow.
+The automated spec suite is intentionally narrow. Most regression coverage
+comes from end-to-end Playwright tests in `test/e2e/`, not from RSpec.
 
-- Keep request specs that verify deterministic, user-visible behavior from the HTTP boundary.
-- Do not keep specs as documentation or to restate implementation details.
-- If a behavior requires heavy mocking to appear testable, it is out of scope for the spec suite.
-- AI-integration internals, prompt wording, and orchestration details are validated outside this suite.
+**Prefer a single multi-turn Playwright e2e over many small unit specs**
+for any flow that exercises the HTTP boundary, the React HUD, and the
+database round-trip together — combat encounters, sheet edits, inventory
+toggles, sidebar refreshes. One e2e that drives the real product through
+several coupled actions catches more regressions, with less drift, than
+twenty unit specs each pinning one resolver method's hash shape.
+
+**RSpec is reserved for** request specs that verify a deterministic
+response at the HTTP boundary, and for pure utilities whose public
+contract IS the thing under test (parsers, validators, value objects with
+non-trivial logic). If a unit's only consumer is one e2e away, delete the
+unit spec and let the e2e own the coverage.
+
+**Anti-patterns we've removed:**
+
+- Specs that exist to "document" what the code does. Code is the
+  documentation; specs are regression nets.
+- Specs that re-state implementation details (which methods get called
+  in which order, internal hash key names). They break on every
+  refactor without catching real bugs.
+- Specs that require mocking out three collaborators to make one
+  assertion. The unit's contract is too coupled to test in isolation —
+  cover it from the e2e instead.
+- AI-step internals, prompt wording, and pipeline orchestration. These
+  are validated outside this suite (admin play log review, manual
+  playtest, evaluator runs).
+
+**When deleting unit specs in favor of an e2e:** the e2e must explicitly
+assert the same observable behavior. Run the new e2e, then revert the
+production fix and re-run — if it still passes, the e2e isn't actually
+covering the regression and you owe a stronger assertion before
+shipping. (We caught a sidebar-doesn't-refresh-after-buff bug exactly
+this way: the e2e was added without the AC-stat assertion, missed it,
+then was strengthened to assert AC bumps after the cast.)

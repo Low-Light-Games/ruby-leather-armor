@@ -42,6 +42,9 @@ Only include modifiers the current situation actually supports. Do NOT invent ad
 Common modifiers: flanking +2, high ground +1, cover +4 AC, surprise (flat-footed),
 circumstance bonuses/penalties from environment (darkness, rain, rough terrain, etc.).
 
+Each entry MUST be `{ "source": "<short phrase>", "modifier": <integer> }`.
+Never a bare string. Empty array if none apply.
+
 === INSTRUCTIONS ===
 For each roll, determine:
 - take_10_eligible (true/false)
@@ -61,7 +64,7 @@ Respond ONLY with valid JSON (no markdown, no code fences):
       "skill": "Survival",
       "take_10_eligible": false,
       "take_20_eligible": false,
-      "situational_modifiers": [],
+      "situational_modifiers": [{ "source": "running, time pressure", "modifier": -2 }],
       "reasoning": "Character is running to catch a fleeing target — cannot pause for careful or repeated attempts."
     }
   ],

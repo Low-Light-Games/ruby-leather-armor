@@ -9,6 +9,9 @@ import ChatMessage from './ChatMessage'
 import MechanicsGroup, { isMechanicalMessage } from './MechanicsGroup'
 import PendingRollsPanel from './PendingRollsPanel'
 import PendingInitiativePanel from './PendingInitiativePanel'
+import CombatActionEconomyChips from './CombatActionEconomyChips'
+import CombatActionPanel from './CombatActionPanel'
+import type { CombatDiceStrategy } from '../../types/auth'
 import './AdventureChat.scss'
 
 type MessageGroup =
@@ -45,6 +48,8 @@ interface AdventureChatProps {
   adventureEnded?: boolean
   endReason?: 'player_death' | 'adventure_complete' | null
   isCombatActive?: boolean
+  combatContext?: Record<string, unknown> | null
+  renderCombatHudInChat?: boolean
   onAdventureComplete?: () => void
   onDmResponse?: () => void
   onSheetUpdate?: () => void
@@ -57,12 +62,15 @@ export const AdventureChat = ({
   adventureEnded = false,
   endReason = null,
   isCombatActive = false,
+  combatContext = null,
+  renderCombatHudInChat = true,
   onAdventureComplete,
   onDmResponse,
   onSheetUpdate,
 }: AdventureChatProps) => {
-  const { user } = useAuth()
+  const { user, setUser } = useAuth()
   const [input, setInput] = useState('')
+  const [liveCombatContext, setLiveCombatContext] = useState<Record<string, unknown> | null>(combatContext)
   const [askDm, setAskDm] = useState(false)
   const [rollModalDisplay, setRollModalDisplay] = useState<RollResultDisplay | null>(null)
   const [damageModalDisplay, setDamageModalDisplay] = useState<DamageRollResult | null>(null)
@@ -81,6 +89,14 @@ export const AdventureChat = ({
   }, [])
 
   useEffect(() => { scrollToBottom() }, [messages, scrollToBottom])
+
+  useEffect(() => { setLiveCombatContext(combatContext) }, [combatContext])
+
+  const handleDiceStrategyChange = (next: CombatDiceStrategy) => {
+    setUser(prev => (prev ? { ...prev, combat_dice_strategy: next } : prev))
+  }
+
+  const diceStrategy: CombatDiceStrategy = user?.combat_dice_strategy ?? 'client'
 
   const handleSend = () => {
     const text = input.trim()
@@ -209,17 +225,29 @@ export const AdventureChat = ({
         </div>
       ) : (
         <>
-          {isCombatActive && (
+          {isCombatActive && renderCombatHudInChat && (
             <div className="combat-banner" aria-live="polite">
               ⚔&nbsp;&nbsp;Combat Active&nbsp;&nbsp;⚔
             </div>
+          )}
+          {isCombatActive && renderCombatHudInChat && (
+            <CombatActionEconomyChips combatContext={liveCombatContext} />
+          )}
+          {isCombatActive && renderCombatHudInChat && (
+            <CombatActionPanel
+              adventureId={adventureId}
+              diceStrategy={diceStrategy}
+              onDiceStrategyChange={handleDiceStrategyChange}
+              onCombatContextUpdate={setLiveCombatContext}
+              onActionResolved={onSheetUpdate}
+            />
           )}
           <div className="chat-input-area">
           <button
             type="button"
             className={`ask-dm-toggle ${askDm ? 'active' : ''}`}
             onClick={() => setAskDm(prev => !prev)}
-            disabled={sending}
+            disabled={sending || pendingInitiative}
             title="Toggle to ask the Game Master for help, rules clarifications, or information about the game world — without taking an action."
           >
             ❓ Ask GM
@@ -229,11 +257,11 @@ export const AdventureChat = ({
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={askDm ? 'Ask the GM a question...' : (pendingInitiative ? 'Roll for initiative above...' : (pendingRolls ? 'Submit your rolls above, or describe another action...' : 'What does your character do?'))}
-              disabled={sending}
+              placeholder={askDm ? 'Ask the GM a question...' : (pendingInitiative ? 'Roll for initiative in the panel above to continue...' : (pendingRolls ? 'Submit your rolls above, or describe another action...' : (isCombatActive ? 'Try something creative outside of normal attacks and maneuvers...' : 'What does your character do?')))}
+              disabled={sending || pendingInitiative}
               rows={2}
               maxLength={500}
-              className={`chat-input ${askDm ? 'ask-dm-mode' : ''}`}
+              className={`chat-input ${askDm ? 'ask-dm-mode' : ''}${pendingInitiative ? ' locked' : ''}`}
             />
             <span className={`char-counter ${input.length > 450 ? 'near-limit' : ''} ${input.length >= 500 ? 'at-limit' : ''}`}>
               {input.length}/500
@@ -241,7 +269,7 @@ export const AdventureChat = ({
           </div>
           <button
             onClick={handleSend}
-            disabled={sending || !input.trim()}
+            disabled={sending || pendingInitiative || !input.trim()}
             className="chat-send-btn"
           >
             ➤

@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { setCombatDiceStrategy as persistDiceStrategy } from '../../services/combatActionService';
+import type { CombatDiceStrategy } from '../../types/auth';
 import Navbar from '../Navbar';
 import Login from '../Login';
 import AdventureChat from '../AdventureChat';
 import RollResultModal from '../RollResultModal';
 import { CharacterSidebar } from './CharacterSidebar';
+import { CombatHud } from './CombatHud';
 import { StorySidebar } from './StorySidebar';
 import { useAdventure } from './hooks/useAdventure';
 import { useRolls } from './hooks/useRolls';
@@ -20,7 +23,7 @@ interface AdventurePlayProps {
 }
 
 export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, setUser } = useAuth();
 
   const { adventure, ds, loading, error, reload, setAdventure } = useAdventure(adventureId, user);
   const advSheet = adventure?.adventure_sheet ?? null;
@@ -29,6 +32,15 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const inventory = useInventory(adventure, setAdventure);
   const skillRanks = useAdventureSkillRanks(adventure, setAdventure);
   const [mobileTab, setMobileTab] = useState<MobileTab>('play');
+
+  const handleDiceStrategyChange = async (next: CombatDiceStrategy) => {
+    try {
+      await persistDiceStrategy(next);
+    } catch (e) {
+      console.warn('[AdventurePlay] failed to persist dice strategy', e);
+    }
+    setUser(prev => (prev ? { ...prev, combat_dice_strategy: next } : prev));
+  };
 
   // ── Early returns (loading / auth / error) ─────────────────────
 
@@ -133,48 +145,81 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           dismissRankErrors={skillRanks.dismissRankErrors}
         />
 
-        {/* MIDDLE COLUMN — Chat */}
-        <div className={`adventure-column middle-column${adventure.combat_context?.active ? ' active-combat' : ''}`}>
-          {user.onboarding_state === 'in_progress' && (
-            <div className="first-time-hint">
-              <p>
-                <strong>Your first adventure.</strong> Type what your character does and the DM will respond.
-                Directed play is on — each turn ends with concrete choices to keep things moving.
-              </p>
-            </div>
-          )}
-          <AdventureChat
-            adventureId={adventureId}
-            derivedStats={ds}
-            adventureSheet={advSheet}
-            adventureEnded={adventure.ended}
-            endReason={adventure.end_reason}
-            isCombatActive={adventure.combat_context?.active === true}
-            onAdventureComplete={reload}
-            onDmResponse={reload}
-            onSheetUpdate={reload}
-          />
-        </div>
+        {(() => {
+          const isPlayerTurn = adventure.combat_context?.current_turn === 'Player'
+          const showCombatHud = adventure.combat_context?.active === true && isPlayerTurn
+          const diceStrategy: CombatDiceStrategy = user.combat_dice_strategy ?? 'client'
 
-        {/* RIGHT COLUMN — Story */}
-        <StorySidebar
-          story={story}
-          adventureId={adventureId}
-          battlefield={adventure.battlefield ?? null}
-          traversalContext={adventure.traversal_context}
-          combatContext={adventure.combat_context}
-          socialContext={adventure.social_context}
-          explorationContext={adventure.exploration_context}
-          restContext={adventure.rest_context}
-          inventoryContext={adventure.inventory_context}
-          timeContext={adventure.time_context}
-          storySummary={adventure.story_summary}
-          sceneSummary={adventure.scene_summary}
-          currentCategory={adventure.current_category}
-          onContextUpdate={(field, value) =>
-            setAdventure(prev => prev ? { ...prev, [`${field}_context`]: value } : prev)
+          const chatComponent = (
+            <AdventureChat
+              adventureId={adventureId}
+              derivedStats={ds}
+              adventureSheet={advSheet}
+              adventureEnded={adventure.ended}
+              endReason={adventure.end_reason}
+              isCombatActive={showCombatHud}
+              combatContext={adventure.combat_context}
+              renderCombatHudInChat={!showCombatHud}
+              onAdventureComplete={reload}
+              onDmResponse={reload}
+              onSheetUpdate={reload}
+            />
+          )
+
+          if (showCombatHud) {
+            return (
+              <>
+                <div className="adventure-column middle-column active-combat combat-hud-column">
+                  <CombatHud
+                    adventureId={adventureId}
+                    combatContext={adventure.combat_context}
+                    diceStrategy={diceStrategy}
+                    onDiceStrategyChange={handleDiceStrategyChange}
+                    onCombatEnded={reload}
+                    onActionResolved={reload}
+                  />
+                </div>
+                <div className="adventure-column combat-chat-column">
+                  {chatComponent}
+                </div>
+              </>
+            )
           }
-        />
+
+          return (
+            <>
+              <div className="adventure-column middle-column">
+                {user.onboarding_state === 'in_progress' && (
+                  <div className="first-time-hint">
+                    <p>
+                      <strong>Your first adventure.</strong> Type what your character does and the DM will respond.
+                      Directed play is on — each turn ends with concrete choices to keep things moving.
+                    </p>
+                  </div>
+                )}
+                {chatComponent}
+              </div>
+              <StorySidebar
+                story={story}
+                adventureId={adventureId}
+                battlefield={adventure.battlefield ?? null}
+                traversalContext={adventure.traversal_context}
+                combatContext={adventure.combat_context}
+                socialContext={adventure.social_context}
+                explorationContext={adventure.exploration_context}
+                restContext={adventure.rest_context}
+                inventoryContext={adventure.inventory_context}
+                timeContext={adventure.time_context}
+                storySummary={adventure.story_summary}
+                sceneSummary={adventure.scene_summary}
+                currentCategory={adventure.current_category}
+                onContextUpdate={(field, value) =>
+                  setAdventure(prev => prev ? { ...prev, [`${field}_context`]: value } : prev)
+                }
+              />
+            </>
+          )
+        })()}
       </div>
 
       {/* Roll Result Modal */}

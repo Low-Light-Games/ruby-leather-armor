@@ -1,3 +1,8 @@
+# frozen_string_literal: true
+
+# Player chat / pipeline-pause resume endpoints. POST messages =
+# free-text prompt; POST messages/initiative + messages/roll resume the
+# pipeline from an :awaiting_initiative or :awaiting_rolls pause.
 class AdventureMessagesController < ApplicationController
   before_action :set_adventure
   before_action -> { authorize(@adventure, :show?) }
@@ -18,12 +23,17 @@ class AdventureMessagesController < ApplicationController
   def create
     player_input = params[:content]&.strip
 
-    if player_input.blank?
-      return render json: { error: "Message cannot be empty" }, status: :unprocessable_entity
-    end
+    return render json: { error: 'Message cannot be empty' }, status: :unprocessable_entity if player_input.blank?
 
     if player_input.length > 500
-      return render json: { error: "Message too long (max 500 characters)" }, status: :unprocessable_entity
+      return render json: { error: 'Message too long (max 500 characters)' }, status: :unprocessable_entity
+    end
+
+    if DungeonMaster::Rolls::AdventureMechanicalState.latest_pending_initiative_request(@adventure)
+      return render json: {
+        error: 'Submit your initiative roll above before sending another message.',
+        error_code: 'initiative_pending'
+      }, status: :unprocessable_entity
     end
 
     mode = params[:mode]&.strip
@@ -36,11 +46,11 @@ class AdventureMessagesController < ApplicationController
       player_input,
       mode,
       current_user.id,
-      { "prompt_admission" => admission }
+      { 'prompt_admission' => admission }
     )
     render json: { async: true, messages: [message_json(player_msg)] }, status: :accepted
   rescue DungeonMaster::FloodControl::PromptBacklogExceeded => e
-    render_limit_error(e.message, code: "prompt_backlog", reason: "prompt_backlog")
+    render_limit_error(e.message, code: 'prompt_backlog', reason: 'prompt_backlog')
   rescue StandardError
     DungeonMaster::FloodControl.release_prompt_submission(admission)
     raise
@@ -49,12 +59,15 @@ class AdventureMessagesController < ApplicationController
   # POST /adventures/:adventure_id/messages/initiative
   def initiative
     unless DungeonMaster::Rolls::AdventureMechanicalState.latest_pending_initiative_request(@adventure)
-      return render json: { error: "There is no pending initiative request to resolve.", error_code: "initiative_not_requested" }, status: :unprocessable_entity
+      return render json: {
+        error: 'There is no pending initiative request to resolve.',
+        error_code: 'initiative_not_requested'
+      }, status: :unprocessable_entity
     end
 
     player_initiative = params[:initiative].to_i
     unless (1..40).include?(player_initiative)
-      return render json: { error: "Initiative must be between 1 and 40" }, status: :unprocessable_entity
+      return render json: { error: 'Initiative must be between 1 and 40' }, status: :unprocessable_entity
     end
 
     service = dm_service
@@ -67,34 +80,20 @@ class AdventureMessagesController < ApplicationController
   # POST /adventures/:adventure_id/messages/roll
   def roll
     unless DungeonMaster::Rolls::AdventureMechanicalState.latest_pending_roll_request(@adventure)
-      return render json: { error: "There is no pending roll request to resolve.", error_code: "roll_not_requested" }, status: :unprocessable_entity
+      return render json: {
+        error: 'There is no pending roll request to resolve.',
+        error_code: 'roll_not_requested'
+      }, status: :unprocessable_entity
     end
 
-    rolls = if params[:rolls].present?
-              Array(params[:rolls]).map do |r|
-                { roll_value: r[:roll_value].to_i,
-                  roll_description: r[:roll_description]&.strip || "unknown check",
-                  resolution_method: r[:resolution_method]&.strip,
-                  request_id: r[:request_id]&.strip.presence }
-              end
-            else
-              [{ roll_value: params[:roll_value].to_i,
-                 roll_description: params[:roll_description]&.strip || "unknown check",
-                 resolution_method: params[:resolution_method]&.strip,
-                 request_id: params[:request_id]&.strip.presence }]
-            end
-
-    invalid = rolls.find { |r| !(-100..100).include?(r[:roll_value]) }
-    if invalid
-      return render json: { error: "Roll value must be between -100 and 100" }, status: :unprocessable_entity
-    end
-
+    rolls = DungeonMaster::Rolls::RollSubmission.new(params).to_a
     service = dm_service
-
     roll_msg = service.prepare_roll(rolls)
     roll_text = DungeonMaster::Rolls::RollResultsText.format(rolls)
     RollPipelineJob.perform_later(@adventure.id, roll_msg.id, roll_text, current_user.id)
     render json: { async: true, messages: [message_json(roll_msg)] }, status: :accepted
+  rescue DungeonMaster::Rolls::RollSubmission::InvalidValueError => e
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   private
@@ -104,7 +103,7 @@ class AdventureMessagesController < ApplicationController
 
     render json: {
       banned: true,
-      message: "Your account has been suspended. Contact appeals@leatheramor.io for assistance."
+      message: 'Your account has been suspended. Contact appeals@leatheramor.io for assistance.'
     }, status: :forbidden
   end
 
@@ -112,8 +111,8 @@ class AdventureMessagesController < ApplicationController
     return unless @adventure.ended?
 
     render json: {
-      error: "This adventure has ended and can no longer continue.",
-      error_code: "adventure_ended"
+      error: 'This adventure has ended and can no longer continue.',
+      error_code: 'adventure_ended'
     }, status: 422
   end
 
@@ -130,7 +129,7 @@ class AdventureMessagesController < ApplicationController
   end
 
   def render_limit_error(message, code:, reason:)
-    response.set_header("X-RateLimit-Reason", reason)
+    response.set_header('X-RateLimit-Reason', reason)
     render json: { error: message, error_code: code }, status: :too_many_requests
   end
 end

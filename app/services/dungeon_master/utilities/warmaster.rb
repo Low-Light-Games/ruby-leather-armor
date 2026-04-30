@@ -223,8 +223,16 @@ module DungeonMaster
             next
           end
 
-          sheet = resolve_creature(ctx, name, display_name)
-          creatures << creature_record(sheet, display_name) if sheet
+          # AI fallback can return either a single sheet or an array of
+          # sheets (when the prompt sees a plural like "Goblin Scouts" the
+          # model is allowed to fan out into one stat block per goblin).
+          # Either way, walk the result list and emit one creature_record
+          # per sheet, suffixing display names so they stay unique.
+          Array(resolve_creature(ctx, name, display_name)).each_with_index do |sheet, idx|
+            entry_name = idx.zero? ? sheet.name : "#{display_name} #{idx + 1}"
+            sheet.update!(name: entry_name) if sheet.name != entry_name
+            creatures << creature_record(sheet, entry_name)
+          end
         end
 
         creatures
@@ -402,19 +410,35 @@ module DungeonMaster
                         model_used: ctx.ai.last_model_used, duration_ms: duration_ms,
                         usage: ctx.ai.last_usage)
 
-        hp = roll_hp_static(parsed["hp_formula"])
+        # The prompt allows array responses for plural names ("Goblin
+        # Scouts" → array of stat blocks). Single hash → single sheet,
+        # array → one sheet per element. spawn_from_names handles either
+        # shape on the way back.
+        entries = parsed.is_a?(Array) ? parsed : [parsed]
+        entries.each_with_index.filter_map do |entry, idx|
+          next unless entry.is_a?(Hash)
+
+          display = entries.size > 1 ? "#{name} #{idx + 1}" : name
+          persist_ai_creature(ctx, display, entry, party_level)
+        end
+      end
+
+      def persist_ai_creature(ctx, display_name, parsed, party_level)
+        cr = parsed["cr"].to_i.clamp(1, [party_level + 2, 1].max)
+        hp_rolled = roll_hp_static(parsed["hp_formula"])
+        hp = [hp_rolled, hp_ceiling_for_cr(cr)].min
         raw_type = TextNormalizer.normalized_key(parsed["creature_type"])
         normalized_type = BestiaryEntry::CREATURE_TYPE_MAP[raw_type] ||
                           (CreatureSheet::CREATURE_TYPES.include?(raw_type) ? raw_type : "monster")
         sheet = ctx.adventure.creature_sheets.create!(
-          name: name, creature_type: normalized_type, origin: "ai",
+          name: display_name, creature_type: normalized_type, origin: "ai",
           strength: parsed["strength"].to_i.clamp(1, 40),
           dexterity: parsed["dexterity"].to_i.clamp(1, 40),
           constitution: parsed["constitution"].to_i.clamp(1, 40),
           intelligence: parsed["intelligence"].to_i.clamp(1, 40),
           wisdom: parsed["wisdom"].to_i.clamp(1, 40),
           charisma: parsed["charisma"].to_i.clamp(1, 40),
-          level: [parsed["cr"].to_i, 1].max, hp: hp, max_hp: hp,
+          level: cr, hp: hp, max_hp: hp,
           derived_stats: {
             "ac" => parsed["ac"].to_i,
             "bab" => parsed["base_attack"].to_i,
@@ -425,7 +449,20 @@ module DungeonMaster
         sheet
       end
 
+      # Rough HP ceiling per CR — covers the upper end of the SRD HP range
+      # for that CR (e.g. CR 1 ≈ 12-15 HP, CR 5 ≈ 50-60 HP). 12×CR + 5 keeps
+      # CR 1 around 17 HP and CR 10 around 125 HP, which leaves the low CR
+      # space tight (where AI hallucinations actually hurt) without over-
+      # constraining mid-tier templates.
+      def hp_ceiling_for_cr(cr)
+        12 * cr + 5
+      end
+
       def roll_hp_static(formula)
+        # AI sometimes returns the formula as an array (["1d8", "+2"] or
+        # ["1d8+2"]) instead of a single string. Flatten + join with no
+        # separator so both shapes parse the same as "1d8+2".
+        formula = Array(formula).join if formula.is_a?(Array)
         return 10 unless formula.present?
 
         if formula.to_s =~ /(\d+)d(\d+)([+-]\d+)?/
@@ -444,7 +481,8 @@ module DungeonMaster
                            :build_initiative_result, :roll_creature_initiative,
                            :fuzzy_bestiary_match_static, :create_creature_from_bestiary_static,
                            :dynamic_creature_sheet_static, :create_from_template_static,
-                           :create_from_ai_static, :roll_hp_static, :creature_record
+                           :create_from_ai_static, :persist_ai_creature, :hp_ceiling_for_cr,
+                           :roll_hp_static, :creature_record
     end
   end
 end

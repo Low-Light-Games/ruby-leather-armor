@@ -1,4 +1,5 @@
 import type { OwnedItem, Currency } from './rules/pathfinder_items_types';
+import type { CombatDiceStrategy } from './types/auth';
 
 export interface SheetDetails {
   feats?: string[]          // feat IDs
@@ -358,13 +359,48 @@ export interface RollRequest {
   situational_modifiers?: SituationalModifier[]
 }
 
+// ─── Combat HUD shared types ───
+//
+// CombatActionEconomyChips and CombatHud are small enough to host their
+// component-local types here; CombatGrid and CombatActionPanel are big
+// enough to keep their own per-component types files (see their folders).
+
+export interface ActionEconomyShape {
+  round?: number | null
+  holder?: string | null
+  standard_available?: boolean
+  move_available?: boolean
+  swift_available?: boolean
+  full_round_claimed?: boolean
+}
+
+export interface CombatActionEconomyChipsProps {
+  combatContext: Record<string, unknown> | null
+}
+
+export interface ActionEconomyChip {
+  key: 'standard' | 'move' | 'swift' | 'free'
+  label: string
+  available: boolean
+  tooltip: string
+}
+
+export interface CombatHudProps {
+  adventureId: number
+  combatContext: Record<string, unknown> | null
+  diceStrategy: CombatDiceStrategy
+  onDiceStrategyChange: (next: CombatDiceStrategy) => void
+  onCombatEnded?: () => void
+  onActionResolved?: () => void
+}
+
 export interface AdventureMessage {
   id: number
   role: 'player' | 'dm' | 'system'
   content: string
   message_type: 'narrative' | 'sanitization_fail' | 'adventure_complete' | 'player_death'
     | 'player_incapacitated'
-    | 'combat_log' | 'action_result'
+    | 'combat_log' | 'combat_end' | 'action_result'
     | 'roll_request' | 'roll_result'
     | 'initiative_request' | 'initiative_result'
     | 'dm_query' | 'usage_limit' | 'system_notice' | 'moderation_flagged'

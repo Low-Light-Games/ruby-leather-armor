@@ -90,12 +90,15 @@ class DmConfig < ApplicationRecord
     'narrative_facts_top_k' => 8,
     'narrative_facts_active_window' => 20,
     'narrative_facts_embedding_model' => 'text-embedding-3-small',
-    'evaluation_mode' => 'parallel',
+    'evaluation_mode' => 'roll_request',
+    'combat_evaluation_mode' => 'combat_roll_request',
+    'combat_narrator_enabled' => true,
     'step_reasoning_efforts' => { 'roll_request' => 'minimal' }.freeze,
     'stripe_grace_period_days' => 3
   }.freeze
 
   EVALUATION_MODES = %w[parallel roll_request].freeze
+  COMBAT_EVALUATION_MODES = %w[parallel combat_roll_request].freeze
   REASONING_EFFORTS = %w[minimal low medium high].freeze
 
   def self.instance
@@ -169,12 +172,8 @@ class DmConfig < ApplicationRecord
     get('narrative_facts_top_k').to_i
   end
 
-  # Drives `AdventureLoopResolution#resolve` choice between the legacy
-  # `Steps::ParallelEvaluation` chain (beacon → mech_eval → roll_qualifier
-  # via the Node evaluator) and `Steps::RollRequest` (single-call AI step
-  # with RAG-retrieved rules and beats). Combat-active turns ignore this
-  # toggle and always use ParallelEvaluation so the Combat GM path stays
-  # bit-for-bit unchanged.
+  # Combat-active turns ignore this toggle — they always use
+  # ParallelEvaluation regardless of the value.
   def evaluation_mode
     val = get('evaluation_mode').to_s
     EVALUATION_MODES.include?(val) ? val : DEFAULTS['evaluation_mode']
@@ -182,6 +181,22 @@ class DmConfig < ApplicationRecord
 
   def roll_request_mode?
     evaluation_mode == 'roll_request'
+  end
+
+  def combat_evaluation_mode
+    val = get('combat_evaluation_mode').to_s
+    COMBAT_EVALUATION_MODES.include?(val) ? val : DEFAULTS['combat_evaluation_mode']
+  end
+
+  def combat_roll_request_mode?
+    combat_evaluation_mode == 'combat_roll_request'
+  end
+
+  # PR-G — when on, End Turn enqueues a CombatNarratorJob that posts a
+  # one-paragraph flavor narration of the round to the chat. Off by
+  # default until the prompt is tuned and a model picked.
+  def combat_narrator_enabled?
+    get('combat_narrator_enabled') == true
   end
 
   def narrative_facts_active_window

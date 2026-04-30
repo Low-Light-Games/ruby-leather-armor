@@ -44,7 +44,9 @@ Set `needs_roll: false` with `no_roll_reason: "no rule retrieved"`.
 - `transition`: "combat_started" + populated `combatants` only when the
   action initiates combat with hostiles. Null/empty otherwise.
 - `ability_use_claimed`: a spell/feat/item the player named explicitly.
-- `mechanical_summary`: one factual sentence for the post-roll step.
+- `situational_modifiers`: each entry MUST be `{ "source": "<short
+  phrase>", "modifier": <integer> }`. Never a bare string. Empty array
+  if none apply.
 
 Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
 {
@@ -58,7 +60,7 @@ Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
     "description": "Short player-facing description.",
     "take_10_eligible": true,
     "take_20_eligible": false,
-    "situational_modifiers": [],
+    "situational_modifiers": [{ "source": "rough water", "modifier": -2 }],
     "rule_slug": "swim"
   },
   "affected_domains": ["traversal"],
@@ -71,3 +73,8 @@ Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
   "mechanical_summary": "One-sentence factual summary.",
   "reasoning": "One short sentence explaining the call."
 }
+
+`consequences` are rare — leave the array empty unless the action has
+an automatic non-roll side-effect the player needs to see. When
+present, each entry MUST be `{ "description": "<text>" }`, never a
+bare string.

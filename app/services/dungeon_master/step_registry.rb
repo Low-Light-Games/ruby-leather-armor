@@ -70,6 +70,8 @@ module DungeonMaster
                                     pipeline: true),
       'roll_request' => Entry.new(token_budget: nil, model_hint: H::ROLL_REQUEST, pipeline: true,
                                   default_model: 'gpt-5-nano', default_reasoning_effort: 'minimal'),
+      'combat_roll_request' => Entry.new(token_budget: nil, model_hint: H::COMBAT_ROLL_REQUEST, pipeline: true,
+                                         default_model: 'gpt-5-nano', default_reasoning_effort: 'minimal'),
       'rules_retrieval' => Entry.new(token_budget: nil, model_hint: nil,
                                      pipeline: false),
       'npc_action' => Entry.new(token_budget: 300, model_hint: H::NPC_ACTION,
@@ -83,7 +85,9 @@ module DungeonMaster
       'enricher' => Entry.new(token_budget: nil, model_hint: nil,
                               pipeline: false),
       'embellisher' => Entry.new(token_budget: nil, model_hint: nil,
-                                 pipeline: false)
+                                 pipeline: false),
+      'combat_narrator' => Entry.new(token_budget: 220, model_hint: H::COMBAT_NARRATOR,
+                                     pipeline: true)
     }.freeze
 
     def self.all_call_types

@@ -94,5 +94,10 @@ Rails.application.routes.draw do
     resource :adventure_sheet, only: [:update] do
       patch :toggle_equip
     end
+    resource :combat_action, only: [:create], controller: 'combat_actions' do
+      get :options, on: :collection
+    end
   end
+
+  resource :user_preferences, only: [:update]
 end

@@ -574,25 +574,6 @@
     }
   }
 
-  /* ===== Combat banner (shown above input area during active combat) ===== */
-  .combat-banner {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 5px 12px;
-    background: $red-ink-lt;
-    border: 1px solid $red-ink;
-    border-bottom: none;
-    font-family: $font-display;
-    font-size: 11px;
-    letter-spacing: 0.16em;
-    color: $red-ink;
-    text-transform: uppercase;
-    user-select: none;
-    animation: combatBannerIn 1s ease both;
-  }
-
   /* ===== Mechanics group (combat_log / action_result run) ===== */
   .mechanics-group {
     align-self: flex-start;
@@ -667,3 +648,23 @@
   0%, 80%, 100% { opacity: 0.3; transform: scale(1); }
   40%           { opacity: 1;   transform: scale(1.15); }
 }
+/* ===== Combat banner (shown above input area during active combat) ===== */
+.combat-banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 12px;
+  background: $red-ink-lt;
+  border: 1px solid $red-ink;
+  border-bottom: none;
+  font-family: $font-display;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: $red-ink;
+  text-transform: uppercase;
+  user-select: none;
+  animation: combatBannerIn 1s ease both;
+}
+
+

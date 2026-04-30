@@ -28,14 +28,14 @@ module DungeonMaster
       # lowercase name here instead of adjusting the prompt.
       # The architecture guarantees this is the only place that ever needs
       # to change for this class of problem.
-      TACTICAL_PHRASE_IGNORE = %w[
-        surprise\ attack
-        sneak\ up
-        ambush
-        backstab
-        feint
-        charging\ attack
-        flanking\ attack
+      TACTICAL_PHRASE_IGNORE = [
+        'surprise attack',
+        'sneak up',
+        'ambush',
+        'backstab',
+        'feint',
+        'charging attack',
+        'flanking attack'
       ].freeze
 
       private
@@ -46,13 +46,15 @@ module DungeonMaster
         prompts = [sanity_checker_world_evaluator_prompt(intent)]
         prompts << sanity_checker_capability_evaluator_prompt(intent) if @sheet
 
-        by_step = evaluator_fan_out!(prompts, text, phase: "sanity_gate")
+        by_step = evaluator_fan_out!(prompts, text, phase: 'sanity_gate')
 
         world = parse_world_from_evaluator_result(
-          evaluator_fan_out_result!(by_step, "sanity_checker_world", "sanity_gate"))
+          evaluator_fan_out_result!(by_step, 'sanity_checker_world', 'sanity_gate')
+        )
         capability = if @sheet
                        parse_capability_from_evaluator_result(
-                         evaluator_fan_out_result!(by_step, "sanity_checker", "sanity_gate"))
+                         evaluator_fan_out_result!(by_step, 'sanity_checker', 'sanity_gate')
+                       )
                      else
                        CapabilityCheckResult.new(allowed: true, reason: nil).to_h
                      end
@@ -62,47 +64,47 @@ module DungeonMaster
       def sanity_checker_world_evaluator_prompt(intent)
         prompt_context = build_world_prompt_context(intent: intent)
 
-        system_prompt = PromptRenderer.render("sanity_checker_world",
-          sanity_context: prompt_context)
+        system_prompt = PromptRenderer.render('sanity_checker_world',
+                                              sanity_context: prompt_context)
 
         EvaluatorPromptPayload.new(
           system_prompt: system_prompt,
           user_message: intent[:intention],
-          model: @config.model_for("sanity_checker_world"),
-          max_tokens: @config.token_budget_for("sanity_checker_world"),
-          step: "sanity_checker_world"
+          model: @config.model_for('sanity_checker_world'),
+          max_tokens: @config.token_budget_for('sanity_checker_world'),
+          step: 'sanity_checker_world'
         ).to_h
       end
 
       def sanity_checker_capability_evaluator_prompt(intent)
         prompt_context = build_capability_prompt_context
 
-        system_prompt = PromptRenderer.render("sanity_checker",
-          sanity_context: prompt_context)
+        system_prompt = PromptRenderer.render('sanity_checker',
+                                              sanity_context: prompt_context)
 
         EvaluatorPromptPayload.new(
           system_prompt: system_prompt,
           user_message: intent[:intention],
-          model: @config.model_for("sanity_checker"),
-          max_tokens: @config.token_budget_for("sanity_checker"),
-          step: "sanity_checker"
+          model: @config.model_for('sanity_checker'),
+          max_tokens: @config.token_budget_for('sanity_checker'),
+          step: 'sanity_checker'
         ).to_h
       end
 
       def parse_world_from_evaluator_result(result)
-        parsed = result["parsed_response"] || {}
+        parsed = result['parsed_response'] || {}
         WorldConsistencyResult.new(
-          consistent: parsed["consistent"] != false,
-          reason: parsed["reason"],
-          dm_message: parsed["dm_message"],
-          referenced_entities: Array(parsed["referenced_entities"])
+          consistent: parsed['consistent'] != false,
+          reason: parsed['reason'],
+          dm_message: parsed['dm_message'],
+          referenced_entities: Array(parsed['referenced_entities'])
         ).to_h
       end
 
       def parse_capability_from_evaluator_result(result)
-        parsed = result["parsed_response"] || {}
-        ability_uses      = Array(parsed["ability_uses"]).map(&:deep_symbolize_keys)
-        condition_violated = parsed["condition_violated"]
+        parsed = result['parsed_response'] || {}
+        ability_uses = ::DungeonMaster::Rolls::HashArray.symbolize_strict(parsed['ability_uses'])
+        condition_violated = parsed['condition_violated']
         check_extracted_abilities(ability_uses, condition_violated)
       end
 
@@ -111,14 +113,14 @@ module DungeonMaster
       # ------------------------------------------------------------------
 
       def world_check_rejection(intent, world)
-        @log.play_log!("world_check_failure", "SanityChecker world check failed: #{world[:reason]}")
-        @loop&.log_step("sanity_checker", "World check FAILED: #{world[:reason].to_s.truncate(100)}")
+        @log.play_log!('world_check_failure', "SanityChecker world check failed: #{world[:reason]}")
+        @loop&.log_step('sanity_checker', "World check FAILED: #{world[:reason].to_s.truncate(100)}")
         PipelineFlowResults.rejected(intent: intent, reason: world[:reason], dm_message: world[:dm_message]).to_h
       end
 
       def capability_check_rejection(intent, capability)
-        @log.play_log!("capability_rejection", "SanityChecker capability check failed: #{capability[:reason]}")
-        @loop&.log_step("sanity_checker", "Capability check FAILED: #{capability[:reason].to_s.truncate(100)}")
+        @log.play_log!('capability_rejection', "SanityChecker capability check failed: #{capability[:reason]}")
+        @loop&.log_step('sanity_checker', "Capability check FAILED: #{capability[:reason].to_s.truncate(100)}")
         PipelineFlowResults.rejected(intent: intent, reason: capability[:reason]).to_h
       end
 
@@ -132,21 +134,21 @@ module DungeonMaster
         prompt_summary = "SanityChecker/capability: \"#{@log.truncate(intent[:intention])}\""
         prompt_context = build_capability_prompt_context
 
-        system_prompt = PromptRenderer.render("sanity_checker",
-          sanity_context: prompt_context)
+        system_prompt = PromptRenderer.render('sanity_checker',
+                                              sanity_context: prompt_context)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
 
-        parsed = timed_ai_call("sanity_checker", prompt_summary, request_body) do
+        parsed = timed_ai_call('sanity_checker', prompt_summary, request_body) do
           raw_response = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
-                                  max_tokens: @config.token_budget_for("sanity_checker"),
-                                  step_name: "sanity_checker",
-                                  model: @config.model_for("sanity_checker"))
+                                  max_tokens: @config.token_budget_for('sanity_checker'),
+                                  step_name: 'sanity_checker',
+                                  model: @config.model_for('sanity_checker'))
           [raw_response, @ai.parse_json(raw_response)]
         end
 
-        ability_uses       = Array(parsed["ability_uses"]).map(&:deep_symbolize_keys)
-        condition_violated = parsed["condition_violated"]
+        ability_uses       = ::DungeonMaster::Rolls::HashArray.symbolize_strict(parsed['ability_uses'])
+        condition_violated = parsed['condition_violated']
         check_extracted_abilities(ability_uses, condition_violated)
       end
 
@@ -156,9 +158,7 @@ module DungeonMaster
       # ------------------------------------------------------------------
 
       def check_extracted_abilities(ability_uses, condition_violated)
-        if condition_violated.present?
-          return CapabilityCheckResult.new(allowed: false, reason: condition_violated).to_h
-        end
+        return CapabilityCheckResult.new(allowed: false, reason: condition_violated).to_h if condition_violated.present?
 
         ability_uses = ability_uses.reject do |u|
           TACTICAL_PHRASE_IGNORE.include?(TextNormalizer.normalized_key(u[:name]))
@@ -169,7 +169,7 @@ module DungeonMaster
         lookup  = sheet_ability_lookup
         missing = ability_uses.reject { |u| ability_on_sheet?(u[:name], u[:type], lookup) }
         if missing.any?
-          names = missing.map { |u| u[:name] }.join(", ")
+          names = missing.map { |u| u[:name] }.join(', ')
           CapabilityCheckResult.new(
             allowed: false,
             reason: "#{names} not found on character sheet"
@@ -181,10 +181,12 @@ module DungeonMaster
 
       def sheet_ability_lookup
         {
-          spells:          @sheet.spell_definitions.map          { |spell| TextNormalizer.normalized_key(spell.name) },
-          feats:           @sheet.feat_definitions.map           { |feat| TextNormalizer.normalized_key(feat.name) },
-          items:           @sheet.item_definitions.map           { |item| TextNormalizer.normalized_key(item.name) },
-          class_abilities: @sheet.class_ability_definitions.map  { |ability| TextNormalizer.normalized_key(ability.name) },
+          spells: @sheet.spell_definitions.map { |spell| TextNormalizer.normalized_key(spell.name) },
+          feats: @sheet.feat_definitions.map           { |feat| TextNormalizer.normalized_key(feat.name) },
+          items: @sheet.item_definitions.map           { |item| TextNormalizer.normalized_key(item.name) },
+          class_abilities: @sheet.class_ability_definitions.map do |ability|
+            TextNormalizer.normalized_key(ability.name)
+          end,
           class_ability_registry_seeded: ClassAbilityDefinition.exists?
         }
       end
@@ -192,10 +194,10 @@ module DungeonMaster
       def ability_on_sheet?(name, type, lookup)
         normalized_name = TextNormalizer.normalized_key(name)
         case type.to_s
-        when "spell"   then lookup[:spells].include?(normalized_name)
-        when "feat"    then lookup[:feats].include?(normalized_name)
-        when "item"    then lookup[:items].include?(normalized_name)
-        when "ability"
+        when 'spell'   then lookup[:spells].include?(normalized_name)
+        when 'feat'    then lookup[:feats].include?(normalized_name)
+        when 'item'    then lookup[:items].include?(normalized_name)
+        when 'ability'
           # Two distinct states:
           #   - Global registry empty (data migration not yet run): permissive fallback.
           #   - Registry seeded but this sheet has no matching class ability: reject.
@@ -218,38 +220,38 @@ module DungeonMaster
 
         prompt_context = build_world_prompt_context(intent: intent)
 
-        system_prompt = PromptRenderer.render("sanity_checker_world",
-          sanity_context: prompt_context)
+        system_prompt = PromptRenderer.render('sanity_checker_world',
+                                              sanity_context: prompt_context)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
 
-        parsed = timed_ai_call("sanity_checker_world", prompt_summary, request_body) do
+        parsed = timed_ai_call('sanity_checker_world', prompt_summary, request_body) do
           raw_response = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
-                                  max_tokens: @config.token_budget_for("sanity_checker_world"),
-                                  step_name: "sanity_checker_world",
-                                  model: @config.model_for("sanity_checker_world"))
+                                  max_tokens: @config.token_budget_for('sanity_checker_world'),
+                                  step_name: 'sanity_checker_world',
+                                  model: @config.model_for('sanity_checker_world'))
           [raw_response, @ai.parse_json(raw_response)]
         end
 
         WorldConsistencyResult.new(
-          consistent: parsed["consistent"] != false,
-          reason: parsed["reason"],
-          dm_message: parsed["dm_message"],
-          referenced_entities: Array(parsed["referenced_entities"])
+          consistent: parsed['consistent'] != false,
+          reason: parsed['reason'],
+          dm_message: parsed['dm_message'],
+          referenced_entities: Array(parsed['referenced_entities'])
         ).to_h
       end
 
       def build_capability_prompt_context
         derived_stats = @sheet&.derived_stats || {}
         PromptViews::SanityCheckerPromptContext.new(
-          condition_restrictions: derived_stats["condition_restrictions"]
+          condition_restrictions: derived_stats['condition_restrictions']
         )
       end
 
       def build_world_prompt_context(intent:)
         combat_ctx = @adventure.combat_context || {}
-        combat_active = combat_ctx["active"] == true
-        combat_roster = combat_active ? Array(combat_ctx["participants"]).filter_map { |p| p["name"] } : []
+        combat_active = combat_ctx['active'] == true
+        combat_roster = combat_active ? Array(combat_ctx['participants']).filter_map { |p| p['name'] } : []
 
         PromptViews::SanityCheckerPromptContext.new(
           scene_summary: @adventure.scene_summary,
@@ -263,10 +265,10 @@ module DungeonMaster
 
       def retrieve_established_facts(intent)
         DungeonMaster::Lore::FactsLookup.call(
-          adventure:  @adventure,
-          ai:         @ai,
-          log:        @log,
-          query_text: intent[:intention],
+          adventure: @adventure,
+          ai: @ai,
+          log: @log,
+          query_text: intent[:intention]
         )
       end
     end
