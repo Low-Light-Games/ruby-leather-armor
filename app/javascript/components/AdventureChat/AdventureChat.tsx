@@ -246,7 +246,7 @@ export const AdventureChat = ({
             type="button"
             className={`ask-dm-toggle ${askDm ? 'active' : ''}`}
             onClick={() => setAskDm(prev => !prev)}
-            disabled={sending}
+            disabled={sending || pendingInitiative}
             title="Toggle to ask the Game Master for help, rules clarifications, or information about the game world — without taking an action."
           >
             ❓ Ask GM
@@ -256,11 +256,11 @@ export const AdventureChat = ({
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={askDm ? 'Ask the GM a question...' : (pendingInitiative ? 'Roll for initiative above...' : (pendingRolls ? 'Submit your rolls above, or describe another action...' : (isCombatActive ? 'Try something creative outside of normal attacks and maneuvers...' : 'What does your character do?')))}
-              disabled={sending}
+              placeholder={askDm ? 'Ask the GM a question...' : (pendingInitiative ? 'Roll for initiative in the panel above to continue...' : (pendingRolls ? 'Submit your rolls above, or describe another action...' : (isCombatActive ? 'Try something creative outside of normal attacks and maneuvers...' : 'What does your character do?')))}
+              disabled={sending || pendingInitiative}
               rows={2}
               maxLength={500}
-              className={`chat-input ${askDm ? 'ask-dm-mode' : ''}`}
+              className={`chat-input ${askDm ? 'ask-dm-mode' : ''}${pendingInitiative ? ' locked' : ''}`}
             />
             <span className={`char-counter ${input.length > 450 ? 'near-limit' : ''} ${input.length >= 500 ? 'at-limit' : ''}`}>
               {input.length}/500
@@ -268,7 +268,7 @@ export const AdventureChat = ({
           </div>
           <button
             onClick={handleSend}
-            disabled={sending || !input.trim()}
+            disabled={sending || pendingInitiative || !input.trim()}
             className="chat-send-btn"
           >
             ➤
