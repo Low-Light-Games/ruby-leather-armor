@@ -791,7 +791,7 @@ disappear once the code itself is shaped to be the explanation.
 
 **Comments earn their place only when they capture something the
 code cannot:**
-
+- YARD documentation of param types (no explanation, just the class, and if it's a HASH, it's format)
 - A non-obvious invariant the type system can't express.
 - A trade-off deliberately accepted (with a one-line reason).
 - An external constraint — API quirk, DB limitation, browser bug,
