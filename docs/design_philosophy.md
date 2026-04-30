@@ -463,23 +463,9 @@ problems that were already solved.
 - `docs/async_pipeline_design.md` — the specific problem and solution
   for async execution
 
-**Code comments: by exception, not by default.** The "document the why"
-instinct stops at the source-file boundary. Code is expected to carry
-its own explanation — well-named methods, memoized readers, predicate
-methods, value objects whose class names and attribute names spell out
-their shape. A comment that restates what the next few lines do is
-noise: it drifts out of sync with the code, trains readers to skim
-rather than read, and usually signals that the code below deserved a
-better name or a smaller surface.
-
-Comments earn their place only when they capture something the code
-cannot: a non-obvious invariant, a trade-off deliberately accepted, an
-external constraint (API quirk, DB limitation, §-rule from this
-document), or a short pointer to the `docs/` section that owns the
-full rationale. When in doubt, rename the method, extract a class, or
-cite a design doc instead of adding a paragraph. The durable "why"
-belongs in the documents listed above, not scattered across service
-files where it will silently go stale.
+**Code comments are a separate discipline** — see §20 for when to add
+one and when a comment is a smell signalling that the code below
+deserved a better name.
 
 ---
 
@@ -786,3 +772,53 @@ diverge on what counts as available, what gets logged, what raises
 which error class. A shared base makes the divergence either
 impossible (the loop is in one place) or explicit (the override is
 visible in a `def` line, not buried five branches deep).
+
+---
+
+## 20. Code is self-documenting; comments are exceptions
+
+Code is expected to carry its own explanation — well-named methods,
+memoized readers, predicate methods, value objects whose class names
+and attribute names spell out their shape. A comment that restates
+what the next few lines do is noise: it drifts out of sync with the
+code, trains readers to skim rather than read, and usually signals
+that the code below deserved a better name or a smaller surface.
+
+**Default to writing no comment.** Before adding one, try to rename
+the method, extract a class, replace a flag with a predicate, or pull
+the magic number into a named constant. Most "explanatory" comments
+disappear once the code itself is shaped to be the explanation.
+
+**Comments earn their place only when they capture something the
+code cannot:**
+
+- A non-obvious invariant the type system can't express.
+- A trade-off deliberately accepted (with a one-line reason).
+- An external constraint — API quirk, DB limitation, browser bug,
+  third-party-library footgun.
+- A short pointer to the `docs/` section or `§N` of this file that
+  owns the full rationale.
+- A workaround for a specific bug or incident, with enough context
+  that a future reader knows when it's safe to remove.
+
+**Anti-patterns we remove on sight:**
+
+- Comments that re-state the next line in English ("Set the count to
+  zero"). The line already says that.
+- Comments that reference the current task or PR ("added for the X
+  flow", "used by Y"). Those belong in the commit message; they rot
+  immediately when callers move.
+- Multi-paragraph docstrings on private methods. If it needs that
+  much explanation, the method's name or boundary is wrong.
+- Section-divider banner comments inside one method. If the method
+  has sections, it's two methods.
+- Stale "TODO" / "FIXME" lines older than the most recent rewrite of
+  the surrounding code.
+
+**The bar:** if removing the comment wouldn't confuse a future
+reader, don't write it. If the WHY is non-obvious enough that a
+reader would wonder, write the shortest possible note that captures
+it — one line if you can, never more than three.
+
+The durable "why" belongs in the documents listed in §14, not
+scattered across service files where it will silently go stale.
