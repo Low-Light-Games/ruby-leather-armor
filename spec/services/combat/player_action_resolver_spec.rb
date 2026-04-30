@@ -645,4 +645,50 @@ RSpec.describe Combat::PlayerActionResolver do
       end.to raise_error(described_class::Error, /unknown or unavailable buff option_id/)
     end
   end
+
+  describe 'self-heal spell' do
+    let!(:cure) do
+      SpellDefinition.find_or_create_by!(id: 'cure_light_wounds') do |s|
+        s.name = 'Cure Light Wounds'
+        s.school = 'conjuration'
+        s.range = 'touch'
+        s.duration = 'instantaneous'
+        s.saving_throw = 'Will half (harmless)'
+        s.spell_resistance = false
+        s.class_levels = { 'cleric' => 1 }
+        s.effects = [{ 'dice' => '1d8', 'type' => 'healing', 'maxBonus' => 5, 'bonusPerLevel' => 1 }]
+        s.summary = 'Heals 1d8+1/level (max +5).'
+      end
+    end
+
+    before do
+      sheet.update!(character_class: 'cleric', level: 1, hp: 4, max_hp: 12)
+      AdventureSheetSpell.create!(adventure_sheet: sheet, spell_definition: cure, storage_type: 'spellbook')
+    end
+
+    it 'heals the player, spends standard, emits a heal payload' do
+      allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_damage_expression).and_return(7)
+
+      result = described_class.call(
+        adventure: adventure, sheet: sheet, user: user,
+        params: { kind: 'heal', spell_id: 'spell:cure_light_wounds' }
+      )
+
+      expect(result[:status]).to eq(:resolved)
+      expect(result[:result]).to include(kind: 'heal', healed: 7, hp_before: 4, hp_after: 11)
+      expect(sheet.reload.hp).to eq(11)
+      expect(adventure.reload.combat_context.dig('action_economy', 'standard_available')).to be(false)
+    end
+
+    it 'caps healing at max_hp' do
+      allow(DungeonMaster::Rolls::CombatDice).to receive(:roll_damage_expression).and_return(99)
+
+      described_class.call(
+        adventure: adventure, sheet: sheet, user: user,
+        params: { kind: 'heal', spell_id: 'spell:cure_light_wounds' }
+      )
+
+      expect(sheet.reload.hp).to eq(sheet.max_hp)
+    end
+  end
 end

@@ -167,6 +167,58 @@
     }
   }
 
+  .heal-options {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .heal-options-label {
+      font-family: $font-display;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: $green-ink;
+    }
+
+    .heal-options-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .heal-option-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 6px 10px;
+      background: $parchment;
+      border: 1px solid $green-ink;
+      border-radius: 4px;
+      cursor: pointer;
+      min-width: 110px;
+      transition: background-color 0.15s ease, transform 0.05s ease;
+
+      &:hover:not(:disabled) {
+        background: $green-ink-lt;
+        transform: translateY(-1px);
+      }
+
+      &:disabled { opacity: 0.5; cursor: not-allowed; }
+
+      .heal-label {
+        font-family: $font-display;
+        font-size: 12px;
+        color: $green-ink;
+      }
+
+      .heal-dice {
+        font-family: $font-mono;
+        font-size: 10px;
+        color: $ink-mid;
+      }
+    }
+  }
+
   .pending-self-roll {
     display: flex;
     flex-direction: column;

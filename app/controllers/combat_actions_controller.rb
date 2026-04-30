@@ -22,6 +22,7 @@ class CombatActionsController < ApplicationController
     render json: {
       attack_options: attack_options_for_render,
       buff_options: buff_options_for_render,
+      heal_options: heal_options_for_render,
       targets: hostile_targets,
       action_economy: combat_context_hash['action_economy'],
       dice_strategy: current_user.combat_dice_strategy,
@@ -88,6 +89,10 @@ class CombatActionsController < ApplicationController
 
   def buff_options_for_render
     DungeonMaster::Combat::BuffOptionBuilder.call(sheet: @adventure_sheet, adventure: @adventure)
+  end
+
+  def heal_options_for_render
+    DungeonMaster::Combat::HealOptionBuilder.call(sheet: @adventure_sheet, adventure: @adventure)
   end
 
   def hostile_targets

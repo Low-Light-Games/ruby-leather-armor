@@ -28,7 +28,7 @@ module Combat
     # rescue PlayerActionResolver::Error keep working.
     Error = Combat::ResolverError
 
-    SUPPORTED_KINDS = %w[attack move end_turn buff].freeze
+    SUPPORTED_KINDS = %w[attack move end_turn buff heal].freeze
     DEFENSE_KIND_TO_STAT = {
       'full_ac' => 'ac',
       'touch_ac' => 'touch_ac',
@@ -40,6 +40,7 @@ module Combat
     include Combat::Resolvers::Move
     include Combat::Resolvers::EndPlayerTurn
     include Combat::Resolvers::Buff
+    include Combat::Resolvers::Heal
 
     def self.call(**)
       new(**).call
@@ -63,6 +64,7 @@ module Combat
                when 'move'     then resolve_move
                when 'end_turn' then resolve_end_turn
                when 'buff'     then resolve_buff
+               when 'heal'     then resolve_heal
                end
 
       maybe_end_combat!(result)

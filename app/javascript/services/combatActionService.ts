@@ -41,9 +41,20 @@ export interface CombatBuffOption {
   action_cost: string
 }
 
+export interface CombatHealOption {
+  id: string
+  label: string
+  source_type: string
+  source_id: string | number
+  dice: string
+  summary: string | null
+  action_cost: string
+}
+
 export interface CombatActionOptionsResponse {
   attack_options: CombatAttackOption[]
   buff_options: CombatBuffOption[]
+  heal_options: CombatHealOption[]
   targets: CombatTarget[]
   action_economy: CombatActionEconomy | null
   dice_strategy: CombatDiceStrategy
@@ -130,9 +141,22 @@ export interface CombatBuffResult {
   message: string
 }
 
+export interface CombatHealResult {
+  kind: 'heal'
+  spell_id: string
+  spell_name: string
+  dice: string
+  rolled: number
+  healed: number
+  hp_before: number
+  hp_after: number
+  action_cost: string
+  message: string
+}
+
 export interface CombatAttackResolved {
   status: 'resolved'
-  result: CombatAttackResult | CombatEndTurnResult | CombatMoveResult | CombatBuffResult
+  result: CombatAttackResult | CombatEndTurnResult | CombatMoveResult | CombatBuffResult | CombatHealResult
   combat_context: Record<string, unknown> | null
 }
 
@@ -179,7 +203,17 @@ export interface CombatBuffBody {
   spell_id: string
 }
 
-export type CombatActionBody = CombatAttackBody | CombatEndTurnBody | CombatMoveBody | CombatBuffBody
+export interface CombatHealBody {
+  kind: 'heal'
+  spell_id: string
+}
+
+export type CombatActionBody =
+  | CombatAttackBody
+  | CombatEndTurnBody
+  | CombatMoveBody
+  | CombatBuffBody
+  | CombatHealBody
 
 export async function fetchCombatActionOptions(adventureId: number): Promise<CombatActionOptionsResponse> {
   return apiFetch(`/adventures/${adventureId}/combat_action/options`, { method: 'GET', credentials: 'same-origin' })

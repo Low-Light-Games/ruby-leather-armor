@@ -9,6 +9,7 @@ import {
   type CombatAttackResolved,
   type CombatAttackResponse,
   type CombatBuffOption,
+  type CombatHealOption,
   type CombatTarget,
 } from '../../../services/combatActionService'
 import type { CombatDiceStrategy } from '../../../types/auth'
@@ -166,6 +167,20 @@ export const CombatActionPanel = ({
     }
   }
 
+  const handleHeal = async (option: CombatHealOption) => {
+    setSubmitting(true)
+    setError(null)
+    try {
+      const response = await postCombatAction(adventureId, { kind: 'heal', spell_id: option.id })
+      handleResponse(response)
+      await refreshCombatTargetOptions()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const handleSubmitClientDice = async () => {
     if (!pending) return
     setSubmitting(true)
@@ -298,6 +313,27 @@ export const CombatActionPanel = ({
               >
                 <span className="buff-label">✨ {option.label}</span>
                 {option.duration && <span className="buff-duration">{option.duration}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {options.heal_options.length > 0 && (
+        <div className="heal-options">
+          <span className="heal-options-label">Healing</span>
+          <div className="heal-options-grid">
+            {options.heal_options.map(option => (
+              <button
+                key={option.id}
+                type="button"
+                className="heal-option-btn"
+                disabled={submitting || pending !== null}
+                onClick={() => handleHeal(option)}
+                title={option.summary || `Heals ${option.dice}`}
+              >
+                <span className="heal-label">❤ {option.label}</span>
+                <span className="heal-dice">{option.dice}</span>
               </button>
             ))}
           </div>
