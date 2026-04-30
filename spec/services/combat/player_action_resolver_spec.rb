@@ -642,7 +642,7 @@ RSpec.describe Combat::PlayerActionResolver do
           adventure: adventure, sheet: sheet, user: user,
           params: { kind: 'buff', spell_id: 'spell:not_a_real_spell' }
         )
-      end.to raise_error(described_class::Error, /unknown or unavailable buff option_id/)
+      end.to raise_error(described_class::Error, /spell not found/)
     end
   end
 

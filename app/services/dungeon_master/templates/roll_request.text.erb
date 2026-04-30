@@ -68,8 +68,13 @@ Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
   "transition": null,
   "combatants": [],
   "destination": null,
-  "consequences": [{ "description": "Short factual note about an automatic consequence." }],
+  "consequences": [],
   "ability_use_claimed": null,
   "mechanical_summary": "One-sentence factual summary.",
   "reasoning": "One short sentence explaining the call."
 }
+
+`consequences` are rare — leave the array empty unless the action has
+an automatic non-roll side-effect the player needs to see. When
+present, each entry MUST be `{ "description": "<text>" }`, never a
+bare string.

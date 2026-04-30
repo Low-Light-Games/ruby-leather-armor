@@ -80,33 +80,20 @@ class AdventureMessagesController < ApplicationController
   # POST /adventures/:adventure_id/messages/roll
   def roll
     unless DungeonMaster::Rolls::AdventureMechanicalState.latest_pending_roll_request(@adventure)
-      return render json: { error: 'There is no pending roll request to resolve.', error_code: 'roll_not_requested' },
-                    status: :unprocessable_entity
+      return render json: {
+        error: 'There is no pending roll request to resolve.',
+        error_code: 'roll_not_requested'
+      }, status: :unprocessable_entity
     end
 
-    rolls = if params[:rolls].present?
-              Array(params[:rolls]).map do |r|
-                { roll_value: r[:roll_value].to_i,
-                  roll_description: r[:roll_description]&.strip || 'unknown check',
-                  resolution_method: r[:resolution_method]&.strip,
-                  request_id: r[:request_id]&.strip.presence }
-              end
-            else
-              [{ roll_value: params[:roll_value].to_i,
-                 roll_description: params[:roll_description]&.strip || 'unknown check',
-                 resolution_method: params[:resolution_method]&.strip,
-                 request_id: params[:request_id]&.strip.presence }]
-            end
-
-    invalid = rolls.find { |r| !(-100..100).include?(r[:roll_value]) }
-    return render json: { error: 'Roll value must be between -100 and 100' }, status: :unprocessable_entity if invalid
-
+    rolls = DungeonMaster::Rolls::RollSubmission.new(params).to_a
     service = dm_service
-
     roll_msg = service.prepare_roll(rolls)
     roll_text = DungeonMaster::Rolls::RollResultsText.format(rolls)
     RollPipelineJob.perform_later(@adventure.id, roll_msg.id, roll_text, current_user.id)
     render json: { async: true, messages: [message_json(roll_msg)] }, status: :accepted
+  rescue DungeonMaster::Rolls::RollSubmission::InvalidValueError => e
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   private

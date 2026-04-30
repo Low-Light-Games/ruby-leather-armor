@@ -2,48 +2,27 @@
 
 module Combat
   module Resolvers
-    # Self-buff spell-cast resolver mixed into Combat::PlayerActionResolver.
-    # Looks up the spell, dispatches through the existing
-    # DungeonMaster::Mutations::BuffMutations pipeline (same path the AI
-    # mutations use) so active_buffs / derived_stats stay consistent,
-    # then decrements the action economy.
+    # Self-buff spell-cast leg of Combat::PlayerActionResolver.
     module Buff
       private
 
       def resolve_buff
-        spell_id = lookup_buff_spell_id!
+        spell = DungeonMaster::Combat::SpellLookup.fetch!(@params[:spell_id] || @params[:attack_option_id])
         option = DungeonMaster::Combat::BuffOptionBuilder.resolve_option_id!(
-          sheet: @sheet, adventure: @adventure, option_id: spell_id
+          sheet: @sheet, adventure: @adventure, option_id: "spell:#{spell.id}"
         )
-        spell = lookup_spell_definition!(option[:source_id])
 
-        apply_buff!(spell)
+        rehydrate_player_sheet_after_buff!(spell)
         decrement_action_economy_with_delta!({ 'spend_standard' => true }, label: option[:label].to_s)
 
-        payload = buff_payload(option, spell)
+        payload = BuffPayload.new(option: option, spell: spell).to_h
         log_action_event!(payload)
         { status: :resolved, result: payload }
       rescue DungeonMaster::CombatMechanicResolutionError => e
         raise Combat::ResolverError.new(e.message, code: e.code || :unknown_buff_option)
       end
 
-      def lookup_buff_spell_id!
-        raw = @params[:spell_id] || @params[:attack_option_id]
-        if raw.to_s.empty?
-          raise Combat::ResolverError.new('spell_id is required for buff actions', code: :missing_spell_id)
-        end
-
-        raw.to_s.start_with?('spell:') ? raw.to_s : "spell:#{raw}"
-      end
-
-      def lookup_spell_definition!(source_id)
-        spell = SpellDefinition.find_by(id: source_id)
-        return spell if spell
-
-        raise Combat::ResolverError.new("spell not found: #{source_id.inspect}", code: :spell_not_found)
-      end
-
-      def apply_buff!(spell)
+      def rehydrate_player_sheet_after_buff!(spell)
         buff_lists = DungeonMaster::BuffMutationLists.new(
           additions: [{ 'id' => spell.id, 'source_type' => 'spell' }],
           removals: []
@@ -51,30 +30,10 @@ module Combat
         changed = DungeonMaster::Mutations::BuffMutations.new(adventure: @adventure, log: buff_log_shim).apply(
           sheet: @sheet, buff_lists: buff_lists
         )
-        # active_buffs feeds CharacterStats::Calculator (AC bonuses,
-        # save bonuses, etc.); without recompute the chip on the left
-        # column and the in-combat AC stay stale until the next AI
-        # mutation pass triggers it. Mirrors what
-        # Mutations::PlayerMutations does after its buff apply.
         @sheet.recompute_derived_stats! if changed
         @sheet.reload
       end
 
-      def buff_payload(option, spell)
-        {
-          kind: 'buff',
-          spell_id: spell.id,
-          spell_name: spell.name,
-          duration: spell.duration,
-          summary: spell.summary,
-          action_cost: option[:action_cost],
-          message: "#{spell.name} active — #{spell.summary}"
-        }
-      end
-
-      # Combat::PlayerActionResolver doesn't carry a Logging instance the
-      # way the AI pipeline does — give BuffMutations a no-op shim for
-      # the warn / info calls it makes when active_buffs change.
       def buff_log_shim
         @buff_log_shim ||= BuffLogShim.new
       end
