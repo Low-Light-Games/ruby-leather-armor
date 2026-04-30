@@ -7,8 +7,8 @@ Creature name: <%= @creature_name %>
 
 Use Pathfinder 1e conventions:
 - Ability scores should be realistic for the creature type (typically 3-20 range)
-- CR should be appropriate for the party level (equal or +/- 2)
-- HP formula uses hit dice (e.g. "3d8+6")
+- CR MUST be in the range 1..<%= @party_level + 2 %> (party level + 2 ceiling)
+- HP formula uses hit dice (e.g. "3d8+6") and must roll under <%= 12 * (@party_level + 2) + 5 %> HP at maximum
 - AC includes natural armor appropriate to the creature
 - Base attack bonus follows Pathfinder progression
 - Speed in feet per round (30 is standard humanoid)

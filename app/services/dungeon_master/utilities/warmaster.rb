@@ -331,7 +331,21 @@ module DungeonMaster
         normalized = TextNormalizer.normalized_key(name).singularize
         BestiaryEntry.find_by("LOWER(name) = ?", normalized) ||
           BestiaryEntry.where("LOWER(name) LIKE ?", "%#{normalized}%").first ||
-          BestiaryEntry.find_by(id: TextNormalizer.singular_identifier(normalized))
+          BestiaryEntry.find_by(id: TextNormalizer.singular_identifier(normalized)) ||
+          first_token_bestiary_match(normalized)
+      end
+
+      # "Goblin Scout" / "Orc Warboss Vanguard" → fall back to the first token
+      # ("goblin" / "orc"). Without this every multi-word variant misses the
+      # canonical SRD entry and falls through to the AI fallback, which has
+      # historically been free to invent CR-18, 90-HP minions for a level-1
+      # party. Cheap dictionary lookup before the AI is the right backstop.
+      def first_token_bestiary_match(normalized)
+        head = normalized.split(/[_\s]+/).first.to_s.singularize
+        return nil if head.blank? || head == normalized
+
+        BestiaryEntry.find_by("LOWER(name) = ?", head) ||
+          BestiaryEntry.find_by(id: head)
       end
 
       def create_creature_from_bestiary_static(ctx, entry, display_name)
@@ -402,7 +416,14 @@ module DungeonMaster
                         model_used: ctx.ai.last_model_used, duration_ms: duration_ms,
                         usage: ctx.ai.last_usage)
 
-        hp = roll_hp_static(parsed["hp_formula"])
+        # The prompt advises CR ≈ party_level ±2 but the AI ignores it freely
+        # (observed: "Goblin Scout" returned at CR 18 / 85 HP for a level-1
+        # party). Hard-clamp on the receiving side: CR upper bound is
+        # party_level + 2, HP rolled from formula then capped against a
+        # CR-derived ceiling so a wild hp_formula can't smuggle in a tank.
+        cr = parsed["cr"].to_i.clamp(1, [party_level + 2, 1].max)
+        hp_rolled = roll_hp_static(parsed["hp_formula"])
+        hp = [hp_rolled, hp_ceiling_for_cr(cr)].min
         raw_type = TextNormalizer.normalized_key(parsed["creature_type"])
         normalized_type = BestiaryEntry::CREATURE_TYPE_MAP[raw_type] ||
                           (CreatureSheet::CREATURE_TYPES.include?(raw_type) ? raw_type : "monster")
@@ -414,7 +435,7 @@ module DungeonMaster
           intelligence: parsed["intelligence"].to_i.clamp(1, 40),
           wisdom: parsed["wisdom"].to_i.clamp(1, 40),
           charisma: parsed["charisma"].to_i.clamp(1, 40),
-          level: [parsed["cr"].to_i, 1].max, hp: hp, max_hp: hp,
+          level: cr, hp: hp, max_hp: hp,
           derived_stats: {
             "ac" => parsed["ac"].to_i,
             "bab" => parsed["base_attack"].to_i,
@@ -423,6 +444,15 @@ module DungeonMaster
         )
         sheet.recompute_derived_stats!
         sheet
+      end
+
+      # Rough HP ceiling per CR — covers the upper end of the SRD HP range
+      # for that CR (e.g. CR 1 ≈ 12-15 HP, CR 5 ≈ 50-60 HP). 12×CR + 5 keeps
+      # CR 1 around 17 HP and CR 10 around 125 HP, which leaves the low CR
+      # space tight (where AI hallucinations actually hurt) without over-
+      # constraining mid-tier templates.
+      def hp_ceiling_for_cr(cr)
+        12 * cr + 5
       end
 
       def roll_hp_static(formula)
@@ -442,9 +472,11 @@ module DungeonMaster
 
       private_class_method :spawn_from_manifest, :spawn_from_names, :resolve_creature,
                            :build_initiative_result, :roll_creature_initiative,
-                           :fuzzy_bestiary_match_static, :create_creature_from_bestiary_static,
+                           :fuzzy_bestiary_match_static, :first_token_bestiary_match,
+                           :create_creature_from_bestiary_static,
                            :dynamic_creature_sheet_static, :create_from_template_static,
-                           :create_from_ai_static, :roll_hp_static, :creature_record
+                           :create_from_ai_static, :hp_ceiling_for_cr,
+                           :roll_hp_static, :creature_record
     end
   end
 end
