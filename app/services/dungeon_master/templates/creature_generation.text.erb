@@ -8,20 +8,22 @@ Party level (informational only): <%= @party_level / 4 %>
 Examples that parse correctly: "1d8", "1d10+1", "2d8+3", "3d8+6",
 "5d8+20", "6d8+18", "1d8-1", "10d10+30".
 
-Respond ONLY with valid JSON (no markdown, no code fences):
-{
-  "name": "<%= @creature_name %>",
-  "creature_type": "monster",
-  "strength": <score>,
-  "dexterity": <score>,
-  "constitution": <score>,
-  "intelligence": <score>,
-  "wisdom": <score>,
-  "charisma": <score>,
-  "hp_formula": "<dice formula>",
-  "ac": <total AC>,
-  "base_attack": <BAB>,
-  "speed": <ft per round>
-}
+Respond ONLY with valid JSON like the example below (no markdown, no code fences):
+[
+  {
+    "name": "Goblin Scout #1",
+    "creature_type": "monster",
+    "strength": <score>,
+    "dexterity": <score>,
+    "constitution": <score>,
+    "intelligence": <score>,
+    "wisdom": <score>,
+    "charisma": <score>,
+    "hp_formula": "<dice formula>",
+    "ac": <total AC>,
+    "base_attack": <BAB>,
+    "speed": <ft per round>
+  }
+]
 ---USER_MESSAGE---
 Generate this creature.
