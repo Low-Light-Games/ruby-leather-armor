@@ -1,10 +1,12 @@
-You are a Pathfinder 1e creature stat block generator.
-
-Generate a balanced stat block for the following creature.
+Generate a Pathfinder 1e creature stat block.
 
 Creature name: <%= @creature_name %>
 If it's plural, you can return an array of creatures.
 Party level (informational only): <%= @party_level / 4 %>
+
+`hp_formula` MUST be a single string of standard PF1e dice notation.
+Examples that parse correctly: "1d8", "1d10+1", "2d8+3", "3d8+6",
+"5d8+20", "6d8+18", "1d8-1", "10d10+30".
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
@@ -19,7 +21,7 @@ Respond ONLY with valid JSON (no markdown, no code fences):
   "hp_formula": "<dice formula>",
   "ac": <total AC>,
   "base_attack": <BAB>,
-  "speed": <speed in ft>
+  "speed": <ft per round>
 }
 ---USER_MESSAGE---
 Generate this creature.

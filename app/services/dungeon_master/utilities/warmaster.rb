@@ -223,8 +223,16 @@ module DungeonMaster
             next
           end
 
-          sheet = resolve_creature(ctx, name, display_name)
-          creatures << creature_record(sheet, display_name) if sheet
+          # AI fallback can return either a single sheet or an array of
+          # sheets (when the prompt sees a plural like "Goblin Scouts" the
+          # model is allowed to fan out into one stat block per goblin).
+          # Either way, walk the result list and emit one creature_record
+          # per sheet, suffixing display names so they stay unique.
+          Array(resolve_creature(ctx, name, display_name)).each_with_index do |sheet, idx|
+            entry_name = idx.zero? ? sheet.name : "#{display_name} #{idx + 1}"
+            sheet.update!(name: entry_name) if sheet.name != entry_name
+            creatures << creature_record(sheet, entry_name)
+          end
         end
 
         creatures
@@ -379,26 +387,13 @@ module DungeonMaster
         sheet
       end
 
-      # SRD reference rows the AI can use to anchor its CR / HP picks for
-       # named-creature variants ("Goblin Scout" / "Orc Skirmisher" / etc.).
-       # Without this the model freely invents CR 10 goblins for a level-20
-       # party because "appropriate for party level" is the only signal it
-       # has — the bestiary lookup never made it that far.
-      def bestiary_cr_anchors
-        return [] unless defined?(BestiaryEntry)
-
-        BestiaryEntry.order(:cr).pluck(:name, :cr, :hp_formula, :ac).map do |row|
-          { name: row[0], cr: row[1], hp_formula: row[2], ac: row[3] }
-        end
-      end
-
       def create_from_ai_static(ctx, name, party_level)
         t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         raw_response = nil
         prompt_summary = "Warmaster/CreatureGeneration: #{name} (party level #{party_level})"
 
         system_prompt, user_msg = PromptRenderer.render_with_user_message("creature_generation",
-          creature_name: name, party_level: party_level, anchors: bestiary_cr_anchors)
+          creature_name: name, party_level: party_level)
 
         request_body = { system_prompt: system_prompt, user_message: user_msg }
         raw_response = ctx.ai.chat(
@@ -415,11 +410,20 @@ module DungeonMaster
                         model_used: ctx.ai.last_model_used, duration_ms: duration_ms,
                         usage: ctx.ai.last_usage)
 
-        # The prompt advises CR ≈ party_level ±2 but the AI ignores it freely
-        # (observed: "Goblin Scout" returned at CR 18 / 85 HP for a level-1
-        # party). Hard-clamp on the receiving side: CR upper bound is
-        # party_level + 2, HP rolled from formula then capped against a
-        # CR-derived ceiling so a wild hp_formula can't smuggle in a tank.
+        # The prompt allows array responses for plural names ("Goblin
+        # Scouts" → array of stat blocks). Single hash → single sheet,
+        # array → one sheet per element. spawn_from_names handles either
+        # shape on the way back.
+        entries = parsed.is_a?(Array) ? parsed : [parsed]
+        entries.each_with_index.filter_map do |entry, idx|
+          next unless entry.is_a?(Hash)
+
+          display = entries.size > 1 ? "#{name} #{idx + 1}" : name
+          persist_ai_creature(ctx, display, entry, party_level)
+        end
+      end
+
+      def persist_ai_creature(ctx, display_name, parsed, party_level)
         cr = parsed["cr"].to_i.clamp(1, [party_level + 2, 1].max)
         hp_rolled = roll_hp_static(parsed["hp_formula"])
         hp = [hp_rolled, hp_ceiling_for_cr(cr)].min
@@ -427,7 +431,7 @@ module DungeonMaster
         normalized_type = BestiaryEntry::CREATURE_TYPE_MAP[raw_type] ||
                           (CreatureSheet::CREATURE_TYPES.include?(raw_type) ? raw_type : "monster")
         sheet = ctx.adventure.creature_sheets.create!(
-          name: name, creature_type: normalized_type, origin: "ai",
+          name: display_name, creature_type: normalized_type, origin: "ai",
           strength: parsed["strength"].to_i.clamp(1, 40),
           dexterity: parsed["dexterity"].to_i.clamp(1, 40),
           constitution: parsed["constitution"].to_i.clamp(1, 40),
@@ -455,6 +459,10 @@ module DungeonMaster
       end
 
       def roll_hp_static(formula)
+        # AI sometimes returns the formula as an array (["1d8", "+2"] or
+        # ["1d8+2"]) instead of a single string. Flatten + join with no
+        # separator so both shapes parse the same as "1d8+2".
+        formula = Array(formula).join if formula.is_a?(Array)
         return 10 unless formula.present?
 
         if formula.to_s =~ /(\d+)d(\d+)([+-]\d+)?/
@@ -473,8 +481,7 @@ module DungeonMaster
                            :build_initiative_result, :roll_creature_initiative,
                            :fuzzy_bestiary_match_static, :create_creature_from_bestiary_static,
                            :dynamic_creature_sheet_static, :create_from_template_static,
-                           :create_from_ai_static, :hp_ceiling_for_cr,
-                           :bestiary_cr_anchors,
+                           :create_from_ai_static, :persist_ai_creature, :hp_ceiling_for_cr,
                            :roll_hp_static, :creature_record
     end
   end
