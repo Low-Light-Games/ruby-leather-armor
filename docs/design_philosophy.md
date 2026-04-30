@@ -596,6 +596,27 @@ not warning accumulation.
   deterministic seam already owns the data (counts, HP, roster shape, turn order).
 - If a prompt-only fix cannot be expressed as simplification/replacement, stop and
   look for the owned deterministic seam first.
+- **Don't hand-hold cheap models.** A long wall of CRITICAL RULES, hard
+  ceilings restated three ways, and SRD anchor tables tells you the
+  prompt is doing the model's job. Strip the prompt to: what we want,
+  the JSON shape, and concrete examples of any non-obvious field. If a
+  cheap model still can't comply, it isn't up to the task — swap the
+  model, don't pile more guardrails into the prompt.
+
+**Clamp at the receiving seam.** A prompt is a request, not a contract;
+the contract lives in the Ruby that receives the response. Anywhere the
+AI's answer feeds a deterministic system (creature stats, dice formulas,
+JSON shapes, numeric ranges with defensible bounds), the receiving code
+clamps it before persisting:
+- `Warmaster.create_from_ai_static` clamps `cr` to `[1, party_level + 2]`
+  and HP to `12·cr + 5` regardless of what the AI returned.
+- `roll_hp_static` flattens array-shaped formulas (`["1d8", "+2"]`) so
+  cheap models that return wrapped values still parse correctly.
+- Ability scores get `.clamp(1, 40)` at the same boundary.
+
+The pattern: prompt asks politely with concrete examples; code enforces
+the actual invariant. Don't add a lengthy "DO NOT exceed CR X" section
+to the prompt and hope. If the bound is real, write the clamp.
 
 **Examples:**
 
@@ -747,3 +768,21 @@ hides supported keys behind a positional-or-keyword signature.
 are already the canonical ActiveRecord shape (`where(...)`,
 `create!(...)`, scope arguments) stay as plain hashes — they're
 already typed by the model. When in doubt, wrap it.
+
+**Sibling builders share a base class.** When two `*OptionBuilder` /
+`*Resolver` / `*Payload` classes do the same outer work and differ only
+in a `match?` predicate or a per-element wrapper, the shared loop is a
+base class — not a copy-pasted iteration with one line different.
+`SpellOptionBuilderBase` owns the action-economy gate, the
+`adventure_sheet_spells` iteration, and `resolve_option_id!`;
+`BuffOptionBuilder` and `HealOptionBuilder` declare only `match?` and
+`option_for`. The same applies to value-object pairs: `BuffOption` and
+`HealOption` both `to_h` into the wire shape, neither contains
+flow-control logic that the other should also have.
+
+**Why:** drift between siblings is the most common bug we see in this
+repo's PR reviews. Two builders that "look about the same" silently
+diverge on what counts as available, what gets logged, what raises
+which error class. A shared base makes the divergence either
+impossible (the loop is in one place) or explicit (the override is
+visible in a `def` line, not buried five branches deep).
