@@ -5,6 +5,7 @@ export interface CombatActionPanelProps {
   diceStrategy: CombatDiceStrategy
   onDiceStrategyChange: (next: CombatDiceStrategy) => void
   onCombatContextUpdate?: (combatContext: Record<string, unknown> | null) => void
+  onActionResolved?: () => void
   externalCombatContext?: Record<string, unknown> | null
 }
 

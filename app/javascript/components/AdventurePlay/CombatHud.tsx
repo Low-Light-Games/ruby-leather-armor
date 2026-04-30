@@ -3,7 +3,7 @@ import CombatActionEconomyChips from '../AdventureChat/CombatActionEconomyChips'
 import CombatActionPanel from '../AdventureChat/CombatActionPanel'
 import type { CombatHudProps } from '../../types'
 
-export const CombatHud = ({ adventureId, combatContext, diceStrategy, onDiceStrategyChange, onCombatEnded }: CombatHudProps) => {
+export const CombatHud = ({ adventureId, combatContext, diceStrategy, onDiceStrategyChange, onCombatEnded, onActionResolved }: CombatHudProps) => {
   const [liveCombatContext, setLiveCombatContext] = useState<Record<string, unknown> | null>(combatContext)
 
   useEffect(() => {
@@ -23,6 +23,7 @@ export const CombatHud = ({ adventureId, combatContext, diceStrategy, onDiceStra
         diceStrategy={diceStrategy}
         onDiceStrategyChange={onDiceStrategyChange}
         onCombatContextUpdate={handleCombatContextUpdate}
+        onActionResolved={onActionResolved}
         externalCombatContext={combatContext}
       />
     </div>

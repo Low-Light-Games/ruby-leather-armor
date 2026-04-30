@@ -239,6 +239,7 @@ export const AdventureChat = ({
               diceStrategy={diceStrategy}
               onDiceStrategyChange={handleDiceStrategyChange}
               onCombatContextUpdate={setLiveCombatContext}
+              onActionResolved={onSheetUpdate}
             />
           )}
           <div className="chat-input-area">

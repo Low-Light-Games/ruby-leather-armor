@@ -86,6 +86,14 @@ test.describe('Combat encounter — multi-turn HUD coverage', () => {
       page.locator('.action-economy-chip.available').filter({ hasText: /Standard/i })
     ).toBeVisible();
 
+    // ── Sidebar AC baseline (pre-cast) ──────────────────────────────────────
+    const acStatValue = page
+      .locator('.combat-stat')
+      .filter({ has: page.locator('.stat-label', { hasText: /^AC$/ }) })
+      .locator('.stat-value');
+    const acBefore = parseInt((await acStatValue.first().textContent()).trim(), 10);
+    expect(Number.isFinite(acBefore)).toBeTruthy();
+
     // ── Round 1: cast Mage Armor (buff path) ────────────────────────────────
     const buffButton = page.locator('.buff-option-btn').filter({ hasText: /Mage Armor/i });
     await expect(buffButton).toBeVisible({ timeout: 10_000 });
@@ -94,6 +102,18 @@ test.describe('Combat encounter — multi-turn HUD coverage', () => {
     await expect(page.locator('.log-entry').last()).toContainText(/Mage Armor/i, { timeout: 10_000 });
     await expect(
       page.locator('.action-economy-chip.spent').filter({ hasText: /Standard/i })
+    ).toBeVisible({ timeout: 10_000 });
+
+    // Sidebar must reflect the new buff: AC stat bumps by +4 (Mage Armor) and
+    // the active-buffs section lists mage_armor. Both come from the parent
+    // adventure refetch — without it the sidebar stays stale until something
+    // else (a turn or two later) finally triggers a reload.
+    await expect.poll(
+      async () => parseInt((await acStatValue.first().textContent()).trim(), 10),
+      { timeout: 10_000 }
+    ).toBe(acBefore + 4);
+    await expect(
+      page.locator('.active-buff-row').filter({ hasText: /mage_armor/i })
     ).toBeVisible({ timeout: 10_000 });
 
     // ── Round 1: end player turn — NPCs take their turns ────────────────────

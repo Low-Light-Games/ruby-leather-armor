@@ -32,6 +32,7 @@ export const CombatActionPanel = ({
   diceStrategy,
   onDiceStrategyChange,
   onCombatContextUpdate,
+  onActionResolved,
 }: CombatActionPanelProps) => {
   const [options, setOptions] = useState<CombatActionOptionsResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -88,8 +89,9 @@ export const CombatActionPanel = ({
       }
       setHistory(prev => [...prev, ...entries])
       onCombatContextUpdate?.(resolved.combat_context)
+      onActionResolved?.()
     },
-    [onCombatContextUpdate],
+    [onCombatContextUpdate, onActionResolved],
   )
 
   const handleResponse = useCallback(

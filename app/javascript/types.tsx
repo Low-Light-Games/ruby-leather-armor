@@ -391,6 +391,7 @@ export interface CombatHudProps {
   diceStrategy: CombatDiceStrategy
   onDiceStrategyChange: (next: CombatDiceStrategy) => void
   onCombatEnded?: () => void
+  onActionResolved?: () => void
 }
 
 export interface AdventureMessage {
