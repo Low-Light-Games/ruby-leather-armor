@@ -331,21 +331,7 @@ module DungeonMaster
         normalized = TextNormalizer.normalized_key(name).singularize
         BestiaryEntry.find_by("LOWER(name) = ?", normalized) ||
           BestiaryEntry.where("LOWER(name) LIKE ?", "%#{normalized}%").first ||
-          BestiaryEntry.find_by(id: TextNormalizer.singular_identifier(normalized)) ||
-          first_token_bestiary_match(normalized)
-      end
-
-      # "Goblin Scout" / "Orc Warboss Vanguard" → fall back to the first token
-      # ("goblin" / "orc"). Without this every multi-word variant misses the
-      # canonical SRD entry and falls through to the AI fallback, which has
-      # historically been free to invent CR-18, 90-HP minions for a level-1
-      # party. Cheap dictionary lookup before the AI is the right backstop.
-      def first_token_bestiary_match(normalized)
-        head = normalized.split(/[_\s]+/).first.to_s.singularize
-        return nil if head.blank? || head == normalized
-
-        BestiaryEntry.find_by("LOWER(name) = ?", head) ||
-          BestiaryEntry.find_by(id: head)
+          BestiaryEntry.find_by(id: TextNormalizer.singular_identifier(normalized))
       end
 
       def create_creature_from_bestiary_static(ctx, entry, display_name)
@@ -393,13 +379,26 @@ module DungeonMaster
         sheet
       end
 
+      # SRD reference rows the AI can use to anchor its CR / HP picks for
+       # named-creature variants ("Goblin Scout" / "Orc Skirmisher" / etc.).
+       # Without this the model freely invents CR 10 goblins for a level-20
+       # party because "appropriate for party level" is the only signal it
+       # has — the bestiary lookup never made it that far.
+      def bestiary_cr_anchors
+        return [] unless defined?(BestiaryEntry)
+
+        BestiaryEntry.order(:cr).pluck(:name, :cr, :hp_formula, :ac).map do |row|
+          { name: row[0], cr: row[1], hp_formula: row[2], ac: row[3] }
+        end
+      end
+
       def create_from_ai_static(ctx, name, party_level)
         t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         raw_response = nil
         prompt_summary = "Warmaster/CreatureGeneration: #{name} (party level #{party_level})"
 
         system_prompt, user_msg = PromptRenderer.render_with_user_message("creature_generation",
-          creature_name: name, party_level: party_level)
+          creature_name: name, party_level: party_level, anchors: bestiary_cr_anchors)
 
         request_body = { system_prompt: system_prompt, user_message: user_msg }
         raw_response = ctx.ai.chat(
@@ -472,10 +471,10 @@ module DungeonMaster
 
       private_class_method :spawn_from_manifest, :spawn_from_names, :resolve_creature,
                            :build_initiative_result, :roll_creature_initiative,
-                           :fuzzy_bestiary_match_static, :first_token_bestiary_match,
-                           :create_creature_from_bestiary_static,
+                           :fuzzy_bestiary_match_static, :create_creature_from_bestiary_static,
                            :dynamic_creature_sheet_static, :create_from_template_static,
                            :create_from_ai_static, :hp_ceiling_for_cr,
+                           :bestiary_cr_anchors,
                            :roll_hp_static, :creature_record
     end
   end
