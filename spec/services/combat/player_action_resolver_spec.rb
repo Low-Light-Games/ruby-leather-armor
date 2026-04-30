@@ -627,6 +627,15 @@ RSpec.describe Combat::PlayerActionResolver do
       expect(adventure.reload.combat_context.dig('action_economy', 'standard_available')).to be(false)
     end
 
+    it 'recomputes derived_stats so the AC chip reflects the new shield bonus' do
+      expect(sheet).to receive(:recompute_derived_stats!).at_least(:once).and_call_original
+
+      described_class.call(
+        adventure: adventure, sheet: sheet, user: user,
+        params: { kind: 'buff', spell_id: 'spell:shield' }
+      )
+    end
+
     it 'rejects an unknown spell_id' do
       expect do
         described_class.call(

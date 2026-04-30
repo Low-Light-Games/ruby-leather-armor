@@ -3,19 +3,19 @@
 module DungeonMaster
   module Combat
     # Sibling of AttackOptionBuilder — enumerates the player's known /
-    # prepared spells whose effects are self-buffs (no damage roll, no
-    # save against the player, personal range). The HUD renders one
-    # button per option below the attack list.
-    #
-    # First slice covers personal-range spells only (Shield, Mage Armor,
-    # Longstrider, True Strike, Mirror Image, Blur, Expeditious Retreat,
-    # Prot. from Evil, etc.). Touch / close ranged buffs (Bless, Aid,
-    # Cure Light Wounds) need target selection and are tracked
-    # separately.
+    # prepared spells the HUD can apply to the player as a self-buff.
+    # Includes both personal-range spells (Shield, Longstrider, True
+    # Strike, Mirror Image, Blur, etc.) and touch-range buffs the
+    # player commonly self-casts (Mage Armor, Bull's Strength, Aid).
+    # Healing spells, harmful saves, and AOE / ranged buffs that need
+    # target picking (Bless, Haste, Cure on an ally) are excluded —
+    # those land in the next slice.
     module BuffOptionBuilder
+      SELF_BUFF_RANGES = %w[personal touch].freeze
       BUFF_EFFECT_TYPES = %w[ac_bonus attack_bonus save_bonus skill_bonus
                              ability_bonus immunity special damage_resistance
                              concealment].freeze
+      DAMAGE_EFFECT_TYPES = %w[damage healing].freeze
 
       class << self
         # @param sheet [AdventureSheet]
@@ -66,15 +66,30 @@ module DungeonMaster
         end
 
         def self_buff?(spell)
-          return false unless spell.range.to_s.downcase.strip == 'personal'
+          return false unless self_buff_range?(spell)
 
-          return false if damage_effect?(spell)
+          return false unless self_buff_save?(spell)
+
+          return false if damage_or_healing_effect?(spell)
 
           buff_effects_for(spell).any?
         end
 
-        def damage_effect?(spell)
-          Array(spell.effects).any? { |e| e.is_a?(Hash) && e['type'].to_s == 'damage' }
+        def self_buff_range?(spell)
+          range = spell.range.to_s.downcase.strip
+          SELF_BUFF_RANGES.any? { |allowed| range == allowed || range.start_with?("#{allowed} ") }
+        end
+
+        # `none` (Shield, Longstrider, True Strike) or `... (harmless)`
+        # (Mage Armor, Bull's Strength). Anything else means the spell
+        # forces a save on the target — not a self-buff.
+        def self_buff_save?(spell)
+          save = spell.saving_throw.to_s.downcase.strip
+          save.empty? || save == 'none' || save.include?('(harmless)')
+        end
+
+        def damage_or_healing_effect?(spell)
+          Array(spell.effects).any? { |e| e.is_a?(Hash) && DAMAGE_EFFECT_TYPES.include?(e['type'].to_s) }
         end
 
         def buff_effects_for(spell)

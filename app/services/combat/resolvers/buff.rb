@@ -48,9 +48,15 @@ module Combat
           additions: [{ 'id' => spell.id, 'source_type' => 'spell' }],
           removals: []
         )
-        DungeonMaster::Mutations::BuffMutations.new(adventure: @adventure, log: buff_log_shim).apply(
+        changed = DungeonMaster::Mutations::BuffMutations.new(adventure: @adventure, log: buff_log_shim).apply(
           sheet: @sheet, buff_lists: buff_lists
         )
+        # active_buffs feeds CharacterStats::Calculator (AC bonuses,
+        # save bonuses, etc.); without recompute the chip on the left
+        # column and the in-combat AC stay stale until the next AI
+        # mutation pass triggers it. Mirrors what
+        # Mutations::PlayerMutations does after its buff apply.
+        @sheet.recompute_derived_stats! if changed
         @sheet.reload
       end
 
