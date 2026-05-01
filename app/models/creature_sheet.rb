@@ -13,6 +13,7 @@ class CreatureSheet < ApplicationRecord
   CREATURE_TYPES = %w[npc monster beast animal].freeze
   ATTITUDES = %w[hostile unfriendly indifferent friendly helpful].freeze
   ORIGINS = %w[bestiary ai template unknown].freeze
+  ELIMINATED_CONDITIONS = %w[dead fled surrendered].freeze
 
   validates :name, presence: true
   validates :creature_type, presence: true, inclusion: { in: CREATURE_TYPES }
@@ -25,6 +26,10 @@ class CreatureSheet < ApplicationRecord
 
   scope :ai_generated, -> { where(origin: "ai") }
   scope :alphabetical, -> { order(:name) }
+  scope :alive, lambda {
+    where("hp > 0")
+      .where("NOT (conditions ?| array[:keys])", keys: ELIMINATED_CONDITIONS)
+  }
 
   def recompute_derived_stats!
     stats = CharacterStats::Calculator.new(self).compute
