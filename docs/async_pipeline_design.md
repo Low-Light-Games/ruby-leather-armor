@@ -40,7 +40,7 @@ sequenceDiagram
 
 - **Puma** returns **quickly** (`202`); it does **not** run the full pipeline.
 - **Sidekiq** runs [`PipelineJob`](app/jobs/pipeline_job.rb) and executes [`DungeonMasterService#execute_*`](app/services/dungeon_master_service.rb), which now delegates execution to `DungeonMaster::EntryServices`.
-- **Parallel LLM calls** for beacons, roll qualifiers, and (by policy) other batched steps go through the **Node evaluator** ([`evaluator/`](evaluator/)) via **`POST /fan_out`** and **`POST /sequential`**, not Ruby threads.
+- **Parallel LLM calls** for the sanity gate, narrative phase (narrate + context updates + Loremaster), micro-context updates, and World Turn NPC actions go through the **Node evaluator** ([`evaluator/`](evaluator/)) via **`POST /fan_out`**, not Ruby threads. The evaluation step itself (RollRequest / CombatRollRequest) is a single AI call hit directly by Rails — no fan-out involved.
 - **Application policy:** no manual **`Thread.new`** (or ad-hoc thread pools) under [`app/`](app/) for concurrency — use Sidekiq, Node fan-out, or sequential calls. CI enforces this.
 
 ---

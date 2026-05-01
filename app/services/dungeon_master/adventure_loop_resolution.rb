@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  # Resolves a single **AdventureLoop** step in the current pipeline run: parallel evaluation,
+  # Resolves a single **AdventureLoop** step in the current pipeline run: evaluation,
   # sanity gate, mechanical path (rolls / mechanic / verdict), time keeper, encounter dispatch,
   # social scene, and `pipeline_outcome` persistence.
   #
@@ -20,93 +20,91 @@ module DungeonMaster
 
     # Full resolution: evaluation → sanity gate → [verdict + mutations + time_keeper]
     #
-    # Two evaluation routes selected by `DmConfig#evaluation_mode`:
-    #
-    #   * `"parallel"` (default) — `Steps::ParallelEvaluation` (Node
-    #     microservice: beacon + mech_eval + roll_qualifier).
-    #   * `"roll_request"` — `Steps::RollRequest` (single AI call with
-    #     RAG-retrieved rules + beats; no character block, no
-    #     micro-contexts).
-    #
-    # Combat-active turns ALWAYS use ParallelEvaluation regardless of the
-    # toggle, so the Combat GM path stays bit-for-bit unchanged.
+    # The evaluation step routes deterministically on combat state:
+    # combat-active → Steps::CombatRollRequest, else → Steps::RollRequest.
+    # Both return an {EvaluationResult}; this method dispatches on it.
     def resolve(intention)
-      intent, evaluations = run_evaluation_phase(intention)
-      return resolve_with_mechanics(intent, evaluations) if intent[:affected_contexts].any?
+      result = run_evaluation_phase(intention)
+      return resolve_with_mechanics(result) if result.affected?
 
-      resolve_without_mechanics(intent)
+      resolve_without_mechanics(result)
     end
 
     def run_evaluation_phase(intention)
-      if combat_active? && @config.respond_to?(:combat_roll_request_mode?) && @config.combat_roll_request_mode?
-        run_combat_roll_request(intention)
-      elsif @config.respond_to?(:roll_request_mode?) && @config.roll_request_mode? && !combat_active?
-        run_roll_request(intention)
-      else
-        run_parallel_evaluation(intention)
-      end
+      combat_active? ? run_combat_roll_request(intention) : run_roll_request(intention)
     end
 
-    def resolve_with_mechanics(intent, evaluations)
-      return resolve_social_scene_after_world_gate(intent) if social_scene_only?(intent)
+    def resolve_with_mechanics(result)
+      return resolve_social_scene_after_world_gate(result) if result.social_scene_only?
 
       capability = if skip_world_sanity_for_privileged_player?
                      @loop&.log_step("sanity_checker", "World: skipped (player opt-out)")
-                     run_capability_check(intent)
+                     run_capability_check(result)
                    else
-                     world, cap = run_sanity_gate_fan_out(intent)
-                     return world_check_rejection(intent, world) unless world[:consistent]
+                     world, cap = run_sanity_gate_fan_out(result)
+                     return world_check_rejection(result.to_intent_hash, world) unless world[:consistent]
 
                      @loop&.log_step("sanity_checker", "World: consistent")
                      cap
                    end
 
-      return capability_check_rejection(intent, capability) unless capability[:allowed]
+      return capability_check_rejection(result.to_intent_hash, capability) unless capability[:allowed]
 
-      return resolve_social_scene(intent) if intent[:expand_scene]
+      return resolve_social_scene(result) if result.expand_scene?
 
-      merged = merge_mechanical_evaluations_and_prepare_rolls(evaluations)
-      return PipelineFlowResults.awaiting_rolls(intent: intent, merged: merged).to_h if merged[:player_rolls].any?
+      merged = build_merged_from_result(result)
+      intent_hash = result.to_intent_hash
+      return PipelineFlowResults.awaiting_rolls(intent: intent_hash, merged: merged).to_h if merged[:player_rolls].any?
 
-      finish_resolution(intent, merged, Rolls::PlayerRolls.auto_success_roll_message(merged))
+      finish_resolution(intent_hash, merged, Rolls::PlayerRolls.auto_success_roll_message(merged))
     end
 
-    def resolve_without_mechanics(intent)
+    def resolve_without_mechanics(result)
+      intent_hash = result.to_intent_hash
       if skip_world_sanity_for_privileged_player?
         @loop&.log_step("sanity_checker", "World: skipped (player opt-out, no mechanics)")
       else
-        world = run_world_consistency_check(intent)
-        return world_check_rejection(intent, world) unless world[:consistent]
+        world = run_world_consistency_check(result)
+        return world_check_rejection(intent_hash, world) unless world[:consistent]
 
         @loop&.log_step("sanity_checker", "World: consistent (no mechanics)")
       end
-      time_result = run_time_keeper(intent, nil)
-      return dispatch_encounter_warmaster(intent, time_result, mutations: nil) if time_result[:encounter]
+      time_result = run_time_keeper(intent_hash, nil)
+      return dispatch_encounter_warmaster(intent_hash, time_result, mutations: nil) if time_result[:encounter]
 
-      momentum_result = run_momentum(intent)
+      momentum_result = run_momentum(intent_hash)
       maybe_run_world_turn(
-        status: :resolved, intent: intent,
+        status: :resolved, intent: intent_hash,
         mutations: momentum_result[:mutations].presence,
         time_result: time_result,
         action_outcome: momentum_result[:outcome].to_s.presence
       )
     end
 
-    def social_scene_only?(intent)
-      intent[:expand_scene] && Array(intent[:affected_contexts]).uniq == ["social"]
-    end
-
-    def resolve_social_scene_after_world_gate(intent)
+    def resolve_social_scene_after_world_gate(result)
       if skip_world_sanity_for_privileged_player?
         @loop&.log_step("sanity_checker", "World: skipped (player opt-out, social scene)")
       else
-        world = run_world_consistency_check(intent)
-        return world_check_rejection(intent, world) unless world[:consistent]
+        world = run_world_consistency_check(result)
+        return world_check_rejection(result.to_intent_hash, world) unless world[:consistent]
 
         @loop&.log_step("sanity_checker", "World: consistent (social scene)")
       end
 
-      resolve_social_scene(intent)
+      resolve_social_scene(result)
+    end
+
+    def build_merged_from_result(result)
+      merged = {
+        player_rolls: result.player_rolls,
+        npc_actions: [],
+        consequences: result.consequences,
+        mechanical_summaries: ["[#{result.primary_domain.to_s.upcase}] #{result.mechanical_summary}"]
+      }
+      Rolls::PlayerRolls.deduplicate_rolls!(merged, log: @log)
+      Rolls::PlayerRolls.filter_auto_success_rolls!(merged, log: @log, sheet: @sheet)
+      Rolls::PlayerRolls.assign_request_ids!(merged[:player_rolls])
+      merged
     end
 
     def skip_world_sanity_for_privileged_player?
@@ -121,30 +119,17 @@ module DungeonMaster
         return damage_pause
       end
 
-      current_roll_requests, merged = ensure_damage_metadata_for_active_hit!(intent, merged, current_roll_requests, submitted_rolls)
-      if (damage_pause = maybe_pause_for_damage_roll(intent, merged, current_roll_requests, roll_results, submitted_rolls))
-        return damage_pause
-      end
-
       roll_results, submitted_rolls = merge_roll_chain_results(merged, roll_results, submitted_rolls)
       verdict_roll_requests = merge_roll_chain_requests(merged, current_roll_requests)
 
-      # In active combat, world turn resolves routine NPC turns. Only immediate
-      # reactions (see combat_mechanic prompt; attack_of_opportunity npc_actions) pass through here with the
-      # player's rolls so AoO-style events resolve before the turn advances.
-      effective_npc_actions = MechanicalEvaluationNpcActions.filter_for_combat_finish(
-        merged[:npc_actions],
-        combat_active: combat_active?
-      )
-      npc_results = resolve_npc_actions(effective_npc_actions)
       verdict_result = if combat_active?
                          run_combat_gm(intent, merged,
                            roll_results: roll_results,
-                           npc_results: npc_results,
+                           npc_results: nil,
                            roll_requests: verdict_roll_requests,
                            submitted_rolls: submitted_rolls)
                        else
-                         run_mechanic(intent, merged, roll_results: roll_results, npc_results: npc_results)
+                         run_mechanic(intent, merged, roll_results: roll_results, npc_results: nil)
                        end
       verdict_step = combat_active? ? "combat_gm" : "mechanic"
       @loop&.batch_update!(
@@ -159,15 +144,6 @@ module DungeonMaster
       end
 
       store_pipeline_outcome!(verdict_result[:outcome])
-
-      if prepared_hostile_combat_continues?(intent)
-        return PipelineFlowResults.awaiting_initiative(
-          intent: intent,
-          creature_data: intent[:creature_data],
-          mutations: verdict_result[:mutations],
-          opener_outcome: verdict_result[:outcome].to_s.presence
-        ).to_h
-      end
 
       maybe_run_world_turn(
         status: :resolved, intent: intent,
@@ -296,124 +272,6 @@ module DungeonMaster
       "#{base}:damage"
     end
 
-    def ensure_damage_metadata_for_active_hit!(intent, merged, current_roll_requests, submitted_rolls)
-      return [current_roll_requests, merged] unless combat_active?
-
-      missing = attack_rolls_missing_damage_metadata(current_roll_requests, submitted_rolls)
-      return [current_roll_requests, merged] if missing.empty?
-
-      retried_rolls = retry_attack_damage_metadata(intent, current_roll_requests)
-      repaired_requests = merge_retried_roll_requests(current_roll_requests, retried_rolls)
-      still_missing = attack_rolls_missing_damage_metadata(repaired_requests, submitted_rolls)
-      return [repaired_requests, merged.merge(player_rolls: repaired_requests)] if still_missing.empty?
-
-      @log.play_log!(
-        "pipeline_error",
-        "Active-combat attack hit missing damage metadata after retry",
-        parsed_response: {
-          intention: intent[:intention],
-          missing_requests: still_missing
-        }
-      )
-      raise AiError, "Active-combat attack hit missing damage metadata after retry"
-    end
-
-    def attack_rolls_missing_damage_metadata(current_roll_requests, submitted_rolls)
-      attack_rolls = Array(current_roll_requests).filter_map do |roll|
-        next unless roll.is_a?(Hash)
-
-        sym = roll.deep_symbolize_keys
-        next unless sym[:type].to_s == "attack_roll"
-
-        next unless attack_roll_missing_damage_metadata?(sym)
-
-        sym
-      end
-      return [] if attack_rolls.empty?
-
-      submitted_by_id, submitted_by_label = submitted_roll_indexes(submitted_rolls)
-      attack_rolls.filter do |roll|
-        total = submitted_roll_total_for(roll, submitted_by_id, submitted_by_label)
-        total && total >= roll[:dc].to_i
-      end
-    end
-
-    def retry_attack_damage_metadata(intent, current_roll_requests)
-      retry_intention = <<~MSG
-        #{intent[:intention]}
-
-        Retry reason: an active-combat attack roll hit and still needs structural damage metadata.
-        Re-emit the combat attack_rolls with `attack_option_id`, `target`, and `description`.
-        Existing attack roll requests:
-        #{Array(current_roll_requests).to_json}
-      MSG
-      prompts = build_mech_eval_prompts(["combat"], retry_intention, intent)
-      results = evaluator_sequential!(prompts, retry_intention, phase: "mech_eval_retry")
-      parse_mech_eval_results(results, ["combat"]).flat_map { |entry| entry[:player_rolls] }
-    end
-
-    def merge_retried_roll_requests(current_roll_requests, retried_rolls)
-      retried_by_id, retried_by_label = Array(retried_rolls).each_with_object([{}, {}]) do |roll, (by_id, by_label)|
-        next unless roll.is_a?(Hash)
-
-        normalized = roll.deep_symbolize_keys
-        by_id[normalized[:request_id].to_s] = normalized if normalized[:request_id].present?
-        by_label[normalize_roll_label(normalized[:description])] = normalized
-      end
-
-      Array(current_roll_requests).map do |roll|
-        next roll unless roll.is_a?(Hash)
-
-        sym = roll.deep_symbolize_keys
-        retried = if sym[:request_id].present?
-                    retried_by_id[sym[:request_id].to_s]
-                  end
-        retried ||= retried_by_label[normalize_roll_label(sym[:description])]
-        next sym unless retried
-
-        sym.merge(
-          attack_mode: retried[:attack_mode].presence || sym[:attack_mode],
-          defense_kind: retried[:defense_kind].presence || sym[:defense_kind],
-          source_type: retried[:source_type].presence || sym[:source_type],
-          source_id: retried[:source_id].presence || sym[:source_id],
-          damage: retried[:damage].presence || sym[:damage],
-          damage_type: retried[:damage_type].presence || sym[:damage_type],
-          target: retried[:target].presence || sym[:target]
-        )
-      end
-    end
-
-    def attack_roll_missing_damage_metadata?(roll)
-      sym = roll.deep_symbolize_keys
-      return true if sym[:attack_mode].blank?
-
-      return true if sym[:defense_kind].blank?
-
-      return true if sym[:damage].blank?
-
-      return true if sym[:source_type].blank?
-
-      return true if sym[:source_type].to_s != "unarmed" && sym[:source_id].blank?
-
-      false
-    end
-
-    def prepared_hostile_combat_continues?(intent)
-      return false if combat_active?
-
-      prepared = Array(intent[:creature_data])
-      return false if prepared.empty?
-
-      # v1 assumption: the prepared creature_data set is the authoritative hostile roster
-      # for deciding whether the opener should hand off into initiative.
-      creature_ids = prepared.map { |entry| (entry[:creature_sheet_id] || entry["creature_sheet_id"]).to_i }.reject(&:zero?)
-      return false if creature_ids.empty?
-
-      @adventure.creature_sheets.where(id: creature_ids).any? do |sheet|
-        sheet.hp.to_i > 0 && (Array(sheet.conditions) & %w[dead fled surrendered]).empty?
-      end
-    end
-
     # Harbinger Path A: delegate loop + warmaster glue, then persist narration seed here.
     def dispatch_encounter_warmaster(intent, time_result, mutations:)
       result = EncounterWarmasterBridge.call(
@@ -427,10 +285,10 @@ module DungeonMaster
     # pauses the pipeline for player input. Analogous to encounter expansion
     # but for significant social interactions (transactions, negotiations, etc.).
     # TimeKeeper is skipped — no time passes until the interaction resolves.
-    def resolve_social_scene(intent)
-      prompt_summary = "SocialExpansion: \"#{@log.truncate(intent[:intention])}\""
+    def resolve_social_scene(result)
+      intention = result.intention
+      prompt_summary = "SocialExpansion: \"#{@log.truncate(intention)}\""
 
-      social_beacon = intent.dig(:domain_results, "social") || {}
       npc_names = begin
         @adventure.story.story_npcs.pluck(:name)
       rescue => e
@@ -445,19 +303,19 @@ module DungeonMaster
         social_context: @adventure.social_context,
         character_block: CharacterBlock.social(@sheet),
         npc_names: npc_names,
-        domain_interpretation: social_beacon[:domain_interpretation] || intent[:intention])
+        domain_interpretation: intention)
 
-      request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
+      request_body = { system_prompt: system_prompt, user_message: intention }
 
       parsed = timed_ai_call("social_expansion", prompt_summary, request_body) do
-        raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
+        raw = @ai.chat(system_prompt: system_prompt, user_message: intention,
                         max_tokens: @config.token_budget_for("social_expansion"),
                         step_name: "social_expansion",
                         model: @config.model_for("social_expansion"))
         [raw, @ai.parse_json(raw)]
       end
 
-      scene = parsed["scene"] || parsed["narrative"] || intent[:intention]
+      scene = parsed["scene"] || parsed["narrative"] || intention
       npc_name = parsed["npc_name"]
       npc_attitude = parsed["npc_attitude"]
       new_elements = Array(parsed["new_elements"]).select(&:present?)
@@ -477,7 +335,7 @@ module DungeonMaster
 
       store_pipeline_outcome!(scene)
 
-      PipelineFlowResults.social_scene(intent: intent).to_h
+      PipelineFlowResults.social_scene(intent: result.to_intent_hash).to_h
     end
 
     def store_pipeline_outcome!(text)

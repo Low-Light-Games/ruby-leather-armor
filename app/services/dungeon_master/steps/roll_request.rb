@@ -2,42 +2,23 @@
 
 module DungeonMaster
   module Steps
-    # Pipeline Step: RollRequest — single-call replacement for the
-    # beacon → mechanical_evaluation → roll_qualifier chain. Decides
-    # whether the player's intent needs a die roll and emits one roll
-    # spec (or "no roll") plus the cross-cutting signals downstream code
-    # consumes from the legacy chain.
+    # Pipeline Step: RollRequest — single AI call that decides whether the
+    # player's intent needs a die roll. Out-of-combat only;
+    # CombatRollRequest covers combat-active free-text.
     #
-    # Pre-call code:
-    #   * Embeds the intent once and uses that vector both for rules
-    #     retrieval (`Rules::Lookup`) and beats retrieval (`Lore::FactsLookup`)
-    #     when both share the same embedding model. Beats retrieval is
-    #     authoritative scene memory; rules retrieval is the RAG'd
-    #     replacement for the legacy rules-manifest dump.
+    # Pre-call: embeds the intent once for both rules retrieval
+    # ({Rules::Lookup}) and beats retrieval ({Lore::FactsLookup}).
     #
-    # The AI call:
-    #   * Carries no character block (skill modifiers resolved post-call
-    #     by code from the sheet via `compute_take_values`).
-    #   * Carries no per-domain micro-contexts and no domain partials.
-    #   * Carries the top-K rules and the top-K beats — nothing else.
+    # The AI call carries no character block, no per-domain micro-contexts,
+    # and no domain partials — only the top-K rules and the top-K beats.
+    # Skill modifiers / DCs are resolved post-call by code from the sheet.
     #
-    # Post-call code:
-    #   * `RollRequest::Adapter` translates the flat JSON into the
-    #     `[intent, evaluations]` tuple `Steps::ParallelEvaluation`
-    #     historically returned, so the rest of `AdventureLoopResolution`
-    #     is unchanged.
-    #   * `Rolls::PlayerRolls.deduplicate_rolls!` and
-    #     `compute_take_values` still run on the merged result, identical
-    #     to the legacy chain.
-    #
-    # Combat-active turns DO NOT reach this step — `AdventureLoopResolution`
-    # routes through `Steps::ParallelEvaluation` unconditionally when
-    # `combat_active?` so the Combat GM path stays bit-for-bit unchanged.
+    # Returns an {EvaluationResult} built directly from the parsed JSON.
     module RollRequest
-      include Phases::RollQualifierPhase
-
       RULES_TOP_K = 4
       BEATS_TOP_K = 6
+
+      DOMAIN_PRIORITY = %w[combat buff social traversal exploration rest inventory].freeze
 
       private
 
@@ -70,21 +51,81 @@ module DungeonMaster
           [raw, @ai.parse_json(raw)]
         end
 
-        intent, evaluations = RollRequest::Adapter.call(parsed: parsed, intention: intention)
+        result = build_evaluation_result(parsed: parsed, intention: intention)
 
         warn_on_invented_rule_slug!(parsed, rules)
-        log_roll_request_to_loop(intent, evaluations)
+        log_roll_request_to_loop(result)
 
-        evaluations = evaluations.map { |e| compute_take_values(e) }
-        [intent, evaluations]
+        Rolls::PlayerRolls.compute_take_values!(result.player_rolls, sheet: @sheet)
+        result
       end
 
-      # Observability only — does NOT alter the roll. When the AI emits a
-      # rule_slug that is not one of the slugs returned by Rules::Lookup,
-      # write a `roll_request_invented_slug` play_log row so we can
-      # measure how often the model ignores its own RAG context. The
-      # roll still flows downstream as-emitted; this is signal for prompt
-      # tuning, not enforcement.
+      def build_evaluation_result(parsed:, intention:)
+        parsed = (parsed || {}).deep_symbolize_keys
+        affected = ordered_affected_domains(parsed[:affected_domains])
+        primary = affected.first
+        rolls = if needs_roll?(parsed)
+                  [normalize_roll(parsed[:roll],
+                                  primary_domain: primary,
+                                  mechanical_summary: parsed[:mechanical_summary])]
+                else
+                  []
+                end
+
+        EvaluationResult.new(
+          intention: intention,
+          affected_contexts: affected,
+          destination: parsed[:destination],
+          expand_scene: parsed[:expand_scene] == true && affected.include?('social'),
+          combat_transition: parsed[:transition],
+          combat_combatants: normalized_combatants(parsed[:combatants]),
+          player_rolls: rolls,
+          consequences: DungeonMaster::Rolls::Consequences.normalize(parsed[:consequences]),
+          mechanical_summary: parsed[:mechanical_summary].to_s.presence || '(no mechanical summary)'
+        )
+      end
+
+      def needs_roll?(parsed)
+        parsed[:needs_roll] == true && parsed[:roll].is_a?(Hash)
+      end
+
+      def normalize_roll(raw, primary_domain:, mechanical_summary:)
+        raw = raw.deep_symbolize_keys
+        {
+          type: raw[:type].presence || 'skill_check',
+          skill: raw[:skill],
+          save: raw[:save],
+          dc: raw[:dc],
+          description: raw[:description].presence || mechanical_summary.to_s.presence || '(no description)',
+          domain: primary_domain,
+          rule_slug: raw[:rule_slug],
+          take_10_eligible: raw[:take_10_eligible] == true,
+          take_20_eligible: raw[:take_20_eligible] == true,
+          situational_modifiers: DungeonMaster::Rolls::SituationalModifiers.normalize(raw[:situational_modifiers])
+        }.compact
+      end
+
+      def ordered_affected_domains(raw)
+        domains = Array(raw).map { |d| d.to_s.downcase }.reject(&:blank?).uniq
+        DOMAIN_PRIORITY.select { |d| domains.include?(d) } + (domains - DOMAIN_PRIORITY)
+      end
+
+      def normalized_combatants(raw)
+        Array(raw).flat_map do |entry|
+          case entry
+          when Hash
+            key, value = entry.to_a.first
+            count = value.to_i
+            count.positive? ? Array.new(count, key.to_s) : [key.to_s]
+          else
+            [entry.to_s]
+          end
+        end.reject(&:blank?)
+      end
+
+      # Observability only — write a play_log row when the model emits a
+      # rule_slug that wasn't in the retrieved set, so we can measure how
+      # often the AI ignores its own RAG context.
       def warn_on_invented_rule_slug!(parsed, retrieved_rules)
         return unless parsed.is_a?(Hash) && parsed['needs_roll'] == true
 
@@ -101,9 +142,9 @@ module DungeonMaster
           'roll_request_invented_slug',
           "RollRequest: AI emitted rule_slug '#{emitted_slug}' not in retrieved set #{retrieved_slugs.inspect}",
           parsed_response: {
-            emitted_skill:   roll['skill'],
-            emitted_dc:      roll['dc'],
-            emitted_slug:    emitted_slug,
+            emitted_skill: roll['skill'],
+            emitted_dc: roll['dc'],
+            emitted_slug: emitted_slug,
             retrieved_slugs: retrieved_slugs
           }
         )
@@ -130,21 +171,20 @@ module DungeonMaster
         )
       end
 
-      def log_roll_request_to_loop(intent, evaluations)
+      def log_roll_request_to_loop(result)
         return unless @loop
 
-        affected   = intent[:affected_contexts]
-        rolls_desc = evaluations.flat_map { |e| e[:player_rolls] }
-                                .map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]} (#{r[:domain]})" }
-                                .join(', ')
+        rolls_desc = result.player_rolls
+                           .map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]} (#{r[:domain]})" }
+                           .join(', ')
 
         @loop.batch_update!(
-          new_data: { 'affected_contexts' => affected, 'roll_request' => true },
+          new_data: { 'affected_contexts' => result.affected_contexts, 'roll_request' => true },
           new_status: 'resolving',
           timeline_entry: {
             'step' => 'roll_request',
             'summary' => [
-              "Affected: #{affected.join(', ').presence || 'none'}",
+              "Affected: #{result.affected_contexts.join(', ').presence || 'none'}",
               rolls_desc.presence || 'No rolls'
             ].join(' | '),
             'at' => Time.current.iso8601

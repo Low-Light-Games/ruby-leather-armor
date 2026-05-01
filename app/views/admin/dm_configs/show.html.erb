@@ -102,22 +102,6 @@
         </p>
       </div>
 
-      <div class="config-field">
-        <label class="field-label">Mechanical evaluation</label>
-        <div class="radio-group">
-          <label class="radio-label">
-            <%= radio_button_tag :evaluation_mode, "parallel", @config.evaluation_mode == "parallel" %>
-            Parallel (default) — beacon → mechanical evaluation → roll qualifier via the Node evaluator
-          </label>
-          <label class="radio-label">
-            <%= radio_button_tag :evaluation_mode, "roll_request", @config.evaluation_mode == "roll_request" %>
-            Roll request — single AI step with retrieved rules + beats (no character block in that call)
-          </label>
-        </div>
-        <p class="field-hint">
-          Turns in combat always use the parallel chain regardless of this setting so the Combat GM path is unchanged.
-        </p>
-      </div>
     </div>
 
     <div class="config-section">

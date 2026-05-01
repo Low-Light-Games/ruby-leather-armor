@@ -90,15 +90,11 @@ class DmConfig < ApplicationRecord
     'narrative_facts_top_k' => 8,
     'narrative_facts_active_window' => 20,
     'narrative_facts_embedding_model' => 'text-embedding-3-small',
-    'evaluation_mode' => 'roll_request',
-    'combat_evaluation_mode' => 'combat_roll_request',
     'combat_narrator_enabled' => true,
     'step_reasoning_efforts' => { 'roll_request' => 'minimal' }.freeze,
     'stripe_grace_period_days' => 3
   }.freeze
 
-  EVALUATION_MODES = %w[parallel roll_request].freeze
-  COMBAT_EVALUATION_MODES = %w[parallel combat_roll_request].freeze
   REASONING_EFFORTS = %w[minimal low medium high].freeze
 
   def self.instance
@@ -170,26 +166,6 @@ class DmConfig < ApplicationRecord
 
   def narrative_facts_top_k
     get('narrative_facts_top_k').to_i
-  end
-
-  # Combat-active turns ignore this toggle — they always use
-  # ParallelEvaluation regardless of the value.
-  def evaluation_mode
-    val = get('evaluation_mode').to_s
-    EVALUATION_MODES.include?(val) ? val : DEFAULTS['evaluation_mode']
-  end
-
-  def roll_request_mode?
-    evaluation_mode == 'roll_request'
-  end
-
-  def combat_evaluation_mode
-    val = get('combat_evaluation_mode').to_s
-    COMBAT_EVALUATION_MODES.include?(val) ? val : DEFAULTS['combat_evaluation_mode']
-  end
-
-  def combat_roll_request_mode?
-    combat_evaluation_mode == 'combat_roll_request'
   end
 
   # PR-G — when on, End Turn enqueues a CombatNarratorJob that posts a

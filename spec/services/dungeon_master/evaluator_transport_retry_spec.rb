@@ -32,13 +32,13 @@ RSpec.describe DungeonMaster::Steps::EvaluatorTransport do
     stub_request(:post, "#{transport_host}/fan_out")
       .to_raise(Errno::ECONNREFUSED)
       .then
-      .to_return(status: 200, body: [{ "meta" => { "step" => "beacon" } }].to_json,
+      .to_return(status: 200, body: [{ "meta" => { "step" => "narrate" } }].to_json,
                  headers: { "Content-Type" => "application/json" })
 
     result = transport.send(:call_evaluator!, "#{transport_host}/fan_out", [{ foo: "bar" }], "intent", phase: "fan_out")
 
-    expect(result).to eq([{ "meta" => { "step" => "beacon" } }])
-    expect(transport).to have_received(:persist_node_logs).once.with([{ "meta" => { "step" => "beacon" } }], "intent")
+    expect(result).to eq([{ "meta" => { "step" => "narrate" } }])
+    expect(transport).to have_received(:persist_node_logs).once.with([{ "meta" => { "step" => "narrate" } }], "intent")
     expect(transport).not_to have_received(:persist_partial_logs)
     expect(transport).to have_received(:sleep).with(0.1).once
     expect(a_request(:post, "#{transport_host}/fan_out")).to have_been_made.twice

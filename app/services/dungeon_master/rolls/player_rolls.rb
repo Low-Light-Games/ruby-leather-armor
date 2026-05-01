@@ -107,6 +107,28 @@ module DungeonMaster
           end
         end
 
+        def compute_take_values!(rolls, sheet:)
+          skills_lookup = skills_lookup_from_sheet(sheet)
+          Array(rolls).each do |roll|
+            next unless roll.is_a?(Hash)
+
+            next unless roll[:type].to_s == "skill_check" && roll[:skill].present?
+
+            mod = skills_lookup[roll[:skill].to_s].to_i
+            roll[:take_10_value] = 10 + mod
+            roll[:take_20_value] = 20 + mod
+          end
+          rolls
+        end
+
+        def assign_request_ids!(rolls)
+          Array(rolls).each do |roll|
+            next unless roll.is_a?(Hash)
+
+            roll[:request_id] ||= SecureRandom.uuid
+          end
+        end
+
         private
 
         def roll_descriptions_similar?(a, b)

@@ -41,10 +41,10 @@ module DungeonMaster
       private
 
       # World + capability in one evaluator round-trip (`AdventureLoopResolution#resolve` → here).
-      def run_sanity_gate_fan_out(intent)
-        text = intent[:intention]
-        prompts = [sanity_checker_world_evaluator_prompt(intent)]
-        prompts << sanity_checker_capability_evaluator_prompt(intent) if @sheet
+      def run_sanity_gate_fan_out(result)
+        text = result.intention
+        prompts = [sanity_checker_world_evaluator_prompt(result)]
+        prompts << sanity_checker_capability_evaluator_prompt(result) if @sheet
 
         by_step = evaluator_fan_out!(prompts, text, phase: 'sanity_gate')
 
@@ -61,22 +61,22 @@ module DungeonMaster
         [world, capability]
       end
 
-      def sanity_checker_world_evaluator_prompt(intent)
-        prompt_context = build_world_prompt_context(intent: intent)
+      def sanity_checker_world_evaluator_prompt(result)
+        prompt_context = build_world_prompt_context(intention: result.intention)
 
         system_prompt = PromptRenderer.render('sanity_checker_world',
                                               sanity_context: prompt_context)
 
         EvaluatorPromptPayload.new(
           system_prompt: system_prompt,
-          user_message: intent[:intention],
+          user_message: result.intention,
           model: @config.model_for('sanity_checker_world'),
           max_tokens: @config.token_budget_for('sanity_checker_world'),
           step: 'sanity_checker_world'
         ).to_h
       end
 
-      def sanity_checker_capability_evaluator_prompt(intent)
+      def sanity_checker_capability_evaluator_prompt(result)
         prompt_context = build_capability_prompt_context
 
         system_prompt = PromptRenderer.render('sanity_checker',
@@ -84,7 +84,7 @@ module DungeonMaster
 
         EvaluatorPromptPayload.new(
           system_prompt: system_prompt,
-          user_message: intent[:intention],
+          user_message: result.intention,
           model: @config.model_for('sanity_checker'),
           max_tokens: @config.token_budget_for('sanity_checker'),
           step: 'sanity_checker'
@@ -128,19 +128,20 @@ module DungeonMaster
       # Sub-task A: Capability Check (spells / feats / items vs sheet)
       # ------------------------------------------------------------------
 
-      def run_capability_check(intent)
+      def run_capability_check(result)
         return CapabilityCheckResult.new(allowed: true, reason: nil).to_h unless @sheet
 
-        prompt_summary = "SanityChecker/capability: \"#{@log.truncate(intent[:intention])}\""
+        intention = result.intention
+        prompt_summary = "SanityChecker/capability: \"#{@log.truncate(intention)}\""
         prompt_context = build_capability_prompt_context
 
         system_prompt = PromptRenderer.render('sanity_checker',
                                               sanity_context: prompt_context)
 
-        request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
+        request_body = { system_prompt: system_prompt, user_message: intention }
 
         parsed = timed_ai_call('sanity_checker', prompt_summary, request_body) do
-          raw_response = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
+          raw_response = @ai.chat(system_prompt: system_prompt, user_message: intention,
                                   max_tokens: @config.token_budget_for('sanity_checker'),
                                   step_name: 'sanity_checker',
                                   model: @config.model_for('sanity_checker'))
@@ -215,18 +216,19 @@ module DungeonMaster
       # Sub-task B: World Consistency Check (scene state validation)
       # ------------------------------------------------------------------
 
-      def run_world_consistency_check(intent)
-        prompt_summary = "SanityChecker/world: \"#{@log.truncate(intent[:intention])}\""
+      def run_world_consistency_check(result)
+        intention = result.intention
+        prompt_summary = "SanityChecker/world: \"#{@log.truncate(intention)}\""
 
-        prompt_context = build_world_prompt_context(intent: intent)
+        prompt_context = build_world_prompt_context(intention: intention)
 
         system_prompt = PromptRenderer.render('sanity_checker_world',
                                               sanity_context: prompt_context)
 
-        request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
+        request_body = { system_prompt: system_prompt, user_message: intention }
 
         parsed = timed_ai_call('sanity_checker_world', prompt_summary, request_body) do
-          raw_response = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
+          raw_response = @ai.chat(system_prompt: system_prompt, user_message: intention,
                                   max_tokens: @config.token_budget_for('sanity_checker_world'),
                                   step_name: 'sanity_checker_world',
                                   model: @config.model_for('sanity_checker_world'))
@@ -248,7 +250,7 @@ module DungeonMaster
         )
       end
 
-      def build_world_prompt_context(intent:)
+      def build_world_prompt_context(intention:)
         combat_ctx = @adventure.combat_context || {}
         combat_active = combat_ctx['active'] == true
         combat_roster = combat_active ? Array(combat_ctx['participants']).filter_map { |p| p['name'] } : []
@@ -256,19 +258,19 @@ module DungeonMaster
         PromptViews::SanityCheckerPromptContext.new(
           scene_summary: @adventure.scene_summary,
           scene_history: @adventure.scene_history,
-          established_facts: retrieve_established_facts(intent),
+          established_facts: retrieve_established_facts(intention),
           npc_names: @adventure.story.story_npcs.pluck(:name),
           combat_active: combat_active,
           combat_turn_order: combat_roster
         )
       end
 
-      def retrieve_established_facts(intent)
+      def retrieve_established_facts(intention)
         DungeonMaster::Lore::FactsLookup.call(
           adventure: @adventure,
           ai: @ai,
           log: @log,
-          query_text: intent[:intention]
+          query_text: intention
         )
       end
     end

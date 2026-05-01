@@ -56,14 +56,10 @@ flowchart TB
     end
 
     subgraph resolve["AdventureLoopResolution.resolve — evaluation + sanity gate"]
-        subgraph parallel_eval["ParallelEvaluation: Node microservice — 3 HTTP phases"]
-            RESOLVE --> PE1["Phase 1: POST /fan_out — beacon ×6  ☆ AI ×6"]
-            PE1 --> PE1B["converge_beacons — code"]
-            PE1B --> PE2["Phase 2: POST /sequential — mech_eval ×N  ☆ AI ×N"]
-            PE2 --> PE3["Phase 3: POST /fan_out — roll_qualifier ×N  ☆ AI ×N"]
-        end
-
-        PE3 --> NM{"affected_contexts.any?"}
+        RESOLVE --> COMBAT_BR{combat_active?}
+        COMBAT_BR -->|yes| CRR["Steps::CombatRollRequest — single AI call ☆\n(attack options, action economy, threats, battlefield)\n+ Phases::CombatMechanicResolution post-call clamp"]
+        COMBAT_BR -->|no| RR["Steps::RollRequest — single AI call ☆\n(top-K rules + scene beats from pgvector)"]
+        CRR & RR --> NM{"affected_contexts.any?"}
     end
 
     NM -->|yes| SANITY_GATE
@@ -78,16 +74,15 @@ flowchart TB
 
     FG2 -->|not consistent| REJECT
     FG3 -->|not allowed| REJECT
-    SANITY_GATE --> MERGE[merge_mechanical_evaluations — code]
-    MERGE --> AUTOSUC[filter_auto_success_rolls!  — code]
-    AUTOSUC --> ROLLCHECK{Player rolls still needed?}
+    SANITY_GATE --> MERGE[build_merged_from_result — code\n+ deduplicate_rolls + filter_auto_success_rolls + assign_request_ids]
+    MERGE --> ROLLCHECK{Player rolls still needed?}
     ROLLCHECK -->|yes| PAUSE_ROLLS[Return :awaiting_rolls]
     ROLLCHECK -->|no| FINISH_RES
 
     subgraph finish_res["finish_resolution — after rolls or auto-success"]
-        FINISH_RES[resolve_npc_actions  — code] --> CGM{combat_active?}
-        CGM -->|yes| COMBAT_GM[run_combat_gm  ☆ AI]
-        CGM -->|no| MECHANIC[run_mechanic  ☆ AI]
+        FINISH_RES{combat_active?}
+        FINISH_RES -->|yes| COMBAT_GM[run_combat_gm  ☆ AI]
+        FINISH_RES -->|no| MECHANIC[run_mechanic  ☆ AI]
         COMBAT_GM --> APPLY_MUT[apply_mutations  — code]
         MECHANIC --> APPLY_MUT
         APPLY_MUT --> TK_MECH[run_time_keeper]
@@ -166,8 +161,8 @@ flowchart TB
         CHRONICLER --> CHRON_OUT[dm_brief + forbidden_elements + plot_state updates]
         CHRON -->|no| SKIP_CHRON[dm_brief = nil]
         CHRON_OUT & SKIP_CHRON --> STAGEHAND[run_output_phase — Stagehand]
-        STAGEHAND --> COMBAT_CHECK{combat beacon signaled\ncombat_started?}
-        COMBAT_CHECK -->|yes| WARMASTER_B[Warmaster Path B — from combat beacon]
+        STAGEHAND --> COMBAT_CHECK{RollRequest signaled\ncombat_started?}
+        COMBAT_CHECK -->|yes| WARMASTER_B[Warmaster Path B — from RollRequest]
         WARMASTER_B --> WB1[initialize_from_names!  ☆ AI for unknown creatures]
         WB1 --> WB2{Creatures spawned?}
         WB2 -->|yes| PAUSE_INIT_B[Return :awaiting_initiative]
@@ -243,7 +238,7 @@ animated thinking dots instead of a static spinner. Each AI-heavy step
 calls `broadcast_progress("message")` at its entry point:
 
 ```ruby
-def run_parallel_evaluation(intention)
+def run_roll_request(intention)
   broadcast_progress("Reading the situation...")
   # ...
 end
@@ -258,7 +253,8 @@ in place so the status line animates in without replacing the dots.
 
 | Step | Message shown to player |
 |------|------------------------|
-| `ParallelEvaluation` | "Reading the situation..." |
+| `RollRequest` | "Reading the situation..." |
+| `CombatRollRequest` | "Adjudicating your move..." |
 | `Chronicler` | "Consulting the chronicle..." |
 | `Narrate` | "Writing the story..." |
 | `ContextUpdate` | "Remembering the world..." |
@@ -342,26 +338,33 @@ The outer orchestration loop: for each action in the queue:
 
 ### Step 5 — AdventureLoopResolution.resolve
 
-The inner pipeline entry point. Always uses `Steps::ParallelEvaluation` (Node microservice). Requires `EVALUATOR_URL` to be set (default: `http://evaluator:3001`).
+The inner pipeline entry point. Dispatches deterministically on combat state:
 
-#### ParallelEvaluation
+- **Out of combat → `Steps::RollRequest`** — single AI call. Top-K rules
+  retrieved from `rule_embeddings` via `Rules::Lookup`; top-K narrative
+  beats retrieved from `adventure_narrative_facts` via `Lore::FactsLookup`.
+  Prompt has no character block, no full micro-context dump — just the
+  intent + retrieved rules + retrieved beats. The model emits one roll
+  spec (or "no roll") plus the cross-cutting signals downstream code
+  consumes.
+- **Combat-active → `Steps::CombatRollRequest`** — single AI call. Same
+  shape as RollRequest, plus combat-aware context: legal attack options
+  (computed pre-call by `Combat::AttackOptionBuilder`), action economy,
+  AoO threats from `Combat::Rules.aoo_threats_against`, and the
+  battlefield slice. Combat rolls emit `attack_option_id` (never DC) for
+  attack rolls and `dc_formula` for saving throws; DCs and damage are
+  resolved post-call by `Phases::CombatMechanicResolution` from the
+  sheet + grid.
 
-Three sequential HTTP calls to the **Node evaluator microservice** (`evaluator/`), each implementing a different parallelism pattern. The Node service is stateless — no DB access, no domain logic, no config; model and token budgets travel inline per request from `DmConfig`.
+Both steps return an {EvaluationResult} value object holding
+`intention`, `affected_contexts`, `primary_domain`, `destination`,
+`combat_transition`, `combat_combatants`, `player_rolls`, `consequences`,
+`mechanical_summary`, plus predicates (`affected?`, `expand_scene?`,
+`combat_starting?`, `social_scene_only?`).
 
-**Phase 1 — Beacons (`POST /fan_out`):** Renders 6 domain-specific beacon ERB prompts in Rails, then POSTs them to Node which runs all 6 OpenAI calls via `Promise.all`. `converge_beacons` (pure Ruby data merge) builds the intent hash from the 6 results.
-
-**Phase 2 — Mechanical Evaluation (`POST /sequential`):** For each affected domain, Rails renders a base mech_eval system prompt (omitting previous summaries — Node injects them). Node runs calls sequentially, prepending accumulated `mechanical_summary` values to each subsequent prompt for cross-domain awareness.
-
-**Phase 3 — Roll Qualifier (`POST /fan_out`):** For each domain result with rolls, Rails renders a roll_qualifier prompt. Node runs them in parallel. Rails applies the results (Take 10/20 eligibility, situational modifiers) and calls `compute_take_values` for sheet-math.
-
-All Node results are persisted via `@log.ai_log!` — `PlayLog` and `AiUsageRecord` records are created identically to any other AI step. On Node 4xx/5xx, `partial_results` from the error body are logged before raising `AiError`.
-
-The output `intent` hash (from either path) includes:
-- `expand_scene` (bool) — significant social interaction warrants a scene expansion.
-- `affected_contexts` (array) — domain names that this action touches.
-- `macro_significant` (bool) — major story beat (quest completion, boss defeat, critical secret).
-- `destination`, `transition` — from the traversal domain.
-- `domain_results` (hash) — per-domain detail (used by social expansion and Stagehand).
+The previous 3-phase ParallelEvaluation chain (beacon → mechanical_evaluation
+→ roll_qualifier via the Node evaluator's `/fan_out` and `/sequential`)
+has been retired — see Decision 4.
 
 ---
 
@@ -386,11 +389,12 @@ The **sanity gate** validates the action before any mechanics are resolved. Its 
 - World check fails → `:rejected` (optionally with a `dm_message` shown as narrative prose instead of a system error). Never reached when skipped.
 - Capability check fails → `:rejected`.
 
-**Post-gate processing (code):**
+**Post-gate processing (code), in `build_merged_from_result`:**
 
-1. `merge_mechanical_evaluations` — flattens all domain results from ParallelEvaluation.
-2. `warn_duplicate_rolls` — detects duplicate roll requests across domains and logs a warning. Does **not** remove duplicates (any fix must come from prompt improvement).
-3. `filter_auto_success_rolls!` — removes rolls the character cannot possibly fail: DC ≤ 0, skill modifier + 1 ≥ DC, or Take 10 value ≥ DC (and player is Take 10 eligible). Also keeps all attack rolls (never auto-succeed). Logs removed rolls for visibility.
+1. Flattens the EvaluationResult's `player_rolls` / `consequences` / `mechanical_summary` into the merged hash that finish_resolution / Mechanic / Combat GM consume.
+2. `Rolls::PlayerRolls.deduplicate_rolls!` — defensive observability. With single-call RollRequest the model emits at most one roll, so cross-domain duplicates are no longer a structural risk; if a duplicate slips through, a warning lands in play_log and nothing is silently rewritten.
+3. `Rolls::PlayerRolls.filter_auto_success_rolls!` — removes rolls the character cannot possibly fail: DC ≤ 0, skill modifier + 1 ≥ DC. Attack rolls are preserved (they never auto-succeed). Logs removed rolls for visibility.
+4. `Rolls::PlayerRolls.assign_request_ids!` — every roll gets a stable UUID for the awaiting-rolls pause/resume contract.
 
 **If any player rolls remain** → returns `{ status: :awaiting_rolls }`. Pipeline pauses.
 
@@ -405,14 +409,14 @@ The **sanity gate** validates the action before any mechanics are resolved. Its 
 Early exit: world check fails → `:rejected`. Never reached when skipped.
 
 **Social expansion branch** (`expand_scene = true`):
-- Triggered when the social beacon set `expand_scene`. Represents significant social interactions (negotiations, transactions, confrontations) that merit an immersive NPC scene.
+- Triggered when RollRequest set `expand_scene` for a social-affected action. Represents significant social interactions (negotiations, transactions, confrontations) that merit an immersive NPC scene.
 - A single AI call (`social_expansion`) generates a rich scene description with NPC name, attitude, and new story elements.
 - Returns `{ status: :social_scene }`. The action queue **breaks** — remaining actions are abandoned.
 - TimeKeeper is **skipped**. No in-game time passes until the social scene resolves.
 
 **TimeKeeper** (see dedicated section below) runs next. If an encounter is triggered → Warmaster Path A (see Combat section). Otherwise:
 
-**Momentum** (AI) — Determines what factually happened when no dice were needed. Produces `outcome` (plain text), optionally `mutations`, and refines `affected_contexts` by merging the evaluation's assessment with its own. Also writes `verdict_outcome`, `pipeline_outcome`, and merged `affected_contexts` to the `AdventureLoop`.
+**Momentum** (AI) — Determines what factually happened when no dice were needed. Produces `outcome` (plain text), optionally `mutations`, and refines `affected_contexts` by merging RollRequest's assessment with its own. Also writes `verdict_outcome`, `pipeline_outcome`, and merged `affected_contexts` to the `AdventureLoop`.
 
 Returns `{ status: :resolved }`.
 
@@ -422,11 +426,10 @@ Returns `{ status: :resolved }`.
 
 Runs after the player submits dice results, or immediately when auto-success is detected.
 
-1. **resolve_npc_actions** — Pure code. Formats NPC dice results by rolling each NPC action's dice formula.
-2. **run_mechanic / run_combat_gm** (AI) — Non-combat and inactive-combat resolutions use Mechanic. Active combat routes through Combat GM, which owns combat-specific outcome synthesis and battlefield/action-economy patches.
-3. **apply_mutations** (code) — Applies `mutations` to the character sheet and creature sheets immediately. Handles HP changes, condition additions/removals, item consumption, location transitions.
-4. **run_time_keeper** — See dedicated section. Runs after mutations, so combat-aware time checks use canonical post-mutation state.
-5. **maybe_run_world_turn** — In active combat, code-owned World Turn resolves routine NPC initiative turns after the player's action, advances combat state, and can short-circuit on player death/incapacitation or combat end.
+1. **run_mechanic / run_combat_gm** (AI) — Non-combat resolutions use Mechanic. Active combat routes through Combat GM, which owns combat-specific outcome synthesis and battlefield/action-economy patches.
+2. **apply_mutations** (code) — Applies `mutations` to the character sheet and creature sheets immediately. Handles HP changes, condition additions/removals, item consumption, location transitions.
+3. **run_time_keeper** — See dedicated section. Runs after mutations, so combat-aware time checks use canonical post-mutation state.
+4. **maybe_run_world_turn** — In active combat, code-owned World Turn resolves routine NPC initiative turns after the player's action, advances combat state, and can short-circuit on player death/incapacitation or combat end.
 
 Returns `{ status: :resolved }` or `{ status: :awaiting_initiative }` or `{ status: :encounter }`.
 
@@ -442,7 +445,7 @@ Estimation uses this waterfall, short-circuiting at the first match:
 
 | Condition | Method | Formula |
 |-----------|--------|---------|
-| Destination known (traversal beacon set `destination`) | Code | `distance_miles / speed_mph` (from character speed + terrain modifier) |
+| Destination known (RollRequest emitted `destination`) | Code | `distance_miles / speed_mph` (from character speed + terrain modifier) |
 | Combat active (`combat_context.active = true`) | Code | 6 seconds = 0.0017 hours per round |
 | Intention mentions rest/sleep/camp | Code | Short rest → 1h, Long rest → 8h |
 | `@loop` tagged `took_20` | Code | 0.67 hours (~40 minutes) |
@@ -493,9 +496,9 @@ Combat can start in two fundamentally different ways:
 
 Triggered when TimeKeeper's Harbinger rolls an encounter. The encounter table entry is retrieved from `@loop` (stored by Harbinger's `expand_encounter`). If the entry has a creature manifest (deterministic spawn list), creatures are spawned from it. If not but `encounter_creatures` was set by the AI expansion, those are used. Otherwise, spawning is aborted and the pipeline returns `{ status: :encounter }` (no initiative requested).
 
-#### Path B — Combat beacon transition (Stagehand)
+#### Path B — RollRequest combat-started transition (Stagehand)
 
-Triggered during the output phase when Stagehand detects that one or more beacons returned `transition: "combat_started"` (or ending in `_to_combat`). This handles narrative-originated combat: the player's description triggered a fight without an encounter table roll. Combatant names from all beacon results are passed to `Warmaster.initialize_from_names!`.
+Triggered during the output phase when Stagehand detects that RollRequest emitted `transition: "combat_started"` (or any `_to_combat` value). This handles narrative-originated combat: the player's description triggered a fight without an encounter table roll. Combatant names from `combat_combatants` are passed to `Warmaster.initialize_from_names!`.
 
 In both paths, `Warmaster`:
 1. Finds or creates `CreatureSheet` records (bestiary lookup → fuzzy match → AI generation → template fallback).
@@ -594,10 +597,10 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 |-----------|-----|-------|
 | Intake | ✅ AI | Danger scoring, sanitization, DM query detection |
 | Sequencer | ✅ AI | Action splitting (skipped if `action_queue` off) |
-| ParallelEvaluation (beacon) | ✅ AI ×6 | Per-domain intent classification via Node `/fan_out` |
-| ParallelEvaluation (mech_eval) | ✅ AI ×N + ❌ code normalization for `combat` | Sequential per-domain mechanical resolution via Node `/sequential`; combat responses are normalized in Ruby before roll merge |
-| ParallelEvaluation (roll_qualifier) | ✅ AI ×N | Per-domain Take 10/20 + situational modifiers via Node `/fan_out` |
-| converge_beacons | ❌ Code | Merges 6 beacon results into the `intent` hash |
+| RollRequest | ✅ AI ×1 | Out-of-combat single call. Top-K rules + scene beats from pgvector; no character block. Emits one roll spec or "no roll" plus cross-cutting signals |
+| CombatRollRequest | ✅ AI ×1 + ❌ code clamping (`Phases::CombatMechanicResolution`) | Combat-active free-text. Carries attack options, action economy, threats, battlefield text. Emits `attack_option_id` (never DC); Ruby resolves attack mode, defense kind, damage metadata, and DCs from the sheet |
+| Combat::PlayerActionResolver | ❌ Code | Deterministic Combat HUD path: server-authoritative attack / move / end-turn |
+| Combat::NpcTurn | ❌ Code | Per-NPC turn engine driven off `behavior_policy` (no AI call per NPC) |
 | World consistency check | ✅ AI | Scene/entity validation |
 | Capability check | ✅ AI | Spell/feat/item ownership |
 | Momentum | ✅ AI | Non-mechanical outcome |

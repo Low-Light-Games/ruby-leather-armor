@@ -21,23 +21,27 @@ Player input
   │
   └─ Per action:
        │
-       ├─ Player Interpreter (AI) ── extracts pure mechanical intent
+       ├─ Evaluation (single AI call):
+       │    ├─ RollRequest         ── out-of-combat: rules+beats RAG, picks one roll spec or "no roll"
+       │    └─ CombatRollRequest   ── in-combat free-text: attack options + battlefield context
        │
-       ├─ Beacon (AI) ───────────── per-domain interpretation (combat, social, etc.)
-       │
-       ├─ Mechanics gate (parallel):
-       │    ├─ Mechanical Evaluation (AI) ── determines rolls, DCs, NPC actions
-       │    └─ Sanity Checker (AI/code) ──── capability + world consistency
+       ├─ Sanity Checker (AI/code) ── capability + world consistency
        │
        ├─ ⏸ awaiting player rolls (if needed)
        │
-       ├─ Roll Qualifier (AI) ───── situational modifiers, Take 10/20
-       ├─ Verdict (AI) ─────────── post-roll arbitration, structured mutations
+       ├─ Verdict (AI):
+       │    ├─ Mechanic            ── post-roll arbitration out of combat
+       │    └─ Combat GM           ── post-roll arbitration in combat (verdict step only)
+       │
        ├─ Mutations (code) ──────── applies HP, conditions, inventory changes
        ├─ Time Keeper (AI/code) ── time estimation → GameClock advancement
        ├─ Harbinger (code) ──────── random encounter checks
        │    └─ Warmaster (code) ── combat setup if encounter triggers
        │         └─ ⏸ awaiting initiative
+       │
+       ├─ Combat HUD path (deterministic, when player uses the action panel):
+       │    ├─ Combat::PlayerActionResolver ── attack / move / end-turn (server-side dice + clamping)
+       │    └─ Combat::NpcTurn               ── per-NPC engine off behavior_policy (no AI calls)
        │
        └─ Output phase (parallel):
             ├─ Chronicler (AI) ──────── plot state, clue discovery, DM notes
@@ -53,15 +57,15 @@ Player input
 | **Classify** | Tags the action domain: combat, traversal, social, exploration, rest, inventory, or dm_query |
 | **DM Query** | Answers out-of-character questions without running the full pipeline |
 | **Sequencer** | Breaks compound actions (*"I search the room and then open the door"*) into ordered sub-actions |
-| **Player Interpreter** | Strips flavor to extract pure mechanical intent |
-| **Beacon** | Interprets the action within each relevant domain context, run in parallel per domain |
-| **Mechanical Evaluation** | Determines required rolls, DCs, NPC reactions, and consequences |
-| **Roll Qualifier** | Adds situational modifiers, decides Take 10/20 eligibility |
-| **Sanity Checker** | Validates the action is physically/narratively possible |
-| **Verdict** | Arbitrates roll outcomes and produces structured mutation instructions |
+| **RollRequest** | Out-of-combat single AI call. Decides whether the intent needs a die roll, emits one roll spec (or "no roll") plus the cross-cutting signals (affected_contexts, expand_scene, transition, combatants). Prompt has no character block — top-K rules and scene beats only, retrieved from pgvector |
+| **CombatRollRequest** | In-combat free-text single AI call. Same shape as RollRequest, but the prompt carries attack options, action economy, threats, and the battlefield slice. Combat rolls emit `attack_option_id`; DCs and damage are resolved post-call from the sheet via `CombatMechanicResolution` |
+| **Sanity Checker** | Capability check (sheet-based) + world consistency check (pgvector retrieval of established narrative facts) |
+| **Mechanic** | Post-roll arbitration out of combat: produces structured mutations |
+| **Combat GM** | Post-roll arbitration in combat: produces structured mutations + battlefield patches; consumes deterministic attack-roll facts assembled from the resolved `attack_option_id` |
 | **Time Keeper** | Estimates how much in-game time the action took |
 | **Chronicler** | Tracks plot progression, discovered clues, and DM-facing notes |
 | **Narrate** | Generates the narrative prose the player actually reads |
+| **Combat Narrator** | Async flavor pass after End Turn — turns the round's deterministic NPC events into one paragraph |
 | **Context Update** | Refreshes six micro-contexts (combat, traversal, social, exploration, rest, inventory) and the macro story summary |
 
 ### Deterministic Steps
@@ -75,8 +79,9 @@ Player input
 | **CombatMechanicResolution** | Normalizes combat mech-eval JSON into authoritative attack/save DCs from live sheet data |
 | **World Turn** | Resolves post-player NPC turns in active combat, advances turn/round state, and short-circuits on combat end |
 | **Stagehand** | Orchestrates the final output shape — decides what gets sent back to the player |
-| **NPC Roll Resolution** | Rolls dice on behalf of NPCs during mechanical evaluation |
-| **AdventureLoopResolution** | Resolves one AdventureLoop row: ParallelEvaluation → Sanity → Mechanic/Combat GM → TimeKeeper → optional World Turn (mixed into Pipeline) |
+| **Combat::PlayerActionResolver** | Server-authoritative attack / move / end-turn for the deterministic Combat HUD |
+| **Combat::NpcTurn** | Per-NPC turn engine driven by `behavior_policy` JSONB (preferred attacks, approach, morale flee) — no AI call per NPC |
+| **AdventureLoopResolution** | Resolves one AdventureLoop row: RollRequest or CombatRollRequest → Sanity → Mechanic/Combat GM → TimeKeeper → optional World Turn (mixed into Pipeline) |
 
 ## Architecture
 
@@ -88,7 +93,7 @@ The system separates concerns into three layers:
 
 Each AI step can be configured independently (model, token budget, on/off toggle) through `DmConfig`, an admin-editable settings object.
 
-Prompts live as ERB templates in `app/services/dungeon_master/templates/`, keeping prompt engineering separate from pipeline logic. Most domains still use the generic `mechanical_evaluation` prompt family, while `combat` now uses `combat_mechanic` plus Ruby-side normalization for live AC / save DC resolution.
+Prompts live as ERB templates in `app/services/dungeon_master/templates/`, keeping prompt engineering separate from pipeline logic. The single-call evaluation step (`roll_request` out of combat, `combat_roll_request` in combat) carries no character block; combat rolls emit an `attack_option_id` and DC/damage resolution happens post-call in Ruby via `CombatMechanicResolution`.
 
 Six **micro-contexts** (JSONB columns on `Adventure`) give each step a focused, domain-specific window into game state rather than dumping the full history into every prompt.
 

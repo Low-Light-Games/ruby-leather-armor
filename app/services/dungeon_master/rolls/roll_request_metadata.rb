@@ -50,10 +50,7 @@ module DungeonMaster
         def persisted_roll_request_metadata(result, merged, adventure)
           {
             roll_requests: merged[:player_rolls],
-            pending_npc_actions: MechanicalEvaluationNpcActions.filter_for_combat_finish(
-              merged[:npc_actions],
-              combat_active: adventure.combat_active?
-            ),
+            pending_npc_actions: [],
             pending_consequences: merged[:consequences],
             mechanical_summaries: merged[:mechanical_summaries],
             pending_roll_chain: merged[:roll_chain],
