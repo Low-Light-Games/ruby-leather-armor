@@ -111,6 +111,7 @@ module DungeonMaster
           skills_lookup = skills_lookup_from_sheet(sheet)
           Array(rolls).each do |roll|
             next unless roll.is_a?(Hash)
+
             next unless roll[:type].to_s == "skill_check" && roll[:skill].present?
 
             mod = skills_lookup[roll[:skill].to_s].to_i
