@@ -24,11 +24,6 @@ module Admin
           ? params[:action_queue] \
           : false
 
-      if params[:evaluation_mode].present? &&
-         DmConfig::EVALUATION_MODES.include?(params[:evaluation_mode])
-        new_settings["evaluation_mode"] = params[:evaluation_mode]
-      end
-
       # Numeric settings
       if params[:temperature].present?
         temp = params[:temperature].to_f.clamp(0.0, 2.0)

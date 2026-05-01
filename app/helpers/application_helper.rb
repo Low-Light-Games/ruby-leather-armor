@@ -10,10 +10,9 @@ module ApplicationHelper
 
   def ai_log_type_badge_class(event_type)
     case event_type
-    when "triage", "sanitize", "classify", "intake", "dispatcher", "beacon", "capability_guardrail", "sanity_checker", "sanity_checker_world", "chronicler" then "type-triage"
+    when "triage", "sanitize", "classify", "intake", "dispatcher", "capability_guardrail", "sanity_checker", "sanity_checker_world", "chronicler" then "type-triage"
     when "capability_rejection", "world_check_failure", "intake_rejection" then "type-rejection"
-    when "sequencer", "intent" then "type-intent"
-    when "mechanical_evaluation", "roll_qualifier" then "type-ruling"
+    when "sequencer", "intent", "roll_request", "combat_roll_request" then "type-intent"
     when "ruling", "verdict", "mechanic" then "type-evaluate"
     when "momentum"                      then "type-evaluate"
     when "social_expansion"              then "type-evaluate"
@@ -33,11 +32,7 @@ module ApplicationHelper
   end
 
   def pipeline_step_title(log)
-    title = log.event_type.humanize
-    if log.prompt_summary =~ /\[(\w+)\]/
-      title = "#{title} — #{$1}" if log.event_type.in?(%w[beacon mechanical_evaluation roll_qualifier])
-    end
-    title
+    log.event_type.humanize
   end
 
   def format_duration_ms(ms)

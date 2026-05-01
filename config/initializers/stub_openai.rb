@@ -44,13 +44,9 @@ if ENV['STUB_OPENAI'].present?
       { 'outcome' => 'The lock clicks open with a satisfying clunk.', 'mutations' => {} }.to_json
   }.freeze
 
-  # RollRequest / CombatRollRequest stubs — added when PR-I flipped
-  # DmConfig#evaluation_mode default to 'roll_request', sending free-text
-  # turns through Steps::RollRequest (and combat free-text through
-  # Steps::CombatRollRequest) instead of the legacy beacon→mech_eval
-  # chain. Both steps hit OpenAI directly with their own prompts; the
-  # stubs below mirror the lock-pick branching the legacy /sequential
-  # stub already does, so existing E2E expectations keep passing.
+  # RollRequest / CombatRollRequest stubs — both steps hit OpenAI
+  # directly with their own prompts; lock-pick detection branches the
+  # response so existing E2E expectations keep passing.
   ROLL_REQUEST_NO_ROLL = lambda do |intention, mechanical_summary|
     {
       'needs_roll' => false,
@@ -153,15 +149,9 @@ if ENV['STUB_OPENAI'].present?
   end
 
   # ── Node evaluator HTTP stubs ──────────────────────────────────────────────
-  # POST /moderate   — synchronous moderation for non-trusted users (see
-  #                    DungeonMasterService#execute_prompt); without this stub,
-  #                    Playwright would be the only flow that opens a real TCP
-  #                    socket to EVALUATOR_URL before fan_out/sequential.
-  # POST /fan_out  — beacons (all 6 domains in parallel) and roll_qualifier
-  # POST /sequential — mech_eval (only affected domains, sequentially)
-  #
-  # Lock-pick detection: any user_message containing "lock" triggers a
-  # Disable Device DC 15 roll for the exploration domain.
+  # POST /moderate   — synchronous moderation for non-trusted users.
+  # POST /fan_out    — sanity gate, narrative phase (narrate + context updates),
+  #                    micro-context updates, NPC actions in WorldTurn.
 
   evaluator_base = ENV.fetch('EVALUATOR_URL', 'http://evaluator:3001')
 
@@ -176,7 +166,6 @@ if ENV['STUB_OPENAI'].present?
            headers: { 'Content-Type' => 'application/json' }
          )
 
-  # Helper: build one evaluator result envelope.
   build_entry = lambda do |step, domain, parsed|
     { 'raw_response' => 'stub',
       'parse_status' => 'success',
@@ -189,23 +178,8 @@ if ENV['STUB_OPENAI'].present?
       'request_body' => {} }
   end
 
-  beacon_response = lambda do |domain, is_lock|
-    {
-      'affected' => domain == 'exploration',
-      'needs_mechanics' => is_lock && domain == 'exploration',
-      'macro_significant' => false,
-      'expand_scene' => false,
-      'transition' => nil,
-      'destination' => nil,
-      'combatants' => [],
-      'reasoning' => domain == 'exploration' ? 'Exploration' : 'Not affected'
-    }
-  end
-
-  fan_out_parsed_response = lambda do |step, domain, is_lock|
+  fan_out_parsed_response = lambda do |step|
     case step
-    when 'roll_qualifier' then { 'qualifications' => [] }
-    when 'beacon' then beacon_response.call(domain, is_lock)
     when 'sanity_checker_world' then { 'consistent' => true, 'reason' => nil, 'dm_message' => nil }
     when 'sanity_checker' then { 'allowed' => true, 'reason' => nil }
     when 'micro_context_update' then { 'context_updates' => {} }
@@ -226,52 +200,11 @@ if ENV['STUB_OPENAI'].present?
     rescue StandardError
       []
     end
-    first_step = body.dig(0, 'meta', 'step').to_s
-    user_msg   = body.dig(0, 'user_message').to_s.downcase
-    is_lock    = user_msg.include?('lock')
-
-    results = if first_step == 'roll_qualifier'
-                body.map do |p|
-                  build_entry.call('roll_qualifier', p.dig('meta', 'domain'),
-                                   'qualifications' => [])
-                end
-              else
-                body.map do |p|
-                  st = p.dig('meta', 'step').to_s
-                  domain = p.dig('meta', 'domain')
-                  build_entry.call(st, domain, fan_out_parsed_response.call(st, domain, is_lock))
-                end
-              end
-
-    { status: 200, body: results.to_json,
-      headers: { 'Content-Type' => 'application/json' } }
-  end
-
-  WebMock.stub_request(:post, "#{evaluator_base}/sequential")
-         .to_return do |request|
-    body = begin
-      JSON.parse(request.body)
-    rescue StandardError
-      []
-    end
-    user_msg = body.dig(0, 'user_message').to_s.downcase
-    is_lock  = user_msg.include?('lock')
 
     results = body.map do |p|
+      st = p.dig('meta', 'step').to_s
       domain = p.dig('meta', 'domain')
-      # Sequential mech_eval: combat domain uses CombatMechanicResolution when player_rolls is non-empty
-      # (defense_kind + no model dc). Keep empty rolls here so default stubs need no combat_context.
-      parsed = if is_lock && domain == 'exploration'
-                 { 'player_rolls' => [{ 'type' => 'skill_check', 'skill' => 'Disable Device',
-                                        'dc' => 15, 'description' => 'Pick the lock' }],
-                   'npc_actions' => [],
-                   'consequences' => [],
-                   'mechanical_summary' => 'Player must beat DC 15 Disable Device' }
-               else
-                 { 'player_rolls' => [], 'npc_actions' => [], 'consequences' => [],
-                   'mechanical_summary' => 'No mechanical interaction' }
-               end
-      build_entry.call('mechanical_evaluation', domain, parsed)
+      build_entry.call(st, domain, fan_out_parsed_response.call(st))
     end
 
     { status: 200, body: results.to_json,

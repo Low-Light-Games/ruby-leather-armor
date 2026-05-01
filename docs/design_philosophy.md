@@ -118,11 +118,14 @@ receives a bloated, 13,000-character prompt doing eight things.
 **In practice:**
 - The original single-prompt DM was replaced by a 10+ step pipeline
 - Triage was split into Sanitize + Classify when both tasks degraded
-- Evaluation was consolidated from 6 parallel beacons + sequential
-  MechanicalEvaluation + RollQualifier into a single UnifiedEvaluation
-  call when the multi-step cost outweighed the isolation benefit
-- MechanicalEvaluation was originally split from Verdict when roll
-  arbitration was conflated with roll identification
+- Evaluation went through three intermediate forms (per-domain Ruby-thread
+  chain → UnifiedEvaluation → ParallelEvaluation via the Node evaluator)
+  before consolidating into the current single-call RollRequest /
+  CombatRollRequest, where the prompt is small enough that splitting per
+  domain stopped earning its keep — see `docs/pipeline_steps.md` Decision 4
+- Combat NPC turns were extracted from the AI-arbitrated combat path into
+  the deterministic `Combat::NpcTurn` engine driven by per-creature
+  `behavior_policy`, leaving AI as a flavor pass via `CombatNarratorJob`
 - Context updates were decoupled from narrative so they work from
   unambiguous factual outcomes
 
@@ -611,11 +614,13 @@ to the prompt and hope. If the bound is real, write the clamp.
   character sheet is ground truth; this is arithmetic, not heuristics.
 - **Correct (deterministic):** `apply_mutations` clamps HP between `-CON`
   and `max_hp`. HP bounds are game rules with no ambiguity.
-- **Wrong (heuristic):** `deduplicate_rolls!` pattern-matched
-  `[skill, type, dc]` on AI output to remove duplicates the AI created.
-  The code was guessing which rolls are "the same" based on string
-  comparison of AI-generated skill names. Removed in favor of a stronger
-  MechEval prompt instruction.
+- **Wrong (heuristic):** the original `deduplicate_rolls!` pattern-matched
+  `[skill, type, dc]` on AI output to remove duplicates the legacy
+  per-domain MechEval chain created. The code was guessing which rolls
+  are "the same" based on string comparison of AI-generated skill names.
+  The structural fix was the single-call RollRequest, which by
+  construction emits one roll. The dedup pass survives only as a
+  defensive observability hook that warns rather than rewrites.
 - **Wrong (heuristic):** domain-authority dedup that resolves conflicting
   DCs by checking which domain "owns" a skill name. This is still
   string-matching AI output; the right fix is a prompt that prevents the

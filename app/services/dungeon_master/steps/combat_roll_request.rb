@@ -2,56 +2,35 @@
 
 module DungeonMaster
   module Steps
-    # Pipeline Step: CombatRollRequest — single-call replacement for the
-    # legacy beacon → mechanical_evaluation → roll_qualifier chain on
-    # combat-active free-text turns. Mirrors `Steps::RollRequest` but
+    # Pipeline Step: CombatRollRequest — single AI call that adjudicates
+    # combat-active free-text turns. Mirrors {Steps::RollRequest} but
     # carries combat-aware context (attack options, action economy,
-    # threats, battlefield) so the model can pick a roll that actually
-    # fits the tactical state.
+    # threats, battlefield) so the model can pick a roll that fits the
+    # tactical state.
     #
-    # Pre-call code:
-    #   * Pulls legal attack options from
-    #     `DungeonMaster::Combat::AttackOptionBuilder`.
-    #   * Pulls threats / flanking facts from `Combat::Positions` +
-    #     `Combat::Rules`.
-    #   * RAG-retrieves combat-biased rules via `Rules::Lookup` and
-    #     scene beats via `Lore::FactsLookup`.
+    # The AI receives attack options / threats / battlefield text but no
+    # character sheet — combat DCs and bonuses resolve post-call from the
+    # sheet via {Phases::CombatMechanicResolution}, which clamps the
+    # AI-emitted `attack_option_id` against the live attack options.
     #
-    # The AI call:
-    #   * Receives attack_options / threats / battlefield text but NO
-    #     character sheet — DCs and bonuses resolve post-call from the
-    #     sheet (mirroring the existing combat_mechanic invariant).
-    #   * Output: same flat JSON as the out-of-combat RollRequest, but
-    #     `roll.type` may be `attack_roll | saving_throw | skill_check`,
-    #     and combat rolls emit `attack_option_id` + `target` instead of
-    #     a DC.
-    #
-    # Post-call code:
-    #   * `CombatRollRequest::Adapter` translates the flat JSON into
-    #     `[intent, evaluations]` matching `ParallelEvaluation`,
-    #     routing combat rolls through `CombatMechanicResolution` for
-    #     deterministic DC computation.
-    #   * `Rolls::PlayerRolls.deduplicate_rolls!` and
-    #     `compute_take_values` still run.
-    #
-    # Routing: `AdventureLoopResolution#run_evaluation_phase` selects
-    # this step when `combat_active?` AND
-    # `DmConfig#combat_roll_request_mode?`. The legacy
-    # `Steps::ParallelEvaluation` chain stays the default until
-    # staging soak validates this path.
+    # Returns an {EvaluationResult} built directly from the parsed JSON.
     module CombatRollRequest
-      include Phases::RollQualifierPhase
-
       RULES_TOP_K = 4
       BEATS_TOP_K = 6
       DEFAULT_PROMPT_PROGRESS = 'Adjudicating your move...'
+
+      DOMAIN_PRIORITY = %w[combat buff social traversal exploration rest inventory].freeze
 
       private
 
       def run_combat_roll_request(intention)
         broadcast_progress(DEFAULT_PROMPT_PROGRESS)
 
-        ctx = build_combat_roll_request_context(intention)
+        ctx = CombatRollRequest::Context.build(
+          intent: intention, adventure: @adventure, sheet: @sheet,
+          ai: @ai, log: @log,
+          rules_top_k: RULES_TOP_K, beats_top_k: BEATS_TOP_K
+        )
         prompt_summary = "CombatRollRequest: \"#{@log.truncate(intention)}\""
         system_prompt = PromptRenderer.render('combat_roll_request', combat_roll_request_context: ctx)
         request_body = { system_prompt: system_prompt, user_message: intention }
@@ -68,85 +47,106 @@ module DungeonMaster
           [raw, @ai.parse_json(raw)]
         end
 
-        intent, evaluations = CombatRollRequest::Adapter.call(
-          parsed: parsed, intention: intention, adventure: @adventure, sheet: @sheet, log: @log
-        )
+        result = build_evaluation_result(parsed: parsed, intention: intention)
 
-        log_combat_roll_request_to_loop(intent, evaluations)
-        evaluations = evaluations.map { |e| compute_take_values(e) }
-        [intent, evaluations]
+        log_combat_roll_request_to_loop(result)
+        Rolls::PlayerRolls.compute_take_values!(result.player_rolls, sheet: @sheet)
+        result
       end
 
-      def build_combat_roll_request_context(intention)
-        beats = retrieve_beats_for_combat_roll_request(intention)
-        rules = retrieve_rules_for_combat_roll_request(intention)
-        combat_ctx = @adventure.combat_context.is_a?(Hash) ? @adventure.combat_context : {}
+      def build_evaluation_result(parsed:, intention:)
+        parsed = (parsed || {}).deep_symbolize_keys
+        affected = ordered_affected_domains(parsed[:affected_domains])
+        rolls = needs_roll?(parsed) ? [normalize_combat_roll(parsed[:roll], parsed[:mechanical_summary])] : []
 
-        CombatRollRequest::Context.new(
-          intent: intention,
-          retrieval: { recent_beats: beats, relevant_rules: rules },
-          combat: build_combat_facts(combat_ctx),
-          state: { round: combat_ctx['round'], current_turn: combat_ctx['current_turn'] }
+        EvaluationResult.new(
+          intention: intention,
+          affected_contexts: affected,
+          player_rolls: rolls,
+          consequences: Array(parsed[:consequences]).map(&:to_s).reject(&:blank?),
+          mechanical_summary: parsed[:mechanical_summary].to_s.presence || '(no mechanical summary)'
         )
       end
 
-      def build_combat_facts(combat_ctx)
+      def needs_roll?(parsed)
+        parsed[:needs_roll] == true && parsed[:roll].is_a?(Hash)
+      end
+
+      def normalize_combat_roll(raw, mechanical_summary)
+        raw = raw.deep_symbolize_keys
+        case raw[:type].to_s
+        when 'attack_roll', 'saving_throw' then resolve_combat_roll(raw)
+        else                                    normalize_skill_roll(raw, mechanical_summary)
+        end
+      end
+
+      def resolve_combat_roll(raw)
+        DungeonMaster::Steps::Phases::CombatMechanicResolution
+          .send(:normalize_player_roll, raw, 0, context: combat_resolution_context)
+          .deep_symbolize_keys
+          .merge(rule_slug: raw[:rule_slug])
+          .compact
+      rescue DungeonMaster::CombatMechanicResolutionError => e
+        @log&.play_log!(
+          'combat_mech_eval_resolution_error',
+          "CombatRollRequest: #{e.message}",
+          parsed_response: { raw: raw }
+        )
         {
-          attack_options: DungeonMaster::Combat::AttackOptionBuilder.call(sheet: @sheet, adventure: @adventure),
-          action_economy: combat_ctx['action_economy'] || {},
-          threats: build_threats_for_player,
-          battlefield_summary: DungeonMaster::Battlefield::PromptSerializer.slice_for_adventure(@adventure)
-        }
+          type: raw[:type], domain: 'combat',
+          description: raw[:description].presence || '(combat roll)',
+          rule_slug: raw[:rule_slug], dc: nil,
+          error: e.message
+        }.compact
       end
 
-      def build_threats_for_player
-        player_pos = ::Combat::Positions.player_position(@adventure)
-        return [] unless player_pos&.coordinates_present?
-
-        others = ::Combat::Positions.for_adventure(@adventure)
-                                    .reject { |p| p.token_id == ::Combat::Positions::PLAYER_TOKEN_ID }
-
-        threats = ::Combat::Rules.aoo_threats_against(mover: player_pos, mover_from: player_pos, others: others)
-        threats.map { |threat| CombatRollRequest::ThreatSummary.new(threat: threat, player_pos: player_pos).to_h }
+      def normalize_skill_roll(raw, mechanical_summary)
+        {
+          type: raw[:type].presence || 'skill_check',
+          skill: raw[:skill],
+          save: raw[:save],
+          dc: raw[:dc],
+          description: raw[:description].presence || mechanical_summary.to_s.presence || '(no description)',
+          domain: 'combat',
+          rule_slug: raw[:rule_slug],
+          take_10_eligible: raw[:take_10_eligible] == true,
+          take_20_eligible: raw[:take_20_eligible] == true,
+          situational_modifiers: DungeonMaster::Rolls::SituationalModifiers.normalize(raw[:situational_modifiers])
+        }.compact
       end
 
-      def retrieve_beats_for_combat_roll_request(intention)
-        return [] unless defined?(DungeonMaster::Lore::FactsLookup)
-
-        DungeonMaster::Lore::FactsLookup.call(
-          adventure: @adventure, ai: @ai, log: @log,
-          query_text: intention, limit: BEATS_TOP_K
+      def combat_resolution_context
+        combat_ctx = @adventure.combat_context.is_a?(Hash) ? @adventure.combat_context : {}
+        DungeonMaster::Steps::Phases::CombatMechanicResolution::CombatResolutionContext.new(
+          combat_ctx: combat_ctx,
+          adventure: @adventure,
+          sheet: @sheet,
+          lookup_context: DungeonMaster::WorldTurn::ParticipantLookup::LookupContext.new(
+            combat_ctx: combat_ctx, player_sheet: @sheet, adventure: @adventure
+          )
         )
       end
 
-      def retrieve_rules_for_combat_roll_request(intention)
-        DungeonMaster::Rules::Lookup.call(
-          ai: @ai, log: @log,
-          query_text: combat_query(intention), limit: RULES_TOP_K
-        )
+      def ordered_affected_domains(raw)
+        domains = Array(raw).map { |d| d.to_s.downcase }.reject(&:blank?).uniq
+        domains << 'combat' unless domains.include?('combat')
+        DOMAIN_PRIORITY.select { |d| domains.include?(d) } + (domains - DOMAIN_PRIORITY)
       end
 
-      def combat_query(intention)
-        "combat: #{intention}"
-      end
-
-      def log_combat_roll_request_to_loop(intent, evaluations)
+      def log_combat_roll_request_to_loop(result)
         return unless @loop
 
-        affected = intent[:affected_contexts]
-        rolls_desc = describe_player_rolls(evaluations)
+        rolls_desc = describe_player_rolls(result.player_rolls)
 
         @loop.batch_update!(
-          new_data: { 'affected_contexts' => affected, 'combat_roll_request' => true },
+          new_data: { 'affected_contexts' => result.affected_contexts, 'combat_roll_request' => true },
           new_status: 'resolving',
-          timeline_entry: combat_roll_request_timeline_entry(affected, rolls_desc)
+          timeline_entry: combat_roll_request_timeline_entry(result.affected_contexts, rolls_desc)
         )
       end
 
-      def describe_player_rolls(evaluations)
-        evaluations.flat_map { |e| e[:player_rolls] }
-                   .map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc] || '?'} (#{r[:domain]})" }
-                   .join(', ')
+      def describe_player_rolls(rolls)
+        rolls.map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc] || '?'} (#{r[:domain]})" }.join(', ')
       end
 
       def combat_roll_request_timeline_entry(affected, rolls_desc)

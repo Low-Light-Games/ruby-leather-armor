@@ -60,25 +60,14 @@ module DungeonMaster
       CREATURE_GENERATION = 'Mid-tier model recommended. Must produce valid PF1e stat blocks ' \
                             '— e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.'
 
-      BEACON = "#{FAST_CHEAP} Per-domain intent classification — runs 6 in parallel via the " \
-               'Node evaluator microservice.'.freeze
-
-      MECHANICAL_EVALUATION = 'Mid-tier model. Per-domain mechanical resolution, run ' \
-                              'sequentially with cross-domain awareness via the Node ' \
-                              'evaluator microservice. e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.'
-
-      ROLL_QUALIFIER = "#{FAST_CHEAP} Determines Take 10/20 eligibility and situational " \
-                       'modifiers. Run in parallel per domain via the Node evaluator microservice.'.freeze
-
       ROLL_REQUEST = 'Cheapest reasoning model — defaults to gpt-5-nano ($0.05/$0.40 per M, ' \
-                     'reasoning) at reasoning_effort=minimal. Single-call replacement for ' \
-                     'beacon→mech_eval→roll_qualifier with RAG-retrieved rules + beats and no ' \
-                     'character block in the prompt. Override only if you want non-reasoning ' \
-                     'behavior, a more capable model, or higher reasoning effort on this step.'
+                     'reasoning) at reasoning_effort=minimal. Single AI call out of combat ' \
+                     'with RAG-retrieved rules + beats and no character block in the prompt. ' \
+                     'Override only if you want non-reasoning behavior, a more capable model, ' \
+                     'or higher reasoning effort on this step.'
 
       COMBAT_ROLL_REQUEST = 'Cheapest reasoning model — defaults to gpt-5-nano at ' \
-                            'reasoning_effort=minimal. Single-call combat-active replacement ' \
-                            'for beacon→mech_eval→roll_qualifier when the player types ' \
+                            'reasoning_effort=minimal. Single AI call when the player types ' \
                             'free-text mid-combat. Carries attack options, action economy, ' \
                             'threats, and battlefield text; emits attack_option_id (never DC) ' \
                             'for combat rolls. Combat math resolves post-call from the sheet ' \

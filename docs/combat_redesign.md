@@ -1,11 +1,12 @@
 # Combat Redesign — Deterministic Combat with AI as Escape Hatch
 
-Plan doc for the combat-determinism arc. This is the work that must land
-before `Steps::ParallelEvaluation` can be retired, and it overlaps with
-that retirement: out-of-combat already runs through
-[`Steps::RollRequest`](../app/services/dungeon_master/steps/roll_request.rb);
-in-combat is the last caller of the legacy beacon → mech_eval →
-roll_qualifier chain.
+Plan doc for the combat-determinism arc. The deterministic combat HUD,
+NPC engine, free-text combat path, narrator, and the matching retirement
+of `Steps::ParallelEvaluation` have all landed — this doc is now the
+canonical reference for *why* the architecture looks the way it does. For
+the current behavioral mapping see
+[`docs/pipeline_steps.md`](pipeline_steps.md) and
+[`docs/pipeline_diagram.md`](pipeline_diagram.md).
 
 For the principles behind these decisions see
 [Design Philosophy](design_philosophy.md), especially Principle 1
@@ -301,40 +302,54 @@ context update without bloating the combat hot path.
   context update; drawing a weapon mid-battle does not.
 - Spec coverage for the trigger heuristic.
 
-### PR-I — Retire `Steps::ParallelEvaluation` (split into two passes)
+### PR-I — Retire `Steps::ParallelEvaluation` ✅ both passes complete
 
-**Pass 1 — landed in this PR (default flip + deprecation):**
-- `DmConfig#DEFAULTS['evaluation_mode']` flipped from `'parallel'` to
-  `'roll_request'` so out-of-combat turns now route through
+**Pass 1 — default flip + deprecation:**
+- `DmConfig#DEFAULTS['evaluation_mode']` was flipped from `'parallel'` to
+  `'roll_request'` so out-of-combat turns route through
   `Steps::RollRequest` by default.
-- `DmConfig#DEFAULTS['combat_evaluation_mode']` flipped from
+- `DmConfig#DEFAULTS['combat_evaluation_mode']` was flipped from
   `'parallel'` to `'combat_roll_request'` so combat free-text turns
-  now route through `Steps::CombatRollRequest` by default.
-- `Steps::ParallelEvaluation` carries a deprecation comment naming the
-  follow-up. The class itself stays callable so admin-overridden
-  adventures (and existing test fixtures) keep working.
-- `ensure_damage_metadata_for_active_hit!` retry path stays for now —
-  it's the safety net for any combat that still ends up in the legacy
-  chain via the override.
+  route through `Steps::CombatRollRequest` by default.
+- `Steps::ParallelEvaluation` carried a deprecation comment naming the
+  follow-up. The class stayed callable so admin-overridden adventures
+  could fall back if needed.
 
-**Pass 2 — follow-up after staging soak (NOT in this PR):**
-- Delete `Steps::ParallelEvaluation`, `Phases::BeaconPhase`,
-  `Phases::MechEvalPhase`, `Phases::RollQualifierPhase`,
-  `EvaluatorTransport`, the legacy mech_eval prompt templates, and the
-  `evaluator/` Node service if no other caller remains.
-- Delete `ensure_damage_metadata_for_active_hit!` and the
-  `build_mech_eval_prompts(["combat"], ...)` retry.
-- Drop the `evaluation_mode` and `combat_evaluation_mode` toggles from
-  `DmConfig` (or pin them as the only modes that remain, and remove
-  the setters from the admin UI).
-- StepRegistry cleanup: remove `beacon`, `mechanical_evaluation`,
-  `roll_qualifier` entries.
-- Update `docs/pipeline_steps.md` and `docs/pipeline_diagram.md`.
-
-**Ship criteria for pass 2:**
-- A staging soak confirms no regressions in either combat or
-  out-of-combat for a full session under the new defaults.
-- Test suite passes with zero references to the deleted code.
+**Pass 2 — clean removal (this work):**
+- Deleted `Steps::ParallelEvaluation`, `Phases::BeaconPhase`,
+  `Phases::MechEvalPhase`, `Phases::MechEvalDomainResult`,
+  `Phases::MechEvalOwnershipViolationLogPayload`,
+  `Phases::RollQualifierPhase`, `Steps::MechanicalEvaluation`,
+  `Steps::RollRequest::Adapter`, `Steps::CombatRollRequest::Adapter`,
+  and `MechanicalEvaluationNpcActions`.
+- Deleted the legacy templates: `beacon.text.erb`, `beacon/*.erb`,
+  `buff_beacon.text.erb`, `combat_beacon.text.erb`,
+  `mechanical_evaluation.text.erb`, `mechanical_evaluation/*.erb`,
+  `roll_qualifier.text.erb`, `combat_mechanic.text.erb`.
+- Deleted `ensure_damage_metadata_for_active_hit!` and the
+  `build_mech_eval_prompts(["combat"], ...)` retry — the deterministic
+  combat seam (`Phases::CombatMechanicResolution` clamping the
+  AI-emitted `attack_option_id`) makes the retry structurally
+  unnecessary.
+- Dropped `prepared_hostile_combat_continues?` and the early-Warmaster
+  `creature_data` field on the intent — combat-start handoff now flows
+  exclusively through Stagehand's `maybe_initialize_combat`.
+- Dropped the `evaluation_mode` and `combat_evaluation_mode` toggles
+  from `DmConfig`; admin UI radio buttons removed.
+- StepRegistry cleanup: removed `beacon`, `mechanical_evaluation`,
+  `roll_qualifier` entries and the matching `ModelHints` constants.
+- New `DungeonMaster::EvaluationResult` value object replaces the
+  `[intent, evaluations]` tuple at the boundary of the evaluation step.
+  Downstream consumers (sanity gate, social expansion) take the value
+  object; finish_resolution / Mechanic / Combat GM continue to take the
+  intent hash via `EvaluationResult#to_intent_hash` for pause/resume
+  serialization compatibility.
+- The `evaluator/` Node service stays — Stagehand, the sanity gate,
+  ContextUpdate, and World Turn still use `/fan_out`. The `/sequential`
+  route has no current caller but is left for future use.
+- `docs/pipeline_steps.md`, `docs/pipeline_diagram.md`,
+  `docs/design_philosophy.md`, `docs/async_pipeline_design.md`, and
+  `README.md` updated to reflect the new canonical evaluation step.
 
 ---
 

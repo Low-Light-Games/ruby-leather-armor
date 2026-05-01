@@ -2,9 +2,10 @@
 
 module DungeonMaster
   module Steps
-    # HTTP client for the Node evaluator microservice (/fan_out, /sequential).
-    # Included by ParallelEvaluation so all pipeline steps can batch LLM calls
-    # without Ruby Thread.new.
+    # HTTP client for the Node evaluator microservice (/fan_out).
+    # Used by Stagehand (parallel narrative + context updates), WorldTurn
+    # (per-NPC action fan-out), ContextUpdate, and SanityChecker so those
+    # steps can batch LLM calls without Ruby Thread.new.
     module EvaluatorTransport
       DEFAULT_EVALUATOR_HTTP_MAX_RETRIES = 1
       DEFAULT_EVALUATOR_HTTP_RETRY_BASE_DELAY_SECONDS = 0.25
@@ -38,11 +39,6 @@ module DungeonMaster
       def evaluator_fan_out!(payloads, intention, phase:)
         evaluator_fan_out_results_by_step(
           call_evaluator!("#{evaluator_base_url}/fan_out", payloads, intention, phase: phase))
-      end
-
-      # POST /sequential — results returned in request order (no step indexing).
-      def evaluator_sequential!(payloads, intention, phase:)
-        call_evaluator!("#{evaluator_base_url}/sequential", payloads, intention, phase: phase)
       end
 
       def evaluator_base_url
