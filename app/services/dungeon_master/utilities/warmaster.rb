@@ -217,7 +217,7 @@ module DungeonMaster
           name_counts[name] += 1
           display_name = name_counts[name] > 1 ? "#{name.titleize} #{name_counts[name]}" : name.titleize
 
-          existing = ctx.adventure.creature_sheets.find_by(name: display_name)
+          existing = ctx.adventure.creature_sheets.alive.find_by(name: display_name)
           if existing
             creatures << creature_record(existing, display_name)
             next
@@ -239,7 +239,7 @@ module DungeonMaster
       end
 
       def resolve_creature(ctx, lookup_name, display_name)
-        existing = ctx.adventure.creature_sheets.find_by(name: display_name)
+        existing = ctx.adventure.creature_sheets.alive.find_by(name: display_name)
         return existing if existing
 
         bestiary = fuzzy_bestiary_match_static(lookup_name)
