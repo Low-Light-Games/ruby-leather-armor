@@ -68,16 +68,6 @@ module DungeonMaster
       end
     end
 
-    class SocialScene
-      def initialize(intent:)
-        @intent = intent
-      end
-
-      def to_h
-        { status: :social_scene, intent: @intent }
-      end
-    end
-
     def awaiting_rolls(intent:, merged:, remaining_actions: nil)
       AwaitingRolls.new(intent: intent, merged: merged, remaining_actions: remaining_actions)
     end
@@ -99,10 +89,6 @@ module DungeonMaster
 
     def encounter(intent:, mutations:, time_result:)
       Encounter.new(intent: intent, mutations: mutations, time_result: time_result)
-    end
-
-    def social_scene(intent:)
-      SocialScene.new(intent: intent)
     end
   end
 end

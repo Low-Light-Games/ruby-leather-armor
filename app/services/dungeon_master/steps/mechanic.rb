@@ -11,19 +11,18 @@ module DungeonMaster
       def run_mechanic(intent, merged, roll_results:, npc_results:)
         prompt_summary = "Mechanic: \"#{@log.truncate(intent[:intention])}\""
 
-        micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
-
         raise AiError, "Mechanic step reached without a character sheet — cannot resolve mechanics" unless @sheet
 
         char_block = CharacterBlock.full(@sheet)
         all_roll_results = [roll_results, npc_results].reject(&:blank?).join("\n\n")
+        scene_facts = retrieve_scene_facts_for_mechanic(intent)
 
         system_prompt = PromptRenderer.render("mechanic",
           character_block: char_block,
           mechanical_summaries_text: merged[:mechanical_summaries].join("\n\n"),
           roll_results: all_roll_results,
           consequences: merged[:consequences].present? ? merged[:consequences].to_json : nil,
-          contexts_text: PromptHelpers.format_contexts(micro_contexts),
+          scene_facts: scene_facts,
           class_ability_buff_reference: class_ability_buff_reference_for_prompt,
           no_auto_hit_miss: @config.no_auto_hit_miss?)
 
@@ -42,6 +41,15 @@ module DungeonMaster
           outcome: parsed["outcome"],
           mutations: parsed["mutations"] || {}
         }
+      end
+
+      def retrieve_scene_facts_for_mechanic(intent)
+        DungeonMaster::SceneFacts::ForResolution.call(
+          adventure:   @adventure,
+          intent_text: intent[:intention].to_s,
+          ai:          @ai,
+          log:         @log,
+        )
       end
 
       def class_ability_buff_reference_for_prompt

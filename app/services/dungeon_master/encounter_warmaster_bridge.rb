@@ -75,18 +75,18 @@ module DungeonMaster
       return "#{encounter_scene}\n\n#{verdict_outcome}" unless ai && config && log
 
       player_action = intent[:intention].to_s
-      traversal = adventure.traversal_context || {}
-      context_summary = [
-        traversal["scene"].presence,
-        ("Location: #{traversal['current_location']}" if traversal["current_location"].present?),
-        ("Nearby: #{traversal['nearby_npcs'].join(', ')}" if traversal["nearby_npcs"].present?)
-      ].compact.join("\n")
+      scene_facts = SceneFacts::ForResolution.call(
+        adventure:   adventure,
+        intent_text: player_action,
+        ai:          ai,
+        log:         log,
+      )
 
       system_prompt = PromptRenderer.render("encounter_reconciliation",
         player_action: player_action,
         player_verdict: verdict_outcome,
         encounter_scene: encounter_scene,
-        context_summary: context_summary.presence || "(no traversal context)")
+        scene_facts: scene_facts)
 
       prompt_summary = "Encounter reconciliation: \"#{player_action.truncate(80)}\""
       request_body = { system_prompt: system_prompt, user_message: "Reconcile the encounter." }

@@ -76,7 +76,6 @@ module DungeonMaster
           intention: intention,
           affected_contexts: affected,
           destination: parsed[:destination],
-          expand_scene: parsed[:expand_scene] == true && affected.include?('social'),
           combat_transition: parsed[:transition],
           combat_combatants: normalized_combatants(parsed[:combatants]),
           player_rolls: rolls,
@@ -151,13 +150,11 @@ module DungeonMaster
       end
 
       def retrieve_beats_for_roll_request(intention)
-        return [] unless defined?(DungeonMaster::Lore::FactsLookup)
-
-        DungeonMaster::Lore::FactsLookup.call(
+        DungeonMaster::SceneFacts::ForResolution.call(
           adventure: @adventure,
+          intent_text: intention,
           ai: @ai,
           log: @log,
-          query_text: intention,
           limit: BEATS_TOP_K
         )
       end

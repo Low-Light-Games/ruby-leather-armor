@@ -24,12 +24,6 @@ module DungeonMaster
       COMBAT_GM = '➡️ Capable model required for active combat adjudication ' \
                   '(battlefield + PF1e) — e.g. o3-mini, gpt-5-mini.'
 
-      MOMENTUM = 'Mid-tier model. Non-mechanical outcome determination and context-domain ' \
-                 'assessment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
-
-      SOCIAL_EXPANSION = 'Mid-tier model. Scene creation with NPC personality and attitude — ' \
-                         'e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
-
       TIME_KEEPER = "#{FAST_CHEAP} Estimates in-game time for an action.".freeze
 
       CHRONICLER = '➡️ Capable model suggested. Receives social, traversal, and exploration ' \

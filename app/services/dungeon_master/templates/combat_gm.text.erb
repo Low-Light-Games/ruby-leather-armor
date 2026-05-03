@@ -26,8 +26,14 @@ Your job is to resolve combat consequences accurately (hits, damage, conditions,
 === PENDING CONSEQUENCES ===
 <%= @consequences.presence || "(none)" %>
 
-=== OTHER CONTEXTS (summary) ===
-<%= @contexts_text %>
+=== RELEVANT WORLD FACTS ===
+<% if @scene_facts.any? -%>
+<% @scene_facts.each do |fact| -%>
+- <%= fact[:text] %>
+<% end -%>
+<% else -%>
+(no established facts retrieved)
+<% end -%>
 
 === PF1e COMBAT GUIDANCE (house + grid notes) ===
 <%= @combat_rules %>

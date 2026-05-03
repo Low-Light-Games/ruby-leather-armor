@@ -45,10 +45,12 @@ module DungeonMaster
         end
 
         def self.retrieve_beats(adventure:, ai:, log:, query_text:, limit:)
-          return [] unless defined?(DungeonMaster::Lore::FactsLookup)
-
-          DungeonMaster::Lore::FactsLookup.call(
-            adventure: adventure, ai: ai, log: log, query_text: query_text, limit: limit
+          DungeonMaster::SceneFacts::ForResolution.call(
+            adventure:   adventure,
+            intent_text: query_text,
+            ai:          ai,
+            log:         log,
+            limit:       limit,
           )
         end
         # rubocop:enable Metrics/ParameterLists, Naming/MethodParameterName

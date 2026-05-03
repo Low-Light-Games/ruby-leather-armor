@@ -259,7 +259,8 @@ module DungeonMaster
           scene_summary: @adventure.scene_summary,
           scene_history: @adventure.scene_history,
           established_facts: retrieve_established_facts(intention),
-          npc_names: @adventure.story.story_npcs.pluck(:name),
+          nearby_npcs: retrieve_nearby_npcs(intention),
+          nearby_locations: retrieve_nearby_locations(intention),
           combat_active: combat_active,
           combat_turn_order: combat_roster
         )
@@ -267,6 +268,24 @@ module DungeonMaster
 
       def retrieve_established_facts(intention)
         DungeonMaster::Lore::FactsLookup.call(
+          adventure: @adventure,
+          ai: @ai,
+          log: @log,
+          query_text: intention
+        )
+      end
+
+      def retrieve_nearby_npcs(intention)
+        DungeonMaster::Lore::NpcsLookup.call(
+          adventure: @adventure,
+          ai: @ai,
+          log: @log,
+          query_text: intention
+        )
+      end
+
+      def retrieve_nearby_locations(intention)
+        DungeonMaster::Lore::LocationsLookup.call(
           adventure: @adventure,
           ai: @ai,
           log: @log,

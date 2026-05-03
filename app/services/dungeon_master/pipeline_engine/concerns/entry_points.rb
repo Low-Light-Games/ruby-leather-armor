@@ -230,15 +230,8 @@ module DungeonMaster
           out[:halt] ? out[:result] : nil
         end
 
-        # Assumes: clean_input from intake; @adventure, @log, @ai; optional plot data for chronicler stub.
-        # Prompts: resolve_plot (conditional), run_dm_query.
         def run_dm_query_flow(clean_input)
-          intent_stub = { intention: clean_input, affected_contexts: [], macro_significant: false }
-          plot_result = resolve_plot(intent_stub)
-          dm_brief = plot_result&.dig(:dm_brief)
-          forbidden_elements = plot_result&.dig(:forbidden_elements) || []
-
-          result = run_dm_query(clean_input, dm_brief: dm_brief, forbidden_elements: forbidden_elements)
+          result = run_dm_query(clean_input)
           { action: :dm_query, answer: result[:answer] }
         end
 

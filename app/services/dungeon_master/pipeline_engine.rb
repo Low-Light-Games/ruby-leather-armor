@@ -31,7 +31,6 @@ module DungeonMaster
     include Steps::CombatRollRequest
     include Steps::Mechanic
     include Steps::CombatGm
-    include Steps::Momentum
     include Steps::TimeKeeper
     include Steps::Stagehand
     include Steps::Chronicler

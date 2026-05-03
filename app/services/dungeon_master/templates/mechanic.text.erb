@@ -14,8 +14,14 @@ determine the factual outcome and produce structured mutations.
 === PENDING CONSEQUENCES ===
 <%= @consequences.presence || "(none)" %>
 
-=== CURRENT CONTEXTS ===
-<%= @contexts_text %>
+=== RELEVANT WORLD FACTS ===
+<% if @scene_facts.any? -%>
+<% @scene_facts.each do |fact| -%>
+- <%= fact[:text] %>
+<% end -%>
+<% else -%>
+(no established facts retrieved)
+<% end -%>
 
 === INSTRUCTIONS ===
 - Determine the factual outcome of each roll (hit/miss, success/failure, damage dealt).

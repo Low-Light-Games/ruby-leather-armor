@@ -12,7 +12,6 @@ module DungeonMaster
         all_outcomes = all_loops.filter_map { |l| l.get("pipeline_outcome") }
         all_mutations = results.filter_map { |r| r[:mutations] }
         encounter_triggered = results.any? { |r| r[:status] == :encounter }
-        social_scene_triggered = results.any? { |r| r[:status] == :social_scene }
 
         action_outcomes = results.filter_map { |r| r[:action_outcome] }
         combined_seed = all_outcomes.join("\n\nThen: ").presence || action_outcomes.join("\n\nThen: ").presence
@@ -40,7 +39,6 @@ module DungeonMaster
 
         extra = {}
         extra[:encounter_triggered]    = true if encounter_triggered
-        extra[:social_scene_triggered] = true if social_scene_triggered
         extra[:player_death]           = true if player_death
         extra[:player_incapacitated]   = true if player_incapacitated
 

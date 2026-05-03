@@ -100,13 +100,11 @@ module DungeonMaster
               remaining_actions: remaining
             }
 
-          when :encounter, :social_scene
-            label = result[:status].to_s
-            summary = (result[:status] == :encounter) ? "Encounter triggered" : "Social scene triggered"
-            p.loop&.batch_update!(new_status: label,
-              timeline_entry: p.send(:tl, label, summary))
+          when :encounter
+            p.loop&.batch_update!(new_status: "encounter",
+              timeline_entry: p.send(:tl, "encounter", "Encounter triggered"))
             accumulated << result
-            qlog.log_interrupt(action_idx, total, remaining_action_entries(action_entries, idx), reason: label)
+            qlog.log_interrupt(action_idx, total, remaining_action_entries(action_entries, idx), reason: "encounter")
             break
 
           when :resolved

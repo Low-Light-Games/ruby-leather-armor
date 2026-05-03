@@ -37,10 +37,6 @@ Set `needs_roll: false` with `no_roll_reason: "no rule retrieved"`.
 === OTHER FIELDS ===
 - `affected_domains`: which of {combat, traversal, social, exploration,
   rest, inventory, buff} this action touches.
-- `expand_scene`: true only when the player opens a social interaction
-  whose terms are unknown — "I rent a room", "I ask about the cult",
-  "I look for work". Mid-conversation tactics ("I argue for higher pay")
-  request a roll instead. False for everything non-social.
 - `transition`: "combat_started" + populated `combatants` only when the
   action initiates combat with hostiles. Null/empty otherwise.
 - `ability_use_claimed`: a spell/feat/item the player named explicitly.
@@ -64,7 +60,6 @@ Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
     "rule_slug": "swim"
   },
   "affected_domains": ["traversal"],
-  "expand_scene": false,
   "transition": null,
   "combatants": [],
   "destination": null,

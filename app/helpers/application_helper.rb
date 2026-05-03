@@ -14,8 +14,6 @@ module ApplicationHelper
     when "capability_rejection", "world_check_failure", "intake_rejection" then "type-rejection"
     when "sequencer", "intent", "roll_request", "combat_roll_request" then "type-intent"
     when "ruling", "verdict", "mechanic" then "type-evaluate"
-    when "momentum"                      then "type-evaluate"
-    when "social_expansion"              then "type-evaluate"
     when "harbinger"                     then "type-harbinger"
     when "warmaster"                     then "type-warmaster"
     when "time_keeper"                   then "type-ctx"
