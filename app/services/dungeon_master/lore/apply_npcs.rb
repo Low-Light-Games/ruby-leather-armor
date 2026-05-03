@@ -19,20 +19,20 @@ module DungeonMaster
       def call
         return [] if @npc_records.empty?
 
-        embeddings_by_idx = embed_records(@npc_records)
-        insert_records(@npc_records, embeddings_by_idx)
+        embeddings_by_index = embed_records_for_adventure(@npc_records)
+        insert_records_into_adventure(@npc_records, embeddings_by_index)
       end
 
       private
 
-      def embed_records(records)
+      def embed_records_for_adventure(records)
         texts = records.map(&:embedding_text)
         vectors = embed_with_logging(texts)
-        embeddings_by_position(vectors)
+        embeddings_by_record_index(vectors)
       end
 
-      def embeddings_by_position(vectors)
-        vectors.each_with_index.to_h { |vector, position| [position, vector] }
+      def embeddings_by_record_index(vectors)
+        vectors.each_with_index.to_h { |vector, record_index| [record_index, vector] }
       end
 
       def embed_with_logging(texts)
@@ -65,10 +65,10 @@ module DungeonMaster
         @embedding_dimensions = DmConfig.instance.narrative_facts_embedding_dimensions
       end
 
-      def insert_records(records, embeddings_by_idx)
+      def insert_records_into_adventure(records, embeddings_by_index)
         inserted = []
 
-        records.each_with_index do |record, idx|
+        records.each_with_index do |record, record_index|
           begin
             row = AdventureNpc.create!(
               adventure_id:  @adventure.id,
@@ -78,7 +78,7 @@ module DungeonMaster
               attitude:      record.attitude,
               location_name: record.location_name,
               source:        @source,
-              embedding:     embeddings_by_idx[idx],
+              embedding:     embeddings_by_index[record_index],
             )
             inserted << row
             log_stored(row, record)
@@ -94,7 +94,7 @@ module DungeonMaster
               e,
               context: error_context.with(
                 source:        "apply_npcs.insert_record",
-                source_idx:    idx,
+                source_idx:    record_index,
                 name_preview:  record.name.first(80),
                 location_name: record.location_name,
               )
