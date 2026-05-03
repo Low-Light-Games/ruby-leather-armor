@@ -105,16 +105,14 @@ module DungeonMaster
       end
 
       # --- NPC seeding ---------------------------------------------------
-      #
-      # Seeds `adventure_npcs` from authored `StoryNpc` rows (single-writer
-      # path: `Lore::ApplyNpcs`). Independent of the Loremaster facts seed;
-      # failures are reported but do not abort adventure creation.
 
       def seed_npcs!
-        records = build_npc_seed_records
+        records = StoryNpc.for_adventure(@adventure)
+                          .ordered_by_id
+                          .map { |npc| NpcRecord.from_story_npc(npc) }
         return if records.empty?
 
-        DungeonMaster::Lore::ApplyNpcs.call(
+        ApplyNpcs.call(
           adventure:   @adventure,
           log:         @log,
           ai:          @ai,
@@ -132,18 +130,6 @@ module DungeonMaster
           "ApplyNpcs seed failed: #{e.class}",
           parsed_response: { error: e.message.to_s.truncate(500) },
         )
-      end
-
-      def build_npc_seed_records
-        StoryNpc.for_adventure(@adventure).ordered_by_id.map do |npc|
-          {
-            name:          npc.name,
-            description:   npc.description.to_s,
-            attitude:      npc.attitude,
-            location_name: npc.location&.name,
-            story_npc_id:  npc.id,
-          }
-        end
       end
     end
   end
