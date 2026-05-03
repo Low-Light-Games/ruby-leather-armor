@@ -251,9 +251,7 @@ module DungeonMaster
       end
 
       def build_world_prompt_context(intention:)
-        combat_ctx = @adventure.combat_context || {}
-        combat_active = combat_ctx['active'] == true
-        combat_roster = combat_active ? Array(combat_ctx['participants']).filter_map { |p| p['name'] } : []
+        combat_state = Adventures::CombatState.from_adventure(@adventure)
 
         PromptViews::SanityCheckerPromptContext.new(
           scene_summary: @adventure.scene_summary,
@@ -261,8 +259,8 @@ module DungeonMaster
           established_facts: retrieve_established_facts(intention),
           nearby_npcs: retrieve_nearby_npcs(intention),
           nearby_locations: retrieve_nearby_locations(intention),
-          combat_active: combat_active,
-          combat_turn_order: combat_roster
+          combat_active: combat_state.active?,
+          combat_turn_order: combat_state.participant_names
         )
       end
 

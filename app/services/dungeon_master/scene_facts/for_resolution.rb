@@ -38,18 +38,13 @@ module DungeonMaster
       end
 
       def active_combat_participant_names
-        return [] unless combat_active?
+        return [] unless combat_state.active?
 
-        Array(@adventure.combat_context["participants"]).filter_map do |participant|
-          next unless participant.is_a?(Hash)
-
-          (participant["name"] || participant[:name]).to_s
-        end
+        combat_state.participant_names
       end
 
-      def combat_active?
-        ctx = @adventure.combat_context
-        ctx.is_a?(Hash) && ctx["active"] == true
+      def combat_state
+        @combat_state ||= Adventures::CombatState.from_adventure(@adventure)
       end
     end
   end
