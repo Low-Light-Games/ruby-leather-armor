@@ -1,4 +1,6 @@
 class Story < ApplicationRecord
+  WORLD_TERRAINS = %w[plains forest desert mountain swamp ice].freeze
+
   has_many :adventures, dependent: :destroy
   has_many :story_locations, dependent: :destroy
   has_many :encounter_tables, dependent: :destroy
@@ -15,6 +17,7 @@ class Story < ApplicationRecord
   validates :title, presence: true
   validates :preview, presence: true
   validates :premise, presence: true
+  validates :world_terrain, inclusion: { in: WORLD_TERRAINS }
 
   def starting_location
     story_locations.find_by(starting: true)

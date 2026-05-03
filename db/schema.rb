@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_03_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_03_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -28,6 +28,23 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_03_120000) do
     t.datetime "updated_at", null: false
     t.index ["adventure_id", "status"], name: "index_adventure_battlefields_on_adventure_id_and_status"
     t.index ["adventure_id"], name: "index_adventure_battlefields_on_adventure_id"
+  end
+
+  create_table "adventure_locations", force: :cascade do |t|
+    t.bigint "adventure_id", null: false
+    t.bigint "story_location_id"
+    t.string "name", null: false
+    t.text "description"
+    t.float "x", default: 0.0, null: false
+    t.float "y", default: 0.0, null: false
+    t.string "source", null: false
+    t.vector "embedding", limit: 1536
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_id", "name"], name: "index_adventure_locations_seed_unique_per_adventure", unique: true, where: "((source)::text = 'seed'::text)"
+    t.index ["adventure_id"], name: "index_adventure_locations_on_adventure_id"
+    t.index ["embedding"], name: "index_adventure_locations_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["story_location_id"], name: "index_adventure_locations_on_story_location_id"
   end
 
   create_table "adventure_loops", force: :cascade do |t|
@@ -203,6 +220,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_03_120000) do
     t.boolean "skip_world_sanity_check", default: false, null: false
     t.datetime "ended_at"
     t.string "end_reason"
+    t.float "coordinate_scale", default: 1.0, null: false
     t.index ["current_location_id"], name: "index_adventures_on_current_location_id"
     t.index ["discarded_at"], name: "index_adventures_on_discarded_at"
     t.index ["ended_at"], name: "index_adventures_on_ended_at"
@@ -639,6 +657,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_03_120000) do
     t.datetime "discarded_at"
     t.text "initial_summary"
     t.jsonb "initial_contexts", default: {}, null: false
+    t.string "world_terrain", default: "plains", null: false
+    t.jsonb "seed_facts", default: [], null: false
+    t.text "opening_message", default: "", null: false
     t.index ["discarded_at"], name: "index_stories_on_discarded_at"
   end
 
@@ -751,6 +772,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_03_120000) do
   end
 
   add_foreign_key "adventure_battlefields", "adventures"
+  add_foreign_key "adventure_locations", "adventures"
+  add_foreign_key "adventure_locations", "story_locations"
   add_foreign_key "adventure_loops", "adventures", on_delete: :nullify
   add_foreign_key "adventure_loops", "pipelines"
   add_foreign_key "adventure_messages", "adventures"

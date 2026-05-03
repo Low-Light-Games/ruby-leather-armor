@@ -24,6 +24,7 @@ module DungeonMaster
 
       def call
         seed_npcs!
+        seed_locations!
 
         system_prompt = DungeonMaster::Steps::Loremaster.render_seed_prompt(
           premise:               premise_text,
@@ -128,6 +129,40 @@ module DungeonMaster
         @log.play_log!(
           "npc_seed_failure",
           "ApplyNpcs seed failed: #{e.class}",
+          parsed_response: { error: e.message.to_s.truncate(500) },
+        )
+      end
+
+      # --- Location seeding ----------------------------------------------
+
+      def seed_locations!
+        story_locations = @adventure.story.story_locations.order(:id).to_a
+        return if story_locations.empty?
+
+        coordinates = DungeonMaster::Maps::PlaceLocations.call(
+          count: story_locations.size,
+          seed:  @adventure.story_id,
+        )
+        records = story_locations.zip(coordinates).map do |location, (x, y)|
+          LocationRecord.from_story_location(location, x: x, y: y)
+        end
+
+        ApplyLocations.call(
+          adventure:        @adventure,
+          log:              @log,
+          ai:               @ai,
+          location_records: records,
+          source:           "seed",
+        )
+      rescue StandardError => e
+        @log.report_error(e, context: {
+          step:         "apply_locations_seed",
+          adventure_id: @adventure&.id,
+          source:       "seed_from_adventure",
+        })
+        @log.play_log!(
+          "location_seed_failure",
+          "ApplyLocations seed failed: #{e.class}",
           parsed_response: { error: e.message.to_s.truncate(500) },
         )
       end
