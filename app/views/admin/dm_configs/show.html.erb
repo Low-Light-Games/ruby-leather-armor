@@ -29,22 +29,6 @@
     </div>
 
     <div class="config-section">
-      <h2>Chronicler</h2>
-
-      <div class="config-field toggle-field">
-        <label class="toggle-label" for="chronicler_tone_direction">
-          <%= check_box_tag :chronicler_tone_direction, "1", @config.get("chronicler_tone_direction") == true, id: "chronicler_tone_direction", class: "toggle-checkbox" %>
-          <span class="toggle-switch"></span>
-          <span class="toggle-text">Tone Direction</span>
-        </label>
-        <p class="field-hint">
-          When <strong>off</strong> (default), the Chronicler acts only as a spoiler gate — it decides what to reveal or hide, but does NOT direct tone, atmosphere, or prose style.
-          When <strong>on</strong>, the Chronicler also provides atmospheric and tonal guidance to the narrator.
-        </p>
-      </div>
-    </div>
-
-    <div class="config-section">
       <h2>Homebrew Rules</h2>
 
       <div class="config-field toggle-field">

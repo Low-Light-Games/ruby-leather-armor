@@ -1,33 +1,8 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  # Shared formatting helpers used by pipeline steps when assembling
-  # prompt locals before rendering an ERB template.
   module PromptHelpers
     module_function
-
-    CONTEXT_FIELDS = %w[traversal combat social exploration rest inventory].freeze
-
-    def all_micro_contexts(adventure)
-      CONTEXT_FIELDS.each_with_object({}) do |field, h|
-        h[field.to_sym] = adventure.send("#{field}_context")
-      end
-    end
-
-    def build_micro_contexts_block(adventure)
-      parts = CONTEXT_FIELDS.filter_map do |field|
-        ctx = adventure.send("#{field}_context")
-        "=== #{field.upcase} CONTEXT ===\n#{ctx.to_json}" if ctx.present?
-      end
-      parts.any? ? parts.join("\n\n") : nil
-    end
-
-    def format_contexts(micro_contexts)
-      CONTEXT_FIELDS.map do |field|
-        ctx = micro_contexts[field.to_sym]
-        "#{field.titleize}: #{ctx.present? ? ctx.to_json : '(none)'}"
-      end.join("\n")
-    end
 
     def format_manifest(manifest)
       manifest.group_by { |e| e[:domain] }.map do |domain, entries|

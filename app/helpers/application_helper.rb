@@ -10,7 +10,7 @@ module ApplicationHelper
 
   def ai_log_type_badge_class(event_type)
     case event_type
-    when "triage", "sanitize", "classify", "intake", "dispatcher", "capability_guardrail", "sanity_checker", "sanity_checker_world", "chronicler" then "type-triage"
+    when "triage", "sanitize", "classify", "intake", "dispatcher", "capability_guardrail", "sanity_checker", "sanity_checker_world" then "type-triage"
     when "capability_rejection", "world_check_failure", "intake_rejection" then "type-rejection"
     when "sequencer", "intent", "roll_request", "combat_roll_request" then "type-intent"
     when "ruling", "verdict", "mechanic" then "type-evaluate"

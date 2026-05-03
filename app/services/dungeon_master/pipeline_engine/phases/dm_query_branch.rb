@@ -3,16 +3,6 @@
 module DungeonMaster
   class PipelineEngine
     module Phases
-      # Routes Ask DM mode / classified DM queries to the fast DM answer path.
-      #
-      # Assumes:
-      #   - clean_input from intake; prompt_mode override from run_prompt; @adventure, @log, @ai, etc.
-      #
-      # Sets:
-      #   - None beyond DM query AI logs and any plot stub side effects in resolve_plot path.
-      #
-      # Prompts:
-      #   - resolve_plot (chronicler path when story has plot data), run_dm_query.
       class DmQueryBranch
         # @param state [Hash] must include :clean_input, :intake_result; optional :prompt_mode
         # @return [Hash] :halt => true, :result => dm_query hash — or — :halt => false

@@ -14,7 +14,6 @@ module Admin
       new_settings = @config.settings.dup
 
       # Boolean toggles
-      new_settings["chronicler_tone_direction"] = params[:chronicler_tone_direction] == "1"
       new_settings["instant_death"]           = params[:instant_death]    == "1"
       new_settings["no_auto_hit_miss"]         = params[:no_auto_hit_miss] == "1"
 

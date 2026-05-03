@@ -33,7 +33,6 @@ module DungeonMaster
     include Steps::CombatGm
     include Steps::TimeKeeper
     include Steps::Stagehand
-    include Steps::Chronicler
     include Steps::Narrate
     include Steps::ContextUpdate
     include AdventureLoopResolution
@@ -79,20 +78,6 @@ module DungeonMaster
     # Reload intent + mechanical merge state from the roll_request message saved at :awaiting_rolls.
     def restore_roll_pause_inputs(metadata)
       Rolls::RollRequestMetadata.resume_inputs(metadata)
-    end
-
-    def story_has_plot_data?
-      StoryNpc.where(story_id: @adventure.story_id).exists? ||
-        StoryClue.where(story_id: @adventure.story_id).exists?
-    end
-
-    def resolve_plot(intent, verdict_outcome: nil, encounter_triggered: false)
-      return unless story_has_plot_data?
-
-      # v1 latency: skip Chronicler while combat is active (revisit if combat rounds gain plot beats).
-      return if combat_active?
-
-      run_chronicler(intent, verdict_outcome: verdict_outcome, encounter_triggered: encounter_triggered)
     end
 
     # ----------------------------------------------------------------

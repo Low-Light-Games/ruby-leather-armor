@@ -76,7 +76,6 @@ class DmConfig < ApplicationRecord
     'action_queue' => 'progressive',
     'show_roll_dc' => true,
     'scene_history_depth' => 10,
-    'chronicler_tone_direction' => false,
     'creature_creation_fallback' => 'ai',
     'instant_death' => true,
     'no_auto_hit_miss' => true,
