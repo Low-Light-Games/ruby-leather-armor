@@ -2,8 +2,6 @@
 
 module DungeonMaster
   module Lore
-    # Sole writer of `adventure_npcs`; mirrors `Lore::ApplyResults`'s
-    # contract per §8/§18.
     class ApplyNpcs
       def self.call(adventure:, log:, ai:, npc_records:, source:)
         new(adventure: adventure, log: log, ai: ai,
