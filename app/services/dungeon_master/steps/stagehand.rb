@@ -39,7 +39,7 @@ module DungeonMaster
         outcome_facts = retrieve_outcome_facts_for_narrate(seed)
 
         prompts = [narrate_evaluator_prompt(narration_context, scene_facts: scene_facts, outcome_facts: outcome_facts)]
-        prompts.concat(build_micro_context_updater_prompts(seed, mutations, allow_combat_initialization: true))
+        prompts.concat(build_context_update_prompts(seed, mutations, allow_combat_initialization: true))
         prompts << macro_context_evaluator_prompt(seed) if intent[:macro_significant]
         prompts << loremaster_evaluator_prompt(loremaster_inputs)
 
@@ -48,14 +48,14 @@ module DungeonMaster
         # LLM calls concurrently but returns results in request order — see evaluator index.js.
         by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
 
-        micro_parsed = aggregate_micro_context_results(by_step)
+        context_parsed = aggregate_context_update_results(by_step)
         macro_parsed = if intent[:macro_significant]
                          evaluator_fan_out_result!(by_step, "macro_narrative_update", "narrative_phase")["parsed_response"] || {}
                        else
                          {}
                        end
 
-        apply_context_update_results(micro_parsed, macro_parsed,
+        apply_context_update_results(context_parsed, macro_parsed,
           macro_significant: intent[:macro_significant],
           mutations: mutations)
 

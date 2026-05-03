@@ -33,7 +33,7 @@ module DungeonMaster
                               'Must preserve canonical combat identity. ' \
                               'e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
 
-      META_CONTEXT_UPDATE = "#{FAST_CHEAP} Scene summary and auxiliary context signals.".freeze
+      SCENE_UPDATE = "#{FAST_CHEAP} Scene summary and new-creature signals.".freeze
 
       MACRO_NARRATIVE_UPDATE = 'Mid-tier model. Judges narrative significance — ' \
                                'e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'

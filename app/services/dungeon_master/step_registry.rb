@@ -38,7 +38,7 @@ module DungeonMaster
                              pipeline: true),
       'combat_context_update' => Entry.new(token_budget: nil, model_hint: H::COMBAT_CONTEXT_UPDATE,
                                            pipeline: true),
-      'meta_context_update' => Entry.new(token_budget: nil, model_hint: H::META_CONTEXT_UPDATE,
+      'scene_update' => Entry.new(token_budget: nil, model_hint: H::SCENE_UPDATE,
                                          pipeline: true),
       'macro_narrative_update' => Entry.new(token_budget: nil, model_hint: H::MACRO_NARRATIVE_UPDATE,
                                             pipeline: true),

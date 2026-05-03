@@ -22,9 +22,9 @@ module ApplicationHelper
     when "pipeline_error"                then "type-error"
     when "narrate"                       then "type-narrate"
     when "dm_query"                      then "type-dm-query"
-    when "micro_context_update"          then "type-ctx"
+    when "combat_context_update"         then "type-ctx"
+    when "scene_update"                  then "type-ctx"
     when "macro_narrative_update"        then "type-ctx"
-    when "context_wish"                  then "type-wish"
     else "type-default"
     end
   end

@@ -3,8 +3,8 @@
 module DungeonMaster
   module Steps
     module ContextUpdate
-      META_CONTEXT_STEP = "meta_context_update"
       COMBAT_DOMAIN_STEP = "combat_context_update"
+      SCENE_UPDATE_STEP  = "scene_update"
 
       class CombatMutationState
         def initialize(mutations)
@@ -28,15 +28,13 @@ module DungeonMaster
 
       def run_context_updates(what_happened, mutations, macro_significant: false, allow_combat_initialization: true)
         broadcast_progress("Remembering the world...")
-        micro_result, macro_result = if macro_significant
-                                       run_context_updates_fan_out(what_happened, mutations,
-                                         allow_combat_initialization: allow_combat_initialization)
-                                     else
-                                       [run_micro_context_update(what_happened, mutations,
-                                         allow_combat_initialization: allow_combat_initialization), {}]
-                                     end
+        context_result, macro_result = run_context_update_fan_out(
+          what_happened, mutations,
+          macro_significant: macro_significant,
+          allow_combat_initialization: allow_combat_initialization,
+        )
 
-        apply_context_update_results(micro_result, macro_result,
+        apply_context_update_results(context_result, macro_result,
           macro_significant: macro_significant,
           mutations: mutations)
       rescue => e
@@ -44,24 +42,31 @@ module DungeonMaster
       end
 
       # Used by Stagehand parallel narrative (narrate + context in one fan_out).
-      def apply_context_update_results(micro_result, macro_result, macro_significant:, mutations:)
-        persist_combat_context(micro_result, mutations)
-        persist_scene_summary(micro_result["scene_summary"])
-        handle_new_creatures(micro_result["new_creatures"]) if micro_result["new_creatures"].present?
+      def apply_context_update_results(context_result, macro_result, macro_significant:, mutations:)
+        persist_combat_context(context_result, mutations)
+        persist_scene_summary(context_result["scene_summary"])
+        handle_new_creatures(context_result["new_creatures"]) if context_result["new_creatures"].present?
 
         if should_persist_macro_story_summary?(macro_significant, macro_result)
           @adventure.update!(story_summary: macro_result["story_summary"])
         end
       end
 
-      def run_context_updates_fan_out(what_happened, mutations, allow_combat_initialization:)
-        prompts = build_micro_context_updater_prompts(what_happened, mutations,
+      def run_context_update_fan_out(what_happened, mutations, macro_significant:, allow_combat_initialization:)
+        prompts = build_context_update_prompts(what_happened, mutations,
           allow_combat_initialization: allow_combat_initialization)
-        prompts << macro_context_evaluator_prompt(what_happened)
+        prompts << macro_context_evaluator_prompt(what_happened) if macro_significant
+
         by_step = evaluator_fan_out!(prompts, what_happened, phase: "context_update")
-        micro_parsed = aggregate_micro_context_results(by_step)
-        macro_parsed = evaluator_fan_out_result!(by_step, "macro_narrative_update", "context_update")["parsed_response"] || {}
-        [micro_parsed, macro_parsed]
+
+        context_result = aggregate_context_update_results(by_step)
+        macro_result = if macro_significant
+                         evaluator_fan_out_result!(by_step, "macro_narrative_update", "context_update")["parsed_response"] || {}
+                       else
+                         {}
+                       end
+
+        [context_result, macro_result]
       end
 
       def macro_context_evaluator_prompt(what_happened)
@@ -77,13 +82,6 @@ module DungeonMaster
           max_tokens:    @config.token_budget_for("macro_narrative_update"),
           meta:          { step: "macro_narrative_update" }
         }
-      end
-
-      def run_micro_context_update(what_happened, mutations, allow_combat_initialization: true)
-        aggregate_micro_context_results(
-          run_micro_context_updates_fan_out(what_happened, mutations,
-            allow_combat_initialization: allow_combat_initialization)
-        )
       end
 
       def persist_combat_context(parsed, mutations = nil)
@@ -142,22 +140,16 @@ module DungeonMaster
         snapshot_contexts_to_loop
       end
 
-      def build_micro_context_updater_prompts(what_happened, mutations, allow_combat_initialization:)
+      def build_context_update_prompts(what_happened, mutations, allow_combat_initialization:)
         [
           combat_domain_evaluator_prompt(what_happened, mutations,
             allow_combat_initialization: allow_combat_initialization),
-          meta_context_evaluator_prompt(what_happened),
+          scene_update_evaluator_prompt(what_happened),
         ]
       end
 
-      def run_micro_context_updates_fan_out(what_happened, mutations, allow_combat_initialization:)
-        prompts = build_micro_context_updater_prompts(what_happened, mutations,
-          allow_combat_initialization: allow_combat_initialization)
-        evaluator_fan_out!(prompts, what_happened, phase: "micro_context_update")
-      end
-
       def combat_domain_evaluator_prompt(what_happened, mutations, allow_combat_initialization:)
-        system_prompt = PromptRenderer.render("micro_context_domain_update_combat",
+        system_prompt = PromptRenderer.render("combat_context_update",
           domain: "combat",
           context_key: "combat_context",
           current_context: @adventure.combat_context,
@@ -177,29 +169,29 @@ module DungeonMaster
         }
       end
 
-      def meta_context_evaluator_prompt(what_happened)
-        system_prompt = PromptRenderer.render("micro_context_meta_update",
+      def scene_update_evaluator_prompt(what_happened)
+        system_prompt = PromptRenderer.render("scene_update",
           what_happened: what_happened,
           scene_summary: @adventure.scene_summary)
 
         {
           system_prompt: system_prompt,
           user_message: what_happened,
-          model: @config.model_for(META_CONTEXT_STEP),
-          max_tokens: @config.token_budget_for(META_CONTEXT_STEP),
-          meta: { step: META_CONTEXT_STEP }
+          model: @config.model_for(SCENE_UPDATE_STEP),
+          max_tokens: @config.token_budget_for(SCENE_UPDATE_STEP),
+          meta: { step: SCENE_UPDATE_STEP }
         }
       end
 
-      def aggregate_micro_context_results(by_step)
-        combat_parsed = evaluator_fan_out_result!(by_step, COMBAT_DOMAIN_STEP, "micro_context_update")["parsed_response"] || {}
-        meta_parsed = evaluator_fan_out_result!(by_step, META_CONTEXT_STEP, "micro_context_update")["parsed_response"] || {}
+      def aggregate_context_update_results(by_step)
+        combat_parsed = evaluator_fan_out_result!(by_step, COMBAT_DOMAIN_STEP, "context_update")["parsed_response"] || {}
+        scene_parsed = evaluator_fan_out_result!(by_step, SCENE_UPDATE_STEP, "context_update")["parsed_response"] || {}
 
         domain_result_parser = DomainContextResultParser.new(
           domain_identifier: "combat",
           raw_domain_result: combat_parsed
         )
-        { "combat_context" => domain_result_parser.normalized_result }.merge(meta_parsed)
+        { "combat_context" => domain_result_parser.normalized_result }.merge(scene_parsed)
       end
 
       def should_persist_macro_story_summary?(macro_significant, macro_result)
