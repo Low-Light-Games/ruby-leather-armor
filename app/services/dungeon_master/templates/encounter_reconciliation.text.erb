@@ -9,14 +9,7 @@ Outcome so far: <%= @player_verdict.present? ? @player_verdict : "(action was in
 === ENCOUNTER THAT ARRIVED ===
 <%= @encounter_scene %>
 
-=== RELEVANT WORLD FACTS ===
-<% if @scene_facts.any? -%>
-<% @scene_facts.each do |fact| -%>
-- <%= fact[:text] %>
-<% end -%>
-<% else -%>
-(no established facts retrieved)
-<% end -%>
+<%= PromptRenderer.render_partial("partials/relevant_world_facts", scene_facts: @scene_facts) %>
 
 === INSTRUCTIONS ===
 - Decide what actually happened given BOTH the player's current state AND the arriving encounter.
