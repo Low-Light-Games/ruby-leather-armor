@@ -7,10 +7,6 @@ class DmConfig < ApplicationRecord
   TOKEN_BUDGET_STEPS = DungeonMaster::StepRegistry.pipeline_steps.freeze
   STEP_MODEL_HINTS   = DungeonMaster::StepRegistry.model_hints.freeze
 
-  ENRICHER_MODEL_HINT = 'Capable model recommended. Structural extraction benefits from strong reasoning — e.g. o3-mini, o4-mini, gpt-4.1, gpt-5-mini.'
-  EMBELLISHER_MODEL_HINT = 'Creative model. Flavor generation benefits from vivid writing — e.g. gpt-4.1, gpt-4o, gpt-5. Expand mode benefits from reasoning — e.g. o3-mini, gpt-5-mini.'
-  EMBELLISHER_MODES = %w[embellish expand].freeze
-
   # Closed whitelist for the narrative facts store's embedding model
   # selector (see Decision 37). The `adventure_narrative_facts.embedding`
   # column is fixed at `vector(1536)`, so models with native dim > 1536
@@ -72,7 +68,6 @@ class DmConfig < ApplicationRecord
     'danger_threshold' => 30,
     'model' => 'gpt-4o-mini',
     'step_models' => {},
-    'embellisher_mode' => 'embellish',
     'action_queue' => 'progressive',
     'show_roll_dc' => true,
     'scene_history_depth' => 10,

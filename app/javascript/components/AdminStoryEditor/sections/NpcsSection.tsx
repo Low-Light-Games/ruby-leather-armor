@@ -34,8 +34,8 @@ const NpcsSection = ({
       count={visibleCount}
       open={npcsOpen}
       onToggle={() => setNpcsOpen(!npcsOpen)}
-      hint="Named characters the player may encounter. The Enricher can auto-extract these from the premise."
-      emptyHint='No NPCs yet. Use "Enrich Story" or add manually.'
+      hint="Named characters the player may encounter."
+      emptyHint='No NPCs yet.'
       isEmpty={visibleCount === 0}
     >
       {npcs.map((npc, idx) => {

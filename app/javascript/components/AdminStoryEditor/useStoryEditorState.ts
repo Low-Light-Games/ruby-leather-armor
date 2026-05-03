@@ -19,7 +19,6 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
 
   const [loading, setLoading] = useState(mode === 'edit')
   const [saving, setSaving] = useState(false)
-  const [enriching, setEnriching] = useState(false)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   const [title, setTitle] = useState('')
@@ -187,111 +186,8 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
     }
   }
 
-  // ---- Enrich Story ----
-
-  const enrichStory = async () => {
-    if (!currentStoryId) return
-    setEnriching(true)
-    try {
-      const result = await apiFetch(`/admin/stories/${currentStoryId}/enrich`, { method: 'POST' })
-      if (result.error) {
-        showFeedback('error', result.error)
-        return
-      }
-
-      const existingNpcs = npcs.filter(n => n.source !== 'enricher' || n.id)
-      const markedOldEnricher = existingNpcs.map(n =>
-        n.source === 'enricher' && n.id ? { ...n, _destroy: true } : n
-      )
-      const newNpcs: StoryNpcData[] = (result.npcs || []).map((n: any) => ({
-        source: 'enricher' as const, name: n.name, role: n.role,
-        location_id: n.location_id, description: n.description,
-        knowledge: n.knowledge, attitude: n.attitude, secret: n.secret,
-      }))
-      setNpcs([...markedOldEnricher, ...newNpcs])
-
-      const existingClues = clues.filter(c => c.source !== 'enricher' || c.id)
-      const markedOldClues = existingClues.map(c =>
-        c.source === 'enricher' && c.id ? { ...c, _destroy: true } : c
-      )
-      const newClues: StoryClueData[] = (result.clues || []).map((c: any) => ({
-        source: 'enricher' as const, title: c.title, description: c.description,
-        discovery_method: c.discovery_method, location_id: c.location_id,
-        npc_id: c.npc_id, prerequisite_clue_ids: c.prerequisite_clue_ids || [],
-        reveals_secret: c.reveals_secret || '', difficulty: c.difficulty,
-      }))
-      setClues([...markedOldClues, ...newClues])
-
-      const existingMs = milestones.filter(m => m.source !== 'enricher' || m.id)
-      const markedOldMs = existingMs.map(m =>
-        m.source === 'enricher' && m.id ? { ...m, _destroy: true } : m
-      )
-      const newMs: StoryMilestoneData[] = (result.milestones || []).map((m: any) => ({
-        source: 'enricher' as const, title: m.title, description: m.description,
-        trigger_clue_ids: m.trigger_clue_ids || [], consequence: m.consequence || '',
-      }))
-      setMilestones([...markedOldMs, ...newMs])
-
-      const manifests: any[] = result.encounter_manifests || []
-      if (manifests.length > 0) {
-        setEncounterTables(prev => prev.map(table => ({
-          ...table,
-          encounter_table_entries: (table.encounter_table_entries || []).map(entry => {
-            const match = manifests.find((m: any) =>
-              m.encounter_entry_title?.toLowerCase() === entry.title?.toLowerCase()
-            )
-            if (match?.creatures?.length) {
-              return { ...entry, creature_manifest: match.creatures }
-            }
-            return entry
-          })
-        })))
-        setEncounterTablesOpen(true)
-      }
-
-      const proposedTables: any[] = result.proposed_encounter_tables || []
-      if (proposedTables.length > 0) {
-        const newTables: EncounterTableData[] = proposedTables.map((t: any) => ({
-          name: t.name || 'Encounters',
-          description: '',
-          check_frequency_hours: t.check_frequency_hours || 4,
-          encounter_chance: t.encounter_chance || 15,
-          encounter_table_entries: (t.entries || []).map((e: any) => ({
-            title: e.title || 'Encounter',
-            description: e.description || '',
-            entry_type: e.entry_type || 'ai_prompt',
-            weight: e.weight || 1,
-            creature_manifest: e.creatures || [],
-          })),
-        }))
-        setEncounterTables(prev => [...prev, ...newTables])
-        setEncounterTablesOpen(true)
-      }
-
-      const enrichedContexts = result.initial_contexts
-      if (enrichedContexts && typeof enrichedContexts === 'object' && Object.keys(enrichedContexts).length > 0) {
-        hydrateInitialContexts(enrichedContexts)
-        setInitialContextsOpen(true)
-      }
-
-      setNpcsOpen(true)
-      setCluesOpen(true)
-      setMilestonesOpen(true)
-      const extras: string[] = []
-      if (manifests.length > 0) extras.push(`${manifests.length} encounter manifest(s)`)
-      if (proposedTables.length > 0) extras.push(`${proposedTables.length} proposed encounter table(s)`)
-      if (enrichedContexts && Object.keys(enrichedContexts).length > 0) extras.push('initial contexts')
-      const extraMsg = extras.length > 0 ? ` Also applied: ${extras.join(', ')}.` : ''
-      showFeedback('success', `Enrichment complete — review the proposed records below and Save to persist.${extraMsg}`)
-    } catch (err: any) {
-      showFeedback('error', `Enrichment failed: ${err.message}`)
-    } finally {
-      setEnriching(false)
-    }
-  }
-
   return {
-    user, authLoading, loading, saving, enriching, feedback, dismissFeedback,
+    user, authLoading, loading, saving, feedback, dismissFeedback,
     title, setTitle, preview, setPreview, premise, setPremise,
     initialSummary, setInitialSummary,
     currentStoryId,
@@ -310,6 +206,6 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
     expandedLocIdx, setExpandedLocIdx,
     expandedTableIdx, setExpandedTableIdx,
     duplicateNames, hasDuplicateNames,
-    saveStory, enrichStory,
+    saveStory,
   }
 }

@@ -38,7 +38,7 @@ const CluesSection = ({
       open={cluesOpen}
       onToggle={() => setCluesOpen(!cluesOpen)}
       hint="Discoverable pieces of information. Link to NPCs, locations, and prerequisite clues for gated reveals."
-      emptyHint='No clues yet. Use "Enrich Story" or add manually.'
+      emptyHint='No clues yet.'
       isEmpty={visibleCount === 0}
     >
       {clues.map((clue, idx) => {

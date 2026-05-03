@@ -82,7 +82,7 @@ module Admin
     end
 
     def adventure_params
-      params.require(:adventure).permit(:current_location_id, :story_summary, :scene_summary, :enriched_premise)
+      params.require(:adventure).permit(:current_location_id, :story_summary, :scene_summary)
     end
 
     def sheet_params

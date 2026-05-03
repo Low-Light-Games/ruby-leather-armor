@@ -35,7 +35,7 @@ const MilestonesSection = ({
       open={milestonesOpen}
       onToggle={() => setMilestonesOpen(!milestonesOpen)}
       hint="Major plot events triggered when specific clues are discovered. Define trigger clues and consequences."
-      emptyHint='No milestones yet. Use "Enrich Story" or add manually.'
+      emptyHint='No milestones yet.'
       isEmpty={visibleCount === 0}
     >
       {milestones.map((ms, idx) => {

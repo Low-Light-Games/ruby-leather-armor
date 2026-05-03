@@ -232,25 +232,6 @@
         </details>
       </div>
 
-      <div class="story-card full-width">
-        <div class="card-label">Enriched Premise</div>
-        <div class="story-text"><%= @adventure.enriched_premise.presence || '—' %></div>
-        <details class="edit-panel">
-          <summary class="edit-toggle">Edit</summary>
-          <%= form_with url: admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do %>
-            <textarea name="adventure[enriched_premise]" rows="4" class="input-full"><%= @adventure.enriched_premise %></textarea>
-            <button type="submit" class="btn btn-primary">Save</button>
-          <% end %>
-        </details>
-      </div>
-
-      <% if @adventure.enriched_world.present? && @adventure.enriched_world != {} %>
-        <div class="story-card full-width">
-          <div class="card-label">Enriched World</div>
-          <pre class="context-json"><%= JSON.pretty_generate(@adventure.enriched_world) %></pre>
-        </div>
-      <% end %>
-
       <% if @adventure.plot_state.present? && @adventure.plot_state != {} %>
         <div class="story-card full-width">
           <div class="card-label">Plot State</div>

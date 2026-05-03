@@ -37,9 +37,7 @@ Rails.application.routes.draw do
         patch :update_story_element
       end
     end
-    resources :stories, only: [:index, :new, :show, :create, :update, :destroy] do
-      member { post :enrich }
-    end
+    resources :stories, only: [:index, :new, :show, :create, :update, :destroy]
     resources :play_logs, only: [:index, :show] do
       collection do
         get :pipelines

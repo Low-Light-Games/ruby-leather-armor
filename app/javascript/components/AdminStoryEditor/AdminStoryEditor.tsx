@@ -13,7 +13,7 @@ import './AdminStoryEditor.scss'
 export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   const state = useStoryEditorState(mode, storyId)
   const {
-    user, authLoading, loading, saving, enriching, feedback, dismissFeedback,
+    user, authLoading, loading, saving, feedback, dismissFeedback,
     title, setTitle, preview, setPreview, premise, setPremise,
     initialSummary, setInitialSummary,
     currentStoryId,
@@ -32,7 +32,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
     expandedLocIdx, setExpandedLocIdx,
     expandedTableIdx, setExpandedTableIdx,
     duplicateNames, hasDuplicateNames,
-    saveStory, enrichStory,
+    saveStory,
   } = state
 
   if (authLoading) return <div className="admin-page">Loading...</div>
@@ -91,7 +91,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
         </div>
 
         <div className="form-field">
-          <label htmlFor="story-premise" title="The full plot, secrets, and villain motivations. Only the AI sees this — never shown to the player. The Enricher uses this to generate NPCs, clues, and milestones.">Premise (full story, admin only)</label>
+          <label htmlFor="story-premise" title="The full plot, secrets, and villain motivations. Only the AI sees this — never shown to the player.">Premise (full story, admin only)</label>
           <textarea id="story-premise" value={premise}
             onChange={e => setPremise(e.target.value)} rows={6}
             placeholder="The complete plot with all secrets and twists. Who is the villain? What's really going on? Include NPC motivations, hidden connections, and the intended resolution. The AI DM reads this to run the story — the player never sees it." />
@@ -103,18 +103,6 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
             onChange={e => setInitialSummary(e.target.value)} rows={4}
             placeholder="A brief status line from the player's perspective. E.g. 'Just arrived at the village after hearing rumors of goblin trouble. No leads yet.' This seeds the macro narrative tracker." />
         </div>
-
-        {isEditMode && (
-          <div className="enrich-section">
-            <button className="btn-enrich" onClick={enrichStory} disabled={enriching || !premise.trim()}
-              title="Uses AI to extract NPCs, clues, milestones, encounter data, and initial contexts from the premise. Results appear below for review — nothing is saved until you click Save.">
-              {enriching ? 'Enriching...' : 'Enrich Story'}
-            </button>
-            <span className="enrich-hint">
-              AI parses the premise into structured NPCs, clues, and milestones. Review before saving.
-            </span>
-          </div>
-        )}
 
         {isEditMode && (
           <LocationsSection

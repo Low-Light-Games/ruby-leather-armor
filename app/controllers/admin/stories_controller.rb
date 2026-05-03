@@ -1,6 +1,6 @@
 module Admin
   class StoriesController < BaseController
-    before_action :set_story, only: [:show, :update, :destroy, :enrich]
+    before_action :set_story, only: [:show, :update, :destroy]
 
     # GET /admin/stories — server-rendered story list
     def index
@@ -45,16 +45,6 @@ module Admin
       else
         render json: { errors: @story.errors.full_messages }, status: :unprocessable_entity
       end
-    end
-
-    # POST /admin/stories/:id/enrich
-    def enrich
-      enricher = DungeonMaster::Enricher.new(@story, user: current_user)
-      result = enricher.enrich
-      render json: result
-    rescue DungeonMaster::AiError => e
-      ApplicationErrorReporter.notify(e, context: { source: "admin_stories_enrich", story_id: @story.id })
-      render json: { error: e.message }, status: :unprocessable_entity
     end
 
     # DELETE /admin/stories/:id (soft-delete)

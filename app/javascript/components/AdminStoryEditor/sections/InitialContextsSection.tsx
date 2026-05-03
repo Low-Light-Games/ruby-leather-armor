@@ -53,7 +53,7 @@ const InitialContextsSection = ({
     label="Initial Contexts"
     open={initialContextsOpen}
     onToggle={() => setInitialContextsOpen(!initialContextsOpen)}
-    hint='Structured starting game state seeded into every new adventure. Without these, contexts start empty and the AI may misinterpret missing data as negative facts (e.g. no exits = trapped). Fill at least Traversal for any story. Use "Enrich Story" to auto-generate these from the premise.'
+    hint='Structured starting game state seeded into every new adventure.'
   >
     {/* -- Traversal -- */}
     <div className="nested-card">
