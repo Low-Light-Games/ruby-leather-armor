@@ -23,6 +23,8 @@ module DungeonMaster
       end
 
       def call
+        seed_npcs!
+
         system_prompt = DungeonMaster::Steps::Loremaster.render_seed_prompt(
           premise:               premise_text,
           enriched_world:        enriched_world_text,
@@ -100,6 +102,48 @@ module DungeonMaster
       def initial_contexts_text
         block = DungeonMaster::PromptHelpers.build_micro_contexts_block(@adventure)
         block.presence || "(no initial micro-contexts)"
+      end
+
+      # --- NPC seeding ---------------------------------------------------
+      #
+      # Seeds `adventure_npcs` from authored `StoryNpc` rows (single-writer
+      # path: `Lore::ApplyNpcs`). Independent of the Loremaster facts seed;
+      # failures are reported but do not abort adventure creation.
+
+      def seed_npcs!
+        records = build_npc_seed_records
+        return if records.empty?
+
+        DungeonMaster::Lore::ApplyNpcs.call(
+          adventure:   @adventure,
+          log:         @log,
+          ai:          @ai,
+          npc_records: records,
+          source:      "seed",
+        )
+      rescue StandardError => e
+        @log.report_error(e, context: {
+          step:         "apply_npcs_seed",
+          adventure_id: @adventure&.id,
+          source:       "seed_from_adventure",
+        })
+        @log.play_log!(
+          "npc_seed_failure",
+          "ApplyNpcs seed failed: #{e.class}",
+          parsed_response: { error: e.message.to_s.truncate(500) },
+        )
+      end
+
+      def build_npc_seed_records
+        StoryNpc.for_adventure(@adventure).ordered_by_id.map do |npc|
+          {
+            name:          npc.name,
+            description:   npc.description.to_s,
+            attitude:      npc.attitude,
+            location_name: npc.location&.name,
+            story_npc_id:  npc.id,
+          }
+        end
       end
     end
   end

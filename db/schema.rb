@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_03_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -84,6 +84,26 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
     t.index ["introduced_at_loop_id"], name: "index_adventure_narrative_facts_on_introduced_at_loop_id"
     t.index ["invalidated_at_loop_id"], name: "index_adventure_narrative_facts_on_invalidated_at_loop_id"
     t.index ["invalidated_by_fact_id"], name: "index_adventure_narrative_facts_on_invalidated_by_fact_id"
+  end
+
+  create_table "adventure_npcs", force: :cascade do |t|
+    t.bigint "adventure_id", null: false
+    t.bigint "story_npc_id"
+    t.string "name", null: false
+    t.text "description"
+    t.string "attitude", default: "indifferent", null: false
+    t.string "location_name"
+    t.string "source", null: false
+    t.vector "embedding", limit: 1536
+    t.bigint "last_seen_loop_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_id", "location_name"], name: "index_adventure_npcs_on_adventure_and_location"
+    t.index ["adventure_id", "name"], name: "index_adventure_npcs_seed_unique_per_adventure", unique: true, where: "((source)::text = 'seed'::text)"
+    t.index ["adventure_id"], name: "index_adventure_npcs_on_adventure_id"
+    t.index ["embedding"], name: "index_adventure_npcs_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["last_seen_loop_id"], name: "index_adventure_npcs_on_last_seen_loop_id"
+    t.index ["story_npc_id"], name: "index_adventure_npcs_on_story_npc_id"
   end
 
   create_table "adventure_sheet_feats", force: :cascade do |t|
@@ -738,6 +758,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
   add_foreign_key "adventure_narrative_facts", "adventure_loops", column: "invalidated_at_loop_id"
   add_foreign_key "adventure_narrative_facts", "adventure_narrative_facts", column: "invalidated_by_fact_id"
   add_foreign_key "adventure_narrative_facts", "adventures"
+  add_foreign_key "adventure_npcs", "adventure_loops", column: "last_seen_loop_id"
+  add_foreign_key "adventure_npcs", "adventures"
+  add_foreign_key "adventure_npcs", "story_npcs"
   add_foreign_key "adventure_sheet_feats", "adventure_sheets"
   add_foreign_key "adventure_sheet_feats", "feat_definitions", column: "feat_id"
   add_foreign_key "adventure_sheet_items", "adventure_sheets"
