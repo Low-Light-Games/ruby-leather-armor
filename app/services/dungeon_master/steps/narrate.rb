@@ -11,8 +11,10 @@ module DungeonMaster
 
       # Payload for Node POST /fan_out (parallel with context updates in Stagehand).
       # meta.parse_fallback matches Rails AiClient#parse_json(fallback_as: :dm_response).
-      def narrate_evaluator_prompt(pipeline_context)
-        prompt_payload = build_narrate_prompt_payload(pipeline_context)
+      def narrate_evaluator_prompt(pipeline_context, scene_facts:, outcome_facts:)
+        prompt_payload = build_narrate_prompt_payload(
+          pipeline_context, scene_facts: scene_facts, outcome_facts: outcome_facts,
+        )
 
         {
           system_prompt: prompt_payload[:system_prompt],
@@ -30,27 +32,6 @@ module DungeonMaster
         { narrative: parsed["narrative"] }
       end
 
-      def run_narrate(pipeline_context)
-        broadcast_progress("Writing the story...")
-        prompt_summary = "Narrate"
-        prompt_payload = build_narrate_prompt_payload(pipeline_context)
-        request_body = prompt_payload.slice(:system_prompt, :user_message)
-
-        parsed = timed_ai_call("narrate", prompt_summary, request_body) do
-          raw = @ai.chat(system_prompt: prompt_payload[:system_prompt], user_message: prompt_payload[:user_message],
-                          max_tokens: @config.token_budget_for("narrate"), step_name: "narrate",
-                          model: @config.model_for("narrate"))
-          # fallback_as: :dm_response is the only surviving parse fallback.
-          # Unlike other steps, Narrate's output IS prose — if the model
-          # returns raw text instead of JSON, the text itself is the narrative.
-          [raw, @ai.parse_json(raw, fallback_as: :dm_response)]
-        end
-
-        raise AiError, "Narrate step returned no narrative — model produced: #{parsed.inspect.truncate(200)}" unless parsed["narrative"].present?
-
-        { narrative: parsed["narrative"] }
-      end
-
       def assert_narration_combined_seed!(pipeline_context)
         return if pipeline_context.combined_seed
 
@@ -60,8 +41,10 @@ module DungeonMaster
         raise AiError, "Narrate step reached without an outcome — nothing to narrate"
       end
 
-      def build_narrate_prompt_payload(pipeline_context)
-        narrate_view = Narrative::NarratePromptView.for_narrate(self, pipeline_context)
+      def build_narrate_prompt_payload(pipeline_context, scene_facts:, outcome_facts:)
+        narrate_view = Narrative::NarratePromptView.for_narrate(
+          self, pipeline_context, scene_facts: scene_facts, outcome_facts: outcome_facts,
+        )
         assert_narration_combined_seed!(pipeline_context)
         {
           system_prompt: PromptRenderer.render("narrate", narrate_view: narrate_view),

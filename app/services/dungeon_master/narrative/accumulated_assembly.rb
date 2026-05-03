@@ -19,9 +19,6 @@ module DungeonMaster
           Utilities::HashMerge.deep_merge_presence(acc, m)
         end
 
-        plot_result = pipeline_engine.send(:resolve_plot, merged_intent, verdict_outcome: combined_seed,
-          encounter_triggered: encounter_triggered)
-
         player_death         = results.any? { |r| r[:player_death] }
         player_incapacitated = results.any? { |r| r[:player_incapacitated] }
         death_type = if player_death
@@ -32,7 +29,6 @@ module DungeonMaster
 
         ctx = PipelineContext.new(
           combined_seed: combined_seed,
-          dm_brief: plot_result&.dig(:dm_brief),
           player_action: all_loops.filter_map(&:player_intent).join("\nThen: ").presence || merged_intent&.dig(:intention),
           death_type: death_type
         )

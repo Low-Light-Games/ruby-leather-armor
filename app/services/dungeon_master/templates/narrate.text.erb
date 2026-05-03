@@ -4,10 +4,6 @@ You do NOT adjudicate rules, track state, or request rolls — that has already 
 Do not lean overly verbose or poetic. This is a narrative, not a story.
 
 <% v = @narrate_view -%>
-<% if v.dm_brief.present? -%>
-=== INSTRUCTIONS ===
-DM Brief (follow these instructions carefully): <%= v.dm_brief %>
-<% end -%>
 <%= v.pacing_text %>
 
 <% if v.time_context.present? -%>
@@ -25,6 +21,15 @@ Speed: <%= v.loop.get("journey_data")["speed_mph"] %> mph | Estimated travel: <%
 <% _prior = PromptRenderer.render_partial("partials/prior_outcomes", outcomes: v.prior_outcomes) -%>
 <% if _prior.present? -%>
 <%= _prior %>
+
+<% end -%>
+<%= PromptRenderer.render_partial("partials/relevant_world_facts", scene_facts: v.scene_facts) %>
+
+<% if v.outcome_facts.any? -%>
+=== FACTS RELATED TO THIS OUTCOME ===
+<% v.outcome_facts.each do |fact| -%>
+- <%= fact[:text] %>
+<% end -%>
 
 <% end -%>
 <% if v.player_action.present? -%>
