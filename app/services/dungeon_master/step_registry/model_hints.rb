@@ -35,6 +35,10 @@ module DungeonMaster
 
       SCENE_UPDATE = "#{FAST_CHEAP} Scene summary and new-creature signals.".freeze
 
+      EXTRACT_FROM_PREMISE = 'Capable model recommended. Story-save fact extraction reads the ' \
+                             'spoiler-bearing premise + player-facing opening_message and emits ' \
+                             'a coherent seed_facts list — e.g. gpt-4.1, gpt-4.1-mini, gpt-5-mini.'
+
       MACRO_NARRATIVE_UPDATE = 'Mid-tier model. Judges narrative significance — ' \
                                'e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
 

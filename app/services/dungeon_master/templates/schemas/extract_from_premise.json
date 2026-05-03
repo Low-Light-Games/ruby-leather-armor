@@ -1,0 +1,19 @@
+{
+  "description": "Authoring-time fact extraction from the spoiler-bearing Story.premise and the player-facing Story.opening_message. Output populates Story.seed_facts, which is bulk-inserted into adventure_narrative_facts at adventure creation.",
+  "fields": {
+    "facts": "array of new facts to record. Each entry: { text (string — one self-contained sentence, canonical phrasing), kind (one of 'event' | 'state' | 'entity'), entities (array of strings — named NPCs / items / locations referenced, for observability), polarity ('asserts' | 'negates') }.",
+    "reasoning": "string — one short sentence explaining the extraction choice, for audit."
+  },
+  "kinds": {
+    "event": "Something that has happened in the story's history that future actions must remain consistent with. 'the lord's heir was kidnapped two weeks ago', 'the bridge over the Chasm collapsed in the last storm'.",
+    "state": "A current condition that constrains what the player can attempt at adventure start. 'the village is under curfew', 'the temple doors are sealed', 'the player has not yet met the captain'.",
+    "entity": "An NPC, object, or location the narrative establishes. 'the antagonist is named Vren', 'the village is called Thornfield', 'a black iron key is hidden in the well'."
+  },
+  "notes": [
+    "Spoiler discipline: the premise is spoiler-bearing — extract every fact you can find in it, including hidden truths. Those facts get stored untagged; runtime retrieval may surface them when the player's intent topically intersects, and that is the accepted trade-off (see Decision 8).",
+    "Coherence: when premise and opening_message describe the same situation differently, treat opening_message as the live present moment. The opening's claim wins; record only the opening's version in your facts list.",
+    "Stability: prefer canonical, self-contained phrasing so the same fact retrieves for varied paraphrased intents.",
+    "Scope: record only facts a new DM joining this story would need to know that are not already on the character sheet.",
+    "Empty case: if the premise + opening together establish no durable facts, return { facts: [], reasoning: '...' }."
+  ]
+}

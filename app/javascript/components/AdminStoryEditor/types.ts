@@ -25,11 +25,21 @@ export interface AdminStoryEditorProps {
   storyId?: number
 }
 
+export interface SeedFact {
+  text: string
+  kind: 'event' | 'state' | 'entity'
+  polarity?: 'asserts' | 'negates'
+  entities?: string[]
+}
+
 export interface StoryData {
   id: number
   title: string
   preview: string
   premise: string
+  opening_message?: string
+  world_terrain?: string
+  seed_facts?: SeedFact[]
   initial_summary: string | null
   initial_contexts?: InitialContexts
   story_locations?: StoryLocationData[]

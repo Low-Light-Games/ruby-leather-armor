@@ -6,7 +6,7 @@ import { buildPayload, buildLocationPayload } from './buildPayload'
 import type {
   ClientLocation,
   EncounterTableData, StoryNpcData, StoryClueData, StoryMilestoneData,
-  StoryData, InitialContexts,
+  StoryData, InitialContexts, SeedFact,
   TraversalCtx, CombatCtx, SocialCtx, ExplorationCtx, RestCtx, InventoryCtx,
 } from './types'
 import {
@@ -24,6 +24,8 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
   const [title, setTitle] = useState('')
   const [preview, setPreview] = useState('')
   const [premise, setPremise] = useState('')
+  const [openingMessage, setOpeningMessage] = useState('')
+  const [seedFacts, setSeedFacts] = useState<SeedFact[]>([])
   const [initialSummary, setInitialSummary] = useState('')
   const [currentStoryId, setCurrentStoryId] = useState<number | undefined>(storyId)
 
@@ -40,6 +42,7 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
   const [icRest, setIcRest] = useState<RestCtx>(emptyRestCtx())
   const [icInventory, setIcInventory] = useState<InventoryCtx>(emptyInventoryCtx())
 
+  const [seedFactsOpen, setSeedFactsOpen] = useState(true)
   const [locationsOpen, setLocationsOpen] = useState(false)
   const [encounterTablesOpen, setEncounterTablesOpen] = useState(false)
   const [npcsOpen, setNpcsOpen] = useState(false)
@@ -98,6 +101,8 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
     setTitle(data.title)
     setPreview(data.preview)
     setPremise(data.premise)
+    setOpeningMessage(data.opening_message || '')
+    setSeedFacts(Array.isArray(data.seed_facts) ? data.seed_facts : [])
     setInitialSummary(data.initial_summary || '')
     setLocations(fresh
       ? hydrateLocations(data.story_locations || [])
@@ -148,7 +153,9 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
   // ---- Save ----
 
   const getPayloadArgs = () => ({
-    title, preview, premise, initialSummary,
+    title, preview, premise,
+    openingMessage, seedFacts,
+    initialSummary,
     currentStoryId, locations, encounterTables, npcs, clues, milestones,
     icTraversal, icCombat, icSocial, icExploration, icRest, icInventory,
   })
@@ -189,6 +196,8 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
   return {
     user, authLoading, loading, saving, feedback, dismissFeedback,
     title, setTitle, preview, setPreview, premise, setPremise,
+    openingMessage, setOpeningMessage,
+    seedFacts, setSeedFacts,
     initialSummary, setInitialSummary,
     currentStoryId,
     locations, setLocations,
@@ -197,6 +206,7 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
     icTraversal, setIcTraversal, icCombat, setIcCombat,
     icSocial, setIcSocial, icExploration, setIcExploration,
     icRest, setIcRest, icInventory, setIcInventory,
+    seedFactsOpen, setSeedFactsOpen,
     locationsOpen, setLocationsOpen,
     encounterTablesOpen, setEncounterTablesOpen,
     npcsOpen, setNpcsOpen, cluesOpen, setCluesOpen,

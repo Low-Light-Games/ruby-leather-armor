@@ -29,6 +29,7 @@ module Admin
       @story = Story.new(story_params)
 
       if @story.save
+        extract_seed_facts!(@story)
         respond_to do |format|
           format.json { render json: story_json(@story), status: :created }
           format.html { redirect_to admin_story_path(@story) }
@@ -41,6 +42,9 @@ module Admin
     # PATCH /admin/stories/:id
     def update
       if @story.update(story_params)
+        if @story.saved_change_to_premise? || @story.saved_change_to_opening_message?
+          extract_seed_facts!(@story)
+        end
         render json: story_json(@story)
       else
         render json: { errors: @story.errors.full_messages }, status: :unprocessable_entity
@@ -64,8 +68,9 @@ module Admin
 
     def story_params
       params.require(:story).permit(
-        :title, :preview, :premise, :initial_summary,
+        :title, :preview, :premise, :opening_message, :world_terrain, :initial_summary,
         initial_contexts: {},
+        seed_facts: [[:text, :kind, :polarity, { entities: [] }]],
         story_locations_attributes: [:id, :name, :description, :starting, :_destroy],
         encounter_tables_attributes: [
           :id, :name, :description, :check_frequency_hours, :encounter_chance, :_destroy,
@@ -91,8 +96,18 @@ module Admin
       )
     end
 
+    def extract_seed_facts!(story)
+      facts = DungeonMaster::Lore::ExtractFromPremise.call(story: story, user: current_user)
+      story.update_column(:seed_facts, facts) if facts.is_a?(Array)
+    rescue StandardError => e
+      ApplicationErrorReporter.notify(e, context: { source: "admin_stories_extract_from_premise", story_id: story.id })
+    end
+
     def story_json(story)
-      base = story.as_json(only: [:id, :title, :preview, :premise, :initial_summary, :initial_contexts, :created_at, :updated_at])
+      base = story.as_json(only: [
+        :id, :title, :preview, :premise, :opening_message, :world_terrain,
+        :initial_summary, :initial_contexts, :seed_facts, :created_at, :updated_at
+      ])
       base["story_locations"] = story.story_locations.order(:id).map { |loc|
         loc.as_json(only: [:id, :name, :description, :starting])
       }

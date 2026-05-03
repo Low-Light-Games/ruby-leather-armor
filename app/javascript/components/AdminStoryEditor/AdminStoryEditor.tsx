@@ -7,6 +7,7 @@ import NpcsSection from './sections/NpcsSection'
 import CluesSection from './sections/CluesSection'
 import MilestonesSection from './sections/MilestonesSection'
 import InitialContextsSection from './sections/InitialContextsSection'
+import SeedFactsSection from './sections/SeedFactsSection'
 import type { AdminStoryEditorProps } from './types'
 import './AdminStoryEditor.scss'
 
@@ -15,6 +16,8 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   const {
     user, authLoading, loading, saving, feedback, dismissFeedback,
     title, setTitle, preview, setPreview, premise, setPremise,
+    openingMessage, setOpeningMessage,
+    seedFacts, setSeedFacts,
     initialSummary, setInitialSummary,
     currentStoryId,
     locations, setLocations,
@@ -23,6 +26,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
     icTraversal, setIcTraversal, icCombat, setIcCombat,
     icSocial, setIcSocial, icExploration, setIcExploration,
     icRest, setIcRest, icInventory, setIcInventory,
+    seedFactsOpen, setSeedFactsOpen,
     locationsOpen, setLocationsOpen,
     encounterTablesOpen, setEncounterTablesOpen,
     npcsOpen, setNpcsOpen, cluesOpen, setCluesOpen,
@@ -91,10 +95,17 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
         </div>
 
         <div className="form-field">
-          <label htmlFor="story-premise" title="The full plot, secrets, and villain motivations. Only the AI sees this — never shown to the player.">Premise (full story, admin only)</label>
+          <label htmlFor="story-premise" title="The full plot, secrets, and villain motivations. Spoiler-bearing — only the AI sees this. The fact extractor reads it and the opening message together to populate seed_facts.">Premise (full story, admin only)</label>
           <textarea id="story-premise" value={premise}
             onChange={e => setPremise(e.target.value)} rows={6}
             placeholder="The complete plot with all secrets and twists. Who is the villain? What's really going on? Include NPC motivations, hidden connections, and the intended resolution. The AI DM reads this to run the story — the player never sees it." />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="story-opening-message" title="Player-facing prose rendered as the first AdventureMessage at adventure creation. The fact extractor treats this as the live present moment, overriding premise on direct conflicts.">Opening Message (first scene the player sees)</label>
+          <textarea id="story-opening-message" value={openingMessage}
+            onChange={e => setOpeningMessage(e.target.value)} rows={5}
+            placeholder="The first prose the player reads when they start the adventure. E.g. 'You wake at dawn in the inn at the crossroads, the rain still falling. The innkeeper Helena meets your eye across the common room — she has been waiting for you.'" />
         </div>
 
         <div className="form-field">
@@ -103,6 +114,13 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
             onChange={e => setInitialSummary(e.target.value)} rows={4}
             placeholder="A brief status line from the player's perspective. E.g. 'Just arrived at the village after hearing rumors of goblin trouble. No leads yet.' This seeds the macro narrative tracker." />
         </div>
+
+        {isEditMode && (
+          <SeedFactsSection
+            seedFacts={seedFacts} setSeedFacts={setSeedFacts}
+            open={seedFactsOpen} setOpen={setSeedFactsOpen}
+          />
+        )}
 
         {isEditMode && (
           <LocationsSection

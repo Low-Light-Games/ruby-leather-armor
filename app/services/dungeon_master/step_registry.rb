@@ -44,6 +44,8 @@ module DungeonMaster
                                             pipeline: true),
       'creature_generation' => Entry.new(token_budget: nil, model_hint: H::CREATURE_GENERATION,
                                          pipeline: true),
+      'extract_from_premise' => Entry.new(token_budget: nil, model_hint: H::EXTRACT_FROM_PREMISE,
+                                          pipeline: false),
       'roll_request' => Entry.new(token_budget: nil, model_hint: H::ROLL_REQUEST, pipeline: true,
                                   default_model: 'gpt-5-nano', default_reasoning_effort: 'minimal'),
       'combat_roll_request' => Entry.new(token_budget: nil, model_hint: H::COMBAT_ROLL_REQUEST, pipeline: true,

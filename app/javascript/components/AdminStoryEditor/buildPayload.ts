@@ -1,7 +1,7 @@
 import type {
   ClientLocation,
   EncounterTableData, StoryNpcData, StoryClueData, StoryMilestoneData,
-  InitialContexts,
+  InitialContexts, SeedFact,
   TraversalCtx, CombatCtx, SocialCtx, ExplorationCtx, RestCtx, InventoryCtx,
 } from './types'
 
@@ -9,6 +9,8 @@ export interface PayloadArgs {
   title: string
   preview: string
   premise: string
+  openingMessage: string
+  seedFacts: SeedFact[]
   initialSummary: string
   currentStoryId: number | undefined
   locations: ClientLocation[]
@@ -71,13 +73,15 @@ export const buildInitialContextsPayload = (
 
 export const buildPayload = (args: PayloadArgs) => {
   const {
-    title, preview, premise, initialSummary,
+    title, preview, premise, openingMessage, seedFacts, initialSummary,
     currentStoryId, locations, encounterTables, npcs, clues, milestones,
     icTraversal, icCombat, icSocial, icExploration, icRest, icInventory,
   } = args
 
   const story: Record<string, unknown> = {
     title, preview, premise,
+    opening_message: openingMessage,
+    seed_facts: seedFacts,
     initial_summary: initialSummary,
     initial_contexts: buildInitialContextsPayload(
       icTraversal, icCombat, icSocial, icExploration, icRest, icInventory,
