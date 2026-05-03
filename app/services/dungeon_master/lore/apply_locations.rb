@@ -28,7 +28,11 @@ module DungeonMaster
       def embed_records(records)
         texts = records.map(&:embedding_text)
         vectors = embed_with_logging(texts)
-        vectors.each_with_index.each_with_object({}) { |(vec, idx), acc| acc[idx] = vec }
+        embeddings_by_position(vectors)
+      end
+
+      def embeddings_by_position(vectors)
+        vectors.each_with_index.to_h { |vector, position| [position, vector] }
       end
 
       def embed_with_logging(texts)
