@@ -1,17 +1,7 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  # Path A after TimeKeeper: Harbinger left encounter ids on the AdventureLoop; optionally
-  # run Warmaster, update the loop, and produce the resolver return payload. Does not write
-  # +pipeline_outcome+ — AdventureLoopResolution calls +store_pipeline_outcome!+ with +pipeline_outcome+.
-  #
-  # Scene-enemy merging: after spawning encounter-table creatures, hostile NPCs at the
-  # adventure's current location are merged in so pre-established scene enemies (e.g.
-  # goblins the player was already approaching) join the combat alongside the random
-  # encounter.
   class EncounterWarmasterBridge
-    # Return value from EncounterWarmasterBridge.call: resolver payload (status, intent, etc.)
-    # and the string stored as the loop +pipeline_outcome+ narration seed.
     class Result
       attr_reader :payload, :pipeline_outcome
 
@@ -76,14 +66,10 @@ module DungeonMaster
       )
     end
 
-    # Calls an AI step to produce a single coherent situation description from the
-    # (potentially contradictory) encounter_scene and verdict_outcome. Falls back to
-    # the naive join when AI is unavailable.
     def self.reconcile_encounter(loop:, adventure:, intent:, log:, config:, ai:)
       encounter_scene = loop&.get("encounter_scene").to_s.presence
       verdict_outcome = loop&.get("verdict_outcome").to_s.presence
 
-      # If only one side exists there is nothing to reconcile.
       return encounter_scene || verdict_outcome if encounter_scene.nil? || verdict_outcome.nil?
 
       return "#{encounter_scene}\n\n#{verdict_outcome}" unless ai && config && log
