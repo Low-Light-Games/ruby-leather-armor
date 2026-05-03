@@ -1,5 +1,5 @@
 import type {
-  StoryLocationData, LocationConnectionData,
+  StoryLocationData,
   EncounterTableData, EncounterTableEntryData,
   StoryNpcData, StoryClueData, StoryMilestoneData,
   NpcRole, NpcAttitude, DiscoveryMethod, ClueDifficulty,
@@ -7,20 +7,15 @@ import type {
 
 export type { NpcRole, NpcAttitude, DiscoveryMethod, ClueDifficulty }
 export type {
-  StoryLocationData, LocationConnectionData,
+  StoryLocationData,
   EncounterTableData, EncounterTableEntryData,
   StoryNpcData, StoryClueData, StoryMilestoneData,
 }
 
-// ---- Client-side identity layer for locations/connections ----
+// ---- Client-side identity layer for locations ----
 
-export interface ClientConnection extends LocationConnectionData {
-  _toRef: string
-}
-
-export interface ClientLocation extends Omit<StoryLocationData, 'connections_from'> {
+export interface ClientLocation extends StoryLocationData {
   _clientId: string
-  connections_from: ClientConnection[]
 }
 
 // ---- Props & server data shape ----
@@ -110,7 +105,6 @@ export interface InitialContexts {
 
 // ---- Constants ----
 
-export const TERRAIN_TYPES = ['road', 'trail', 'forest', 'mountain', 'swamp', 'desert', 'river', 'coast', 'urban', 'underground']
 export const NPC_ROLES: NpcRole[] = ['quest_giver', 'informant', 'antagonist', 'bystander', 'merchant']
 export const NPC_ATTITUDES: NpcAttitude[] = ['friendly', 'indifferent', 'unfriendly']
 export const DISCOVERY_METHODS: DiscoveryMethod[] = ['social', 'exploration', 'magic', 'combat', 'automatic']
@@ -120,13 +114,7 @@ export const CLUE_DIFFICULTIES: ClueDifficulty[] = ['automatic', 'easy', 'modera
 
 export const emptyLocation = (): ClientLocation => ({
   name: '', description: '', starting: false,
-  connections_from: [],
   _clientId: crypto.randomUUID(),
-})
-
-export const emptyConnection = (): ClientConnection => ({
-  to_location_id: 0, distance_miles: 1, terrain_type: 'road', description: '',
-  _toRef: '',
 })
 
 export const emptyTable = (): EncounterTableData => ({

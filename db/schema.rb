@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_03_130000) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_03_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -462,19 +462,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_03_130000) do
     t.index ["slot"], name: "index_item_definitions_on_slot"
   end
 
-  create_table "location_connections", force: :cascade do |t|
-    t.bigint "from_location_id", null: false
-    t.bigint "to_location_id", null: false
-    t.decimal "distance_miles", precision: 8, scale: 2, null: false
-    t.string "terrain_type", default: "road", null: false
-    t.text "description"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["from_location_id", "to_location_id"], name: "idx_location_connections_pair", unique: true
-    t.index ["from_location_id"], name: "index_location_connections_on_from_location_id"
-    t.index ["to_location_id"], name: "index_location_connections_on_to_location_id"
-  end
-
   create_table "moderation_events", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.text "input_excerpt"
@@ -805,8 +792,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_03_130000) do
   add_foreign_key "encounter_table_entries", "encounter_tables"
   add_foreign_key "encounter_tables", "stories"
   add_foreign_key "experience_suggestions", "adventures"
-  add_foreign_key "location_connections", "story_locations", column: "from_location_id"
-  add_foreign_key "location_connections", "story_locations", column: "to_location_id"
   add_foreign_key "moderation_events", "users"
   add_foreign_key "pipelines", "adventure_messages", column: "player_message_id", on_delete: :nullify
   add_foreign_key "pipelines", "adventures"

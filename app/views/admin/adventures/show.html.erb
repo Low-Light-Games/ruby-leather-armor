@@ -268,25 +268,20 @@
     <h3 class="sub-title">Locations (<%= @locations.size %>)</h3>
     <table class="elements-table">
       <thead>
-        <tr><th>Name</th><th>Starting</th><th>Connections</th><th>Description</th><th></th></tr>
+        <tr><th>Name</th><th>Starting</th><th>Description</th><th></th></tr>
       </thead>
       <tbody>
         <% @locations.each do |loc| %>
           <tr>
             <td class="el-name"><%= loc.name %><%= ' ★' if @adventure.current_location_id == loc.id %></td>
             <td><%= loc.starting ? '✓' : '' %></td>
-            <td class="el-conn">
-              <% loc.connections_from.each do |c| %>
-                <span class="conn-pill">→ <%= c.to_location.name %> (<%= c.distance_miles %>mi, <%= c.terrain_type %>)</span>
-              <% end %>
-            </td>
             <td class="el-desc"><%= truncate(loc.description || '', length: 80) %></td>
             <td>
               <button class="btn btn-xs btn-outline" onclick="toggleEdit('loc-<%= loc.id %>')">Edit</button>
             </td>
           </tr>
           <tr id="loc-<%= loc.id %>" class="edit-row-panel" style="display:none;">
-            <td colspan="5">
+            <td colspan="4">
               <%= form_with url: update_story_element_admin_adventure_path(@adventure), method: :patch, local: true, class: "inline-edit-form" do %>
                 <input type="hidden" name="element_type" value="story_location">
                 <input type="hidden" name="element_id" value="<%= loc.id %>">

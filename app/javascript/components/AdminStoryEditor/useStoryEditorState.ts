@@ -4,7 +4,7 @@ import { apiFetch } from '../../utils/api'
 import { hydrateLocations, rehydrateLocations } from './locationHydration'
 import { buildPayload, buildLocationPayload } from './buildPayload'
 import type {
-  ClientLocation, ClientConnection,
+  ClientLocation,
   EncounterTableData, StoryNpcData, StoryClueData, StoryMilestoneData,
   StoryData, InitialContexts,
   TraversalCtx, CombatCtx, SocialCtx, ExplorationCtx, RestCtx, InventoryCtx,
@@ -148,17 +148,6 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
 
   // ---- Save ----
 
-  const hasUnresolvedConnections = () => {
-    const refToDbId = new Map<string, number>()
-    locations.forEach(l => { if (l.id) refToDbId.set(l._clientId, l.id) })
-
-    return locations.some(l =>
-      !l._destroy && l.connections_from.some(c =>
-        !c._destroy && c._toRef && !refToDbId.has(c._toRef)
-      )
-    )
-  }
-
   const getPayloadArgs = () => ({
     title, preview, premise, initialSummary,
     currentStoryId, locations, encounterTables, npcs, clues, milestones,
@@ -183,76 +172,12 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
         return
       }
 
-      const needsTwoPhase = hasUnresolvedConnections()
-
-      if (needsTwoPhase) {
-        const phase1 = buildPayload(getPayloadArgs(), true)
-        const data1: StoryData = await apiFetch(`/admin/stories/${currentStoryId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(phase1),
-        })
-
-        const serverLocs = rehydrateLocations(data1.story_locations || [], locations)
-        setLocations(serverLocs)
-        locationsRef.current = serverLocs
-
-        const deferredConnsByRef = new Map<string, ClientConnection[]>()
-        const refToDbId = new Map<string, number>()
-        locations.forEach(l => { if (l.id) refToDbId.set(l._clientId, l.id) })
-
-        locations.forEach(loc => {
-          if (loc._destroy) return
-          loc.connections_from.forEach(conn => {
-            if (conn._destroy || !conn._toRef || conn.id) return
-            if (refToDbId.has(conn._toRef)) return
-            const arr = deferredConnsByRef.get(loc._clientId) || []
-            arr.push(conn)
-            deferredConnsByRef.set(loc._clientId, arr)
-          })
-        })
-
-        const newRefToDbId = new Map<string, number>()
-        serverLocs.forEach(l => { if (l.id) newRefToDbId.set(l._clientId, l.id) })
-
-        const phase2LocAttrs = Array.from(deferredConnsByRef.entries())
-          .map(([fromRef, conns]) => {
-            const fromDbId = newRefToDbId.get(fromRef)
-            if (!fromDbId) return null
-            const resolvedConns = conns
-              .map(c => {
-                const toDbId = newRefToDbId.get(c._toRef)
-                if (!toDbId) return null
-                return {
-                  to_location_id: toDbId,
-                  distance_miles: c.distance_miles,
-                  terrain_type: c.terrain_type,
-                  description: c.description || '',
-                }
-              })
-              .filter(Boolean)
-            if (resolvedConns.length === 0) return null
-            return { id: fromDbId, connections_from_attributes: resolvedConns }
-          })
-          .filter(Boolean)
-
-        if (phase2LocAttrs.length > 0) {
-          const phase2 = { story: { story_locations_attributes: phase2LocAttrs } }
-          const data2: StoryData = await apiFetch(`/admin/stories/${currentStoryId}`, {
-            method: 'PATCH',
-            body: JSON.stringify(phase2),
-          })
-          applyServerData(data2)
-        } else {
-          applyServerData(data1)
-        }
-      } else {
-        const payload = buildPayload(getPayloadArgs())
-        const data: StoryData = await apiFetch(`/admin/stories/${currentStoryId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(payload),
-        })
-        applyServerData(data)
-      }
+      const payload = buildPayload(getPayloadArgs())
+      const data: StoryData = await apiFetch(`/admin/stories/${currentStoryId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      })
+      applyServerData(data)
 
       showFeedback('success', 'Story saved successfully')
     } catch (err: any) {

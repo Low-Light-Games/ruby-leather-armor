@@ -159,21 +159,11 @@ export interface AdminStory {
   updated_at: string
 }
 
-export interface LocationConnectionData {
-  id?: number
-  to_location_id: number
-  distance_miles: number
-  terrain_type: string
-  description?: string
-  _destroy?: boolean
-}
-
 export interface StoryLocationData {
   id?: number
   name: string
   description: string
   starting: boolean
-  connections_from?: LocationConnectionData[]
   _destroy?: boolean
 }
 

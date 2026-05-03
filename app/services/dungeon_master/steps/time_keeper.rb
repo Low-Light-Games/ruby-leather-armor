@@ -94,27 +94,23 @@ module DungeonMaster
       def try_journey_estimate(intent)
         return nil unless intent[:destination].present?
 
-        destination_loc = resolve_destination(intent[:destination])
-        return nil unless destination_loc
+        destination = resolve_destination(intent[:destination])
+        return nil unless destination
 
-        origin = @adventure.current_location
+        origin = origin_adventure_location
         return nil unless origin
-
-        connection = origin.connection_to(destination_loc)
-        return nil unless connection
 
         raise ArgumentError, "Character sheet or derived_stats missing for journey calculation" unless @sheet&.derived_stats
 
-        base_speed_ft = @sheet.derived_stats["speed"] || 30
-        encumbrance   = @sheet.derived_stats["encumbrance"] || "light"
-        terrain       = connection.terrain_type
-        distance      = connection.distance_miles.to_f
+        base_speed_ft  = @sheet.derived_stats["speed"] || 30
+        encumbrance    = @sheet.derived_stats["encumbrance"] || "light"
+        terrain        = @adventure.story.world_terrain
+        distance_miles = euclidean_distance_in_miles(origin, destination)
 
         speed_mph = compute_journey_speed(base_speed_ft, terrain)
-
         return nil if speed_mph <= 0
 
-        hours = distance / speed_mph
+        hours = distance_miles / speed_mph
 
         {
           hours: hours,
@@ -124,8 +120,8 @@ module DungeonMaster
           speed_mph: speed_mph,
           journey_data: {
             origin: origin.name,
-            destination: destination_loc.name,
-            distance_miles: distance,
+            destination: destination.name,
+            distance_miles: distance_miles,
             terrain_type: terrain,
             speed_mph: speed_mph.round(2),
             estimated_hours: hours.round(2),
@@ -136,6 +132,20 @@ module DungeonMaster
             }
           }
         }
+      end
+
+      def origin_adventure_location
+        return nil unless @adventure.current_location_id
+
+        AdventureLocation.for_adventure(@adventure)
+                         .find_by(story_location_id: @adventure.current_location_id)
+      end
+
+      def euclidean_distance_in_miles(origin, destination)
+        dx = destination.x - origin.x
+        dy = destination.y - origin.y
+        unit_distance = Math.sqrt(dx * dx + dy * dy)
+        unit_distance * @adventure.coordinate_scale.to_f
       end
 
       def try_combat_estimate
@@ -316,9 +326,9 @@ module DungeonMaster
       def resolve_destination(destination_name)
         return nil unless destination_name.present?
 
-        story = @adventure.story
-        story.story_locations.find_by("LOWER(name) = ?", destination_name.downcase) ||
-          story.story_locations.where("LOWER(name) LIKE ?", "%#{destination_name.downcase}%").first
+        scope = AdventureLocation.for_adventure(@adventure)
+        scope.find_by("LOWER(name) = ?", destination_name.downcase) ||
+          scope.where("LOWER(name) LIKE ?", "%#{destination_name.downcase}%").first
       end
 
       def compute_journey_speed(base_speed_ft, terrain)

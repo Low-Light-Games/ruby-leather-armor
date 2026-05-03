@@ -24,6 +24,7 @@ class AdventureNpc < ApplicationRecord
   scope :for_adventure, ->(adventure) { where(adventure_id: adventure.id) }
   scope :at_location,   ->(location_name) { where(location_name: location_name) }
   scope :hostile,       -> { where(attitude: "unfriendly") }
+  scope :non_hostile,   -> { where.not(attitude: "unfriendly") }
   scope :nearest_for, ->(adventure, embedding, limit:) {
     for_adventure(adventure)
       .nearest_neighbors(:embedding, embedding, distance: "cosine")

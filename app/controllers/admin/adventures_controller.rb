@@ -22,7 +22,7 @@ module Admin
       @sheet = @adventure.adventure_sheets.includes(:adventure_sheet_items, :adventure_sheet_feats, :adventure_sheet_spells).first
       @creatures = @adventure.creature_sheets.order(:name)
       @story = @adventure.story
-      @locations = @story.story_locations.includes(connections_from: :to_location).order(:name)
+      @locations = @story.story_locations.order(:name)
       @npcs = StoryNpc.for_adventure(@adventure).includes(:location).order(:name)
       @clues = StoryClue.for_adventure(@adventure).includes(:location, :npc).order(:title)
       @recent_messages = @adventure.adventure_messages.order(created_at: :desc).limit(20)
