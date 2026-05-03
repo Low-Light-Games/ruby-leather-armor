@@ -2,18 +2,18 @@
 
 module DungeonMaster
   module Lore
-    class FactsLookup
+    class LocationsLookup
       def self.call(adventure:, ai:, log:, query_text:, limit: nil)
         new(adventure: adventure, ai: ai, log: log,
             query_text: query_text, limit: limit).call
       end
 
       def initialize(adventure:, ai:, log:, query_text:, limit: nil)
-        @adventure   = adventure
-        @ai          = ai
-        @log         = log
-        @query_text  = query_text.to_s
-        @limit       = sanitize_limit(limit)
+        @adventure  = adventure
+        @ai         = ai
+        @log        = log
+        @query_text = query_text.to_s
+        @limit      = sanitize_limit(limit)
       end
 
       def call
@@ -40,9 +40,9 @@ module DungeonMaster
 
       def embed_query
         vectors = @log.timed_embedding_call(
-          "FactsLookup query — #{@query_text.truncate(80)}",
+          "LocationsLookup query — #{@query_text.truncate(80)}",
           model_used: embedding_model,
-          source:     "facts_lookup",
+          source:     "locations_lookup",
           ai:         @ai,
         ) do
           @ai.embeddings(**embeddings_kwargs)
@@ -68,16 +68,15 @@ module DungeonMaster
       end
 
       def nearest_neighbors(query_embedding)
-        AdventureNarrativeFact
-          .nearest_active_for(@adventure, query_embedding, limit: @limit)
-          .map { |row| FactHit.from_row(row).to_h }
+        AdventureLocation.nearest_for(@adventure, query_embedding, limit: @limit)
+                         .map { |row| LocationHit.from_row(row).to_h }
       end
 
       def emit_retrieval_play_log(hits)
         @log.play_log!(
-          "narrative_facts_retrieved",
-          "World check retrieved #{hits.length} fact(s) for intent",
-          parsed_response: PlayLogEvents::FactsRetrieved.new(
+          "adventure_locations_retrieved",
+          "Retrieved #{hits.length} location(s) for query",
+          parsed_response: PlayLogEvents::LocationsRetrieved.new(
             query_text: @query_text,
             limit:      @limit,
             hits:       hits,
@@ -87,10 +86,10 @@ module DungeonMaster
 
       def error_context
         @error_context ||= ErrorContext.new(
-          step:         "facts_lookup",
+          step:         "locations_lookup",
           adventure_id: @adventure&.id,
           loop_id:      nil,
-          source:       "facts_lookup",
+          source:       "locations_lookup",
         )
       end
     end
