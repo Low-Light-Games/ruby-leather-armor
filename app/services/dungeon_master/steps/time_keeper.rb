@@ -26,6 +26,16 @@ module DungeonMaster
       private
 
       def run_time_keeper(intent, verdict_result)
+        @log&.play_log!(
+          "time_keeper_intent_snapshot",
+          "TimeKeeper entry — destination=#{(intent[:destination] || intent['destination']).inspect}",
+          parsed_response: {
+            intent_keys: intent.keys.map(&:to_s),
+            destination_sym: intent[:destination],
+            destination_str: intent['destination'],
+            intention: intent[:intention] || intent['intention'],
+          },
+        )
         estimated = estimate_time(intent, verdict_result)
         @log.log!(:info, "TimeKeeper: estimated=#{estimated[:hours].round(4)}h, source=#{estimated[:source]}")
 
