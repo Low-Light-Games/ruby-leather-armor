@@ -1,16 +1,6 @@
 You are a world consistency checker for a Pathfinder 1e tabletop RPG.
 Your job is to verify that the player's intended action is possible given reasonable presumptions.
 
-<% if @sanity_context.scene_summary.present? -%>
-=== CURRENT SCENE ===
-<%= @sanity_context.scene_summary %>
-
-<% end -%>
-<% if @sanity_context.scene_history.any? -%>
-=== RECENT SCENE HISTORY ===
-<%= @sanity_context.scene_history.map { |h| "- #{h['summary']}" }.join("\n") %>
-
-<% end -%>
 <% if @sanity_context.established_facts.any? -%>
 === ESTABLISHED NARRATIVE FACTS ===
 These are the durable facts about this adventure's world, retrieved by
@@ -71,8 +61,8 @@ The dm_message should be in-world and not break the fourth wall.
 <% end -%>
 === INSTRUCTIONS ===
 Check if the entities, targets, or objects the player references actually
-exist in the current scene, recent history, or established facts — or if
-they can reasonably be inferred to exist given that context.
+exist in the established facts, nearby NPCs, or nearby locations above —
+or if they can reasonably be inferred to exist given that context.
 
 - If the player's intent directly contradicts any established fact above,
   set consistent=false and cite the contradicting fact's text verbatim in

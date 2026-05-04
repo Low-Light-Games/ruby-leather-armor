@@ -206,7 +206,6 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
                 combatContext={adventure.combat_context}
                 timeContext={adventure.time_context}
                 storySummary={adventure.story_summary}
-                sceneSummary={adventure.scene_summary}
                 currentCategory={adventure.current_category}
                 onContextUpdate={(field, value) =>
                   setAdventure(prev => prev ? { ...prev, [`${field}_context`]: value } : prev)

@@ -264,7 +264,6 @@ export interface Adventure {
   combat_context: Record<string, unknown> | null
   time_context: Record<string, unknown> | null
   story_summary: string | null
-  scene_summary: string | null
   current_category: string | null
   ended: boolean
   ended_at: string | null

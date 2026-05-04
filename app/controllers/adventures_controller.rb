@@ -96,7 +96,6 @@ class AdventuresController < ApplicationController
       combat_context: adventure.combat_context,
       time_context: adventure.time_context,
       story_summary: adventure.story_summary,
-      scene_summary: adventure.scene_summary,
       current_category: adventure.current_category,
       ended: adventure.ended?,
       ended_at: adventure.ended_at,

@@ -46,7 +46,7 @@ Player input
        └─ Output phase (parallel fan-out at Stagehand):
             ├─ Narrate (AI) ────────── prose response, fed by scene_facts + outcome_facts retrieval
             ├─ Loremaster (AI) ─────── extracts new durable facts from the turn's outcome
-            └─ Context Update (AI) ─── persists combat_context advancement + scene_summary
+            └─ Context Update (AI) ─── persists combat_context advancement (combat-only)
 ```
 
 ### AI Steps
@@ -66,7 +66,7 @@ Player input
 | **Loremaster** | Extracts new durable narrative facts from the turn's outcome and writes them to `adventure_narrative_facts`. Runs in parallel with Narrate inside Stagehand |
 | **Narrate** | Generates the narrative prose the player actually reads. Reads `scene_facts` (intent-keyed) + `outcome_facts` (outcome-keyed) retrievals against the facts store |
 | **Combat Narrator** | Async flavor pass after End Turn — turns the round's deterministic NPC events into one paragraph |
-| **Context Update** | Persists combat-context advancement (when free-text combat is active) and the meta scene_summary |
+| **Context Update** | Persists combat-context advancement when free-text combat is active. The retired scene_summary subsystem is gone — battlefield init seeds its scene note from the last few player-facing AdventureMessages (`Battlefield::PersistCombatStart#recent_scene_note`) |
 | **ExtractFromPremise** | Authoring-time fact extraction at story save: reads `Story.premise` + `Story.opening_message`, populates `Story.seed_facts` |
 
 ### Deterministic Steps

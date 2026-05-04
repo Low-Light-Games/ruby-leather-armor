@@ -119,14 +119,10 @@
     <% end %>
   </details>
 
-  <%# ═══════ SCENE & LOCATION ═══════ %>
+  <%# ═══════ LOCATION ═══════ %>
   <details class="dash-section" open>
-    <summary class="section-title">Scene &amp; Location</summary>
+    <summary class="section-title">Location</summary>
     <div class="meta-grid">
-      <div class="meta-card">
-        <div class="card-label">Scene Summary</div>
-        <div class="meta-value"><%= @adventure.scene_summary.presence || '—' %></div>
-      </div>
       <div class="meta-card">
         <div class="card-label">Current Location</div>
         <div class="meta-value"><%= @adventure.current_location&.name || 'None set' %></div>
@@ -134,7 +130,7 @@
     </div>
 
     <details class="edit-panel">
-      <summary class="edit-toggle">Edit Scene &amp; Location</summary>
+      <summary class="edit-toggle">Edit Location</summary>
       <%= form_with url: admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do |f| %>
         <div class="edit-row">
           <label>Location</label>
@@ -144,10 +140,6 @@
               <option value="<%= loc.id %>" <%= 'selected' if @adventure.current_location_id == loc.id %>><%= loc.name %></option>
             <% end %>
           </select>
-        </div>
-        <div class="edit-row full">
-          <label>Scene Summary</label>
-          <input type="text" name="adventure[scene_summary]" value="<%= @adventure.scene_summary %>" class="input-full">
         </div>
         <button type="submit" class="btn btn-primary">Save</button>
       <% end %>

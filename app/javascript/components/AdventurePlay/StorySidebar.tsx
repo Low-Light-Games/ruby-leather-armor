@@ -21,7 +21,6 @@ interface StorySidebarProps {
   combatContext: Record<string, unknown> | null;
   timeContext: Record<string, unknown> | null;
   storySummary: string | null;
-  sceneSummary: string | null;
   currentCategory: string | null;
   onContextUpdate: (field: string, value: Record<string, unknown>) => void;
 }
@@ -153,7 +152,6 @@ export const StorySidebar: React.FC<StorySidebarProps> = ({
   combatContext,
   timeContext,
   storySummary,
-  sceneSummary,
   currentCategory,
   onContextUpdate,
 }) => {
@@ -187,16 +185,6 @@ export const StorySidebar: React.FC<StorySidebarProps> = ({
         </div>
         <div className="context-body">
           {storySummary || <span className="context-placeholder">The adventure has just begun...</span>}
-        </div>
-      </div>
-
-      <div className="context-section">
-        <h3>Current Scene</h3>
-        <div className="context-body scene-summary-body">
-          {sceneSummary
-            ? <span className="scene-summary">{sceneSummary}</span>
-            : <span className="context-placeholder">No scene details yet.</span>
-          }
         </div>
       </div>
 

@@ -70,7 +70,6 @@ class DmConfig < ApplicationRecord
     'step_models' => {},
     'action_queue' => 'progressive',
     'show_roll_dc' => true,
-    'scene_history_depth' => 10,
     'creature_creation_fallback' => 'ai',
     'instant_death' => true,
     'no_auto_hit_miss' => true,

@@ -4,7 +4,6 @@ module DungeonMaster
   module Steps
     module ContextUpdate
       COMBAT_DOMAIN_STEP = "combat_context_update"
-      SCENE_UPDATE_STEP  = "scene_update"
 
       class CombatMutationState
         def initialize(mutations)
@@ -44,7 +43,6 @@ module DungeonMaster
       # Used by Stagehand parallel narrative (narrate + context in one fan_out).
       def apply_context_update_results(context_result, macro_result, macro_significant:, mutations:)
         persist_combat_context(context_result, mutations)
-        persist_scene_summary(context_result["scene_summary"])
         handle_new_creatures(context_result["new_creatures"]) if context_result["new_creatures"].present?
 
         if should_persist_macro_story_summary?(macro_significant, macro_result)
@@ -143,7 +141,6 @@ module DungeonMaster
         [
           combat_domain_evaluator_prompt(what_happened, mutations,
             allow_combat_initialization: allow_combat_initialization),
-          scene_update_evaluator_prompt(what_happened),
         ]
       end
 
@@ -167,28 +164,14 @@ module DungeonMaster
         }
       end
 
-      def scene_update_evaluator_prompt(what_happened)
-        system_prompt = PromptRenderer.render("scene_update",
-          what_happened: what_happened,
-          scene_summary: @adventure.scene_summary)
-
-        {
-          system_prompt: system_prompt,
-          user_message: what_happened,
-          model: @config.model_for(SCENE_UPDATE_STEP),
-          meta: { step: SCENE_UPDATE_STEP }
-        }
-      end
-
       def aggregate_context_update_results(by_step)
         combat_parsed = evaluator_fan_out_result!(by_step, COMBAT_DOMAIN_STEP, "context_update")["parsed_response"] || {}
-        scene_parsed = evaluator_fan_out_result!(by_step, SCENE_UPDATE_STEP, "context_update")["parsed_response"] || {}
 
         domain_result_parser = DomainContextResultParser.new(
           domain_identifier: "combat",
           raw_domain_result: combat_parsed
         )
-        { "combat_context" => domain_result_parser.normalized_result }.merge(scene_parsed)
+        { "combat_context" => domain_result_parser.normalized_result }
       end
 
       def should_persist_macro_story_summary?(macro_significant, macro_result)
@@ -270,17 +253,6 @@ module DungeonMaster
         combat_context.is_a?(Hash) &&
           prev_active == true &&
           combat_context["active"] == false
-      end
-
-      def persist_scene_summary(summary)
-        return unless summary.present?
-
-        max_history = (@config.get("scene_history_depth") || 10).to_i
-        history = Array(@adventure.scene_history)
-        history.push({ "summary" => summary, "at" => Time.current.iso8601 })
-        history = history.last(max_history)
-
-        @adventure.update!(scene_summary: summary, scene_history: history)
       end
 
       def build_canonical_hp
