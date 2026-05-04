@@ -32,6 +32,12 @@ Set `needs_roll: false` with `no_roll_reason: "no rule retrieved"`.
 
 <% end -%>
 === OTHER FIELDS ===
+- `destination`: when the player is heading to a known place, copy the
+  exact location name from NEARBY LOCATIONS verbatim — bare name only,
+  no parentheticals, no distance, no bearing, no qualifiers, no
+  hedging. If the destination is not in NEARBY LOCATIONS, write the
+  bare place name the player used. If the action has no destination,
+  null.
 - `transition`: "combat_started" + populated `combatants` only when the
   action initiates combat with hostiles. Null/empty otherwise.
 - `ability_use_claimed`: a spell/feat/item the player named explicitly.

@@ -325,9 +325,24 @@ module DungeonMaster
       def resolve_destination(destination_name)
         return nil unless destination_name.present?
 
+        haystack = destination_name.downcase
         scope = AdventureLocation.for_adventure(@adventure)
-        scope.find_by("LOWER(name) = ?", destination_name.downcase) ||
-          scope.where("LOWER(name) LIKE ?", "%#{destination_name.downcase}%").first
+        exact = scope.find_by("LOWER(name) = ?", haystack)
+        return exact if exact
+
+        # Prefer locations whose name appears verbatim in the
+        # destination (handles polluted strings like
+        # "Garrison Keep (7.07 miles southwest) or ..."). Pick the
+        # longest matching name to favour "Garrison Keep" over a
+        # shorter "Keep" when both fit.
+        contained_in_destination = scope.where("? LIKE '%' || LOWER(name) || '%'", haystack)
+                                        .max_by { |loc| loc.name.length }
+        return contained_in_destination if contained_in_destination
+
+        # Fall back to the older direction (handles shortenings:
+        # "keep" → "Garrison Keep"). Pick the shortest matching name
+        # to favour the most specific match.
+        scope.where("LOWER(name) LIKE ?", "%#{haystack}%").min_by { |loc| loc.name.length }
       end
 
       def update_player_position!(estimated, harbinger_result, actual_hours)

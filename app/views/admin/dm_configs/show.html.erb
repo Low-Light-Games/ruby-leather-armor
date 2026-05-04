@@ -320,19 +320,6 @@
     document.getElementById('threshold-display').textContent = this.value;
   });
 
-  // Collapsible Authoring Tools section
-  document.getElementById('authoring-tools-toggle').addEventListener('click', function() {
-    var body = document.getElementById('authoring-tools-body');
-    var arrow = document.getElementById('authoring-tools-arrow');
-    if (body.style.display === 'none') {
-      body.style.display = 'block';
-      arrow.textContent = '▾';
-    } else {
-      body.style.display = 'none';
-      arrow.textContent = '▸';
-    }
-  });
-
   // Collapsible Pipeline Steps section
   document.getElementById('pipeline-steps-toggle').addEventListener('click', function() {
     var body = document.getElementById('pipeline-steps-body');
