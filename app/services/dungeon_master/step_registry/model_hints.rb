@@ -24,35 +24,24 @@ module DungeonMaster
       COMBAT_GM = '➡️ Capable model required for active combat adjudication ' \
                   '(battlefield + PF1e) — e.g. o3-mini, gpt-5-mini.'
 
-      MOMENTUM = 'Mid-tier model. Non-mechanical outcome determination and context-domain ' \
-                 'assessment — e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
-
-      SOCIAL_EXPANSION = 'Mid-tier model. Scene creation with NPC personality and attitude — ' \
-                         'e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
-
       TIME_KEEPER = "#{FAST_CHEAP} Estimates in-game time for an action.".freeze
-
-      CHRONICLER = '➡️ Capable model suggested. Receives social, traversal, and exploration ' \
-                   'context; condition matching and scene-aware NPC reactions. Use a capable ' \
-                   'model and sufficient token budget — e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.'
 
       NARRATE = 'Creative model. Narrative quality scales with capability — ' \
                 'e.g. gpt-4.1, gpt-4o, gpt-5.'
 
-      MICRO_CONTEXT_UPDATE = 'Mid-tier model. Structured JSON with moderate judgment — ' \
-                             'e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
+      COMBAT_CONTEXT_UPDATE = 'Mid-tier model. Domain-scoped JSON update for combat state. ' \
+                              'Must preserve canonical combat identity. ' \
+                              'e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
 
-      DOMAIN_CONTEXT_UPDATE_BASE = 'Mid-tier model. Domain-scoped JSON update — ' \
-                                   'e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
+      SCENE_UPDATE = "#{FAST_CHEAP} Scene summary and new-creature signals.".freeze
 
-      TRAVERSAL_CONTEXT_UPDATE = "#{DOMAIN_CONTEXT_UPDATE_BASE} (traversal)".freeze
-      COMBAT_CONTEXT_UPDATE    = "#{DOMAIN_CONTEXT_UPDATE_BASE} Must preserve canonical combat identity.".freeze
-      SOCIAL_CONTEXT_UPDATE    = "#{DOMAIN_CONTEXT_UPDATE_BASE} (social)".freeze
-      EXPLORATION_CONTEXT_UPDATE = "#{DOMAIN_CONTEXT_UPDATE_BASE} (exploration)".freeze
-      REST_CONTEXT_UPDATE      = "#{DOMAIN_CONTEXT_UPDATE_BASE} (rest)".freeze
-      INVENTORY_CONTEXT_UPDATE = "#{DOMAIN_CONTEXT_UPDATE_BASE} (inventory)".freeze
+      EXTRACT_FROM_PREMISE = 'Capable model recommended. Story-save fact extraction reads the ' \
+                             'spoiler-bearing premise + player-facing opening_message and emits ' \
+                             'a coherent seed_facts list — e.g. gpt-4.1, gpt-4.1-mini, gpt-5-mini.'
 
-      META_CONTEXT_UPDATE = "#{FAST_CHEAP} Scene summary and auxiliary context signals.".freeze
+      GENERATE_OPENING_MESSAGE = 'Capable model recommended. JIT opening-scene generator for ' \
+                                 'pre-validation stories whose opening_message is blank — ' \
+                                 'e.g. gpt-4.1, gpt-4.1-mini, gpt-5-mini.'
 
       MACRO_NARRATIVE_UPDATE = 'Mid-tier model. Judges narrative significance — ' \
                                'e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
@@ -78,8 +67,6 @@ module DungeonMaster
                         'person. Tight token budget; one paragraph. Tune prompt + model for ' \
                         'voice independently of the default narrate step. Runs async via ' \
                         'CombatNarratorJob so it never blocks End Turn.'
-
-      NPC_ACTION = "#{FAST_CHEAP} Per-NPC combat action decision. Runs N in parallel via Node fan_out.".freeze
 
       LOREMASTER = 'Mid-tier model. Structured fact extraction from factual outcomes — ' \
                    'e.g. gpt-4o-mini, gpt-4.1-mini, gpt-5-nano. Runs in parallel with ' \

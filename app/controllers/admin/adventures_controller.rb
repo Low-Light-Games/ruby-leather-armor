@@ -2,9 +2,7 @@
 
 module Admin
   class AdventuresController < BaseController
-    before_action :set_adventure, only: [:show, :update, :reset_context, :update_sheet, :update_story_element, :destroy]
-
-    CONTEXT_FIELDS = %w[traversal combat social exploration rest inventory].freeze
+    before_action :set_adventure, only: [:show, :update, :update_combat_context, :reset_combat_context, :update_sheet, :update_story_element, :destroy]
 
     def index
       @show_discarded = params[:discarded] == "1"
@@ -22,17 +20,14 @@ module Admin
       @sheet = @adventure.adventure_sheets.includes(:adventure_sheet_items, :adventure_sheet_feats, :adventure_sheet_spells).first
       @creatures = @adventure.creature_sheets.order(:name)
       @story = @adventure.story
-      @locations = @story.story_locations.includes(connections_from: :to_location).order(:name)
+      @locations = @story.story_locations.order(:name)
       @npcs = StoryNpc.for_adventure(@adventure).includes(:location).order(:name)
-      @clues = StoryClue.for_adventure(@adventure).includes(:location, :npc).order(:title)
       @recent_messages = @adventure.adventure_messages.order(created_at: :desc).limit(20)
       @registry_entry_uuids = PlayLog.recent_registry_entry_uuids_for_adventure(@adventure.id, limit: 5)
     end
 
     def update
       return update_time_context if time_context_update_request?
-
-      return update_context if context_update_request?
 
       return update_adventure_attributes if adventure_attributes_update_request?
 
@@ -41,14 +36,20 @@ module Admin
       render_invalid_json_response
     end
 
-    def reset_context
-      field = params[:context_field].to_s
-      unless CONTEXT_FIELDS.include?(field)
-        return redirect_to admin_adventure_path(@adventure), alert: "Unknown context: #{field}"
+    def update_combat_context
+      value = params[:value].present? ? JSON.parse(params[:value]) : {}
+      @adventure.update!(combat_context: value)
+      respond_to do |format|
+        format.html { redirect_to admin_adventure_path(@adventure), notice: "Combat context updated." }
+        format.json { render json: { value: value }, status: :ok }
       end
+    rescue JSON::ParserError
+      render_invalid_json_response
+    end
 
-      @adventure.update!("#{field}_context" => {})
-      redirect_to admin_adventure_path(@adventure), notice: "#{field.titleize} context reset to {}."
+    def reset_combat_context
+      @adventure.update!(combat_context: {})
+      redirect_to admin_adventure_path(@adventure), notice: "Combat context reset to {}."
     end
 
     def update_sheet
@@ -82,7 +83,7 @@ module Admin
     end
 
     def adventure_params
-      params.require(:adventure).permit(:current_location_id, :story_summary, :scene_summary, :enriched_premise)
+      params.require(:adventure).permit(:current_location_id, :story_summary, :scene_summary)
     end
 
     def sheet_params
@@ -92,10 +93,6 @@ module Admin
 
     def time_context_update_request?
       params[:time_context_json].present?
-    end
-
-    def context_update_request?
-      params[:context_field].present?
     end
 
     def adventure_attributes_update_request?
@@ -114,24 +111,6 @@ module Admin
       end
     end
 
-    def update_context
-      field = params[:context_field].to_s
-      unless CONTEXT_FIELDS.include?(field)
-        respond_to do |format|
-          format.html { redirect_to admin_adventure_path(@adventure), alert: "Unknown context: #{field}" }
-          format.json { render json: { error: "Unknown context: #{field}" }, status: :unprocessable_entity }
-        end
-        return
-      end
-
-      value = params[:context_value].present? ? JSON.parse(params[:context_value]) : {}
-      @adventure.update!("#{field}_context" => value)
-      respond_to do |format|
-        format.html { redirect_to admin_adventure_path(@adventure), notice: "#{field.titleize} context updated." }
-        format.json { render json: { context_field: field, context_value: value }, status: :ok }
-      end
-    end
-
     def update_time_context
       value = JSON.parse(params[:time_context_json])
       @adventure.update!(time_context: value)
@@ -144,8 +123,6 @@ module Admin
         [StoryLocation, @adventure.story.story_locations.find_by(id: params[:element_id])]
       when "story_npc"
         [StoryNpc, StoryNpc.for_adventure(@adventure).find_by(id: params[:element_id])]
-      when "story_clue"
-        [StoryClue, StoryClue.for_adventure(@adventure).find_by(id: params[:element_id])]
       else
         [nil, nil]
       end
@@ -157,8 +134,6 @@ module Admin
         params.require(:element).permit(:name, :description, :starting)
       when "StoryNpc"
         params.require(:element).permit(:name, :role, :attitude, :description, :knowledge, :location_id, :secret)
-      when "StoryClue"
-        params.require(:element).permit(:title, :description, :discovery_method, :difficulty, :location_id, :npc_id, :reveals_secret)
       else
         {}
       end

@@ -34,17 +34,15 @@ const NpcsSection = ({
       count={visibleCount}
       open={npcsOpen}
       onToggle={() => setNpcsOpen(!npcsOpen)}
-      hint="Named characters the player may encounter. The Enricher can auto-extract these from the premise."
-      emptyHint='No NPCs yet. Use "Enrich Story" or add manually.'
+      hint="Named characters the player may encounter."
+      emptyHint='No NPCs yet.'
       isEmpty={visibleCount === 0}
     >
       {npcs.map((npc, idx) => {
         if (npc._destroy) return null
-        const isAi = npc.source === 'enricher' || npc.source === 'embellisher'
         return (
-          <div key={npc.id || `npc-${idx}`} className={`nested-card ${isAi ? 'ai-sourced' : ''}`}>
+          <div key={npc.id || `npc-${idx}`} className="nested-card">
             <div className="nested-card-header">
-              {isAi && <span className="source-badge">{npc.source}</span>}
               <input type="text" className="inline-name" value={npc.name}
                 onChange={e => updateNpc(idx, { name: e.target.value })}
                 placeholder="NPC name" />

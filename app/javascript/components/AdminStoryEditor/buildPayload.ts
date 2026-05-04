@@ -1,118 +1,45 @@
 import type {
-  ClientLocation, ClientConnection,
-  EncounterTableData, StoryNpcData, StoryClueData, StoryMilestoneData,
-  InitialContexts,
-  TraversalCtx, CombatCtx, SocialCtx, ExplorationCtx, RestCtx, InventoryCtx,
+  ClientLocation,
+  EncounterTableData, StoryNpcData,
+  SeedFact,
 } from './types'
 
 export interface PayloadArgs {
   title: string
   preview: string
   premise: string
-  initialSummary: string
+  openingMessage: string
+  seedFacts: SeedFact[]
   currentStoryId: number | undefined
   locations: ClientLocation[]
   encounterTables: EncounterTableData[]
   npcs: StoryNpcData[]
-  clues: StoryClueData[]
-  milestones: StoryMilestoneData[]
-  icTraversal: TraversalCtx
-  icCombat: CombatCtx
-  icSocial: SocialCtx
-  icExploration: ExplorationCtx
-  icRest: RestCtx
-  icInventory: InventoryCtx
 }
 
-export const buildLocationPayload = (locations: ClientLocation[], skipUnresolved: boolean) => {
-  const refToDbId = new Map<string, number>()
-  locations.forEach(l => { if (l.id) refToDbId.set(l._clientId, l.id) })
-
-  return locations.map(loc => {
+export const buildLocationPayload = (locations: ClientLocation[]) =>
+  locations.map(loc => {
     const locAttrs: Record<string, unknown> = {
       name: loc.name, description: loc.description, starting: loc.starting,
     }
     if (loc.id) locAttrs.id = loc.id
     if (loc._destroy) locAttrs._destroy = true
-
-    locAttrs.connections_from_attributes = loc.connections_from
-      .map(conn => {
-        if (conn._destroy) {
-          if (!conn.id) return null
-          return { id: conn.id, _destroy: true }
-        }
-        const targetDbId = refToDbId.get(conn._toRef)
-        if (!targetDbId) {
-          if (skipUnresolved) return null
-          return null
-        }
-        const connAttrs: Record<string, unknown> = {
-          to_location_id: targetDbId,
-          distance_miles: conn.distance_miles,
-          terrain_type: conn.terrain_type,
-          description: conn.description || '',
-        }
-        if (conn.id) connAttrs.id = conn.id
-        return connAttrs
-      })
-      .filter(Boolean)
-
     return locAttrs
   })
-}
 
-const stripEmpty = (obj: Record<string, unknown>): Record<string, unknown> | null => {
-  const clean: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(obj)) {
-    if (v === '' || v === null || v === undefined) continue
-    if (Array.isArray(v) && v.length === 0) continue
-    if (typeof v === 'boolean' && !v) continue
-    clean[k] = v
-  }
-  return Object.keys(clean).length > 0 ? clean : null
-}
-
-export const buildInitialContextsPayload = (
-  icTraversal: TraversalCtx,
-  icCombat: CombatCtx,
-  icSocial: SocialCtx,
-  icExploration: ExplorationCtx,
-  icRest: RestCtx,
-  icInventory: InventoryCtx,
-): InitialContexts => {
-  const ic: Record<string, unknown> = {}
-  const t = stripEmpty(icTraversal as unknown as Record<string, unknown>)
-  if (t) ic.traversal_context = t
-  const c = stripEmpty(icCombat as unknown as Record<string, unknown>)
-  if (c) ic.combat_context = c
-  const s = stripEmpty({ ...icSocial, npcs_present: icSocial.npcs_present.length > 0 ? icSocial.npcs_present : undefined } as unknown as Record<string, unknown>)
-  if (s) ic.social_context = s
-  const e = stripEmpty(icExploration as unknown as Record<string, unknown>)
-  if (e) ic.exploration_context = e
-  const r = stripEmpty(icRest as unknown as Record<string, unknown>)
-  if (r) ic.rest_context = r
-  const inv = stripEmpty(icInventory as unknown as Record<string, unknown>)
-  if (inv) ic.inventory_context = inv
-  return ic as InitialContexts
-}
-
-export const buildPayload = (args: PayloadArgs, skipUnresolvedConns = false) => {
+export const buildPayload = (args: PayloadArgs) => {
   const {
-    title, preview, premise, initialSummary,
-    currentStoryId, locations, encounterTables, npcs, clues, milestones,
-    icTraversal, icCombat, icSocial, icExploration, icRest, icInventory,
+    title, preview, premise, openingMessage, seedFacts,
+    currentStoryId, locations, encounterTables, npcs,
   } = args
 
   const story: Record<string, unknown> = {
     title, preview, premise,
-    initial_summary: initialSummary,
-    initial_contexts: buildInitialContextsPayload(
-      icTraversal, icCombat, icSocial, icExploration, icRest, icInventory,
-    ),
+    opening_message: openingMessage,
+    seed_facts: seedFacts,
   }
 
   if (currentStoryId) {
-    story.story_locations_attributes = buildLocationPayload(locations, skipUnresolvedConns)
+    story.story_locations_attributes = buildLocationPayload(locations)
 
     story.encounter_tables_attributes = encounterTables.map(table => {
       const tAttrs: Record<string, unknown> = {
@@ -147,28 +74,6 @@ export const buildPayload = (args: PayloadArgs, skipUnresolvedConns = false) => 
       }
       if (npc.id) attrs.id = npc.id
       if (npc._destroy) attrs._destroy = true
-      return attrs
-    })
-
-    story.story_clues_attributes = clues.map(clue => {
-      const attrs: Record<string, unknown> = {
-        source: clue.source, title: clue.title, description: clue.description,
-        discovery_method: clue.discovery_method, location_id: clue.location_id || null,
-        npc_id: clue.npc_id || null, prerequisite_clue_ids: clue.prerequisite_clue_ids,
-        reveals_secret: clue.reveals_secret, difficulty: clue.difficulty,
-      }
-      if (clue.id) attrs.id = clue.id
-      if (clue._destroy) attrs._destroy = true
-      return attrs
-    })
-
-    story.story_milestones_attributes = milestones.map(ms => {
-      const attrs: Record<string, unknown> = {
-        source: ms.source, title: ms.title, description: ms.description,
-        trigger_clue_ids: ms.trigger_clue_ids, consequence: ms.consequence,
-      }
-      if (ms.id) attrs.id = ms.id
-      if (ms._destroy) attrs._destroy = true
       return attrs
     })
   }

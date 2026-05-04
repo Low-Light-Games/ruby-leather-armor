@@ -18,20 +18,19 @@ module DungeonMaster
       RULES_TOP_K = 4
       BEATS_TOP_K = 6
 
-      DOMAIN_PRIORITY = %w[combat buff social traversal exploration rest inventory].freeze
-
       private
 
       def run_roll_request(intention)
         broadcast_progress('Reading the situation...')
 
-        beats = retrieve_beats_for_roll_request(intention)
-        rules = retrieve_rules_for_roll_request(intention)
+        scene_retrieval = retrieve_scene_for_roll_request(intention)
+        rules           = retrieve_rules_for_roll_request(intention)
 
         ctx = RollRequest::Context.new(
           intent: intention,
-          recent_beats: beats,
-          relevant_rules: rules
+          scene_retrieval: scene_retrieval,
+          relevant_rules: rules,
+          current_location_name: @adventure.current_location&.name,
         )
 
         prompt_summary = "RollRequest: \"#{@log.truncate(intention)}\""
@@ -43,7 +42,6 @@ module DungeonMaster
           raw = @ai.chat(
             system_prompt: system_prompt,
             user_message: intention,
-            max_tokens: @config.token_budget_for('roll_request'),
             step_name: 'roll_request',
             model: @config.model_for('roll_request'),
             reasoning_effort: @config.reasoning_effort_for('roll_request')
@@ -51,7 +49,7 @@ module DungeonMaster
           [raw, @ai.parse_json(raw)]
         end
 
-        result = build_evaluation_result(parsed: parsed, intention: intention)
+        result = build_roll_request_evaluation_result(parsed: parsed, intention: intention)
 
         warn_on_invented_rule_slug!(parsed, rules)
         log_roll_request_to_loop(result)
@@ -60,23 +58,17 @@ module DungeonMaster
         result
       end
 
-      def build_evaluation_result(parsed:, intention:)
+      def build_roll_request_evaluation_result(parsed:, intention:)
         parsed = (parsed || {}).deep_symbolize_keys
-        affected = ordered_affected_domains(parsed[:affected_domains])
-        primary = affected.first
         rolls = if needs_roll?(parsed)
-                  [normalize_roll(parsed[:roll],
-                                  primary_domain: primary,
-                                  mechanical_summary: parsed[:mechanical_summary])]
+                  [normalize_roll(parsed[:roll], mechanical_summary: parsed[:mechanical_summary])]
                 else
                   []
                 end
 
         EvaluationResult.new(
           intention: intention,
-          affected_contexts: affected,
           destination: parsed[:destination],
-          expand_scene: parsed[:expand_scene] == true && affected.include?('social'),
           combat_transition: parsed[:transition],
           combat_combatants: normalized_combatants(parsed[:combatants]),
           player_rolls: rolls,
@@ -89,7 +81,7 @@ module DungeonMaster
         parsed[:needs_roll] == true && parsed[:roll].is_a?(Hash)
       end
 
-      def normalize_roll(raw, primary_domain:, mechanical_summary:)
+      def normalize_roll(raw, mechanical_summary:)
         raw = raw.deep_symbolize_keys
         {
           type: raw[:type].presence || 'skill_check',
@@ -97,17 +89,11 @@ module DungeonMaster
           save: raw[:save],
           dc: raw[:dc],
           description: raw[:description].presence || mechanical_summary.to_s.presence || '(no description)',
-          domain: primary_domain,
           rule_slug: raw[:rule_slug],
           take_10_eligible: raw[:take_10_eligible] == true,
           take_20_eligible: raw[:take_20_eligible] == true,
           situational_modifiers: DungeonMaster::Rolls::SituationalModifiers.normalize(raw[:situational_modifiers])
         }.compact
-      end
-
-      def ordered_affected_domains(raw)
-        domains = Array(raw).map { |d| d.to_s.downcase }.reject(&:blank?).uniq
-        DOMAIN_PRIORITY.select { |d| domains.include?(d) } + (domains - DOMAIN_PRIORITY)
       end
 
       def normalized_combatants(raw)
@@ -150,15 +136,13 @@ module DungeonMaster
         )
       end
 
-      def retrieve_beats_for_roll_request(intention)
-        return [] unless defined?(DungeonMaster::Lore::FactsLookup)
-
-        DungeonMaster::Lore::FactsLookup.call(
-          adventure: @adventure,
-          ai: @ai,
-          log: @log,
-          query_text: intention,
-          limit: BEATS_TOP_K
+      def retrieve_scene_for_roll_request(intention)
+        DungeonMaster::SceneRetrieval::ForResolution.call(
+          adventure:   @adventure,
+          intent_text: intention,
+          ai:          @ai,
+          log:         @log,
+          fact_limit:  BEATS_TOP_K,
         )
       end
 
@@ -175,18 +159,15 @@ module DungeonMaster
         return unless @loop
 
         rolls_desc = result.player_rolls
-                           .map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]} (#{r[:domain]})" }
+                           .map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]}" }
                            .join(', ')
 
         @loop.batch_update!(
-          new_data: { 'affected_contexts' => result.affected_contexts, 'roll_request' => true },
+          new_data: { 'roll_request' => true },
           new_status: 'resolving',
           timeline_entry: {
             'step' => 'roll_request',
-            'summary' => [
-              "Affected: #{result.affected_contexts.join(', ').presence || 'none'}",
-              rolls_desc.presence || 'No rolls'
-            ].join(' | '),
+            'summary' => rolls_desc.presence || 'No rolls',
             'at' => Time.current.iso8601
           }
         )

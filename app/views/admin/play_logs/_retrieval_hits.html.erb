@@ -1,0 +1,58 @@
+<%# Renders pgvector retrieval hits (facts | npcs | locations) with their
+    resolved strings, not just id + score. Decision 18 of the
+    micro-context removal epic. %>
+<div class="retrieval-hits">
+  <div class="retrieval-meta">
+    <span class="retrieval-kind retrieval-kind-<%= retrieval[:kind] || retrieval["kind"] %>">
+      <%= (retrieval[:kind] || retrieval["kind"]).to_s.upcase %>
+    </span>
+    <span class="retrieval-query">"<%= retrieval[:query_preview] || retrieval["query_preview"] %>"</span>
+    <span class="retrieval-limit">top-K: <%= retrieval[:limit] || retrieval["limit"] %></span>
+  </div>
+
+  <% hits = Array(retrieval[:hits] || retrieval["hits"]) %>
+  <% if hits.empty? %>
+    <p class="retrieval-empty">No hits.</p>
+  <% else %>
+    <table class="retrieval-hits-table">
+      <thead>
+        <tr>
+          <th>id</th>
+          <th>distance</th>
+          <th>resolved</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% hits.each do |hit| %>
+          <% h = hit.is_a?(Hash) ? hit.deep_stringify_keys : {} %>
+          <tr>
+            <td class="retrieval-hit-id">
+              <%= h["fact_id"] || h["npc_id"] || h["location_id"] %>
+            </td>
+            <td class="retrieval-hit-distance">
+              <%= h["distance"].is_a?(Numeric) ? format("%.4f", h["distance"]) : h["distance"] %>
+            </td>
+            <td class="retrieval-hit-resolved">
+              <% case (retrieval[:kind] || retrieval["kind"]).to_s %>
+              <% when "facts" %>
+                <% if h["kind"].present? %><span class="hit-tag"><%= h["kind"] %></span> <% end %>
+                <%= h["text"] %>
+              <% when "npcs" %>
+                <strong><%= h["name"] %></strong>
+                <% if h["attitude"].present? %><span class="hit-tag"><%= h["attitude"] %></span><% end %>
+                <% if h["location_name"].present? %><span class="hit-tag">at <%= h["location_name"] %></span><% end %>
+              <% when "locations" %>
+                <strong><%= h["name"] %></strong>
+                <% if h["x"].present? && h["y"].present? %>
+                  <span class="hit-tag">(<%= format("%.2f", h["x"]) %>, <%= format("%.2f", h["y"]) %>)</span>
+                <% end %>
+              <% else %>
+                <%= h.except("fact_id", "npc_id", "location_id", "distance").to_json %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>

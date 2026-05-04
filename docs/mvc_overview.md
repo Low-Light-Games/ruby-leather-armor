@@ -60,16 +60,16 @@ Each sheet type has its own set of join tables for feats, spells, and items:
 ### Adventure & Story
 
 
-| Model                | Description                                                                             |
-| -------------------- | --------------------------------------------------------------------------------------- |
-| `Adventure`          | Active game session linking a user and story with full context tracking                 |
-| `AdventureMessage`   | Chat/narrative messages with types: narrative, roll_request, dm_query, etc.             |
-| `Story`              | Quest/campaign definition with locations, NPCs, clues, milestones, and encounter tables |
-| `StoryLocation`      | Map node with connections to other locations                                            |
-| `LocationConnection` | Directed graph edge between two locations with terrain and distance                     |
-| `StoryNpc`           | Non-player character with role (quest_giver, merchant, antagonist, etc.) and attitude   |
-| `StoryClue`          | Discoverable story element with difficulty level and discovery method                   |
-| `StoryMilestone`     | Story progression marker and objective                                                  |
+| Model                | Description                                                                              |
+| -------------------- | ---------------------------------------------------------------------------------------- |
+| `Adventure`          | Active game session linking a user and story; carries `combat_context` + `time_context`  |
+| `AdventureMessage`   | Chat/narrative messages with types: narrative, roll_request, dm_query, etc.              |
+| `AdventureNpc`       | Per-adventure NPC, written by `Lore::ApplyNpcs` (pgvector embedding for fuzzy lookup)    |
+| `AdventureLocation`  | Per-adventure location with `(x, y)` coordinates + embedding, written by `Lore::ApplyLocations` |
+| `AdventureNarrativeFact` | Per-adventure durable narrative fact with embedding; sole writer is `Lore::ApplyResults` |
+| `Story`              | Quest/campaign authoring artifact: title, preview, premise, opening_message, seed_facts, world_terrain, encounter tables |
+| `StoryLocation`      | Authored named location, seeded into `adventure_locations` at adventure creation         |
+| `StoryNpc`           | Authored NPC, seeded into `adventure_npcs` at adventure creation                         |
 
 
 ### Encounters & Bestiary
@@ -131,7 +131,7 @@ Located in `app/controllers/`. 23 controller files total.
 
 | Controller                    | Routes / Actions                                                    | Description                                                                                          |
 | ----------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `AdventuresController`        | `POST /adventures`, `GET /adventures/:id`, `DELETE /adventures/:id` | Creates adventures (copies sheet, builds initial context, invokes embellisher), shows state, deletes |
+| `AdventuresController`        | `POST /adventures`, `GET /adventures/:id`, `DELETE /adventures/:id` | Creates adventures (copies sheet, seeds NPCs/locations/facts from the story), shows state, deletes   |
 | `AdventureMessagesController` | `POST /adventures/:id/messages`                                     | Accepts player prompts, initiative rolls, and skill checks; triggers async AI pipeline               |
 
 
@@ -191,5 +191,6 @@ Located in `app/views/`. The application is primarily a JSON API; HTML views are
 - **AI pipeline**: `AdventureMessagesController` triggers an async multi-step pipeline (`DungeonMaster::PipelineEngine`) tracked by `PipelineRegistryEntry` (logs/admin correlation), domain `Pipeline`, and `AdventureLoop`; results are streamed back via Action Cable.
 - **Entry-service boundary**: `DungeonMasterService` is now a compatibility facade; prompt/roll/initiative entrypoints are owned by focused deterministic services (`DungeonMaster::EntryServices::PromptExecution`, `DungeonMaster::EntryServices::ResumePipelineExecution`) with shared runtime wiring in `DungeonMaster::EntryRuntime`.
 - **Singleton config**: `DmConfig` holds a single global configuration record accessed by pipeline steps for model and budget decisions.
-- **Value-object construction seams**: builder-style hash assembly is being replaced with explicit constructors at boundaries (for example `Adventures::TimeContext`, `Adventures::TraversalContext`, `Onboarding::SheetBlueprint`, and battlefield action-economy payload objects) to keep invariants owned close to object creation.
+- **Value-object construction seams**: builder-style hash assembly is being replaced with explicit constructors at boundaries (for example `Adventures::TimeContext`, `Adventures::CombatState`, `Onboarding::SheetBlueprint`, and battlefield action-economy payload objects) to keep invariants owned close to object creation.
+- **Narrative state via pgvector**: durable world state lives in `adventure_narrative_facts`, `adventure_npcs`, and `adventure_locations` (each table embeds + has structured columns). The world consistency check, narrator, and encounter wiring read from these surfaces by retrieval rather than from JSONB context blobs. `combat_context` (for live combat state) and `time_context` (for the clock) survive as the only structured JSONB context fields on `Adventure`.
 

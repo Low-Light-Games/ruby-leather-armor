@@ -4,14 +4,9 @@ import { apiFetch } from '../../utils/api'
 import { hydrateLocations, rehydrateLocations } from './locationHydration'
 import { buildPayload, buildLocationPayload } from './buildPayload'
 import type {
-  ClientLocation, ClientConnection,
-  EncounterTableData, StoryNpcData, StoryClueData, StoryMilestoneData,
-  StoryData, InitialContexts,
-  TraversalCtx, CombatCtx, SocialCtx, ExplorationCtx, RestCtx, InventoryCtx,
-} from './types'
-import {
-  emptyTraversalCtx, emptyCombatCtx, emptySocialCtx,
-  emptyExplorationCtx, emptyRestCtx, emptyInventoryCtx,
+  ClientLocation,
+  EncounterTableData, StoryNpcData,
+  StoryData, SeedFact,
 } from './types'
 
 export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) => {
@@ -19,35 +14,23 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
 
   const [loading, setLoading] = useState(mode === 'edit')
   const [saving, setSaving] = useState(false)
-  const [enriching, setEnriching] = useState(false)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   const [title, setTitle] = useState('')
   const [preview, setPreview] = useState('')
   const [premise, setPremise] = useState('')
-  const [initialSummary, setInitialSummary] = useState('')
+  const [openingMessage, setOpeningMessage] = useState('')
+  const [seedFacts, setSeedFacts] = useState<SeedFact[]>([])
   const [currentStoryId, setCurrentStoryId] = useState<number | undefined>(storyId)
 
   const [locations, setLocations] = useState<ClientLocation[]>([])
   const [encounterTables, setEncounterTables] = useState<EncounterTableData[]>([])
   const [npcs, setNpcs] = useState<StoryNpcData[]>([])
-  const [clues, setClues] = useState<StoryClueData[]>([])
-  const [milestones, setMilestones] = useState<StoryMilestoneData[]>([])
 
-  const [icTraversal, setIcTraversal] = useState<TraversalCtx>(emptyTraversalCtx())
-  const [icCombat, setIcCombat] = useState<CombatCtx>(emptyCombatCtx())
-  const [icSocial, setIcSocial] = useState<SocialCtx>(emptySocialCtx())
-  const [icExploration, setIcExploration] = useState<ExplorationCtx>(emptyExplorationCtx())
-  const [icRest, setIcRest] = useState<RestCtx>(emptyRestCtx())
-  const [icInventory, setIcInventory] = useState<InventoryCtx>(emptyInventoryCtx())
-
+  const [seedFactsOpen, setSeedFactsOpen] = useState(true)
   const [locationsOpen, setLocationsOpen] = useState(false)
   const [encounterTablesOpen, setEncounterTablesOpen] = useState(false)
   const [npcsOpen, setNpcsOpen] = useState(false)
-  const [cluesOpen, setCluesOpen] = useState(false)
-  const [milestonesOpen, setMilestonesOpen] = useState(false)
-  const [initialContextsOpen, setInitialContextsOpen] = useState(false)
-  const [icSubOpen, setIcSubOpen] = useState<Record<string, boolean>>({})
   const [expandedLocIdx, setExpandedLocIdx] = useState<number | null>(null)
   const [expandedTableIdx, setExpandedTableIdx] = useState<number | null>(null)
 
@@ -59,56 +42,18 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
   const locationsRef = useRef(locations)
   locationsRef.current = locations
 
-  const hydrateInitialContexts = (ic: InitialContexts) => {
-    const t = ic.traversal_context || {}
-    setIcTraversal({
-      ...emptyTraversalCtx(),
-      ...t,
-      exits: Array.isArray(t.exits) ? t.exits : [],
-      nearby_npcs: Array.isArray(t.nearby_npcs) ? t.nearby_npcs : [],
-      points_of_interest: Array.isArray(t.points_of_interest) ? t.points_of_interest : [],
-    })
-    setIcCombat({ ...emptyCombatCtx(), ...(ic.combat_context || {}) })
-    const s = ic.social_context || {}
-    setIcSocial({
-      ...emptySocialCtx(),
-      ...s,
-      npcs_present: Array.isArray(s.npcs_present) ? s.npcs_present : [],
-    })
-    const e = ic.exploration_context || {}
-    setIcExploration({
-      ...emptyExplorationCtx(),
-      ...e,
-      searched_areas: Array.isArray(e.searched_areas) ? e.searched_areas : [],
-      discovered_items: Array.isArray(e.discovered_items) ? e.discovered_items : [],
-      discovered_secrets: Array.isArray(e.discovered_secrets) ? e.discovered_secrets : [],
-      pending_investigations: Array.isArray(e.pending_investigations) ? e.pending_investigations : [],
-    })
-    setIcRest({ ...emptyRestCtx(), ...(ic.rest_context || {}) })
-    const inv = ic.inventory_context || {}
-    setIcInventory({
-      ...emptyInventoryCtx(),
-      ...inv,
-      recently_acquired: Array.isArray(inv.recently_acquired) ? inv.recently_acquired : [],
-      notable_consumables_remaining: Array.isArray(inv.notable_consumables_remaining) ? inv.notable_consumables_remaining : [],
-      equipped_changes: Array.isArray(inv.equipped_changes) ? inv.equipped_changes : [],
-    })
-  }
-
   const applyServerData = (data: StoryData, fresh = false) => {
     setTitle(data.title)
     setPreview(data.preview)
     setPremise(data.premise)
-    setInitialSummary(data.initial_summary || '')
+    setOpeningMessage(data.opening_message || '')
+    setSeedFacts(Array.isArray(data.seed_facts) ? data.seed_facts : [])
     setLocations(fresh
       ? hydrateLocations(data.story_locations || [])
       : rehydrateLocations(data.story_locations || [], locationsRef.current)
     )
     setEncounterTables(data.encounter_tables || [])
     setNpcs(data.story_npcs || [])
-    setClues(data.story_clues || [])
-    setMilestones(data.story_milestones || [])
-    hydrateInitialContexts(data.initial_contexts || {})
   }
 
   useEffect(() => {
@@ -148,21 +93,10 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
 
   // ---- Save ----
 
-  const hasUnresolvedConnections = () => {
-    const refToDbId = new Map<string, number>()
-    locations.forEach(l => { if (l.id) refToDbId.set(l._clientId, l.id) })
-
-    return locations.some(l =>
-      !l._destroy && l.connections_from.some(c =>
-        !c._destroy && c._toRef && !refToDbId.has(c._toRef)
-      )
-    )
-  }
-
   const getPayloadArgs = () => ({
-    title, preview, premise, initialSummary,
-    currentStoryId, locations, encounterTables, npcs, clues, milestones,
-    icTraversal, icCombat, icSocial, icExploration, icRest, icInventory,
+    title, preview, premise,
+    openingMessage, seedFacts,
+    currentStoryId, locations, encounterTables, npcs,
   })
 
   const saveStory = async () => {
@@ -183,76 +117,12 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
         return
       }
 
-      const needsTwoPhase = hasUnresolvedConnections()
-
-      if (needsTwoPhase) {
-        const phase1 = buildPayload(getPayloadArgs(), true)
-        const data1: StoryData = await apiFetch(`/admin/stories/${currentStoryId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(phase1),
-        })
-
-        const serverLocs = rehydrateLocations(data1.story_locations || [], locations)
-        setLocations(serverLocs)
-        locationsRef.current = serverLocs
-
-        const deferredConnsByRef = new Map<string, ClientConnection[]>()
-        const refToDbId = new Map<string, number>()
-        locations.forEach(l => { if (l.id) refToDbId.set(l._clientId, l.id) })
-
-        locations.forEach(loc => {
-          if (loc._destroy) return
-          loc.connections_from.forEach(conn => {
-            if (conn._destroy || !conn._toRef || conn.id) return
-            if (refToDbId.has(conn._toRef)) return
-            const arr = deferredConnsByRef.get(loc._clientId) || []
-            arr.push(conn)
-            deferredConnsByRef.set(loc._clientId, arr)
-          })
-        })
-
-        const newRefToDbId = new Map<string, number>()
-        serverLocs.forEach(l => { if (l.id) newRefToDbId.set(l._clientId, l.id) })
-
-        const phase2LocAttrs = Array.from(deferredConnsByRef.entries())
-          .map(([fromRef, conns]) => {
-            const fromDbId = newRefToDbId.get(fromRef)
-            if (!fromDbId) return null
-            const resolvedConns = conns
-              .map(c => {
-                const toDbId = newRefToDbId.get(c._toRef)
-                if (!toDbId) return null
-                return {
-                  to_location_id: toDbId,
-                  distance_miles: c.distance_miles,
-                  terrain_type: c.terrain_type,
-                  description: c.description || '',
-                }
-              })
-              .filter(Boolean)
-            if (resolvedConns.length === 0) return null
-            return { id: fromDbId, connections_from_attributes: resolvedConns }
-          })
-          .filter(Boolean)
-
-        if (phase2LocAttrs.length > 0) {
-          const phase2 = { story: { story_locations_attributes: phase2LocAttrs } }
-          const data2: StoryData = await apiFetch(`/admin/stories/${currentStoryId}`, {
-            method: 'PATCH',
-            body: JSON.stringify(phase2),
-          })
-          applyServerData(data2)
-        } else {
-          applyServerData(data1)
-        }
-      } else {
-        const payload = buildPayload(getPayloadArgs())
-        const data: StoryData = await apiFetch(`/admin/stories/${currentStoryId}`, {
-          method: 'PATCH',
-          body: JSON.stringify(payload),
-        })
-        applyServerData(data)
-      }
+      const payload = buildPayload(getPayloadArgs())
+      const data: StoryData = await apiFetch(`/admin/stories/${currentStoryId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      })
+      applyServerData(data)
 
       showFeedback('success', 'Story saved successfully')
     } catch (err: any) {
@@ -262,129 +132,22 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
     }
   }
 
-  // ---- Enrich Story ----
-
-  const enrichStory = async () => {
-    if (!currentStoryId) return
-    setEnriching(true)
-    try {
-      const result = await apiFetch(`/admin/stories/${currentStoryId}/enrich`, { method: 'POST' })
-      if (result.error) {
-        showFeedback('error', result.error)
-        return
-      }
-
-      const existingNpcs = npcs.filter(n => n.source !== 'enricher' || n.id)
-      const markedOldEnricher = existingNpcs.map(n =>
-        n.source === 'enricher' && n.id ? { ...n, _destroy: true } : n
-      )
-      const newNpcs: StoryNpcData[] = (result.npcs || []).map((n: any) => ({
-        source: 'enricher' as const, name: n.name, role: n.role,
-        location_id: n.location_id, description: n.description,
-        knowledge: n.knowledge, attitude: n.attitude, secret: n.secret,
-      }))
-      setNpcs([...markedOldEnricher, ...newNpcs])
-
-      const existingClues = clues.filter(c => c.source !== 'enricher' || c.id)
-      const markedOldClues = existingClues.map(c =>
-        c.source === 'enricher' && c.id ? { ...c, _destroy: true } : c
-      )
-      const newClues: StoryClueData[] = (result.clues || []).map((c: any) => ({
-        source: 'enricher' as const, title: c.title, description: c.description,
-        discovery_method: c.discovery_method, location_id: c.location_id,
-        npc_id: c.npc_id, prerequisite_clue_ids: c.prerequisite_clue_ids || [],
-        reveals_secret: c.reveals_secret || '', difficulty: c.difficulty,
-      }))
-      setClues([...markedOldClues, ...newClues])
-
-      const existingMs = milestones.filter(m => m.source !== 'enricher' || m.id)
-      const markedOldMs = existingMs.map(m =>
-        m.source === 'enricher' && m.id ? { ...m, _destroy: true } : m
-      )
-      const newMs: StoryMilestoneData[] = (result.milestones || []).map((m: any) => ({
-        source: 'enricher' as const, title: m.title, description: m.description,
-        trigger_clue_ids: m.trigger_clue_ids || [], consequence: m.consequence || '',
-      }))
-      setMilestones([...markedOldMs, ...newMs])
-
-      const manifests: any[] = result.encounter_manifests || []
-      if (manifests.length > 0) {
-        setEncounterTables(prev => prev.map(table => ({
-          ...table,
-          encounter_table_entries: (table.encounter_table_entries || []).map(entry => {
-            const match = manifests.find((m: any) =>
-              m.encounter_entry_title?.toLowerCase() === entry.title?.toLowerCase()
-            )
-            if (match?.creatures?.length) {
-              return { ...entry, creature_manifest: match.creatures }
-            }
-            return entry
-          })
-        })))
-        setEncounterTablesOpen(true)
-      }
-
-      const proposedTables: any[] = result.proposed_encounter_tables || []
-      if (proposedTables.length > 0) {
-        const newTables: EncounterTableData[] = proposedTables.map((t: any) => ({
-          name: t.name || 'Encounters',
-          description: '',
-          check_frequency_hours: t.check_frequency_hours || 4,
-          encounter_chance: t.encounter_chance || 15,
-          encounter_table_entries: (t.entries || []).map((e: any) => ({
-            title: e.title || 'Encounter',
-            description: e.description || '',
-            entry_type: e.entry_type || 'ai_prompt',
-            weight: e.weight || 1,
-            creature_manifest: e.creatures || [],
-          })),
-        }))
-        setEncounterTables(prev => [...prev, ...newTables])
-        setEncounterTablesOpen(true)
-      }
-
-      const enrichedContexts = result.initial_contexts
-      if (enrichedContexts && typeof enrichedContexts === 'object' && Object.keys(enrichedContexts).length > 0) {
-        hydrateInitialContexts(enrichedContexts)
-        setInitialContextsOpen(true)
-      }
-
-      setNpcsOpen(true)
-      setCluesOpen(true)
-      setMilestonesOpen(true)
-      const extras: string[] = []
-      if (manifests.length > 0) extras.push(`${manifests.length} encounter manifest(s)`)
-      if (proposedTables.length > 0) extras.push(`${proposedTables.length} proposed encounter table(s)`)
-      if (enrichedContexts && Object.keys(enrichedContexts).length > 0) extras.push('initial contexts')
-      const extraMsg = extras.length > 0 ? ` Also applied: ${extras.join(', ')}.` : ''
-      showFeedback('success', `Enrichment complete — review the proposed records below and Save to persist.${extraMsg}`)
-    } catch (err: any) {
-      showFeedback('error', `Enrichment failed: ${err.message}`)
-    } finally {
-      setEnriching(false)
-    }
-  }
-
   return {
-    user, authLoading, loading, saving, enriching, feedback, dismissFeedback,
+    user, authLoading, loading, saving, feedback, dismissFeedback,
     title, setTitle, preview, setPreview, premise, setPremise,
-    initialSummary, setInitialSummary,
+    openingMessage, setOpeningMessage,
+    seedFacts, setSeedFacts,
     currentStoryId,
     locations, setLocations,
     encounterTables, setEncounterTables,
-    npcs, setNpcs, clues, setClues, milestones, setMilestones,
-    icTraversal, setIcTraversal, icCombat, setIcCombat,
-    icSocial, setIcSocial, icExploration, setIcExploration,
-    icRest, setIcRest, icInventory, setIcInventory,
+    npcs, setNpcs,
+    seedFactsOpen, setSeedFactsOpen,
     locationsOpen, setLocationsOpen,
     encounterTablesOpen, setEncounterTablesOpen,
-    npcsOpen, setNpcsOpen, cluesOpen, setCluesOpen,
-    milestonesOpen, setMilestonesOpen,
-    initialContextsOpen, setInitialContextsOpen,
-    icSubOpen, setIcSubOpen,
+    npcsOpen, setNpcsOpen,
     expandedLocIdx, setExpandedLocIdx,
     expandedTableIdx, setExpandedTableIdx,
     duplicateNames, hasDuplicateNames,
-    saveStory, enrichStory,
+    saveStory,
   }
 }

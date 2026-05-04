@@ -1,0 +1,21 @@
+<% if @scene_retrieval&.facts&.any? -%>
+=== ESTABLISHED FACTS ===
+<% @scene_retrieval.facts.each do |fact| -%>
+- [<%= fact[:kind] %>] <%= fact[:text] %>
+<% end -%>
+
+<% end -%>
+<% if @scene_retrieval&.locations&.any? -%>
+=== NEARBY LOCATIONS (relative to your current position) ===
+<% @scene_retrieval.locations.each do |loc| -%>
+- <%= loc[:name] %><% if loc[:distance_miles] %> — <%= loc[:distance_miles] %> miles <%= loc[:bearing] %><% end %>
+<% end -%>
+
+<% end -%>
+<% if @scene_retrieval&.npcs&.any? -%>
+=== KNOWN NPCS ===
+<% @scene_retrieval.npcs.each do |npc| -%>
+- <%= npc[:name] %><% if npc[:attitude].present? %> (<%= npc[:attitude] %>)<% end %><% if npc[:location_name].present? %> — at <%= npc[:location_name] %><% end %>
+<% end -%>
+
+<% end -%>

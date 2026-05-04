@@ -5,13 +5,10 @@ the kind of check; the engine resolves the actual modifier.
 === PLAYER INTENT ===
 <%= @roll_request_context.intent %>
 
-<% if @roll_request_context.recent_beats.any? -%>
-=== RECENT NARRATIVE BEATS ===
-<% @roll_request_context.recent_beats.each do |beat| -%>
-- [<%= beat[:kind] %>] <%= beat[:text] %>
-<% end -%>
+=== PLAYER POSITION ===
+<%= @roll_request_context.current_location_name.presence || "(unknown — no current location set)" %>
 
-<% end -%>
+<%= PromptRenderer.render_partial("partials/scene_retrieval", scene_retrieval: @roll_request_context.scene_retrieval) %>
 === ALLOWED RULES (closest match first) ===
 <% if @roll_request_context.relevant_rules.any? -%>
 <% @roll_request_context.relevant_rules.each_with_index do |rule, idx| -%>
@@ -35,12 +32,12 @@ Set `needs_roll: false` with `no_roll_reason: "no rule retrieved"`.
 
 <% end -%>
 === OTHER FIELDS ===
-- `affected_domains`: which of {combat, traversal, social, exploration,
-  rest, inventory, buff} this action touches.
-- `expand_scene`: true only when the player opens a social interaction
-  whose terms are unknown — "I rent a room", "I ask about the cult",
-  "I look for work". Mid-conversation tactics ("I argue for higher pay")
-  request a roll instead. False for everything non-social.
+- `destination`: when the player is heading to a known place, copy the
+  exact location name from NEARBY LOCATIONS verbatim — bare name only,
+  no parentheticals, no distance, no bearing, no qualifiers, no
+  hedging. If the destination is not in NEARBY LOCATIONS, write the
+  bare place name the player used. If the action has no destination,
+  null.
 - `transition`: "combat_started" + populated `combatants` only when the
   action initiates combat with hostiles. Null/empty otherwise.
 - `ability_use_claimed`: a spell/feat/item the player named explicitly.
@@ -63,8 +60,6 @@ Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
     "situational_modifiers": [{ "source": "rough water", "modifier": -2 }],
     "rule_slug": "swim"
   },
-  "affected_domains": ["traversal"],
-  "expand_scene": false,
   "transition": null,
   "combatants": [],
   "destination": null,

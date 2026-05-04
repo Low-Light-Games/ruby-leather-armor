@@ -127,6 +127,10 @@ module Combat
           aoo_outcomes: plan.aoo_outcomes
         ).to_h
         log_action_event!(payload)
+        Combat::EventLog.write!(adventure: @adventure, content: payload[:message], user: @user)
+        plan.aoo_outcomes.each do |aoo|
+          Combat::EventLog.write!(adventure: @adventure, content: aoo.message, user: @user)
+        end
         { status: :resolved, result: payload }
       end
 

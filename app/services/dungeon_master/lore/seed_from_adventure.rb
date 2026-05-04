@@ -2,12 +2,7 @@
 
 module DungeonMaster
   module Lore
-    # Runs Loremaster once at adventure creation to seed the narrative
-    # facts store. Input sources, failure contract, and placement
-    # rationale: docs/pipeline_steps.md Decision 37.
     class SeedFromAdventure
-      SEED_MODEL_KEY = "loremaster"
-
       def self.call(adventure:, user: nil, ai: nil, log: nil, config: nil)
         new(adventure: adventure, user: user, ai: ai, log: log, config: config).call
       end
@@ -23,27 +18,9 @@ module DungeonMaster
       end
 
       def call
-        system_prompt = DungeonMaster::Steps::Loremaster.render_seed_prompt(
-          premise:               premise_text,
-          enriched_world:        enriched_world_text,
-          opening_narrative:     opening_narrative_text,
-          initial_contexts_text: initial_contexts_text,
-          npcs_text:             SeedPresenters::Npcs.call(adventure: @adventure),
-          clues_text:            SeedPresenters::Clues.call(adventure: @adventure),
-          locations_text:        SeedPresenters::Locations.call(adventure: @adventure),
-        )
-
-        result = run_loremaster_seed_call(system_prompt)
-        return FactsChangeSet.empty if result.nil?
-
-        DungeonMaster::Lore::ApplyResults.call(
-          adventure: @adventure,
-          loop:      nil,
-          log:       @log,
-          ai:        @ai,
-          result:    result,
-          source:    "seed",
-        )
+        seed_npcs!
+        seed_locations!
+        seed_facts_from_story!
       rescue StandardError => e
         handle_seed_failure(e)
         FactsChangeSet.empty
@@ -51,55 +28,93 @@ module DungeonMaster
 
       private
 
-      def run_loremaster_seed_call(system_prompt)
-        prompt_summary = "Loremaster seed — adventure ##{@adventure.id}"
+      def seed_facts_from_story!
+        facts = Array(@adventure.story&.seed_facts)
+        return FactsChangeSet.empty if facts.empty?
 
-        @log.timed_chat_call(SEED_MODEL_KEY, prompt_summary, ai: @ai) do
-          raw = @ai.chat(
-            system_prompt: system_prompt,
-            user_message:  "Seed the narrative facts store for this adventure.",
-            max_tokens:    @config.token_budget_for(SEED_MODEL_KEY),
-            step_name:     SEED_MODEL_KEY,
-            model:         @config.model_for(SEED_MODEL_KEY),
-          )
-          [raw, @ai.parse_json(raw)]
-        end
+        ApplyResults.call(
+          adventure: @adventure,
+          loop:      nil,
+          log:       @log,
+          ai:        @ai,
+          result:    { "facts" => facts },
+          source:    "seed",
+        )
       end
 
       def handle_seed_failure(exception)
         @log.report_error(exception, context: {
-          step: "loremaster_seed",
+          step: "lore_seed",
           adventure_id: @adventure&.id,
           source: "seed_from_adventure",
         })
         @log.play_log!(
           "seed_failure",
-          "Loremaster seed failed: #{exception.class}",
+          "Lore seed failed: #{exception.class}",
           parsed_response: { error: exception.message.to_s.truncate(500) },
         )
       end
 
-      # --- Seed-input assembly -------------------------------------------
+      # --- NPC seeding ---------------------------------------------------
 
-      def premise_text
-        @adventure.story&.premise.to_s
+      def seed_npcs!
+        records = StoryNpc.for_adventure(@adventure)
+                          .ordered_by_id
+                          .map { |npc| NpcRecord.from_story_npc(npc) }
+        return if records.empty?
+
+        ApplyNpcs.call(
+          adventure:   @adventure,
+          log:         @log,
+          ai:          @ai,
+          npc_records: records,
+          source:      "seed",
+        )
+      rescue StandardError => e
+        @log.report_error(e, context: {
+          step:         "apply_npcs_seed",
+          adventure_id: @adventure&.id,
+          source:       "seed_from_adventure",
+        })
+        @log.play_log!(
+          "npc_seed_failure",
+          "ApplyNpcs seed failed: #{e.class}",
+          parsed_response: { error: e.message.to_s.truncate(500) },
+        )
       end
 
-      def enriched_world_text
-        ew = @adventure.enriched_world
-        return "(none)" if ew.blank?
+      # --- Location seeding ----------------------------------------------
 
-        ew.is_a?(String) ? ew : ew.to_json
-      end
+      def seed_locations!
+        story_locations = @adventure.story.story_locations.order(:id).to_a
+        return if story_locations.empty?
 
-      def opening_narrative_text
-        first = @adventure.adventure_messages.chronological.first
-        first&.content.to_s.presence || "(no opening narrative)"
-      end
+        coordinates = DungeonMaster::Maps::PlaceLocations.call(
+          count: story_locations.size,
+          seed:  @adventure.story_id,
+        )
+        records = story_locations.zip(coordinates).map do |location, (x, y)|
+          LocationRecord.from_story_location(location, x: x, y: y)
+        end
 
-      def initial_contexts_text
-        block = DungeonMaster::PromptHelpers.build_micro_contexts_block(@adventure)
-        block.presence || "(no initial micro-contexts)"
+        ApplyLocations.call(
+          adventure:        @adventure,
+          log:              @log,
+          ai:               @ai,
+          location_records: records,
+          source:           "seed",
+        )
+      rescue StandardError => e
+        @log.report_error(e, context: {
+          step:         "apply_locations_seed",
+          adventure_id: @adventure&.id,
+          source:       "seed_from_adventure",
+        })
+        @log.play_log!(
+          "location_seed_failure",
+          "ApplyLocations seed failed: #{e.class}",
+          parsed_response: { error: e.message.to_s.truncate(500) },
+        )
       end
     end
   end

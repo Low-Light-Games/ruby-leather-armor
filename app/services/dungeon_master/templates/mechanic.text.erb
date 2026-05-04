@@ -14,8 +14,7 @@ determine the factual outcome and produce structured mutations.
 === PENDING CONSEQUENCES ===
 <%= @consequences.presence || "(none)" %>
 
-=== CURRENT CONTEXTS ===
-<%= @contexts_text %>
+<%= PromptRenderer.render_partial("partials/relevant_world_facts", scene_facts: @scene_facts) %>
 
 === INSTRUCTIONS ===
 - Determine the factual outcome of each roll (hit/miss, success/failure, damage dealt).

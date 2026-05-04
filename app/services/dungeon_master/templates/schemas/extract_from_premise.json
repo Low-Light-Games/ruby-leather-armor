@@ -1,0 +1,12 @@
+{
+  "description": "Durable narrative facts extracted from Story.premise + Story.opening_message at authoring time. Output populates Story.seed_facts, which is bulk-inserted into the adventure's pgvector facts store at adventure creation. Downstream: world consistency check + narrator both retrieve by embedding similarity.",
+  "fields": {
+    "facts": "array of fact objects. Each entry: { text (string — one self-contained sentence), kind ('event' | 'state' | 'entity'), entities (array of proper-noun strings the fact references — e.g. ['Vren', 'Thornfield']; [] if none), polarity ('asserts' | 'negates') }.",
+    "reasoning": "string — one short sentence on the extraction call, for audit."
+  },
+  "kinds": {
+    "event": "Something that happened in story history. e.g. 'the bridge collapsed last week'.",
+    "state": "A current condition. e.g. 'the village is under curfew'.",
+    "entity": "An NPC, object, or location the narrative establishes. e.g. 'the antagonist is named Vren'."
+  }
+}

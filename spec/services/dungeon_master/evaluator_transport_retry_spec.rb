@@ -44,7 +44,7 @@ RSpec.describe DungeonMaster::Steps::EvaluatorTransport do
     expect(a_request(:post, "#{transport_host}/fan_out")).to have_been_made.twice
   end
 
-  it "does not retry read timeouts" do
+  it "retries read timeouts and surfaces the failure if every attempt times out" do
     allow(transport).to receive(:persist_node_logs)
 
     stub_request(:post, "#{transport_host}/fan_out")
@@ -52,11 +52,45 @@ RSpec.describe DungeonMaster::Steps::EvaluatorTransport do
 
     expect do
       transport.send(:call_evaluator!, "#{transport_host}/fan_out", [{ foo: "bar" }], "intent", phase: "fan_out")
-    end.to raise_error(DungeonMaster::AiError, /Evaluator unreachable during fan_out/)
+    end.to raise_error(DungeonMaster::AiError, /Evaluator fan_out failed/)
 
     expect(transport).not_to have_received(:persist_node_logs)
     expect(transport).not_to have_received(:persist_partial_logs)
-    expect(transport).not_to have_received(:sleep)
-    expect(a_request(:post, "#{transport_host}/fan_out")).to have_been_made.once
+    expect(a_request(:post, "#{transport_host}/fan_out"))
+      .to have_been_made.times(transport.send(:evaluator_http_max_retries) + 1)
+  end
+
+  it "retries an HTTP 500 from the evaluator and surfaces the response if every attempt fails" do
+    allow(transport).to receive(:persist_node_logs)
+
+    stub_request(:post, "#{transport_host}/fan_out")
+      .to_return(status: 500,
+                 body: { error: "OpenAI call failed", partial_results: [] }.to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    expect do
+      transport.send(:call_evaluator!, "#{transport_host}/fan_out", [{ foo: "bar" }], "intent", phase: "fan_out")
+    end.to raise_error(DungeonMaster::AiError, /Evaluator fan_out failed \(HTTP 500\)/)
+
+    expect(a_request(:post, "#{transport_host}/fan_out"))
+      .to have_been_made.times(transport.send(:evaluator_http_max_retries) + 1)
+  end
+
+  it "retries an HTTP 500 and persists logs when the next attempt succeeds" do
+    allow(transport).to receive(:persist_node_logs)
+
+    stub_request(:post, "#{transport_host}/fan_out")
+      .to_return(status: 500,
+                 body: { error: "OpenAI call failed", partial_results: [] }.to_json,
+                 headers: { "Content-Type" => "application/json" })
+      .then
+      .to_return(status: 200,
+                 body: [{ "meta" => { "step" => "narrate" } }].to_json,
+                 headers: { "Content-Type" => "application/json" })
+
+    result = transport.send(:call_evaluator!, "#{transport_host}/fan_out", [{ foo: "bar" }], "intent", phase: "fan_out")
+    expect(result).to eq([{ "meta" => { "step" => "narrate" } }])
+    expect(transport).to have_received(:persist_node_logs).once
+    expect(a_request(:post, "#{transport_host}/fan_out")).to have_been_made.twice
   end
 end

@@ -1,20 +1,6 @@
 # frozen_string_literal: true
 
 module Adventures
-  # Encapsulates the full adventure initialization flow shared between
-  # AdventuresController#create and OnboardingController#complete.
-  #
-  # Steps (in order):
-  #   1. Build Adventure with seeded contexts from ContextInitializer
-  #   2. SheetCopier — create AdventureSheet from the player Sheet
-  #   3. Seed plot_state with empty tracking arrays
-  #   4. Run Embellisher (non-fatal — logs and continues on AI errors)
-  #   5. Ensure an opening DM message exists
-  #   6. Run Lore::SeedFromAdventure to populate the narrative facts store
-  #      (non-fatal — internal rescue + Sentry + seed_failure play_log)
-  #
-  # Returns the persisted (reloaded) Adventure on success.
-  # Raises ActiveRecord::RecordInvalid or ActiveRecord::RecordNotSaved on failure.
   class Bootstrap
     # @param story   [Story]
     # @param sheet   [Sheet]
@@ -33,20 +19,16 @@ module Adventures
     # @return [Adventure]
     def call
       adventure = build_adventure!
-      seed_plot_state!(adventure)
-      run_embellisher(adventure)
       ensure_opening_message(adventure)
       run_narrative_facts_seed(adventure)
+      bind_starting_adventure_location!(adventure)
       adventure.reload
     end
 
     private
 
     def build_adventure!
-      stats     = StartingStats.new(@sheet)
-      ctx       = ContextInitializer.new(@story)
-      start_loc = @story.starting_location
-      seed      = @story.initial_contexts || {}
+      stats = StartingStats.new(@sheet)
 
       adventure = Adventure.create!(
         user:                    @user,
@@ -54,15 +36,6 @@ module Adventures
         dm_mode:                 "standard",
         directed_dm:             @directed_dm,
         skip_world_sanity_check: @skip_world_sanity_check,
-        current_location:        start_loc,
-        traversal_context:       (seed["traversal_context"] || {}).deep_merge(ctx.build_traversal(start_loc)),
-        combat_context:          seed["combat_context"]     || {},
-        social_context:          seed["social_context"]     || {},
-        exploration_context:     seed["exploration_context"] || {},
-        rest_context:            seed["rest_context"]       || {},
-        inventory_context:       seed["inventory_context"]  || {},
-        time_context:            ctx.build_time_context,
-        story_summary:           @story.initial_summary,
       )
 
       SheetCopier.new(adventure, @sheet,
@@ -73,37 +46,44 @@ module Adventures
       adventure
     end
 
-    def seed_plot_state!(adventure)
-      adventure.update!(plot_state: {
-        "discovered_clues"   => [],
-        "attempted_clues"    => [],
-        "reached_milestones" => [],
-        "npc_met"            => [],
-        "npc_attitudes"      => {},
-        "custom_facts"       => [],
-      })
-    end
+    def bind_starting_adventure_location!(adventure)
+      starting_story_location = @story.starting_location
+      return unless starting_story_location
 
-    def run_embellisher(adventure)
-      DungeonMaster::Embellisher.new(adventure, user: @user).run
-    rescue DungeonMaster::AiError, DungeonMaster::TokenBudgetExceededError => e
-      ApplicationErrorReporter.notify(e, context: { source: "adventures_bootstrap_embellisher", adventure_id: adventure.id })
-      Rails.logger.error("[Adventures::Bootstrap] Embellisher failed: #{e.message}")
+      starting_adventure_location = AdventureLocation.where(
+        adventure_id:      adventure.id,
+        story_location_id: starting_story_location.id,
+      ).first
+      return unless starting_adventure_location
+
+      adventure.update!(current_location_id: starting_adventure_location.id)
     end
 
     def ensure_opening_message(adventure)
       return if adventure.adventure_messages.exists?
 
+      jit_generate_opening_message_if_blank!
+
       adventure.adventure_messages.create!(
         role:         "dm",
-        content:      @story.preview,
-        message_type: "narrative"
+        content:      @story.opening_message,
+        message_type: "narrative",
       )
     end
 
-    # Placed after Embellisher + opening message so enriched_world and the opening narrative are visible to the seed call. Belt-and-braces rescue:
-    # SeedFromAdventure is already lossy-with-Sentry internally (see Decision 37); this rescue just guarantees adventure creation never fails because
-    # seeding did.
+    # Self-healing path for stories created before opening_message was
+    # required: generate one from the premise, persist it back to the
+    # story, then proceed. Subsequent adventures from the same story
+    # reuse the persisted value at no AI cost.
+    def jit_generate_opening_message_if_blank!
+      return if @story.opening_message.present?
+
+      DungeonMaster::Lore::GenerateOpeningMessage.call(story: @story, user: @user)
+      @story.reload
+    end
+
+    # SeedFromAdventure is lossy-with-Sentry internally; this rescue
+    # guarantees adventure creation never fails because seeding did.
     def run_narrative_facts_seed(adventure)
       DungeonMaster::Lore::SeedFromAdventure.call(adventure: adventure, user: @user)
     rescue StandardError => e

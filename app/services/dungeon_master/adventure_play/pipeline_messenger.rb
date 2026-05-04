@@ -136,7 +136,7 @@ module DungeonMaster
 
       private
 
-      # Persists player action outcome strings (verdict/momentum outcomes) as discrete
+      # Persists player action outcome strings (verdict outcomes) as discrete
       # action_result messages. Returns the persisted objects (empty array when blank).
       def persist_action_result_messages(outcomes)
         Array(outcomes).filter_map do |outcome|

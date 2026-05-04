@@ -98,6 +98,7 @@ module Combat
           situational: inputs.situational.to_h
         ).to_h
         log_action_event!(payload)
+        Combat::EventLog.write!(adventure: @adventure, content: payload[:message], user: @user)
         { status: :resolved, result: payload }
       end
 

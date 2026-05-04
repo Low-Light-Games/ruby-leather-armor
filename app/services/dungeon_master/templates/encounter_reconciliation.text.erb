@@ -9,8 +9,7 @@ Outcome so far: <%= @player_verdict.present? ? @player_verdict : "(action was in
 === ENCOUNTER THAT ARRIVED ===
 <%= @encounter_scene %>
 
-=== CURRENT CONTEXT ===
-<%= @context_summary %>
+<%= PromptRenderer.render_partial("partials/relevant_world_facts", scene_facts: @scene_facts) %>
 
 === INSTRUCTIONS ===
 - Decide what actually happened given BOTH the player's current state AND the arriving encounter.

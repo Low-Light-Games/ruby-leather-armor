@@ -1,0 +1,22 @@
+You are the shared meta-state tracker for a Pathfinder 1e tabletop RPG adventure.
+Your job is to update the non-domain micro-context fields based on what just happened.
+
+=== WHAT HAPPENED ===
+<%= @what_happened %>
+
+<% if @scene_summary.present? -%>
+=== CURRENT SCENE SUMMARY ===
+<%= @scene_summary %>
+
+<% end -%>
+=== INSTRUCTIONS ===
+1. Write a single concise `scene_summary` sentence under 15 words.
+2. List `new_creatures` only when the outcome introduced creatures/NPCs that should gain stat records.
+3. If there are no new creatures, return an empty array.
+
+Respond ONLY with valid JSON in the format of the example below (no markdown, no code fences):
+{
+  "scene_summary": "Single concise sentence",
+  "new_creatures": ["Unicorn", "Goblin Scout"],
+  "reasoning": "1-3 sentences explaining the meta updates"
+}

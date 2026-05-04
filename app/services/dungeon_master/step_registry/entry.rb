@@ -2,9 +2,9 @@
 
 module DungeonMaster
   module StepRegistry
-    # One row of step metadata: token budget, admin UI model hint,
-    # default model + reasoning_effort, and whether the step is
-    # configurable from the DM config admin UI.
+    # One row of step metadata: admin UI model hint, default model +
+    # reasoning_effort, and whether the step is configurable from the
+    # DM config admin UI.
     #
     # `default_model` lets a step pin its preferred model independently
     # of the global `DmConfig#model` default. Consulted by
@@ -17,10 +17,9 @@ module DungeonMaster
     # in `DmConfig#step_reasoning_efforts`. nil means "use the OpenAI
     # default".
     class Entry
-      attr_reader :token_budget, :model_hint, :pipeline, :default_model, :default_reasoning_effort
+      attr_reader :model_hint, :pipeline, :default_model, :default_reasoning_effort
 
-      def initialize(token_budget:, model_hint:, pipeline:, default_model: nil, default_reasoning_effort: nil)
-        @token_budget = token_budget
+      def initialize(model_hint:, pipeline:, default_model: nil, default_reasoning_effort: nil)
         @model_hint = model_hint
         @pipeline = pipeline
         @default_model = default_model

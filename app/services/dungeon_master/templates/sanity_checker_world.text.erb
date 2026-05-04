@@ -1,16 +1,17 @@
 You are a world consistency checker for a Pathfinder 1e tabletop RPG.
 Your job is to verify that the player's intended action is possible given reasonable presumptions.
 
+<% if @sanity_context.scene_summary.present? -%>
 === CURRENT SCENE ===
-<%= @sanity_context.scene_summary.presence || "(no scene established yet)" %>
+<%= @sanity_context.scene_summary %>
 
-=== RECENT SCENE HISTORY ===
-<% if @sanity_context.scene_history.any? -%>
-<%= @sanity_context.scene_history.map { |h| "- #{h['summary']}" }.join("\n") %>
-<% else -%>
-(no prior scene history)
 <% end -%>
+<% if @sanity_context.scene_history.any? -%>
+=== RECENT SCENE HISTORY ===
+<%= @sanity_context.scene_history.map { |h| "- #{h['summary']}" }.join("\n") %>
 
+<% end -%>
+<% if @sanity_context.established_facts.any? -%>
 === ESTABLISHED NARRATIVE FACTS ===
 These are the durable facts about this adventure's world, retrieved by
 relevance to the player's stated intent. They are authoritative: the
@@ -18,39 +19,45 @@ player's action must remain consistent with them. A direct contradiction
 with any of these facts means the action is NOT consistent.
 
 <% events = @sanity_context.established_facts.select { |f| f[:kind].to_s == "event" } -%>
-Events (things that have happened):
 <% if events.any? -%>
+Events (things that have happened):
 <% events.each do |f| -%>
 - <%= f[:text] %>
 <% end -%>
-<% else -%>
-(none retrieved)
-<% end -%>
 
+<% end -%>
 <% states = @sanity_context.established_facts.select { |f| f[:kind].to_s == "state" } -%>
-Current state (conditions that constrain what the player can attempt):
 <% if states.any? -%>
+Current state (conditions that constrain what the player can attempt):
 <% states.each do |f| -%>
 - <%= f[:text] %>
 <% end -%>
-<% else -%>
-(none retrieved)
-<% end -%>
 
+<% end -%>
 <% entities = @sanity_context.established_facts.select { |f| f[:kind].to_s == "entity" } -%>
-Known entities (NPCs, objects, and places the narrative has introduced):
 <% if entities.any? -%>
+Known entities (NPCs, objects, and places the narrative has introduced):
 <% entities.each do |f| -%>
 - <%= f[:text] %>
 <% end -%>
-<% else -%>
-(none retrieved)
+
+<% end -%>
+<% end -%>
+<% if @sanity_context.nearby_npcs.any? -%>
+=== NEARBY NPCs (retrieved by relevance to the player's intent) ===
+<% @sanity_context.nearby_npcs.each do |npc| -%>
+- <%= npc[:name] %> (<%= npc[:attitude] %><%= npc[:location_name] ? ", at #{npc[:location_name]}" : "" %>)
 <% end -%>
 
-=== STORY NPCs (these people exist, but they may not be around) ===
-<%= @sanity_context.npc_names.any? ? @sanity_context.npc_names.join(", ") : "(none)" %>
+<% end -%>
+<% if @sanity_context.nearby_locations.any? -%>
+=== NEARBY LOCATIONS (retrieved by relevance to the player's intent) ===
+<% @sanity_context.nearby_locations.each do |loc| -%>
+- <%= loc[:name] %>
+<% end -%>
 
-<% if @sanity_context.combat_active && @sanity_context.combat_turn_order.any? %>
+<% end -%>
+<% if @sanity_context.combat_active && @sanity_context.combat_turn_order.any? -%>
 === ACTIVE COMBAT ROSTER ===
 Combat is in progress. The following creatures are engaged: <%= @sanity_context.combat_turn_order.join(", ") %>
 

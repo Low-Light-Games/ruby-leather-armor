@@ -9,7 +9,6 @@ module DungeonMaster
       def self.call(pipeline_engine:, result:)
         loop = pipeline_engine.loop
         outcome = loop&.get("pipeline_outcome")
-        plot_result = pipeline_engine.send(:resolve_plot, result[:intent], verdict_outcome: outcome)
 
         prior = if pipeline_engine.send(:action_queue_continuity?)
                   AdventureLoop.prior_pipeline_outcomes_before(
@@ -29,7 +28,6 @@ module DungeonMaster
 
         ctx = PipelineContext.new(
           combined_seed: outcome,
-          dm_brief: plot_result&.dig(:dm_brief),
           player_action: loop&.player_intent,
           prior_outcomes: prior,
           death_type: death_type

@@ -12,16 +12,12 @@ module DungeonMaster
         all_outcomes = all_loops.filter_map { |l| l.get("pipeline_outcome") }
         all_mutations = results.filter_map { |r| r[:mutations] }
         encounter_triggered = results.any? { |r| r[:status] == :encounter }
-        social_scene_triggered = results.any? { |r| r[:status] == :social_scene }
 
         action_outcomes = results.filter_map { |r| r[:action_outcome] }
         combined_seed = all_outcomes.join("\n\nThen: ").presence || action_outcomes.join("\n\nThen: ").presence
         combined_mutations = all_mutations.compact.reduce({}) do |acc, m|
           Utilities::HashMerge.deep_merge_presence(acc, m)
         end
-
-        plot_result = pipeline_engine.send(:resolve_plot, merged_intent, verdict_outcome: combined_seed,
-          encounter_triggered: encounter_triggered)
 
         player_death         = results.any? { |r| r[:player_death] }
         player_incapacitated = results.any? { |r| r[:player_incapacitated] }
@@ -33,14 +29,12 @@ module DungeonMaster
 
         ctx = PipelineContext.new(
           combined_seed: combined_seed,
-          dm_brief: plot_result&.dig(:dm_brief),
           player_action: all_loops.filter_map(&:player_intent).join("\nThen: ").presence || merged_intent&.dig(:intention),
           death_type: death_type
         )
 
         extra = {}
         extra[:encounter_triggered]    = true if encounter_triggered
-        extra[:social_scene_triggered] = true if social_scene_triggered
         extra[:player_death]           = true if player_death
         extra[:player_incapacitated]   = true if player_incapacitated
 
@@ -65,9 +59,7 @@ module DungeonMaster
 
         {
           intention: intents.map { |i| i[:intention] }.compact.join("; "),
-          affected_contexts: intents.flat_map { |i| Array(i[:affected_contexts]) }.uniq,
-          macro_significant: intents.any? { |i| i[:macro_significant] },
-          domain_results: intents.last[:domain_results]
+          macro_significant: intents.any? { |i| i[:macro_significant] }
         }
       end
       private_class_method :merge_result_intents

@@ -154,18 +154,39 @@ app.post("/fan_out", async (req, res) => {
     if (outcome.status === "fulfilled") {
       results.push(outcome.value);
     } else {
+      const step = prompts[i]?.meta?.step ?? null;
       const domain = prompts[i]?.meta?.domain ?? `index ${i}`;
-      failures.push({ index: i, domain, error: outcome.reason?.message ?? String(outcome.reason) });
+      const reason = outcome.reason ?? {};
+      const retryInfo = reason.evaluatorRetry ?? {};
+      failures.push({
+        index: i,
+        step,
+        domain,
+        error: reason.message ?? String(reason),
+        error_name: retryInfo.errorName ?? reason.name ?? null,
+        error_status: retryInfo.errorStatus ?? null,
+        attempts: retryInfo.attempts ?? null,
+        max_attempts: retryInfo.maxAttempts ?? null,
+        retryable: retryInfo.retryable ?? null,
+      });
     }
   }
 
   if (failures.length > 0) {
     const errorMsg = failures
-      .map((f) => `OpenAI call failed for domain ${f.domain}: ${f.error}`)
+      .map((f) => {
+        const tag =
+          f.attempts != null
+            ? ` (${f.error_name ?? "Error"} after ${f.attempts}/${f.max_attempts} attempts, retryable=${f.retryable})`
+            : "";
+        return `OpenAI call failed for domain ${f.domain}: ${f.error}${tag}`;
+      })
       .join("; ");
     return res.status(500).json({
       error: errorMsg,
       partial_results: results,
+      failed_steps: failures.map((f) => f.step).filter((s) => s != null),
+      failures,
     });
   }
 

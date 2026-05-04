@@ -43,10 +43,10 @@ Player input
        │    ├─ Combat::PlayerActionResolver ── attack / move / end-turn (server-side dice + clamping)
        │    └─ Combat::NpcTurn               ── per-NPC engine off behavior_policy (no AI calls)
        │
-       └─ Output phase (parallel):
-            ├─ Chronicler (AI) ──────── plot state, clue discovery, DM notes
-            ├─ Narrate (AI) ─────────── prose response to the player
-            └─ Context Update (AI) ──── refreshes micro/macro world state
+       └─ Output phase (parallel fan-out at Stagehand):
+            ├─ Narrate (AI) ────────── prose response, fed by scene_facts + outcome_facts retrieval
+            ├─ Loremaster (AI) ─────── extracts new durable facts from the turn's outcome
+            └─ Context Update (AI) ─── persists combat_context advancement + scene_summary
 ```
 
 ### AI Steps
@@ -57,16 +57,17 @@ Player input
 | **Classify** | Tags the action domain: combat, traversal, social, exploration, rest, inventory, or dm_query |
 | **DM Query** | Answers out-of-character questions without running the full pipeline |
 | **Sequencer** | Breaks compound actions (*"I search the room and then open the door"*) into ordered sub-actions |
-| **RollRequest** | Out-of-combat single AI call. Decides whether the intent needs a die roll, emits one roll spec (or "no roll") plus the cross-cutting signals (affected_contexts, expand_scene, transition, combatants). Prompt has no character block — top-K rules and scene beats only, retrieved from pgvector |
+| **RollRequest** | Out-of-combat single AI call. Decides whether the intent needs a die roll, emits one roll spec (or "no roll") plus the cross-cutting signals (affected_contexts, transition, combatants). Prompt has no character block — top-K rules and scene_facts retrieval (intent + current location + active combat participants), retrieved from pgvector |
 | **CombatRollRequest** | In-combat free-text single AI call. Same shape as RollRequest, but the prompt carries attack options, action economy, threats, and the battlefield slice. Combat rolls emit `attack_option_id`; DCs and damage are resolved post-call from the sheet via `CombatMechanicResolution` |
-| **Sanity Checker** | Capability check (sheet-based) + world consistency check (pgvector retrieval of established narrative facts) |
-| **Mechanic** | Post-roll arbitration out of combat: produces structured mutations |
+| **Sanity Checker** | Capability check (sheet-based) + world consistency check (pgvector retrieval against `adventure_narrative_facts`, `adventure_npcs`, and `adventure_locations`) |
+| **Mechanic** | Post-roll arbitration out of combat. Also handles no-roll auto-success outcomes — every action flows through this verdict path |
 | **Combat GM** | Post-roll arbitration in combat: produces structured mutations + battlefield patches; consumes deterministic attack-roll facts assembled from the resolved `attack_option_id` |
 | **Time Keeper** | Estimates how much in-game time the action took |
-| **Chronicler** | Tracks plot progression, discovered clues, and DM-facing notes |
-| **Narrate** | Generates the narrative prose the player actually reads |
+| **Loremaster** | Extracts new durable narrative facts from the turn's outcome and writes them to `adventure_narrative_facts`. Runs in parallel with Narrate inside Stagehand |
+| **Narrate** | Generates the narrative prose the player actually reads. Reads `scene_facts` (intent-keyed) + `outcome_facts` (outcome-keyed) retrievals against the facts store |
 | **Combat Narrator** | Async flavor pass after End Turn — turns the round's deterministic NPC events into one paragraph |
-| **Context Update** | Refreshes six micro-contexts (combat, traversal, social, exploration, rest, inventory) and the macro story summary |
+| **Context Update** | Persists combat-context advancement (when free-text combat is active) and the meta scene_summary |
+| **ExtractFromPremise** | Authoring-time fact extraction at story save: reads `Story.premise` + `Story.opening_message`, populates `Story.seed_facts` |
 
 ### Deterministic Steps
 
@@ -81,7 +82,10 @@ Player input
 | **Stagehand** | Orchestrates the final output shape — decides what gets sent back to the player |
 | **Combat::PlayerActionResolver** | Server-authoritative attack / move / end-turn for the deterministic Combat HUD |
 | **Combat::NpcTurn** | Per-NPC turn engine driven by `behavior_policy` JSONB (preferred attacks, approach, morale flee) — no AI call per NPC |
-| **AdventureLoopResolution** | Resolves one AdventureLoop row: RollRequest or CombatRollRequest → Sanity → Mechanic/Combat GM → TimeKeeper → optional World Turn (mixed into Pipeline) |
+| **AdventureLoopResolution** | Resolves one AdventureLoop row: RollRequest or CombatRollRequest → Sanity → Mechanic/Combat GM → TimeKeeper → optional World Turn (mixed into Pipeline). No-roll actions flow through the same path with auto-success |
+| **Maps::PlaceLocations** | Vogel-spiral coordinate placement at story save; deterministic per `story_id`. Distance between any two locations is euclidean × `Adventure.coordinate_scale` × per-terrain speed factor |
+| **EncounterWarmasterBridge** | Reads hostile NPCs at the current location from `adventure_npcs` to merge pre-established scene enemies into encounter rosters |
+| **Combat::SocialEventTrigger** | Reads non-hostile witnesses at the current location from `adventure_npcs` for social-weight combat events |
 
 ## Architecture
 
@@ -95,7 +99,7 @@ Each AI step can be configured independently (model, token budget, on/off toggle
 
 Prompts live as ERB templates in `app/services/dungeon_master/templates/`, keeping prompt engineering separate from pipeline logic. The single-call evaluation step (`roll_request` out of combat, `combat_roll_request` in combat) carries no character block; combat rolls emit an `attack_option_id` and DC/damage resolution happens post-call in Ruby via `CombatMechanicResolution`.
 
-Six **micro-contexts** (JSONB columns on `Adventure`) give each step a focused, domain-specific window into game state rather than dumping the full history into every prompt.
+Durable world state lives in three pgvector-backed stores rather than JSONB context blobs: `adventure_narrative_facts`, `adventure_npcs`, and `adventure_locations`. Each combines structured columns with an embedding so consumers (sanity check, narrator, encounter bridge) can mix structured filters with similarity retrieval. Only `combat_context` (live combat state) and `time_context` (the clock) survive as structured JSONB context fields.
 
 ## Tech Stack
 

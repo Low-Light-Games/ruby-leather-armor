@@ -6,81 +6,60 @@ require_relative 'step_registry/model_hints'
 module DungeonMaster
   # Single source of truth for all AI step metadata.
   #
-  # To add a new AI step: add one entry to STEPS. PlayLog::EVENT_TYPES,
-  # DmConfig::TOKEN_BUDGET_STEPS, and STEP_MODEL_HINTS all derive from
-  # this registry automatically.
+  # To add a new AI step: add one entry to STEPS. PlayLog::EVENT_TYPES and
+  # STEP_MODEL_HINTS derive from this registry automatically.
   #
   # The `pipeline` flag controls whether a step appears in the DM config
-  # admin UI (token budgets, model selection). Non-pipeline steps
-  # (enricher, embellisher, embedding, rules_retrieval) are logged but
-  # not configurable per-run.
+  # admin UI (model selection). Non-pipeline steps (embedding,
+  # rules_retrieval, encounter_expand, extract_from_premise) are logged
+  # but not configurable per-run.
   module StepRegistry
     H = ModelHints
 
     STEPS = {
-      'intake' => Entry.new(token_budget: nil, model_hint: H::INTAKE,
+      'intake' => Entry.new(model_hint: H::INTAKE,
                             pipeline: true),
-      'dm_query' => Entry.new(token_budget: nil, model_hint: H::DM_QUERY,
+      'dm_query' => Entry.new(model_hint: H::DM_QUERY,
                               pipeline: true),
-      'sequencer' => Entry.new(token_budget: nil, model_hint: H::SEQUENCER,
+      'sequencer' => Entry.new(model_hint: H::SEQUENCER,
                                pipeline: true),
-      'sanity_checker' => Entry.new(token_budget: nil, model_hint: H::SANITY_CHECKER,
+      'sanity_checker' => Entry.new(model_hint: H::SANITY_CHECKER,
                                     pipeline: true),
-      'sanity_checker_world' => Entry.new(token_budget: nil, model_hint: H::SANITY_CHECKER_WORLD,
+      'sanity_checker_world' => Entry.new(model_hint: H::SANITY_CHECKER_WORLD,
                                           pipeline: true),
-      'mechanic' => Entry.new(token_budget: nil, model_hint: H::MECHANIC,
+      'mechanic' => Entry.new(model_hint: H::MECHANIC,
                               pipeline: true),
-      'combat_gm' => Entry.new(token_budget: 900, model_hint: H::COMBAT_GM,
+      'combat_gm' => Entry.new(model_hint: H::COMBAT_GM,
                                pipeline: true),
-      'momentum' => Entry.new(token_budget: nil, model_hint: H::MOMENTUM,
-                              pipeline: true),
-      'social_expansion' => Entry.new(token_budget: nil, model_hint: H::SOCIAL_EXPANSION,
-                                      pipeline: true),
-      'time_keeper' => Entry.new(token_budget: nil, model_hint: H::TIME_KEEPER,
+      'time_keeper' => Entry.new(model_hint: H::TIME_KEEPER,
                                  pipeline: true),
-      'chronicler' => Entry.new(token_budget: nil, model_hint: H::CHRONICLER,
-                                pipeline: true),
-      'narrate' => Entry.new(token_budget: nil, model_hint: H::NARRATE,
+      'narrate' => Entry.new(model_hint: H::NARRATE,
                              pipeline: true),
-      'micro_context_update' => Entry.new(token_budget: nil, model_hint: H::MICRO_CONTEXT_UPDATE,
-                                          pipeline: true),
-      'traversal_context_update' => Entry.new(token_budget: nil, model_hint: H::TRAVERSAL_CONTEXT_UPDATE,
-                                              pipeline: true),
-      'combat_context_update' => Entry.new(token_budget: nil, model_hint: H::COMBAT_CONTEXT_UPDATE,
+      'combat_context_update' => Entry.new(model_hint: H::COMBAT_CONTEXT_UPDATE,
                                            pipeline: true),
-      'social_context_update' => Entry.new(token_budget: nil, model_hint: H::SOCIAL_CONTEXT_UPDATE,
-                                           pipeline: true),
-      'exploration_context_update' => Entry.new(token_budget: nil, model_hint: H::EXPLORATION_CONTEXT_UPDATE,
-                                                pipeline: true),
-      'rest_context_update' => Entry.new(token_budget: nil, model_hint: H::REST_CONTEXT_UPDATE,
-                                         pipeline: true),
-      'inventory_context_update' => Entry.new(token_budget: nil, model_hint: H::INVENTORY_CONTEXT_UPDATE,
-                                              pipeline: true),
-      'meta_context_update' => Entry.new(token_budget: nil, model_hint: H::META_CONTEXT_UPDATE,
-                                         pipeline: true),
-      'macro_narrative_update' => Entry.new(token_budget: nil, model_hint: H::MACRO_NARRATIVE_UPDATE,
+      'scene_update' => Entry.new(model_hint: H::SCENE_UPDATE,
+                                  pipeline: true),
+      'macro_narrative_update' => Entry.new(model_hint: H::MACRO_NARRATIVE_UPDATE,
                                             pipeline: true),
-      'creature_generation' => Entry.new(token_budget: nil, model_hint: H::CREATURE_GENERATION,
+      'creature_generation' => Entry.new(model_hint: H::CREATURE_GENERATION,
                                          pipeline: true),
-      'roll_request' => Entry.new(token_budget: nil, model_hint: H::ROLL_REQUEST, pipeline: true,
-                                  default_model: 'gpt-5-nano', default_reasoning_effort: 'minimal'),
-      'combat_roll_request' => Entry.new(token_budget: nil, model_hint: H::COMBAT_ROLL_REQUEST, pipeline: true,
-                                         default_model: 'gpt-5-nano', default_reasoning_effort: 'minimal'),
-      'rules_retrieval' => Entry.new(token_budget: nil, model_hint: nil,
+      'extract_from_premise' => Entry.new(model_hint: H::EXTRACT_FROM_PREMISE,
+                                          pipeline: false),
+      'generate_opening_message' => Entry.new(model_hint: H::GENERATE_OPENING_MESSAGE,
+                                              pipeline: false),
+      'roll_request' => Entry.new(model_hint: H::ROLL_REQUEST,
+                                  pipeline: true),
+      'combat_roll_request' => Entry.new(model_hint: H::COMBAT_ROLL_REQUEST,
+                                         pipeline: true),
+      'rules_retrieval' => Entry.new(model_hint: nil,
                                      pipeline: false),
-      'npc_action' => Entry.new(token_budget: 300, model_hint: H::NPC_ACTION,
+      'loremaster' => Entry.new(model_hint: H::LOREMASTER,
                                 pipeline: true),
-      'loremaster' => Entry.new(token_budget: nil, model_hint: H::LOREMASTER,
-                                pipeline: true),
-      'embedding' => Entry.new(token_budget: nil, model_hint: nil,
+      'embedding' => Entry.new(model_hint: nil,
                                pipeline: false),
-      'encounter_expand' => Entry.new(token_budget: nil, model_hint: nil,
+      'encounter_expand' => Entry.new(model_hint: nil,
                                       pipeline: false),
-      'enricher' => Entry.new(token_budget: nil, model_hint: nil,
-                              pipeline: false),
-      'embellisher' => Entry.new(token_budget: nil, model_hint: nil,
-                                 pipeline: false),
-      'combat_narrator' => Entry.new(token_budget: 220, model_hint: H::COMBAT_NARRATOR,
+      'combat_narrator' => Entry.new(model_hint: H::COMBAT_NARRATOR,
                                      pipeline: true)
     }.freeze
 

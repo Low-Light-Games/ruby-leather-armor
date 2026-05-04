@@ -10,12 +10,10 @@ module ApplicationHelper
 
   def ai_log_type_badge_class(event_type)
     case event_type
-    when "triage", "sanitize", "classify", "intake", "dispatcher", "capability_guardrail", "sanity_checker", "sanity_checker_world", "chronicler" then "type-triage"
+    when "triage", "sanitize", "classify", "intake", "dispatcher", "capability_guardrail", "sanity_checker", "sanity_checker_world" then "type-triage"
     when "capability_rejection", "world_check_failure", "intake_rejection" then "type-rejection"
     when "sequencer", "intent", "roll_request", "combat_roll_request" then "type-intent"
     when "ruling", "verdict", "mechanic" then "type-evaluate"
-    when "momentum"                      then "type-evaluate"
-    when "social_expansion"              then "type-evaluate"
     when "harbinger"                     then "type-harbinger"
     when "warmaster"                     then "type-warmaster"
     when "time_keeper"                   then "type-ctx"
@@ -24,9 +22,9 @@ module ApplicationHelper
     when "pipeline_error"                then "type-error"
     when "narrate"                       then "type-narrate"
     when "dm_query"                      then "type-dm-query"
-    when "micro_context_update"          then "type-ctx"
+    when "combat_context_update"         then "type-ctx"
+    when "scene_update"                  then "type-ctx"
     when "macro_narrative_update"        then "type-ctx"
-    when "context_wish"                  then "type-wish"
     else "type-default"
     end
   end
@@ -56,6 +54,14 @@ module ApplicationHelper
     return "—" unless count && count > 0
 
     number_with_delimiter(count)
+  end
+
+  def json_blank?(value)
+    value.blank? || value == {} || value == []
+  end
+
+  def pretty_json_or_empty(value)
+    json_blank?(value) ? "{}" : JSON.pretty_generate(value)
   end
 
   def pagination_link(path_helper, page, current_page, label: nil, params: {})

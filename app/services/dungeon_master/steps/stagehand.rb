@@ -35,8 +35,11 @@ module DungeonMaster
         # post-mutation state (docs/pipeline_steps.md Decision 37).
         loremaster_inputs = build_loremaster_inputs(seed, mutations)
 
-        prompts = [narrate_evaluator_prompt(narration_context)]
-        prompts.concat(build_micro_context_updater_prompts(seed, mutations, allow_combat_initialization: true))
+        scene_facts   = retrieve_scene_facts_for_narrate(intent)
+        outcome_facts = retrieve_outcome_facts_for_narrate(seed)
+
+        prompts = [narrate_evaluator_prompt(narration_context, scene_facts: scene_facts, outcome_facts: outcome_facts)]
+        prompts.concat(build_context_update_prompts(seed, mutations, allow_combat_initialization: true))
         prompts << macro_context_evaluator_prompt(seed) if intent[:macro_significant]
         prompts << loremaster_evaluator_prompt(loremaster_inputs)
 
@@ -45,14 +48,14 @@ module DungeonMaster
         # LLM calls concurrently but returns results in request order — see evaluator index.js.
         by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
 
-        micro_parsed = aggregate_micro_context_results(by_step)
+        context_parsed = aggregate_context_update_results(by_step)
         macro_parsed = if intent[:macro_significant]
                          evaluator_fan_out_result!(by_step, "macro_narrative_update", "narrative_phase")["parsed_response"] || {}
                        else
                          {}
                        end
 
-        apply_context_update_results(micro_parsed, macro_parsed,
+        apply_context_update_results(context_parsed, macro_parsed,
           macro_significant: intent[:macro_significant],
           mutations: mutations)
 
@@ -66,8 +69,25 @@ module DungeonMaster
         Steps::LoremasterInputs.new(
           what_happened: what_happened.to_s,
           mutations: (mutations || {}).deep_stringify_keys,
-          contexts_text: PromptHelpers.build_micro_contexts_block(@adventure).to_s,
           active_facts: active_facts_window,
+        )
+      end
+
+      def retrieve_scene_facts_for_narrate(intent)
+        SceneFacts::ForResolution.call(
+          adventure:   @adventure,
+          intent_text: intent[:intention].to_s,
+          ai:          @ai,
+          log:         @log,
+        )
+      end
+
+      def retrieve_outcome_facts_for_narrate(seed)
+        SceneFacts::ForOutcome.call(
+          adventure:     @adventure,
+          what_happened: seed.to_s,
+          ai:            @ai,
+          log:           @log,
         )
       end
 
@@ -118,20 +138,11 @@ module DungeonMaster
       def maybe_initialize_combat(intent)
         return nil if stagehand_combat_active?
 
-        domain_results = intent[:domain_results]
-        return nil unless domain_results.is_a?(Hash)
+        transition = intent[:transition] || intent["transition"]
+        return nil unless combat_transition?(transition)
 
-        combatants = []
-        domain_results.each_value do |beacon|
-          next unless beacon.is_a?(Hash)
-
-          transition = beacon[:transition] || beacon["transition"]
-          next unless combat_transition?(transition)
-
-          combatants.concat(Array(beacon[:combatants] || beacon["combatants"]))
-        end
-
-        combatants = combatants.map(&:to_s).reject(&:blank?).uniq
+        combatants = Array(intent[:combat_combatants] || intent["combat_combatants"])
+                       .map(&:to_s).reject(&:blank?).uniq
         return nil if combatants.empty?
 
         Utilities::Warmaster.initialize_from_names!(
@@ -153,8 +164,8 @@ module DungeonMaster
       end
 
       def stagehand_combat_active?
-        ctx = @adventure.combat_context
-        ctx.is_a?(Hash) && ctx["active"] == true && Array(ctx["participants"]).any?
+        state = Adventures::CombatState.from_adventure(@adventure)
+        state.active? && state.has_participants?
       end
     end
   end

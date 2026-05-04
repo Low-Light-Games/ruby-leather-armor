@@ -23,10 +23,9 @@ module DungeonMaster
       # Path A: from Harbinger encounter table roll
       # creatures_data:    optional structured array from encounter_expand AI (via AdventureLoop)
       #                    e.g. [{ "name" => "goblin", "count" => 4 }]
-      # scene_enemy_names: optional array of creature-type strings extracted from
-      #                    traversal_context["nearby_npcs"] by EncounterWarmasterBridge.
-      #                    These are merged in after the encounter-table creatures so that
-      #                    pre-established scene enemies join the combat.
+      # scene_enemy_names: optional array of creature-type strings for pre-established
+      #                    hostile NPCs in the scene. Merged in after the encounter-table
+      #                    creatures so they join the combat.
       def initialize_from_encounter!(encounter_initialization_request: nil, **kwargs)
         encounter_initialization_request ||= EncounterInitializationRequest.new(**kwargs)
         warmaster_context = Context.new(
@@ -251,9 +250,9 @@ module DungeonMaster
       end
 
       def merge_scene_enemy_names(ctx, creatures, scene_enemy_names)
-        # Merge scene enemies (hostile NPCs already established in traversal_context).
+        # Merge pre-established hostile NPCs into the encounter creatures.
         # Skip any whose creature-type name overlaps with an encounter creature already spawned
-        # to avoid doubling up (e.g. encounter already has orcs, nearby_npcs also says "orc patrol").
+        # to avoid doubling up (e.g. encounter already has orcs, scene also says "orc patrol").
         novel_scene_names = Array(scene_enemy_names).reject do |scene_name|
           normalized_scene_name = TextNormalizer.normalized_key(scene_name)
           creatures.any? do |creature|
@@ -266,7 +265,7 @@ module DungeonMaster
         end
 
         if novel_scene_names.any?
-          ctx.log.log!(:info, "Warmaster: merging #{novel_scene_names.size} scene enemy type(s) from traversal context: #{novel_scene_names.inspect}")
+          ctx.log.log!(:info, "Warmaster: merging #{novel_scene_names.size} scene enemy type(s): #{novel_scene_names.inspect}")
           creatures + spawn_from_names(ctx, novel_scene_names)
         else
           creatures
@@ -399,7 +398,6 @@ module DungeonMaster
         raw_response = ctx.ai.chat(
           system_prompt: system_prompt,
           user_message: user_msg,
-          max_tokens: ctx.config.token_budget_for("creature_generation"),
           step_name: "creature_generation",
           model: ctx.config.model_for("creature_generation"))
 

@@ -146,13 +146,11 @@ the feedback loop must be fast: change a setting, observe the result,
 adjust.
 
 **Current toggles:**
-- `guardrail_mode` — code-based vs. AI-based validation
 - `sanitization_threshold` — danger score cutoff (0-100)
 - `verbose` / `pacing_words_min` / `pacing_words_max` — narration length
 - `temperature` — creativity/randomness
 - Per-step model selection and token budgets
 - `directed_dm` — per-adventure narrative steering
-- `embellisher_mode` — story enrichment behavior
 
 **Why toggles over code branches:** a developer changing an `if` statement,
 deploying, and observing is a 10-minute cycle. An admin flipping a toggle
@@ -213,11 +211,15 @@ to the player.
 - All errors become *"The Dungeon Master is momentarily distracted..."*
 - Token budgets, model names, step names, and pipeline UUIDs are
   admin-only
-- Raw micro-context JSON is hidden behind an admin-only collapsible
+- Raw `combat_context` / `time_context` JSON is hidden behind an
+  admin-only collapsible
 - The scene summary translates internal state into a natural-language
   status line for the player
-- The Chronicler produces a DM Brief instead of exposing the raw story
-  premise — the narrator never sees unrevealed plot secrets
+- The Narrator never sees `Story.premise` directly — premise is
+  spoiler-bearing authoring input. World orientation reaches the
+  Narrator through retrieved facts (`Lore::FactsLookup`), which carry
+  only what's been authored into `Story.seed_facts` plus what the
+  Loremaster has emitted during play
 
 The admin sees everything: full AiLog records, request bodies, reasoning
 fields, pipeline traces. The player sees only what a tabletop player
@@ -229,8 +231,9 @@ would see: the DM's words and the dice they need to roll.
 
 Every AI call is logged with its full request, response, parsed output,
 model used, and the AI's own reasoning. Every mutation is traceable to
-the verdict that produced it. Every plot state change records which clues
-were discovered and why.
+the verdict that produced it. Every retrieval call against the pgvector
+stores logs the query, the resolved hits with their similarity scores
+and content, and the consumer step.
 
 **Why:** AI behavior is non-deterministic. When something goes wrong (and
 it will), the only way to diagnose it is to replay the exact inputs the
@@ -290,7 +293,10 @@ observed AI failure to justify.
 - Started with a single DM prompt → split into pipeline steps when
   accuracy degraded
 - Started with 3 micro-contexts → expanded to 6 when exploration, rest,
-  and inventory didn't fit
+  and inventory didn't fit → collapsed back to a single `combat_context`
+  JSONB plus pgvector stores (`adventure_npcs`, `adventure_locations`,
+  `adventure_narrative_facts`) when freeform schema drift across the
+  six blobs proved unsustainable
 - Started with combined Triage → split into Sanitize + Classify when
   both tasks suffered
 - Started with monolithic Intent → split into Intent + Beacon when
@@ -321,8 +327,6 @@ deleted rather than kept behind a dead toggle.
 
 When introducing a new approach, don't rip out the old one. Keep both
 paths alive behind a toggle and let observation determine which wins.
-
-- Code and AI guardrails coexist (`guardrail_mode` toggle)
 
 This principle is a direct consequence of principles 4 and 9: if you
 toggle everything and split incrementally, coexistence is the natural
@@ -362,32 +366,23 @@ see the character sheet. A classifier doesn't see the rules manifest.
 
 **Mechanisms:**
 - ERB templates are separated from Ruby logic
-- Domain-specific partials load only for the relevant domain
 - `CharacterBlock.for(sheet, category:)` filters the character sheet to
   domain-relevant stats
-- Selective context updates include only affected + active contexts
-- The Chronicler produces a DM Brief instead of passing the full premise
-  to the narrator
-
-**Deliberate exception:** the Unified Evaluation mode (default) intentionally
-sends all six micro-contexts, the full character block, and the complete rules
-manifest to a single AI call. This trades prompt isolation for cross-domain
-coherence — the model can see flanking context when adjudicating a Perception
-roll, or social attitude when deciding combat consequences. This is acceptable
-because: (a) it requires at minimum a mid-capable model (gpt-4.1-mini or
-equivalent) with a sufficient context window, (b) the legacy standard path
-remains available for rollback or per-domain model tuning, and (c) the rest
-of the pipeline (sanity checks, verdict, narration, context updates) remains
-isolated.
+- World-state inputs flow into prompts via `pgvector` retrieval
+  (`Lore::FactsLookup`, `Lore::NpcsLookup`, `Lore::LocationsLookup`)
+  rather than as full JSONB blobs — each step gets the top-K hits
+  most relevant to its query, not everything the world knows
+- Narrator and Loremaster receive only the post-mutation outcome plus
+  retrieved facts; they never see `Story.premise` directly
 
 ---
 
 ## 12. Time as a higher-order context
 
 Time of day, adventure day, and light conditions are tracked as a
-code-managed context (`time_context`) separate from the six domain-specific
-micro-contexts. Time is "above" the domains — it affects all of them but
-belongs to none of them.
+code-managed context (`time_context`) separate from `combat_context`
+and the pgvector world-state stores. Time is "above" the other state
+— it affects everything but belongs to none of it.
 
 **Key decisions:**
 - TimeKeeper estimates time after Verdict (when the outcome is known), not
@@ -426,8 +421,8 @@ scoped to one responsibility. If you can't name it without a compound
 word, the step is probably doing too much.
 
 Current AI step names: Sequencer, SanityChecker
-(capability check + world consistency check), Mechanic, Combat GM, Momentum,
-Social Expansion, Chronicler, Narrate, Intake, DM Query.
+(capability check + world consistency check), Mechanic, Combat GM,
+Loremaster, Narrate, Intake, DM Query, ExtractFromPremise (authoring-time).
 
 **Code-only steps get role/object names** — functional, clearly
 non-creative, conveying "no AI judgment here."
@@ -633,15 +628,16 @@ but do not silently alter the output.
 
 ---
 
-## 18. Micro-contexts as adventure state checkpoints
+## 18. World state via pgvector retrieval, not JSONB context blobs
 
-The micro-context fields (`traversal_context`, `combat_context`,
-`social_context`, `exploration_context`, `rest_context`,
-`inventory_context`) are the adventure's official world state. Every
-pipeline step that needs world state reads from the current snapshot.
-Every turn ends by writing an updated snapshot. The adventure is
-structured like a linked list: each node contains everything needed to
-produce the next, with no dependency on what came before.
+Durable narrative state lives in three pgvector-backed stores:
+`adventure_narrative_facts`, `adventure_npcs`, and `adventure_locations`.
+Each combines structured columns (name, attitude, coordinates,
+location_name, kind, polarity, etc.) with an embedding so consumers can
+mix structured filters with similarity retrieval. Two JSONB fields
+survive on `Adventure`: `combat_context` (live combat state — turn
+order, participants, action_economy, battlefield_ref) and
+`time_context` (the clock).
 
 **The problem this solves:** AI wrapper products face a predictable failure
 mode. The context window fills with message history, the model attends to
@@ -651,69 +647,63 @@ conversation is also expensive — prompt size scales with session length
 rather than staying bounded.
 
 **The design response:** the pipeline does not pass message history to AI
-steps. It passes the current micro-context snapshot. A model generating
-narrative for turn 80 has the same clean, bounded input as one generating
-narrative for turn 1. Long adventures do not become harder or less
-reliable to reason about.
+steps. Each step retrieves the top-K facts most relevant to its query
+(intent, outcome, current location, active combat participants). A model
+generating narrative for turn 80 has the same clean, bounded input as one
+generating narrative for turn 1. Long adventures do not become harder or
+less reliable to reason about.
 
-**Single-writer principle (JSONB micro-contexts):** ContextUpdate is the primary writer for the six `*_context` JSONB fields. Documented exceptions and co-writers must stay explicit so drift stays observable:
+**Single-writer principle (per store):**
 
-- **Combat start:** `DungeonMaster::Battlefield::PersistCombatStart` writes `combat_context` in one transaction with a new `adventure_battlefields` row and `battlefield_ref` (used by `run_initiative` and `AdventureMechanicalState.auto_finalize_pending_initiative!`).
-- **Encounter pause (Path A pending roster):** `DungeonMaster::EncounterWarmasterBridge` may call `DungeonMaster::Utilities::Warmaster.persist_pending_combat!` to persist an NPC-only pending roster before initiative is provided. This is a documented writer because the pause must preserve encounter roster truth before ContextUpdate runs.
-- **Mid-combat / missing map (just-in-time):** `DungeonMaster::Battlefield::EnsureForActiveCombat` creates the row + ref the first time something needs a battlefield while `combat_context.active` is true (no batch rake). Invoked from serializers, roll metadata, and patch application so stories can start in combat without initiative.
-- **Combat resolution:** `DungeonMaster::Battlefield::ApplyPatches` bumps the battlefield row and syncs `combat_context["battlefield_ref"]["version"]` after Combat GM / world-turn patches. `apply_mutations` may merge `action_economy_delta` into `combat_context` when the Combat GM emits spends.
-- **Combat end:** `DungeonMaster::Battlefield::ArchiveCombatEnd` archives the row and updates `last_battlefield_ref` / clears `battlefield_ref`, invoked when micro-context persistence detects `active: true → false`.
-- **Adventure UI (combat):** direct sheet endpoints (e.g. equip toggle) may atomically adjust `action_economy` when `combat_active?` — server-authoritative, no AI.
+- **`adventure_narrative_facts`** — sole writer is
+  `DungeonMaster::Lore::ApplyResults`, invoked from
+  `DungeonMaster::Steps::Stagehand` (Loremaster output) on every
+  terminal narrative phase, and from
+  `DungeonMaster::Lore::SeedFromAdventure` at adventure creation
+  (bulk-inserts `Story.seed_facts`).
+- **`adventure_npcs`** — sole writer is `DungeonMaster::Lore::ApplyNpcs`,
+  invoked at seed time from `Lore::SeedFromAdventure` (one row per
+  authored `StoryNpc`). Future: `source: "runtime"` for AI-introduced
+  NPCs mid-adventure.
+- **`adventure_locations`** — sole writer is
+  `DungeonMaster::Lore::ApplyLocations`, invoked at seed time from
+  `Lore::SeedFromAdventure` after `Maps::PlaceLocations` produces
+  deterministic Vogel-spiral coordinates per `story_id`.
+- **`combat_context`** (JSONB) — primary writer is `Steps::ContextUpdate`
+  (combat-state advancement during free-text combat). Documented
+  co-writers: `Battlefield::PersistCombatStart` (combat start in one
+  transaction with `adventure_battlefields`),
+  `EncounterWarmasterBridge` via `Warmaster.persist_pending_combat!`
+  (encounter pause, NPC-only pending roster),
+  `Battlefield::EnsureForActiveCombat` (just-in-time battlefield row),
+  `Battlefield::ApplyPatches` (battlefield-version + action_economy
+  syncs), `Battlefield::ArchiveCombatEnd` (active → false transitions),
+  and direct sheet endpoints adjusting `action_economy` while combat
+  is active.
 
-`ContextUpdate` applies **deep merge** for `combat` when persisting micro-context output so partial `combat_state_advancement` payloads do not drop `battlefield_ref`, `last_battlefield_ref`, or `action_economy` by accident.
+`ContextUpdate` applies **deep merge** for `combat` when persisting so
+partial `combat_state_advancement` payloads do not drop
+`battlefield_ref`, `last_battlefield_ref`, or `action_economy` by
+accident.
 
-Deterministic utilities like Warmaster still compute hashes; ContextUpdate receives structured mutations for narrative-driven updates. This pattern limits races where two writers each assume they own the full document.
-
-**Runs before every pause:** ContextUpdate executes before any pipeline
+**Runs before every pause:** `ContextUpdate` executes before any pipeline
 early return that presents a message to the player — initiative prompts,
 roll requests, and full narrative responses. If the player never resumes
-a paused adventure, the snapshot in the database still reflects reality up to
+a paused adventure, the persisted state still reflects reality up to
 that moment.
 
-**Self-directed:** ContextUpdate reads the outcome (`what_happened`) and
-decides which of the six domains changed. It does not rely on upstream hints.
-All six domain schemas are included in every prompt; the AI updates what
-changed and carries forward everything else unchanged.
+**Snapshot on `AdventureLoop`:** after each `ContextUpdate` run, the
+two-field snapshot (`combat_context` + `time_context`) is written to
+`adventure_loop.data["context_snapshot"]`. This produces a linear
+progression trail across every pipeline action — available in the
+database for debugging, never re-sent to the model.
 
-**Context snapshots on AdventureLoop:** after each ContextUpdate run, the
-full six-field snapshot is written to `adventure_loop.data["context_snapshot"]`.
-This produces a linear progression trail of the world state across every
-pipeline action — available in the database for debugging, never re-sent to
-the model.
-
-**Context wishes:** if the outcome touches something that doesn't fit any
-existing domain, ContextUpdate can emit a `context_wishes` entry. Each wish
-is persisted as a `context_wish` play log event, visible in the admin UI as
-an amber badge. These are observability signals for future domain design, not
-errors.
-
-**World Consistency Check no longer queries micro-contexts.** As of the
-narrative facts store cutover (see `docs/pipeline_steps.md` Decision 37),
-`sanity_checker_world` reads its dynamic-state input from
-`adventure_narrative_facts` (pgvector, top-K by similarity against the
-player's intent) rather than from the six `*_context` JSONB fields.
-Micro-contexts remain the structured mutation surface for ContextUpdate
-and every other consumer that needs domain-typed state; they are simply
-no longer the retrieval target of the world sanity gate. This keeps the
-§18 single-writer principle intact for the JSONB fields (ContextUpdate
-is still the primary writer, with the same documented exceptions above)
-while introducing a second, orthogonal store with its own single writer:
-
-- **`adventure_narrative_facts` (pgvector):** sole writer is
-  `DungeonMaster::Lore::ApplyResults`, invoked from
-  `DungeonMaster::Steps::Stagehand` on every terminal narrative phase
-  (`source: "loremaster"`) and from `DungeonMaster::Lore::SeedFromAdventure`
-  at adventure creation (`source: "seed"`). No other pipeline step,
-  admin tool, or background job mutates this table. A partial unique
-  index on `(adventure_id, introduced_at_loop_id, source_idx) WHERE
-  source = 'loremaster'` makes idempotent reapply a no-op so the
-  lossy-with-Sentry write contract stays safe under higher-layer
-  retries.
+**Authoring-time fact extraction:** `Lore::ExtractFromPremise` runs at
+story save (when `Story.premise` or `Story.opening_message` changes)
+and populates `Story.seed_facts`. The author reviews the extracted
+list in the admin editor before publishing. Adventure creation then
+bulk-inserts those facts via `Lore::ApplyResults` with `source:
+"seed"` — no AI call at adventure spin-up.
 
 ---
 

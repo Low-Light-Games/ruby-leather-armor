@@ -140,7 +140,7 @@
           <label>Location</label>
           <select name="adventure[current_location_id]" class="input-md">
             <option value="">— None —</option>
-            <% @adventure.story.story_locations.each do |loc| %>
+            <% AdventureLocation.for_adventure(@adventure).order(:name).each do |loc| %>
               <option value="<%= loc.id %>" <%= 'selected' if @adventure.current_location_id == loc.id %>><%= loc.name %></option>
             <% end %>
           </select>
@@ -180,39 +180,36 @@
     <details class="edit-panel" style="padding: 0 20px 16px;">
       <summary class="edit-toggle">Edit Time Context (JSON)</summary>
       <%= form_with url: admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do %>
-        <textarea name="time_context_json" rows="6" class="json-editor"><%= tc.present? && tc != {} ? JSON.pretty_generate(tc) : '{}' %></textarea>
+        <textarea name="time_context_json" rows="6" class="json-editor"><%= pretty_json_or_empty(tc) %></textarea>
         <button type="submit" class="btn btn-primary">Save Time Context</button>
       <% end %>
     </details>
   </details>
 
-  <%# ═══════ CONTEXTS ═══════ %>
+  <%# ═══════ COMBAT CONTEXT ═══════ %>
   <details class="dash-section" open>
-    <summary class="section-title">Micro Contexts</summary>
+    <summary class="section-title">Combat Context</summary>
     <div class="contexts-grid">
-      <% Admin::AdventuresController::CONTEXT_FIELDS.each do |field| %>
-        <% ctx = @adventure.send("#{field}_context") %>
-        <div class="context-card<%= ' empty-context' if ctx.blank? || ctx == {} %>">
-          <div class="context-header">
-            <span class="context-name"><%= field.titleize %></span>
-            <% if ctx.present? && ctx != {} %>
-              <%= button_to "Reset", reset_context_admin_adventure_path(@adventure, context_field: field),
-                    method: :patch, class: "btn btn-danger btn-xs",
-                    data: { confirm: "Reset #{field} context to {}?" } %>
-            <% end %>
-          </div>
-          <pre class="context-json"><%= ctx.present? && ctx != {} ? JSON.pretty_generate(ctx) : '{}' %></pre>
-
-          <details class="edit-panel">
-            <summary class="edit-toggle">Edit JSON</summary>
-            <%= form_with url: admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do %>
-              <input type="hidden" name="context_field" value="<%= field %>">
-              <textarea name="context_value" rows="8" class="json-editor"><%= ctx.present? && ctx != {} ? JSON.pretty_generate(ctx) : '{}' %></textarea>
-              <button type="submit" class="btn btn-primary">Save Context</button>
-            <% end %>
-          </details>
+      <% ctx = @adventure.combat_context %>
+      <div class="context-card<%= ' empty-context' if json_blank?(ctx) %>">
+        <div class="context-header">
+          <span class="context-name">Combat</span>
+          <% unless json_blank?(ctx) %>
+            <%= button_to "Reset", reset_combat_context_admin_adventure_path(@adventure),
+                  method: :patch, class: "btn btn-danger btn-xs",
+                  data: { confirm: "Reset combat context to {}?" } %>
+          <% end %>
         </div>
-      <% end %>
+        <pre class="context-json"><%= pretty_json_or_empty(ctx) %></pre>
+
+        <details class="edit-panel">
+          <summary class="edit-toggle">Edit JSON</summary>
+          <%= form_with url: update_combat_context_admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do %>
+            <textarea name="value" rows="8" class="json-editor"><%= pretty_json_or_empty(ctx) %></textarea>
+            <button type="submit" class="btn btn-primary">Save Combat Context</button>
+          <% end %>
+        </details>
+      </div>
     </div>
   </details>
 
@@ -232,31 +229,6 @@
         </details>
       </div>
 
-      <div class="story-card full-width">
-        <div class="card-label">Enriched Premise</div>
-        <div class="story-text"><%= @adventure.enriched_premise.presence || '—' %></div>
-        <details class="edit-panel">
-          <summary class="edit-toggle">Edit</summary>
-          <%= form_with url: admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do %>
-            <textarea name="adventure[enriched_premise]" rows="4" class="input-full"><%= @adventure.enriched_premise %></textarea>
-            <button type="submit" class="btn btn-primary">Save</button>
-          <% end %>
-        </details>
-      </div>
-
-      <% if @adventure.enriched_world.present? && @adventure.enriched_world != {} %>
-        <div class="story-card full-width">
-          <div class="card-label">Enriched World</div>
-          <pre class="context-json"><%= JSON.pretty_generate(@adventure.enriched_world) %></pre>
-        </div>
-      <% end %>
-
-      <% if @adventure.plot_state.present? && @adventure.plot_state != {} %>
-        <div class="story-card full-width">
-          <div class="card-label">Plot State</div>
-          <pre class="context-json"><%= JSON.pretty_generate(@adventure.plot_state) %></pre>
-        </div>
-      <% end %>
     </div>
   </details>
 
@@ -268,25 +240,20 @@
     <h3 class="sub-title">Locations (<%= @locations.size %>)</h3>
     <table class="elements-table">
       <thead>
-        <tr><th>Name</th><th>Starting</th><th>Connections</th><th>Description</th><th></th></tr>
+        <tr><th>Name</th><th>Starting</th><th>Description</th><th></th></tr>
       </thead>
       <tbody>
         <% @locations.each do |loc| %>
           <tr>
-            <td class="el-name"><%= loc.name %><%= ' ★' if @adventure.current_location_id == loc.id %></td>
+            <td class="el-name"><%= loc.name %><%= ' ★' if @adventure.current_location&.story_location_id == loc.id %></td>
             <td><%= loc.starting ? '✓' : '' %></td>
-            <td class="el-conn">
-              <% loc.connections_from.each do |c| %>
-                <span class="conn-pill">→ <%= c.to_location.name %> (<%= c.distance_miles %>mi, <%= c.terrain_type %>)</span>
-              <% end %>
-            </td>
             <td class="el-desc"><%= truncate(loc.description || '', length: 80) %></td>
             <td>
               <button class="btn btn-xs btn-outline" onclick="toggleEdit('loc-<%= loc.id %>')">Edit</button>
             </td>
           </tr>
           <tr id="loc-<%= loc.id %>" class="edit-row-panel" style="display:none;">
-            <td colspan="5">
+            <td colspan="4">
               <%= form_with url: update_story_element_admin_adventure_path(@adventure), method: :patch, local: true, class: "inline-edit-form" do %>
                 <input type="hidden" name="element_type" value="story_location">
                 <input type="hidden" name="element_id" value="<%= loc.id %>">
@@ -360,68 +327,6 @@
       </table>
     <% else %>
       <p class="empty-msg">No NPCs.</p>
-    <% end %>
-
-    <%# --- Clues --- %>
-    <h3 class="sub-title">Clues (<%= @clues.size %>)</h3>
-    <% if @clues.any? %>
-      <% discovered_ids = (@adventure.plot_state || {})["discovered_clues"] || [] %>
-      <table class="elements-table">
-        <thead>
-          <tr><th>Title</th><th>Difficulty</th><th>Method</th><th>Location</th><th>NPC</th><th>Discovered</th><th></th></tr>
-        </thead>
-        <tbody>
-          <% @clues.each do |clue| %>
-            <tr class="<%= 'discovered-row' if discovered_ids.include?(clue.id) %>">
-              <td class="el-name"><%= clue.title %></td>
-              <td><span class="diff-badge diff-<%= clue.difficulty %>"><%= clue.difficulty %></span></td>
-              <td><%= clue.discovery_method %></td>
-              <td><%= clue.location&.name || '—' %></td>
-              <td><%= clue.npc&.name || '—' %></td>
-              <td><%= discovered_ids.include?(clue.id) ? '✓' : '' %></td>
-              <td>
-                <button class="btn btn-xs btn-outline" onclick="toggleEdit('clue-<%= clue.id %>')">Edit</button>
-              </td>
-            </tr>
-            <tr id="clue-<%= clue.id %>" class="edit-row-panel" style="display:none;">
-              <td colspan="7">
-                <%= form_with url: update_story_element_admin_adventure_path(@adventure), method: :patch, local: true, class: "inline-edit-form" do %>
-                  <input type="hidden" name="element_type" value="story_clue">
-                  <input type="hidden" name="element_id" value="<%= clue.id %>">
-                  <label>Title</label>
-                  <input type="text" name="element[title]" value="<%= clue.title %>" class="input-md">
-                  <label>Difficulty</label>
-                  <select name="element[difficulty]" class="input-sm">
-                    <% %w[automatic easy moderate hard].each do |d| %>
-                      <option value="<%= d %>" <%= 'selected' if clue.difficulty == d %>><%= d %></option>
-                    <% end %>
-                  </select>
-                  <label>Method</label>
-                  <select name="element[discovery_method]" class="input-sm">
-                    <% %w[exploration social magic combat automatic].each do |m| %>
-                      <option value="<%= m %>" <%= 'selected' if clue.discovery_method == m %>><%= m %></option>
-                    <% end %>
-                  </select>
-                  <label>Location</label>
-                  <select name="element[location_id]" class="input-sm">
-                    <option value="">— None —</option>
-                    <% @locations.each do |loc| %>
-                      <option value="<%= loc.id %>" <%= 'selected' if clue.location_id == loc.id %>><%= loc.name %></option>
-                    <% end %>
-                  </select>
-                  <label>Description</label>
-                  <textarea name="element[description]" rows="2" class="input-full"><%= clue.description %></textarea>
-                  <label>Reveals Secret</label>
-                  <textarea name="element[reveals_secret]" rows="2" class="input-full"><%= clue.reveals_secret %></textarea>
-                  <button type="submit" class="btn btn-primary btn-xs">Save</button>
-                <% end %>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    <% else %>
-      <p class="empty-msg">No clues.</p>
     <% end %>
   </details>
 

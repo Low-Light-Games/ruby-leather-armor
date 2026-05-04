@@ -2,61 +2,63 @@
 
 module DungeonMaster
   module Narrative
-    # Single ERB root for `narrate.text.erb`: loop, time, pacing, and PipelineContext fields.
     class NarratePromptView
       class PromptContext
-        attr_reader :pipeline_context, :loop, :combat_context, :time_context, :pacing_text, :directed_play_text
+        attr_reader :pipeline_context, :loop, :combat_state, :time_context,
+                    :pacing_text, :directed_play_text, :scene_facts, :outcome_facts
 
-        def initialize(pipeline_context:, loop:, combat_context:, time_context:, pacing_text:, directed_play_text:)
-          @pipeline_context = pipeline_context
-          @loop = loop
-          @combat_context = combat_context
-          @time_context = time_context
-          @pacing_text = pacing_text
+        # rubocop:disable Metrics/ParameterLists
+        def initialize(pipeline_context:, loop:, combat_state:, time_context:,
+                       pacing_text:, directed_play_text:, scene_facts:, outcome_facts:)
+          @pipeline_context   = pipeline_context
+          @loop               = loop
+          @combat_state       = combat_state
+          @time_context       = time_context
+          @pacing_text        = pacing_text
           @directed_play_text = directed_play_text
+          @scene_facts        = scene_facts
+          @outcome_facts      = outcome_facts
         end
+        # rubocop:enable Metrics/ParameterLists
       end
 
-      def self.for_narrate(pipeline_engine, pipeline_context)
-        base_combat_context = pipeline_engine.adventure.combat_context || {}
-        live_combat_context = WorldTurn::LiveContext.merge_live_participants(
-          base_combat_context,
-          adventure: pipeline_engine.adventure,
-          sheet: pipeline_engine.sheet
+      def self.for_narrate(pipeline_engine, pipeline_context, scene_facts:, outcome_facts:)
+        adventure   = pipeline_engine.adventure
+        sheet       = pipeline_engine.sheet
+        live_combat = WorldTurn::LiveContext.merge_live_participants(
+          adventure.combat_context || {}, adventure: adventure, sheet: sheet
         )
 
         context = PromptContext.new(
           pipeline_context:   pipeline_context,
           loop:               pipeline_engine.loop,
-          combat_context:     live_combat_context,
-          time_context:       pipeline_engine.adventure.time_context || {},
+          combat_state:       Adventures::CombatState.from_raw(live_combat),
+          time_context:       adventure.time_context || {},
           pacing_text:        PromptHelpers.pacing_instructions(pipeline_engine.config),
-          directed_play_text: PromptHelpers.directed_play_instructions(pipeline_engine.adventure)
+          directed_play_text: PromptHelpers.directed_play_instructions(adventure),
+          scene_facts:        Array(scene_facts),
+          outcome_facts:      Array(outcome_facts),
         )
         new(context: context)
       end
 
       def initialize(context:)
-        @pipeline_context = context.pipeline_context
-        @loop = context.loop
-        @combat_context = context.combat_context
-        @time_context = context.time_context
-        @pacing_text = context.pacing_text
+        @pipeline_context   = context.pipeline_context
+        @loop               = context.loop
+        @combat_state       = context.combat_state
+        @time_context       = context.time_context
+        @pacing_text        = context.pacing_text
         @directed_play_text = context.directed_play_text
+        @scene_facts        = context.scene_facts
+        @outcome_facts      = context.outcome_facts
       end
 
-      attr_reader :loop, :time_context, :pacing_text
+      attr_reader :loop, :time_context, :pacing_text, :scene_facts, :outcome_facts
 
-      # Suppressed for terminal outcomes: a character who just died or collapsed
-      # cannot be offered "what do you do next?" choices.
       def directed_play_text
         return "" if @pipeline_context.death_type
 
         @directed_play_text
-      end
-
-      def dm_brief
-        @pipeline_context.dm_brief
       end
 
       def combined_seed
@@ -76,24 +78,21 @@ module DungeonMaster
       end
 
       def combat_facts
-        hostiles = Array(@combat_context["participants"]).filter_map do |row|
-          next if row["type"].to_s == "player"
-
-          hp = row["hp"]
-          next unless hp.is_a?(Numeric)
+        hostiles = @combat_state.participants.filter_map do |participant|
+          next unless participant.hostile? && participant.hp.is_a?(Numeric)
 
           {
-            "name" => row["name"].to_s,
-            "hp" => hp,
-            "max_hp" => row["max_hp"],
-            "alive" => hp.positive?
+            "name"   => participant.name,
+            "hp"     => participant.hp,
+            "max_hp" => participant.max_hp,
+            "alive"  => participant.alive?,
           }
         end
 
         {
-          "active" => @combat_context["active"] == true,
-          "hostiles" => hostiles,
-          "any_hostile_alive" => hostiles.any? { |hostile| hostile["alive"] == true }
+          "active"            => @combat_state.active?,
+          "hostiles"          => hostiles,
+          "any_hostile_alive" => hostiles.any? { |hostile| hostile["alive"] == true },
         }
       end
     end

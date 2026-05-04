@@ -48,7 +48,12 @@ module Combat
 
       def run_npc_turns
         creatures = active_npcs_in_initiative_order
-        creatures.flat_map { |creature| Combat::NpcTurn.call(creature: creature, adventure: @adventure, target_sheet: @sheet) }
+        creatures.flat_map do |creature|
+          events = Combat::NpcTurn.call(creature: creature, adventure: @adventure, target_sheet: @sheet)
+          events.each { |event| Combat::EventLog.write_npc_event!(adventure: @adventure, event: event, user: @user) }
+          Combat::ContextSync.refresh_participants!(@adventure, @sheet)
+          events
+        end
       rescue StandardError => e
         Rails.logger.warn("[EndPlayerTurn] NPC turn engine failed: #{e.message}")
         [{ kind: 'npc_skip', creature_id: nil, creature_name: '(engine error)', message: e.message }]

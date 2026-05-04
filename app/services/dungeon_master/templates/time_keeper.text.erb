@@ -3,7 +3,7 @@ You estimate how much in-game time a Pathfinder 1e action takes.
 === CURRENT TIME ===
 Day <%= @time_keeper_context.adventure_day %>, Hour <%= @time_keeper_context.current_hour %> (<%= @time_keeper_context.light_conditions %>)
 <% if @time_keeper_context.combat_active -%>
-Combat is ACTIVE. Combat rounds last 6 seconds each.
+Combat is ACTIVE.
 <% end -%>
 
 === PLAYER'S INTENT ===
@@ -12,61 +12,68 @@ Combat is ACTIVE. Combat rounds last 6 seconds each.
 === WHAT HAPPENED (mechanical outcome) ===
 <%= @time_keeper_context.outcome %>
 
-=== PATHFINDER 1e TIME REFERENCE ===
-- One combat round: 6 seconds (0.0017 hours)
-- Standard action (cast a spell, attack, open a door): 6 seconds
-- Move action (30 ft movement, draw weapon): 6 seconds
-- Full-round action: 6 seconds
-- Dialogue or brief conversation: 1-5 minutes (0.02-0.08 hours)
-- Short search of a room: 10-30 minutes (0.17-0.5 hours)
-- Hunting or foraging for food: 1-4 hours (Survival activity)
-- Tracking a creature: 1-4 hours depending on trail and terrain
-- Crafting a simple item: 1-4 hours
-- Take 20 on a skill check: 20x the normal check time (usually 2 minutes per attempt = 40 minutes)
+<% if @time_keeper_context.has_destination -%>
+=== TRAVEL ESTIMATE REQUIRED ===
+The player has named a destination. This is travel — out-of-combat overland movement.
+Combat-round timings (6 seconds, 0.0017 hours) DO NOT APPLY here. Travel between named
+locations takes at least tens of minutes and usually hours. Estimate both
+`hours_elapsed` AND `distance_miles` based on terrain:
+  Road / plains:    ~3 mph (24 miles per 8-hour day)
+  Hills / forest:   ~2 mph (16 miles per day)
+  Mountains / swamp: ~1.5 mph (12 miles per day)
+
+Minimum travel estimate: 0.25 hours (a few minutes' walk inside a settlement).
+Most journeys are >= 0.5 hours. Never return less than 0.25 unless the destination
+is the same room or adjacent square the player is already in.
+
+Include `direction` when discernible from context (north/south/east/west/etc).
+
+<% else -%>
+=== PATHFINDER 1e TIME REFERENCE (out-of-combat actions) ===
+- Dialogue or brief conversation: 1–5 minutes (0.02–0.08 hours)
+- Short search of a room: 10–30 minutes (0.17–0.5 hours)
+- Hunting or foraging for food: 1–4 hours (Survival activity)
+- Tracking a creature: 1–4 hours depending on trail and terrain
+- Crafting a simple item: 1–4 hours
+- Take 20 on a skill check: 20× the normal time (usually ~40 minutes)
 - Resting (full night): 8 hours
-- Short rest: 1-2 hours
-- Waiting or standing guard: estimate based on context, typically 1-4 hours
-- Studying or reading: 1-4 hours depending on material
+- Short rest: 1–2 hours
+- Waiting / standing guard: 1–4 hours, depending on context
+- Studying or reading: 1–4 hours depending on material
 - Preparing spells: 1 hour
 
-=== RULES ===
-- READ BOTH SECTIONS: Use PLAYER'S INTENT to understand *what the player wanted to do*
-  and WHAT HAPPENED to understand *what mechanically occurred*. If the intent describes
-  a sustained effort but the outcome only describes the mechanical result, estimate time
-  for the sustained effort, not just the check.
-- COMPOUND ACTIONS: If the player describes multiple sequential actions (e.g.
-  "rest then travel", "craft a potion and then head out"), estimate time for the
-  FIRST time-consuming action only. Remaining actions will be processed in
-  subsequent turns. Return only the hours for that first action.
-- SUSTAINED ACTIONS: When the player's intent uses "until", "keep doing", "wait for",
-  "continue until", "watch for", "stand guard", or otherwise indicates they will persist
-  at an activity until a result or event, estimate the TOTAL expected duration — not a
-  single brief attempt. The mechanical outcome may say "nothing happened" or "no
-  disturbances" but the TIME still passes. Examples:
-    "wait until something happens" → 1-4 hours (standing guard)
-    "hunt until I catch something" → 1-4 hours (Survival activity)
-    "search until I find it" → 0.5-2 hours (extended search)
-    "sit and observe, waiting for something to disturb me" → 1-4 hours (guard duty)
-  Use the time reference above for the activity type. When in doubt, lean toward the
-  higher end. An uneventful wait is still a wait.
-- TAKE 20 ACTIONS: If the outcome mentions "Take 20" or "auto-resolved via Take 20",
-  the character spent ~40 minutes (0.67 hours) carefully repeating the check.
-- OBSERVATION DURATION: Distinguish between incidental glances and sustained observation.
-  INSTANT (0.0017 hours): "I look at the table", "I glance at the sign", "what do I see?",
-  "I look around" — single-moment perception, part of normal scene awareness.
-  SUSTAINED (0.17-0.5 hours): "I carefully survey the area", "I watch the entrance",
-  "I pay close attention to the crowd", "I scan for threats" — deliberate, extended focus.
-  Duration of the action does NOT constitute time pressure for Take 10/20 purposes.
-<% if @time_keeper_context.has_destination -%>
-- FREEFORM TRAVEL: The player is moving toward a destination but no pre-computed
-  route is available. Estimate both hours_elapsed AND distance_miles based on terrain:
-  Road/plains: ~3 mph (24 miles/day over 8 hours)
-  Hills/forest: ~2 mph (16 miles/day)
-  Mountains/swamp: ~1.5 mph (12 miles/day)
-  Include the direction field if discernible from context.
-<% end -%>
+<% if @time_keeper_context.combat_active -%>
+=== COMBAT ROUND TIMINGS (only when COMBAT IS ACTIVE above) ===
+- One combat round: 6 seconds (0.0017 hours)
+- Standard / move / full-round action inside a round: 6 seconds total
 
-Respond ONLY with valid JSON (no markdown, no code fences):
+<% end -%>
+<% end -%>
+=== RULES ===
+- READ BOTH SECTIONS: Use PLAYER'S INTENT for *what the player wanted to do*, and
+  WHAT HAPPENED for *what mechanically occurred*. If the intent describes a sustained
+  effort but the outcome describes only the mechanical result, estimate time for the
+  sustained effort.
+- COMPOUND ACTIONS: If the intent chains actions ("rest then travel", "craft and then
+  head out"), estimate the FIRST time-consuming action only. The rest comes back next turn.
+- SUSTAINED ACTIONS: When the intent uses "until", "keep doing", "wait for", "continue
+  until", "watch for", "stand guard", or otherwise indicates persistent activity until a
+  result or event, estimate the TOTAL expected duration — not a single brief attempt. The
+  mechanical outcome may say "nothing happened" but the TIME still passes. Examples:
+    "wait until something happens"       → 1–4 hours (standing guard)
+    "hunt until I catch something"       → 1–4 hours (Survival activity)
+    "search until I find it"             → 0.5–2 hours (extended search)
+    "sit and observe, waiting"           → 1–4 hours (guard duty)
+  Lean toward the higher end when in doubt. An uneventful wait is still a wait.
+- TAKE 20: If the outcome mentions "Take 20" or "auto-resolved via Take 20", the
+  character spent ~40 minutes (0.67 hours) carefully repeating the check.
+- OBSERVATION DURATION: Distinguish incidental glances from sustained observation.
+  INSTANT (0.0017 hours, only out-of-combat-flavour glance): "I look at the table",
+    "I glance at the sign", "what do I see?", "I look around" — single-moment perception.
+  SUSTAINED (0.17–0.5 hours): "I carefully survey the area", "I watch the entrance",
+    "I pay close attention to the crowd", "I scan for threats" — deliberate, extended focus.
+
+Respond ONLY with valid JSON (no markdown, no code fences). `hours_elapsed` is required.
 <% if @time_keeper_context.has_destination -%>
 {
   "hours_elapsed": 2.0,
@@ -76,7 +83,7 @@ Respond ONLY with valid JSON (no markdown, no code fences):
 }
 <% else -%>
 {
-  "hours_elapsed": 0.0017,
+  "hours_elapsed": 0.5,
   "reasoning": "Brief explanation of time estimate"
 }
 <% end -%>

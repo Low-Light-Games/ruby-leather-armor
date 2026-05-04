@@ -14,7 +14,6 @@ module Admin
       new_settings = @config.settings.dup
 
       # Boolean toggles
-      new_settings["chronicler_tone_direction"] = params[:chronicler_tone_direction] == "1"
       new_settings["instant_death"]           = params[:instant_death]    == "1"
       new_settings["no_auto_hit_miss"]         = params[:no_auto_hit_miss] == "1"
 
@@ -46,29 +45,13 @@ module Admin
         new_settings["model"] = params[:model]
       end
 
-      new_settings["enricher_model"] = params[:enricher_model].presence
-      new_settings["embellisher_model"] = params[:embellisher_model].presence
-
-      if params[:embellisher_mode].present? && DmConfig::EMBELLISHER_MODES.include?(params[:embellisher_mode])
-        new_settings["embellisher_mode"] = params[:embellisher_mode]
-      end
-
       if params[:step_models].present?
         models = {}
-        DmConfig::TOKEN_BUDGET_STEPS.each do |step|
+        DungeonMaster::StepRegistry.pipeline_steps.each do |step|
           val = params[:step_models][step]
           models[step] = val if val.present?
         end
         new_settings["step_models"] = models
-      end
-
-      if params[:token_budgets].present?
-        budgets = {}
-        DmConfig::TOKEN_BUDGET_STEPS.each do |step|
-          val = params[:token_budgets][step]
-          budgets[step] = val.to_i.clamp(100, 16_000) if val.present?
-        end
-        new_settings["token_budgets"] = budgets if budgets.any?
       end
 
       if params[:narrative_facts_embedding_model].present? &&

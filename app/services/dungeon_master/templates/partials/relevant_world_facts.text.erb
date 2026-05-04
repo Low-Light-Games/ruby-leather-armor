@@ -1,0 +1,6 @@
+<% if @scene_facts.present? && @scene_facts.any? -%>
+=== RELEVANT WORLD FACTS ===
+<% @scene_facts.each do |fact| -%>
+- <%= fact[:text] %>
+<% end -%>
+<% end -%>

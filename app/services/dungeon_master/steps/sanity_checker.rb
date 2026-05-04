@@ -71,7 +71,6 @@ module DungeonMaster
           system_prompt: system_prompt,
           user_message: result.intention,
           model: @config.model_for('sanity_checker_world'),
-          max_tokens: @config.token_budget_for('sanity_checker_world'),
           step: 'sanity_checker_world'
         ).to_h
       end
@@ -86,7 +85,6 @@ module DungeonMaster
           system_prompt: system_prompt,
           user_message: result.intention,
           model: @config.model_for('sanity_checker'),
-          max_tokens: @config.token_budget_for('sanity_checker'),
           step: 'sanity_checker'
         ).to_h
       end
@@ -142,7 +140,6 @@ module DungeonMaster
 
         parsed = timed_ai_call('sanity_checker', prompt_summary, request_body) do
           raw_response = @ai.chat(system_prompt: system_prompt, user_message: intention,
-                                  max_tokens: @config.token_budget_for('sanity_checker'),
                                   step_name: 'sanity_checker',
                                   model: @config.model_for('sanity_checker'))
           [raw_response, @ai.parse_json(raw_response)]
@@ -229,7 +226,6 @@ module DungeonMaster
 
         parsed = timed_ai_call('sanity_checker_world', prompt_summary, request_body) do
           raw_response = @ai.chat(system_prompt: system_prompt, user_message: intention,
-                                  max_tokens: @config.token_budget_for('sanity_checker_world'),
                                   step_name: 'sanity_checker_world',
                                   model: @config.model_for('sanity_checker_world'))
           [raw_response, @ai.parse_json(raw_response)]
@@ -251,22 +247,39 @@ module DungeonMaster
       end
 
       def build_world_prompt_context(intention:)
-        combat_ctx = @adventure.combat_context || {}
-        combat_active = combat_ctx['active'] == true
-        combat_roster = combat_active ? Array(combat_ctx['participants']).filter_map { |p| p['name'] } : []
+        combat_state = Adventures::CombatState.from_adventure(@adventure)
 
         PromptViews::SanityCheckerPromptContext.new(
           scene_summary: @adventure.scene_summary,
           scene_history: @adventure.scene_history,
           established_facts: retrieve_established_facts(intention),
-          npc_names: @adventure.story.story_npcs.pluck(:name),
-          combat_active: combat_active,
-          combat_turn_order: combat_roster
+          nearby_npcs: retrieve_nearby_npcs(intention),
+          nearby_locations: retrieve_nearby_locations(intention),
+          combat_active: combat_state.active?,
+          combat_turn_order: combat_state.participant_names
         )
       end
 
       def retrieve_established_facts(intention)
         DungeonMaster::Lore::FactsLookup.call(
+          adventure: @adventure,
+          ai: @ai,
+          log: @log,
+          query_text: intention
+        )
+      end
+
+      def retrieve_nearby_npcs(intention)
+        DungeonMaster::Lore::NpcsLookup.call(
+          adventure: @adventure,
+          ai: @ai,
+          log: @log,
+          query_text: intention
+        )
+      end
+
+      def retrieve_nearby_locations(intention)
+        DungeonMaster::Lore::LocationsLookup.call(
           adventure: @adventure,
           ai: @ai,
           log: @log,

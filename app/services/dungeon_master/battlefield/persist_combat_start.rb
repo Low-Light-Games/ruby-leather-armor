@@ -37,6 +37,8 @@ module DungeonMaster
             adventure.update!(combat_context: payload.to_h)
           end
           adventure.reload
+          write_combat_start_log(adventure)
+          adventure
         end
 
         # True when an active battlefield's token ids match the roster in +participants+
@@ -129,6 +131,17 @@ module DungeonMaster
         def default_action_economy(combat_context)
           holder = combat_context["current_turn"].presence || DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME
           ActionEconomy.build_for_turn_holder(holder, combat_ctx: combat_context)
+        end
+
+        def write_combat_start_log(adventure)
+          ctx          = adventure.combat_context || {}
+          participants = Array(ctx["participants"])
+          return if participants.empty?
+
+          ordered = participants.sort_by { |p| -p["initiative"].to_i }
+          line    = ordered.map { |p| "#{p['name']} #{p['initiative']}" }.join(", ")
+          ::Combat::EventLog.write!(adventure: adventure,
+                                    content: "Combat begins. Initiative — #{line}.")
         end
       end
     end

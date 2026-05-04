@@ -29,22 +29,6 @@
     </div>
 
     <div class="config-section">
-      <h2>Chronicler</h2>
-
-      <div class="config-field toggle-field">
-        <label class="toggle-label" for="chronicler_tone_direction">
-          <%= check_box_tag :chronicler_tone_direction, "1", @config.get("chronicler_tone_direction") == true, id: "chronicler_tone_direction", class: "toggle-checkbox" %>
-          <span class="toggle-switch"></span>
-          <span class="toggle-text">Tone Direction</span>
-        </label>
-        <p class="field-hint">
-          When <strong>off</strong> (default), the Chronicler acts only as a spoiler gate — it decides what to reveal or hide, but does NOT direct tone, atmosphere, or prose style.
-          When <strong>on</strong>, the Chronicler also provides atmospheric and tonal guidance to the narrator.
-        </p>
-      </div>
-    </div>
-
-    <div class="config-section">
       <h2>Homebrew Rules</h2>
 
       <div class="config-field toggle-field">
@@ -153,7 +137,7 @@
 
         <p class="field-hint">
           Chat-completion models available on your OpenAI account.
-          Models marked with ⚙️ are reasoning models that need higher token budgets.
+          Models marked with ⚙️ are reasoning models.
         </p>
       </div>
     </div>
@@ -165,23 +149,20 @@
       </h2>
       <div id="pipeline-steps-body" style="display: none;">
         <p class="field-hint" style="margin-bottom: 12px;">
-          Configure the model and token budget for each pipeline step.
+          Configure the model for each pipeline step.
           Steps with no model override use the default model above.
-          Leave budget blank for no limit (recommended).
           Steps marked with ➡️ may benefit from a capable model.
-          Steps marked with ⚠️ have baseline high context or reasoning needs — choose a capable model and consider a higher token budget.
+          Steps marked with ⚠️ have baseline high context or reasoning needs — choose a capable model.
         </p>
 
-        <% current_budgets = @config.get("token_budgets") || {} %>
         <% current_step_models = @config.get("step_models") || {} %>
         <div class="pipeline-step-list">
           <div class="pipeline-step-header">
             <span class="psh-label">Step</span>
             <span class="psh-model">Model</span>
-            <span class="psh-budget">Token Budget</span>
             <span class="psh-actions"></span>
           </div>
-          <% DmConfig::TOKEN_BUDGET_STEPS.each do |step| %>
+          <% DungeonMaster::StepRegistry.pipeline_steps.each do |step| %>
             <div class="pipeline-step-row<%= ' pipeline-step-row-warning' if DmConfig::STEP_MODEL_HINTS[step].to_s.start_with?('⚠️') %>">
               <div class="psr-label-block">
                 <label class="psr-label"><%= step.titleize %></label>
@@ -205,81 +186,15 @@
                 </select>
                 <span class="psr-cost" id="step_cost_<%= step %>"></span>
               </div>
-              <%= number_field_tag "token_budgets[#{step}]",
-                    current_budgets[step].presence,
-                    min: 100, max: 16000, step: 100,
-                    class: "config-input budget-input",
-                    id: "token_budgets_#{step}",
-                    data: { step: step } %>
-              <button type="button" class="btn-reset-step" data-step="<%= step %>" title="Reset this step to defaults">&#x21ba;</button>
+              <button type="button" class="btn-reset-step" data-step="<%= step %>" title="Reset this step to default model">&#x21ba;</button>
             </div>
           <% end %>
         </div>
 
         <div class="budget-actions">
           <button type="button" class="btn-reset-budgets" id="reset-budgets-btn">
-            Reset all to defaults
+            Reset all step models to default
           </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="config-section">
-      <h2 class="collapsible-header" id="authoring-tools-toggle">
-        Authoring Tools
-        <span class="collapse-arrow" id="authoring-tools-arrow">▸</span>
-      </h2>
-      <div id="authoring-tools-body" style="display: none;">
-        <p class="field-hint" style="margin-bottom: 12px;">
-          Configure the AI models used by the Enricher (story-level structure extraction)
-          and Embellisher (adventure-level flavor generation). These run outside the per-message pipeline.
-        </p>
-
-        <div class="config-field">
-          <label for="enricher_model">Enricher Model</label>
-          <select name="enricher_model" id="enricher_model" class="config-select">
-            <option value="">(Default — uses main model)</option>
-            <% @models_with_metadata.each do |m| %>
-              <option value="<%= m["id"] %>"
-                      <%= 'selected' if @config.get("enricher_model") == m["id"] %>>
-                <%= m["name"] %><%= " ⚙️" if m["reasoning_model"] %>
-              </option>
-            <% end %>
-          </select>
-          <p class="field-hint"><%= DmConfig::ENRICHER_MODEL_HINT %></p>
-        </div>
-
-        <div class="config-field">
-          <label>Embellisher Mode</label>
-          <div class="radio-group">
-            <% DmConfig::EMBELLISHER_MODES.each do |mode| %>
-              <label class="radio-label">
-                <%= radio_button_tag :embellisher_mode, mode, @config.get("embellisher_mode") == mode || (mode == "embellish" && @config.get("embellisher_mode").blank?) %>
-                <span>
-                  <strong><%= mode.capitalize %></strong>
-                  <% if mode == "embellish" %>
-                    — Adds flavor (names, descriptions, atmosphere) to existing story data. Also generates the opening scene narrative.
-                  <% elsif mode == "expand" %>
-                    — All of Embellish, plus creates up to 2 new NPCs and 2 new clues per adventure for unique playthroughs. Benefits from a capable model.
-                  <% end %>
-                </span>
-              </label>
-            <% end %>
-          </div>
-        </div>
-
-        <div class="config-field">
-          <label for="embellisher_model">Embellisher Model</label>
-          <select name="embellisher_model" id="embellisher_model" class="config-select">
-            <option value="">(Default — uses main model)</option>
-            <% @models_with_metadata.each do |m| %>
-              <option value="<%= m["id"] %>"
-                      <%= 'selected' if @config.get("embellisher_model") == m["id"] %>>
-                <%= m["name"] %><%= " ⚙️" if m["reasoning_model"] %>
-              </option>
-            <% end %>
-          </select>
-          <p class="field-hint"><%= DmConfig::EMBELLISHER_MODEL_HINT %></p>
         </div>
       </div>
     </div>
@@ -396,19 +311,6 @@
     document.getElementById('threshold-display').textContent = this.value;
   });
 
-  // Collapsible Authoring Tools section
-  document.getElementById('authoring-tools-toggle').addEventListener('click', function() {
-    var body = document.getElementById('authoring-tools-body');
-    var arrow = document.getElementById('authoring-tools-arrow');
-    if (body.style.display === 'none') {
-      body.style.display = 'block';
-      arrow.textContent = '▾';
-    } else {
-      body.style.display = 'none';
-      arrow.textContent = '▸';
-    }
-  });
-
   // Collapsible Pipeline Steps section
   document.getElementById('pipeline-steps-toggle').addEventListener('click', function() {
     var body = document.getElementById('pipeline-steps-body');
@@ -490,13 +392,10 @@
     });
   });
 
-  // Reset all step models to default and clear budgets
+  // Reset all step models to default
   document.getElementById('reset-budgets-btn').addEventListener('click', function() {
     document.querySelectorAll('.step-model-select').forEach(function(select) {
       select.value = '';
-    });
-    document.querySelectorAll('.budget-input').forEach(function(input) {
-      input.value = '';
     });
     updateStepPricing();
   });
@@ -505,12 +404,7 @@
   document.querySelectorAll('.btn-reset-step').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var step = this.dataset.step;
-      var stepSelect = document.getElementById('step_models_' + step);
-      var budgetInput = document.getElementById('token_budgets_' + step);
-
-      stepSelect.value = '';
-      budgetInput.value = '';
-
+      document.getElementById('step_models_' + step).value = '';
       updateStepPricing();
     });
   });

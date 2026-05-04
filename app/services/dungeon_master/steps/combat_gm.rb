@@ -10,7 +10,6 @@ module DungeonMaster
       def run_combat_gm(intent, merged, roll_results:, npc_results:, roll_requests:, submitted_rolls:)
         prompt_summary = "Combat GM: \"#{@log.truncate(intent[:intention])}\""
 
-        micro_contexts = PromptHelpers.all_micro_contexts(@adventure)
         raise AiError, "Combat GM reached without a character sheet — cannot resolve combat" unless @sheet
 
         Battlefield::EnsureForActiveCombat.call(adventure: @adventure, sheet: @sheet)
@@ -23,6 +22,7 @@ module DungeonMaster
         action_economy = (@adventure.combat_context || {})["action_economy"]
         combat_rules = Rules.guidance_for("combat")
         deterministic_facts = deterministic_combat_facts(roll_requests, submitted_rolls)
+        scene_facts = retrieve_scene_facts_for_combat_gm(intent)
 
         system_prompt = PromptRenderer.render("combat_gm",
           character_block: char_block,
@@ -30,7 +30,7 @@ module DungeonMaster
           roll_results: all_roll_results,
           deterministic_facts: deterministic_facts.presence,
           consequences: merged[:consequences].present? ? merged[:consequences].to_json : nil,
-          contexts_text: PromptHelpers.format_contexts(micro_contexts),
+          scene_facts: scene_facts,
           creature_stats: creature_stats,
           battlefield_text: battlefield_text,
           action_economy_json: action_economy.present? ? action_economy.to_json : "(none)",
@@ -42,8 +42,7 @@ module DungeonMaster
 
         parsed = timed_ai_call("combat_gm", prompt_summary, request_body) do
           raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
-                          max_tokens: @config.token_budget_for("combat_gm"), step_name: "combat_gm",
-                          model: @config.model_for("combat_gm"))
+                          step_name: "combat_gm", model: @config.model_for("combat_gm"))
           [raw, @ai.parse_json(raw)]
         end
 
@@ -52,9 +51,19 @@ module DungeonMaster
         parsed["outcome"] = deterministic_combat_outcome(roll_requests, submitted_rolls) || parsed["outcome"]
 
         {
-          outcome: parsed["outcome"],
-          mutations: parsed["mutations"] || {}
+          outcome:     parsed["outcome"],
+          mutations:   parsed["mutations"] || {},
+          npc_actions: Array(parsed["npc_actions"]).select { |a| a.is_a?(Hash) }
         }
+      end
+
+      def retrieve_scene_facts_for_combat_gm(intent)
+        DungeonMaster::SceneFacts::ForResolution.call(
+          adventure:   @adventure,
+          intent_text: intent[:intention].to_s,
+          ai:          @ai,
+          log:         @log,
+        )
       end
 
       def deterministic_combat_facts(roll_requests, submitted_rolls)

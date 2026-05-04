@@ -111,7 +111,6 @@ module DungeonMaster
       raw = @ai.chat(
         system_prompt: system_prompt,
         user_message: user_msg,
-        max_tokens:   @config.token_budget_for("creature_generation"),
         step_name:    "creature_generation",
         model:        @config.model_for("creature_generation")
       )

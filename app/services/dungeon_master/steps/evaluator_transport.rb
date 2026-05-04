@@ -7,7 +7,9 @@ module DungeonMaster
     # (per-NPC action fan-out), ContextUpdate, and SanityChecker so those
     # steps can batch LLM calls without Ruby Thread.new.
     module EvaluatorTransport
-      DEFAULT_EVALUATOR_HTTP_MAX_RETRIES = 1
+      class RetryableEvaluatorError < StandardError; end
+
+      DEFAULT_EVALUATOR_HTTP_MAX_RETRIES = 2
       DEFAULT_EVALUATOR_HTTP_RETRY_BASE_DELAY_SECONDS = 0.25
       DEFAULT_EVALUATOR_HTTP_RETRY_MAX_DELAY_SECONDS = 1.0
 
@@ -50,42 +52,78 @@ module DungeonMaster
 
         begin
           attempt += 1
-          uri  = URI(url)
-          http = Net::HTTP.new(uri.host, uri.port)
-          http.read_timeout = 150
-          http.open_timeout = 5
+          send_evaluator_request!(url, prompts, intention, phase: phase, attempt: attempt)
+        rescue RetryableEvaluatorError, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::ETIMEDOUT,
+               Net::OpenTimeout, Net::ReadTimeout, SocketError => e
+          raise AiError, "Evaluator #{phase} failed: #{e.message}" if attempt > evaluator_http_max_retries
 
-          request = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json")
-          request.body = prompts.to_json
-
-          response = http.request(request)
-
-          begin
-            body = JSON.parse(response.body)
-          rescue JSON::ParserError => e
-            raise AiError, "Evaluator #{phase} returned non-JSON body (HTTP #{response.code}): #{e.message} — raw: #{response.body.truncate(500)}"
-          end
-
-          if response.code.to_i >= 400
-            persist_partial_logs(Array(body.dig("partial_results")), intention)
-            raise AiError, "Evaluator #{phase} failed (HTTP #{response.code}): #{body.dig('error') || response.body.truncate(500)}"
-          end
-
-          persist_node_logs(Array(body), intention)
-          body
-        rescue Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::ETIMEDOUT, Net::OpenTimeout, SocketError => e
-          raise AiError, "Evaluator unreachable during #{phase}: #{e.message}" if attempt > evaluator_http_max_retries
-
-          delay = jittered_evaluator_http_retry_delay(attempt)
-          Rails.logger.warn(
-            "[EvaluatorTransport] #{e.class} during #{phase} " \
-            "(attempt #{attempt}/#{evaluator_http_max_retries + 1}, delay=#{format('%.3f', delay)}s)"
-          )
-          sleep(delay)
+          log_evaluator_retry(phase, attempt, e.class == RetryableEvaluatorError ? e.message : e.class.to_s)
+          sleep(jittered_evaluator_http_retry_delay(attempt))
           retry
-        rescue Net::ReadTimeout => e
-          raise AiError, "Evaluator unreachable during #{phase}: #{e.message}"
         end
+      end
+
+      def send_evaluator_request!(url, prompts, intention, phase:, attempt:)
+        uri  = URI(url)
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.read_timeout = 150
+        http.open_timeout = 5
+
+        request = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json")
+        request.body = prompts.to_json
+        response = http.request(request)
+
+        begin
+          body = JSON.parse(response.body)
+        rescue JSON::ParserError => e
+          raise AiError, "Evaluator #{phase} returned non-JSON body (HTTP #{response.code}): #{e.message} — raw: #{response.body.truncate(500)}"
+        end
+
+        if response.code.to_i >= 500 && attempt <= evaluator_http_max_retries
+          raise RetryableEvaluatorError, "HTTP #{response.code}: #{body.dig('error')&.truncate(120)}"
+        end
+
+        if response.code.to_i >= 400
+          persist_partial_logs(Array(body.dig("partial_results")), intention)
+          persist_evaluator_failure_log(phase, body)
+          raise AiError, "Evaluator #{phase} failed (HTTP #{response.code}): #{body.dig('error') || response.body.truncate(500)}"
+        end
+
+        persist_node_logs(Array(body), intention)
+        body
+      end
+
+      def log_evaluator_retry(phase, attempt, reason)
+        Rails.logger.warn(
+          "[EvaluatorTransport] retrying #{phase} (#{reason}) " \
+          "attempt #{attempt}/#{evaluator_http_max_retries + 1}"
+        )
+      end
+
+      # Writes a `evaluator_fan_out_failure` PlayLog row carrying the
+      # per-failure diagnostics Node now ships in the 500 body
+      # (error_name, error_status, attempts/max_attempts, retryable).
+      # Lets us see retry behaviour from the database without grepping
+      # ephemeral container logs.
+      def persist_evaluator_failure_log(phase, body)
+        return unless @log
+
+        failures = Array(body["failures"]).map do |f|
+          f.is_a?(Hash) ? f.deep_stringify_keys : { "raw" => f.to_s }
+        end
+        return if failures.empty?
+
+        summary = failures.first(2).map do |f|
+          "#{f['domain']} #{f['error_name'] || 'Error'} #{f['attempts']}/#{f['max_attempts']}".strip
+        end.join("; ").truncate(200)
+
+        @log.play_log!(
+          "evaluator_fan_out_failure",
+          "Evaluator #{phase} failure: #{summary}",
+          parsed_response: { phase: phase, failures: failures, failed_steps: Array(body["failed_steps"]) },
+        )
+      rescue StandardError => e
+        Rails.logger.warn("[EvaluatorTransport] failure-log persist failed: #{e.message}")
       end
 
       def persist_node_logs(results, intention)

@@ -1,6 +1,6 @@
 module Admin
   class StoriesController < BaseController
-    before_action :set_story, only: [:show, :update, :destroy, :enrich]
+    before_action :set_story, only: [:show, :update, :destroy]
 
     # GET /admin/stories — server-rendered story list
     def index
@@ -29,6 +29,7 @@ module Admin
       @story = Story.new(story_params)
 
       if @story.save
+        extract_seed_facts!(@story)
         respond_to do |format|
           format.json { render json: story_json(@story), status: :created }
           format.html { redirect_to admin_story_path(@story) }
@@ -41,20 +42,13 @@ module Admin
     # PATCH /admin/stories/:id
     def update
       if @story.update(story_params)
+        if @story.saved_change_to_premise? || @story.saved_change_to_opening_message?
+          extract_seed_facts!(@story)
+        end
         render json: story_json(@story)
       else
         render json: { errors: @story.errors.full_messages }, status: :unprocessable_entity
       end
-    end
-
-    # POST /admin/stories/:id/enrich
-    def enrich
-      enricher = DungeonMaster::Enricher.new(@story, user: current_user)
-      result = enricher.enrich
-      render json: result
-    rescue DungeonMaster::AiError => e
-      ApplicationErrorReporter.notify(e, context: { source: "admin_stories_enrich", story_id: @story.id })
-      render json: { error: e.message }, status: :unprocessable_entity
     end
 
     # DELETE /admin/stories/:id (soft-delete)
@@ -74,12 +68,9 @@ module Admin
 
     def story_params
       params.require(:story).permit(
-        :title, :preview, :premise, :initial_summary,
-        initial_contexts: {},
-        story_locations_attributes: [
-          :id, :name, :description, :starting, :_destroy,
-          connections_from_attributes: [:id, :to_location_id, :distance_miles, :terrain_type, :description, :_destroy]
-        ],
+        :title, :preview, :premise, :opening_message, :world_terrain,
+        seed_facts: [[:text, :kind, :polarity, { entities: [] }]],
+        story_locations_attributes: [:id, :name, :description, :starting, :_destroy],
         encounter_tables_attributes: [
           :id, :name, :description, :check_frequency_hours, :encounter_chance, :_destroy,
           encounter_table_entries_attributes: [
@@ -91,27 +82,24 @@ module Admin
         story_npcs_attributes: [
           :id, :source, :name, :role, :location_id, :description,
           :knowledge, :attitude, :secret, :_destroy
-        ],
-        story_clues_attributes: [
-          :id, :source, :title, :description, :discovery_method, :location_id,
-          :npc_id, :reveals_secret, :difficulty, :_destroy,
-          prerequisite_clue_ids: []
-        ],
-        story_milestones_attributes: [
-          :id, :source, :title, :description, :consequence, :_destroy,
-          trigger_clue_ids: []
         ]
       )
     end
 
+    def extract_seed_facts!(story)
+      facts = DungeonMaster::Lore::ExtractFromPremise.call(story: story, user: current_user)
+      story.update_column(:seed_facts, facts) if facts.is_a?(Array)
+    rescue StandardError => e
+      ApplicationErrorReporter.notify(e, context: { source: "admin_stories_extract_from_premise", story_id: story.id })
+    end
+
     def story_json(story)
-      base = story.as_json(only: [:id, :title, :preview, :premise, :initial_summary, :initial_contexts, :created_at, :updated_at])
+      base = story.as_json(only: [
+        :id, :title, :preview, :premise, :opening_message, :world_terrain,
+        :seed_facts, :created_at, :updated_at
+      ])
       base["story_locations"] = story.story_locations.order(:id).map { |loc|
-        loc.as_json(only: [:id, :name, :description, :starting]).merge(
-          "connections_from" => loc.connections_from.map { |c|
-            c.as_json(only: [:id, :to_location_id, :distance_miles, :terrain_type, :description])
-          }
-        )
+        loc.as_json(only: [:id, :name, :description, :starting])
       }
       base["encounter_tables"] = story.encounter_tables.order(:id).map { |t|
         t.as_json(only: [:id, :name, :description, :check_frequency_hours, :encounter_chance]).merge(
@@ -122,12 +110,6 @@ module Admin
       }
       base["story_npcs"] = story.story_npcs.story_level.order(:id).map { |npc|
         npc.as_json(only: [:id, :source, :name, :role, :location_id, :description, :knowledge, :attitude, :secret])
-      }
-      base["story_clues"] = story.story_clues.story_level.order(:id).map { |clue|
-        clue.as_json(only: [:id, :source, :title, :description, :discovery_method, :location_id, :npc_id, :prerequisite_clue_ids, :reveals_secret, :difficulty])
-      }
-      base["story_milestones"] = story.story_milestones.order(:id).map { |ms|
-        ms.as_json(only: [:id, :source, :title, :description, :trigger_clue_ids, :consequence])
       }
       base
     end

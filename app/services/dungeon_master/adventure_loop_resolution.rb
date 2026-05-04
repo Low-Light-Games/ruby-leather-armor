@@ -1,33 +1,12 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  # Resolves a single **AdventureLoop** step in the current pipeline run: evaluation,
-  # sanity gate, mechanical path (rolls / mechanic / verdict), time keeper, encounter dispatch,
-  # social scene, and `pipeline_outcome` persistence.
-  #
-  # Mixed into `Pipeline`. `ActionQueueRunner` calls `#resolve` once per queued player line;
-  # `run_rolls` resumes via `#finish_resolution`.
-  #
-  # Returns a standardized result hash with :status indicating the outcome:
-  #   :resolved             — loop step fully resolved, mutations available
-  #   :awaiting_rolls       — rolls needed, intent and merged available for resumption
-  #   :awaiting_initiative  — combat starting, waiting for player initiative roll
-  #   :encounter            — Harbinger triggered an encounter mid-step
-  #   :social_scene         — social scene expanded, pipeline_outcome written to loop
-  #   :rejected             — SanityChecker rejected the intent
   module AdventureLoopResolution
     private
 
-    # Full resolution: evaluation → sanity gate → [verdict + mutations + time_keeper]
-    #
-    # The evaluation step routes deterministically on combat state:
-    # combat-active → Steps::CombatRollRequest, else → Steps::RollRequest.
-    # Both return an {EvaluationResult}; this method dispatches on it.
     def resolve(intention)
       result = run_evaluation_phase(intention)
-      return resolve_with_mechanics(result) if result.affected?
-
-      resolve_without_mechanics(result)
+      resolve_with_mechanics(result)
     end
 
     def run_evaluation_phase(intention)
@@ -35,8 +14,6 @@ module DungeonMaster
     end
 
     def resolve_with_mechanics(result)
-      return resolve_social_scene_after_world_gate(result) if result.social_scene_only?
-
       capability = if skip_world_sanity_for_privileged_player?
                      @loop&.log_step("sanity_checker", "World: skipped (player opt-out)")
                      run_capability_check(result)
@@ -50,8 +27,6 @@ module DungeonMaster
 
       return capability_check_rejection(result.to_intent_hash, capability) unless capability[:allowed]
 
-      return resolve_social_scene(result) if result.expand_scene?
-
       merged = build_merged_from_result(result)
       intent_hash = result.to_intent_hash
       return PipelineFlowResults.awaiting_rolls(intent: intent_hash, merged: merged).to_h if merged[:player_rolls].any?
@@ -59,47 +34,12 @@ module DungeonMaster
       finish_resolution(intent_hash, merged, Rolls::PlayerRolls.auto_success_roll_message(merged))
     end
 
-    def resolve_without_mechanics(result)
-      intent_hash = result.to_intent_hash
-      if skip_world_sanity_for_privileged_player?
-        @loop&.log_step("sanity_checker", "World: skipped (player opt-out, no mechanics)")
-      else
-        world = run_world_consistency_check(result)
-        return world_check_rejection(intent_hash, world) unless world[:consistent]
-
-        @loop&.log_step("sanity_checker", "World: consistent (no mechanics)")
-      end
-      time_result = run_time_keeper(intent_hash, nil)
-      return dispatch_encounter_warmaster(intent_hash, time_result, mutations: nil) if time_result[:encounter]
-
-      momentum_result = run_momentum(intent_hash)
-      maybe_run_world_turn(
-        status: :resolved, intent: intent_hash,
-        mutations: momentum_result[:mutations].presence,
-        time_result: time_result,
-        action_outcome: momentum_result[:outcome].to_s.presence
-      )
-    end
-
-    def resolve_social_scene_after_world_gate(result)
-      if skip_world_sanity_for_privileged_player?
-        @loop&.log_step("sanity_checker", "World: skipped (player opt-out, social scene)")
-      else
-        world = run_world_consistency_check(result)
-        return world_check_rejection(result.to_intent_hash, world) unless world[:consistent]
-
-        @loop&.log_step("sanity_checker", "World: consistent (social scene)")
-      end
-
-      resolve_social_scene(result)
-    end
-
     def build_merged_from_result(result)
       merged = {
         player_rolls: result.player_rolls,
         npc_actions: [],
         consequences: result.consequences,
-        mechanical_summaries: ["[#{result.primary_domain.to_s.upcase}] #{result.mechanical_summary}"]
+        mechanical_summaries: [result.mechanical_summary.to_s].reject(&:empty?)
       }
       Rolls::PlayerRolls.deduplicate_rolls!(merged, log: @log)
       Rolls::PlayerRolls.filter_auto_success_rolls!(merged, log: @log, sheet: @sheet)
@@ -148,6 +88,7 @@ module DungeonMaster
       maybe_run_world_turn(
         status: :resolved, intent: intent,
         mutations: verdict_result[:mutations],
+        npc_actions: verdict_result[:npc_actions] || [],
         time_result: time_result,
         action_outcome: verdict_result[:outcome].to_s.presence,
         queue_resolution_context: {
@@ -209,8 +150,7 @@ module DungeonMaster
         source_id: attack_roll[:source_id],
         damage: attack_roll[:damage],
         damage_type: attack_roll[:damage_type],
-        target: attack_roll[:target],
-        domain: attack_roll[:domain]
+        target: attack_roll[:target]
       }.compact
     end
 
@@ -279,63 +219,6 @@ module DungeonMaster
         intent: intent, time_result: time_result, mutations: mutations)
       store_pipeline_outcome!(result.pipeline_outcome)
       result.payload
-    end
-
-    # Social scene expansion: creates an immersive NPC interaction scene that
-    # pauses the pipeline for player input. Analogous to encounter expansion
-    # but for significant social interactions (transactions, negotiations, etc.).
-    # TimeKeeper is skipped — no time passes until the interaction resolves.
-    def resolve_social_scene(result)
-      intention = result.intention
-      prompt_summary = "SocialExpansion: \"#{@log.truncate(intention)}\""
-
-      npc_names = begin
-        @adventure.story.story_npcs.pluck(:name)
-      rescue => e
-        pipeline_error!("social_expansion_npcs", e)
-      end
-
-      system_prompt = PromptRenderer.render("social_expansion",
-        loop: @loop,
-        location: @adventure.current_location&.name || "the area",
-        location_description: @adventure.current_location&.description,
-        traversal_context: @adventure.traversal_context,
-        social_context: @adventure.social_context,
-        character_block: CharacterBlock.social(@sheet),
-        npc_names: npc_names,
-        domain_interpretation: intention)
-
-      request_body = { system_prompt: system_prompt, user_message: intention }
-
-      parsed = timed_ai_call("social_expansion", prompt_summary, request_body) do
-        raw = @ai.chat(system_prompt: system_prompt, user_message: intention,
-                        max_tokens: @config.token_budget_for("social_expansion"),
-                        step_name: "social_expansion",
-                        model: @config.model_for("social_expansion"))
-        [raw, @ai.parse_json(raw)]
-      end
-
-      scene = parsed["scene"] || parsed["narrative"] || intention
-      npc_name = parsed["npc_name"]
-      npc_attitude = parsed["npc_attitude"]
-      new_elements = Array(parsed["new_elements"]).select(&:present?)
-
-      if @loop
-        loop_data = {
-          "social_scene"    => scene.to_s.truncate(1000),
-          "verdict_outcome" => scene.to_s.truncate(500)
-        }
-        loop_data["social_npc_name"] = npc_name if npc_name.present?
-        loop_data["social_npc_attitude"] = npc_attitude if npc_attitude.present?
-        loop_data["social_new_elements"] = new_elements if new_elements.any?
-        @loop.batch_update!(
-          new_data: loop_data,
-          timeline_entry: { "step" => "social_expansion", "summary" => "Scene: #{npc_name || 'NPC'} (#{npc_attitude || 'unknown'})", "at" => Time.current.iso8601 })
-      end
-
-      store_pipeline_outcome!(scene)
-
-      PipelineFlowResults.social_scene(intent: result.to_intent_hash).to_h
     end
 
     def store_pipeline_outcome!(text)

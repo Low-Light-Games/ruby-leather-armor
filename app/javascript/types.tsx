@@ -139,7 +139,6 @@ export interface Story {
   title: string
   preview: string
   premise: string
-  initial_summary: string | null
   created_at: string
   updated_at: string
 }
@@ -149,23 +148,11 @@ export interface AdminStory {
   title: string
   preview: string
   premise: string
-  initial_summary: string | null
   story_locations?: StoryLocationData[]
   encounter_tables?: EncounterTableData[]
   story_npcs?: StoryNpcData[]
-  story_clues?: StoryClueData[]
-  story_milestones?: StoryMilestoneData[]
   created_at: string
   updated_at: string
-}
-
-export interface LocationConnectionData {
-  id?: number
-  to_location_id: number
-  distance_miles: number
-  terrain_type: string
-  description?: string
-  _destroy?: boolean
 }
 
 export interface StoryLocationData {
@@ -173,7 +160,6 @@ export interface StoryLocationData {
   name: string
   description: string
   starting: boolean
-  connections_from?: LocationConnectionData[]
   _destroy?: boolean
 }
 
@@ -206,7 +192,7 @@ export interface EncounterTableData {
   _destroy?: boolean
 }
 
-export type NpcSource = 'manual' | 'enricher' | 'embellisher'
+export type NpcSource = 'manual'
 export type NpcRole = 'quest_giver' | 'informant' | 'antagonist' | 'bystander' | 'merchant'
 export type NpcAttitude = 'friendly' | 'indifferent' | 'unfriendly'
 
@@ -223,35 +209,6 @@ export interface StoryNpcData {
   _destroy?: boolean
 }
 
-export type ClueSource = 'manual' | 'enricher' | 'embellisher'
-export type DiscoveryMethod = 'social' | 'exploration' | 'magic' | 'combat' | 'automatic'
-export type ClueDifficulty = 'automatic' | 'easy' | 'moderate' | 'hard'
-
-export interface StoryClueData {
-  id?: number
-  source: ClueSource
-  title: string
-  description: string
-  discovery_method: DiscoveryMethod
-  location_id?: number | null
-  npc_id?: number | null
-  prerequisite_clue_ids: number[]
-  reveals_secret: string
-  difficulty: ClueDifficulty
-  _destroy?: boolean
-}
-
-export type MilestoneSource = 'manual' | 'enricher'
-
-export interface StoryMilestoneData {
-  id?: number
-  source: MilestoneSource
-  title: string
-  description: string
-  trigger_clue_ids: number[]
-  consequence: string
-  _destroy?: boolean
-}
 
 /** Live slice from ClassAbilityDefinition by class/level; included in builder and adventure `SheetPresenter` JSON. */
 export interface ClassAbilitySummary {
@@ -304,12 +261,7 @@ export interface Adventure {
   adventure_sheet: AdventureSheet
   story: Story
   battlefield?: BattlefieldSnapshot | null
-  traversal_context: Record<string, unknown> | null
   combat_context: Record<string, unknown> | null
-  social_context: Record<string, unknown> | null
-  exploration_context: Record<string, unknown> | null
-  rest_context: Record<string, unknown> | null
-  inventory_context: Record<string, unknown> | null
   time_context: Record<string, unknown> | null
   story_summary: string | null
   scene_summary: string | null

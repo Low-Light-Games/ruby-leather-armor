@@ -4,12 +4,7 @@ class DmConfig < ApplicationRecord
   # Single-row configuration for the AI Dungeon Master.
   # Settings are stored as a JSON hash, making it easy to add new knobs
   # without migrations.
-  TOKEN_BUDGET_STEPS = DungeonMaster::StepRegistry.pipeline_steps.freeze
-  STEP_MODEL_HINTS   = DungeonMaster::StepRegistry.model_hints.freeze
-
-  ENRICHER_MODEL_HINT = 'Capable model recommended. Structural extraction benefits from strong reasoning — e.g. o3-mini, o4-mini, gpt-4.1, gpt-5-mini.'
-  EMBELLISHER_MODEL_HINT = 'Creative model. Flavor generation benefits from vivid writing — e.g. gpt-4.1, gpt-4o, gpt-5. Expand mode benefits from reasoning — e.g. o3-mini, gpt-5-mini.'
-  EMBELLISHER_MODES = %w[embellish expand].freeze
+  STEP_MODEL_HINTS = DungeonMaster::StepRegistry.model_hints.freeze
 
   # Closed whitelist for the narrative facts store's embedding model
   # selector (see Decision 37). The `adventure_narrative_facts.embedding`
@@ -70,13 +65,12 @@ class DmConfig < ApplicationRecord
     'pacing_words_min' => 40,
     'pacing_words_max' => 120,
     'danger_threshold' => 30,
-    'model' => 'gpt-4o-mini',
+    'model' => 'gpt-5-nano',
+    'reasoning_effort' => 'minimal',
     'step_models' => {},
-    'embellisher_mode' => 'embellish',
     'action_queue' => 'progressive',
     'show_roll_dc' => true,
     'scene_history_depth' => 10,
-    'chronicler_tone_direction' => false,
     'creature_creation_fallback' => 'ai',
     'instant_death' => true,
     'no_auto_hit_miss' => true,
@@ -86,12 +80,11 @@ class DmConfig < ApplicationRecord
       'mountain' => 0.25, 'underground' => 0.5
     },
     'wait_messages' => WAIT_MESSAGES_DEFAULT,
-    'token_budgets' => {},
     'narrative_facts_top_k' => 8,
     'narrative_facts_active_window' => 20,
     'narrative_facts_embedding_model' => 'text-embedding-3-small',
     'combat_narrator_enabled' => true,
-    'step_reasoning_efforts' => { 'roll_request' => 'minimal' }.freeze,
+    'step_reasoning_efforts' => {}.freeze,
     'stripe_grace_period_days' => 3
   }.freeze
 
@@ -138,22 +131,20 @@ class DmConfig < ApplicationRecord
   end
 
   # Returns "minimal" | "low" | "medium" | "high" | nil for the given
-  # step. Resolution order: admin override → registry default → nil.
-  # AiClient drops the `reasoning_effort` param when the resolved value
-  # is nil OR when the resolved model is not a reasoning model, so
-  # non-reasoning steps and non-reasoning model overrides stay safe.
+  # step. Resolution order: admin per-step override → registry pin →
+  # global default. AiClient drops the `reasoning_effort` param when
+  # the resolved model is not a reasoning model, so non-reasoning model
+  # overrides stay safe.
   def reasoning_effort_for(step)
     overrides = get('step_reasoning_efforts') || {}
     override  = overrides[step.to_s].to_s
     return override if REASONING_EFFORTS.include?(override)
 
-    DungeonMaster::StepRegistry.default_reasoning_effort_for(step)
-  end
+    pinned = DungeonMaster::StepRegistry.default_reasoning_effort_for(step)
+    return pinned if pinned
 
-  def token_budget_for(step)
-    budgets = get('token_budgets')
-    val = budgets[step.to_s]
-    val&.to_i
+    global = get('reasoning_effort').to_s
+    REASONING_EFFORTS.include?(global) ? global : nil
   end
 
   def instant_death?

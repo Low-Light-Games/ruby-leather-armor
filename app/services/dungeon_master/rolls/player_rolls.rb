@@ -45,10 +45,10 @@ module DungeonMaster
 
             if first
               if roll_descriptions_similar?(first[:description], roll[:description])
-                removed << "#{roll[:skill]} DC #{roll[:dc]} (#{roll[:domain]}) — duplicate of #{first[:domain]}"
+                removed << "#{roll[:skill]} DC #{roll[:dc]} — duplicate"
                 true
               else
-                kept_conflicts << "#{roll[:skill]} DC #{roll[:dc]}: (#{first[:domain]}) \"#{first[:description]}\" vs (#{roll[:domain]}) \"#{roll[:description]}\""
+                kept_conflicts << "#{roll[:skill]} DC #{roll[:dc]}: \"#{first[:description]}\" vs \"#{roll[:description]}\""
                 false
               end
             else

@@ -105,10 +105,10 @@ and [`phases/combat_mechanic_resolution.rb`](../app/services/dungeon_master/step
    roll lands but lacks `damage`/`source_type`/etc. With deterministic
    resolution, this whole path becomes unreachable and gets deleted in
    PR-I.
-4. **Combat-start hand-off** —
-   `intent[:domain_results]["combat"][:transition]` + `combatants`
-   triggers Warmaster prep. RollRequest's adapter already mirrors this
-   shape, so combat START via RollRequest already works. No change here.
+4. **Combat-start hand-off** — `intent[:transition]` + `intent[:combat_combatants]`
+   triggers Warmaster prep. RollRequest emits these flat keys directly
+   on the intent hash, so combat START via RollRequest works without
+   any adapter.
 
 ---
 
@@ -286,20 +286,23 @@ flavor narrator over a structured round log.
 
 ### PR-H — `action_event` social-ramification hook
 
-**Goal:** combat actions with narrative weight propagate to the right
-context update without bloating the combat hot path.
+**Goal:** combat actions with narrative weight surface as
+`social_event_triggered` play_log rows that the next pipeline pass can
+react to, without bloating the combat hot path.
 
 **Scope:**
-- Every deterministic combat `action_event` posts to a small queue.
-- Heuristic gate (no AI): `location_type == "settlement" && nearby_npcs.any? &&
-  action.kind in [draw_weapon, cast, equip_armor, attack_npc_civilian]`
-  triggers a `social_context_update` enqueue.
-- Existing `social_context_update` step processes the trigger as today —
-  AI runs there, not in the gate.
+- Every deterministic combat `action_event` is offered to
+  `Combat::SocialEventTrigger`.
+- Heuristic gate (no AI): the trigger fires on actions plausibly
+  visible to bystanders (drawing steel in a tavern, casting a spell with
+  NPCs watching, dropping an enemy in front of an audience) and emits a
+  `social_event_triggered` play_log row.
+- `Combat::SocialEventResolution` reads the row on the next pipeline
+  pass; Loremaster captures durable consequences as facts.
 
 **Ship criteria:**
-- Drawing a weapon in a tavern with NPCs present triggers a social
-  context update; drawing a weapon mid-battle does not.
+- Drawing a weapon in a tavern with NPCs present produces a
+  `social_event_triggered` row; drawing a weapon mid-battle does not.
 - Spec coverage for the trigger heuristic.
 
 ### PR-I — Retire `Steps::ParallelEvaluation` ✅ both passes complete

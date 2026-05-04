@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_04_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -28,6 +28,23 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
     t.datetime "updated_at", null: false
     t.index ["adventure_id", "status"], name: "index_adventure_battlefields_on_adventure_id_and_status"
     t.index ["adventure_id"], name: "index_adventure_battlefields_on_adventure_id"
+  end
+
+  create_table "adventure_locations", force: :cascade do |t|
+    t.bigint "adventure_id", null: false
+    t.bigint "story_location_id"
+    t.string "name", null: false
+    t.text "description"
+    t.float "x", default: 0.0, null: false
+    t.float "y", default: 0.0, null: false
+    t.string "source", null: false
+    t.vector "embedding", limit: 1536
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_id", "name"], name: "index_adventure_locations_seed_unique_per_adventure", unique: true, where: "((source)::text = 'seed'::text)"
+    t.index ["adventure_id"], name: "index_adventure_locations_on_adventure_id"
+    t.index ["embedding"], name: "index_adventure_locations_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["story_location_id"], name: "index_adventure_locations_on_story_location_id"
   end
 
   create_table "adventure_loops", force: :cascade do |t|
@@ -84,6 +101,26 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
     t.index ["introduced_at_loop_id"], name: "index_adventure_narrative_facts_on_introduced_at_loop_id"
     t.index ["invalidated_at_loop_id"], name: "index_adventure_narrative_facts_on_invalidated_at_loop_id"
     t.index ["invalidated_by_fact_id"], name: "index_adventure_narrative_facts_on_invalidated_by_fact_id"
+  end
+
+  create_table "adventure_npcs", force: :cascade do |t|
+    t.bigint "adventure_id", null: false
+    t.bigint "story_npc_id"
+    t.string "name", null: false
+    t.text "description"
+    t.string "attitude", default: "indifferent", null: false
+    t.string "location_name"
+    t.string "source", null: false
+    t.vector "embedding", limit: 1536
+    t.bigint "last_seen_loop_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["adventure_id", "location_name"], name: "index_adventure_npcs_on_adventure_and_location"
+    t.index ["adventure_id", "name"], name: "index_adventure_npcs_seed_unique_per_adventure", unique: true, where: "((source)::text = 'seed'::text)"
+    t.index ["adventure_id"], name: "index_adventure_npcs_on_adventure_id"
+    t.index ["embedding"], name: "index_adventure_npcs_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["last_seen_loop_id"], name: "index_adventure_npcs_on_last_seen_loop_id"
+    t.index ["story_npc_id"], name: "index_adventure_npcs_on_story_npc_id"
   end
 
   create_table "adventure_sheet_feats", force: :cascade do |t|
@@ -165,17 +202,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
     t.string "current_category"
     t.string "dm_mode", default: "standard", null: false
     t.boolean "directed_dm", default: false, null: false
-    t.jsonb "traversal_context", default: {}, null: false
     t.jsonb "combat_context", default: {}, null: false
-    t.jsonb "social_context", default: {}, null: false
-    t.jsonb "exploration_context", default: {}, null: false
-    t.jsonb "rest_context", default: {}, null: false
-    t.jsonb "inventory_context", default: {}, null: false
     t.text "scene_summary"
     t.bigint "current_location_id"
-    t.jsonb "enriched_world", default: {}, null: false
-    t.text "enriched_premise"
-    t.jsonb "plot_state", default: {}, null: false
     t.jsonb "dm_settings", default: {}, null: false
     t.jsonb "time_context", default: {"current_hour"=>8, "adventure_day"=>1, "light_conditions"=>"day", "hours_since_last_rest"=>0, "hours_since_last_encounter_check"=>0}, null: false
     t.jsonb "scene_history", default: [], null: false
@@ -183,6 +212,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
     t.boolean "skip_world_sanity_check", default: false, null: false
     t.datetime "ended_at"
     t.string "end_reason"
+    t.float "coordinate_scale", default: 7.0, null: false
     t.index ["current_location_id"], name: "index_adventures_on_current_location_id"
     t.index ["discarded_at"], name: "index_adventures_on_discarded_at"
     t.index ["ended_at"], name: "index_adventures_on_ended_at"
@@ -424,19 +454,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
     t.index ["slot"], name: "index_item_definitions_on_slot"
   end
 
-  create_table "location_connections", force: :cascade do |t|
-    t.bigint "from_location_id", null: false
-    t.bigint "to_location_id", null: false
-    t.decimal "distance_miles", precision: 8, scale: 2, null: false
-    t.string "terrain_type", default: "road", null: false
-    t.text "description"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["from_location_id", "to_location_id"], name: "idx_location_connections_pair", unique: true
-    t.index ["from_location_id"], name: "index_location_connections_on_from_location_id"
-    t.index ["to_location_id"], name: "index_location_connections_on_to_location_id"
-  end
-
   create_table "moderation_events", force: :cascade do |t|
     t.bigint "user_id", null: false
     t.text "input_excerpt"
@@ -617,29 +634,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
     t.datetime "updated_at", null: false
     t.text "preview", default: "", null: false
     t.datetime "discarded_at"
-    t.text "initial_summary"
-    t.jsonb "initial_contexts", default: {}, null: false
+    t.string "world_terrain", default: "plains", null: false
+    t.jsonb "seed_facts", default: [], null: false
+    t.text "opening_message", default: "", null: false
     t.index ["discarded_at"], name: "index_stories_on_discarded_at"
-  end
-
-  create_table "story_clues", force: :cascade do |t|
-    t.bigint "story_id", null: false
-    t.bigint "adventure_id"
-    t.string "source", default: "manual", null: false
-    t.string "title", null: false
-    t.text "description", null: false
-    t.string "discovery_method", default: "exploration", null: false
-    t.bigint "location_id"
-    t.bigint "npc_id"
-    t.integer "prerequisite_clue_ids", default: [], array: true
-    t.text "reveals_secret"
-    t.string "difficulty", default: "moderate", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["adventure_id"], name: "index_story_clues_on_adventure_id"
-    t.index ["location_id"], name: "index_story_clues_on_location_id"
-    t.index ["npc_id"], name: "index_story_clues_on_npc_id"
-    t.index ["story_id"], name: "index_story_clues_on_story_id"
   end
 
   create_table "story_locations", force: :cascade do |t|
@@ -651,18 +649,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
     t.datetime "updated_at", null: false
     t.index ["story_id", "name"], name: "index_story_locations_on_story_id_and_name", unique: true
     t.index ["story_id"], name: "index_story_locations_on_story_id"
-  end
-
-  create_table "story_milestones", force: :cascade do |t|
-    t.bigint "story_id", null: false
-    t.string "source", default: "manual", null: false
-    t.string "title", null: false
-    t.text "description", null: false
-    t.integer "trigger_clue_ids", default: [], array: true
-    t.text "consequence"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["story_id"], name: "index_story_milestones_on_story_id"
   end
 
   create_table "story_npcs", force: :cascade do |t|
@@ -731,6 +717,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
   end
 
   add_foreign_key "adventure_battlefields", "adventures"
+  add_foreign_key "adventure_locations", "adventures"
+  add_foreign_key "adventure_locations", "story_locations"
   add_foreign_key "adventure_loops", "adventures", on_delete: :nullify
   add_foreign_key "adventure_loops", "pipelines"
   add_foreign_key "adventure_messages", "adventures"
@@ -738,6 +726,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
   add_foreign_key "adventure_narrative_facts", "adventure_loops", column: "invalidated_at_loop_id"
   add_foreign_key "adventure_narrative_facts", "adventure_narrative_facts", column: "invalidated_by_fact_id"
   add_foreign_key "adventure_narrative_facts", "adventures"
+  add_foreign_key "adventure_npcs", "adventure_loops", column: "last_seen_loop_id"
+  add_foreign_key "adventure_npcs", "adventures"
+  add_foreign_key "adventure_npcs", "story_npcs"
   add_foreign_key "adventure_sheet_feats", "adventure_sheets"
   add_foreign_key "adventure_sheet_feats", "feat_definitions", column: "feat_id"
   add_foreign_key "adventure_sheet_items", "adventure_sheets"
@@ -746,8 +737,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
   add_foreign_key "adventure_sheet_spells", "spell_definitions", column: "spell_id"
   add_foreign_key "adventure_sheets", "adventures"
   add_foreign_key "adventure_sheets", "sheets"
+  add_foreign_key "adventures", "adventure_locations", column: "current_location_id", on_delete: :nullify
   add_foreign_key "adventures", "stories"
-  add_foreign_key "adventures", "story_locations", column: "current_location_id"
   add_foreign_key "adventures", "users"
   add_foreign_key "creature_sheet_feats", "creature_sheets"
   add_foreign_key "creature_sheet_feats", "feat_definitions", column: "feat_id"
@@ -759,8 +750,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
   add_foreign_key "encounter_table_entries", "encounter_tables"
   add_foreign_key "encounter_tables", "stories"
   add_foreign_key "experience_suggestions", "adventures"
-  add_foreign_key "location_connections", "story_locations", column: "from_location_id"
-  add_foreign_key "location_connections", "story_locations", column: "to_location_id"
   add_foreign_key "moderation_events", "users"
   add_foreign_key "pipelines", "adventure_messages", column: "player_message_id", on_delete: :nullify
   add_foreign_key "pipelines", "adventures"
@@ -774,12 +763,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_28_180218) do
   add_foreign_key "sheet_spells", "sheets"
   add_foreign_key "sheet_spells", "spell_definitions", column: "spell_id"
   add_foreign_key "sheets", "users"
-  add_foreign_key "story_clues", "adventures"
-  add_foreign_key "story_clues", "stories"
-  add_foreign_key "story_clues", "story_locations", column: "location_id", on_delete: :nullify
-  add_foreign_key "story_clues", "story_npcs", column: "npc_id"
   add_foreign_key "story_locations", "stories"
-  add_foreign_key "story_milestones", "stories"
   add_foreign_key "story_npcs", "adventures"
   add_foreign_key "story_npcs", "stories"
   add_foreign_key "story_npcs", "story_locations", column: "location_id", on_delete: :nullify

@@ -22,6 +22,7 @@ module Combat
           option: option, hp_before: hp_before, hp_after: hp_after, max_hp: @sheet.max_hp, rolled: rolled
         ).to_h
         log_action_event!(payload)
+        Combat::EventLog.write!(adventure: @adventure, content: payload[:message], user: @user)
         { status: :resolved, result: payload }
       rescue DungeonMaster::CombatMechanicResolutionError => e
         raise Combat::ResolverError.new(e.message, code: e.code || :unknown_heal_option)

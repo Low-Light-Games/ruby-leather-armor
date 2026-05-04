@@ -1,4 +1,13 @@
-<% if parsed.is_a?(Hash) %>
+<% def retrieval_payload?(parsed)
+     return false unless parsed.is_a?(Hash)
+
+     kind = parsed[:kind] || parsed["kind"]
+     hits = parsed[:hits] || parsed["hits"]
+     %w[facts npcs locations].include?(kind.to_s) && hits.is_a?(Array)
+   end %>
+<% if retrieval_payload?(parsed) %>
+  <%= render partial: 'admin/play_logs/retrieval_hits', locals: { retrieval: parsed } %>
+<% elsif parsed.is_a?(Hash) %>
   <% parsed.each do |key, value| %>
     <div class="parsed-field">
       <span class="parsed-field-label"><%= key %></span>

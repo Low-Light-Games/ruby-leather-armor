@@ -194,11 +194,6 @@
     margin-bottom: 8px;
     background: #fff;
 
-    &.ai-sourced {
-      border-color: #c5b3e6;
-      background: #faf8ff;
-    }
-
     .nested-card-header {
       display: flex;
       align-items: center;
@@ -267,17 +262,6 @@
       .table-meta {
         font-size: 12px;
         color: #888;
-        white-space: nowrap;
-      }
-
-      .source-badge {
-        font-size: 10px;
-        font-weight: 700;
-        text-transform: uppercase;
-        padding: 2px 6px;
-        border-radius: 3px;
-        background: #e8ddf5;
-        color: #6f42c1;
         white-space: nowrap;
       }
 

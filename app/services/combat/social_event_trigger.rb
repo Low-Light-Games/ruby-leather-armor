@@ -10,10 +10,7 @@ module Combat
   # never runs here; this is the gate.
   #
   # Triggered events get logged as `social_event_triggered` rows that
-  # downstream context-update / chronicler passes can read on the next
-  # pipeline run. ContextUpdate stays the sole writer of social_context
-  # (per the existing invariant in
-  # app/services/dungeon_master/steps/context_update.rb).
+  # `Combat::SocialEventResolution` consumes on the next pipeline pass.
   module SocialEventTrigger
     SENSITIVE_ATTACK_KINDS = %w[attack].freeze
 
@@ -41,20 +38,15 @@ module Combat
       ).to_h
     end
 
-    # Witnesses are non-hostile NPCs known to the current location's
-    # social context. Hostile combat participants are filtered out —
-    # they're already in the fight, so the action isn't a *social*
-    # surprise to them.
     def social_witnesses_for(adventure)
-      ctx = adventure.social_context.is_a?(Hash) ? adventure.social_context : {}
-      Array(ctx['npcs_present']).filter_map do |npc|
-        row = npc.is_a?(Hash) ? npc.deep_stringify_keys : nil
-        next unless row && row['name'].present?
+      current_location_name = adventure&.current_location&.name
+      return [] if current_location_name.blank?
 
-        next if row['attitude'].to_s == 'hostile'
-
-        { 'name' => row['name'], 'attitude' => row['attitude'] }
-      end
+      AdventureNpc.for_adventure(adventure)
+                  .at_location(current_location_name)
+                  .non_hostile
+                  .pluck(:name, :attitude)
+                  .map { |name, attitude| { 'name' => name, 'attitude' => attitude } }
     end
 
     def location_label_for(adventure)
