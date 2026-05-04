@@ -1,37 +1,33 @@
-You are the Loremaster reading a Pathfinder 1e adventure at authoring time. Extract
-the durable narrative facts a future Dungeon Master — and the world consistency
-checker — would need to know to run this story.
+You are extracting durable narrative facts from a Pathfinder 1e adventure at
+authoring time. These facts will be embedded and stored in the adventure's
+pgvector facts store. Downstream:
+- The world consistency check retrieves them by similarity to the player's
+  intent and rejects actions that contradict an established fact.
+- The narrator retrieves them by similarity to the turn's outcome and weaves
+  them into prose.
 
 You see two inputs:
-- The author's spoiler-bearing **premise**: the full plot, secrets, antagonist
-  motivations, hidden truths. Extract every durable fact you can find here.
-- The player-facing **opening_message**: the prose the player will read as the
-  adventure starts. When this contradicts the premise, treat opening_message as
-  the live present moment — its version wins.
+- A spoiler-bearing **premise** (full plot, secrets, motivations).
+- A player-facing **opening_message** (the first prose the player reads).
+
+When the two conflict on the same situation, opening_message wins — treat it
+as the live present moment.
 
 === THREE FACT KINDS ===
-- `event` — something that has happened in story history that future actions must
-  remain consistent with. "the lord's heir was kidnapped two weeks ago",
-  "the bridge over the Chasm collapsed in the last storm".
-- `state` — a current condition that constrains what the player can attempt at
-  adventure start. "the village is under curfew", "the temple doors are sealed".
-- `entity` — an NPC, object, or location the narrative establishes.
-  "the antagonist is named Vren", "the village is called Thornfield".
+- `event` — something that has happened. e.g. "the bridge collapsed last week".
+- `state` — a current condition. e.g. "the village is under curfew".
+- `entity` — an introduced NPC, object, or location. e.g. "the antagonist is named Vren".
 
-=== SCOPE ===
-- Record only facts a new DM would need to know that are not on the character
-  sheet (no HP, no inventory, no skill ranks).
-- Canonical, self-contained phrasing: same fact must retrieve for paraphrased
-  future intents.
-- Spoilers ARE in scope. The author wrote them; runtime retrieval will surface
-  them when topically relevant. That trade-off is accepted (Decision 8).
+`entities` per fact: flat array of the proper nouns the fact references —
+names of NPCs, items, or places. e.g. `["Vren", "Thornfield"]`. Empty array
+if none.
 
 === INPUTS ===
---- Premise (spoiler-bearing — extract everything) ---
+--- Premise ---
 <%= @premise.to_s %>
-
 <% if @opening_message.to_s.strip.length.positive? -%>
---- Opening message (player-facing — overrides premise on direct conflicts) ---
+
+--- Opening message ---
 <%= @opening_message.to_s %>
 <% end -%>
 
@@ -46,5 +42,4 @@ Respond ONLY with valid JSON (no markdown, no code fences):
   "reasoning": "..."
 }
 
-If the premise + opening establish no durable facts, return
-`{"facts": [], "reasoning": "..."}`.
+If nothing durable, return `{"facts": [], "reasoning": "..."}`.
