@@ -49,7 +49,7 @@ module DungeonMaster
           [raw, @ai.parse_json(raw)]
         end
 
-        result = build_evaluation_result(parsed: parsed, intention: intention)
+        result = build_roll_request_evaluation_result(parsed: parsed, intention: intention)
 
         warn_on_invented_rule_slug!(parsed, rules)
         log_roll_request_to_loop(result)
@@ -58,7 +58,7 @@ module DungeonMaster
         result
       end
 
-      def build_evaluation_result(parsed:, intention:)
+      def build_roll_request_evaluation_result(parsed:, intention:)
         parsed = (parsed || {}).deep_symbolize_keys
         @log&.play_log!(
           'roll_request_build_eval',

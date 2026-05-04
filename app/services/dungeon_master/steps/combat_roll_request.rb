@@ -44,14 +44,14 @@ module DungeonMaster
           [raw, @ai.parse_json(raw)]
         end
 
-        result = build_evaluation_result(parsed: parsed, intention: intention)
+        result = build_combat_roll_request_evaluation_result(parsed: parsed, intention: intention)
 
         log_combat_roll_request_to_loop(result)
         Rolls::PlayerRolls.compute_take_values!(result.player_rolls, sheet: @sheet)
         result
       end
 
-      def build_evaluation_result(parsed:, intention:)
+      def build_combat_roll_request_evaluation_result(parsed:, intention:)
         parsed = (parsed || {}).deep_symbolize_keys
         rolls = needs_roll?(parsed) ? [normalize_combat_roll(parsed[:roll], parsed[:mechanical_summary])] : []
 
