@@ -4,8 +4,6 @@ module Admin
   class AdventuresController < BaseController
     before_action :set_adventure, only: [:show, :update, :reset_context, :update_sheet, :update_story_element, :destroy]
 
-    CONTEXT_FIELDS = %w[combat].freeze
-
     def index
       @show_discarded = params[:discarded] == "1"
       @adventures = Adventure.admin_index_includes.recently_updated
@@ -41,13 +39,12 @@ module Admin
     end
 
     def reset_context
-      field = params[:context_field].to_s
-      unless CONTEXT_FIELDS.include?(field)
-        return redirect_to admin_adventure_path(@adventure), alert: "Unknown context: #{field}"
+      unless params[:context_field].to_s == "combat"
+        return redirect_to admin_adventure_path(@adventure), alert: "Unknown context: #{params[:context_field]}"
       end
 
-      @adventure.update!("#{field}_context" => {})
-      redirect_to admin_adventure_path(@adventure), notice: "#{field.titleize} context reset to {}."
+      @adventure.update!(combat_context: {})
+      redirect_to admin_adventure_path(@adventure), notice: "Combat context reset to {}."
     end
 
     def update_sheet
@@ -115,7 +112,7 @@ module Admin
 
     def update_context
       field = params[:context_field].to_s
-      unless CONTEXT_FIELDS.include?(field)
+      unless field == "combat"
         respond_to do |format|
           format.html { redirect_to admin_adventure_path(@adventure), alert: "Unknown context: #{field}" }
           format.json { render json: { error: "Unknown context: #{field}" }, status: :unprocessable_entity }
@@ -124,10 +121,10 @@ module Admin
       end
 
       value = params[:context_value].present? ? JSON.parse(params[:context_value]) : {}
-      @adventure.update!("#{field}_context" => value)
+      @adventure.update!(combat_context: value)
       respond_to do |format|
-        format.html { redirect_to admin_adventure_path(@adventure), notice: "#{field.titleize} context updated." }
-        format.json { render json: { context_field: field, context_value: value }, status: :ok }
+        format.html { redirect_to admin_adventure_path(@adventure), notice: "Combat context updated." }
+        format.json { render json: { context_field: "combat", context_value: value }, status: :ok }
       end
     end
 
