@@ -146,7 +146,6 @@ the feedback loop must be fast: change a setting, observe the result,
 adjust.
 
 **Current toggles:**
-- `guardrail_mode` — code-based vs. AI-based validation
 - `sanitization_threshold` — danger score cutoff (0-100)
 - `verbose` / `pacing_words_min` / `pacing_words_max` — narration length
 - `temperature` — creativity/randomness
@@ -328,8 +327,6 @@ deleted rather than kept behind a dead toggle.
 
 When introducing a new approach, don't rip out the old one. Keep both
 paths alive behind a toggle and let observation determine which wins.
-
-- Code and AI guardrails coexist (`guardrail_mode` toggle)
 
 This principle is a direct consequence of principles 4 and 9: if you
 toggle everything and split incrementally, coexistence is the natural

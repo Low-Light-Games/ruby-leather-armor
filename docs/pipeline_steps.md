@@ -699,11 +699,9 @@ output. This violates Design Philosophy §15 and §17.
 **Decision:** rename CapabilityGuardrail to SanityChecker and split it
 into two sub-checks:
 
-**A) Capability Check** — validates that the player possesses the spells,
-feats, or items they reference. Runs on the mechanics path only. Two modes
-via `guardrail_mode`:
-- `"code"` (default): deterministic fuzzy-match against character sheet.
-- `"ai"`: AI prompt for holistic validation.
+**A) Capability Check** — AI prompt that validates the player possesses the
+spells, feats, or items they reference. Runs on the mechanics path only.
+The `guardrail_mode` code/AI toggle was retired; capability is AI-only now.
 
 **B) World Consistency Check** — validates that the entities, targets, or
 objects the player references actually exist in the current scene. AI-only
@@ -1248,7 +1246,6 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `step_models[step]` | `{}` | Per-step model override |
 | `token_budgets[step]` | `nil` (no limit) | Per-step max completion tokens - defaults to no limit; set specific values only as safety kill switches |
 | `action_queue` | `"progressive"` | Controls action splitting and narrative delivery. `false` — no splitting; `"progressive"` — split compound inputs, stream each action's narrative immediately via `pipeline_action_result` WebSocket events; `"progressive_continuity"` — as progressive, plus each action is narrated with prior action outcomes from `AdventureLoop` injected into the narrate prompt. Per-adventure override: `dm_settings["action_queue"]`. |
-| `guardrail_mode` | `"code"` | `"code"` (deterministic) or `"ai"` (prompt-based) |
 | `creature_creation_fallback` | `"ai"` | `"ai"` (bestiary + AI gen), `"template"` (bestiary + generic stats), `"none"` |
 | `scene_history_depth` | `10` | Number of scene summaries retained for world consistency checks |
 | `skip_world_sanity_check` _(per-adventure attribute)_ | `false` | Per-adventure toggle set at creation time. When on, the world consistency check is bypassed on both the mechanical and non-mechanical resolution paths. The capability check always runs. |
