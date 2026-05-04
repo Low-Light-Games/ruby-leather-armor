@@ -60,21 +60,13 @@ module DungeonMaster
 
       def build_roll_request_evaluation_result(parsed:, intention:)
         parsed = (parsed || {}).deep_symbolize_keys
-        @log&.play_log!(
-          'roll_request_build_eval',
-          "build_evaluation_result destination=#{parsed[:destination].inspect}",
-          parsed_response: { parsed_keys: parsed.keys.map(&:to_s),
-                             destination: parsed[:destination],
-                             needs_roll: parsed[:needs_roll],
-                             intention: intention },
-        )
         rolls = if needs_roll?(parsed)
                   [normalize_roll(parsed[:roll], mechanical_summary: parsed[:mechanical_summary])]
                 else
                   []
                 end
 
-        result = EvaluationResult.new(
+        EvaluationResult.new(
           intention: intention,
           destination: parsed[:destination],
           combat_transition: parsed[:transition],
@@ -83,15 +75,6 @@ module DungeonMaster
           consequences: DungeonMaster::Rolls::Consequences.normalize(parsed[:consequences]),
           mechanical_summary: parsed[:mechanical_summary].to_s.presence || '(no mechanical summary)'
         )
-
-        @log&.play_log!(
-          'roll_request_eval_result',
-          "EvaluationResult.destination=#{result.destination.inspect}",
-          parsed_response: { result_destination: result.destination,
-                             intent_destination: result.to_intent_hash[:destination] },
-        )
-
-        result
       end
 
       def needs_roll?(parsed)

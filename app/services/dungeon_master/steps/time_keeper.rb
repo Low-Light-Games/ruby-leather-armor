@@ -26,24 +26,20 @@ module DungeonMaster
       private
 
       def run_time_keeper(intent, verdict_result)
-        @log&.play_log!(
-          "time_keeper_intent_snapshot",
-          "TimeKeeper entry — destination=#{(intent[:destination] || intent['destination']).inspect}",
-          parsed_response: {
-            intent_keys: intent.keys.map(&:to_s),
-            destination_sym: intent[:destination],
-            destination_str: intent['destination'],
-            intention: intent[:intention] || intent['intention'],
-          },
-        )
         estimated = estimate_time(intent, verdict_result)
         @log.log!(:info, "TimeKeeper: estimated=#{estimated[:hours].round(4)}h, source=#{estimated[:source]}")
 
         unless estimated[:source] == :ai
-          @log.play_log!("time_keeper", "#{estimated[:hours].round(4)}h (#{estimated[:source]})",
-                         parsed_response: { source: estimated[:source],
-                                            hours: estimated[:hours].round(4),
-                                            journey_data: estimated[:journey_data] }.compact)
+          @log.ai_log!(
+            "time_keeper",
+            "#{estimated[:hours].round(4)}h (#{estimated[:source]})",
+            nil,
+            { source: estimated[:source],
+              hours: estimated[:hours].round(4),
+              journey_data: estimated[:journey_data] }.compact,
+            parse_status: "pipeline_event",
+            request_body: deterministic_step_inputs(intent, verdict_result),
+          )
         end
 
         time_loop_data = { "hours_elapsed" => estimated[:hours].round(4), "time_source" => estimated[:source].to_s }
@@ -105,16 +101,13 @@ module DungeonMaster
 
       def try_journey_estimate(intent)
         raw_destination = intent[:destination] || intent["destination"]
-        return journey_skipped("no destination on intent", intent) if raw_destination.blank?
+        return nil if raw_destination.blank?
 
         destination = resolve_destination(raw_destination)
-        return journey_skipped("destination did not resolve to an adventure_location",
-                               intent, raw_destination: raw_destination) unless destination
+        return nil unless destination
 
         origin = origin_adventure_location
-        return journey_skipped("origin (current_location) not set",
-                               intent, raw_destination: raw_destination,
-                               destination_name: destination.name) unless origin
+        return nil unless origin
 
         unless @sheet&.derived_stats
           raise ArgumentError, "Character sheet or derived_stats missing for journey calculation"
@@ -126,12 +119,7 @@ module DungeonMaster
         distance_miles = euclidean_distance_in_miles(origin, destination)
 
         speed_mph = compute_journey_speed(base_speed_ft, terrain)
-        if speed_mph <= 0
-          return journey_skipped("speed_mph <= 0",
-                                 intent, raw_destination: raw_destination,
-                                 destination_name: destination.name,
-                                 base_speed_ft: base_speed_ft, terrain: terrain)
-        end
+        return nil if speed_mph <= 0
 
         hours = distance_miles / speed_mph
 
@@ -157,19 +145,6 @@ module DungeonMaster
         }
       end
 
-      def journey_skipped(reason, intent, **details)
-        @log&.play_log!(
-          "time_keeper_journey_skipped",
-          "Journey-code branch bailed: #{reason}",
-          parsed_response: { reason: reason, intent_keys: intent.keys.map(&:to_s),
-                             intent_destination: intent[:destination] || intent["destination"],
-                             current_location_id: @adventure&.current_location_id,
-                             current_location_name: @adventure&.current_location&.name,
-                             **details },
-        )
-        nil
-      end
-
       def origin_adventure_location
         @adventure.current_location
       end
@@ -179,6 +154,37 @@ module DungeonMaster
         dy = destination.y - origin.y
         unit_distance = Math.sqrt(dx * dx + dy * dy)
         unit_distance * @adventure.coordinate_scale.to_f
+      end
+
+      # Captured into the deterministic ai_log's request_body so admins can
+      # debug branch selection / numeric inputs the same way they read AI
+      # call parameters.
+      def deterministic_step_inputs(intent, verdict_result)
+        loc = @adventure.current_location
+        {
+          intent: {
+            intention: intent[:intention] || intent["intention"],
+            destination: intent[:destination] || intent["destination"],
+            transition: intent[:transition] || intent["transition"],
+            macro_significant: intent[:macro_significant] || intent["macro_significant"],
+            combat_combatants: intent[:combat_combatants] || intent["combat_combatants"],
+            combat_ending: intent[:combat_ending] || intent["combat_ending"],
+          }.compact,
+          verdict: verdict_result,
+          sheet: @sheet ? {
+            speed: @sheet.derived_stats&.dig("speed"),
+            encumbrance: @sheet.derived_stats&.dig("encumbrance"),
+          } : nil,
+          adventure: {
+            id: @adventure.id,
+            current_location_id: @adventure.current_location_id,
+            current_location_name: loc&.name,
+            current_location_xy: loc ? [loc.x, loc.y] : nil,
+            coordinate_scale: @adventure.coordinate_scale.to_f,
+            world_terrain: @adventure.story&.world_terrain,
+            combat_active: effective_combat_active_for_timekeeper?,
+          },
+        }
       end
 
       def try_combat_estimate
