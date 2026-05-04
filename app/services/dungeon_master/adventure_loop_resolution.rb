@@ -39,7 +39,7 @@ module DungeonMaster
         player_rolls: result.player_rolls,
         npc_actions: [],
         consequences: result.consequences,
-        mechanical_summaries: ["[#{result.primary_domain.to_s.upcase}] #{result.mechanical_summary}"]
+        mechanical_summaries: [result.mechanical_summary.to_s].reject(&:empty?)
       }
       Rolls::PlayerRolls.deduplicate_rolls!(merged, log: @log)
       Rolls::PlayerRolls.filter_auto_success_rolls!(merged, log: @log, sheet: @sheet)
@@ -150,8 +150,7 @@ module DungeonMaster
         source_id: attack_roll[:source_id],
         damage: attack_roll[:damage],
         damage_type: attack_roll[:damage_type],
-        target: attack_roll[:target],
-        domain: attack_roll[:domain]
+        target: attack_roll[:target]
       }.compact
     end
 

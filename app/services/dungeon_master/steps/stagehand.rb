@@ -138,20 +138,11 @@ module DungeonMaster
       def maybe_initialize_combat(intent)
         return nil if stagehand_combat_active?
 
-        domain_results = intent[:domain_results]
-        return nil unless domain_results.is_a?(Hash)
+        transition = intent[:transition] || intent["transition"]
+        return nil unless combat_transition?(transition)
 
-        combatants = []
-        domain_results.each_value do |beacon|
-          next unless beacon.is_a?(Hash)
-
-          transition = beacon[:transition] || beacon["transition"]
-          next unless combat_transition?(transition)
-
-          combatants.concat(Array(beacon[:combatants] || beacon["combatants"]))
-        end
-
-        combatants = combatants.map(&:to_s).reject(&:blank?).uniq
+        combatants = Array(intent[:combat_combatants] || intent["combat_combatants"])
+                       .map(&:to_s).reject(&:blank?).uniq
         return nil if combatants.empty?
 
         Utilities::Warmaster.initialize_from_names!(

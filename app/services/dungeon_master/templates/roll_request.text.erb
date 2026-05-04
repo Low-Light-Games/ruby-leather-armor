@@ -35,8 +35,6 @@ Set `needs_roll: false` with `no_roll_reason: "no rule retrieved"`.
 
 <% end -%>
 === OTHER FIELDS ===
-- `affected_domains`: which of {combat, traversal, social, exploration,
-  rest, inventory, buff} this action touches.
 - `transition`: "combat_started" + populated `combatants` only when the
   action initiates combat with hostiles. Null/empty otherwise.
 - `ability_use_claimed`: a spell/feat/item the player named explicitly.
@@ -59,7 +57,6 @@ Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
     "situational_modifiers": [{ "source": "rough water", "modifier": -2 }],
     "rule_slug": "swim"
   },
-  "affected_domains": ["traversal"],
   "transition": null,
   "combatants": [],
   "destination": null,

@@ -59,9 +59,7 @@ module DungeonMaster
 
         {
           intention: intents.map { |i| i[:intention] }.compact.join("; "),
-          affected_contexts: intents.flat_map { |i| Array(i[:affected_contexts]) }.uniq,
-          macro_significant: intents.any? { |i| i[:macro_significant] },
-          domain_results: intents.last[:domain_results]
+          macro_significant: intents.any? { |i| i[:macro_significant] }
         }
       end
       private_class_method :merge_result_intents

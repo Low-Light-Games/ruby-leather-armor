@@ -78,7 +78,7 @@ We accepted this because correctness and debuggability matter more than
 speed for a turn-based game, and per-step model selection recovers most
 of the cost overhead by using cheap models on cheap steps.
 
-**Current path:** `AdventureLoopResolution#resolve` dispatches deterministically on combat state — out of combat → `Steps::RollRequest`, in combat → `Steps::CombatRollRequest`. Both are single AI calls that emit a single roll spec (or "no roll") plus the cross-cutting signals downstream code consumes (affected_contexts, expand_scene, transition, combatants, destination). UnifiedEvaluation and ParallelEvaluation have both been retired — see Decision 4.
+**Current path:** `AdventureLoopResolution#resolve` dispatches deterministically on combat state — out of combat → `Steps::RollRequest`, in combat → `Steps::CombatRollRequest`. Both are single AI calls that emit a single roll spec (or "no roll") plus the cross-cutting signals downstream code consumes (transition, combatants, destination). UnifiedEvaluation and ParallelEvaluation have both been retired — see Decision 4.
 
 ### 2. Combat context plus pgvector stores instead of six JSONB context blobs
 
@@ -1049,7 +1049,7 @@ Interrupted queues (encounter, social scene, roll request) fall back to the accu
 
 | Component | AI? | Notes |
 |---|---|---|
-| RollRequest | ✅ AI ×1 | Out-of-combat single call. Top-K rules + scene beats from pgvector; no character block. Emits one roll spec or "no roll" plus cross-cutting signals (affected_contexts, expand_scene, transition, combatants, destination) |
+| RollRequest | ✅ AI ×1 | Out-of-combat single call. Top-K rules + scene beats from pgvector; no character block. Emits one roll spec or "no roll" plus cross-cutting signals (transition, combatants, destination) |
 | CombatRollRequest | ✅ AI ×1 + ❌ code clamping (`Phases::CombatMechanicResolution`) | Combat-active free-text. Carries attack options, action economy, threats, battlefield text. Emits `attack_option_id` (never DC) for combat rolls; Ruby resolves attack mode, defense kind, damage metadata, and AC / save DCs from the sheet |
 | Mechanic | ✅ AI | Post-roll arbitration + structured mutations when combat is not active. No-roll actions resolve through this same step with `rolls: []`. |
 | Combat GM | ✅ AI | Post-roll arbitration during **active combat** (battlefield slice + PF1e combat guidance); emits `battlefield_patches` + `action_economy_delta` |

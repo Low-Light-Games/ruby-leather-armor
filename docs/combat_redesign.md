@@ -105,10 +105,10 @@ and [`phases/combat_mechanic_resolution.rb`](../app/services/dungeon_master/step
    roll lands but lacks `damage`/`source_type`/etc. With deterministic
    resolution, this whole path becomes unreachable and gets deleted in
    PR-I.
-4. **Combat-start hand-off** —
-   `intent[:domain_results]["combat"][:transition]` + `combatants`
-   triggers Warmaster prep. RollRequest's adapter already mirrors this
-   shape, so combat START via RollRequest already works. No change here.
+4. **Combat-start hand-off** — `intent[:transition]` + `intent[:combat_combatants]`
+   triggers Warmaster prep. RollRequest emits these flat keys directly
+   on the intent hash, so combat START via RollRequest works without
+   any adapter.
 
 ---
 

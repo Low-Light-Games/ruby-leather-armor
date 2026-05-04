@@ -19,8 +19,6 @@ module DungeonMaster
       BEATS_TOP_K = 6
       DEFAULT_PROMPT_PROGRESS = 'Adjudicating your move...'
 
-      DOMAIN_PRIORITY = %w[combat buff social traversal exploration rest inventory].freeze
-
       private
 
       def run_combat_roll_request(intention)
@@ -56,12 +54,10 @@ module DungeonMaster
 
       def build_evaluation_result(parsed:, intention:)
         parsed = (parsed || {}).deep_symbolize_keys
-        affected = ordered_affected_domains(parsed[:affected_domains])
         rolls = needs_roll?(parsed) ? [normalize_combat_roll(parsed[:roll], parsed[:mechanical_summary])] : []
 
         EvaluationResult.new(
           intention: intention,
-          affected_contexts: affected,
           player_rolls: rolls,
           consequences: Array(parsed[:consequences]).map(&:to_s).reject(&:blank?),
           mechanical_summary: parsed[:mechanical_summary].to_s.presence || '(no mechanical summary)'
@@ -93,7 +89,7 @@ module DungeonMaster
           parsed_response: { raw: raw }
         )
         {
-          type: raw[:type], domain: 'combat',
+          type: raw[:type],
           description: raw[:description].presence || '(combat roll)',
           rule_slug: raw[:rule_slug], dc: nil,
           error: e.message
@@ -107,7 +103,6 @@ module DungeonMaster
           save: raw[:save],
           dc: raw[:dc],
           description: raw[:description].presence || mechanical_summary.to_s.presence || '(no description)',
-          domain: 'combat',
           rule_slug: raw[:rule_slug],
           take_10_eligible: raw[:take_10_eligible] == true,
           take_20_eligible: raw[:take_20_eligible] == true,
@@ -127,30 +122,24 @@ module DungeonMaster
         )
       end
 
-      def ordered_affected_domains(raw)
-        domains = Array(raw).map { |d| d.to_s.downcase }.reject(&:blank?).uniq
-        domains << 'combat' unless domains.include?('combat')
-        DOMAIN_PRIORITY.select { |d| domains.include?(d) } + (domains - DOMAIN_PRIORITY)
-      end
-
       def log_combat_roll_request_to_loop(result)
         return unless @loop
 
         rolls_desc = describe_player_rolls(result.player_rolls)
 
         @loop.batch_update!(
-          new_data: { 'affected_contexts' => result.affected_contexts, 'combat_roll_request' => true },
+          new_data: { 'combat_roll_request' => true },
           new_status: 'resolving',
-          timeline_entry: combat_roll_request_timeline_entry(result.affected_contexts, rolls_desc)
+          timeline_entry: combat_roll_request_timeline_entry(rolls_desc)
         )
       end
 
       def describe_player_rolls(rolls)
-        rolls.map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc] || '?'} (#{r[:domain]})" }.join(', ')
+        rolls.map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc] || '?'}" }.join(', ')
       end
 
-      def combat_roll_request_timeline_entry(affected, rolls_desc)
-        CombatRollRequest::TimelineEntry.new(affected: affected, rolls_desc: rolls_desc).to_h
+      def combat_roll_request_timeline_entry(rolls_desc)
+        CombatRollRequest::TimelineEntry.new(rolls_desc: rolls_desc).to_h
       end
     end
   end

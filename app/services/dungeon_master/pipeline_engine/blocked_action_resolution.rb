@@ -14,9 +14,7 @@ module DungeonMaster
           status: :resolved,
           intent: {
             intention: @action_text,
-            affected_contexts: Array(@prior_intent[:affected_contexts]),
-            macro_significant: @prior_intent[:macro_significant] == true,
-            domain_results: @prior_intent[:domain_results].is_a?(Hash) ? @prior_intent[:domain_results] : {}
+            macro_significant: @prior_intent[:macro_significant] == true
           },
           mutations: {},
           action_outcome: @action_outcome

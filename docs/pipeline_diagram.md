@@ -278,7 +278,7 @@ The first AI call. Every message passes through this gate.
 
 If Intake sets `is_dm_query = true`, or the controller passes `mode: "dm_query"`:
 
-1. A stub `intent` is created with empty `affected_contexts`.
+1. A stub `intent` is created with no transition / combatants / destination.
 2. **DM Query** (`run_dm_query`) produces the answer using top-K retrieved facts (`Lore::FactsLookup`) as framing.
 3. Returns `{ action: :dm_query, answer: ... }` — no context updates, no time advancement.
 
@@ -329,9 +329,9 @@ The inner pipeline entry point. Dispatches deterministically on combat state:
   sheet + grid.
 
 Both steps return an {EvaluationResult} value object holding
-`intention`, `affected_contexts`, `primary_domain`, `destination`,
-`combat_transition`, `combat_combatants`, `player_rolls`, `consequences`,
-`mechanical_summary`, plus predicates (`affected?`, `combat_starting?`).
+`intention`, `destination`, `combat_transition`, `combat_combatants`,
+`player_rolls`, `consequences`, `mechanical_summary`, plus the
+`combat_starting?` predicate.
 
 The previous 3-phase ParallelEvaluation chain (beacon → mechanical_evaluation
 → roll_qualifier via the Node evaluator's `/fan_out` and `/sequential`)
