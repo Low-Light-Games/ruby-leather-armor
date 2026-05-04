@@ -182,12 +182,11 @@ if ENV['STUB_OPENAI'].present?
     case step
     when 'sanity_checker_world' then { 'consistent' => true, 'reason' => nil, 'dm_message' => nil }
     when 'sanity_checker' then { 'allowed' => true, 'reason' => nil }
-    when 'micro_context_update' then { 'context_updates' => {} }
     when 'macro_narrative_update' then { 'story_summary' => 'Stub summary.' }
-    when 'meta_context_update'
-      { 'scene_summary' => 'Stub scene summary.', 'new_creatures' => [], 'context_wishes' => [] }
+    when 'combat_context_update' then { 'combat_context' => {} }
+    when 'scene_update' then { 'scene_summary' => 'Stub scene summary.', 'new_creatures' => [] }
+    when 'loremaster' then { 'facts' => [], 'invalidates' => [], 'reasoning' => 'Stub.' }
     when 'narrate' then { 'narrative' => 'The adventurer moves with purpose through the dungeon.' }
-    when /\A[a-z]+_context_update\z/ then { 'unchanged' => true, 'context' => {} }
     else
       {}
     end

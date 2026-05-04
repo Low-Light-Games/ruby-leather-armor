@@ -23,10 +23,6 @@ module DungeonMaster
       @on_sheet_update&.call
     end
 
-    def resolve_npc_actions(npc_actions)
-      NpcActionSummary.format(sheet: @sheet, npc_actions: npc_actions)
-    end
-
     def handle_new_creatures(creature_names)
       CreatureSpawn.new(
         adventure: @adventure,

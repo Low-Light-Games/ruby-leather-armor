@@ -1023,8 +1023,7 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | 4 | **SanityChecker** | AI (parallel, mechanical path) | `app/services/dungeon_master/steps/sanity_checker.rb` |
 | 5 | **Mechanic** | AI (mechanical path, non-combat or inactive combat) | `app/services/dungeon_master/steps/mechanic.rb` |
 | 5′ | **Combat GM** | AI (mechanical path, **active combat** — `combat_active?`) | `app/services/dungeon_master/steps/combat_gm.rb`, `templates/combat_gm.text.erb` |
-| 5a.5 | **World Turn** | Code orchestration | `app/services/dungeon_master/steps/world_turn.rb`, `app/services/dungeon_master/world_turn/*.rb` |
-| 5a.5-i | **↳ npc_action** | AI ×N (parallel `/fan_out`; code applies sequentially) | `app/services/dungeon_master/steps/world_turn.rb`, `app/services/dungeon_master/world_turn/npc_action_prompt.rb` |
+| 5a.5 | **World Turn** | Code orchestration (consumes `npc_actions` emitted by Combat GM) | `app/services/dungeon_master/steps/world_turn.rb`, `app/services/dungeon_master/world_turn/*.rb` |
 | 5b | **TimeKeeper** | Code-first, AI fallback | `app/services/dungeon_master/steps/time_keeper.rb` |
 | -- | **Harbinger** (utility) | Code + optional AI | `app/services/dungeon_master/utilities/harbinger.rb` |
 | -- | **Warmaster** (utility) | Code + optional AI | `app/services/dungeon_master/utilities/warmaster.rb` |
@@ -1050,8 +1049,8 @@ Interrupted queues (encounter, social scene, roll request) fall back to the accu
 | CombatRollRequest | ✅ AI ×1 + ❌ code clamping (`Phases::CombatMechanicResolution`) | Combat-active free-text. Carries attack options, action economy, threats, battlefield text. Emits `attack_option_id` (never DC) for combat rolls; Ruby resolves attack mode, defense kind, damage metadata, and AC / save DCs from the sheet |
 | Mechanic | ✅ AI | Post-roll arbitration + structured mutations when combat is not active. No-roll actions resolve through this same step with `rolls: []`. |
 | Combat GM | ✅ AI | Post-roll arbitration during **active combat** (battlefield slice + PF1e combat guidance); emits `battlefield_patches` + `action_economy_delta` |
-| World Turn (orchestration) | ❌ Code | Shared-snapshot NPC turn orchestration, sequential dice + mutation application in initiative order, combat advancement, and combat-end handling |
-| NPC Action (individual decisions) | ✅ AI ×N | One Node `/fan_out` batch (parallel AI) against the same live combat snapshot; code resolves and applies per NPC in order |
+| World Turn (orchestration) | ❌ Code | Sequential NPC dice + mutation application in initiative order, combat advancement, and combat-end handling. Consumes `npc_actions` already emitted by Combat GM. |
+| NPC Action (individual decisions) | ✅ AI (folded into Combat GM) | The single `combat_gm` AI call returns `npc_actions[]` alongside the player's outcome; no separate per-NPC fan-out. |
 | TimeKeeper (journey / combat / rest / take_20) | ❌ Code | Deterministic formulas |
 | TimeKeeper (fallback freeform estimate) | ✅ AI | Used only when no code rule applies |
 | Harbinger / GameClock / Warmaster turn ordering | ❌ Code | Encounter math, clock math, and deterministic combat state transitions |
@@ -1060,11 +1059,12 @@ Interrupted queues (encounter, social scene, roll request) fall back to the accu
 ### 5. World Turn after player resolution in active combat
 
 **Decision:** after a player's action resolves in active combat, the pipeline runs a
-code-owned **World Turn** phase before narration. World Turn computes which NPCs
-act, asks all acting NPCs what they do from the same live combat snapshot (one
-parallel `/fan_out`), then applies dice and mutations **in initiative order** in
-code (stopping early if the player dies, is incapacitated, or combat ends), and
-emits deterministic `combat_state_advancement` for ContextUpdate to write.
+code-owned **World Turn** phase before narration. The Combat GM AI call already
+emits `npc_actions[]` alongside the player's outcome (one AI call covers both),
+and World Turn applies those NPC decisions' dice and mutations **in initiative
+order** in code (stopping early if the player dies, is incapacitated, or combat
+ends), then emits deterministic `combat_state_advancement` for ContextUpdate to
+write.
 
 **Why:** the previous combat flow treated combat like any other action: one
 player message in, one outcome out. That left three correctness gaps:
@@ -1074,20 +1074,14 @@ player message in, one outcome out. That left three correctness gaps:
 - player-facing damage from NPC turns had no deterministic owner
 
 World Turn fixes that by separating **combat orchestration** from **individual NPC
-judgment**. Code decides who acts and when; AI decides what a given NPC tries to
-do on its turn.
+judgment**. Code decides who acts and when; the Combat GM AI call decides what
+each NPC tries to do, all emitted in one structured response.
 
-**Why NPC actions are parallelized from one shared snapshot:** the desired combat
-model is that all NPCs choose their actions for the round "at once" with respect
-to AI judgment, then code resolves the resulting dice and mutations. This keeps
-the Node `/fan_out` latency win (one batch instead of N sequential evaluator
-round-trips).
-
-**Trade-off accepted:** NPC prompts do not see each other's *chosen* actions—only
-the shared pre-turn snapshot. Code still applies outcomes in initiative order and
-stops applying further NPC consequences if combat ends or the player is
-dead/incapacitated mid-round, so later NPCs do not keep damaging a resolved
-encounter.
+**Trade-off accepted:** NPCs share one AI call's view of the pre-resolution state
+rather than seeing each other's chosen actions. Code still applies outcomes in
+initiative order and stops applying further NPC consequences if combat ends or
+the player is dead/incapacitated mid-round, so later NPCs do not keep damaging a
+resolved encounter.
 
 When `instant_death` is disabled, World Turn also owns PF1e-style dying bleed-out:
 code applies the per-round HP loss and stabilization check before NPC fan-out,
