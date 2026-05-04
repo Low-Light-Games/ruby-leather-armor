@@ -45,7 +45,7 @@ module DungeonMaster
       return if missing.empty?
 
       vectors = log.timed_embedding_call(
-        "#{source} batch — #{missing.length} text(s)",
+        batch_summary(source, missing),
         model_used: model,
         source:     source,
         ai:         ai,
@@ -61,6 +61,15 @@ module DungeonMaster
     end
 
     private
+
+    # Embed truncated previews of every text in the batch into the
+    # summary so Admin > Play Logs can still tell *what* was embedded
+    # at a glance — matching the per-lookup `RulesLookup query — …`
+    # convention rather than degrading to an opaque count.
+    def batch_summary(source, texts)
+      previews = texts.map { |t| t.truncate(60) }.join(' | ')
+      "#{source} batch [#{texts.length}] — #{previews}".truncate(280)
+    end
 
     def key_for(text, model, dimensions)
       [text.to_s, model.to_s, dimensions]

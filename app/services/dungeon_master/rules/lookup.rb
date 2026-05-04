@@ -60,6 +60,11 @@ module DungeonMaster
       end
 
       def embed_query
+        cache = embedding_cache
+        if cache&.has?(text: @query_text, model: embedding_model, dimensions: embedding_dimensions)
+          return cache.get(text: @query_text, model: embedding_model, dimensions: embedding_dimensions)
+        end
+
         vectors = @log.timed_embedding_call(
           "RulesLookup query — #{@query_text.truncate(80)}",
           model_used: embedding_model,
@@ -69,7 +74,14 @@ module DungeonMaster
           @ai.embeddings(**embeddings_kwargs)
         end
 
-        vectors.first
+        vector = vectors.first
+        cache&.store(text: @query_text, model: embedding_model,
+                     dimensions: embedding_dimensions, vector: vector)
+        vector
+      end
+
+      def embedding_cache
+        @log.respond_to?(:embedding_cache) ? @log.embedding_cache : nil
       end
 
       def embeddings_kwargs

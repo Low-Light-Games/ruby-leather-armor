@@ -75,6 +75,24 @@ RSpec.describe DungeonMaster::EmbeddingCache do
       cache.warm!(texts: ['alpha'], model: 'm', ai: ai, log: log, source: 'test')
     end
 
+    it 'logs a summary that includes truncated previews of every text in the batch' do
+      captured_summary = nil
+      allow(log).to receive(:timed_embedding_call) do |summary, **_kw, &block|
+        captured_summary = summary
+        block.call
+      end
+      allow(ai).to receive(:embeddings).and_return([vector_a, vector_b])
+
+      cache.warm!(
+        texts: ['look at the door', 'shove the orc'],
+        model: 'm', ai: ai, log: log, source: 'scene_retrieval_prewarm',
+      )
+
+      expect(captured_summary).to include('scene_retrieval_prewarm batch [2]')
+      expect(captured_summary).to include('look at the door')
+      expect(captured_summary).to include('shove the orc')
+    end
+
     it 'forwards the dimensions option to the embeddings call and the cache key' do
       expect(ai).to receive(:embeddings)
         .with(texts: %w[alpha], model: 'm', dimensions: 1536)

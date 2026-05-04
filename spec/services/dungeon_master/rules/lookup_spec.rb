@@ -73,6 +73,24 @@ RSpec.describe DungeonMaster::Rules::Lookup do
     expect(described_class.call(ai: ai, log: log, query_text: 'hi')).to eq([])
   end
 
+  it 'reuses an embedding cached on the Logging instance instead of re-embedding' do
+    vec = Array.new(1536, 0.0).tap { |arr| arr[0] = 1.0 }
+    RuleEmbedding.create!(slug: 'climbing', domain: 'exploration', name: 'Climbing',
+                          brief: 'x', body: 'x', text_digest: 'a', embedding: vec)
+
+    cache = DungeonMaster::EmbeddingCache.new
+    cache.store(text: 'I climb the wall',
+                model: DmConfig.instance.narrative_facts_embedding_model,
+                vector: vec)
+    allow(log).to receive(:embedding_cache).and_return(cache)
+
+    expect(ai).not_to receive(:embeddings)
+    expect(log).not_to receive(:timed_embedding_call)
+
+    hits = described_class.call(ai: ai, log: log, query_text: 'I climb the wall', limit: 1)
+    expect(hits.first[:slug]).to eq('climbing')
+  end
+
   it 'logs a rules_retrieved play_log entry with hit shape' do
     vec = Array.new(1536, 0.0).tap { |arr| arr[0] = 1.0 }
     RuleEmbedding.create!(slug: 'climbing', domain: 'exploration', name: 'Climbing',
