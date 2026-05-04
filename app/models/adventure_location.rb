@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class AdventureLocation < ApplicationRecord
-  SOURCES = %w[seed runtime].freeze
+  SOURCES = %w[seed runtime encounter].freeze
 
   belongs_to :adventure
   belongs_to :story_location, optional: true

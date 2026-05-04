@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_03_210000) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_04_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -737,8 +737,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_03_210000) do
   add_foreign_key "adventure_sheet_spells", "spell_definitions", column: "spell_id"
   add_foreign_key "adventure_sheets", "adventures"
   add_foreign_key "adventure_sheets", "sheets"
+  add_foreign_key "adventures", "adventure_locations", column: "current_location_id", on_delete: :nullify
   add_foreign_key "adventures", "stories"
-  add_foreign_key "adventures", "story_locations", column: "current_location_id"
   add_foreign_key "adventures", "users"
   add_foreign_key "creature_sheet_feats", "creature_sheets"
   add_foreign_key "creature_sheet_feats", "feat_definitions", column: "feat_id"

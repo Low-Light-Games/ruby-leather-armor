@@ -21,14 +21,14 @@ module Adventures
       adventure = build_adventure!
       ensure_opening_message(adventure)
       run_narrative_facts_seed(adventure)
+      bind_starting_adventure_location!(adventure)
       adventure.reload
     end
 
     private
 
     def build_adventure!
-      stats     = StartingStats.new(@sheet)
-      start_loc = @story.starting_location
+      stats = StartingStats.new(@sheet)
 
       adventure = Adventure.create!(
         user:                    @user,
@@ -36,7 +36,6 @@ module Adventures
         dm_mode:                 "standard",
         directed_dm:             @directed_dm,
         skip_world_sanity_check: @skip_world_sanity_check,
-        current_location:        start_loc,
       )
 
       SheetCopier.new(adventure, @sheet,
@@ -47,14 +46,36 @@ module Adventures
       adventure
     end
 
+    def bind_starting_adventure_location!(adventure)
+      start_loc = @story.starting_location
+      return unless start_loc
+
+      adv_loc = AdventureLocation.where(adventure_id: adventure.id,
+                                        story_location_id: start_loc.id).first
+      adventure.update!(current_location_id: adv_loc.id) if adv_loc
+    end
+
     def ensure_opening_message(adventure)
       return if adventure.adventure_messages.exists?
+
+      jit_generate_opening_message_if_blank!
 
       adventure.adventure_messages.create!(
         role:         "dm",
         content:      @story.opening_message,
         message_type: "narrative",
       )
+    end
+
+    # Self-healing path for stories created before opening_message was
+    # required: generate one from the premise, persist it back to the
+    # story, then proceed. Subsequent adventures from the same story
+    # reuse the persisted value at no AI cost.
+    def jit_generate_opening_message_if_blank!
+      return if @story.opening_message.present?
+
+      DungeonMaster::Lore::GenerateOpeningMessage.call(story: @story, user: @user)
+      @story.reload
     end
 
     # SeedFromAdventure is lossy-with-Sentry internally; this rescue

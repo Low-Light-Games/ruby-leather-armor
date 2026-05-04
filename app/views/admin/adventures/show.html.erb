@@ -140,7 +140,7 @@
           <label>Location</label>
           <select name="adventure[current_location_id]" class="input-md">
             <option value="">— None —</option>
-            <% @adventure.story.story_locations.each do |loc| %>
+            <% AdventureLocation.for_adventure(@adventure).order(:name).each do |loc| %>
               <option value="<%= loc.id %>" <%= 'selected' if @adventure.current_location_id == loc.id %>><%= loc.name %></option>
             <% end %>
           </select>
@@ -245,7 +245,7 @@
       <tbody>
         <% @locations.each do |loc| %>
           <tr>
-            <td class="el-name"><%= loc.name %><%= ' ★' if @adventure.current_location_id == loc.id %></td>
+            <td class="el-name"><%= loc.name %><%= ' ★' if @adventure.current_location&.story_location_id == loc.id %></td>
             <td><%= loc.starting ? '✓' : '' %></td>
             <td class="el-desc"><%= truncate(loc.description || '', length: 80) %></td>
             <td>

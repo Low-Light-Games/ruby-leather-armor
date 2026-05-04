@@ -59,6 +59,8 @@ module DungeonMaster
         apply_fatigue_conditions(thresholds, time_ctx)
         expire_elapsed_buffs(time_ctx)
 
+        update_player_position!(estimated, harbinger_result, actual_hours)
+
         encounter = harbinger_result if harbinger_result[:stop_reason] == :encounter
 
         {
@@ -135,10 +137,7 @@ module DungeonMaster
       end
 
       def origin_adventure_location
-        return nil unless @adventure.current_location_id
-
-        AdventureLocation.for_adventure(@adventure)
-                         .find_by(story_location_id: @adventure.current_location_id)
+        @adventure.current_location
       end
 
       def euclidean_distance_in_miles(origin, destination)
@@ -329,6 +328,29 @@ module DungeonMaster
         scope = AdventureLocation.for_adventure(@adventure)
         scope.find_by("LOWER(name) = ?", destination_name.downcase) ||
           scope.where("LOWER(name) LIKE ?", "%#{destination_name.downcase}%").first
+      end
+
+      def update_player_position!(estimated, harbinger_result, actual_hours)
+        return unless estimated[:source] == :journey_code
+        return if estimated[:hours].to_f <= 0
+
+        from = origin_adventure_location
+        to   = resolve_destination(estimated[:journey_data][:destination])
+        return unless from && to
+
+        if harbinger_result[:interrupted]
+          fraction = actual_hours.to_f / estimated[:hours].to_f
+          site = Adventures::EncounterSiteCreator.create!(
+            adventure: @adventure, from: from, to: to,
+            fraction: fraction, ai: @ai, log: @log
+          )
+          @adventure.update!(current_location_id: site.id) if site
+        else
+          @adventure.update!(current_location_id: to.id)
+        end
+      rescue StandardError => e
+        @log.report_error(e, context: { step: "time_keeper.update_player_position",
+                                        adventure_id: @adventure&.id })
       end
 
       def compute_journey_speed(base_speed_ft, terrain)
