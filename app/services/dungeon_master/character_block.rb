@@ -48,9 +48,5 @@ module DungeonMaster
     def creature_stats_for(adventure)
       Presenters::CreatureSheetPromptPresenter.stats_lines_for_adventure(adventure)
     end
-
-    def creature_npc_action_prompt(creature_sheet)
-      Presenters::CreatureSheetPromptPresenter.new(creature_sheet).npc_action_prompt
-    end
   end
 end

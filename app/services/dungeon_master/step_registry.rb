@@ -52,8 +52,6 @@ module DungeonMaster
                                          default_model: 'gpt-5-nano', default_reasoning_effort: 'minimal'),
       'rules_retrieval' => Entry.new(token_budget: nil, model_hint: nil,
                                      pipeline: false),
-      'npc_action' => Entry.new(token_budget: 300, model_hint: H::NPC_ACTION,
-                                pipeline: true),
       'loremaster' => Entry.new(token_budget: nil, model_hint: H::LOREMASTER,
                                 pipeline: true),
       'embedding' => Entry.new(token_budget: nil, model_hint: nil,

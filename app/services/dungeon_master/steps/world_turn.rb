@@ -2,18 +2,18 @@
 
 module DungeonMaster
   module Steps
-    # World Turn: after the player's loop step resolves in active combat, runs
-    # initiative-ordered NPC actions (parallel AI from one shared snapshot; code resolves dice + mutations in order),
-    # emits +combat_state_advancement+ for ContextUpdate, and appends a short
-    # summary to +pipeline_outcome+.
+    # World Turn: after the player's loop step resolves in active combat, applies
+    # the NPC initiative-band actions emitted by the Combat GM (one AI call covers
+    # the whole round). Code resolves dice + mutations in initiative order, emits
+    # +combat_state_advancement+ for ContextUpdate, and appends a short summary
+    # to +pipeline_outcome+.
     #
     # Orchestration only — collaborators live in {DungeonMaster::WorldTurn} and
-    # {DungeonMaster::Rolls::CombatDice} (+ {CharacterBlock} for NPC prompt lines).
+    # {DungeonMaster::Rolls::CombatDice}.
     #
     # During combat, +pipeline_outcome+ is a full-round narration seed; see AccumulatedAssembly.
     module WorldTurn
       PIPELINE_OUTCOME_TRUNCATE = 2000
-      NPC_ACTION_LAST_OUTCOME_TRUNCATE = 800
 
       private
 
@@ -86,7 +86,8 @@ module DungeonMaster
         # Rows from live merge (same initiative order as calc); not raw CombatTurnCalculator objects.
         acting_npcs = filter_acting_npcs(calc[:npc_turns], working_ctx)
 
-        lines, early_stop = resolve_npc_turns_in_order(acting_npcs, working_ctx, result, instant_death: instant_death)
+        npc_action_plans = Array(result[:npc_actions])
+        lines, early_stop = resolve_npc_turns_in_order(acting_npcs, working_ctx, npc_action_plans, instant_death: instant_death)
 
         @on_sheet_update&.call
         reload_world_turn_records!
@@ -116,44 +117,47 @@ module DungeonMaster
         end
       end
 
-      # Fans out AI NPC action requests, then resolves them in initiative order against
+      # Resolves Combat-GM-emitted NPC action plans in initiative order against
       # live DB state. Returns [lines, early_stop].
-      def resolve_npc_turns_in_order(acting_npcs, working_ctx, result, instant_death:)
+      def resolve_npc_turns_in_order(acting_npcs, working_ctx, npc_action_plans, instant_death:)
         lines      = []
         early_stop = false
         return [lines, early_stop] unless acting_npcs.any?
 
-        intention    = result[:intent].is_a?(Hash) ? result[:intent][:intention].to_s : ""
-        last_outcome = @loop&.get("pipeline_outcome").to_s.truncate(NPC_ACTION_LAST_OUTCOME_TRUNCATE)
-        step_keys, by_step = request_npc_actions(acting_npcs, working_ctx, intention, last_outcome)
+        plans_by_id = index_plans_by_creature_sheet_id(npc_action_plans)
 
-        # AI decisions were made against working_ctx (frozen snapshot).
-        # Mutations are applied in initiative order against live DB state so each hit
+        # Plans are applied in initiative order against live DB state so each hit
         # is HP-clamped before the next NPC acts.
         acting_npc_ids = acting_npcs.map(&:creature_sheet_id)
         live_sheets    = @adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id)
 
-        acting_npcs.each_with_index do |npc, idx|
+        acting_npcs.each do |npc|
           # Liveness from the map; refreshed after each mutation cycle so a prior NPC's
           # action that incapacitates this one is visible here.
           live_sheet = live_sheets[npc.creature_sheet_id]
-          if npc_sheet_unavailable_or_eliminated?(live_sheet)
+          next if npc_sheet_unavailable_or_eliminated?(live_sheet)
+
+          plan = plans_by_id[npc.creature_sheet_id.to_i]
+          unless plan
+            @log.play_log!(
+              "world_turn_missing_plan",
+              "World turn: no plan emitted for #{npc.name} (creature_sheet_id=#{npc.creature_sheet_id}); skipping.",
+              parsed_response: { npc: npc.name, creature_sheet_id: npc.creature_sheet_id }
+            )
             next
           end
 
           reload_player_sheet!
-          entry  = evaluator_fan_out_result!(by_step, step_keys[idx], "npc_action")
-          parsed = (entry["parsed_response"] || {}).deep_symbolize_keys
 
           npc_action_result = DungeonMaster::WorldTurn::NpcActionResolver.resolve(
-            npc: npc, parsed: parsed, combat_ctx: working_ctx,
+            npc: npc, parsed: plan, combat_ctx: working_ctx,
             player_sheet: @sheet, adventure: @adventure)
           lines.concat(npc_action_result[:lines])
           npc_action_resolution_log_payload = DungeonMaster::WorldTurn::NpcActionResolutionLogPayload.new(
             npc_name: npc.name,
-            action: parsed[:action],
-            attack_modifier: parsed[:attack_modifier],
-            damage_dice: parsed[:damage_dice],
+            action: plan[:action],
+            attack_modifier: plan[:attack_modifier],
+            damage_dice: plan[:damage_dice],
             player_hp_delta: npc_action_result[:player_hp_delta],
             npc_mutations: npc_action_result[:npc_muts],
             lines: npc_action_result[:lines]
@@ -183,6 +187,20 @@ module DungeonMaster
         end
 
         [lines, early_stop]
+      end
+
+      # Combat GM emits one entry per acting NPC, keyed by creature_sheet_id.
+      # Symbolize so keys match the NpcActionResolver contract.
+      def index_plans_by_creature_sheet_id(plans)
+        Array(plans).each_with_object({}) do |raw, idx|
+          next unless raw.is_a?(Hash)
+
+          plan = raw.deep_symbolize_keys
+          id   = plan[:creature_sheet_id].to_i
+          next if id.zero?
+
+          idx[id] = plan
+        end
       end
 
       def build_result_with_combat_advancement(result, calc, base_ctx, early_stop)
@@ -239,19 +257,6 @@ module DungeonMaster
         end
 
         nil
-      end
-
-      # Builds one evaluator payload per acting NPC, fans them out in a single HTTP
-      # request, and returns [step_keys, by_step] for initiative-order resolution.
-      # step_keys is the authoritative ordered list; by_step is keyed by meta["step"].
-      def request_npc_actions(acting_npcs, working_ctx, intention, last_outcome)
-        payloads = acting_npcs.each_with_index.map do |npc, slot|
-          DungeonMaster::WorldTurn::NpcActionPrompt.evaluator_payload(
-            npc: npc, combat_ctx: working_ctx, slot: slot, config: @config,
-            adventure: @adventure, last_outcome: last_outcome)
-        end
-        step_keys = payloads.map { |p| p.delete(:step_key) }
-        [step_keys, evaluator_fan_out!(payloads, intention, phase: "npc_action")]
       end
 
       def reload_world_turn_records!

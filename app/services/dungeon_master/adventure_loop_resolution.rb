@@ -88,6 +88,7 @@ module DungeonMaster
       maybe_run_world_turn(
         status: :resolved, intent: intent,
         mutations: verdict_result[:mutations],
+        npc_actions: verdict_result[:npc_actions] || [],
         time_result: time_result,
         action_outcome: verdict_result[:outcome].to_s.presence,
         queue_resolution_context: {

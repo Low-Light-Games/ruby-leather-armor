@@ -64,8 +64,6 @@ module DungeonMaster
                         'voice independently of the default narrate step. Runs async via ' \
                         'CombatNarratorJob so it never blocks End Turn.'
 
-      NPC_ACTION = "#{FAST_CHEAP} Per-NPC combat action decision. Runs N in parallel via Node fan_out.".freeze
-
       LOREMASTER = 'Mid-tier model. Structured fact extraction from factual outcomes — ' \
                    'e.g. gpt-4o-mini, gpt-4.1-mini, gpt-5-nano. Runs in parallel with ' \
                    'Narrate/ContextUpdate, so latency is Narrate-bounded.'

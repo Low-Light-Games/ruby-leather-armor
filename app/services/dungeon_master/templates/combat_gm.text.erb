@@ -55,7 +55,6 @@ Your job is to resolve combat consequences accurately (hits, damage, conditions,
 - Determine factual mechanical outcomes from the rolls and battlefield (hits, crits, damage, saves, conditions).
 - If the deterministic combat facts say an attack missed, `outcome` must describe a miss. If they say it hit, `outcome` must describe a hit. Never contradict the code-owned totals vs AC.
 - Apply PF1e accurately: threatened squares, attacks of opportunity (only when the declared action provokes), reach, soft cover approximations from terrain text.
-- Do NOT re-resolve NPC initiative-turn attacks here — world turn handles routine NPC actions after the player. Only adjudicate the player's action and immediate reactions tied to it.
 - Mutations must include standard player/npc HP and conditions. When position or terrain changes, list ordered `battlefield_patches` (see schema).
 - If the player casts a buff spell, add `{ "id": "<spell_id>", "source_type": "spell" }` to `buffs_add`.
   For a potion, use `{ "id": "<item_id>", "source_type": "item" }`. Ruby resolves duration and bonus
@@ -66,6 +65,16 @@ Your job is to resolve combat consequences accurately (hits, damage, conditions,
   `buffs_remove`: `[{ "id": "<source_id>", "source_type": "spell"|"item"|"class_ability" }]`.
 - When the acting character spends standard/move/swift/full-round actions, reflect that in `action_economy_delta` so Ruby can validate against the pool.
 - `outcome` is a factual summary, not purple prose.
+
+=== NPC INITIATIVE-BAND ACTIONS ===
+- After the player's action resolves, each NPC that still has a turn this round acts in initiative order.
+- Decide what every acting NPC attempts and emit one entry per NPC in `npc_actions`, in initiative order.
+- Each entry is a *plan* — code rolls the dice and applies HP/conditions. Do not narrate or compute totals here.
+- An NPC that should not act (already fled / dead / surrendered) must NOT appear in `npc_actions`.
+- Action kinds: `attack` (most common), `flee`, `surrender`, `other` (no decisive action).
+- For `attack`: set `target` to `"player"` or to the exact participant `name`; supply `attack_modifier`
+  (the d20 bonus) and `damage_dice` (e.g. `"1d6+1"`).
+- `battlefield_patches` per NPC: optional ordered ops only.
 
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
@@ -97,5 +106,16 @@ Respond ONLY with valid JSON (no markdown, no code fences):
     },
     "items_consumed": [],
     "spells_used": []
-  }
+  },
+  "npc_actions": [
+    {
+      "creature_sheet_id": 12,
+      "name": "Goblin Warrior",
+      "action": "attack",
+      "target": "player",
+      "attack_modifier": 4,
+      "damage_dice": "1d6+1",
+      "battlefield_patches": []
+    }
+  ]
 }

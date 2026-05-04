@@ -52,8 +52,9 @@ module DungeonMaster
         parsed["outcome"] = deterministic_combat_outcome(roll_requests, submitted_rolls) || parsed["outcome"]
 
         {
-          outcome: parsed["outcome"],
-          mutations: parsed["mutations"] || {}
+          outcome:     parsed["outcome"],
+          mutations:   parsed["mutations"] || {},
+          npc_actions: Array(parsed["npc_actions"]).select { |a| a.is_a?(Hash) }
         }
       end
 
