@@ -192,7 +192,6 @@ module DungeonMaster
 
         parsed = timed_ai_call("time_keeper", prompt_summary, request_body) do
           raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
-                         max_tokens: @config.token_budget_for("time_keeper"),
                          step_name: "time_keeper",
                          model: @config.model_for("time_keeper"))
           [raw, @ai.parse_json(raw)]

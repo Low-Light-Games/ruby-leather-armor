@@ -10,7 +10,6 @@ module DungeonMaster
           system_prompt: render_turn_prompt(inputs: inputs),
           user_message:  inputs.what_happened.to_s,
           model:         config.model_for("loremaster"),
-          max_tokens:    config.token_budget_for("loremaster"),
           meta:          { step: "loremaster" },
         }
       end

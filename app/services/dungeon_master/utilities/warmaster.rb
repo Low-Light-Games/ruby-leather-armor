@@ -398,7 +398,6 @@ module DungeonMaster
         raw_response = ctx.ai.chat(
           system_prompt: system_prompt,
           user_message: user_msg,
-          max_tokens: ctx.config.token_budget_for("creature_generation"),
           step_name: "creature_generation",
           model: ctx.config.model_for("creature_generation"))
 

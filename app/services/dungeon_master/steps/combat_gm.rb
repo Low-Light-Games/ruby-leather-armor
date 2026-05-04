@@ -42,8 +42,7 @@ module DungeonMaster
 
         parsed = timed_ai_call("combat_gm", prompt_summary, request_body) do
           raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
-                          max_tokens: @config.token_budget_for("combat_gm"), step_name: "combat_gm",
-                          model: @config.model_for("combat_gm"))
+                          step_name: "combat_gm", model: @config.model_for("combat_gm"))
           [raw, @ai.parse_json(raw)]
         end
 

@@ -10,8 +10,6 @@ module Combat
   # input shape — the model is NOT asked to adjudicate anything.
   # Mechanics are already settled; this is pure narrative pass.
   module Narrator
-    DEFAULT_MAX_TOKENS = 220
-
     module_function
 
     # @param round [Integer]

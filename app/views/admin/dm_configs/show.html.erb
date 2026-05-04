@@ -153,19 +153,17 @@
           Steps with no model override use the default model above.
           Leave budget blank for no limit (recommended).
           Steps marked with ➡️ may benefit from a capable model.
-          Steps marked with ⚠️ have baseline high context or reasoning needs — choose a capable model and consider a higher token budget.
+          Steps marked with ⚠️ have baseline high context or reasoning needs — choose a capable model.
         </p>
 
-        <% current_budgets = @config.get("token_budgets") || {} %>
         <% current_step_models = @config.get("step_models") || {} %>
         <div class="pipeline-step-list">
           <div class="pipeline-step-header">
             <span class="psh-label">Step</span>
             <span class="psh-model">Model</span>
-            <span class="psh-budget">Token Budget</span>
             <span class="psh-actions"></span>
           </div>
-          <% DmConfig::TOKEN_BUDGET_STEPS.each do |step| %>
+          <% DungeonMaster::StepRegistry.pipeline_steps.each do |step| %>
             <div class="pipeline-step-row<%= ' pipeline-step-row-warning' if DmConfig::STEP_MODEL_HINTS[step].to_s.start_with?('⚠️') %>">
               <div class="psr-label-block">
                 <label class="psr-label"><%= step.titleize %></label>
@@ -189,20 +187,14 @@
                 </select>
                 <span class="psr-cost" id="step_cost_<%= step %>"></span>
               </div>
-              <%= number_field_tag "token_budgets[#{step}]",
-                    current_budgets[step].presence,
-                    min: 100, max: 16000, step: 100,
-                    class: "config-input budget-input",
-                    id: "token_budgets_#{step}",
-                    data: { step: step } %>
-              <button type="button" class="btn-reset-step" data-step="<%= step %>" title="Reset this step to defaults">&#x21ba;</button>
+              <button type="button" class="btn-reset-step" data-step="<%= step %>" title="Reset this step to default model">&#x21ba;</button>
             </div>
           <% end %>
         </div>
 
         <div class="budget-actions">
           <button type="button" class="btn-reset-budgets" id="reset-budgets-btn">
-            Reset all to defaults
+            Reset all step models to default
           </button>
         </div>
       </div>
@@ -401,13 +393,10 @@
     });
   });
 
-  // Reset all step models to default and clear budgets
+  // Reset all step models to default
   document.getElementById('reset-budgets-btn').addEventListener('click', function() {
     document.querySelectorAll('.step-model-select').forEach(function(select) {
       select.value = '';
-    });
-    document.querySelectorAll('.budget-input').forEach(function(input) {
-      input.value = '';
     });
     updateStepPricing();
   });
@@ -416,12 +405,7 @@
   document.querySelectorAll('.btn-reset-step').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var step = this.dataset.step;
-      var stepSelect = document.getElementById('step_models_' + step);
-      var budgetInput = document.getElementById('token_budgets_' + step);
-
-      stepSelect.value = '';
-      budgetInput.value = '';
-
+      document.getElementById('step_models_' + step).value = '';
       updateStepPricing();
     });
   });

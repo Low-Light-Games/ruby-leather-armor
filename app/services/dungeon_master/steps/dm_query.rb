@@ -31,8 +31,7 @@ module DungeonMaster
 
         parsed = timed_ai_call("dm_query", prompt_summary, request_body) do
           raw = @ai.chat(system_prompt: system_prompt, user_message: sanitized_input,
-                          max_tokens: @config.token_budget_for("dm_query"), step_name: "dm_query",
-                          model: @config.model_for("dm_query"))
+                          step_name: "dm_query", model: @config.model_for("dm_query"))
           [raw, @ai.parse_json(raw)]
         end
 

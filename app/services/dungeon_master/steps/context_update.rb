@@ -79,7 +79,6 @@ module DungeonMaster
           system_prompt: system_prompt,
           user_message:  user_msg,
           model:         @config.model_for("macro_narrative_update"),
-          max_tokens:    @config.token_budget_for("macro_narrative_update"),
           meta:          { step: "macro_narrative_update" }
         }
       end
@@ -164,7 +163,6 @@ module DungeonMaster
           system_prompt: system_prompt,
           user_message: what_happened,
           model: @config.model_for(COMBAT_DOMAIN_STEP),
-          max_tokens: @config.token_budget_for(COMBAT_DOMAIN_STEP),
           meta: { step: COMBAT_DOMAIN_STEP, domain: "combat" }
         }
       end
@@ -178,7 +176,6 @@ module DungeonMaster
           system_prompt: system_prompt,
           user_message: what_happened,
           model: @config.model_for(SCENE_UPDATE_STEP),
-          max_tokens: @config.token_budget_for(SCENE_UPDATE_STEP),
           meta: { step: SCENE_UPDATE_STEP }
         }
       end

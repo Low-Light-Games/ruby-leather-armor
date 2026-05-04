@@ -42,7 +42,6 @@ module DungeonMaster
           raw = @ai.chat(
             system_prompt: system_prompt,
             user_message: intention,
-            max_tokens: @config.token_budget_for('roll_request'),
             step_name: 'roll_request',
             model: @config.model_for('roll_request'),
             reasoning_effort: @config.reasoning_effort_for('roll_request')

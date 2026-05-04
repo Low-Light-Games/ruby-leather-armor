@@ -4,11 +4,10 @@ module DungeonMaster
   module Steps
     module SanityChecker
       class EvaluatorPromptPayload
-        def initialize(system_prompt:, user_message:, model:, max_tokens:, step:)
+        def initialize(system_prompt:, user_message:, model:, step:)
           @system_prompt = system_prompt
           @user_message = user_message
           @model = model
-          @max_tokens = max_tokens
           @step = step
         end
 
@@ -17,7 +16,6 @@ module DungeonMaster
             system_prompt: @system_prompt,
             user_message: @user_message,
             model: @model,
-            max_tokens: @max_tokens,
             meta: { step: @step }
           }
         end

@@ -71,7 +71,6 @@ module DungeonMaster
           system_prompt: system_prompt,
           user_message: result.intention,
           model: @config.model_for('sanity_checker_world'),
-          max_tokens: @config.token_budget_for('sanity_checker_world'),
           step: 'sanity_checker_world'
         ).to_h
       end
@@ -86,7 +85,6 @@ module DungeonMaster
           system_prompt: system_prompt,
           user_message: result.intention,
           model: @config.model_for('sanity_checker'),
-          max_tokens: @config.token_budget_for('sanity_checker'),
           step: 'sanity_checker'
         ).to_h
       end
@@ -142,7 +140,6 @@ module DungeonMaster
 
         parsed = timed_ai_call('sanity_checker', prompt_summary, request_body) do
           raw_response = @ai.chat(system_prompt: system_prompt, user_message: intention,
-                                  max_tokens: @config.token_budget_for('sanity_checker'),
                                   step_name: 'sanity_checker',
                                   model: @config.model_for('sanity_checker'))
           [raw_response, @ai.parse_json(raw_response)]
@@ -229,7 +226,6 @@ module DungeonMaster
 
         parsed = timed_ai_call('sanity_checker_world', prompt_summary, request_body) do
           raw_response = @ai.chat(system_prompt: system_prompt, user_message: intention,
-                                  max_tokens: @config.token_budget_for('sanity_checker_world'),
                                   step_name: 'sanity_checker_world',
                                   model: @config.model_for('sanity_checker_world'))
           [raw_response, @ai.parse_json(raw_response)]

@@ -4,8 +4,7 @@ class DmConfig < ApplicationRecord
   # Single-row configuration for the AI Dungeon Master.
   # Settings are stored as a JSON hash, making it easy to add new knobs
   # without migrations.
-  TOKEN_BUDGET_STEPS = DungeonMaster::StepRegistry.pipeline_steps.freeze
-  STEP_MODEL_HINTS   = DungeonMaster::StepRegistry.model_hints.freeze
+  STEP_MODEL_HINTS = DungeonMaster::StepRegistry.model_hints.freeze
 
   # Closed whitelist for the narrative facts store's embedding model
   # selector (see Decision 37). The `adventure_narrative_facts.embedding`
@@ -81,7 +80,6 @@ class DmConfig < ApplicationRecord
       'mountain' => 0.25, 'underground' => 0.5
     },
     'wait_messages' => WAIT_MESSAGES_DEFAULT,
-    'token_budgets' => {},
     'narrative_facts_top_k' => 8,
     'narrative_facts_active_window' => 20,
     'narrative_facts_embedding_model' => 'text-embedding-3-small',
@@ -147,12 +145,6 @@ class DmConfig < ApplicationRecord
 
     global = get('reasoning_effort').to_s
     REASONING_EFFORTS.include?(global) ? global : nil
-  end
-
-  def token_budget_for(step)
-    budgets = get('token_budgets')
-    val = budgets[step.to_s]
-    val&.to_i
   end
 
   def instant_death?

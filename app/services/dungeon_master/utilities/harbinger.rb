@@ -125,8 +125,7 @@ module DungeonMaster
 
         request_body = { system_prompt: system_prompt, user_message: user_msg }
         raw = ai.chat(system_prompt: system_prompt, user_message: user_msg,
-                      max_tokens: config.token_budget_for("narrate"), step_name: "encounter_expand",
-                      model: config.model_for("narrate"))
+                      step_name: "encounter_expand", model: config.model_for("narrate"))
         parsed = ai.parse_json(raw, fallback_as: :dm_response)
         duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
         log.ai_log!("encounter_expand", prompt_summary, raw, parsed,

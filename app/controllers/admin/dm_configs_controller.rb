@@ -47,20 +47,11 @@ module Admin
 
       if params[:step_models].present?
         models = {}
-        DmConfig::TOKEN_BUDGET_STEPS.each do |step|
+        DungeonMaster::StepRegistry.pipeline_steps.each do |step|
           val = params[:step_models][step]
           models[step] = val if val.present?
         end
         new_settings["step_models"] = models
-      end
-
-      if params[:token_budgets].present?
-        budgets = {}
-        DmConfig::TOKEN_BUDGET_STEPS.each do |step|
-          val = params[:token_budgets][step]
-          budgets[step] = val.to_i.clamp(100, 16_000) if val.present?
-        end
-        new_settings["token_budgets"] = budgets if budgets.any?
       end
 
       if params[:narrative_facts_embedding_model].present? &&

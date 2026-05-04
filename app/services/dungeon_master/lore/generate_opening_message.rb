@@ -44,7 +44,6 @@ module DungeonMaster
           raw = @ai.chat(
             system_prompt: system_prompt,
             user_message:  "Write the opening scene for this adventure.",
-            max_tokens:    @config.token_budget_for(MODEL_KEY),
             step_name:     MODEL_KEY,
             model:         @config.model_for(MODEL_KEY),
           )

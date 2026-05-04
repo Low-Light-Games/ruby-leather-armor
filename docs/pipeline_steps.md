@@ -813,15 +813,14 @@ Principle 17's anti-pattern.
 
 ### 32. StepRegistry as single registration point
 
-**Decision:** consolidate the four separate constants that every new AI
-step required updating (`AiLog::CALL_TYPES`, `DmConfig::TOKEN_BUDGET_STEPS`,
-`DmConfig::STEP_MODEL_HINTS`, `DmConfig::DEFAULTS["token_budgets"]`) into
+**Decision:** consolidate the constants every new AI step required
+updating (`AiLog::CALL_TYPES`, `DmConfig::STEP_MODEL_HINTS`) into
 a single `DungeonMaster::StepRegistry` module.
 
 **Why:** every new AI step (social expansion, creature generation, etc.)
-required editing 4 constants across 2 files. Missing one caused silent
+required editing constants across multiple files. Missing one caused silent
 billing gaps, broken admin UI, or validation errors. The registry defines
-each step once with its token budget, model hint, and pipeline flag. The
+each step once with its model hint and pipeline flag. The
 four constants now derive from it automatically.
 
 **How to add a new step:** add one entry to `StepRegistry::STEPS` in
@@ -1245,19 +1244,10 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `model` | `gpt-5-nano` | Default model for all steps. Cheapest reasoning model in the catalog. Override per step via `step_models`. |
 | `reasoning_effort` | `minimal` | Default `reasoning_effort` for reasoning models. Override per step via `step_reasoning_efforts`. Ignored when the resolved model is not a reasoning model. |
 | `step_models[step]` | `{}` | Per-step model override |
-| `token_budgets[step]` | `nil` (no limit) | Per-step max completion tokens - defaults to no limit; set specific values only as safety kill switches |
 | `action_queue` | `"progressive"` | Controls action splitting and narrative delivery. `false` — no splitting; `"progressive"` — split compound inputs, stream each action's narrative immediately via `pipeline_action_result` WebSocket events; `"progressive_continuity"` — as progressive, plus each action is narrated with prior action outcomes from `AdventureLoop` injected into the narrate prompt. Per-adventure override: `dm_settings["action_queue"]`. |
 | `creature_creation_fallback` | `"ai"` | `"ai"` (bestiary + AI gen), `"template"` (bestiary + generic stats), `"none"` |
 | `scene_history_depth` | `10` | Number of scene summaries retained for world consistency checks |
 | `skip_world_sanity_check` _(per-adventure attribute)_ | `false` | Per-adventure toggle set at creation time. When on, the world consistency check is bypassed on both the mechanical and non-mechanical resolution paths. The capability check always runs. |
-
-### Token budget configuration
-
-All pipeline steps now default to **no token limits** (unlimited tokens). Token budgets are safety kill switches, not AI guidance - they prevent runaway costs but do not constrain model behavior.
-
-**Leave budget fields blank for no limits (recommended)**. Only set specific token limits if you need cost protection for a particular step.
-
-Previously, steps had specific default budgets, but these have been removed to allow unlimited token usage by default.
 
 ### Model tiers
 

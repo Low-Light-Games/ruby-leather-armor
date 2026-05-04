@@ -50,7 +50,6 @@ module DungeonMaster
           raw = @ai.chat(
             system_prompt: system_prompt,
             user_message:  "Extract durable narrative facts from this story.",
-            max_tokens:    @config.token_budget_for(EXTRACTOR_MODEL_KEY),
             step_name:     EXTRACTOR_MODEL_KEY,
             model:         @config.model_for(EXTRACTOR_MODEL_KEY),
           )
