@@ -37,8 +37,7 @@ flowchart TB
     end
 
     F -->|yes| G[DM Query branch]
-    G --> G1[resolve_plot stub]
-    G1 --> G2[run_dm_query  ☆ AI]
+    G --> G2[run_dm_query  ☆ AI\nFactsLookup retrieves top-K]
     G2 --> OUT_DM[Return :dm_query]
 
     F -->|no| SEQ
@@ -59,22 +58,22 @@ flowchart TB
         RESOLVE --> COMBAT_BR{combat_active?}
         COMBAT_BR -->|yes| CRR["Steps::CombatRollRequest — single AI call ☆\n(attack options, action economy, threats, battlefield)\n+ Phases::CombatMechanicResolution post-call clamp"]
         COMBAT_BR -->|no| RR["Steps::RollRequest — single AI call ☆\n(top-K rules + scene beats from pgvector)"]
-        CRR & RR --> NM{"affected_contexts.any?"}
     end
 
-    NM -->|yes| SANITY_GATE
-    NM -->|no| WORLD_ONLY
+    CRR & RR --> SANITY_GATE
 
-    subgraph sanity_gate["Sanity gate — mechanical path"]
+    subgraph sanity_gate["Sanity gate"]
         SANITY_GATE --> SKIP_W{skip_world_sanity_check?}
         SKIP_W -->|yes| FG3[capability_check  ☆ AI]
-        SKIP_W -->|no| FG2[world_consistency_check  ☆ AI]
-        FG2 --> FG3
+        SKIP_W -->|no| FG2[world_consistency_check  ☆ AI\n+ capability_check  ☆ AI\nin parallel via /fan_out]
+        FG2 -->|not consistent| REJECT
+        FG2 -->|consistent| FG3_CHECK
+        FG3 --> FG3_CHECK
     end
 
-    FG2 -->|not consistent| REJECT
-    FG3 -->|not allowed| REJECT
-    SANITY_GATE --> MERGE[build_merged_from_result — code\n+ deduplicate_rolls + filter_auto_success_rolls + assign_request_ids]
+    FG3_CHECK{capability allowed?}
+    FG3_CHECK -->|no| REJECT
+    FG3_CHECK -->|yes| MERGE[build_merged_from_result — code\n+ deduplicate_rolls + filter_auto_success_rolls + assign_request_ids]
     MERGE --> ROLLCHECK{Player rolls still needed?}
     ROLLCHECK -->|yes| PAUSE_ROLLS[Return :awaiting_rolls]
     ROLLCHECK -->|no| FINISH_RES
@@ -82,22 +81,14 @@ flowchart TB
     subgraph finish_res["finish_resolution — after rolls or auto-success"]
         FINISH_RES{combat_active?}
         FINISH_RES -->|yes| COMBAT_GM[run_combat_gm  ☆ AI]
-        FINISH_RES -->|no| MECHANIC[run_mechanic  ☆ AI]
+        FINISH_RES -->|no| MECHANIC[run_mechanic  ☆ AI\nhandles no-roll resolution with rolls: []]
         COMBAT_GM --> APPLY_MUT[apply_mutations  — code]
         MECHANIC --> APPLY_MUT
         APPLY_MUT --> TK_MECH[run_time_keeper]
     end
 
-    subgraph no_mech["Non-mechanical path"]
-        WORLD_ONLY --> SKIP_W2{skip_world_sanity_check?}
-        SKIP_W2 -->|no| WC[run_world_consistency_check  ☆ AI]
-        WC -->|not consistent| REJECT
-        SKIP_W2 -->|yes| TK_NM
-        WC -->|consistent| TK_NM[run_time_keeper]
-    end
-
     subgraph timekeeper["TimeKeeper — code-first estimation, then Harbinger"]
-        TK_MECH & TK_NM --> TK1["estimate_time: journey? → code\ncombat? → code\nrest? → code\ntake_20? → code\nelse → AI ☆"]
+        TK_MECH --> TK1["estimate_time: journey? → code\ncombat? → code\nrest? → code\ntake_20? → code\nelse → AI ☆"]
         TK1 --> TK2[consult_harbinger_if_needed — code + optional AI ☆]
         TK2 --> TK3[GameClock.advance_clock!  — code]
         TK3 --> TK4[check_thresholds + apply_fatigue_conditions  — code]
@@ -115,8 +106,7 @@ flowchart TB
         WA2 -->|no| ENC_STATUS[status: :encounter — breaks queue]
     end
 
-    NENC --> NM_RESOLVED{Path?}
-    NM_RESOLVED --> MECH_RESOLVED["status: :resolved\n(from finish_resolution)"]
+    NENC --> MECH_RESOLVED["status: :resolved\n(from finish_resolution)"]
 
     MECH_RESOLVED --> WT_CHECK
 
@@ -159,19 +149,12 @@ flowchart TB
         WB2 -->|no| NARRATE_PHASE
         COMBAT_CHECK -->|no| NARRATE_PHASE
 
-        subgraph narrate_phase["Narration — parallel fan-out"]
-            NARRATE_PHASE --> PAR_NARRATE["run_narrate  ☆ AI\n+ run_context_updates\n+ Loremaster — one evaluator fan-out"]
-        end
-
-        subgraph ctx_update["Context updates — always run"]
-            PAR_NARRATE --> MICRO[run_micro_context_update  ☆ AI]
-            MICRO --> MACRO{macro_significant?}
-            MACRO -->|yes| MACRO_UPDATE[run_macro_narrative_update  ☆ AI]
-            MACRO -->|no| SKIP_MACRO[skip]
+        subgraph narrate_phase["Output phase — one evaluator fan-out"]
+            NARRATE_PHASE --> PAR_NARRATE["run_narrate  ☆ AI\n+ run_context_update  ☆ AI\n+ run_loremaster  ☆ AI"]
         end
     end
 
-    MICRO & MACRO_UPDATE & SKIP_MACRO --> OUT_NARR[Return :narrated]
+    PAR_NARRATE --> OUT_NARR[Return :narrated]
     PROGRESSIVE_NARRATE -.->|"all actions done"| OUT_SEQ["Return :narrated_sequence\n(progressive narration path)"]
 ```
 
@@ -321,7 +304,7 @@ The outer orchestration loop: for each action in the queue:
 2. Calls **AdventureLoopResolution.resolve** — the inner pipeline (detailed below), passing the sanitized action text directly.
 3. Dispatches on the result status (see "Outcomes" section).
 
-**Inter-action context update:** When an action resolves (`:resolved` status) and there are more actions still in the queue, a `run_micro_context_update` call runs immediately before the next action. This updates the adventure's context JSONB fields so the next action's evaluation sees the freshest world state.
+**Inter-action context update:** When an action resolves (`:resolved` status) and there are more actions still in the queue, a `run_inter_action_context_update` call runs immediately before the next action. This refreshes `combat_context` and `scene_summary` so the next action's evaluation sees the freshest combat state.
 
 ---
 
@@ -356,9 +339,11 @@ has been retired — see Decision 4.
 
 ---
 
-### Step 6 — Mechanical path (one or more affected domains)
+### Step 6 — Sanity gate + resolution
 
-The **sanity gate** validates the action before any mechanics are resolved. Its behaviour depends on the adventure's `skip_world_sanity_check` flag:
+After RollRequest / CombatRollRequest emits the spec, the **sanity gate** validates the action before any mechanics are resolved. There is no longer a domain-aware split between "mechanical" and "no-domain" paths — every action goes through the gate, then through Mechanic (or Combat GM in active combat). No-roll actions resolve through Mechanic with `rolls: []`.
+
+Its behaviour depends on the adventure's `skip_world_sanity_check` flag:
 
 **Default (skip_world_sanity_check = false):** two checks run in parallel, then evaluation results are merged:
 
@@ -390,19 +375,7 @@ The **sanity gate** validates the action before any mechanics are resolved. Its 
 
 ---
 
-### Step 7 — No-domain path (no affected domains)
-
-**World consistency check** — Same AI call as above, but runs alone (no parallel threads). Skipped entirely when the adventure's `skip_world_sanity_check` flag is set; the pipeline proceeds directly to the expansion/TimeKeeper branch.
-
-Early exit: world check fails → `:rejected`. Never reached when skipped.
-
-**TimeKeeper** (see dedicated section below) runs next. If an encounter is triggered → Warmaster Path A (see Combat section). Otherwise the no-roll path resolves through Mechanic with `rolls: []`, producing `outcome` and any mutations the action implied (e.g. `nothing happens`, `you trade 50 gp for the lockpicks`). The Mechanic verdict writes `verdict_outcome` and `pipeline_outcome` to the `AdventureLoop`.
-
-Returns `{ status: :resolved }`.
-
----
-
-### Step 8 — finish_resolution (post-roll path)
+### Step 7 — finish_resolution (post-roll or auto-success)
 
 Runs after the player submits dice results, or immediately when auto-success is detected.
 
@@ -417,7 +390,7 @@ Returns `{ status: :resolved }` or `{ status: :awaiting_initiative }` or `{ stat
 
 ### Time mechanics — TimeKeeper + Harbinger + GameClock
 
-**TimeKeeper** runs on every resolved action (both mechanical and non-mechanical paths). It is a three-stage process:
+**TimeKeeper** runs on every resolved action. It is a three-stage process:
 
 #### Stage 1 — Time estimation (code-first priority)
 
@@ -620,10 +593,8 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | **Moderation gate** | Code (blocking or async Sidekiq) | Classify player input via OpenAI moderation API. Regular users: blocking — flags short-circuit the pipeline and increment strikes; auto-ban at `max_strikes`. Trusted users: async via `ModerationCheckJob` — no pipeline delay; strikes and bans still apply. Skipped entirely when `moderation.enabled: false`. |
 | **Intake** | AI | Score danger, sanitize input, detect DM query, flag context gaps. |
 | **Sequencer** | AI | Split compound player input into ordered discrete actions. Skipped if `action_queue` off. |
-| **ParallelEvaluation** | Code orchestration + 3 HTTP phases to Node | beacon→mech_eval→roll_qualifier chain via Node evaluator microservice. Requires `EVALUATOR_URL`. |
-| **↳ beacon** | AI ×6 (parallel, Node) | Per-domain intent classification. One call per domain, all 6 run concurrently via `Promise.all` in Node. |
-| **↳ mechanical_evaluation** | AI ×N (sequential, Node) + code normalization for combat | Per-domain mechanical resolution for each affected domain. `combat` uses `combat_mechanic` and app-side normalization for AC/save DC resolution; other domains use the generic mechanical_evaluation prompt with per-domain partials. |
-| **↳ roll_qualifier** | AI ×N (parallel, Node) | Take 10/20 eligibility + situational modifiers per domain that has rolls. |
+| **RollRequest** | AI ×1 | Out-of-combat single call. Top-K rules from `rule_embeddings` + top-K scene beats from `adventure_narrative_facts`. Emits one roll spec (or "no roll") plus cross-cutting signals. |
+| **CombatRollRequest** | AI ×1 + code clamping | Combat-active free-text. Carries attack options, action economy, AoO threats, and a battlefield slice. Emits `attack_option_id` (never DC); `Phases::CombatMechanicResolution` resolves attack mode, defense kind, damage, and DCs from the sheet. |
 | **World consistency check** | AI | Validate referenced entities exist in current scene. Runs in the sanity gate (mechanics path) or standalone (non-mechanics path). Bypassed on both paths when the adventure's `skip_world_sanity_check` flag is set. |
 | **Capability check** | AI | Validate player has required spells/feats/items. Runs in the sanity gate whenever one or more domains are affected. Always runs regardless of `skip_world_sanity_check`. |
 | **Auto-success filter** | Code | Remove rolls the character cannot possibly fail (DC ≤ 0, guaranteed modifier, Take 10 covers DC). Never removes attack rolls. |
