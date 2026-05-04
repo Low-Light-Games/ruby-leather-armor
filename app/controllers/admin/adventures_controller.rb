@@ -2,7 +2,7 @@
 
 module Admin
   class AdventuresController < BaseController
-    before_action :set_adventure, only: [:show, :update, :reset_context, :update_sheet, :update_story_element, :destroy]
+    before_action :set_adventure, only: [:show, :update, :update_combat_context, :reset_combat_context, :update_sheet, :update_story_element, :destroy]
 
     def index
       @show_discarded = params[:discarded] == "1"
@@ -29,8 +29,6 @@ module Admin
     def update
       return update_time_context if time_context_update_request?
 
-      return update_context if context_update_request?
-
       return update_adventure_attributes if adventure_attributes_update_request?
 
       redirect_to admin_adventure_path(@adventure), alert: "Nothing to update."
@@ -38,11 +36,18 @@ module Admin
       render_invalid_json_response
     end
 
-    def reset_context
-      unless params[:context_field].to_s == "combat"
-        return redirect_to admin_adventure_path(@adventure), alert: "Unknown context: #{params[:context_field]}"
+    def update_combat_context
+      value = params[:value].present? ? JSON.parse(params[:value]) : {}
+      @adventure.update!(combat_context: value)
+      respond_to do |format|
+        format.html { redirect_to admin_adventure_path(@adventure), notice: "Combat context updated." }
+        format.json { render json: { value: value }, status: :ok }
       end
+    rescue JSON::ParserError
+      render_invalid_json_response
+    end
 
+    def reset_combat_context
       @adventure.update!(combat_context: {})
       redirect_to admin_adventure_path(@adventure), notice: "Combat context reset to {}."
     end
@@ -90,10 +95,6 @@ module Admin
       params[:time_context_json].present?
     end
 
-    def context_update_request?
-      params[:context_field].present?
-    end
-
     def adventure_attributes_update_request?
       params[:adventure].present?
     end
@@ -107,24 +108,6 @@ module Admin
       respond_to do |format|
         format.html { redirect_to admin_adventure_path(@adventure), alert: "Invalid JSON format." }
         format.json { render json: { error: "Invalid JSON format." }, status: :unprocessable_entity }
-      end
-    end
-
-    def update_context
-      field = params[:context_field].to_s
-      unless field == "combat"
-        respond_to do |format|
-          format.html { redirect_to admin_adventure_path(@adventure), alert: "Unknown context: #{field}" }
-          format.json { render json: { error: "Unknown context: #{field}" }, status: :unprocessable_entity }
-        end
-        return
-      end
-
-      value = params[:context_value].present? ? JSON.parse(params[:context_value]) : {}
-      @adventure.update!(combat_context: value)
-      respond_to do |format|
-        format.html { redirect_to admin_adventure_path(@adventure), notice: "Combat context updated." }
-        format.json { render json: { context_field: "combat", context_value: value }, status: :ok }
       end
     end
 

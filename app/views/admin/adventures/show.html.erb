@@ -186,33 +186,30 @@
     </details>
   </details>
 
-  <%# ═══════ CONTEXTS ═══════ %>
+  <%# ═══════ COMBAT CONTEXT ═══════ %>
   <details class="dash-section" open>
-    <summary class="section-title">Micro Contexts</summary>
+    <summary class="section-title">Combat Context</summary>
     <div class="contexts-grid">
-      <% Admin::AdventuresController::CONTEXT_FIELDS.each do |field| %>
-        <% ctx = @adventure.send("#{field}_context") %>
-        <div class="context-card<%= ' empty-context' if ctx.blank? || ctx == {} %>">
-          <div class="context-header">
-            <span class="context-name"><%= field.titleize %></span>
-            <% if ctx.present? && ctx != {} %>
-              <%= button_to "Reset", reset_context_admin_adventure_path(@adventure, context_field: field),
-                    method: :patch, class: "btn btn-danger btn-xs",
-                    data: { confirm: "Reset #{field} context to {}?" } %>
-            <% end %>
-          </div>
-          <pre class="context-json"><%= ctx.present? && ctx != {} ? JSON.pretty_generate(ctx) : '{}' %></pre>
-
-          <details class="edit-panel">
-            <summary class="edit-toggle">Edit JSON</summary>
-            <%= form_with url: admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do %>
-              <input type="hidden" name="context_field" value="<%= field %>">
-              <textarea name="context_value" rows="8" class="json-editor"><%= ctx.present? && ctx != {} ? JSON.pretty_generate(ctx) : '{}' %></textarea>
-              <button type="submit" class="btn btn-primary">Save Context</button>
-            <% end %>
-          </details>
+      <% ctx = @adventure.combat_context %>
+      <div class="context-card<%= ' empty-context' if ctx.blank? || ctx == {} %>">
+        <div class="context-header">
+          <span class="context-name">Combat</span>
+          <% if ctx.present? && ctx != {} %>
+            <%= button_to "Reset", reset_combat_context_admin_adventure_path(@adventure),
+                  method: :patch, class: "btn btn-danger btn-xs",
+                  data: { confirm: "Reset combat context to {}?" } %>
+          <% end %>
         </div>
-      <% end %>
+        <pre class="context-json"><%= ctx.present? && ctx != {} ? JSON.pretty_generate(ctx) : '{}' %></pre>
+
+        <details class="edit-panel">
+          <summary class="edit-toggle">Edit JSON</summary>
+          <%= form_with url: update_combat_context_admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do %>
+            <textarea name="value" rows="8" class="json-editor"><%= ctx.present? && ctx != {} ? JSON.pretty_generate(ctx) : '{}' %></textarea>
+            <button type="submit" class="btn btn-primary">Save Combat Context</button>
+          <% end %>
+        </details>
+      </div>
     </div>
   </details>
 

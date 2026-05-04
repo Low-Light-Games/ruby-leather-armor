@@ -32,7 +32,8 @@ Rails.application.routes.draw do
   namespace :admin do
     resources :adventures, only: [:index, :show, :update, :destroy] do
       member do
-        patch :reset_context
+        patch :update_combat_context
+        patch :reset_combat_context
         patch :update_sheet
         patch :update_story_element
       end

@@ -60,11 +60,11 @@ const ContextSection: React.FC<{
     setSaving(true);
     setEditError(null);
     try {
-      const result = await apiFetch(`/admin/adventures/${adventureId}`, {
+      const result = await apiFetch(`/admin/adventures/${adventureId}/update_combat_context`, {
         method: 'PATCH',
-        body: JSON.stringify({ context_field: contextKey, context_value: draft }),
+        body: JSON.stringify({ value: draft }),
       });
-      onContextUpdate(contextKey, result.context_value);
+      onContextUpdate(contextKey, result.value);
       setEditing(false);
     } catch (err) {
       setEditError(err instanceof Error ? err.message : 'Save failed');
