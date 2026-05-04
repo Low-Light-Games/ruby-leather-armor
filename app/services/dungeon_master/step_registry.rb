@@ -12,8 +12,8 @@ module DungeonMaster
   #
   # The `pipeline` flag controls whether a step appears in the DM config
   # admin UI (token budgets, model selection). Non-pipeline steps
-  # (enricher, embellisher, embedding, rules_retrieval) are logged but
-  # not configurable per-run.
+  # (embedding, rules_retrieval, encounter_expand, extract_from_premise)
+  # are logged but not configurable per-run.
   module StepRegistry
     H = ModelHints
 
@@ -60,10 +60,6 @@ module DungeonMaster
                                pipeline: false),
       'encounter_expand' => Entry.new(token_budget: nil, model_hint: nil,
                                       pipeline: false),
-      'enricher' => Entry.new(token_budget: nil, model_hint: nil,
-                              pipeline: false),
-      'embellisher' => Entry.new(token_budget: nil, model_hint: nil,
-                                 pipeline: false),
       'combat_narrator' => Entry.new(token_budget: 220, model_hint: H::COMBAT_NARRATOR,
                                      pipeline: true)
     }.freeze
