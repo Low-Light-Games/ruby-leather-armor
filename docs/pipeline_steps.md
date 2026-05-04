@@ -371,8 +371,8 @@ The field is intentionally brief ("1-2 sentences") to minimize token
 overhead. It's logged but never shown to the player.
 
 **Trade-off accepted:** a small amount of output tokens per call (~20-40
-tokens). At $0.60/1M output tokens (gpt-4o-mini), this costs roughly
-$0.00002 per call — negligible.
+tokens). At $0.40/1M output tokens (gpt-5-nano, the current default
+model), this cost is negligible per turn.
 
 ### 14. Hard error on finish_reason: length (no graceful degradation)
 
@@ -1242,7 +1242,8 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `pacing_words_min` | `40` | Narrate: minimum word count target when verbose is off |
 | `pacing_words_max` | `120` | Narrate: maximum word count target when verbose is off |
 | `temperature` | `0.8` | All steps: creativity/randomness (non-reasoning models only) |
-| `model` | `gpt-4o-mini` | Default model for all steps |
+| `model` | `gpt-5-nano` | Default model for all steps. Cheapest reasoning model in the catalog. Override per step via `step_models`. |
+| `reasoning_effort` | `minimal` | Default `reasoning_effort` for reasoning models. Override per step via `step_reasoning_efforts`. Ignored when the resolved model is not a reasoning model. |
 | `step_models[step]` | `{}` | Per-step model override |
 | `token_budgets[step]` | `nil` (no limit) | Per-step max completion tokens - defaults to no limit; set specific values only as safety kill switches |
 | `action_queue` | `"progressive"` | Controls action splitting and narrative delivery. `false` — no splitting; `"progressive"` — split compound inputs, stream each action's narrative immediately via `pipeline_action_result` WebSocket events; `"progressive_continuity"` — as progressive, plus each action is narrated with prior action outcomes from `AdventureLoop` injected into the narrate prompt. Per-adventure override: `dm_settings["action_queue"]`. |

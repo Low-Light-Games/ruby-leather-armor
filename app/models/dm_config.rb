@@ -66,7 +66,8 @@ class DmConfig < ApplicationRecord
     'pacing_words_min' => 40,
     'pacing_words_max' => 120,
     'danger_threshold' => 30,
-    'model' => 'gpt-4o-mini',
+    'model' => 'gpt-5-nano',
+    'reasoning_effort' => 'minimal',
     'step_models' => {},
     'action_queue' => 'progressive',
     'show_roll_dc' => true,
@@ -85,7 +86,7 @@ class DmConfig < ApplicationRecord
     'narrative_facts_active_window' => 20,
     'narrative_facts_embedding_model' => 'text-embedding-3-small',
     'combat_narrator_enabled' => true,
-    'step_reasoning_efforts' => { 'roll_request' => 'minimal' }.freeze,
+    'step_reasoning_efforts' => {}.freeze,
     'stripe_grace_period_days' => 3
   }.freeze
 
@@ -132,16 +133,20 @@ class DmConfig < ApplicationRecord
   end
 
   # Returns "minimal" | "low" | "medium" | "high" | nil for the given
-  # step. Resolution order: admin override → registry default → nil.
-  # AiClient drops the `reasoning_effort` param when the resolved value
-  # is nil OR when the resolved model is not a reasoning model, so
-  # non-reasoning steps and non-reasoning model overrides stay safe.
+  # step. Resolution order: admin per-step override → registry pin →
+  # global default. AiClient drops the `reasoning_effort` param when
+  # the resolved model is not a reasoning model, so non-reasoning model
+  # overrides stay safe.
   def reasoning_effort_for(step)
     overrides = get('step_reasoning_efforts') || {}
     override  = overrides[step.to_s].to_s
     return override if REASONING_EFFORTS.include?(override)
 
-    DungeonMaster::StepRegistry.default_reasoning_effort_for(step)
+    pinned = DungeonMaster::StepRegistry.default_reasoning_effort_for(step)
+    return pinned if pinned
+
+    global = get('reasoning_effort').to_s
+    REASONING_EFFORTS.include?(global) ? global : nil
   end
 
   def token_budget_for(step)
