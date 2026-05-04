@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_04_130000) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_04_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -212,7 +212,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_04_130000) do
     t.boolean "skip_world_sanity_check", default: false, null: false
     t.datetime "ended_at"
     t.string "end_reason"
-    t.float "coordinate_scale", default: 1.0, null: false
+    t.float "coordinate_scale", default: 7.0, null: false
     t.index ["current_location_id"], name: "index_adventures_on_current_location_id"
     t.index ["discarded_at"], name: "index_adventures_on_discarded_at"
     t.index ["ended_at"], name: "index_adventures_on_ended_at"
