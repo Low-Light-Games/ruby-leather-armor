@@ -258,6 +258,7 @@ module DungeonMaster
 
       def enforce_destination_floor(hours, intent)
         return hours unless (intent[:destination] || intent["destination"]).present?
+
         return hours if hours >= DESTINATION_AI_FLOOR_HOURS
 
         @log&.play_log!(
