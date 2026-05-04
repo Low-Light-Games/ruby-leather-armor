@@ -12,6 +12,37 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md).
 
 ---
 
+> **NOTICE — micro-context removal epic.** This document predates the
+> epic that removed the five non-combat micro-contexts (`traversal`,
+> `social`, `exploration`, `rest`, `inventory`) and the pipeline
+> scaffolding around them. The current shape, applied across the rest
+> of this document where it conflicts:
+>
+> - **Retired AI steps:** Chronicler, Momentum, Embellisher, Enricher,
+>   Social Expansion. Plot progression now emerges from
+>   `adventure_narrative_facts` retrieval; no-roll actions flow through
+>   Mechanic as auto-success.
+> - **Dying surfaces** (data lives until the final-commit schema
+>   migration): the five non-combat `*_context` JSONB columns;
+>   `StoryClue`; `StoryMilestone`; `LocationConnection`;
+>   `Story.initial_summary`; `Story.initial_contexts`;
+>   `Adventure.enriched_world` / `enriched_premise` / `plot_state`.
+> - **Surviving structured state on Adventure:** `combat_context`
+>   (live combat) and `time_context` (clock).
+> - **New pgvector stores:** `adventure_narrative_facts` (durable
+>   facts), `adventure_npcs` (NPCs by location + similarity), and
+>   `adventure_locations` (`(x, y)` placement + similarity). Each has
+>   a sole writer per §18.
+> - **New authoring path:** `Story.opening_message` (player-facing
+>   first scene) + `Story.seed_facts` (AI-extracted from premise +
+>   opening_message at story save by `Lore::ExtractFromPremise`,
+>   bulk-inserted at adventure creation).
+>
+> Trust this notice over the body when they conflict; the body will be
+> rewritten in the epic's final documentation pass.
+
+---
+
 ## Outer orchestration (Pipeline class)
 
 The **AI step mixins** (Intake, Sequencer, Narrate, …) implement individual prompts; **`AdventureLoopResolution`** (also mixed into `PipelineEngine`) drives evaluation → sanity → mechanics for each **AdventureLoop** row; the **`DungeonMaster::PipelineEngine`** class wires the **player turn** and **action queue**. Reorder or extend the main line by editing **`#run_prompt`** in [`app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb`](../app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb) (three explicit `apply_prompt_phase` calls).
