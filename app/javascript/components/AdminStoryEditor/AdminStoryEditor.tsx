@@ -48,7 +48,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   }
 
   const isNew = mode === 'create' && !currentStoryId
-  const canSave = title.trim() && preview.trim() && premise.trim() && !hasDuplicateNames
+  const canSave = title.trim() && preview.trim() && premise.trim() && openingMessage.trim() && !hasDuplicateNames
   const isEditMode = !!currentStoryId
   const savedLocations = locations.filter(l => l.id && !l._destroy)
   const savedNpcs = npcs.filter(n => n.id && !n._destroy)

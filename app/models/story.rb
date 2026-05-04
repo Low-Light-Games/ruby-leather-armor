@@ -13,6 +13,7 @@ class Story < ApplicationRecord
   validates :title, presence: true
   validates :preview, presence: true
   validates :premise, presence: true
+  validates :opening_message, presence: true
   validates :world_terrain, inclusion: { in: WORLD_TERRAINS }
 
   def starting_location

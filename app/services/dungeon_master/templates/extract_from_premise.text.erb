@@ -25,11 +25,9 @@ if none.
 === INPUTS ===
 --- Premise ---
 <%= @premise.to_s %>
-<% if @opening_message.to_s.strip.length.positive? -%>
 
 --- Opening message ---
 <%= @opening_message.to_s %>
-<% end -%>
 
 === OUTPUT SCHEMA ===
 <%= @schema_json %>
