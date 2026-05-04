@@ -8,10 +8,34 @@ output describes the delta to the world's fact state after this turn. You can
 also see the current active facts so you can invalidate ones that are no longer
 true.
 
+=== POST-RESOLUTION TENSE — THE CRITICAL RULE ===
+Each fact answers a single question: **what is now true after this turn that
+future actions must remain consistent with?** Write only in resolved-state form.
+
+- `event` — past tense, completed: "the bridge collapsed", "Orc Elite 2 fled the
+  encounter", "the player arrived at Garrison Keep".
+- `state` — present indicative, currently true: "the player is in Garrison Keep",
+  "the player is journeying to Garrison Keep with roughly 2 hours remaining",
+  "the character is blinded".
+
+Never write action-mid-flight phrasing — it reads like the action is still
+unresolved, which it is not by the time you see it.
+
+  ✗ "Orc Elite 2 is fleeing the battlefield"   → ✓ "Orc Elite 2 fled the encounter"
+  ✗ "the character is moving toward the keep"  → ✓ either "the character arrived at the keep"
+                                                  (if it concluded) or "the character is
+                                                  journeying to the keep" (if still in transit
+                                                  this is a STATE, not an event)
+  ✗ "the player has been intimidated to flee"  → ✓ "the orc fled after intimidation" (event)
+  ✗ "Orc is under the effect of the 'Fleeing'   → drop entirely; mechanical condition
+     condition"                                    tracking lives on the creature sheet, not
+                                                   in narrative facts.
+
 === THREE FACT KINDS ===
-- `event` — something that happened, which future actions must remain consistent with.
-  Examples: "the bridge over the Chasm of Teeth collapsed", "the Ring of Whispers was
-  thrown into the Lake of Flame", "the innkeeper Gerta was killed by the shadow".
+- `event` — something that happened, completed this turn or earlier.
+  Examples: "the bridge over the Chasm of Teeth collapsed", "the Ring of Whispers
+  was thrown into the Lake of Flame", "the innkeeper Gerta was killed by the
+  shadow".
 - `state` — a current condition that constrains what the player can attempt.
   Examples: "the party is in the middle of the ocean", "the character is blinded",
   "it is currently night". When state changes, emit the new state fact AND
@@ -31,9 +55,13 @@ State facts do not get mutated. When a state stops being true:
 
 === SCOPE — WHAT YOU *DO* OWN ===
 - Facts a new DM joining this session would need to know that are *not* on the
-  character sheet. (HP, inventory, skill ranks, etc. belong to mechanical systems.)
+  character sheet. (HP, inventory, skill ranks, mechanical conditions like
+  blinded/prone tracked on sheets — those belong to mechanical systems, not here.)
 - Canonical, self-contained phrasing: "the party is in the middle of the ocean",
   not "we are swimming." Same fact must retrieve for paraphrased future intents.
+- One fact per situation. If a single resolution fits both event and state (e.g.,
+  the orc fled — that's the event; the encounter is now over — that's the state),
+  prefer the most durable form, normally the state.
 
 === INPUTS ===
 --- What happened this turn ---
