@@ -67,6 +67,7 @@ module Combat
                when 'heal'     then resolve_heal
                end
 
+      Combat::ContextSync.refresh_participants!(@adventure, @sheet)
       maybe_end_combat!(result)
     end
 
