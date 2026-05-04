@@ -12,9 +12,7 @@ load Rails.root.join('db', 'seeds', 'class_abilities.rb')
 load Rails.root.join('db', 'seeds', 'bestiary.rb')
 
 # Story content — must run before encounter_tables, which depends on stories existing
-load Rails.root.join('db', 'seeds', 'traversal_story.rb')
 load Rails.root.join('db', 'seeds', 'combat_story.rb')
-load Rails.root.join('db', 'seeds', 'social_story.rb')
 load Rails.root.join('db', 'seeds', 'encounter_tables.rb')
 
 def seed_playwright_sidebar_fixture!
