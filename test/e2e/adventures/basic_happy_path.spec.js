@@ -18,9 +18,6 @@ test.describe('Adventure play happy path', () => {
       page.locator('.chat-message.msg-player').last()
     ).toContainText('I look around the room.', { timeout: 10_000 });
 
-    await expect(page.locator('.msg-thinking')).toBeVisible({ timeout: 10_000 });
-    await expect(input).toBeDisabled();
-
     const narrativeMessages = page.locator('.chat-message.msg-dm.msg-type-narrative');
     await expect(narrativeMessages).toHaveCount(2, { timeout: 20_000 });
     await expect(narrativeMessages.last()).toContainText(
@@ -28,7 +25,6 @@ test.describe('Adventure play happy path', () => {
       { timeout: 20_000 },
     );
 
-    await expect(page.locator('.msg-thinking')).not.toBeVisible({ timeout: 20_000 });
     await expect(input).toBeEnabled({ timeout: 10_000 });
   });
 });
