@@ -9,6 +9,44 @@ Versions **0.2.0–0.4.0** are documented retroactively from merged PR dates (th
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-04
+
+Micro-context removal epic plus the post-epic redesign — pgvector retrieval as the world model, deterministic combat as the system of record, and traversal that actually moves the player on the map (#123).
+
+### Changed
+
+- **Pipeline shape**: Retired Chronicler, Momentum, Enricher, Embellisher, Social Expansion, and the per-NPC AI fan-out. ContextUpdate is combat-only; Combat GM emits the whole initiative band as one structured payload that code resolves deterministically.
+- **`Adventure.current_location_id`** repointed from `story_locations` to `adventure_locations`. TimeKeeper's journey-code branch now writes the column directly: full hours granted → destination row; Harbinger interrupt → a deterministic encounter-site row created via `Adventures::EncounterSiteCreator` and `Lore::ApplyLocations` at the lerped position. Player ends up properly placed on the map either way; backfill migration ships the FK switch.
+- **`combat_context.participants`** stays in sync with canonical creature/player sheets via `Combat::ContextSync.refresh_participants!` after every deterministic mutation. Previous drift caused stale rosters across rounds.
+- **Default model** for every AI step is now `gpt-5-nano` at `reasoning_effort: minimal` (overrides intact via `step_models` / `step_reasoning_efforts`).
+- **GM grounding**: DM Query, RollRequest, and CombatRollRequest receive `SceneRetrieval::ForResolution` — facts + nearby locations (with miles + bearing relative to current_location) + known NPCs. Closes the "approximately three miles north" hallucination class.
+- **`Loremaster`** prompt rewritten around post-resolution tense — facts describe what is now true after this turn, not action-mid-flight.
+- **`Story.opening_message`** is now required; pre-validation stories get a JIT generation via `Lore::GenerateOpeningMessage` driven by `Lore::ExtractFromPremise`'s sibling pattern.
+
+### Added
+
+- **Combat log persistence**: `Combat::EventLog` writes a player-visible `combat_log` AdventureMessage at every deterministic resolution seam (Attack, Move + AoOs, Buff, Heal, NpcTurn events) and at combat-start (`PersistCombatStart` writes "Combat begins. Initiative — …"). The HUD path is no longer silent in the chat.
+- **Encounter sites** as first-class `adventure_locations` rows so the player can keep playing from where the encounter actually happened.
+- **`SceneRetrieval`**: Composer + `Retrieval` value object + bearing helper + a partial that renders ESTABLISHED FACTS / NEARBY LOCATIONS / KNOWN NPCS into prompts.
+
+### Removed
+
+- Five non-combat micro-context JSONB columns (`traversal_context`, `social_context`, `exploration_context`, `rest_context`, `inventory_context`) and the steps that wrote them.
+- `affected_contexts` / `affected_domains` / `domain_results` keys throughout (output, intent, loop metadata, prompts, schemas).
+- Dead Story columns (`initial_summary`, `initial_contexts`) and Adventure columns (`enriched_world`, `enriched_premise`, `plot_state`).
+- `StoryClue`, `StoryMilestone`, and the related UI surface.
+- StoryNpc `'enricher'` / `'embellisher'` source values; collapsed to `manual`.
+- StepRegistry entries for `npc_action`, `enricher`, `embellisher`.
+- Stale `guardrail_mode` toggle from docs and admin UI.
+
+### Fixed
+
+- **Traversal**: `update_player_position!` runs after every TimeKeeper journey, so "I run to the keep" advances time *and* moves the player.
+- **Destination resolver**: matches both polluted long-form ("Garrison Keep (7.07 miles southwest) or…") and short-form ("keep") destinations against `adventure_locations` via two-pass substring containment.
+- **DM Config admin page**: removed dead `authoring-tools-toggle` JS that crashed the script and silently broke every later wiring on the page.
+
+---
+
 ## [0.4.0] - 2026-04-27
 
 Commerce, retrieval layers, and registry/naming consistency — roughly PRs merged **2026-04-19** onward.
