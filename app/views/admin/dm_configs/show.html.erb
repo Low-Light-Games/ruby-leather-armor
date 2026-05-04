@@ -140,6 +140,24 @@
           Models marked with ⚙️ are reasoning models.
         </p>
       </div>
+
+      <div class="config-field">
+        <label for="reasoning_effort">Reasoning Effort</label>
+        <% current_global_effort = @config.get("reasoning_effort").to_s %>
+        <select name="reasoning_effort" id="reasoning_effort" class="config-select">
+          <% DmConfig::REASONING_EFFORTS.each do |eff| %>
+            <option value="<%= eff %>" <%= 'selected' if current_global_effort == eff %>>
+              <%= eff.titleize %>
+            </option>
+          <% end %>
+        </select>
+        <p class="field-hint">
+          Default <code>reasoning_effort</code> applied to reasoning models (⚙️).
+          Ignored when the resolved model isn't a reasoning model.
+          <strong>Minimal</strong> = fastest/cheapest, <strong>High</strong> = deepest reasoning.
+          Per-step overrides below take precedence; some steps pin their own default.
+        </p>
+      </div>
     </div>
 
     <div class="config-section">
@@ -149,20 +167,24 @@
       </h2>
       <div id="pipeline-steps-body" style="display: none;">
         <p class="field-hint" style="margin-bottom: 12px;">
-          Configure the model for each pipeline step.
-          Steps with no model override use the default model above.
+          Configure the model and reasoning effort for each pipeline step.
+          Steps with no override use the global default above (or a step-pinned default).
           Steps marked with ➡️ may benefit from a capable model.
           Steps marked with ⚠️ have baseline high context or reasoning needs — choose a capable model.
+          The <strong>Effort</strong> column only applies when the resolved model is a reasoning model (⚙️).
         </p>
 
         <% current_step_models = @config.get("step_models") || {} %>
+        <% current_step_efforts = @config.get("step_reasoning_efforts") || {} %>
         <div class="pipeline-step-list">
           <div class="pipeline-step-header">
             <span class="psh-label">Step</span>
             <span class="psh-model">Model</span>
+            <span class="psh-effort">Effort</span>
             <span class="psh-actions"></span>
           </div>
           <% DungeonMaster::StepRegistry.pipeline_steps.each do |step| %>
+            <% pinned_effort = DungeonMaster::StepRegistry.default_reasoning_effort_for(step) %>
             <div class="pipeline-step-row<%= ' pipeline-step-row-warning' if DmConfig::STEP_MODEL_HINTS[step].to_s.start_with?('⚠️') %>">
               <div class="psr-label-block">
                 <label class="psr-label"><%= step.titleize %></label>
@@ -186,14 +208,29 @@
                 </select>
                 <span class="psr-cost" id="step_cost_<%= step %>"></span>
               </div>
-              <button type="button" class="btn-reset-step" data-step="<%= step %>" title="Reset this step to default model">&#x21ba;</button>
+              <div class="psr-effort-block">
+                <% default_label = pinned_effort ? "(Pinned: #{pinned_effort.titleize})" : "(Default)" %>
+                <select name="step_reasoning_efforts[<%= step %>]"
+                        class="config-select step-effort-select"
+                        data-step="<%= step %>"
+                        id="step_reasoning_efforts_<%= step %>">
+                  <option value=""><%= default_label %></option>
+                  <% DmConfig::REASONING_EFFORTS.each do |eff| %>
+                    <option value="<%= eff %>"
+                            <%= 'selected' if current_step_efforts[step] == eff %>>
+                      <%= eff.titleize %>
+                    </option>
+                  <% end %>
+                </select>
+              </div>
+              <button type="button" class="btn-reset-step" data-step="<%= step %>" title="Reset this step to default model and effort">&#x21ba;</button>
             </div>
           <% end %>
         </div>
 
         <div class="budget-actions">
           <button type="button" class="btn-reset-budgets" id="reset-budgets-btn">
-            Reset all step models to default
+            Reset all step models and efforts to default
           </button>
         </div>
       </div>
@@ -392,9 +429,12 @@
     });
   });
 
-  // Reset all step models to default
+  // Reset all step models and efforts to default
   document.getElementById('reset-budgets-btn').addEventListener('click', function() {
     document.querySelectorAll('.step-model-select').forEach(function(select) {
+      select.value = '';
+    });
+    document.querySelectorAll('.step-effort-select').forEach(function(select) {
       select.value = '';
     });
     updateStepPricing();
@@ -405,6 +445,8 @@
     btn.addEventListener('click', function() {
       var step = this.dataset.step;
       document.getElementById('step_models_' + step).value = '';
+      var effortSel = document.getElementById('step_reasoning_efforts_' + step);
+      if (effortSel) effortSel.value = '';
       updateStepPricing();
     });
   });
@@ -686,14 +728,14 @@
 
   .pipeline-step-header {
     display: grid;
-    grid-template-columns: 180px 1fr 120px 32px;
+    grid-template-columns: 160px 1fr 130px 32px;
     gap: 10px;
     padding: 0 0 6px;
     border-bottom: 1px solid #dee2e6;
     margin-bottom: 8px;
   }
 
-  .psh-label, .psh-model, .psh-budget {
+  .psh-label, .psh-model, .psh-effort, .psh-budget {
     font-size: 11px;
     font-weight: 700;
     color: #888;
@@ -703,7 +745,7 @@
 
   .pipeline-step-row {
     display: grid;
-    grid-template-columns: 180px 1fr 120px 32px;
+    grid-template-columns: 160px 1fr 130px 32px;
     gap: 10px;
     align-items: center;
     padding: 6px 0;
@@ -771,9 +813,16 @@
     &:hover { background: #dee2e6; }
   }
 
-  .step-model-select {
+  .step-model-select,
+  .step-effort-select {
     font-size: 13px !important;
     padding: 5px 24px 5px 8px !important;
+  }
+
+  .psr-effort-block {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
   }
 
   .budget-input {

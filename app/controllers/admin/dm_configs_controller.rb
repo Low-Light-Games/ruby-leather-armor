@@ -45,6 +45,11 @@ module Admin
         new_settings["model"] = params[:model]
       end
 
+      if params[:reasoning_effort].present? &&
+         DmConfig::REASONING_EFFORTS.include?(params[:reasoning_effort])
+        new_settings["reasoning_effort"] = params[:reasoning_effort]
+      end
+
       if params[:step_models].present?
         models = {}
         DungeonMaster::StepRegistry.pipeline_steps.each do |step|
@@ -52,6 +57,15 @@ module Admin
           models[step] = val if val.present?
         end
         new_settings["step_models"] = models
+      end
+
+      if params[:step_reasoning_efforts].present?
+        efforts = {}
+        DungeonMaster::StepRegistry.pipeline_steps.each do |step|
+          val = params[:step_reasoning_efforts][step].to_s
+          efforts[step] = val if DmConfig::REASONING_EFFORTS.include?(val)
+        end
+        new_settings["step_reasoning_efforts"] = efforts
       end
 
       if params[:narrative_facts_embedding_model].present? &&
