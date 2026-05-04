@@ -5,7 +5,7 @@ class StoryNpc < ApplicationRecord
   belongs_to :adventure, optional: true
   belongs_to :location, class_name: "StoryLocation", optional: true
 
-  SOURCES   = %w[manual enricher embellisher].freeze
+  SOURCES   = %w[manual].freeze
   ROLES     = %w[quest_giver informant antagonist bystander merchant].freeze
   ATTITUDES = %w[friendly indifferent unfriendly].freeze
 

@@ -40,11 +40,9 @@ const NpcsSection = ({
     >
       {npcs.map((npc, idx) => {
         if (npc._destroy) return null
-        const isAi = npc.source === 'enricher' || npc.source === 'embellisher'
         return (
-          <div key={npc.id || `npc-${idx}`} className={`nested-card ${isAi ? 'ai-sourced' : ''}`}>
+          <div key={npc.id || `npc-${idx}`} className="nested-card">
             <div className="nested-card-header">
-              {isAi && <span className="source-badge">{npc.source}</span>}
               <input type="text" className="inline-name" value={npc.name}
                 onChange={e => updateNpc(idx, { name: e.target.value })}
                 placeholder="NPC name" />

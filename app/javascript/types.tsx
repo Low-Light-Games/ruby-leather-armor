@@ -192,7 +192,7 @@ export interface EncounterTableData {
   _destroy?: boolean
 }
 
-export type NpcSource = 'manual' | 'enricher' | 'embellisher'
+export type NpcSource = 'manual'
 export type NpcRole = 'quest_giver' | 'informant' | 'antagonist' | 'bystander' | 'merchant'
 export type NpcAttitude = 'friendly' | 'indifferent' | 'unfriendly'
 
