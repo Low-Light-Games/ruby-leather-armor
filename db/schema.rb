@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_03_180000) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_03_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -202,12 +202,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_03_180000) do
     t.string "current_category"
     t.string "dm_mode", default: "standard", null: false
     t.boolean "directed_dm", default: false, null: false
-    t.jsonb "traversal_context", default: {}, null: false
     t.jsonb "combat_context", default: {}, null: false
-    t.jsonb "social_context", default: {}, null: false
-    t.jsonb "exploration_context", default: {}, null: false
-    t.jsonb "rest_context", default: {}, null: false
-    t.jsonb "inventory_context", default: {}, null: false
     t.text "scene_summary"
     t.bigint "current_location_id"
     t.jsonb "enriched_world", default: {}, null: false

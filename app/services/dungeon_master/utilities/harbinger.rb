@@ -121,8 +121,7 @@ module DungeonMaster
 
         system_prompt, user_msg = PromptRenderer.render_with_user_message("encounter_expansion",
           hint: entry.description,
-          location: adventure.current_location&.name || "the wilderness",
-          traversal_context: adventure.traversal_context)
+          location: adventure.current_location&.name || "the wilderness")
 
         request_body = { system_prompt: system_prompt, user_message: user_msg }
         raw = ai.chat(system_prompt: system_prompt, user_message: user_msg,
