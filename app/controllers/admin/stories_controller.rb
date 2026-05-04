@@ -68,8 +68,7 @@ module Admin
 
     def story_params
       params.require(:story).permit(
-        :title, :preview, :premise, :opening_message, :world_terrain, :initial_summary,
-        initial_contexts: {},
+        :title, :preview, :premise, :opening_message, :world_terrain,
         seed_facts: [[:text, :kind, :polarity, { entities: [] }]],
         story_locations_attributes: [:id, :name, :description, :starting, :_destroy],
         encounter_tables_attributes: [
@@ -97,7 +96,7 @@ module Admin
     def story_json(story)
       base = story.as_json(only: [
         :id, :title, :preview, :premise, :opening_message, :world_terrain,
-        :initial_summary, :initial_contexts, :seed_facts, :created_at, :updated_at
+        :seed_facts, :created_at, :updated_at
       ])
       base["story_locations"] = story.story_locations.order(:id).map { |loc|
         loc.as_json(only: [:id, :name, :description, :starting])

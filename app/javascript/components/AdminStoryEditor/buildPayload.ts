@@ -1,8 +1,7 @@
 import type {
   ClientLocation,
   EncounterTableData, StoryNpcData,
-  InitialContexts, SeedFact,
-  TraversalCtx, CombatCtx, SocialCtx, ExplorationCtx, RestCtx, InventoryCtx,
+  SeedFact,
 } from './types'
 
 export interface PayloadArgs {
@@ -11,17 +10,10 @@ export interface PayloadArgs {
   premise: string
   openingMessage: string
   seedFacts: SeedFact[]
-  initialSummary: string
   currentStoryId: number | undefined
   locations: ClientLocation[]
   encounterTables: EncounterTableData[]
   npcs: StoryNpcData[]
-  icTraversal: TraversalCtx
-  icCombat: CombatCtx
-  icSocial: SocialCtx
-  icExploration: ExplorationCtx
-  icRest: RestCtx
-  icInventory: InventoryCtx
 }
 
 export const buildLocationPayload = (locations: ClientLocation[]) =>
@@ -34,56 +26,16 @@ export const buildLocationPayload = (locations: ClientLocation[]) =>
     return locAttrs
   })
 
-const stripEmpty = (obj: Record<string, unknown>): Record<string, unknown> | null => {
-  const clean: Record<string, unknown> = {}
-  for (const [k, v] of Object.entries(obj)) {
-    if (v === '' || v === null || v === undefined) continue
-    if (Array.isArray(v) && v.length === 0) continue
-    if (typeof v === 'boolean' && !v) continue
-    clean[k] = v
-  }
-  return Object.keys(clean).length > 0 ? clean : null
-}
-
-export const buildInitialContextsPayload = (
-  icTraversal: TraversalCtx,
-  icCombat: CombatCtx,
-  icSocial: SocialCtx,
-  icExploration: ExplorationCtx,
-  icRest: RestCtx,
-  icInventory: InventoryCtx,
-): InitialContexts => {
-  const ic: Record<string, unknown> = {}
-  const t = stripEmpty(icTraversal as unknown as Record<string, unknown>)
-  if (t) ic.traversal_context = t
-  const c = stripEmpty(icCombat as unknown as Record<string, unknown>)
-  if (c) ic.combat_context = c
-  const s = stripEmpty({ ...icSocial, npcs_present: icSocial.npcs_present.length > 0 ? icSocial.npcs_present : undefined } as unknown as Record<string, unknown>)
-  if (s) ic.social_context = s
-  const e = stripEmpty(icExploration as unknown as Record<string, unknown>)
-  if (e) ic.exploration_context = e
-  const r = stripEmpty(icRest as unknown as Record<string, unknown>)
-  if (r) ic.rest_context = r
-  const inv = stripEmpty(icInventory as unknown as Record<string, unknown>)
-  if (inv) ic.inventory_context = inv
-  return ic as InitialContexts
-}
-
 export const buildPayload = (args: PayloadArgs) => {
   const {
-    title, preview, premise, openingMessage, seedFacts, initialSummary,
+    title, preview, premise, openingMessage, seedFacts,
     currentStoryId, locations, encounterTables, npcs,
-    icTraversal, icCombat, icSocial, icExploration, icRest, icInventory,
   } = args
 
   const story: Record<string, unknown> = {
     title, preview, premise,
     opening_message: openingMessage,
     seed_facts: seedFacts,
-    initial_summary: initialSummary,
-    initial_contexts: buildInitialContextsPayload(
-      icTraversal, icCombat, icSocial, icExploration, icRest, icInventory,
-    ),
   }
 
   if (currentStoryId) {

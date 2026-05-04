@@ -139,7 +139,6 @@ export interface Story {
   title: string
   preview: string
   premise: string
-  initial_summary: string | null
   created_at: string
   updated_at: string
 }
@@ -149,7 +148,6 @@ export interface AdminStory {
   title: string
   preview: string
   premise: string
-  initial_summary: string | null
   story_locations?: StoryLocationData[]
   encounter_tables?: EncounterTableData[]
   story_npcs?: StoryNpcData[]
@@ -263,12 +261,7 @@ export interface Adventure {
   adventure_sheet: AdventureSheet
   story: Story
   battlefield?: BattlefieldSnapshot | null
-  traversal_context: Record<string, unknown> | null
   combat_context: Record<string, unknown> | null
-  social_context: Record<string, unknown> | null
-  exploration_context: Record<string, unknown> | null
-  rest_context: Record<string, unknown> | null
-  inventory_context: Record<string, unknown> | null
   time_context: Record<string, unknown> | null
   story_summary: string | null
   scene_summary: string | null

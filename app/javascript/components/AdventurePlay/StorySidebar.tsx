@@ -18,12 +18,7 @@ interface StorySidebarProps {
   story: Story;
   adventureId: number;
   battlefield?: BattlefieldSnapshot | null;
-  traversalContext: Record<string, unknown> | null;
   combatContext: Record<string, unknown> | null;
-  socialContext: Record<string, unknown> | null;
-  explorationContext: Record<string, unknown> | null;
-  restContext: Record<string, unknown> | null;
-  inventoryContext: Record<string, unknown> | null;
   timeContext: Record<string, unknown> | null;
   storySummary: string | null;
   sceneSummary: string | null;
@@ -155,12 +150,7 @@ export const StorySidebar: React.FC<StorySidebarProps> = ({
   story,
   adventureId,
   battlefield,
-  traversalContext,
   combatContext,
-  socialContext,
-  explorationContext,
-  restContext,
-  inventoryContext,
   timeContext,
   storySummary,
   sceneSummary,
@@ -174,12 +164,7 @@ export const StorySidebar: React.FC<StorySidebarProps> = ({
   const categoryInfo = currentCategory ? CATEGORY_LABELS[currentCategory] : null;
 
   const contexts: Array<{ key: string; label: string; className: string; ctx: Record<string, unknown> | null }> = [
-    { key: 'traversal', label: 'Traversal', className: 'cat-traversal', ctx: traversalContext },
     { key: 'combat', label: 'Combat', className: 'cat-combat', ctx: combatContext },
-    { key: 'social', label: 'Social', className: 'cat-social', ctx: socialContext },
-    { key: 'exploration', label: 'Exploration', className: 'cat-exploration', ctx: explorationContext },
-    { key: 'rest', label: 'Rest', className: 'cat-rest', ctx: restContext },
-    { key: 'inventory', label: 'Inventory', className: 'cat-inventory', ctx: inventoryContext },
   ];
 
   const activeContextCount = contexts.filter(c => isContextActive(c.ctx)).length;

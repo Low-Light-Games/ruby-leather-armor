@@ -4,7 +4,7 @@ module Admin
   class AdventuresController < BaseController
     before_action :set_adventure, only: [:show, :update, :reset_context, :update_sheet, :update_story_element, :destroy]
 
-    CONTEXT_FIELDS = %w[traversal combat social exploration rest inventory].freeze
+    CONTEXT_FIELDS = %w[combat].freeze
 
     def index
       @show_discarded = params[:discarded] == "1"

@@ -6,12 +6,7 @@ import { buildPayload, buildLocationPayload } from './buildPayload'
 import type {
   ClientLocation,
   EncounterTableData, StoryNpcData,
-  StoryData, InitialContexts, SeedFact,
-  TraversalCtx, CombatCtx, SocialCtx, ExplorationCtx, RestCtx, InventoryCtx,
-} from './types'
-import {
-  emptyTraversalCtx, emptyCombatCtx, emptySocialCtx,
-  emptyExplorationCtx, emptyRestCtx, emptyInventoryCtx,
+  StoryData, SeedFact,
 } from './types'
 
 export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) => {
@@ -26,26 +21,16 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
   const [premise, setPremise] = useState('')
   const [openingMessage, setOpeningMessage] = useState('')
   const [seedFacts, setSeedFacts] = useState<SeedFact[]>([])
-  const [initialSummary, setInitialSummary] = useState('')
   const [currentStoryId, setCurrentStoryId] = useState<number | undefined>(storyId)
 
   const [locations, setLocations] = useState<ClientLocation[]>([])
   const [encounterTables, setEncounterTables] = useState<EncounterTableData[]>([])
   const [npcs, setNpcs] = useState<StoryNpcData[]>([])
 
-  const [icTraversal, setIcTraversal] = useState<TraversalCtx>(emptyTraversalCtx())
-  const [icCombat, setIcCombat] = useState<CombatCtx>(emptyCombatCtx())
-  const [icSocial, setIcSocial] = useState<SocialCtx>(emptySocialCtx())
-  const [icExploration, setIcExploration] = useState<ExplorationCtx>(emptyExplorationCtx())
-  const [icRest, setIcRest] = useState<RestCtx>(emptyRestCtx())
-  const [icInventory, setIcInventory] = useState<InventoryCtx>(emptyInventoryCtx())
-
   const [seedFactsOpen, setSeedFactsOpen] = useState(true)
   const [locationsOpen, setLocationsOpen] = useState(false)
   const [encounterTablesOpen, setEncounterTablesOpen] = useState(false)
   const [npcsOpen, setNpcsOpen] = useState(false)
-  const [initialContextsOpen, setInitialContextsOpen] = useState(false)
-  const [icSubOpen, setIcSubOpen] = useState<Record<string, boolean>>({})
   const [expandedLocIdx, setExpandedLocIdx] = useState<number | null>(null)
   const [expandedTableIdx, setExpandedTableIdx] = useState<number | null>(null)
 
@@ -57,56 +42,18 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
   const locationsRef = useRef(locations)
   locationsRef.current = locations
 
-  const hydrateInitialContexts = (ic: InitialContexts) => {
-    const t = ic.traversal_context || {}
-    setIcTraversal({
-      ...emptyTraversalCtx(),
-      ...t,
-      exits: Array.isArray(t.exits) ? t.exits : [],
-      nearby_npcs: Array.isArray(t.nearby_npcs) ? t.nearby_npcs : [],
-      points_of_interest: Array.isArray(t.points_of_interest) ? t.points_of_interest : [],
-    })
-    setIcCombat({ ...emptyCombatCtx(), ...(ic.combat_context || {}) })
-    const s = ic.social_context || {}
-    setIcSocial({
-      ...emptySocialCtx(),
-      ...s,
-      npcs_present: Array.isArray(s.npcs_present) ? s.npcs_present : [],
-    })
-    const e = ic.exploration_context || {}
-    setIcExploration({
-      ...emptyExplorationCtx(),
-      ...e,
-      searched_areas: Array.isArray(e.searched_areas) ? e.searched_areas : [],
-      discovered_items: Array.isArray(e.discovered_items) ? e.discovered_items : [],
-      discovered_secrets: Array.isArray(e.discovered_secrets) ? e.discovered_secrets : [],
-      pending_investigations: Array.isArray(e.pending_investigations) ? e.pending_investigations : [],
-    })
-    setIcRest({ ...emptyRestCtx(), ...(ic.rest_context || {}) })
-    const inv = ic.inventory_context || {}
-    setIcInventory({
-      ...emptyInventoryCtx(),
-      ...inv,
-      recently_acquired: Array.isArray(inv.recently_acquired) ? inv.recently_acquired : [],
-      notable_consumables_remaining: Array.isArray(inv.notable_consumables_remaining) ? inv.notable_consumables_remaining : [],
-      equipped_changes: Array.isArray(inv.equipped_changes) ? inv.equipped_changes : [],
-    })
-  }
-
   const applyServerData = (data: StoryData, fresh = false) => {
     setTitle(data.title)
     setPreview(data.preview)
     setPremise(data.premise)
     setOpeningMessage(data.opening_message || '')
     setSeedFacts(Array.isArray(data.seed_facts) ? data.seed_facts : [])
-    setInitialSummary(data.initial_summary || '')
     setLocations(fresh
       ? hydrateLocations(data.story_locations || [])
       : rehydrateLocations(data.story_locations || [], locationsRef.current)
     )
     setEncounterTables(data.encounter_tables || [])
     setNpcs(data.story_npcs || [])
-    hydrateInitialContexts(data.initial_contexts || {})
   }
 
   useEffect(() => {
@@ -149,9 +96,7 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
   const getPayloadArgs = () => ({
     title, preview, premise,
     openingMessage, seedFacts,
-    initialSummary,
     currentStoryId, locations, encounterTables, npcs,
-    icTraversal, icCombat, icSocial, icExploration, icRest, icInventory,
   })
 
   const saveStory = async () => {
@@ -192,20 +137,14 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
     title, setTitle, preview, setPreview, premise, setPremise,
     openingMessage, setOpeningMessage,
     seedFacts, setSeedFacts,
-    initialSummary, setInitialSummary,
     currentStoryId,
     locations, setLocations,
     encounterTables, setEncounterTables,
     npcs, setNpcs,
-    icTraversal, setIcTraversal, icCombat, setIcCombat,
-    icSocial, setIcSocial, icExploration, setIcExploration,
-    icRest, setIcRest, icInventory, setIcInventory,
     seedFactsOpen, setSeedFactsOpen,
     locationsOpen, setLocationsOpen,
     encounterTablesOpen, setEncounterTablesOpen,
     npcsOpen, setNpcsOpen,
-    initialContextsOpen, setInitialContextsOpen,
-    icSubOpen, setIcSubOpen,
     expandedLocIdx, setExpandedLocIdx,
     expandedTableIdx, setExpandedTableIdx,
     duplicateNames, hasDuplicateNames,

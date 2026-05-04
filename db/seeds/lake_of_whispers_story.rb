@@ -11,10 +11,10 @@ story.premise = <<~PREMISE.strip
 
   The Aboleth got there by being invoked by the mad mage 150 years ago. The Mage quickly realized he had doomed the village, and before thinking too much, he hastely petrified himself with a custom spell that made him petrified and forever a dormant protector of the village.
 PREMISE
-story.initial_summary = <<~SUMMARY.strip
-  The player doesn't know anything about the disappearances in the village except what the Quest Posting said:
-  "People disappearing. Need adventurer help. Intelligent detectives or competent guards welcome"
-SUMMARY
+story.opening_message = <<~OPENING.strip
+  A quest posting flutters on the village notice-board: "People disappearing. Need adventurer help. Intelligent detectives or competent guards welcome." The lake stretches dark beyond the rooftops, and the houses nearest its shore have been hit hardest. You are the first adventurer to answer.
+OPENING
+story.world_terrain = "swamp"
 story.save!
 
 puts "Created/updated story: #{story.title}"

@@ -4,7 +4,6 @@ import { useStoryEditorState } from './useStoryEditorState'
 import LocationsSection from './sections/LocationsSection'
 import EncounterTablesSection from './sections/EncounterTablesSection'
 import NpcsSection from './sections/NpcsSection'
-import InitialContextsSection from './sections/InitialContextsSection'
 import SeedFactsSection from './sections/SeedFactsSection'
 import type { AdminStoryEditorProps } from './types'
 import './AdminStoryEditor.scss'
@@ -16,20 +15,14 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
     title, setTitle, preview, setPreview, premise, setPremise,
     openingMessage, setOpeningMessage,
     seedFacts, setSeedFacts,
-    initialSummary, setInitialSummary,
     currentStoryId,
     locations, setLocations,
     encounterTables, setEncounterTables,
     npcs, setNpcs,
-    icTraversal, setIcTraversal, icCombat, setIcCombat,
-    icSocial, setIcSocial, icExploration, setIcExploration,
-    icRest, setIcRest, icInventory, setIcInventory,
     seedFactsOpen, setSeedFactsOpen,
     locationsOpen, setLocationsOpen,
     encounterTablesOpen, setEncounterTablesOpen,
     npcsOpen, setNpcsOpen,
-    initialContextsOpen, setInitialContextsOpen,
-    icSubOpen, setIcSubOpen,
     expandedLocIdx, setExpandedLocIdx,
     expandedTableIdx, setExpandedTableIdx,
     duplicateNames, hasDuplicateNames,
@@ -104,13 +97,6 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
             placeholder="The first prose the player reads when they start the adventure. E.g. 'You wake at dawn in the inn at the crossroads, the rain still falling. The innkeeper Helena meets your eye across the common room — she has been waiting for you.'" />
         </div>
 
-        <div className="form-field">
-          <label htmlFor="story-initial-summary" title="Seeds the 'story so far' field that the narrator and other steps use for context. Should reflect the starting state, not the plot.">Initial Summary (story-so-far seed)</label>
-          <textarea id="story-initial-summary" value={initialSummary}
-            onChange={e => setInitialSummary(e.target.value)} rows={4}
-            placeholder="A brief status line from the player's perspective. E.g. 'Just arrived at the village after hearing rumors of goblin trouble. No leads yet.' This seeds the macro narrative tracker." />
-        </div>
-
         {isEditMode && (
           <SeedFactsSection
             seedFacts={seedFacts} setSeedFacts={setSeedFacts}
@@ -140,19 +126,6 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
             npcs={npcs} setNpcs={setNpcs}
             npcsOpen={npcsOpen} setNpcsOpen={setNpcsOpen}
             savedLocations={savedLocations}
-          />
-        )}
-
-        {isEditMode && (
-          <InitialContextsSection
-            initialContextsOpen={initialContextsOpen} setInitialContextsOpen={setInitialContextsOpen}
-            icSubOpen={icSubOpen} setIcSubOpen={setIcSubOpen}
-            icTraversal={icTraversal} setIcTraversal={setIcTraversal}
-            icCombat={icCombat} setIcCombat={setIcCombat}
-            icSocial={icSocial} setIcSocial={setIcSocial}
-            icExploration={icExploration} setIcExploration={setIcExploration}
-            icRest={icRest} setIcRest={setIcRest}
-            icInventory={icInventory} setIcInventory={setIcInventory}
           />
         )}
 

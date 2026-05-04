@@ -7,34 +7,16 @@
 
 story = Story.find_or_initialize_by(title: "The Bloodfield March")
 story.preview = "A desperate push through war-torn land overrun with enemies. Every mile is a fight."
-story.initial_contexts = {
-  "traversal_context" => {
-    "terrain"            => "road",
-    "weather"            => "overcast morning, acrid smoke drifting from burning tents",
-    "time_of_day"        => "morning",
-    "nearby_npcs"        => [
-      "Distant orc patrol visible across the open field",
-      "Two goblin scouts picking through mercenary corpses to the east"
-    ],
-    "points_of_interest" => [
-      "Overturned supply wagon (provides cover)",
-      "Bodies of fallen mercenaries scattered across the mud",
-      "Smouldering tent remnants",
-      "Garrison Keep silhouette visible to the north"
-    ]
-  }
-}
+story.world_terrain = "plains"
+story.opening_message = <<~OPENING.strip
+  Smoke from burning tents drifts across the road. The mercenary company you marched with is dead — bodies scattered in the mud, supply wagons overturned. To the north, the silhouette of Garrison Keep rises above the field. Behind you, an orc patrol has spotted the smoke. There is no path back.
+OPENING
 story.premise = <<~PREMISE.strip
   A mercenary company was wiped out and the player is the only survivor. Surrounded by roving warbands,
   undead stirred by the battle's carnage, and opportunistic monsters, the player must fight their way
   from the ruined Forward Camp to the relative safety of Garrison Keep. There are no allies, no
   diplomacy, no puzzles — only the next enemy.
 PREMISE
-story.initial_summary = <<~SUMMARY.strip
-  The player must cross from the Forward Camp to Garrison Keep. Enemy patrols cover every route.
-  The player has no information about what awaits at the Keep — only that it is the nearest
-  defensible position. Survival is the only objective.
-SUMMARY
 story.save!
 
 puts "Created/updated story: #{story.title}"
@@ -54,19 +36,7 @@ locs.each do |name, attrs|
   location_records[name] = loc
 end
 
-connections = [
-  ["Ruined Forward Camp", "The Bloodfield", 2.0,  "road",   "An exposed road across open ground — no cover."],
-  ["The Bloodfield",      "Garrison Keep",  2.0,  "road",   "The final stretch, uphill, toward the Keep's sealed gate."],
-]
-
-connections.each do |from_name, to_name, dist, terrain, desc|
-  from_loc = location_records[from_name]
-  to_loc   = location_records[to_name]
-  conn = LocationConnection.find_or_initialize_by(from_location: from_loc, to_location: to_loc)
-  conn.update!(distance_miles: dist, terrain_type: terrain, description: desc)
-end
-
-puts "Seeded #{location_records.size} locations and #{connections.size} connections for '#{story.title}'"
+puts "Seeded #{location_records.size} locations for '#{story.title}'"
 
 # ── Encounter Table — extremely aggressive ────────────────────────────────────
 # check_frequency_hours: 1 → checked every in-game hour

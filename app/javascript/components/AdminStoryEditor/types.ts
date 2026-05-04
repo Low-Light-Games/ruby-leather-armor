@@ -40,75 +40,9 @@ export interface StoryData {
   opening_message?: string
   world_terrain?: string
   seed_facts?: SeedFact[]
-  initial_summary: string | null
-  initial_contexts?: InitialContexts
   story_locations?: StoryLocationData[]
   encounter_tables?: EncounterTableData[]
   story_npcs?: StoryNpcData[]
-}
-
-// ---- Initial Contexts types ----
-
-export interface TraversalCtx {
-  current_location: string
-  destination: string
-  terrain: string
-  weather: string
-  time_of_day: string
-  exits: string[]
-  nearby_npcs: string[]
-  points_of_interest: string[]
-}
-
-export interface CombatCtx {
-  active: boolean
-  round: number | null
-  terrain_notes: string
-}
-
-export interface SocialNpcPresent {
-  name: string
-  role: string
-  attitude: 'friendly' | 'indifferent' | 'unfriendly'
-  notes: string
-}
-
-export interface SocialCtx {
-  scene: string
-  conversation_state: string
-  stakes: string
-  npcs_present: SocialNpcPresent[]
-}
-
-export interface ExplorationCtx {
-  searched_areas: string[]
-  discovered_items: string[]
-  discovered_secrets: string[]
-  active_detection: string
-  pending_investigations: string[]
-}
-
-export interface RestCtx {
-  resting: boolean
-  hours_completed: number | null
-  total_hours_needed: number | null
-  rest_complete: boolean
-  hp_recovered: number | null
-}
-
-export interface InventoryCtx {
-  recently_acquired: string[]
-  notable_consumables_remaining: string[]
-  equipped_changes: string[]
-}
-
-export interface InitialContexts {
-  traversal_context?: Partial<TraversalCtx>
-  combat_context?: Partial<CombatCtx>
-  social_context?: Partial<SocialCtx>
-  exploration_context?: Partial<ExplorationCtx>
-  rest_context?: Partial<RestCtx>
-  inventory_context?: Partial<InventoryCtx>
 }
 
 // ---- Constants ----
@@ -135,35 +69,3 @@ export const emptyNpc = (): StoryNpcData => ({
   source: 'manual', name: '', role: 'bystander', description: '',
   knowledge: '', attitude: 'indifferent', secret: false,
 })
-
-export const emptyTraversalCtx = (): TraversalCtx => ({
-  current_location: '', destination: '', terrain: '', weather: '', time_of_day: '',
-  exits: [], nearby_npcs: [], points_of_interest: [],
-})
-
-export const emptyCombatCtx = (): CombatCtx => ({
-  active: false, round: null, terrain_notes: '',
-})
-
-export const emptySocialNpc = (): SocialNpcPresent => ({
-  name: '', role: '', attitude: 'indifferent', notes: '',
-})
-
-export const emptySocialCtx = (): SocialCtx => ({
-  scene: '', conversation_state: '', stakes: '', npcs_present: [],
-})
-
-export const emptyExplorationCtx = (): ExplorationCtx => ({
-  searched_areas: [], discovered_items: [], discovered_secrets: [],
-  active_detection: '', pending_investigations: [],
-})
-
-export const emptyRestCtx = (): RestCtx => ({
-  resting: false, hours_completed: null, total_hours_needed: null,
-  rest_complete: false, hp_recovered: null,
-})
-
-export const emptyInventoryCtx = (): InventoryCtx => ({
-  recently_acquired: [], notable_consumables_remaining: [], equipped_changes: [],
-})
-
