@@ -7,6 +7,7 @@ module DungeonMaster
   class Logging
     attr_accessor :player_message_id, :registry_entry_uuid, :player_message_content, :action_label,
                   :adventure_loop
+    attr_reader :embedding_cache
 
     def initialize(adventure:, user:, dm_service: "standard")
       @adventure = adventure
@@ -16,6 +17,7 @@ module DungeonMaster
       @registry_entry_uuid = nil
       @player_message_content = nil
       @adventure_loop = nil
+      @embedding_cache = EmbeddingCache.new
     end
 
     def start_registry_entry!(message_content)
