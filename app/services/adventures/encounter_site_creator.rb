@@ -6,6 +6,7 @@ module Adventures
 
     def create!(adventure:, from:, to:, fraction:, ai:, log:)
       raise ArgumentError, "from is required" unless from
+
       raise ArgumentError, "to is required" unless to
 
       f = fraction.to_f.clamp(0.0, 1.0)
