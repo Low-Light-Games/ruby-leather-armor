@@ -50,7 +50,7 @@ module Adventures
     def ensure_opening_message(adventure)
       return if adventure.adventure_messages.exists?
 
-      content = @story.opening_message.presence || @story.preview
+      content = @story.opening_message.presence
       return if content.blank?
 
       adventure.adventure_messages.create!(
