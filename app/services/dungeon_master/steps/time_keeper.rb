@@ -94,15 +94,21 @@ module DungeonMaster
       end
 
       def try_journey_estimate(intent)
-        return nil unless intent[:destination].present?
+        raw_destination = intent[:destination] || intent["destination"]
+        return journey_skipped("no destination on intent", intent) if raw_destination.blank?
 
-        destination = resolve_destination(intent[:destination])
-        return nil unless destination
+        destination = resolve_destination(raw_destination)
+        return journey_skipped("destination did not resolve to an adventure_location",
+                               intent, raw_destination: raw_destination) unless destination
 
         origin = origin_adventure_location
-        return nil unless origin
+        return journey_skipped("origin (current_location) not set",
+                               intent, raw_destination: raw_destination,
+                               destination_name: destination.name) unless origin
 
-        raise ArgumentError, "Character sheet or derived_stats missing for journey calculation" unless @sheet&.derived_stats
+        unless @sheet&.derived_stats
+          raise ArgumentError, "Character sheet or derived_stats missing for journey calculation"
+        end
 
         base_speed_ft  = @sheet.derived_stats["speed"] || 30
         encumbrance    = @sheet.derived_stats["encumbrance"] || "light"
@@ -110,7 +116,12 @@ module DungeonMaster
         distance_miles = euclidean_distance_in_miles(origin, destination)
 
         speed_mph = compute_journey_speed(base_speed_ft, terrain)
-        return nil if speed_mph <= 0
+        if speed_mph <= 0
+          return journey_skipped("speed_mph <= 0",
+                                 intent, raw_destination: raw_destination,
+                                 destination_name: destination.name,
+                                 base_speed_ft: base_speed_ft, terrain: terrain)
+        end
 
         hours = distance_miles / speed_mph
 
@@ -134,6 +145,19 @@ module DungeonMaster
             }
           }
         }
+      end
+
+      def journey_skipped(reason, intent, **details)
+        @log&.play_log!(
+          "time_keeper_journey_skipped",
+          "Journey-code branch bailed: #{reason}",
+          parsed_response: { reason: reason, intent_keys: intent.keys.map(&:to_s),
+                             intent_destination: intent[:destination] || intent["destination"],
+                             current_location_id: @adventure&.current_location_id,
+                             current_location_name: @adventure&.current_location&.name,
+                             **details },
+        )
+        nil
       end
 
       def origin_adventure_location
@@ -197,7 +221,14 @@ module DungeonMaster
           [raw, @ai.parse_json(raw)]
         end
 
-        hours = (parsed["hours_elapsed"] || 0.0017).to_f.clamp(0, 720)
+        raw_hours = parsed["hours_elapsed"]
+        if raw_hours.nil?
+          raise AiError, "TimeKeeper AI returned no hours_elapsed (parsed: #{parsed.inspect.truncate(200)})"
+        end
+
+        hours = raw_hours.to_f.clamp(0, 720)
+        hours = enforce_destination_floor(hours, intent)
+
         distance = parsed["distance_miles"]&.to_f
         is_journey = distance.present? && distance > 0
 
@@ -217,6 +248,25 @@ module DungeonMaster
             speed_factors: { source: "ai_estimate" }
           } : nil
         }
+      end
+
+      # When a destination is named but the AI emitted a combat-grade duration,
+      # the model treated "walk to X" as a Move action. Floor the elapsed time
+      # so the clock and Harbinger see real travel hours; loud play_log entry
+      # makes the override visible.
+      DESTINATION_AI_FLOOR_HOURS = 0.25
+
+      def enforce_destination_floor(hours, intent)
+        return hours unless (intent[:destination] || intent["destination"]).present?
+        return hours if hours >= DESTINATION_AI_FLOOR_HOURS
+
+        @log&.play_log!(
+          "time_keeper_ai_floor",
+          "AI estimated #{hours.round(4)}h with a destination set; flooring to #{DESTINATION_AI_FLOOR_HOURS}h.",
+          parsed_response: { ai_hours: hours, floor: DESTINATION_AI_FLOOR_HOURS,
+                             destination: intent[:destination] || intent["destination"] },
+        )
+        DESTINATION_AI_FLOOR_HOURS
       end
 
       # ── Fatigue condition management ─────────────────────────────
