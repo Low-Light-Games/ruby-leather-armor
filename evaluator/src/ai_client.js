@@ -79,17 +79,43 @@ async function withOpenAIRetries(callType, model, fn) {
     attempt += 1;
 
     try {
-      return await fn();
+      const result = await fn();
+      if (attempt > 1) {
+        console.log(
+          `[evaluator] ${callType} succeeded on attempt ${attempt}/${OPENAI_MAX_RETRIES + 1} (model=${model})`
+        );
+      }
+      return result;
     } catch (error) {
-      if (!isRetryableOpenAIError(error) || attempt > OPENAI_MAX_RETRIES) {
+      const errorName = error?.name || error?.constructor?.name || "Error";
+      const errorStatus = error?.status ?? error?.response?.status ?? null;
+      const retryable = isRetryableOpenAIError(error);
+
+      if (!retryable || attempt > OPENAI_MAX_RETRIES) {
+        // Annotate so /fan_out (and Rails) can read retry behaviour from the
+        // response body — no more guessing whether retry fired.
+        error.evaluatorRetry = {
+          callType,
+          model,
+          attempts: attempt,
+          maxAttempts: OPENAI_MAX_RETRIES + 1,
+          retryable,
+          errorName,
+          errorStatus,
+        };
+        console.error(
+          `[evaluator] ${callType} ${errorName} EXHAUSTED ` +
+          `(attempts=${attempt}/${OPENAI_MAX_RETRIES + 1}, retryable=${retryable}, ` +
+          `status=${errorStatus ?? "none"}, model=${model})`
+        );
         throw error;
       }
 
       const { delaySeconds, usedRetryAfter } = retryDelaySeconds(attempt, error);
       console.warn(
-        `[evaluator] ${callType} ${error?.name || error?.constructor?.name || "Error"} ` +
-        `(attempt ${attempt}/${OPENAI_MAX_RETRIES + 1}, model=${model}, ` +
-        `delay=${delaySeconds.toFixed(3)}s, retry_after=${usedRetryAfter})`
+        `[evaluator] ${callType} ${errorName} retry ` +
+        `(attempt ${attempt}/${OPENAI_MAX_RETRIES + 1}, status=${errorStatus ?? "none"}, ` +
+        `model=${model}, delay=${delaySeconds.toFixed(3)}s, retry_after=${usedRetryAfter})`
       );
       await sleep(delaySeconds * 1000);
     }
