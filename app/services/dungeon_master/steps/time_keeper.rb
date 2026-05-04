@@ -347,6 +347,7 @@ module DungeonMaster
 
       def update_player_position!(estimated, harbinger_result, actual_hours)
         return unless estimated[:source] == :journey_code
+
         return if estimated[:hours].to_f <= 0
 
         from = origin_adventure_location
