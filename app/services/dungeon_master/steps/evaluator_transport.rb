@@ -39,8 +39,51 @@ module DungeonMaster
       # POST /fan_out — returns results indexed by meta["step"].
       # Use this instead of wiring evaluator_base_url + call_evaluator! + evaluator_fan_out_results_by_step.
       def evaluator_fan_out!(payloads, intention, phase:)
-        evaluator_fan_out_results_by_step(
+        by_step = evaluator_fan_out_results_by_step(
           call_evaluator!("#{evaluator_base_url}/fan_out", payloads, intention, phase: phase))
+        retry_parse_error_prompts!(by_step, payloads, intention, phase: phase)
+        by_step
+      end
+
+      # When Node returns a per-prompt result with parse_status == "parse_error"
+      # (model emitted malformed JSON — typically tail truncation on a clean
+      # finish_reason), re-issue *just* that single prompt in a fresh
+      # /fan_out call. Successful sibling results are kept; only the broken
+      # one is retried. Bounded to one retry per prompt: a second
+      # parse_error leaves the original failure in place so the downstream
+      # guard surfaces it normally.
+      def retry_parse_error_prompts!(by_step, original_payloads, intention, phase:)
+        failed_steps = by_step.select { |_step, result| result["parse_status"] == "parse_error" }.keys
+        return if failed_steps.empty?
+
+        failed_steps.each do |step|
+          payload = payload_for_step(original_payloads, step)
+          next unless payload
+
+          @log&.play_log!(
+            "parse_retry",
+            "Evaluator #{phase}/#{step}: parse_error on attempt 1, retrying once",
+            parsed_response: { phase: phase, step: step }
+          )
+
+          retry_results = call_evaluator!(
+            "#{evaluator_base_url}/fan_out",
+            [payload], intention, phase: "#{phase}_retry"
+          )
+          retry_by_step = evaluator_fan_out_results_by_step(retry_results)
+          retried = retry_by_step[step]
+          next unless retried
+          next if retried["parse_status"] == "parse_error"
+
+          by_step[step] = retried
+        end
+      end
+
+      def payload_for_step(payloads, step)
+        Array(payloads).find do |payload|
+          meta = payload[:meta] || payload["meta"] || {}
+          (meta[:step] || meta["step"]).to_s == step
+        end
       end
 
       def evaluator_base_url
