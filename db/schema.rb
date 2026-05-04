@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_03_200000) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_03_210000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -205,9 +205,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_03_200000) do
     t.jsonb "combat_context", default: {}, null: false
     t.text "scene_summary"
     t.bigint "current_location_id"
-    t.jsonb "enriched_world", default: {}, null: false
-    t.text "enriched_premise"
-    t.jsonb "plot_state", default: {}, null: false
     t.jsonb "dm_settings", default: {}, null: false
     t.jsonb "time_context", default: {"current_hour"=>8, "adventure_day"=>1, "light_conditions"=>"day", "hours_since_last_rest"=>0, "hours_since_last_encounter_check"=>0}, null: false
     t.jsonb "scene_history", default: [], null: false
@@ -637,8 +634,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_03_200000) do
     t.datetime "updated_at", null: false
     t.text "preview", default: "", null: false
     t.datetime "discarded_at"
-    t.text "initial_summary"
-    t.jsonb "initial_contexts", default: {}, null: false
     t.string "world_terrain", default: "plains", null: false
     t.jsonb "seed_facts", default: [], null: false
     t.text "opening_message", default: "", null: false

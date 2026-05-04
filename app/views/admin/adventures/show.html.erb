@@ -229,12 +229,6 @@
         </details>
       </div>
 
-      <% unless json_blank?(@adventure.plot_state) %>
-        <div class="story-card full-width">
-          <div class="card-label">Plot State</div>
-          <pre class="context-json"><%= JSON.pretty_generate(@adventure.plot_state) %></pre>
-        </div>
-      <% end %>
     </div>
   </details>
 
