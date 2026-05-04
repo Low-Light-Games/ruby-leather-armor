@@ -56,6 +56,14 @@ module ApplicationHelper
     number_with_delimiter(count)
   end
 
+  def json_blank?(value)
+    value.blank? || value == {} || value == []
+  end
+
+  def pretty_json_or_empty(value)
+    json_blank?(value) ? "{}" : JSON.pretty_generate(value)
+  end
+
   def pagination_link(path_helper, page, current_page, label: nil, params: {})
     text = label || page.to_s
     if page == current_page

@@ -180,7 +180,7 @@
     <details class="edit-panel" style="padding: 0 20px 16px;">
       <summary class="edit-toggle">Edit Time Context (JSON)</summary>
       <%= form_with url: admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do %>
-        <textarea name="time_context_json" rows="6" class="json-editor"><%= tc.present? && tc != {} ? JSON.pretty_generate(tc) : '{}' %></textarea>
+        <textarea name="time_context_json" rows="6" class="json-editor"><%= pretty_json_or_empty(tc) %></textarea>
         <button type="submit" class="btn btn-primary">Save Time Context</button>
       <% end %>
     </details>
@@ -191,21 +191,21 @@
     <summary class="section-title">Combat Context</summary>
     <div class="contexts-grid">
       <% ctx = @adventure.combat_context %>
-      <div class="context-card<%= ' empty-context' if ctx.blank? || ctx == {} %>">
+      <div class="context-card<%= ' empty-context' if json_blank?(ctx) %>">
         <div class="context-header">
           <span class="context-name">Combat</span>
-          <% if ctx.present? && ctx != {} %>
+          <% unless json_blank?(ctx) %>
             <%= button_to "Reset", reset_combat_context_admin_adventure_path(@adventure),
                   method: :patch, class: "btn btn-danger btn-xs",
                   data: { confirm: "Reset combat context to {}?" } %>
           <% end %>
         </div>
-        <pre class="context-json"><%= ctx.present? && ctx != {} ? JSON.pretty_generate(ctx) : '{}' %></pre>
+        <pre class="context-json"><%= pretty_json_or_empty(ctx) %></pre>
 
         <details class="edit-panel">
           <summary class="edit-toggle">Edit JSON</summary>
           <%= form_with url: update_combat_context_admin_adventure_path(@adventure), method: :patch, local: true, class: "edit-form" do %>
-            <textarea name="value" rows="8" class="json-editor"><%= ctx.present? && ctx != {} ? JSON.pretty_generate(ctx) : '{}' %></textarea>
+            <textarea name="value" rows="8" class="json-editor"><%= pretty_json_or_empty(ctx) %></textarea>
             <button type="submit" class="btn btn-primary">Save Combat Context</button>
           <% end %>
         </details>
@@ -229,7 +229,7 @@
         </details>
       </div>
 
-      <% if @adventure.plot_state.present? && @adventure.plot_state != {} %>
+      <% unless json_blank?(@adventure.plot_state) %>
         <div class="story-card full-width">
           <div class="card-label">Plot State</div>
           <pre class="context-json"><%= JSON.pretty_generate(@adventure.plot_state) %></pre>
