@@ -83,15 +83,6 @@ module Admin
         story_npcs_attributes: [
           :id, :source, :name, :role, :location_id, :description,
           :knowledge, :attitude, :secret, :_destroy
-        ],
-        story_clues_attributes: [
-          :id, :source, :title, :description, :discovery_method, :location_id,
-          :npc_id, :reveals_secret, :difficulty, :_destroy,
-          prerequisite_clue_ids: []
-        ],
-        story_milestones_attributes: [
-          :id, :source, :title, :description, :consequence, :_destroy,
-          trigger_clue_ids: []
         ]
       )
     end
@@ -120,12 +111,6 @@ module Admin
       }
       base["story_npcs"] = story.story_npcs.story_level.order(:id).map { |npc|
         npc.as_json(only: [:id, :source, :name, :role, :location_id, :description, :knowledge, :attitude, :secret])
-      }
-      base["story_clues"] = story.story_clues.story_level.order(:id).map { |clue|
-        clue.as_json(only: [:id, :source, :title, :description, :discovery_method, :location_id, :npc_id, :prerequisite_clue_ids, :reveals_secret, :difficulty])
-      }
-      base["story_milestones"] = story.story_milestones.order(:id).map { |ms|
-        ms.as_json(only: [:id, :source, :title, :description, :trigger_clue_ids, :consequence])
       }
       base
     end

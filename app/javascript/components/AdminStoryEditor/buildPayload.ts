@@ -1,6 +1,6 @@
 import type {
   ClientLocation,
-  EncounterTableData, StoryNpcData, StoryClueData, StoryMilestoneData,
+  EncounterTableData, StoryNpcData,
   InitialContexts, SeedFact,
   TraversalCtx, CombatCtx, SocialCtx, ExplorationCtx, RestCtx, InventoryCtx,
 } from './types'
@@ -16,8 +16,6 @@ export interface PayloadArgs {
   locations: ClientLocation[]
   encounterTables: EncounterTableData[]
   npcs: StoryNpcData[]
-  clues: StoryClueData[]
-  milestones: StoryMilestoneData[]
   icTraversal: TraversalCtx
   icCombat: CombatCtx
   icSocial: SocialCtx
@@ -74,7 +72,7 @@ export const buildInitialContextsPayload = (
 export const buildPayload = (args: PayloadArgs) => {
   const {
     title, preview, premise, openingMessage, seedFacts, initialSummary,
-    currentStoryId, locations, encounterTables, npcs, clues, milestones,
+    currentStoryId, locations, encounterTables, npcs,
     icTraversal, icCombat, icSocial, icExploration, icRest, icInventory,
   } = args
 
@@ -124,28 +122,6 @@ export const buildPayload = (args: PayloadArgs) => {
       }
       if (npc.id) attrs.id = npc.id
       if (npc._destroy) attrs._destroy = true
-      return attrs
-    })
-
-    story.story_clues_attributes = clues.map(clue => {
-      const attrs: Record<string, unknown> = {
-        source: clue.source, title: clue.title, description: clue.description,
-        discovery_method: clue.discovery_method, location_id: clue.location_id || null,
-        npc_id: clue.npc_id || null, prerequisite_clue_ids: clue.prerequisite_clue_ids,
-        reveals_secret: clue.reveals_secret, difficulty: clue.difficulty,
-      }
-      if (clue.id) attrs.id = clue.id
-      if (clue._destroy) attrs._destroy = true
-      return attrs
-    })
-
-    story.story_milestones_attributes = milestones.map(ms => {
-      const attrs: Record<string, unknown> = {
-        source: ms.source, title: ms.title, description: ms.description,
-        trigger_clue_ids: ms.trigger_clue_ids, consequence: ms.consequence,
-      }
-      if (ms.id) attrs.id = ms.id
-      if (ms._destroy) attrs._destroy = true
       return attrs
     })
   }

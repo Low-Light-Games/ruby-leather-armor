@@ -337,68 +337,6 @@
     <% else %>
       <p class="empty-msg">No NPCs.</p>
     <% end %>
-
-    <%# --- Clues --- %>
-    <h3 class="sub-title">Clues (<%= @clues.size %>)</h3>
-    <% if @clues.any? %>
-      <% discovered_ids = (@adventure.plot_state || {})["discovered_clues"] || [] %>
-      <table class="elements-table">
-        <thead>
-          <tr><th>Title</th><th>Difficulty</th><th>Method</th><th>Location</th><th>NPC</th><th>Discovered</th><th></th></tr>
-        </thead>
-        <tbody>
-          <% @clues.each do |clue| %>
-            <tr class="<%= 'discovered-row' if discovered_ids.include?(clue.id) %>">
-              <td class="el-name"><%= clue.title %></td>
-              <td><span class="diff-badge diff-<%= clue.difficulty %>"><%= clue.difficulty %></span></td>
-              <td><%= clue.discovery_method %></td>
-              <td><%= clue.location&.name || '—' %></td>
-              <td><%= clue.npc&.name || '—' %></td>
-              <td><%= discovered_ids.include?(clue.id) ? '✓' : '' %></td>
-              <td>
-                <button class="btn btn-xs btn-outline" onclick="toggleEdit('clue-<%= clue.id %>')">Edit</button>
-              </td>
-            </tr>
-            <tr id="clue-<%= clue.id %>" class="edit-row-panel" style="display:none;">
-              <td colspan="7">
-                <%= form_with url: update_story_element_admin_adventure_path(@adventure), method: :patch, local: true, class: "inline-edit-form" do %>
-                  <input type="hidden" name="element_type" value="story_clue">
-                  <input type="hidden" name="element_id" value="<%= clue.id %>">
-                  <label>Title</label>
-                  <input type="text" name="element[title]" value="<%= clue.title %>" class="input-md">
-                  <label>Difficulty</label>
-                  <select name="element[difficulty]" class="input-sm">
-                    <% %w[automatic easy moderate hard].each do |d| %>
-                      <option value="<%= d %>" <%= 'selected' if clue.difficulty == d %>><%= d %></option>
-                    <% end %>
-                  </select>
-                  <label>Method</label>
-                  <select name="element[discovery_method]" class="input-sm">
-                    <% %w[exploration social magic combat automatic].each do |m| %>
-                      <option value="<%= m %>" <%= 'selected' if clue.discovery_method == m %>><%= m %></option>
-                    <% end %>
-                  </select>
-                  <label>Location</label>
-                  <select name="element[location_id]" class="input-sm">
-                    <option value="">— None —</option>
-                    <% @locations.each do |loc| %>
-                      <option value="<%= loc.id %>" <%= 'selected' if clue.location_id == loc.id %>><%= loc.name %></option>
-                    <% end %>
-                  </select>
-                  <label>Description</label>
-                  <textarea name="element[description]" rows="2" class="input-full"><%= clue.description %></textarea>
-                  <label>Reveals Secret</label>
-                  <textarea name="element[reveals_secret]" rows="2" class="input-full"><%= clue.reveals_secret %></textarea>
-                  <button type="submit" class="btn btn-primary btn-xs">Save</button>
-                <% end %>
-              </td>
-            </tr>
-          <% end %>
-        </tbody>
-      </table>
-    <% else %>
-      <p class="empty-msg">No clues.</p>
-    <% end %>
   </details>
 
   <%# ═══════ CREATURES ═══════ %>

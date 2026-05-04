@@ -1,15 +1,15 @@
 import type {
   StoryLocationData,
   EncounterTableData, EncounterTableEntryData,
-  StoryNpcData, StoryClueData, StoryMilestoneData,
-  NpcRole, NpcAttitude, DiscoveryMethod, ClueDifficulty,
+  StoryNpcData,
+  NpcRole, NpcAttitude,
 } from '../../types'
 
-export type { NpcRole, NpcAttitude, DiscoveryMethod, ClueDifficulty }
+export type { NpcRole, NpcAttitude }
 export type {
   StoryLocationData,
   EncounterTableData, EncounterTableEntryData,
-  StoryNpcData, StoryClueData, StoryMilestoneData,
+  StoryNpcData,
 }
 
 // ---- Client-side identity layer for locations ----
@@ -45,8 +45,6 @@ export interface StoryData {
   story_locations?: StoryLocationData[]
   encounter_tables?: EncounterTableData[]
   story_npcs?: StoryNpcData[]
-  story_clues?: StoryClueData[]
-  story_milestones?: StoryMilestoneData[]
 }
 
 // ---- Initial Contexts types ----
@@ -117,8 +115,6 @@ export interface InitialContexts {
 
 export const NPC_ROLES: NpcRole[] = ['quest_giver', 'informant', 'antagonist', 'bystander', 'merchant']
 export const NPC_ATTITUDES: NpcAttitude[] = ['friendly', 'indifferent', 'unfriendly']
-export const DISCOVERY_METHODS: DiscoveryMethod[] = ['social', 'exploration', 'magic', 'combat', 'automatic']
-export const CLUE_DIFFICULTIES: ClueDifficulty[] = ['automatic', 'easy', 'moderate', 'hard']
 
 // ---- Empty constructors ----
 
@@ -138,16 +134,6 @@ export const emptyEntry = (): EncounterTableEntryData => ({
 export const emptyNpc = (): StoryNpcData => ({
   source: 'manual', name: '', role: 'bystander', description: '',
   knowledge: '', attitude: 'indifferent', secret: false,
-})
-
-export const emptyClue = (): StoryClueData => ({
-  source: 'manual', title: '', description: '', discovery_method: 'exploration',
-  prerequisite_clue_ids: [], reveals_secret: '', difficulty: 'moderate',
-})
-
-export const emptyMilestone = (): StoryMilestoneData => ({
-  source: 'manual', title: '', description: '',
-  trigger_clue_ids: [], consequence: '',
 })
 
 export const emptyTraversalCtx = (): TraversalCtx => ({

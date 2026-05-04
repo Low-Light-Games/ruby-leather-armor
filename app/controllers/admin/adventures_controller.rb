@@ -24,7 +24,6 @@ module Admin
       @story = @adventure.story
       @locations = @story.story_locations.order(:name)
       @npcs = StoryNpc.for_adventure(@adventure).includes(:location).order(:name)
-      @clues = StoryClue.for_adventure(@adventure).includes(:location, :npc).order(:title)
       @recent_messages = @adventure.adventure_messages.order(created_at: :desc).limit(20)
       @registry_entry_uuids = PlayLog.recent_registry_entry_uuids_for_adventure(@adventure.id, limit: 5)
     end
@@ -144,8 +143,6 @@ module Admin
         [StoryLocation, @adventure.story.story_locations.find_by(id: params[:element_id])]
       when "story_npc"
         [StoryNpc, StoryNpc.for_adventure(@adventure).find_by(id: params[:element_id])]
-      when "story_clue"
-        [StoryClue, StoryClue.for_adventure(@adventure).find_by(id: params[:element_id])]
       else
         [nil, nil]
       end
@@ -157,8 +154,6 @@ module Admin
         params.require(:element).permit(:name, :description, :starting)
       when "StoryNpc"
         params.require(:element).permit(:name, :role, :attitude, :description, :knowledge, :location_id, :secret)
-      when "StoryClue"
-        params.require(:element).permit(:title, :description, :discovery_method, :difficulty, :location_id, :npc_id, :reveals_secret)
       else
         {}
       end

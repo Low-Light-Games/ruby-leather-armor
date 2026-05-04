@@ -4,8 +4,6 @@ import { useStoryEditorState } from './useStoryEditorState'
 import LocationsSection from './sections/LocationsSection'
 import EncounterTablesSection from './sections/EncounterTablesSection'
 import NpcsSection from './sections/NpcsSection'
-import CluesSection from './sections/CluesSection'
-import MilestonesSection from './sections/MilestonesSection'
 import InitialContextsSection from './sections/InitialContextsSection'
 import SeedFactsSection from './sections/SeedFactsSection'
 import type { AdminStoryEditorProps } from './types'
@@ -22,15 +20,14 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
     currentStoryId,
     locations, setLocations,
     encounterTables, setEncounterTables,
-    npcs, setNpcs, clues, setClues, milestones, setMilestones,
+    npcs, setNpcs,
     icTraversal, setIcTraversal, icCombat, setIcCombat,
     icSocial, setIcSocial, icExploration, setIcExploration,
     icRest, setIcRest, icInventory, setIcInventory,
     seedFactsOpen, setSeedFactsOpen,
     locationsOpen, setLocationsOpen,
     encounterTablesOpen, setEncounterTablesOpen,
-    npcsOpen, setNpcsOpen, cluesOpen, setCluesOpen,
-    milestonesOpen, setMilestonesOpen,
+    npcsOpen, setNpcsOpen,
     initialContextsOpen, setInitialContextsOpen,
     icSubOpen, setIcSubOpen,
     expandedLocIdx, setExpandedLocIdx,
@@ -62,7 +59,6 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   const isEditMode = !!currentStoryId
   const savedLocations = locations.filter(l => l.id && !l._destroy)
   const savedNpcs = npcs.filter(n => n.id && !n._destroy)
-  const savedClues = clues.filter(c => c.id && !c._destroy)
 
   return (
     <div className="admin-page">
@@ -144,24 +140,6 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
             npcs={npcs} setNpcs={setNpcs}
             npcsOpen={npcsOpen} setNpcsOpen={setNpcsOpen}
             savedLocations={savedLocations}
-          />
-        )}
-
-        {isEditMode && (
-          <CluesSection
-            clues={clues} setClues={setClues}
-            cluesOpen={cluesOpen} setCluesOpen={setCluesOpen}
-            savedLocations={savedLocations}
-            savedNpcs={savedNpcs}
-            savedClues={savedClues}
-          />
-        )}
-
-        {isEditMode && (
-          <MilestonesSection
-            milestones={milestones} setMilestones={setMilestones}
-            milestonesOpen={milestonesOpen} setMilestonesOpen={setMilestonesOpen}
-            savedClues={savedClues}
           />
         )}
 
