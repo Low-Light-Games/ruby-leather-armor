@@ -5,13 +5,10 @@ the kind of check; the engine resolves the actual modifier.
 === PLAYER INTENT ===
 <%= @roll_request_context.intent %>
 
-<% if @roll_request_context.recent_beats.any? -%>
-=== RECENT NARRATIVE BEATS ===
-<% @roll_request_context.recent_beats.each do |beat| -%>
-- [<%= beat[:kind] %>] <%= beat[:text] %>
-<% end -%>
+=== PLAYER POSITION ===
+<%= @roll_request_context.current_location_name.presence || "(unknown — no current location set)" %>
 
-<% end -%>
+<%= PromptRenderer.render_partial("partials/scene_retrieval", scene_retrieval: @roll_request_context.scene_retrieval) %>
 === ALLOWED RULES (closest match first) ===
 <% if @roll_request_context.relevant_rules.any? -%>
 <% @roll_request_context.relevant_rules.each_with_index do |rule, idx| -%>

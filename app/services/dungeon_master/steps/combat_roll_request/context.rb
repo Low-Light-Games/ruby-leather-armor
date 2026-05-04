@@ -14,12 +14,14 @@ module DungeonMaster
       # Constructor groups related fields into sub-hashes to keep the
       # signature under the parameter-list cap.
       class Context
-        attr_reader :intent, :recent_beats, :relevant_rules, :attack_options,
-                    :action_economy, :threats, :battlefield, :combat_state
+        attr_reader :intent, :scene_retrieval, :relevant_rules, :attack_options,
+                    :action_economy, :threats, :battlefield, :combat_state,
+                    :current_location_name
 
         # Builds the prompt context for an in-combat free-text turn:
         # legal attack options, action economy snapshot, AoO threats,
-        # battlefield text, plus RAG-retrieved rules + scene beats.
+        # battlefield text, plus RAG-retrieved rules + the player's
+        # facts/locations/npcs slice.
         # rubocop:disable Metrics/ParameterLists, Naming/MethodParameterName
         def self.build(intent:, adventure:, sheet:, ai:, log:,
                        rules_top_k:, beats_top_k:)
@@ -28,8 +30,9 @@ module DungeonMaster
           new(
             intent: intent,
             retrieval: {
-              recent_beats: retrieve_beats(adventure: adventure, ai: ai, log: log,
-                                           query_text: intent, limit: beats_top_k),
+              scene_retrieval: DungeonMaster::SceneRetrieval::ForResolution.call(
+                adventure: adventure, intent_text: intent, ai: ai, log: log, fact_limit: beats_top_k
+              ),
               relevant_rules: DungeonMaster::Rules::Lookup.call(
                 ai: ai, log: log, query_text: "combat: #{intent}", limit: rules_top_k
               )
@@ -40,17 +43,8 @@ module DungeonMaster
               threats: build_threats_for_player(adventure: adventure),
               battlefield_summary: DungeonMaster::Battlefield::PromptSerializer.slice_for_adventure(adventure)
             },
-            state: { round: combat_ctx['round'], current_turn: combat_ctx['current_turn'] }
-          )
-        end
-
-        def self.retrieve_beats(adventure:, ai:, log:, query_text:, limit:)
-          DungeonMaster::SceneFacts::ForResolution.call(
-            adventure:   adventure,
-            intent_text: query_text,
-            ai:          ai,
-            log:         log,
-            limit:       limit,
+            state: { round: combat_ctx['round'], current_turn: combat_ctx['current_turn'],
+                     current_location_name: adventure.current_location&.name }
           )
         end
         # rubocop:enable Metrics/ParameterLists, Naming/MethodParameterName
@@ -66,18 +60,16 @@ module DungeonMaster
           threats.map { |threat| ThreatSummary.new(threat: threat, player_pos: player_pos).to_h }
         end
 
-        # @param retrieval [Hash] recent_beats, relevant_rules
-        # @param combat [Hash] attack_options, action_economy, threats, battlefield_summary
-        # @param state [Hash] round, current_turn
         def initialize(intent:, retrieval:, combat:, state:)
           @intent = intent
-          @recent_beats = Array(retrieval[:recent_beats])
+          @scene_retrieval = retrieval[:scene_retrieval]
           @relevant_rules = Array(retrieval[:relevant_rules])
           @attack_options = Array(combat[:attack_options])
           @action_economy = combat[:action_economy] || {}
           @threats = Array(combat[:threats])
           @battlefield = combat[:battlefield_summary]
           @combat_state = state || {}
+          @current_location_name = @combat_state[:current_location_name]
         end
 
         def round

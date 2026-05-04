@@ -7,6 +7,9 @@ dc_formula. Do not guess DCs for combat.
 === PLAYER INTENT ===
 <%= @combat_roll_request_context.intent %>
 
+=== PLAYER POSITION ===
+<%= @combat_roll_request_context.current_location_name.presence || "(unknown — no current location set)" %>
+
 === COMBAT STATE ===
 Round: <%= @combat_roll_request_context.round || '?' %>
 Acting: <%= @combat_roll_request_context.current_turn || 'Player' %>
@@ -23,13 +26,7 @@ Action economy available: <%= @combat_roll_request_context.action_economy_chips.
 <%= @combat_roll_request_context.battlefield_summary %>
 
 <% end -%>
-<% if @combat_roll_request_context.recent_beats.any? -%>
-=== RECENT NARRATIVE BEATS ===
-<% @combat_roll_request_context.recent_beats.each do |beat| -%>
-- [<%= beat[:kind] %>] <%= beat[:text] %>
-<% end -%>
-
-<% end -%>
+<%= PromptRenderer.render_partial("partials/scene_retrieval", scene_retrieval: @combat_roll_request_context.scene_retrieval) %>
 <% if @combat_roll_request_context.relevant_rules.any? -%>
 === RELEVANT RULES ===
 <% @combat_roll_request_context.relevant_rules.each_with_index do |rule, idx| -%>

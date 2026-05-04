@@ -23,13 +23,14 @@ module DungeonMaster
       def run_roll_request(intention)
         broadcast_progress('Reading the situation...')
 
-        beats = retrieve_beats_for_roll_request(intention)
-        rules = retrieve_rules_for_roll_request(intention)
+        scene_retrieval = retrieve_scene_for_roll_request(intention)
+        rules           = retrieve_rules_for_roll_request(intention)
 
         ctx = RollRequest::Context.new(
           intent: intention,
-          recent_beats: beats,
-          relevant_rules: rules
+          scene_retrieval: scene_retrieval,
+          relevant_rules: rules,
+          current_location_name: @adventure.current_location&.name,
         )
 
         prompt_summary = "RollRequest: \"#{@log.truncate(intention)}\""
@@ -136,13 +137,13 @@ module DungeonMaster
         )
       end
 
-      def retrieve_beats_for_roll_request(intention)
-        DungeonMaster::SceneFacts::ForResolution.call(
-          adventure: @adventure,
+      def retrieve_scene_for_roll_request(intention)
+        DungeonMaster::SceneRetrieval::ForResolution.call(
+          adventure:   @adventure,
           intent_text: intention,
-          ai: @ai,
-          log: @log,
-          limit: BEATS_TOP_K
+          ai:          @ai,
+          log:         @log,
+          fact_limit:  BEATS_TOP_K,
         )
       end
 

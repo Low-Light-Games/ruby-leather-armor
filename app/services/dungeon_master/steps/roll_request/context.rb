@@ -10,12 +10,13 @@ module DungeonMaster
       # step's existence vs. the legacy beacon→mech_eval→roll_qualifier
       # chain.
       class Context
-        attr_reader :intent, :recent_beats, :relevant_rules
+        attr_reader :intent, :scene_retrieval, :relevant_rules, :current_location_name
 
-        def initialize(intent:, recent_beats:, relevant_rules:)
-          @intent          = intent
-          @recent_beats    = Array(recent_beats)
-          @relevant_rules  = Array(relevant_rules)
+        def initialize(intent:, scene_retrieval:, relevant_rules:, current_location_name: nil)
+          @intent                 = intent
+          @scene_retrieval        = scene_retrieval
+          @relevant_rules         = Array(relevant_rules)
+          @current_location_name  = current_location_name
         end
       end
     end

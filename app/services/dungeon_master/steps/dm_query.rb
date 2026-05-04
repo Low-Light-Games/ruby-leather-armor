@@ -11,7 +11,7 @@ module DungeonMaster
       def run_dm_query(sanitized_input)
         prompt_summary = "DM Query: \"#{@log.truncate(sanitized_input)}\""
 
-        scene_facts = DungeonMaster::SceneFacts::ForResolution.call(
+        scene_retrieval = DungeonMaster::SceneRetrieval::ForResolution.call(
           adventure:   @adventure,
           intent_text: sanitized_input,
           ai:          @ai,
@@ -22,7 +22,8 @@ module DungeonMaster
         system_prompt = PromptRenderer.render("dm_query",
           story_title: @adventure.story.title,
           story_summary: @adventure.story_summary,
-          scene_facts: scene_facts,
+          scene_retrieval: scene_retrieval,
+          current_location_name: @adventure.current_location&.name,
           battlefield_slice: battlefield_slice.presence || "(no tactical map loaded)",
           guidance: Rules.guidance_for("dm_query"))
 
