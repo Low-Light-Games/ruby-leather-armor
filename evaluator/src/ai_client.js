@@ -35,17 +35,23 @@ function extractRetryAfterSeconds(error) {
   return Number.isFinite(value) ? value : null;
 }
 
+// OpenAI SDK error subclasses inherit Error.name === "Error" because they
+// don't assign `this.name` in their constructors — only constructor.name
+// reflects the actual class. Using `error.name` here was a silent bug
+// that disabled retry for every timeout / connection error.
+const RETRYABLE_OPENAI_ERROR_CLASSES = new Set([
+  "APIConnectionError",
+  "APIConnectionTimeoutError",
+  "InternalServerError",
+]);
+
 function isRetryableOpenAIError(error) {
   const status = error?.status ?? error?.response?.status;
 
   if (status === 408 || status === 429) return true;
   if (typeof status === "number" && status >= 500) return true;
 
-  return [
-    "APIConnectionError",
-    "APIConnectionTimeoutError",
-    "InternalServerError",
-  ].includes(error?.name);
+  return RETRYABLE_OPENAI_ERROR_CLASSES.has(error?.constructor?.name);
 }
 
 function jitteredBackoffDelaySeconds(attempt) {
@@ -87,7 +93,8 @@ async function withOpenAIRetries(callType, model, fn) {
       }
       return result;
     } catch (error) {
-      const errorName = error?.name || error?.constructor?.name || "Error";
+      // Prefer constructor.name — see comment on RETRYABLE_OPENAI_ERROR_CLASSES.
+      const errorName = error?.constructor?.name || error?.name || "Error";
       const errorStatus = error?.status ?? error?.response?.status ?? null;
       const retryable = isRetryableOpenAIError(error);
 
