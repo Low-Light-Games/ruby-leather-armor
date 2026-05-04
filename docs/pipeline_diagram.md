@@ -92,11 +92,8 @@ flowchart TB
         WORLD_ONLY --> SKIP_W2{skip_world_sanity_check?}
         SKIP_W2 -->|no| WC[run_world_consistency_check  ☆ AI]
         WC -->|not consistent| REJECT
-        SKIP_W2 -->|yes| EXPAND
-        WC -->|consistent| EXPAND{expand_scene?}
-        EXPAND -->|yes| SOCIAL[resolve_social_scene  ☆ AI]
-        SOCIAL --> SOC_STATUS[status: :social_scene — breaks queue]
-        EXPAND -->|no| TK_NM[run_time_keeper]
+        SKIP_W2 -->|yes| TK_NM
+        WC -->|consistent| TK_NM[run_time_keeper]
     end
 
     subgraph timekeeper["TimeKeeper — code-first estimation, then Harbinger"]
@@ -119,11 +116,9 @@ flowchart TB
     end
 
     NENC --> NM_RESOLVED{Path?}
-    NM_RESOLVED -->|mechanical| MECH_RESOLVED["status: :resolved\n(from finish_resolution)"]
-    NM_RESOLVED -->|non-mechanical| MOMENTUM_STEP[run_momentum  ☆ AI]
-    MOMENTUM_STEP --> NM_RESOLVED2["status: :resolved\n(from momentum)"]
+    NM_RESOLVED --> MECH_RESOLVED["status: :resolved\n(from finish_resolution)"]
 
-    MECH_RESOLVED & NM_RESOLVED2 --> WT_CHECK
+    MECH_RESOLVED --> WT_CHECK
 
     subgraph world_turn["World Turn — combat-only post-resolution phase"]
         WT_CHECK{combat active?}
@@ -142,7 +137,6 @@ flowchart TB
         LOOP_OUTCOME -->|:awaiting_rolls| PAUSE_ROLLS_OUT[Return :awaiting_rolls — pipeline pauses]
         LOOP_OUTCOME -->|:awaiting_initiative| PAUSE_INIT_OUT[Return :awaiting_initiative — pipeline pauses]
         LOOP_OUTCOME -->|:encounter| BREAK_ENC[break action queue → output phase]
-        LOOP_OUTCOME -->|:social_scene| BREAK_SOC[break action queue → output phase]
         LOOP_OUTCOME -->|:resolved| ACCUMULATE[accumulate result]
         LOOP_OUTCOME -->|":resolved + action_queue progressive"| PROGRESSIVE_NARRATE["run_single_action_narrative_phase\n+ on_narrative callback"]
         PROGRESSIVE_NARRATE --> ACCUMULATE
@@ -153,14 +147,10 @@ flowchart TB
     CTX_UPDATE --> ACTION_LOOP
     INTER_CTX -->|no| OUTPUT_PHASE
 
-    BREAK_ENC & BREAK_SOC & MECH_RESOLVED & NM_RESOLVED2 --> OUTPUT_PHASE
+    BREAK_ENC & MECH_RESOLVED --> OUTPUT_PHASE
 
     subgraph output_phase["Narrative phase — run_accumulated_narrative_phase → run_narrative_phase"]
-        OUTPUT_PHASE --> CHRON{story has plot data?}
-        CHRON -->|yes| CHRONICLER[run_chronicler  ☆ AI]
-        CHRONICLER --> CHRON_OUT[dm_brief + forbidden_elements + plot_state updates]
-        CHRON -->|no| SKIP_CHRON[dm_brief = nil]
-        CHRON_OUT & SKIP_CHRON --> STAGEHAND[run_output_phase — Stagehand]
+        OUTPUT_PHASE --> STAGEHAND[run_output_phase — Stagehand]
         STAGEHAND --> COMBAT_CHECK{RollRequest signaled\ncombat_started?}
         COMBAT_CHECK -->|yes| WARMASTER_B[Warmaster Path B — from RollRequest]
         WARMASTER_B --> WB1[initialize_from_names!  ☆ AI for unknown creatures]
@@ -255,9 +245,9 @@ in place so the status line animates in without replacing the dots.
 |------|------------------------|
 | `RollRequest` | "Reading the situation..." |
 | `CombatRollRequest` | "Adjudicating your move..." |
-| `Chronicler` | "Consulting the chronicle..." |
 | `Narrate` | "Writing the story..." |
 | `ContextUpdate` | "Remembering the world..." |
+| `Loremaster` | "Cataloguing what just happened..." |
 
 The callback is a no-op when `@on_progress` is not set (tests, console
 runs), so adding a new progress call to a step requires no test changes.
@@ -306,9 +296,8 @@ The first AI call. Every message passes through this gate.
 If Intake sets `is_dm_query = true`, or the controller passes `mode: "dm_query"`:
 
 1. A stub `intent` is created with empty `affected_contexts`.
-2. **Chronicler** is called via `resolve_plot` — but only if the story has NPC or clue data. This produces a `dm_brief` with plot-aware guidance.
-3. **DM Query** (`run_dm_query`) produces the answer using the dm_brief as framing.
-4. Returns `{ action: :dm_query, answer: ... }` — no context updates, no time advancement.
+2. **DM Query** (`run_dm_query`) produces the answer using top-K retrieved facts (`Lore::FactsLookup`) as framing.
+3. Returns `{ action: :dm_query, answer: ... }` — no context updates, no time advancement.
 
 This is a **terminal branch** — nothing after it executes.
 
@@ -343,7 +332,7 @@ The inner pipeline entry point. Dispatches deterministically on combat state:
 - **Out of combat → `Steps::RollRequest`** — single AI call. Top-K rules
   retrieved from `rule_embeddings` via `Rules::Lookup`; top-K narrative
   beats retrieved from `adventure_narrative_facts` via `Lore::FactsLookup`.
-  Prompt has no character block, no full micro-context dump — just the
+  Prompt has no character block and no JSONB context dump — just the
   intent + retrieved rules + retrieved beats. The model emits one roll
   spec (or "no roll") plus the cross-cutting signals downstream code
   consumes.
@@ -359,8 +348,7 @@ The inner pipeline entry point. Dispatches deterministically on combat state:
 Both steps return an {EvaluationResult} value object holding
 `intention`, `affected_contexts`, `primary_domain`, `destination`,
 `combat_transition`, `combat_combatants`, `player_rolls`, `consequences`,
-`mechanical_summary`, plus predicates (`affected?`, `expand_scene?`,
-`combat_starting?`, `social_scene_only?`).
+`mechanical_summary`, plus predicates (`affected?`, `combat_starting?`).
 
 The previous 3-phase ParallelEvaluation chain (beacon → mechanical_evaluation
 → roll_qualifier via the Node evaluator's `/fan_out` and `/sequential`)
@@ -381,7 +369,7 @@ The **sanity gate** validates the action before any mechanics are resolved. Its 
 
 **When skip_world_sanity_check = true:** the world thread is skipped entirely. Only the capability check runs (no parallelism needed).
 
-**World consistency check** — AI. Validates that entities, targets, and objects the player references actually exist in the current scene (checking scene_summary, scene_history, all micro contexts, NPC names). Returns `{ consistent: bool, reason: string, dm_message: string }`. Skipped when `skip_world_sanity_check` is set on the adventure.
+**World consistency check** — AI. Validates that entities, targets, and objects the player references actually exist in the current scene. Receives `scene_summary`, `combat_context`, retrieved NPCs / locations / facts (top-K from the pgvector stores via `Lore::FactsLookup` / `Lore::NpcsLookup` / `Lore::LocationsLookup`). Returns `{ consistent: bool, reason: string, dm_message: string }`. Skipped when `skip_world_sanity_check` is set on the adventure.
 
 **Capability check** — AI. Validates the player actually has the spell, feat, or item they're attempting to use. Returns `{ allowed: bool, reason: string }`. Always runs regardless of `skip_world_sanity_check`.
 
@@ -408,15 +396,7 @@ The **sanity gate** validates the action before any mechanics are resolved. Its 
 
 Early exit: world check fails → `:rejected`. Never reached when skipped.
 
-**Social expansion branch** (`expand_scene = true`):
-- Triggered when RollRequest set `expand_scene` for a social-affected action. Represents significant social interactions (negotiations, transactions, confrontations) that merit an immersive NPC scene.
-- A single AI call (`social_expansion`) generates a rich scene description with NPC name, attitude, and new story elements.
-- Returns `{ status: :social_scene }`. The action queue **breaks** — remaining actions are abandoned.
-- TimeKeeper is **skipped**. No in-game time passes until the social scene resolves.
-
-**TimeKeeper** (see dedicated section below) runs next. If an encounter is triggered → Warmaster Path A (see Combat section). Otherwise:
-
-**Momentum** (AI) — Determines what factually happened when no dice were needed. Produces `outcome` (plain text), optionally `mutations`, and refines `affected_contexts` by merging RollRequest's assessment with its own. Also writes `verdict_outcome`, `pipeline_outcome`, and merged `affected_contexts` to the `AdventureLoop`.
+**TimeKeeper** (see dedicated section below) runs next. If an encounter is triggered → Warmaster Path A (see Combat section). Otherwise the no-roll path resolves through Mechanic with `rolls: []`, producing `outcome` and any mutations the action implied (e.g. `nothing happens`, `you trade 50 gp for the lockpicks`). The Mechanic verdict writes `verdict_outcome` and `pipeline_outcome` to the `AdventureLoop`.
 
 Returns `{ status: :resolved }`.
 
@@ -521,52 +501,41 @@ After `AdventureLoopResolution.resolve` returns, the action loop dispatches on `
 | `:awaiting_rolls` | **Returns immediately** — pipeline pauses. Serializes `intent`, `merged` (roll requests + NPC actions + consequences + summaries), and `remaining_actions` into the `roll_request` message metadata. |
 | `:awaiting_initiative` | **Returns immediately** — pipeline pauses. Serializes `creature_data`, `intent`, `mutations`, and `remaining_actions` into the `initiative_request` metadata. |
 | `:encounter` | **Breaks the action queue.** Remaining actions in the queue are discarded. Proceeds to output phase with encounter status. |
-| `:social_scene` | **Breaks the action queue.** Remaining actions discarded. Proceeds to output phase. |
 | `:resolved` | **Accumulates** result. Runs inter-action context update if more actions follow. Continues to next action. |
 
 ---
 
 ### Narrative phase — `run_accumulated_narrative_phase` → `run_narrative_phase`
 
-After all actions complete (or the queue breaks), `run_accumulated_narrative_phase` merges results and calls Stagehand’s **`run_narrative_phase`** (chronicler, combat check, narrate, context updates).
+After all actions complete (or the queue breaks), `run_accumulated_narrative_phase` merges results and calls Stagehand’s **`run_narrative_phase`** (combat check, then a single output-phase fan-out: Narrate + ContextUpdate + Loremaster).
 
-Multiple resolved/encounter/social_scene results are **merged**: intentions concatenated with "; ", affected contexts unioned, `macro_significant` or-ed. The combined narration seed is assembled by querying all `AdventureLoop` rows for the current `registry_entry_uuid` in `sequence_index` order and joining their `pipeline_outcome` fields with `"\n\nThen: "`.
-
-#### Chronicler (AI, conditional)
-
-Runs whenever the story has any plot data (`story_has_plot_data?` — NPCs, clues, or milestones).
-
-Receives: story premise, all story NPCs + clues, player's progress (discovered/attempted clues, met NPCs, reached milestones), current location, verdict outcome, and context snippets.
-
-Produces:
-- `dm_brief` — narration guidance for the Narrate step (plot beats, NPC reactions to reveal, tone direction).
-- `forbidden_elements` — elements the narrator must not introduce (unspoiled plot twists, unmet NPCs, unknown locations).
-- `plot_state_updates` — new clues discovered/attempted, NPCs met, custom facts; persisted to `adventure.plot_state`.
-- `adventure_complete` flag — if true, a system message announces the adventure's conclusion after narration.
+Multiple resolved/encounter results are **merged**: intentions concatenated with "; ", `macro_significant` or-ed. The combined narration seed is assembled by querying all `AdventureLoop` rows for the current `registry_entry_uuid` in `sequence_index` order and joining their `pipeline_outcome` fields with `"\n\nThen: "`.
 
 #### Stagehand (Path B combat check)
 
-Before narration, Stagehand checks if the most recent action's evaluation signaled a combat transition (`combat_started`, `*_to_combat`) via `intent[:beacon_results]`. If yes and no combat is already active, calls `Warmaster.initialize_from_names!` and potentially returns `:awaiting_initiative` before narration runs at all.
+Before narration, Stagehand checks if the most recent action's evaluation signaled a combat transition (`combat_started`, `*_to_combat`). If yes and no combat is already active, calls `Warmaster.initialize_from_names!` and potentially returns `:awaiting_initiative` before narration runs at all.
 
 #### Narration fan-out
 
-Narrate, the micro/macro context updaters, and Loremaster all run
-concurrently inside one `POST /fan_out` call to the Node evaluator.
-The previous `narration_mode = "subjugated"` option was retired
-(see `docs/pipeline_steps.md` Decision 28); there is no alternate
-sequential mode.
+Narrate, ContextUpdate, and Loremaster all run concurrently inside one
+`POST /fan_out` call to the Node evaluator. The previous
+`narration_mode = "subjugated"` option was retired (see
+`docs/pipeline_steps.md` Decision 28); there is no alternate sequential
+mode.
 
 #### Narrate (AI)
 
-The prose generator. Receives: story title/hook, story summary, all micro contexts, time context (current hour, adventure day, light conditions), `what_happened` (from `@loop.verdict_outcome`), the combined narration seed (assembled from `pipeline_outcome` across all loop rows sharing this `registry_entry_uuid`), dm_brief, forbidden_elements, journey data, encounter scene/creatures, pacing instructions, and directed play instructions.
+The prose generator. Receives: story title/hook, story summary, `combat_context`, `time_context` (current hour, adventure day, light conditions), `what_happened` (from `@loop.verdict_outcome`), the combined narration seed (assembled from `pipeline_outcome` across all loop rows sharing this `registry_entry_uuid`), retrieved `scene_facts` from `adventure_narrative_facts` (outcome-keyed via `SceneFacts::ForOutcome`), forbidden_elements, journey data, encounter scene/creatures, pacing instructions, and directed play instructions.
 
 Has a special fallback: if the model returns raw text instead of JSON, the text is treated as the narrative directly (`fallback_as: :dm_response`).
 
-#### Context updates (AI, in fan-out)
+#### ContextUpdate (AI, in fan-out)
 
-**Micro context update** (always runs): Updates the affected + active context JSONB fields on the adventure. If traversal is in affected contexts, social is forced into the update scope (a location change may end the current social scene, so the AI must explicitly evaluate it rather than silently preserving it). Also updates `scene_summary` and `scene_history` (ring-buffered to `scene_history_depth` entries, default 10).
+Writes `combat_context` (when combat is active or transitioning) and the player-facing `scene_summary`. Also updates `scene_history` (ring-buffered to `scene_history_depth` entries, default 10) for the world consistency check.
 
-**Macro narrative update** (conditional on `macro_significant`): Updates `adventure.story_summary` — the rolling adventure log read by future Narrate and Chronicler calls.
+#### Loremaster (AI, in fan-out)
+
+Sole writer of `adventure_narrative_facts` (and, via `Lore::ApplyNpcs` / `Lore::ApplyLocations`, of `adventure_npcs` / `adventure_locations`). Reads the verdict outcome plus retrieved facts; emits new `event` / `state` / `entity` facts and structured NPC/location records. See `pipeline_steps.md` Decision 37 for the lossy-with-Sentry contract.
 
 ---
 
@@ -603,9 +572,7 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | Combat::NpcTurn | ❌ Code | Per-NPC turn engine driven off `behavior_policy` (no AI call per NPC) |
 | World consistency check | ✅ AI | Scene/entity validation |
 | Capability check | ✅ AI | Spell/feat/item ownership |
-| Momentum | ✅ AI | Non-mechanical outcome |
-| Social Expansion | ✅ AI | NPC scene generation |
-| Mechanic | ✅ AI | Post-roll arbitration + mutations |
+| Mechanic | ✅ AI | Post-roll arbitration + mutations. Also handles no-roll resolution with `rolls: []`. |
 | World Turn (orchestration) | ❌ Code | Shared-snapshot NPC orchestration, sequential code resolution (dice + mutations), combat advancement, and combat-end handling after a player action resolves in active combat |
 | npc_action | ✅ AI ×N | Per-NPC combat action decisions during world turn. All acting NPCs are evaluated in one parallel Node `/fan_out` batch against the same live combat snapshot; code then resolves and applies in initiative order (early-stop if combat ends) |
 | TimeKeeper (journey, combat, rest, take_20) | ❌ Code | Deterministic formulas |
@@ -619,10 +586,9 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | Warmaster creature spawn (unknown creature) | ✅ AI | When bestiary lookup fails |
 | Warmaster initiative rolls | ❌ Code | d20 + DEX modifier |
 | Warmaster finalize_combat! | ❌ Code | Sorts initiative order |
-| Chronicler | ✅ AI | Plot state + dm_brief |
 | Narrate | ✅ AI | Prose generation |
-| Micro context update | ✅ AI | Updates context JSONBs |
-| Macro narrative update | ✅ AI | Updates story summary |
+| ContextUpdate | ✅ AI | Updates `combat_context` and `scene_summary` |
+| Loremaster | ✅ AI | Writes durable facts to `adventure_narrative_facts`; sole writer |
 
 ---
 
@@ -640,7 +606,6 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | Player rolls needed | **Pause** | `:awaiting_rolls` — state in message metadata |
 | Initiative needed (Path A or B) | **Pause** | `:awaiting_initiative` — state in metadata |
 | Encounter triggered (no creatures) | Queue break | `:encounter` status → output phase |
-| Social scene triggered | Queue break | `:social_scene` status → output phase |
 | AiError / StandardError | Hard stop → error | "DM distracted" system message |
 | TokenBudgetExceededError | Hard stop → error | "Could not reach AI service" message |
 | No narrative from Narrate | Hard stop → error | AiError raised |
@@ -662,16 +627,13 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | **World consistency check** | AI | Validate referenced entities exist in current scene. Runs in the sanity gate (mechanics path) or standalone (non-mechanics path). Bypassed on both paths when the adventure's `skip_world_sanity_check` flag is set. |
 | **Capability check** | AI | Validate player has required spells/feats/items. Runs in the sanity gate whenever one or more domains are affected. Always runs regardless of `skip_world_sanity_check`. |
 | **Auto-success filter** | Code | Remove rolls the character cannot possibly fail (DC ≤ 0, guaranteed modifier, Take 10 covers DC). Never removes attack rolls. |
-| **Momentum** | AI | Non-mechanical outcome: what happened + affected contexts + optional mutations. |
-| **Social Expansion** | AI | Immersive NPC scene for significant social interactions (`expand_scene` from evaluation). Skips TimeKeeper. |
-| **Mechanic** | AI | Post-roll arbitration: factual outcome + structured mutations from rolls + NPC results. |
+| **Mechanic** | AI | Post-roll arbitration (or no-roll resolution): factual outcome + structured mutations from rolls + NPC results. |
 | **World Turn** | Code orchestration + batched Node call | In active combat after a player action resolves: rebuild one live combat snapshot, parallel `/fan_out` for all acting NPCs, then sequential code (dice + mutations per NPC, early-stop on player death/incapacitation or combat end), then `combat_state_advancement`. |
 | **↳ npc_action** | AI ×N (parallel, Node) | Per-NPC combat action decision during world turn. Prompts run together via Node `/fan_out` against the same shared snapshot; application is sequential in code. |
 | **TimeKeeper** | Code + AI | Estimate time (code-first: journey/combat/rest/take_20, then AI) → consult Harbinger → advance GameClock → apply fatigue. |
 | **Harbinger** | Code + AI | Segment-based encounter check against table. AI expands encounter scene if entry is non-fixed. |
 | **GameClock** | Code | Advance current_hour, adventure_day, light_conditions, hours_since_last_rest, hours_since_last_encounter_check. |
 | **Warmaster** | Code + AI | Initialize combat: spawn creatures (bestiary → AI → template), roll initiative. Two paths: encounter table (A) or narrative-triggered combat (B). |
-| **Chronicler** | AI | Plot state management: discover clues, mark NPCs met, produce dm_brief + forbidden_elements for Narrate. Determines adventure_complete. |
-| **Narrate** | AI | Prose generation from outcome + contexts + dm_brief + journey/encounter data + pacing directives. |
-| **Micro context update** | AI | Update affected + active context JSONBs. Forces social re-evaluation on traversal changes. Updates scene_summary + scene_history. |
-| **Macro narrative update** | AI | Update story_summary (rolling adventure log). Conditional on `macro_significant`. |
+| **Narrate** | AI | Prose generation from outcome + retrieved scene facts + journey/encounter data + pacing directives. |
+| **ContextUpdate** | AI | Update `combat_context` (when combat is active or transitioning), `scene_summary`, and `scene_history`. |
+| **Loremaster** | AI | Sole writer of `adventure_narrative_facts` and the per-adventure NPC / location stores. Reads verdict outcome plus retrieved facts and emits new event/state/entity rows. |

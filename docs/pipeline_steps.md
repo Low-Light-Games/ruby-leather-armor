@@ -12,37 +12,6 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md).
 
 ---
 
-> **NOTICE — micro-context removal epic.** This document predates the
-> epic that removed the five non-combat micro-contexts (`traversal`,
-> `social`, `exploration`, `rest`, `inventory`) and the pipeline
-> scaffolding around them. The current shape, applied across the rest
-> of this document where it conflicts:
->
-> - **Retired AI steps:** Chronicler, Momentum, Embellisher, Enricher,
->   Social Expansion. Plot progression now emerges from
->   `adventure_narrative_facts` retrieval; no-roll actions flow through
->   Mechanic as auto-success.
-> - **Dying surfaces** (data lives until the final-commit schema
->   migration): the five non-combat `*_context` JSONB columns;
->   `StoryClue`; `StoryMilestone`; `LocationConnection`;
->   `Story.initial_summary`; `Story.initial_contexts`;
->   `Adventure.enriched_world` / `enriched_premise` / `plot_state`.
-> - **Surviving structured state on Adventure:** `combat_context`
->   (live combat) and `time_context` (clock).
-> - **New pgvector stores:** `adventure_narrative_facts` (durable
->   facts), `adventure_npcs` (NPCs by location + similarity), and
->   `adventure_locations` (`(x, y)` placement + similarity). Each has
->   a sole writer per §18.
-> - **New authoring path:** `Story.opening_message` (player-facing
->   first scene) + `Story.seed_facts` (AI-extracted from premise +
->   opening_message at story save by `Lore::ExtractFromPremise`,
->   bulk-inserted at adventure creation).
->
-> Trust this notice over the body when they conflict; the body will be
-> rewritten in the epic's final documentation pass.
-
----
-
 ## Outer orchestration (Pipeline class)
 
 The **AI step mixins** (Intake, Sequencer, Narrate, …) implement individual prompts; **`AdventureLoopResolution`** (also mixed into `PipelineEngine`) drives evaluation → sanity → mechanics for each **AdventureLoop** row; the **`DungeonMaster::PipelineEngine`** class wires the **player turn** and **action queue**. Reorder or extend the main line by editing **`#run_prompt`** in [`app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb`](../app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb) (three explicit `apply_prompt_phase` calls).
@@ -111,55 +80,51 @@ of the cost overhead by using cheap models on cheap steps.
 
 **Current path:** `AdventureLoopResolution#resolve` dispatches deterministically on combat state — out of combat → `Steps::RollRequest`, in combat → `Steps::CombatRollRequest`. Both are single AI calls that emit a single roll spec (or "no roll") plus the cross-cutting signals downstream code consumes (affected_contexts, expand_scene, transition, combatants, destination). UnifiedEvaluation and ParallelEvaluation have both been retired — see Decision 4.
 
-### 2. Six micro-contexts instead of a single context blob
+### 2. Combat context plus pgvector stores instead of six JSONB context blobs
 
-**Decision:** maintain six separate JSONB context fields on the Adventure:
-`traversal_context`, `combat_context`, `social_context`,
-`exploration_context`, `rest_context`, and `inventory_context`, each with
-its own schema.
+**Decision:** the only structured per-adventure JSONB state is
+`combat_context` (live combat: turn order, round, participant HP /
+conditions / positions) and `time_context` (the clock). Everything that
+used to live in `traversal_context`, `social_context`,
+`exploration_context`, `rest_context`, and `inventory_context` is now in
+purpose-built relational + pgvector stores: `adventure_npcs`,
+`adventure_locations`, and `adventure_narrative_facts`. Each downstream
+step retrieves only the slice it needs by cosine similarity against the
+player's intent or outcome.
 
-**Primary motivation:** micro-contexts are the adventure's state
-checkpoints (see Design Philosophy §18). The pipeline does not pass
-message history to AI steps — it passes the current snapshot. Each turn
-reads the snapshot, resolves the action, and writes an updated snapshot.
-Long sessions remain as cheap and reliable as short ones because prompt
-size stays bounded regardless of session length.
+**Why micro-contexts went away:** the JSONB blobs grew freeform
+schemas that the AI had to maintain across every turn, and the
+ContextUpdate step had to reason about all of them in a single prompt
+even when only one slice was relevant. Schema drift, stale carry-forwards,
+and "missing field" surprises were common failure modes. Snapshots also
+forced lossy summarisation — once an NPC fell out of `nearby_npcs`, it
+was effectively gone, even if it was still narratively relevant.
 
-**Why six domains:** Pathfinder 1e naturally decomposes into these six gameplay
-domains. A player action can affect multiple domains simultaneously ("I
-jump into the sacred lake to escape my attackers" touches combat,
-traversal, and social), and each domain has fundamentally different state
-shapes:
+The pgvector stores fix this by inverting the data flow. Steps no longer
+receive a precomputed snapshot — they retrieve relevant rows on demand:
 
-- Combat: turn order, round number, participant HP, conditions, positions
-- Traversal: location, terrain, weather, exits, nearby NPCs
-- Social: NPC attitudes, conversation state, persuasion progress
-- Exploration: searched areas, discovered items/secrets, active detection
-- Rest: resting state, hours, watch order, spell preparation, recovery
-- Inventory: recently acquired/used items, identifications, equipped gear
+- **`adventure_npcs`** — per-adventure NPCs (`name`, `role`, `attitude`,
+  `description`, `location_id`, embedding). Retrieved by similarity
+  against the current intent. Sole writer: `Lore::ApplyNpcs` (called
+  from Loremaster).
+- **`adventure_locations`** — per-adventure locations (`name`,
+  `description`, deterministic `(x, y)` placement, embedding). Retrieved
+  by similarity. Sole writer: `Lore::ApplyLocations`.
+- **`adventure_narrative_facts`** — durable facts (events, states,
+  entities), each with `source` (`seed`, `loremaster`, …),
+  `introduced_at_loop_id`, and `invalidated_by_fact_id` for state
+  replacement. Sole writer: Loremaster's `Lore::ApplyResults` (see §37).
 
-The original design used three contexts (combat, traversal, social). The
-expansion to six came from observing that exploration ("I search the room
-for traps"), rest ("I set up camp for the night"), and inventory ("I use
-my Potion of Cure Light Wounds") are mechanically distinct domains with
-their own rules, state shapes, and tracking needs. Folding them into the
-original three produced awkward fits — "searching for traps" is not
-really traversal, and "drinking a potion" is not combat.
+**Combat context is the exception** because it is not retrievable —
+turn order and HP must be authoritatively present every turn, not
+fuzzily looked up. It also stays small (one active combat at a time)
+and has a stable schema that the combat-only pipeline owns.
 
-A single blob would force the AI to reason about all six schemas in
-every call, even when only one is relevant. Separate contexts let
-ContextUpdate scope its writes per domain, and let downstream consumers
-(Mechanic, Combat GM, social expansion) pull only the slice they need.
-
-**Trade-off accepted:** the Context Update step must output relevant
-contexts. This is mitigated by the selective context update optimization
-(see Decision 18) — only affected and active contexts are sent to the
-model.
-
-**Alternative rejected:** a single `game_state` JSON blob was the initial
-design. It produced inconsistent schemas (the model would invent different
-field names across turns) and made it hard to scope the mechanical
-evaluation to one domain.
+**Trade-off accepted:** turn-time prompts now embed the intent and
+issue cosine-similarity queries instead of reading a single JSONB
+column. The cost is two embeddings per turn (one for retrieval, one
+batched after Loremaster); the win is that prompt size stays bounded
+no matter how rich the adventure becomes.
 
 ### 3. App-side NPC roll resolution
 
@@ -208,11 +173,13 @@ How player input is split and how narratives are delivered is controlled by the 
 
 **Trade-off: `"progressive_continuity"` token cost.** Injecting prior outcomes adds tokens to every subsequent evaluation and narration call in a sequence. For a 3-action turn the second and third actions each carry the outcomes of all preceding actions. This is intentional — the AI needs the context — but it means token spend scales with sequence length. This mode is not the default; enable it explicitly when conditional action chains (e.g. "scout for a tree, then cut it down if found") require the second action's evaluation to know the first action's result.
 
-### 5. Mechanic/Momentum before narration (facts-first ordering)
+### 5. Mechanic before narration (facts-first ordering)
 
-**Decision:** determine the factual outcome before writing any narrative,
-on both the mechanical path (Mechanic) and the non-mechanical path
-(Momentum).
+**Decision:** determine the factual outcome before writing any narrative.
+Both mechanical actions (with rolls) and no-roll actions ("I tell the
+guard my name") flow through the Mechanic step; for the latter,
+RollRequest emits `rolls: []` and Mechanic produces a verdict with no
+dice — the same downstream contract.
 
 **Why:** if the model narrates and evaluates simultaneously, narrative
 bias corrupts accuracy. The model might write a dramatic "the goblin
@@ -220,15 +187,21 @@ collapses!" moment and then produce mutations showing the goblin at 3 HP
 — or vice versa, produce correct mutations but a narrative that
 contradicts them.
 
-By running Mechanic (post-roll arbitration) or Momentum (non-mechanical
-outcome determination) first, the Narrate step receives a factual outcome
-it must faithfully narrate. Both steps write `verdict_outcome` to the
-adventure loop, giving Narrate a single read location regardless of path.
+By running Mechanic first, Narrate receives a factual outcome it must
+faithfully narrate. Mechanic writes `verdict_outcome` to the adventure
+loop, giving Narrate a single read location regardless of whether dice
+were rolled.
 
 **Trade-off accepted:** two AI calls where one might suffice. The cost
 is justified by correctness — mechanical errors in a Pathfinder game
 (wrong HP, missed saves, ignored conditions) directly degrade the
 player's trust in the DM.
+
+**Note on retired Momentum step.** Earlier revisions ran a separate
+Momentum AI call for non-mechanical actions, parallel to Mechanic. It
+was retired in favour of the unified Mechanic path — Mechanic with
+empty `rolls` is identical in shape to a no-roll Momentum verdict and
+removes the path split.
 
 ### 6. Structured mutations instead of natural language
 
@@ -442,22 +415,21 @@ Admins have full visibility through `AiLog` records and the admin UI.
 
 ### 16. Context update resilience (errors swallowed)
 
-**Decision:** the Micro Context Update and Macro Narrative Update steps
+**Decision:** ContextUpdate (combat-only) and Loremaster's apply phase
 rescue all errors and return empty hashes instead of failing the pipeline.
 
-**Why:** context updates are important but not critical to the current
-turn. If the micro context update fails:
-- The player still sees their narrative (it was generated before or
-  alongside context updates)
-- Future prompts may be slightly degraded (stale context) but still
-  functional
+**Why:** these writes are important but not critical to the current
+turn. If ContextUpdate fails:
+- The player still sees their narrative (Narrate runs in parallel)
+- The next turn reads a slightly stale combat snapshot, which is
+  recoverable on the next successful update
 
-Failing the entire turn because a context update errored would be
-disproportionate — the player would see an error message for a turn that
-was otherwise fully resolved and narrated.
-
-The error is still logged, so the admin knows context updates are
-failing and can investigate.
+Failing the entire turn because a write errored would be disproportionate
+— the player would see an error message for a turn that was otherwise
+fully resolved and narrated. Errors are reported through
+`@log.report_error` (Sentry) so they remain visible even though the
+turn succeeds; see §37 for the lossy-with-Sentry contract Loremaster
+follows.
 
 ### 17. Parallel execution of independent steps
 
@@ -479,111 +451,87 @@ pool pressure. Mitigated by wrapping all `Thread.new` blocks with
 checkout and return. The connection pool is sized at 12 to accommodate
 peak parallelism (~3 concurrent connections: main + 2 sanity gate threads).
 
-### 18. Self-directed ContextUpdate — the single writer of Adventure contexts
+### 18. One writer per data store
 
-**Decision:** ContextUpdate is the sole entity responsible for writing to
-Adventure context fields. It receives the pipeline outcome (`what_happened`)
-and decides independently which of the six domains changed — no upstream
-`affected_contexts` signal is used to filter or hint. All six domains and
-their JSON schemas are sent on every call; the AI reads the outcome and
-updates what it judges to have changed, carrying forward everything else
-unchanged.
+**Decision:** every per-adventure data store has exactly one writer, and
+that writer is named at the seam. No code path may write to a store
+that another step already owns.
 
-**Single-writer principle:** this principle prevents two code paths from
-writing to the same JSONB field with different assumptions. Warmaster
-computes deterministic combat data and returns it as a hash; ContextUpdate
-writes it verbatim to `combat_context` via a `combat_initialization` key in
-mutations. No other step, utility, or service (except emergency recovery in
-`DungeonMaster::Rolls::AdventureMechanicalState.auto_finalize_pending_initiative!`) writes directly to
-Adventure context fields.
+| Store | Sole writer | Surface area |
+|---|---|---|
+| `adventures.combat_context` | `Steps::ContextUpdate` | Live combat state. Warmaster emits a deterministic hash that ContextUpdate writes verbatim via a `combat_initialization` mutation. |
+| `adventures.time_context` | `Utilities::GameClock` | Code-only clock advancement; no AI call. |
+| `adventures.scene_summary` | `Steps::ContextUpdate#scene_update_evaluator` | Single sentence player-facing status, written alongside the combat write in the same fan-out call. |
+| `adventure_narrative_facts` | `Steps::Loremaster` (via `Lore::ApplyResults`) | Durable facts, both seed (`Lore::ExtractFromPremise` at story save) and per-turn (Loremaster in the output fan-out). Both call `Lore::ApplyResults`, which is the actual single insert seam. |
+| `adventure_npcs` | `Lore::ApplyNpcs` | NPC creation and updates flow through Loremaster's NPC mutations only. |
+| `adventure_locations` | `Lore::ApplyLocations` | Location creation and `(x, y)` placement via deterministic Vogel-spiral seeding (`Maps::PlaceLocations`). |
+
+**Why the principle exists:** before the principle was enforced, multiple
+steps wrote to the same JSONB blob with different assumptions about what
+the existing value contained. ContextUpdate would carry an NPC forward;
+Embellisher would overwrite the same key with a different NPC shape;
+Warmaster would write a third shape to the same column on combat
+initialization. The only way to keep these in sync was implicit
+agreement, and it constantly broke. Naming a single writer per store
+makes the contract explicit and reviewable: any change to a store's
+shape is one diff in one file.
 
 **Documented exception (Path A encounter pause):**
 `DungeonMaster::EncounterWarmasterBridge` calls
-`DungeonMaster::Utilities::Warmaster.persist_pending_combat!` when encounter
-combat is spawned but initiative is still pending. This writes an NPC-only
-pending roster to `combat_context` before ContextUpdate runs, so pause-time
-state does not fall back to stale ended-combat snapshots.
+`Utilities::Warmaster.persist_pending_combat!` when encounter combat is
+spawned but initiative is still pending. This writes an NPC-only pending
+roster to `combat_context` before ContextUpdate runs, so pause-time
+state does not fall back to stale ended-combat snapshots. ContextUpdate
+remains the sole writer on the resolved-combat path; the pending-pause
+write is bounded to that one call site.
 
 **Runs before every player-facing message:** ContextUpdate executes before
-any pipeline early return that presents a message to the player — including
-initiative prompts and roll requests, not only after full narrative resolution.
-This ensures the world state is current at every pause point. If the player
-never returns to a paused adventure, the snapshot still reflects reality up
-to that moment.
+any pipeline early return that presents a message to the player —
+including initiative prompts and roll requests, not only after full
+narrative resolution. This ensures combat state is current at every
+pause point.
 
-**`affected_contexts` observability:** RollRequest / CombatRollRequest
-emit `affected_contexts` as metadata on the loop. It is stored for
-observability and debugging but is not routed to ContextUpdate as a
-domain filter — ContextUpdate makes its own judgment.
+**Combat context schema:** the formal field description for `combat_context`
+lives in `app/services/dungeon_master/templates/schemas/contexts/combat.json`
+and is injected into the ContextUpdate prompt via
+`PromptRenderer.load_schema`.
 
-**Context wishes:** if the AI identifies that the outcome involves a concept
-that does not fit any existing domain, it can emit a `context_wishes` entry.
-Each wish is persisted via `play_log!("context_wish", ...)` and is visible in
-the admin play log UI as an amber badge — a signal for future context domain
-design, not an error.
-
-**Context snapshots on AdventureLoop:** after each ContextUpdate run,
-the full six-field snapshot is written to `adventure_loop.data["context_snapshot"]`.
-This creates a linear progression trail for debugging without consuming AI
-context window — the snapshot is available in the database but never re-sent
-to the model.
-
-**Domain schemas:** formal field descriptions for all six domains live in
-`app/services/dungeon_master/templates/schemas/contexts/`. They are injected
-into the ContextUpdate prompt at render time via `PromptRenderer.load_schema`.
-
-**Fallback:** if no relevant contexts can be determined (e.g. the very
-first turn of a new adventure where nothing has data yet), all six
-contexts are sent so the model can initialize whichever ones apply.
-
-**Trade-off accepted:** a context that is both empty and unaffected
-will not be initialized by this step. This is correct behavior — if the
-player hasn't done anything that touches combat, there shouldn't be a
-combat context yet. The context will be created naturally when the player
-first engages that domain.
-
-**Alternative rejected:** splitting the context update into six parallel
-AI calls (one per domain) was considered. This would eliminate cross-
-context interference entirely but at the cost of losing *cross-context
-awareness*. A single model call can recognize that a goblin dying affects
-combat context (participant removed), social context (NPCs react), and
-exploration context (the area is now safe to search). Six isolated calls
-cannot make those connections. The selective approach preserves this
-awareness while still reducing scope.
+**Context snapshots on AdventureLoop:** after each ContextUpdate run, the
+combat snapshot is written to `adventure_loop.data["context_snapshot"]`.
+This creates a debug trail without consuming AI context window — the
+snapshot is in the database but never re-sent to the model.
 
 ### 19. Travel tracking through the pipeline
 
-**Decision:** the pipeline explicitly tracks travel and distance changes
-across three steps:
+**Decision:** the pipeline tracks the player's location across three
+steps:
 
-1. **RollRequest** (traversal): the schema includes a `destination`
-   field plus the `mechanical_summary`, so when the player heads
-   somewhere known the request emits the destination and the rules
-   retrieved into the prompt cover overland movement (speed, mount,
-   terrain, forced march).
-2. **Verdict** (Mechanic / Combat GM): a `mutations.travel` object
+1. **RollRequest** emits a `destination` field plus a `mechanical_summary`
+   so when the player heads somewhere known, the request names the
+   destination and the rules retrieved into the prompt cover overland
+   movement (speed, mount, terrain, forced march).
+2. **Mechanic verdict**: `mutations.travel`
    (`{ hours_traveled, distance_covered, new_location }`) captures the
-   mechanical travel outcome alongside HP/condition mutations.
-3. **Context Update**: the prompt explicitly instructs the model to update
-   `traversal_context.current_location` from `travel.new_location` and to
-   enforce narrative consistency (never carry forward a stale location that
-   contradicts the factual outcome).
+   mechanical travel outcome alongside HP / condition mutations.
+3. **`adventures.current_location_id`** is updated by the resolver from
+   `travel.new_location`, resolving the destination name to an
+   `adventure_locations` row. Loremaster reads facts about the new
+   location on the next turn via `Lore::LocationsLookup`.
 
-**Why:** without this chain, travel was a "gap" in the pipeline. The
-evaluation step asked for Constitution checks (forced march fatigue) but
-never computed how far the player traveled. The verdict step processed the
-roll but left `position: null`. The Narrate step might creatively advance
-the player, but the Context Update step would see no mechanical signal and
-carry forward the old location unchanged. This created a state where the
-narrative says the player arrived at the village but the context still says
-"2 days away."
+**Why:** without this chain, travel was a "gap" — the evaluation asked
+for Constitution checks (forced march fatigue) but never computed how
+far the player travelled, and downstream prompts saw a stale location.
+Naming `current_location_id` as the canonical pointer keeps the world
+state and the narrative aligned: any retrieval that needs nearby NPCs
+or location facts queries by `current_location_id`, not by recovering
+text from a JSON blob.
 
 **Trade-off accepted:** the travel estimate is approximate — the model
 computes an estimate based on rules of thumb (light horse ~48 mi/day on
 road), not a precise simulation. This is acceptable because the DM
-narrative is inherently approximate about distances, and the key
-requirement is that *relative position updates* (closer, arrived, departed)
-are mechanically tracked rather than left to creative interpretation.
+narrative is inherently approximate about distances; the key requirement
+is that *relative position updates* (closer, arrived, departed) are
+mechanically tracked rather than left to creative interpretation.
 
 ### 20. Purpose-based classification
 
@@ -650,20 +598,19 @@ normalization step.
 
 ### 22. Scene summary as player-facing status
 
-**Decision:** the Micro Context Update step produces a `scene_summary`
-— a single concise sentence (under 15 words) describing the player's
-current situation. It is persisted on the `Adventure` model and displayed
-in the player-facing UI.
+**Decision:** ContextUpdate's `scene_update_evaluator` sub-prompt produces
+a `scene_summary` — a single concise sentence (under 15 words) describing
+the player's current situation. It is persisted on `adventures.scene_summary`
+and displayed in the player-facing UI.
 
-**Why:** the raw micro-context JSONB fields are developer/admin-oriented
-data (key-value pairs like `current_location`, `active: true`, etc.) that
-are not meaningful to the player. The scene summary bridges this gap by
-giving the player a quick status line ("Traveling by horseback toward the
-village.") without exposing internal state tracking.
+**Why:** narrative messages are long; the player needs a quick status
+line ("Traveling by horseback toward the village.") for the sidebar
+without scrolling chat. ContextUpdate runs after every turn and is the
+natural seam to refresh this string.
 
 **UI behavior:** all players see the scene summary. Admin users
-additionally see a collapsible "Micro Contexts" debug section showing all
-six raw context objects.
+additionally see a collapsible "Combat Context" debug section showing
+the raw `combat_context` object when combat is active.
 
 ### 23. Player-visible roll explanations
 
@@ -714,8 +661,8 @@ previous three teaching us where the cost was:
    `Promise.all`. Recovered observability and per-step model selection
    at the cost of three serial round-trips.
 4. **RollRequest / CombatRollRequest (current):** a single AI call backed
-   by pgvector RAG. The prompt has no character block and no full
-   micro-context dump. Out of combat → `Steps::RollRequest`; in combat
+   by pgvector RAG. The prompt has no character block and no JSONB
+   context dump. Out of combat → `Steps::RollRequest`; in combat
    free-text → `Steps::CombatRollRequest` with combat-aware context
    (attack options, action economy, AoO threats, battlefield text). Combat
    math (DCs, damage, defense kind) is clamped at the receiving seam by
@@ -761,8 +708,9 @@ via `guardrail_mode`:
 **B) World Consistency Check** — validates that the entities, targets, or
 objects the player references actually exist in the current scene. AI-only
 step that normally runs ALWAYS (in the sanity gate on the mechanics path, or
-standalone on the non-mechanics path). Receives all non-empty micro-contexts,
-scene summary, scene history, and story NPCs.
+standalone on the non-mechanics path). Receives `combat_context`,
+`scene_summary`, `scene_history`, and the top-K retrieved NPCs / locations /
+facts (`Lore::NpcsLookup` / `LocationsLookup` / `FactsLookup`).
 
 **Optional bypass:** when the adventure's `skip_world_sanity_check` boolean
 attribute is `true` (set at adventure creation via the toggle in the
@@ -791,8 +739,8 @@ effectively decomposed for budget models.
 ### 27. Stagehand as code-only synthesis step
 
 **Decision:** make the Stagehand step a pure code step with no AI call.
-It sits between Mechanic/Momentum and the output phase (Narrate +
-ContextUpdate), packaging results and dispatching the output steps.
+It sits between Mechanic and the output phase (Narrate + ContextUpdate
++ Loremaster), packaging the verdict and dispatching the output fan-out.
 
 **Why:** the original step was an AI call that duplicated work already
 done by the Mechanic step. Both received roll results and produced
@@ -801,21 +749,20 @@ outcomes — the only difference was one was "factual" and one was
 making Stagehand a code-only routing layer, we eliminate the redundancy
 and guarantee consistency.
 
-### 28. Narration runs the output phase in parallel (single mode)
+### 28. Narration runs the output phase in parallel
 
-**Decision:** Narrate, ContextUpdate domains, and Loremaster all run
-concurrently inside one evaluator fan-out (Node `Promise.all`). There
-is no alternative "subjugated" (serial) mode.
+**Decision:** Narrate, ContextUpdate (combat-only), and Loremaster all
+run concurrently inside one evaluator fan-out (Node `Promise.all`). The
+fan-out shape is fixed; there is no serial alternative.
 
-**Why:** we previously kept a `narration_mode = "subjugated"` toggle that
-ran ContextUpdate first, then Narrate, so Narrate could read freshly
-updated contexts. In practice the parallel mode always won: Narrate
-is driven by the verdict outcome, not by the contexts, so the DB-read
-freshness never materialized as a quality gain — and subjugated mode
-paid a full extra LLM round-trip in latency. Keeping one mode removes
-a config knob that no user flipped, keeps the fan-out the single place
-where narrative-phase latency is shaped, and lets Loremaster's
-zero-latency placement (Decision 37) rely on the fan-out unconditionally.
+**Why:** the three writers are independent — Narrate consumes the
+verdict outcome, ContextUpdate consumes the combat mutations, and
+Loremaster consumes the verdict outcome plus retrieved facts. Running
+them in parallel saves two full LLM round-trips of latency on the
+critical path. The single-mode approach also removes a historical
+"subjugated" toggle that no user flipped, and it lets Loremaster's
+zero-latency placement (Decision 37) rely on the fan-out
+unconditionally.
 
 ### 29. Context updates receive factual outcomes, not narrative
 
@@ -834,30 +781,13 @@ unambiguous data.
 This also decouples context updates from narration — in parallel mode,
 context updates don't need to wait for narration to complete.
 
-### 30. Social Scene Expansion
+### 30. *(retired — Social Scene Expansion)*
 
-**Decision:** add a third resolution mode alongside mechanical (rolls/checks)
-and auto-resolve (Momentum) for significant social interactions.
-
-**Why:** Momentum auto-resolves social interactions ("you rented the room")
-without player agency. Transactions, negotiations, information-gathering,
-and confrontations deserve an immersive NPC scene where the player chooses
-how to respond — the same way encounters get expanded into scenes before
-combat.
-
-**How:** RollRequest emits `expand_scene: true` on the social domain;
-`AdventureLoopResolution` runs the Social Expander AI step instead of
-TimeKeeper+Momentum, the scene is returned as `:social_scene` status which
-breaks the queue like encounters. The player's response enters a normal new
-pipeline run.
-
-**Re-expansion guard:** the RollRequest prompt is instructed not to expand
-when the `social_context` already has an active interaction. This prevents
-infinite scene loops.
-
-**Trade-off accepted:** one extra AI call for actions flagged as significant
-social interactions. Justified by player agency — the same tradeoff as
-encounter expansion.
+The Social Expander step was removed alongside the Momentum step. Social
+interactions now resolve through the unified Mechanic path (no-roll
+verdicts for "I greet the innkeeper", normal verdicts for skill-based
+exchanges). Loremaster captures the durable result as facts. The
+historical `expand_scene` signal on RollRequest is gone.
 
 ### 31. Roll deduplication removed (Principle 17)
 
@@ -997,96 +927,59 @@ caller.
 
 | Path | Value written |
 |---|---|
-| No-mechanics, no encounter | `momentum_result[:outcome]` — written by `momentum.rb` |
-| Mechanics, no encounter | `verdict_result[:outcome]` — written by `finish_resolution` |
+| Mechanic verdict (with or without rolls) | `verdict_result[:outcome]` — written by `finish_resolution` |
 | Encounter — awaiting initiative | `[encounter_scene, verdict_outcome].compact.join("\n\n")` |
 | Encounter — non-combat | same combined join |
-| Social scene | `scene` text from `social_expansion` |
 
 ---
 
-### 37. Loremaster and the narrative facts store as the sole dynamic-state input to World Consistency
+### 37. Loremaster and the narrative facts store
 
-**Decision:** the World Consistency Check no longer interrogates micro-contexts.
-Its dynamic-state input is `established_facts` — a bounded, kind-grouped list
-of durable narrative facts retrieved by cosine similarity against the player's
-stated intent from a per-adventure `adventure_narrative_facts` table
-(`pgvector` via the `neighbor` gem, HNSW on `embedding vector(1536)`,
-`text-embedding-3-small`). The sole writer of this table is a new AI step
-called **Loremaster**. There is no toggle and no coexistence mode: the
-`skip_world_sanity_check` per-adventure opt-out (paid/admin only, via
-`skip_world_sanity_for_privileged_player?`) is preserved unchanged — it still
-controls whether the check runs at all, but does not pick between "old check"
-and "new check."
+**Decision:** durable narrative state lives in
+`adventure_narrative_facts` — a per-adventure pgvector table
+(`neighbor` gem, HNSW on `embedding vector(1536)`,
+`text-embedding-3-small`). Steps that need plot-state context (Sanity
+Checker's world consistency check, `Steps::Stagehand`'s outcome-keyed
+retrieval that feeds Narrate) query this table by cosine similarity
+against the player's intent or the verdict outcome. The sole writer is
+the **Loremaster** AI step.
 
-**Placement.** Loremaster is placed to add zero wall-clock latency:
+**Placement.** Loremaster runs in the output-phase fan-out alongside
+Narrate and ContextUpdate. The LLM call fits inside the Narrate latency
+window — it does not add a sequential step to the critical path.
 
-- **Turn path.** Runs as an extra prompt in the output-phase fan-out
-  alongside `Narrate` and `ContextUpdate`, dispatched in one
-  `POST /fan_out` round-trip to the Node evaluator. The Loremaster LLM
-  call therefore fits inside the Narrate window — it does not add a
-  sequential step to the critical path. (With subjugated mode retired
-  in Decision 28, this is the only turn path.)
-- **Seed path — adventure creation.** `DungeonMaster::Lore::SeedFromAdventure`
-  runs one Loremaster call at `Adventures::Bootstrap` time, after Embellisher
-  has populated `enriched_world` / the opening DM narrative, so turn 1's
-  world check is not a cold start. A premise placing the party "adrift in
-  the middle of the open ocean" lands as a `state` seed fact that is
-  retrieved when the player attempts "I dig in the sand."
+**Seed path — story authoring.** Seed facts are produced once at story
+save time, not at adventure creation. `Lore::ExtractFromPremise` reads
+`Story.premise` (the spoiler-bearing full plot) and
+`Story.opening_message` (the player-facing first scene) and emits a
+list of `seed_facts` persisted on the Story. At adventure creation,
+`Adventures::Bootstrap` bulk-inserts those rows into
+`adventure_narrative_facts` with `source: "seed"` and
+`introduced_at_loop_id: nil`. Turn 1's retrieval is therefore not a
+cold start.
 
-**Seed input sources.** `SeedFromAdventure` assembles its prompt from
-exactly seven creation-time sources, chosen against the current data
-model rather than the obvious guess:
-
-- `adventure.story.premise` — the one-line concept.
-- `adventure.enriched_world` (JSONB on **`Adventure`**, written by
-  `DungeonMaster::Embellisher`). There is no `story.enriched_world`;
-  reading from `story` here would silently return `nil`.
-- `adventure.adventure_messages.chronological.first.content` — the
-  opening DM narrative, also produced by Embellisher.
-- Every `*_context` micro-context field populated at bootstrap. This is
-  the one remaining read of micro-contexts in the creation path; the
-  turn-time read was removed in the C10 cutover.
-- `StoryNpc.for_adventure(adventure)` and
-  `StoryClue.for_adventure(adventure)` — **these scopes include both
-  story-level records AND adventure-scoped records created by
-  Embellisher in Expand mode.** Sourcing from `story.story_npcs` /
-  `story.story_clues` alone would miss the Expand additions.
-- `adventure.story.story_locations` — locations exist only at Story
-  level; there is no Adventure-level duplicate, so going through
-  `story` here is correct and going through `adventure` would be empty.
-
-All resulting facts are written with `source: "seed"` and
-`introduced_at_loop_id: nil` through the shared `Lore::ApplyResults`
-pipeline, so seed rows are indistinguishable from turn rows downstream
-except by the `source` column.
+Seed and turn rows go through the same `Lore::ApplyResults` insert
+seam, so they are indistinguishable downstream except by the `source`
+column.
 
 **Two embeddings round-trips per turn, independent of fact count.**
-`Lore::FactsLookup` embeds the intent once at the sanity gate (read side);
-`Lore::ApplyResults` makes **one batched** `AiClient#embeddings` call for
-all Loremaster-emitted fact texts after the fan-out returns (write side).
-Both call sites own their own `AiLog` rows (`call_type: "embedding"`) —
-`AiClient` stays HTTP-and-retry-only, matching the rest of the repo.
-
-**§10 coexistence waived.** Design philosophy §10 says to prefer
-coexistence over migration. It is waived here because the existing world
-check was low-confidence enough to be defaulted **off** to keep the game
-playable — there is no working baseline worth preserving behind a toggle,
-and a three-mode rollout would measure "new thing" against
-"known-broken-and-off thing" without yielding useful signal. The cutover is
-one commit (C10 in the implementation plan) and is the primary revert
-target if staging regresses.
+`Lore::FactsLookup` embeds the intent once at the sanity gate (read
+side); `Lore::ApplyResults` makes **one batched** `AiClient#embeddings`
+call for all Loremaster-emitted fact texts after the fan-out returns
+(write side). Both call sites own their own `AiLog` rows
+(`call_type: "embedding"`) — `AiClient` stays HTTP-and-retry-only,
+matching the rest of the repo.
 
 **Lossy-with-Sentry contract.** Loremaster writes are best-effort: no
-transaction wraps them, mutations and `ContextUpdate` writes commit
-independently and earlier in the turn regardless of Loremaster's outcome.
-**Every** failure — AI error, JSON parse error, per-row insert error,
-seeding failure — is reported through `@log.report_error` (→
-`ApplicationErrorReporter` → Sentry) **before** any `loremaster_failure`
-or `seed_failure` play_log event. Per
+transaction wraps them; the Mechanic verdict and ContextUpdate combat
+write commit independently and earlier in the turn regardless of
+Loremaster's outcome. **Every** failure — AI error, JSON parse error,
+per-row insert error, seeding failure — is reported through
+`@log.report_error` (→ `ApplicationErrorReporter` → Sentry) **before**
+any `loremaster_failure` or `seed_failure` play_log event. Per
 [.cursor/rules/error-reporting-sentry.mdc](../.cursor/rules/error-reporting-sentry.mdc)
-this is non-negotiable: the data is allowed to be lossy, the error signal
-is not. A partial unique index on
+this is non-negotiable: the data is allowed to be lossy, the error
+signal is not. A partial unique index on
 `(adventure_id, introduced_at_loop_id, source_idx) WHERE source = 'loremaster'`
 makes accidental reapply a no-op instead of a duplicate, so higher-layer
 retries stay idempotent under the lossy contract.
@@ -1094,10 +987,9 @@ retries stay idempotent under the lossy contract.
 **Intra-queue staleness is accepted.** In a multi-action player message
 ("pick up the rope, then throw it across the chasm"), Loremaster runs
 exactly once — in the terminal narrative phase after the last action —
-and Action 2's world check reads the fact set that was live at the start
+and Action 2's retrieval reads the fact set that was live at the start
 of the player message. Inter-action Loremaster invocations were rejected
-as triple-the-call-volume for negligible gain; a characterization spec
-guards the tradeoff.
+as triple-the-call-volume for negligible gain.
 
 **Fact kinds.** Loremaster's output contract covers three kinds:
 - `event` — something that happened future actions must remain consistent
@@ -1109,7 +1001,10 @@ guards the tradeoff.
   `replacement_source_idx`. Rails dereferences that into
   `invalidated_by_fact_id` at apply time.
 - `entity` — an NPC, object, or location the narrative introduced ("the
-  innkeeper is named Gerta").
+  innkeeper is named Gerta"). Entity facts are paired with
+  `Lore::ApplyNpcs` / `Lore::ApplyLocations` writes when the AI also
+  emits structured NPC or location records (see §2 for the per-store
+  ownership table).
 
 ---
 
@@ -1131,20 +1026,16 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | 4 | **SanityChecker** | AI (parallel, mechanical path) | `app/services/dungeon_master/steps/sanity_checker.rb` |
 | 5 | **Mechanic** | AI (mechanical path, non-combat or inactive combat) | `app/services/dungeon_master/steps/mechanic.rb` |
 | 5′ | **Combat GM** | AI (mechanical path, **active combat** — `combat_active?`) | `app/services/dungeon_master/steps/combat_gm.rb`, `templates/combat_gm.text.erb` |
-| 5a | **Momentum** | AI (non-mechanical path) | `app/services/dungeon_master/steps/momentum.rb` |
 | 5a.5 | **World Turn** | Code orchestration | `app/services/dungeon_master/steps/world_turn.rb`, `app/services/dungeon_master/world_turn/*.rb` |
 | 5a.5-i | **↳ npc_action** | AI ×N (parallel `/fan_out`; code applies sequentially) | `app/services/dungeon_master/steps/world_turn.rb`, `app/services/dungeon_master/world_turn/npc_action_prompt.rb` |
 | 5b | **TimeKeeper** | Code-first, AI fallback | `app/services/dungeon_master/steps/time_keeper.rb` |
-| 5c | **Social Expansion** | AI (conditional) | `app/services/dungeon_master/adventure_loop_resolution.rb` (`resolve_social_scene`) |
 | -- | **Harbinger** (utility) | Code + optional AI | `app/services/dungeon_master/utilities/harbinger.rb` |
 | -- | **Warmaster** (utility) | Code + optional AI | `app/services/dungeon_master/utilities/warmaster.rb` |
 | -- | **GameClock** (utility) | Code-only | `app/services/dungeon_master/utilities/game_clock.rb` |
-| 5d | **Chronicler** | AI (conditional) | `app/services/dungeon_master/steps/chronicler.rb` |
 | 6 | **Stagehand** | Code-only | `app/services/dungeon_master/steps/stagehand.rb` |
 | 7 | **Narrate** | AI | `app/services/dungeon_master/steps/narrate.rb` |
-| 8a | **Micro Context Update** | AI (parallel with 8b) | `app/services/dungeon_master/steps/context_update.rb` |
-| 8b | **Macro Narrative Update** | AI (conditional) | `app/services/dungeon_master/steps/context_update.rb` |
-| 8c | **Loremaster** | AI (parallel with 7/8a/8b in the output-phase fan-out) — sole writer of `adventure_narrative_facts` (see Decision 37) | `app/services/dungeon_master/steps/loremaster.rb`, `app/services/dungeon_master/lore/apply_results.rb`, `app/services/dungeon_master/lore/seed_from_adventure.rb`, `app/services/dungeon_master/lore/facts_lookup.rb` |
+| 8a | **ContextUpdate** (combat + scene_summary) | AI (parallel with 7/8b) | `app/services/dungeon_master/steps/context_update.rb` |
+| 8b | **Loremaster** | AI (parallel with 7/8a in the output-phase fan-out) — sole writer of `adventure_narrative_facts` (see Decision 37) | `app/services/dungeon_master/steps/loremaster.rb`, `app/services/dungeon_master/lore/apply_results.rb`, `app/services/dungeon_master/lore/extract_from_premise.rb`, `app/services/dungeon_master/lore/facts_lookup.rb` |
 | -- | **Mutations** | App-side | `app/services/dungeon_master/mutations.rb` |
 
 **Action queue narrative delivery modes:** when `action_queue` is not `false`, the Sequencer splits input into multiple actions. There are two progressive modes:
@@ -1160,15 +1051,14 @@ Interrupted queues (encounter, social scene, roll request) fall back to the accu
 |---|---|---|
 | RollRequest | ✅ AI ×1 | Out-of-combat single call. Top-K rules + scene beats from pgvector; no character block. Emits one roll spec or "no roll" plus cross-cutting signals (affected_contexts, expand_scene, transition, combatants, destination) |
 | CombatRollRequest | ✅ AI ×1 + ❌ code clamping (`Phases::CombatMechanicResolution`) | Combat-active free-text. Carries attack options, action economy, threats, battlefield text. Emits `attack_option_id` (never DC) for combat rolls; Ruby resolves attack mode, defense kind, damage metadata, and AC / save DCs from the sheet |
-| Mechanic | ✅ AI | Post-roll arbitration + structured mutations when combat is not active |
+| Mechanic | ✅ AI | Post-roll arbitration + structured mutations when combat is not active. No-roll actions resolve through this same step with `rolls: []`. |
 | Combat GM | ✅ AI | Post-roll arbitration during **active combat** (battlefield slice + PF1e combat guidance); emits `battlefield_patches` + `action_economy_delta` |
-| Momentum | ✅ AI | Non-mechanical outcome |
 | World Turn (orchestration) | ❌ Code | Shared-snapshot NPC turn orchestration, sequential dice + mutation application in initiative order, combat advancement, and combat-end handling |
 | NPC Action (individual decisions) | ✅ AI ×N | One Node `/fan_out` batch (parallel AI) against the same live combat snapshot; code resolves and applies per NPC in order |
 | TimeKeeper (journey / combat / rest / take_20) | ❌ Code | Deterministic formulas |
 | TimeKeeper (fallback freeform estimate) | ✅ AI | Used only when no code rule applies |
 | Harbinger / GameClock / Warmaster turn ordering | ❌ Code | Encounter math, clock math, and deterministic combat state transitions |
-| Narrate / ContextUpdate / Chronicler | ✅ AI | Prose, context writing, and plot synthesis |
+| Narrate / ContextUpdate / Loremaster | ✅ AI | Prose, combat-context writing, and durable-fact extraction; all run in one output-phase fan-out |
 
 ### 5. World Turn after player resolution in active combat
 
@@ -1216,9 +1106,9 @@ All AI steps follow the same error handling pattern:
    returns `finish_reason: length`. This is a hard error for critical
    steps -- even truncated non-empty responses are rejected. The error is
    logged with `status: "token_budget_exceeded"` and re-raised (for
-   intake, mechanical evaluation, mechanic, momentum, narrate) or
-   swallowed with an empty result (for context updates and capability
-   guardrail, which are non-critical).
+   intake, roll_request, combat_roll_request, mechanic, narrate) or
+   swallowed with an empty result (for ContextUpdate, Loremaster, and
+   the capability guardrail, which are non-critical).
 
 2. **`AiError`**: covers API unreachability, malformed responses, and
    other failures. Same re-raise/swallow pattern as above.
@@ -1245,7 +1135,7 @@ Every AI call produces an `AiLog` record containing:
 
 | Field | Description |
 |---|---|
-| `step` | Pipeline step name (intake, sequencer, roll_request, combat_roll_request, sanity_checker, sanity_checker_world, mechanic, combat_gm, momentum, social_expansion, time_keeper, chronicler, narrate, combat_narrator, micro_context_update, macro_narrative_update, loremaster, npc_action) |
+| `step` | Pipeline step name (intake, sequencer, roll_request, combat_roll_request, sanity_checker, sanity_checker_world, mechanic, combat_gm, time_keeper, narrate, combat_narrator, context_update, loremaster, npc_action). Historical step names (momentum, social_expansion, chronicler, micro_context_update, macro_narrative_update, enricher, embellisher) still appear in older `AiLog` rows. |
 | `prompt_summary` | Truncated description of what was asked |
 | `raw_response` | The complete API response |
 | `parsed_response` | The parsed JSON |
@@ -1316,35 +1206,6 @@ See `app/services/dungeon_master/utilities/warmaster.rb` for implementation deta
 
 ---
 
-## Social Scene Lifecycle
-
-When a significant social interaction is detected, the pipeline expands it
-into an immersive NPC scene rather than auto-resolving via Momentum.
-
-### Flow
-
-```
-RollRequest → expand_scene: true (social affected_contexts)
-  → AdventureLoopResolution#resolve_social_scene
-    → Social Expander AI call (social_expansion template)
-    → Scene data written to @loop
-    → return :social_scene
-  → Pipeline breaks queue (like encounter)
-  → Output phase: narrate + context update
-  → Player sees scene, responds freely
-  → New pipeline run (normal flow — may go mechanical or Momentum)
-```
-
-### Re-expansion Guard
-
-The RollRequest prompt is instructed to NOT flag `expand_scene: true` when
-the `social_context` already contains an active NPC interaction. This
-prevents infinite scene loops. The player's response resolves through
-Momentum (auto-resolve) or the mechanical path (if they attempt something
-requiring a skill check), ensuring natural conclusion.
-
----
-
 ## Abandoned Pipeline Detection
 
 When a player sends a new message while a previous pipeline is waiting for
@@ -1382,7 +1243,6 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `verbose` | `false` | Narrate: enables unconstrained response length |
 | `pacing_words_min` | `40` | Narrate: minimum word count target when verbose is off |
 | `pacing_words_max` | `120` | Narrate: maximum word count target when verbose is off |
-| `chronicler_tone_direction` | `false` | Chronicler: when true, includes atmosphere/tone guidance in DM Brief |
 | `temperature` | `0.8` | All steps: creativity/randomness (non-reasoning models only) |
 | `model` | `gpt-4o-mini` | Default model for all steps |
 | `step_models[step]` | `{}` | Per-step model override |

@@ -152,7 +152,6 @@ adjust.
 - `temperature` — creativity/randomness
 - Per-step model selection and token budgets
 - `directed_dm` — per-adventure narrative steering
-- `embellisher_mode` — story enrichment behavior
 
 **Why toggles over code branches:** a developer changing an `if` statement,
 deploying, and observing is a 10-minute cycle. An admin flipping a toggle
@@ -295,7 +294,10 @@ observed AI failure to justify.
 - Started with a single DM prompt → split into pipeline steps when
   accuracy degraded
 - Started with 3 micro-contexts → expanded to 6 when exploration, rest,
-  and inventory didn't fit
+  and inventory didn't fit → collapsed back to a single `combat_context`
+  JSONB plus pgvector stores (`adventure_npcs`, `adventure_locations`,
+  `adventure_narrative_facts`) when freeform schema drift across the
+  six blobs proved unsustainable
 - Started with combined Triage → split into Sanitize + Classify when
   both tasks suffered
 - Started with monolithic Intent → split into Intent + Beacon when
