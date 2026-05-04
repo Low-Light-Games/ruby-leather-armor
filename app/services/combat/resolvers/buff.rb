@@ -17,6 +17,7 @@ module Combat
 
         payload = BuffPayload.new(option: option, spell: spell).to_h
         log_action_event!(payload)
+        Combat::EventLog.write!(adventure: @adventure, content: payload[:message], user: @user)
         { status: :resolved, result: payload }
       rescue DungeonMaster::CombatMechanicResolutionError => e
         raise Combat::ResolverError.new(e.message, code: e.code || :unknown_buff_option)
