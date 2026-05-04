@@ -50,21 +50,13 @@ module Combat
         creatures = active_npcs_in_initiative_order
         creatures.flat_map do |creature|
           events = Combat::NpcTurn.call(creature: creature, adventure: @adventure, target_sheet: @sheet)
-          events.each { |event| log_npc_event!(event) }
-          # Each NPC's mutations land on creature_sheets / the player sheet
-          # directly. Refresh combat_context.participants so the next NPC
-          # — and any post-round prompt — sees the live HP and conditions.
+          events.each { |event| Combat::EventLog.write_npc_event!(adventure: @adventure, event: event, user: @user) }
           Combat::ContextSync.refresh_participants!(@adventure, @sheet)
           events
         end
       rescue StandardError => e
         Rails.logger.warn("[EndPlayerTurn] NPC turn engine failed: #{e.message}")
         [{ kind: 'npc_skip', creature_id: nil, creature_name: '(engine error)', message: e.message }]
-      end
-
-      def log_npc_event!(event)
-        message = Combat::EventLog.message_for_npc_event(event)
-        Combat::EventLog.write!(adventure: @adventure, content: message, user: @user)
       end
 
       def active_npcs_in_initiative_order

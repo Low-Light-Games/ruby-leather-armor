@@ -1,18 +1,9 @@
 # frozen_string_literal: true
 
 module Combat
-  # Persists a player-visible combat_log message and broadcasts it on
-  # the AdventureChannel so the chat feed updates live. Centralises the
-  # seam used by the deterministic HUD path
-  # (PlayerActionResolver + NpcTurn) — the free-text path already
-  # persists combat_log lines via PipelineMessenger, but the
-  # deterministic HUD path bypasses the pipeline entirely.
   module EventLog
     module_function
 
-    # @param adventure [Adventure]
-    # @param content [String] one-line, fact-shaped, dice-ful summary
-    # @param user [User, nil] used only for admin gating in the broadcast payload
     def write!(adventure:, content:, user: nil)
       return if content.to_s.strip.empty?
 
@@ -26,10 +17,11 @@ module Combat
       nil
     end
 
-    # NpcTurnEvent::Attack hides its message under :outcome; the others
-    # carry it at the top level. Centralised here so callers don't have
-    # to know the shape.
-    def message_for_npc_event(event)
+    def write_npc_event!(adventure:, event:, user: nil)
+      write!(adventure: adventure, content: extract_npc_event_message(event), user: user)
+    end
+
+    def extract_npc_event_message(event)
       return nil unless event.is_a?(Hash)
 
       top = event[:message] || event['message']

@@ -1,14 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # Re-renders combat_context.participants from canonical state
-  # (creature_sheets + player sheet) so the JSONB shadow doesn't drift
-  # away from the live data after a deterministic mutation.
-  #
-  # The free-text combat path already rebuilds participants via
-  # WorldTurn::CombatAdvancement.build_after_world_turn at the end of
-  # the round; the deterministic HUD path mutates creature_sheets
-  # directly without touching the JSONB, so this is its sync seam.
   module ContextSync
     module_function
 
