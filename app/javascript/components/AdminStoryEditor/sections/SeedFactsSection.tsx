@@ -1,12 +1,6 @@
 import CollapsibleSection from '../components/CollapsibleSection'
 import type { SeedFact } from '../types'
-
-interface SeedFactsSectionProps {
-  seedFacts: SeedFact[]
-  setSeedFacts: React.Dispatch<React.SetStateAction<SeedFact[]>>
-  open: boolean
-  setOpen: (open: boolean) => void
-}
+import type { SeedFactsSectionProps } from './types'
 
 const FACT_KINDS: SeedFact['kind'][] = ['event', 'state', 'entity']
 
