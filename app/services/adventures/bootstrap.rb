@@ -47,12 +47,16 @@ module Adventures
     end
 
     def bind_starting_adventure_location!(adventure)
-      start_loc = @story.starting_location
-      return unless start_loc
+      starting_story_location = @story.starting_location
+      return unless starting_story_location
 
-      adv_loc = AdventureLocation.where(adventure_id: adventure.id,
-                                        story_location_id: start_loc.id).first
-      adventure.update!(current_location_id: adv_loc.id) if adv_loc
+      starting_adventure_location = AdventureLocation.where(
+        adventure_id:      adventure.id,
+        story_location_id: starting_story_location.id,
+      ).first
+      return unless starting_adventure_location
+
+      adventure.update!(current_location_id: starting_adventure_location.id)
     end
 
     def ensure_opening_message(adventure)

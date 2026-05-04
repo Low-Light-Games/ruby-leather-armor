@@ -3,12 +3,6 @@
 module DungeonMaster
   module SceneRetrieval
     class ForResolution
-      Result = Struct.new(:facts, :locations, :npcs, keyword_init: true) do
-        def empty?
-          facts.empty? && locations.empty? && npcs.empty?
-        end
-      end
-
       DEFAULT_LOCATION_LIMIT = 4
       DEFAULT_NPC_LIMIT      = 4
 
@@ -32,7 +26,7 @@ module DungeonMaster
       end
 
       def call
-        Result.new(
+        Retrieval.new(
           facts:     facts_lookup,
           locations: locations_with_relative_position,
           npcs:      npcs_lookup,
