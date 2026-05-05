@@ -23,7 +23,6 @@ module ApplicationHelper
     when "narrate"                       then "type-narrate"
     when "dm_query"                      then "type-dm-query"
     when "combat_context_update"         then "type-ctx"
-    when "scene_update"                  then "type-ctx"
     when "macro_narrative_update"        then "type-ctx"
     else "type-default"
     end

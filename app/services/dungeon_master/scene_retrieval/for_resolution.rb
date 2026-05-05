@@ -26,6 +26,7 @@ module DungeonMaster
       end
 
       def call
+        prewarm_query_embeddings
         Retrieval.new(
           facts:     facts_lookup,
           locations: locations_with_relative_position,
@@ -34,6 +35,28 @@ module DungeonMaster
       end
 
       private
+
+      def prewarm_query_embeddings
+        cache = @log.respond_to?(:embedding_cache) ? @log.embedding_cache : nil
+        return unless cache
+
+        texts = [
+          @intent_text,
+          SceneFacts::ForResolution.composed_query_text_for(
+            adventure:   @adventure,
+            intent_text: @intent_text,
+          ),
+        ]
+
+        cache.warm!(
+          texts:      texts,
+          model:      DmConfig.instance.narrative_facts_embedding_model,
+          dimensions: DmConfig.instance.narrative_facts_embedding_dimensions,
+          ai:         @ai,
+          log:        @log,
+          source:     "scene_retrieval_prewarm",
+        )
+      end
 
       def facts_lookup
         SceneFacts::ForResolution.call(

@@ -461,7 +461,6 @@ that another step already owns.
 |---|---|---|
 | `adventures.combat_context` | `Steps::ContextUpdate` | Live combat state. Warmaster emits a deterministic hash that ContextUpdate writes verbatim via a `combat_initialization` mutation. |
 | `adventures.time_context` | `Utilities::GameClock` | Code-only clock advancement; no AI call. |
-| `adventures.scene_summary` | `Steps::ContextUpdate#scene_update_evaluator` | Single sentence player-facing status, written alongside the combat write in the same fan-out call. |
 | `adventure_narrative_facts` | `Steps::Loremaster` (via `Lore::ApplyResults`) | Durable facts, both seed (`Lore::ExtractFromPremise` at story save) and per-turn (Loremaster in the output fan-out). Both call `Lore::ApplyResults`, which is the actual single insert seam. |
 | `adventure_npcs` | `Lore::ApplyNpcs` | NPC creation and updates flow through Loremaster's NPC mutations only. |
 | `adventure_locations` | `Lore::ApplyLocations` | Location creation and `(x, y)` placement via deterministic Vogel-spiral seeding (`Maps::PlaceLocations`). |
@@ -596,21 +595,22 @@ normalization step.
 **Domains covered by generic partials:** `traversal`, `social`,
 `exploration`, `rest`, `inventory`, `buff`.
 
-### 22. Scene summary as player-facing status
+### 22. Scene summary subsystem retired
 
-**Decision:** ContextUpdate's `scene_update_evaluator` sub-prompt produces
-a `scene_summary` — a single concise sentence (under 15 words) describing
-the player's current situation. It is persisted on `adventures.scene_summary`
-and displayed in the player-facing UI.
+**Decision:** the `scene_update` AI step, the
+`adventures.scene_summary` / `adventures.scene_history` columns, the
+sidebar chip, and the SanityChecker scene-summary input are all gone.
+The `Battlefield::PersistCombatStart` site that used to seed the
+battlefield's scene note from `scene_summary` now reads the last few
+player-facing AdventureMessages instead
+(`#recent_scene_note`, last 3 `narrative` / `action_result` rows).
 
-**Why:** narrative messages are long; the player needs a quick status
-line ("Traveling by horseback toward the village.") for the sidebar
-without scrolling chat. ContextUpdate runs after every turn and is the
-natural seam to refresh this string.
-
-**UI behavior:** all players see the scene summary. Admin users
-additionally see a collapsible "Combat Context" debug section showing
-the raw `combat_context` object when combat is active.
+**Why:** the step ran on every turn — including out-of-combat turns
+where there was nothing combat-relevant to summarise — and was a
+recurring source of `parse_error` truncation (e.g. PlayLog 8092). The
+player-visible chip duplicated information the chat already showed.
+Removing it eliminated one AI call per turn and one player-visible
+failure mode without changing what the player can see.
 
 ### 23. Player-visible roll explanations
 
@@ -706,9 +706,9 @@ The `guardrail_mode` code/AI toggle was retired; capability is AI-only now.
 **B) World Consistency Check** — validates that the entities, targets, or
 objects the player references actually exist in the current scene. AI-only
 step that normally runs ALWAYS (in the sanity gate on the mechanics path, or
-standalone on the non-mechanics path). Receives `combat_context`,
-`scene_summary`, `scene_history`, and the top-K retrieved NPCs / locations /
-facts (`Lore::NpcsLookup` / `LocationsLookup` / `FactsLookup`).
+standalone on the non-mechanics path). Receives `combat_context` and the top-K
+retrieved NPCs / locations / facts (`Lore::NpcsLookup` / `LocationsLookup` /
+`FactsLookup`).
 
 **Optional bypass:** when the adventure's `skip_world_sanity_check` boolean
 attribute is `true` (set at adventure creation via the toggle in the
@@ -1030,7 +1030,7 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | -- | **GameClock** (utility) | Code-only | `app/services/dungeon_master/utilities/game_clock.rb` |
 | 6 | **Stagehand** | Code-only | `app/services/dungeon_master/steps/stagehand.rb` |
 | 7 | **Narrate** | AI | `app/services/dungeon_master/steps/narrate.rb` |
-| 8a | **ContextUpdate** (combat + scene_summary) | AI (parallel with 7/8b) | `app/services/dungeon_master/steps/context_update.rb` |
+| 8a | **ContextUpdate** (combat-only) | AI (parallel with 7/8b) | `app/services/dungeon_master/steps/context_update.rb` |
 | 8b | **Loremaster** | AI (parallel with 7/8a in the output-phase fan-out) — sole writer of `adventure_narrative_facts` (see Decision 37) | `app/services/dungeon_master/steps/loremaster.rb`, `app/services/dungeon_master/lore/apply_results.rb`, `app/services/dungeon_master/lore/extract_from_premise.rb`, `app/services/dungeon_master/lore/facts_lookup.rb` |
 | -- | **Mutations** | App-side | `app/services/dungeon_master/mutations.rb` |
 
@@ -1240,7 +1240,6 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `step_models[step]` | `{}` | Per-step model override |
 | `action_queue` | `"progressive"` | Controls action splitting and narrative delivery. `false` — no splitting; `"progressive"` — split compound inputs, stream each action's narrative immediately via `pipeline_action_result` WebSocket events; `"progressive_continuity"` — as progressive, plus each action is narrated with prior action outcomes from `AdventureLoop` injected into the narrate prompt. Per-adventure override: `dm_settings["action_queue"]`. |
 | `creature_creation_fallback` | `"ai"` | `"ai"` (bestiary + AI gen), `"template"` (bestiary + generic stats), `"none"` |
-| `scene_history_depth` | `10` | Number of scene summaries retained for world consistency checks |
 | `skip_world_sanity_check` _(per-adventure attribute)_ | `false` | Per-adventure toggle set at creation time. When on, the world consistency check is bypassed on both the mechanical and non-mechanical resolution paths. The capability check always runs. |
 
 ### Model tiers

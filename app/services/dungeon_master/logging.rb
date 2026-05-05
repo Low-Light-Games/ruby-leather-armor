@@ -7,6 +7,7 @@ module DungeonMaster
   class Logging
     attr_accessor :player_message_id, :registry_entry_uuid, :player_message_content, :action_label,
                   :adventure_loop
+    attr_reader :embedding_cache
 
     def initialize(adventure:, user:, dm_service: "standard")
       @adventure = adventure
@@ -16,6 +17,7 @@ module DungeonMaster
       @registry_entry_uuid = nil
       @player_message_content = nil
       @adventure_loop = nil
+      @embedding_cache = EmbeddingCache.new
     end
 
     def start_registry_entry!(message_content)
@@ -204,28 +206,49 @@ module DungeonMaster
     # `ai` explicitly rather than as an ivar. Block must return
     # [raw_response, parsed_response].
     def timed_chat_call(call_type, prompt_summary, ai:, request_body: nil)
-      t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      raw, parsed = yield
-      ai_log!(
-        call_type, prompt_summary, raw, parsed,
-        parse_status: ai.last_parse_status,
-        request_body: request_body,
-        model_used:   ai.last_model_used,
-        duration_ms:  elapsed_ms(t0),
-        usage:        ai.last_usage,
-      )
-      parsed
-    rescue TokenBudgetExceededError, AiError => e
-      ai_log_error!(
-        call_type, prompt_summary, e,
-        raw_response: ai.last_failed_raw_response,
-        request_body: request_body,
-        status:       e.is_a?(TokenBudgetExceededError) ? "token_budget_exceeded" : "api_error",
-        model_used:   ai.last_model_used,
-        duration_ms:  elapsed_ms(t0),
-        usage:        ai.last_usage,
-      )
-      raise
+      attempts = 0
+      t0 = nil
+
+      begin
+        attempts += 1
+        t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        raw, parsed = yield
+        ai_log!(
+          call_type, prompt_summary, raw, parsed,
+          parse_status: ai.last_parse_status,
+          request_body: request_body,
+          model_used:   ai.last_model_used,
+          duration_ms:  elapsed_ms(t0),
+          usage:        ai.last_usage,
+        )
+        parsed
+      rescue TokenBudgetExceededError, AiError => e
+        if attempts == 1 && parse_error_retryable?(ai, e)
+          play_log!(
+            "parse_retry",
+            "#{call_type}: parse_error on attempt 1, retrying once",
+            parsed_response: { step: call_type, prompt_summary: prompt_summary.to_s.truncate(160) }
+          )
+          retry
+        end
+
+        ai_log_error!(
+          call_type, prompt_summary, e,
+          raw_response: ai.last_failed_raw_response,
+          request_body: request_body,
+          status:       e.is_a?(TokenBudgetExceededError) ? "token_budget_exceeded" : "api_error",
+          model_used:   ai.last_model_used,
+          duration_ms:  elapsed_ms(t0),
+          usage:        ai.last_usage,
+        )
+        raise
+      end
+    end
+
+    def parse_error_retryable?(ai, exception)
+      return false if exception.is_a?(TokenBudgetExceededError)
+
+      ai.last_parse_status == "parse_error"
     end
 
     def elapsed_ms(t0)

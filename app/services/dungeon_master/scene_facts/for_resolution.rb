@@ -8,6 +8,11 @@ module DungeonMaster
             ai: ai, log: log, limit: limit).call
       end
 
+      def self.composed_query_text_for(adventure:, intent_text:)
+        new(adventure: adventure, intent_text: intent_text,
+            ai: nil, log: nil).send(:composed_query_text)
+      end
+
       def initialize(adventure:, intent_text:, ai:, log:, limit: nil)
         @adventure   = adventure
         @intent_text = intent_text.to_s

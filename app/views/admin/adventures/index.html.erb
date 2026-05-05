@@ -22,7 +22,6 @@
           <th class="col-story">Story</th>
           <th class="col-char">Character</th>
           <th class="col-location">Location</th>
-          <th class="col-scene">Scene</th>
           <th class="col-time"><%= @show_discarded ? "Deleted At" : "Last Active" %></th>
           <% if @show_discarded %>
             <th class="col-actions"></th>
@@ -49,7 +48,6 @@
               <% end %>
             </td>
             <td class="col-location"><%= adventure.current_location&.name || '—' %></td>
-            <td class="col-scene"><%= truncate(adventure.scene_summary || '—', length: 50) %></td>
             <td class="col-time">
               <% ts = @show_discarded ? adventure.discarded_at : adventure.updated_at %>
               <%= ts&.strftime('%b %d %H:%M') || '—' %>

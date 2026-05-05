@@ -37,8 +37,6 @@ module DungeonMaster
                              pipeline: true),
       'combat_context_update' => Entry.new(model_hint: H::COMBAT_CONTEXT_UPDATE,
                                            pipeline: true),
-      'scene_update' => Entry.new(model_hint: H::SCENE_UPDATE,
-                                  pipeline: true),
       'macro_narrative_update' => Entry.new(model_hint: H::MACRO_NARRATIVE_UPDATE,
                                             pipeline: true),
       'creature_generation' => Entry.new(model_hint: H::CREATURE_GENERATION,

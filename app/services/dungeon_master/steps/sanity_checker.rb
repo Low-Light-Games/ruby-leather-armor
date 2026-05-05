@@ -250,8 +250,6 @@ module DungeonMaster
         combat_state = Adventures::CombatState.from_adventure(@adventure)
 
         PromptViews::SanityCheckerPromptContext.new(
-          scene_summary: @adventure.scene_summary,
-          scene_history: @adventure.scene_history,
           established_facts: retrieve_established_facts(intention),
           nearby_npcs: retrieve_nearby_npcs(intention),
           nearby_locations: retrieve_nearby_locations(intention),
