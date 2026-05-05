@@ -8,8 +8,7 @@ module DungeonMaster
     module ModelHints
       FAST_CHEAP = 'Fast, cheap model. e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.'
 
-      INTAKE = "#{FAST_CHEAP} Security + dm_query detection + context suggestion.".freeze
-      DM_QUERY = "#{FAST_CHEAP} Straightforward Q&A.".freeze
+      INTAKE = "#{FAST_CHEAP} Security gate + context suggestion.".freeze
       SEQUENCER = "#{FAST_CHEAP} Compound action detection.".freeze
       SANITY_CHECKER = "#{FAST_CHEAP} Sheet validation. Only used in AI mode.".freeze
 

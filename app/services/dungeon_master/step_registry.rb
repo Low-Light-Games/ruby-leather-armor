@@ -19,8 +19,6 @@ module DungeonMaster
     STEPS = {
       'intake' => Entry.new(model_hint: H::INTAKE,
                             pipeline: true),
-      'dm_query' => Entry.new(model_hint: H::DM_QUERY,
-                              pipeline: true),
       'sequencer' => Entry.new(model_hint: H::SEQUENCER,
                                pipeline: true),
       'sanity_checker' => Entry.new(model_hint: H::SANITY_CHECKER,

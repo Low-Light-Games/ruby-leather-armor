@@ -9,7 +9,7 @@ module DungeonMaster
   #
   # Flow:
   #   run_prompt          -> Concerns::EntryPoints + phases (see pipeline_engine/phases/*):
-  #                           IntakeDangerGate -> DmQueryBranch -> OrchestrateCompoundActions
+  #                           IntakeDangerGate -> OrchestrateCompoundActions
   #                         OrchestrateCompoundActions: run_sequencer -> ActionQueueRunner
   #                           -> per loop row: AdventureLoopResolution#resolve -> narrate (Concerns::NarrationCoordination)
   #                         Per-step narrative when action_queue is progressive / progressive_continuity
@@ -24,7 +24,6 @@ module DungeonMaster
     include Steps::Helpers
     include Steps::EvaluatorTransport
     include Steps::Intake
-    include Steps::DmQuery
     include Steps::Sequencer
     include Steps::SanityChecker
     include Steps::RollRequest

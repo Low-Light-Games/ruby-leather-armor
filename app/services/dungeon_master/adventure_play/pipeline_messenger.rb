@@ -31,9 +31,6 @@ module DungeonMaster
               message_type: "sanitization_fail")]
           end
 
-        when :dm_query
-          [persist_message(role: "dm", content: result[:answer], message_type: "dm_query")]
-
         when :battlefield_version_mismatch
           [persist_message(
             role: "system",

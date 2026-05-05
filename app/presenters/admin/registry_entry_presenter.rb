@@ -9,6 +9,7 @@ module Admin
   # optional PipelineRegistryEntry record, then derives human-readable status
   # and assembles the hash.
   class RegistryEntryPresenter
+    # `dm_query` retained for historical PlayLog rows from runs that ended on the retired DM Query branch.
     TERMINAL_STEPS = %w[narrate dm_query].freeze
     ERROR_STATUSES = %w[api_error parse_error token_budget_exceeded logging_error].freeze
 

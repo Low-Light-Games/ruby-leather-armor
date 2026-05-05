@@ -321,7 +321,7 @@ export function useAdventureMessages({
     setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), optimistic, thinking])
   }, [])
 
-  const sendMessage = async (text: string, mode?: string) => {
+  const sendMessage = async (text: string) => {
     setSending(true)
     setPendingRolls(null)
     lastSentRef.current = { type: 'message', text }
@@ -335,7 +335,7 @@ export function useAdventureMessages({
           'X-CSRF-Token': csrfToken(),
           Accept: 'application/json',
         },
-        body: JSON.stringify({ content: text, ...(mode && { mode }) }),
+        body: JSON.stringify({ content: text }),
       })
 
       if (!res.ok) {

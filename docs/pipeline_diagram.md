@@ -2,7 +2,7 @@
 
 High-level flow of the AI DM pipeline. For per-step prompt/model detail see [Pipeline Steps](pipeline_steps.md).
 
-**Outer shell:** `DungeonMaster::PipelineEngine#run_prompt` runs three explicit phases in order ([`pipeline_engine.rb`](../app/services/dungeon_master/pipeline_engine.rb) — `Phases::IntakeDangerGate`, `Phases::DmQueryBranch`, `Phases::OrchestrateCompoundActions`). Compound actions use **`PipelineEngine::ActionQueueRunner`** for the per-action loop shared with `run_remaining_queue` (fresh queue aborts on `:rejected`; resume skips rejected actions). The narrative/output path is **`run_accumulated_narrative_phase`** → **`run_narrative_phase`** (Stagehand). See [Outer orchestration](pipeline_steps.md#outer-orchestration-pipeline-class) in pipeline_steps.md.
+**Outer shell:** `DungeonMaster::PipelineEngine#run_prompt` runs two explicit phases in order ([`pipeline_engine.rb`](../app/services/dungeon_master/pipeline_engine.rb) — `Phases::IntakeDangerGate`, `Phases::OrchestrateCompoundActions`). Compound actions use **`PipelineEngine::ActionQueueRunner`** for the per-action loop shared with `run_remaining_queue` (fresh queue aborts on `:rejected`; resume skips rejected actions). The narrative/output path is **`run_accumulated_narrative_phase`** → **`run_narrative_phase`** (Stagehand). See [Outer orchestration](pipeline_steps.md#outer-orchestration-pipeline-class) in pipeline_steps.md.
 
 ---
 
@@ -33,14 +33,8 @@ flowchart TB
         B --> C[run_intake]
         C --> E{danger_score ≥ threshold?}
         E -->|yes| REJECT[Return :rejected]
-        E -->|no| F{is_dm_query? or mode='dm_query'?}
+        E -->|no| SEQ
     end
-
-    F -->|yes| G[DM Query branch]
-    G --> G2[run_dm_query  ☆ AI\nFactsLookup retrieves top-K]
-    G2 --> OUT_DM[Return :dm_query]
-
-    F -->|no| SEQ
 
     subgraph seq_gate["Sequencer — conditional on action_queue toggle  ☆ AI"]
         SEQ[run_sequencer] --> SEQ1{Multiple actions?}
@@ -274,19 +268,7 @@ The first AI call. Every message passes through this gate.
 
 ---
 
-### Step 2 — DM Query branch (AI)
-
-If Intake sets `is_dm_query = true`, or the controller passes `mode: "dm_query"`:
-
-1. A stub `intent` is created with no transition / combatants / destination.
-2. **DM Query** (`run_dm_query`) produces the answer using top-K retrieved facts (`Lore::FactsLookup`) as framing.
-3. Returns `{ action: :dm_query, answer: ... }` — no context updates, no time advancement.
-
-This is a **terminal branch** — nothing after it executes.
-
----
-
-### Step 3 — Sequencer (AI, conditional)
+### Step 2 — Sequencer (AI, conditional)
 
 Only runs if `DmConfig["action_queue"]` is enabled. Otherwise, returns the sanitized input as a single-element array.
 
@@ -296,7 +278,7 @@ The resulting `actions` array drives the **action queue loop**.
 
 ---
 
-### Step 4 — Action queue loop
+### Step 3 — Action queue loop
 
 The outer orchestration loop: for each action in the queue:
 
@@ -308,7 +290,7 @@ The outer orchestration loop: for each action in the queue:
 
 ---
 
-### Step 5 — AdventureLoopResolution.resolve
+### Step 4 — AdventureLoopResolution.resolve
 
 The inner pipeline entry point. Dispatches deterministically on combat state:
 
@@ -339,7 +321,7 @@ has been retired — see Decision 4.
 
 ---
 
-### Step 6 — Sanity gate + resolution
+### Step 5 — Sanity gate + resolution
 
 After RollRequest / CombatRollRequest emits the spec, the **sanity gate** validates the action before any mechanics are resolved. There is no longer a domain-aware split between "mechanical" and "no-domain" paths — every action goes through the gate, then through Mechanic (or Combat GM in active combat). No-roll actions resolve through Mechanic with `rolls: []`.
 
@@ -375,7 +357,7 @@ Its behaviour depends on the adventure's `skip_world_sanity_check` flag:
 
 ---
 
-### Step 7 — finish_resolution (post-roll or auto-success)
+### Step 6 — finish_resolution (post-roll or auto-success)
 
 Runs after the player submits dice results, or immediately when auto-success is detected.
 

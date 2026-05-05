@@ -5,19 +5,11 @@ module DungeonMaster
     module Concerns
       # Public prompt/roll/initiative entrypoints.
       module EntryPoints
-        # prompt_mode:
-        #   Optional pipeline override used at prompt-routing time.
-        #   Supported values:
-        #     - "dm_query": force Ask-DM flow regardless of intake classification.
-        #   Any other value is currently treated as no override.
-        def run_prompt(player_input, prompt_mode: nil)
-          prompt_phase_input = PromptPhaseInput.new(player_input: player_input, prompt_mode: prompt_mode)
+        def run_prompt(player_input)
+          prompt_phase_input = PromptPhaseInput.new(player_input: player_input)
           pipeline_phase_state = prompt_phase_input.to_h
 
           result = apply_prompt_phase(Phases::IntakeDangerGate, pipeline_phase_state)
-          return result if result
-
-          result = apply_prompt_phase(Phases::DmQueryBranch, pipeline_phase_state)
           return result if result
 
           apply_prompt_phase(Phases::OrchestrateCompoundActions, pipeline_phase_state) ||
@@ -228,11 +220,6 @@ module DungeonMaster
           out = phase.call(self, state)
           state.merge!(out.except(:halt, :result))
           out[:halt] ? out[:result] : nil
-        end
-
-        def run_dm_query_flow(clean_input)
-          result = run_dm_query(clean_input)
-          { action: :dm_query, answer: result[:answer] }
         end
 
         # Continue the action queue after a roll pause or from a mid-queue resume.

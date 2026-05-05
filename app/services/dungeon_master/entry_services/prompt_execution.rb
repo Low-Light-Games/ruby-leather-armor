@@ -7,7 +7,7 @@ module DungeonMaster
         @runtime = runtime
       end
 
-      def call(player_input:, player_message_id:, prompt_mode: nil)
+      def call(player_input:, player_message_id:)
         runtime.enforce_pipeline_policy!
         runtime.log.log_abandoned_pipeline_if_needed!
         DungeonMaster::Rolls::AdventureMechanicalState.auto_finalize_pending_initiative!(
@@ -24,7 +24,7 @@ module DungeonMaster
         runtime.ensure_run_pipeline!
 
         result = DungeonMaster::PipelineTiming.run(runtime.log) do
-          runtime.pipeline_engine.run_prompt(player_input, prompt_mode: prompt_mode)
+          runtime.pipeline_engine.run_prompt(player_input)
         end
         runtime.messenger.messages_for(result)
       rescue DungeonMaster::UsageLimitExceeded => e

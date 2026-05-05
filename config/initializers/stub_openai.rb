@@ -17,8 +17,7 @@ if ENV['STUB_OPENAI'].present?
 
     'intake filter' =>
       { 'sanitized_input' => 'scout the corridor, pick the lock, and push the door open',
-        'danger_score' => 0, 'reason' => 'Compound exploration action.',
-        'is_dm_query' => false }.to_json,
+        'danger_score' => 0, 'reason' => 'Compound exploration action.' }.to_json,
 
     'character sheet validator' =>
       { 'consistent' => true, 'reason' => nil, 'dm_message' => nil, 'allowed' => true }.to_json,

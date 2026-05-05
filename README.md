@@ -15,8 +15,6 @@ Player input
   │
   ├─ Triage ──────────── Sanitize (AI) ║ Classify (AI)   ← parallel
   │
-  ├─ DM Query? ──────── fast-path for out-of-character questions
-  │
   ├─ Sequencer (AI) ──── splits compound actions into a queue
   │
   └─ Per action:
@@ -54,8 +52,7 @@ Player input
 | Step | What it does |
 |---|---|
 | **Sanitize** | Scores input danger (0–100) and produces a cleaned version |
-| **Classify** | Tags the action domain: combat, traversal, social, exploration, rest, inventory, or dm_query |
-| **DM Query** | Answers out-of-character questions without running the full pipeline |
+| **Classify** | Tags the action domain: combat, traversal, social, exploration, rest, inventory |
 | **Sequencer** | Breaks compound actions (*"I search the room and then open the door"*) into ordered sub-actions |
 | **RollRequest** | Out-of-combat single AI call. Decides whether the intent needs a die roll, emits one roll spec (or "no roll") plus the cross-cutting signals (affected_contexts, transition, combatants). Prompt has no character block — top-K rules and scene_facts retrieval (intent + current location + active combat participants), retrieved from pgvector |
 | **CombatRollRequest** | In-combat free-text single AI call. Same shape as RollRequest, but the prompt carries attack options, action economy, threats, and the battlefield slice. Combat rolls emit `attack_option_id`; DCs and damage are resolved post-call from the sheet via `CombatMechanicResolution` |

@@ -424,33 +424,6 @@
     padding-top: 8px;
     border-top: 1px solid $border-light;
 
-    .ask-dm-toggle {
-      padding: 3px 10px;
-      border: 1px solid $border-light;
-      background: $parchment-dk;
-      color: $ink-light;
-      font-size: 11px;
-      font-family: $font-mono;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      cursor: pointer;
-      transition: all 0.15s;
-      align-self: flex-start;
-
-      &:hover:not(:disabled):not(.active) {
-        background: $parchment-mid;
-        color: $ink-mid;
-      }
-
-      &.active {
-        background: $ink;
-        border-color: $ink;
-        color: $parchment;
-      }
-
-      &:disabled { opacity: 0.5; cursor: not-allowed; }
-    }
-
     .chat-input-wrapper {
       flex: 1;
       display: flex;
@@ -471,20 +444,12 @@
       max-height: 80px;
       box-sizing: border-box;
       transition: border-color 0.15s;
+      max-width: none;
 
       &:focus {
         outline: none;
         border-color: $red-ink;
         box-shadow: 0 0 0 2px rgba(114, 38, 38, 0.15);
-      }
-
-      &.ask-dm-mode {
-        border-color: $ink-mid;
-
-        &:focus {
-          border-color: $ink;
-          box-shadow: 0 0 0 2px rgba(44, 37, 32, 0.15);
-        }
       }
 
       &:disabled { background-color: $parchment-mid; }

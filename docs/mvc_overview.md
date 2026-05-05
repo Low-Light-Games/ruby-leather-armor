@@ -63,7 +63,7 @@ Each sheet type has its own set of join tables for feats, spells, and items:
 | Model                | Description                                                                              |
 | -------------------- | ---------------------------------------------------------------------------------------- |
 | `Adventure`          | Active game session linking a user and story; carries `combat_context` + `time_context`  |
-| `AdventureMessage`   | Chat/narrative messages with types: narrative, roll_request, dm_query, etc.              |
+| `AdventureMessage`   | Chat/narrative messages with types: narrative, roll_request, action_result, etc.         |
 | `AdventureNpc`       | Per-adventure NPC, written by `Lore::ApplyNpcs` (pgvector embedding for fuzzy lookup)    |
 | `AdventureLocation`  | Per-adventure location with `(x, y)` coordinates + embedding, written by `Lore::ApplyLocations` |
 | `AdventureNarrativeFact` | Per-adventure durable narrative fact with embedding; sole writer is `Lore::ApplyResults` |
