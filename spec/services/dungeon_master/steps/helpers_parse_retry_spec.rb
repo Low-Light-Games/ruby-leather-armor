@@ -28,7 +28,6 @@ RSpec.describe DungeonMaster::Steps::Helpers do
         @log = log
       end
 
-      # Helpers are private; expose for direct testing.
       public :timed_ai_call
     end
   end

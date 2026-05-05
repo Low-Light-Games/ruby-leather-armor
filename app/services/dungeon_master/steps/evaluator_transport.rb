@@ -45,13 +45,6 @@ module DungeonMaster
         by_step
       end
 
-      # When Node returns a per-prompt result with parse_status == "parse_error"
-      # (model emitted malformed JSON — typically tail truncation on a clean
-      # finish_reason), re-issue *just* that single prompt in a fresh
-      # /fan_out call. Successful sibling results are kept; only the broken
-      # one is retried. Bounded to one retry per prompt: a second
-      # parse_error leaves the original failure in place so the downstream
-      # guard surfaces it normally.
       def retry_parse_error_prompts!(by_step, original_payloads, intention, phase:)
         failed_steps = by_step.select { |_step, result| result["parse_status"] == "parse_error" }.keys
         return if failed_steps.empty?

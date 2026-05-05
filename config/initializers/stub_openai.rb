@@ -148,11 +148,8 @@ if ENV['STUB_OPENAI'].present?
     build_openai_response.call(pick_openai_content.call(first_line, user_msg))
   end
 
-  # Embeddings endpoint — production AiClient validates that response["data"]
-  # has exactly N vector entries for N input texts, so the stub must
-  # mirror that shape per request (variable-length input arrays from
-  # batched prewarm calls in EmbeddingCache#warm!). Registered AFTER the
-  # broad chat stub above so WebMock matches this more-specific URL first.
+  # Registered after the broad chat stub above — WebMock matches the
+  # most-recently-declared stub first.
   WebMock.stub_request(:post, %r{api\.openai\.com/v1/embeddings}).to_return do |request|
     body = begin
       JSON.parse(request.body)

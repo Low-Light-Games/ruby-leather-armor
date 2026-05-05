@@ -70,11 +70,6 @@ module DungeonMaster
           { "cells" => {}, "note" => note_parts.join(" ") }
         end
 
-        # Seeds the battlefield's free-text note with the last few DM
-        # narration lines, so the AI knows what was happening just
-        # before combat began. Replaces the retired `Adventure.scene_summary`
-        # field — combined per-turn DM output is closer to ground truth
-        # than the old AI-generated summary anyway.
         def recent_events_note(adventure)
           adventure.adventure_messages
             .dm_narration

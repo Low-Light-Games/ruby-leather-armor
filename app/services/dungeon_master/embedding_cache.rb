@@ -1,18 +1,6 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  # Per-pipeline-execution memo for OpenAI embedding vectors.
-  #
-  # Lives on `Logging` so every step in one turn shares the same cache.
-  # A typical turn issues retrieval calls from RollRequest, Mechanic, and
-  # Stagehand — and the composer (`SceneRetrieval::ForResolution`) issues
-  # three lookups whose query text usually only differs in the
-  # facts-side composition. Without this, the same text gets re-embedded
-  # 3–7 times per turn (~5s of serial latency on adv 170).
-  #
-  # Keyed by `[text, model, dimensions]`. Cache is in-memory only; it
-  # never touches the DB and is discarded when the Logging instance
-  # goes out of scope at the end of the pipeline run.
   class EmbeddingCache
     def initialize
       @store = {}
@@ -32,12 +20,8 @@ module DungeonMaster
       @store[key_for(text, model, dimensions)] = vector
     end
 
-    # Batch-embed any uncached texts in one API call and stash the
-    # resulting vectors. Caller passes `ai:` and `log:` so the batched
-    # call still emits a normal `embedding` PlayLog entry (one row,
-    # rather than N) for observability.
-    #
-    # Returns nothing useful; consumers go through `get`/`has?`.
+    # Best-effort: per-lookup `VectorLookup#embed_query` still degrades
+    # to [] on its own when this fails.
     def warm!(texts:, model:, ai:, log:, source:, dimensions: nil)
       missing = Array(texts).map(&:to_s).reject(&:empty?).uniq.reject do |t|
         has?(text: t, model: model, dimensions: dimensions)
@@ -59,21 +43,12 @@ module DungeonMaster
         store(text: text, model: model, dimensions: dimensions, vector: vector)
       end
     rescue StandardError => e
-      # Prewarm is an optimization, not a correctness requirement. If the
-      # embeddings call fails (truncated stub response, transient API
-      # error), individual lookups still go through `VectorLookup#embed_query`
-      # which has its own per-call rescue and degrades to []. Surface the
-      # failure for observability but do not crash the pipeline.
       log.report_error(e, context: { source: "embedding_cache.warm!", warm_source: source })
       nil
     end
 
     private
 
-    # Embed truncated previews of every text in the batch into the
-    # summary so Admin > Play Logs can still tell *what* was embedded
-    # at a glance — matching the per-lookup `RulesLookup query — …`
-    # convention rather than degrading to an opaque count.
     def batch_summary(source, texts)
       previews = texts.map { |t| t.truncate(60) }.join(' | ')
       "#{source} batch [#{texts.length}] — #{previews}".truncate(280)

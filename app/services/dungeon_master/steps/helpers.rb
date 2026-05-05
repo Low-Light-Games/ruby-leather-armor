@@ -11,13 +11,6 @@ module DungeonMaster
       # Executes an AI call with automatic timing, success logging, and error logging.
       # The block must return [raw_response, parsed_response].
       # Always re-raises on error after logging — no silent fallbacks.
-      #
-      # Retries exactly once when the model returns a malformed JSON body
-      # (parse_status == "parse_error") and the failure is *not* a
-      # TokenBudgetExceededError. Same prompt under a budget cap will
-      # truncate the same way; same prompt against a stream artifact will
-      # almost always succeed on the second try. Observable via a
-      # `parse_retry` PlayLog event so we can measure the rate.
       def timed_ai_call(step_name, prompt_summary, request_body)
         attempts = 0
         t0  = nil
