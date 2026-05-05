@@ -10,6 +10,16 @@ For the guiding principles behind these decisions, see
 
 For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md).
 
+> **Project moment (2026-05):** this document describes the pipeline as
+> it runs today. The next major change is a **GM-orchestrator** step
+> that will reshape how steps are invoked: instead of a fixed phase
+> chain, a capable reasoning model will delegate to scoped specialist
+> tools (sheet handler, roll referee, time keeper, loremaster). The
+> step inventory below largely survives the pivot — what changes is
+> how steps get called, not what they each own. The cheap-non-reasoning
+> -model premise that motivated several historical splits is retired;
+> see `docs/design_philosophy.md` §3 and §10 for the full pivot story.
+
 ---
 
 ## Outer orchestration (Pipeline class)

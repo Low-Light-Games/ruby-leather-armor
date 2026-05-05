@@ -4,6 +4,12 @@ A full-stack web application that pairs D&D-style character sheet management wit
 
 Built with Rails 7, React/TypeScript, PostgreSQL, and the OpenAI API.
 
+## Project status (2026-05)
+
+Approaching launch. The architecture has converged: deterministic combat as the system of record, pgvector-backed durable world state, single-call evaluation (RollRequest / CombatRollRequest), async-only pipeline. The exploratory phase is over — the codebase is consolidating around what worked.
+
+**Current direction:** a **GM-orchestrator** step is the next major change. Capable reasoning models will own more of the chain of thought directly, with the existing pipeline steps refactored into scoped specialist tools the orchestrator delegates to (sheet handler, roll referee, time keeper, loremaster, etc.). The cheap-non-reasoning-model bet that motivated the original decomposition didn't deliver the nuance social encounters and narrative-driven combat transitions need; the pivot is documented in `docs/design_philosophy.md` (§3 and §10 are marked `[OUTDATED]` with the pivot story preserved). The pipeline diagram below describes the current behavior — the orchestrator hasn't shipped yet.
+
 ## How It Works
 
 A player types something like *"I try to pick the lock on the chest"*. That input travels through a pipeline of ~15 steps — some powered by AI, some by plain code — before the player sees a narrated result. The pipeline can pause mid-flow to request dice rolls or initiative from the player, then resume where it left off.

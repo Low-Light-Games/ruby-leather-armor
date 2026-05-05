@@ -2,6 +2,8 @@
 
 High-level flow of the AI DM pipeline. For per-step prompt/model detail see [Pipeline Steps](pipeline_steps.md).
 
+> **Project moment (2026-05):** this document is a snapshot of the pipeline as it runs **today**. A GM-orchestrator step is the next major change — it will replace the fixed phase chain with a reasoning model that delegates to scoped specialist tools. Until that ships, the diagrams below describe live behavior. See `docs/design_philosophy.md` Project moment + §3 / §10 for the pivot rationale.
+
 **Outer shell:** `DungeonMaster::PipelineEngine#run_prompt` runs two explicit phases in order ([`pipeline_engine.rb`](../app/services/dungeon_master/pipeline_engine.rb) — `Phases::IntakeDangerGate`, `Phases::OrchestrateCompoundActions`). Compound actions use **`PipelineEngine::ActionQueueRunner`** for the per-action loop shared with `run_remaining_queue` (fresh queue aborts on `:rejected`; resume skips rejected actions). The narrative/output path is **`run_accumulated_narrative_phase`** → **`run_narrative_phase`** (Stagehand). See [Outer orchestration](pipeline_steps.md#outer-orchestration-pipeline-class) in pipeline_steps.md.
 
 ---

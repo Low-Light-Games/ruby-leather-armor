@@ -2,6 +2,8 @@
 
 This document summarizes all Models, Views, and Controllers in the application. The project is a Rails 7+ API application with a React SPA frontend, implementing an AI-powered Dungeon Master system.
 
+> **Project moment (2026-05):** approaching launch. The model + controller surface here is stable; the active work is on the pipeline (a GM-orchestrator step is the next major change — see `docs/design_philosophy.md` and `docs/pipeline_steps.md`). New AI steps still need a `StepRegistry` entry, but the dispatch shape that consumes them will change.
+
 ---
 
 ## Models
