@@ -19,4 +19,10 @@ class AdventureMessage < ApplicationRecord
   scope :newest_first, -> { order(created_at: :desc) }
   scope :from_players, -> { where(role: 'player') }
   scope :for_message_types, ->(types) { where(message_type: types) }
+  # The narrative prose the player actually reads as DM speech: per-turn
+  # narration plus per-action resolution lines. Excludes meta rows
+  # (roll_request, roll_result, system_notice, combat_log, dm_query) so
+  # callers reaching for "what happened lately, in DM-voice" get a clean
+  # slice without filtering each consumer-side.
+  scope :dm_narration, -> { where(message_type: %w[narrative action_result]) }
 end
