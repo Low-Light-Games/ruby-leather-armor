@@ -1,0 +1,174 @@
+<div class="feature-flags-edit-page">
+  <p class="breadcrumb"><%= link_to "← All flags", admin_feature_flags_path %></p>
+  <h1><code><%= @flag.key %></code></h1>
+  <p class="page-desc"><%= @flag.description %></p>
+
+  <% if flash[:alert] %>
+    <div class="flash-alert"><%= flash[:alert] %></div>
+  <% end %>
+
+  <%= form_with model: @flag, url: admin_feature_flag_path(@flag), method: :patch, local: true,
+                html: { class: "flag-form", data: { controller: "ff-edit" } } do |f| %>
+
+    <fieldset class="ff-section">
+      <legend>Mode</legend>
+      <% FeatureFlag::MODES.each do |m| %>
+        <label class="radio-row">
+          <%= f.radio_button :mode, m, data: { ff_edit_target: "modeRadio", action: "change->ff-edit#refresh" } %>
+          <span class="radio-label"><%= m.upcase %></span>
+          <span class="radio-hint"><%= mode_hint(m) %></span>
+        </label>
+      <% end %>
+    </fieldset>
+
+    <fieldset class="ff-section bucketing-section" data-ff-edit-target="bucketingSection">
+      <legend>Bucketing strategy</legend>
+      <% FeatureFlag::STRATEGIES.each do |s| %>
+        <label class="radio-row">
+          <%= f.radio_button :bucketing_strategy, s, data: { ff_edit_target: "strategyRadio", action: "change->ff-edit#refresh" } %>
+          <span class="radio-label"><%= s.upcase %></span>
+          <span class="radio-hint"><%= strategy_hint(s) %></span>
+        </label>
+      <% end %>
+    </fieldset>
+
+    <fieldset class="ff-section granular-section" data-ff-edit-target="granularSection">
+      <legend>Granular: user IDs that are ON</legend>
+      <p class="hint">Enter user IDs separated by commas, spaces, or newlines. Everyone else is OFF.</p>
+      <%= f.text_area :granular_user_ids_raw,
+            rows: 4,
+            value: @flag.granular_user_ids.join(", "),
+            placeholder: "e.g.  3, 17, 42",
+            class: "field-textarea" %>
+    </fieldset>
+
+    <fieldset class="ff-section modulo-section" data-ff-edit-target="moduloSection">
+      <legend>Modulo: rollout</legend>
+      <div class="modulo-row">
+        <label>
+          Divisor (2–10)
+          <%= f.number_field :modulo_divisor, in: FeatureFlag::MODULO_DIVISOR_RANGE,
+                step: 1, class: "field-number" %>
+        </label>
+        <p class="hint">A user is ON when <code>user.id % divisor</code> matches one of the remainders below.</p>
+      </div>
+      <div class="modulo-remainders">
+        <span class="hint">On-remainders:</span>
+        <% (0..9).each do |r| %>
+          <label class="checkbox-pill">
+            <%= check_box_tag "feature_flag[modulo_on_remainders][]", r, @flag.modulo_on_remainders.include?(r) %>
+            <%= r %>
+          </label>
+        <% end %>
+      </div>
+      <p class="hint subtle">Tip: divisor=10 with one remainder = 10% rollout. Divisor=2 with one remainder = 50/50.</p>
+    </fieldset>
+
+    <div class="form-actions">
+      <%= f.submit "Save", class: "btn-save" %>
+      <%= link_to "Cancel", admin_feature_flags_path, class: "btn-cancel" %>
+    </div>
+  <% end %>
+</div>
+
+<script>
+  // Lightweight inline show/hide. Stimulus controller name above is hint-only — this
+  // page doesn't load Stimulus. Plain JS does the job for an admin-only screen.
+  (function () {
+    var form = document.querySelector(".flag-form");
+    if (!form) return;
+    var bucketingSection = form.querySelector('[data-ff-edit-target="bucketingSection"]');
+    var granularSection  = form.querySelector('[data-ff-edit-target="granularSection"]');
+    var moduloSection    = form.querySelector('[data-ff-edit-target="moduloSection"]');
+
+    function modeValue() {
+      var checked = form.querySelector('input[name="feature_flag[mode]"]:checked');
+      return checked ? checked.value : "off";
+    }
+    function strategyValue() {
+      var checked = form.querySelector('input[name="feature_flag[bucketing_strategy]"]:checked');
+      return checked ? checked.value : null;
+    }
+    function refresh() {
+      var bucketed = modeValue() === "bucketed";
+      bucketingSection.style.display = bucketed ? "" : "none";
+      var strat = bucketed ? strategyValue() : null;
+      granularSection.style.display = strat === "granular" ? "" : "none";
+      moduloSection.style.display   = strat === "modulo"   ? "" : "none";
+    }
+    form.addEventListener("change", function (e) {
+      if (e.target.matches('input[name="feature_flag[mode]"], input[name="feature_flag[bucketing_strategy]"]')) {
+        refresh();
+      }
+    });
+    refresh();
+  })();
+</script>
+
+<style>
+  .feature-flags-edit-page {
+    padding: 20px 30px; font-family: 'Arial', sans-serif;
+    max-width: 800px; margin: 0 auto;
+
+    h1 { font-size: 22px; color: #333; margin: 8px 0 4px;
+         code { padding: 4px 10px; background: #f5f5f5; border: 1px solid #e0e0e0;
+                border-radius: 4px; font-size: 18px; color: #333; } }
+  }
+  .breadcrumb { font-size: 13px; margin-bottom: 8px; a { color: #1976d2; text-decoration: none; } }
+  .page-desc { color: #666; font-size: 14px; margin-bottom: 24px; }
+
+  .flash-alert {
+    padding: 12px 16px; margin-bottom: 16px;
+    background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24;
+    border-radius: 4px; font-size: 14px;
+  }
+
+  .ff-section {
+    border: 1px solid #e0e0e0; padding: 16px 20px; margin-bottom: 18px;
+    border-radius: 6px; background: #fafafa;
+    legend { padding: 0 8px; font-weight: 700; color: #444; font-size: 13px;
+             text-transform: uppercase; letter-spacing: 0.5px; }
+  }
+
+  .radio-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 0; cursor: pointer;
+    .radio-label { font-weight: 600; color: #333; font-size: 13px; min-width: 90px; }
+    .radio-hint  { color: #666; font-size: 12px; }
+  }
+
+  .field-textarea {
+    width: 100%; padding: 10px; font-family: monospace; font-size: 13px;
+    border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;
+  }
+  .field-number {
+    padding: 6px 10px; font-size: 14px; width: 80px; margin-left: 8px;
+    border: 1px solid #ccc; border-radius: 4px;
+  }
+
+  .modulo-row { margin-bottom: 12px; label { font-size: 13px; color: #444; font-weight: 600; } }
+  .modulo-remainders {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    .hint { color: #555; font-size: 13px; margin-right: 8px; }
+  }
+  .checkbox-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; background: white;
+    border: 1px solid #ccc; border-radius: 12px;
+    font-size: 12px; cursor: pointer;
+    input { margin: 0; }
+    &:has(input:checked) { background: #c8e6c9; border-color: #2e7d32; color: #2e7d32; font-weight: 600; }
+  }
+
+  .hint { color: #666; font-size: 12px; margin: 4px 0 8px; }
+  .hint.subtle { color: #888; font-size: 11px; }
+
+  .form-actions { margin-top: 20px; display: flex; gap: 10px; align-items: center; }
+  .btn-save  { padding: 10px 24px; background: #28a745; color: white;
+               border: none; border-radius: 4px; font-size: 14px; font-weight: 600; cursor: pointer;
+               &:hover { background: #218838; } }
+  .btn-cancel { padding: 10px 16px; background: white; color: #555;
+                border: 1px solid #ccc; border-radius: 4px;
+                text-decoration: none; font-size: 14px;
+                &:hover { background: #f5f5f5; } }
+</style>

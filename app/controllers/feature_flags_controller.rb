@@ -2,7 +2,7 @@
 
 class FeatureFlagsController < ApplicationController
   def index
-    flags = FeatureFlag.where(enabled: true).pluck(:key)
-    render json: { enabled: flags }
+    keys = FeatureFlag.ordered.select { |flag| flag.enabled_for?(current_user) }.map(&:key)
+    render json: { enabled: keys }
   end
 end
