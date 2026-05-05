@@ -1,6 +1,9 @@
 // Stimulus setup
 import { Application } from "@hotwired/stimulus";
 
+// Stimulus-driven admin styles (no React component owns these pages)
+import "./components/AdminFeatureFlags/FeatureFlagEdit.scss";
+
 // React setup
 import React from "react";
 import { createRoot } from "react-dom/client";
@@ -19,11 +22,13 @@ import type { SubscriptionPlan } from "./types/subscriptions";
 // Import Stimulus controllers
 import SheetsListController from "./controllers/sheets_list_controller";
 import StimulusTestController from "./controllers/stimulus_test_controller";
+import FeatureFlagEditController from "./controllers/feature_flag_edit_controller";
 
 // Initialize Stimulus
 const Stimulus = Application.start();
 Stimulus.register("sheets-list", SheetsListController);
 Stimulus.register("stimuilus-test", StimulusTestController);
+Stimulus.register("feature-flag-edit", FeatureFlagEditController);
 
 // Mount React apps when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {

@@ -2,7 +2,6 @@
 
 class FeatureFlagsController < ApplicationController
   def index
-    keys = FeatureFlag.ordered.select { |flag| flag.enabled_for?(current_user) }.map(&:key)
-    render json: { enabled: keys }
+    render json: { enabled: FeatureFlag.on_for_user(current_user).map(&:key) }
   end
 end
