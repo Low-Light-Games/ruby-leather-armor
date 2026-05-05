@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_04_200000) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_05_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -414,10 +414,14 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_04_200000) do
 
   create_table "feature_flags", force: :cascade do |t|
     t.string "key", null: false
-    t.boolean "enabled", default: false, null: false
     t.string "description"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "mode", default: "off", null: false
+    t.string "bucketing_strategy"
+    t.integer "granular_user_ids", default: [], null: false, array: true
+    t.integer "modulo_divisor"
+    t.integer "modulo_on_remainders", default: [], null: false, array: true
     t.index ["key"], name: "index_feature_flags_on_key", unique: true
   end
 
