@@ -11,14 +11,7 @@ Versions **0.2.0–0.4.0** are documented retroactively from merged PR dates (th
 
 ### Changed
 
-- **Design philosophy pivots ahead of launch.** Three principles in `docs/design_philosophy.md` were marked `[OUTDATED]` with their pivot story preserved for historicity, and a `Project moment (2026-05)` orientation note was added at the top of the doc + mirrored into `README.md`, `docs/pipeline_steps.md`, `docs/pipeline_diagram.md`, and `docs/mvc_overview.md` so incoming agents see the moment immediately.
-  - **§3 — Structured decomposition over model reasoning.** The cheap-non-reasoning-model bet didn't deliver the nuance social encounters and combat-transition handling need. Direction reversed: capable reasoning models will own more of the chain of thought, with the architecture providing the deterministic substrate they orchestrate. The next concrete step is a **GM-orchestrator** that calls existing pipeline steps as scoped specialist tools (sheet handler, roll referee, time keeper, loremaster).
-  - **§10 — Coexistence over migration.** Approaching launch, two-live-paths-by-default costs more than it teaches. New default is direct migration with rollback via git, not via runtime toggle. §4 (config toggles for AI-tuning knobs) is unaffected.
-  - **§17 — Cheap-model policy** subsection is downstream of §3 and outdated alongside it. The **Clamp at the receiving seam** half of §17 is **still binding** and is load-bearing for the orchestrator design (every tool the orchestrator calls retains its receiving-seam clamp).
-
-### Removed
-
-- **DM Query fast path** retired end-to-end. The dedicated `Phases::DmQueryBranch` phase, `Steps::DmQuery` step + prompt template, the `is_dm_query` field on Intake, the `prompt_mode` parameter on `PipelineEngine#run_prompt`, the `mode:` argument on `DungeonMasterService#execute_prompt`, the `dm_query` AdventureMessage type and admin badge, and the chat UI's "Ask GM" toggle button are all gone. Out-of-character questions now flow through the regular pipeline — RollRequest emits `needs_roll: false` and Mechanic answers from retrieved facts. Historical `dm_query` messages persist in the database for past adventures and continue to render. See `docs/pipeline_steps.md` Decision 9 for rationale.
+- **FeatureFlag** is now per-user. The binary `enabled` boolean is replaced by a `mode` (`off` / `on` / `bucketed`) plus two exclusive bucketing strategies — `granular` (a list of user IDs that are ON) and `modulo` (`user.id % divisor` matches one of `on_remainders`; divisor 2–10 supports 10–90% rollouts). The legacy `FeatureFlag.enabled?(key)` global API is dropped (no callers); use `FeatureFlag.enabled_for?(key, user)`. Admin UI gets an edit page; the public `GET /feature_flags` endpoint filters by per-user evaluation. First step of the GameMaster orchestrator epic.
 
 ## [0.5.0] - 2026-05-04
 

@@ -46,9 +46,7 @@ Rails.application.routes.draw do
         get "pipelines/:registry_entry_uuid/export", action: :export_pipeline, as: :export_pipeline
       end
     end
-    resources :feature_flags, only: [:index] do
-      member { patch :toggle }
-    end
+    resources :feature_flags, only: [:index, :edit, :update]
     resource :dm_config, only: [:show, :update] do
       get :models, on: :member
     end
