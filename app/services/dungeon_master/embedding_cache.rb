@@ -58,6 +58,14 @@ module DungeonMaster
       missing.zip(vectors).each do |text, vector|
         store(text: text, model: model, dimensions: dimensions, vector: vector)
       end
+    rescue StandardError => e
+      # Prewarm is an optimization, not a correctness requirement. If the
+      # embeddings call fails (truncated stub response, transient API
+      # error), individual lookups still go through `VectorLookup#embed_query`
+      # which has its own per-call rescue and degrades to []. Surface the
+      # failure for observability but do not crash the pipeline.
+      log.report_error(e, context: { source: "embedding_cache.warm!", warm_source: source })
+      nil
     end
 
     private

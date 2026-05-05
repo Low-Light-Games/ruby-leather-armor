@@ -73,6 +73,7 @@ module DungeonMaster
           retry_by_step = evaluator_fan_out_results_by_step(retry_results)
           retried = retry_by_step[step]
           next unless retried
+
           next if retried["parse_status"] == "parse_error"
 
           by_step[step] = retried

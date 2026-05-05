@@ -148,6 +148,34 @@ if ENV['STUB_OPENAI'].present?
     build_openai_response.call(pick_openai_content.call(first_line, user_msg))
   end
 
+  # Embeddings endpoint — production AiClient validates that response["data"]
+  # has exactly N vector entries for N input texts, so the stub must
+  # mirror that shape per request (variable-length input arrays from
+  # batched prewarm calls in EmbeddingCache#warm!). Registered AFTER the
+  # broad chat stub above so WebMock matches this more-specific URL first.
+  WebMock.stub_request(:post, %r{api\.openai\.com/v1/embeddings}).to_return do |request|
+    body = begin
+      JSON.parse(request.body)
+    rescue StandardError
+      {}
+    end
+    inputs = Array(body['input'])
+    inputs = [body['input'].to_s] if inputs.empty? && body['input']
+    dim = body['dimensions'].to_i.positive? ? body['dimensions'].to_i : 1536
+    data = inputs.each_with_index.map do |_text, idx|
+      { 'index' => idx, 'embedding' => Array.new(dim, 0.0), 'object' => 'embedding' }
+    end
+    {
+      status: 200,
+      body: {
+        'object' => 'list', 'data' => data,
+        'model' => body['model'] || 'text-embedding-3-small',
+        'usage' => { 'prompt_tokens' => inputs.length * 2, 'total_tokens' => inputs.length * 2 }
+      }.to_json,
+      headers: { 'Content-Type' => 'application/json' }
+    }
+  end
+
   # ── Node evaluator HTTP stubs ──────────────────────────────────────────────
   # POST /moderate   — synchronous moderation for non-trusted users.
   # POST /fan_out    — sanity gate, narrative phase (narrate + context updates),
