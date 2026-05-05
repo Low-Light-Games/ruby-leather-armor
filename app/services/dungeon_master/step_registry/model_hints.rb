@@ -9,6 +9,11 @@ module DungeonMaster
       FAST_CHEAP = 'Fast, cheap model. e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.'
 
       INTAKE = "#{FAST_CHEAP} Security gate + context suggestion.".freeze
+
+      GAME_MASTER = "#{FAST_CHEAP} Out-of-combat orchestrator behind " \
+                    'the gamemaster_orchestrator feature flag. First ' \
+                    "iteration emits narrative directly; tools land later.".freeze
+
       SEQUENCER = "#{FAST_CHEAP} Compound action detection.".freeze
       SANITY_CHECKER = "#{FAST_CHEAP} Sheet validation. Only used in AI mode.".freeze
 

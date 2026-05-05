@@ -24,6 +24,7 @@ module DungeonMaster
     include Steps::Helpers
     include Steps::EvaluatorTransport
     include Steps::Intake
+    include Steps::GameMaster
     include Steps::Sequencer
     include Steps::SanityChecker
     include Steps::RollRequest
@@ -42,11 +43,12 @@ module DungeonMaster
     include Concerns::ContextCoordination
     include Concerns::EntryPoints
 
-    attr_reader :adventure, :config, :log, :ai, :sheet, :loop, :run_pipeline
+    attr_reader :adventure, :user, :config, :log, :ai, :sheet, :loop, :run_pipeline
 
-    def initialize(adventure:, config:, ai:, log:, sheet:, run_pipeline: nil,
+    def initialize(adventure:, config:, ai:, log:, sheet:, user: nil, run_pipeline: nil,
       on_progress: nil, on_sheet_update: nil, on_narrative: nil)
       @adventure        = adventure
+      @user             = user
       @config           = config
       @ai               = ai
       @log              = log
@@ -56,6 +58,15 @@ module DungeonMaster
       @on_progress      = on_progress
       @on_sheet_update  = on_sheet_update
       @on_narrative     = on_narrative
+    end
+
+    # True when the user has the gamemaster_orchestrator flag and we're not
+    # in active combat. Combat-active free-text continues through the
+    # existing CombatRollRequest + Combat GM path.
+    def use_game_master?
+      return false if @adventure.combat_context&.dig("active")
+
+      FeatureFlag.enabled_for?(:gamemaster_orchestrator, @user)
     end
 
     def attach_run_pipeline!(record)

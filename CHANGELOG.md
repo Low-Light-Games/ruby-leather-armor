@@ -9,6 +9,10 @@ Versions **0.2.0–0.4.0** are documented retroactively from merged PR dates (th
 
 ## [Unreleased]
 
+### Added
+
+- **`Steps::GameMaster`** — first iteration of the reasoning-model orchestrator behind the `gamemaster_orchestrator` feature flag. When enabled for a user (and combat is not active), `run_prompt` branches at a new `Phases::GameMaster` after `IntakeDangerGate`, bypassing `OrchestrateCompoundActions`. The step reads the player intent + a small world envelope (location, time_context, NPCs via `Lore::NpcsLookup`, recent DM messages, full story premise) and emits the player-facing narrative directly, with `adventure_ended` / `player_dead` flags wired into the existing `Adventure.mark_ended!` path. No tools yet — `adjudicate` / `introduce_npc` / `begin_combat` land in the next iteration; this PR exists to nail placement and feature-flag gating before the tool surface arrives. Audit: one `event_type: "game_master_plan"` PlayLog row per turn carrying `{reasoning, narrative_chars, adventure_ended, player_dead}`. Seeded as `mode: "off"` in `db/seeds/feature_flags.rb`.
+
 ### Changed
 
 - **FeatureFlag** is now per-user. The binary `enabled` boolean is replaced by a `mode` (`off` / `on` / `bucketed`) plus two exclusive bucketing strategies — `granular` (a list of user IDs that are ON) and `modulo` (`user.id % divisor` matches one of `on_remainders`; divisor 2–10 supports 10–90% rollouts). The legacy `FeatureFlag.enabled?(key)` global API is dropped (no callers); use `FeatureFlag.enabled_for?(key, user)`. Admin UI gets an edit page; the public `GET /feature_flags` endpoint filters by per-user evaluation. First step of the GameMaster orchestrator epic.
