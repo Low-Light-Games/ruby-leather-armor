@@ -12,6 +12,9 @@ module DungeonMaster
           result = apply_prompt_phase(Phases::IntakeDangerGate, pipeline_phase_state)
           return result if result
 
+          result = apply_prompt_phase(Phases::GameMaster, pipeline_phase_state)
+          return result if result
+
           apply_prompt_phase(Phases::OrchestrateCompoundActions, pipeline_phase_state) ||
             raise('run_prompt: terminal phase did not halt')
         end

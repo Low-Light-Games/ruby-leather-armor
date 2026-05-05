@@ -26,6 +26,7 @@ module DungeonMaster
     def pipeline_engine
       @pipeline_engine ||= DungeonMaster::PipelineEngine.new(
         adventure: adventure,
+        user: user,
         config: config,
         ai: ai,
         log: log,
