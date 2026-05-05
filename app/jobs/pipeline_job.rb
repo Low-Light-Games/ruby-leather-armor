@@ -7,8 +7,7 @@ class PipelineJob < ApplicationJob
 
   QUEUE_WAIT_TARGET_MS = 2_000
 
-  def perform(*args)
-    adventure_id, player_message_id, player_input, mode, user_id, options = normalize_arguments(args)
+  def perform(adventure_id, player_message_id, player_input, user_id, options = nil)
     log_queue_wait!(adventure_id: adventure_id, user_id: user_id)
 
     adventure = Adventure.find(adventure_id)
@@ -17,7 +16,7 @@ class PipelineJob < ApplicationJob
     admission = options.is_a?(Hash) ? options['prompt_admission'] : nil
 
     result_messages = DungeonMaster::FloodControl.with_prompt_submission_heartbeat(admission) do
-      service.execute_prompt(player_input, player_message_id: player_message_id, mode: mode)
+      service.execute_prompt(player_input, player_message_id: player_message_id)
     end
     broadcast(adventure, result_messages, admin: user.admin?)
   rescue StandardError
@@ -28,17 +27,6 @@ class PipelineJob < ApplicationJob
   end
 
   private
-
-  def normalize_arguments(args)
-    case args.length
-    when 5
-      [*args, nil]
-    when 6
-      args
-    else
-      raise ArgumentError, "wrong number of arguments (given #{args.length}, expected 5 or 6)"
-    end
-  end
 
   def log_queue_wait!(adventure_id:, user_id:)
     return if enqueued_at.blank?

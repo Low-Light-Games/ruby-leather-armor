@@ -18,11 +18,10 @@ The **AI step mixins** (Intake, Sequencer, Narrate, …) implement individual pr
 
 | Phase / component | Role | Source |
 |-------------------|------|--------|
-| **`#run_prompt` + `#apply_prompt_phase`** | Ordered calls: intake + danger gate → DM query branch → sequencer + compound-action loop | [`pipeline_engine/concerns/entry_points.rb`](../app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb) |
+| **`#run_prompt` + `#apply_prompt_phase`** | Ordered calls: intake + danger gate → sequencer + compound-action loop | [`pipeline_engine/concerns/entry_points.rb`](../app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb) |
 | **`Phases::IntakeDangerGate`** | `run_intake`; danger threshold → `:rejected` | [`pipeline_engine/phases/intake_danger_gate.rb`](../app/services/dungeon_master/pipeline_engine/phases/intake_danger_gate.rb) |
-| **`Phases::DmQueryBranch`** | Ask DM mode / `is_dm_query` → `run_dm_query_flow` | [`pipeline_engine/phases/dm_query_branch.rb`](../app/services/dungeon_master/pipeline_engine/phases/dm_query_branch.rb) |
 | **`Phases::OrchestrateCompoundActions`** | `run_sequencer` then **`ActionQueueRunner`** | [`pipeline_engine/phases/orchestrate_compound_actions.rb`](../app/services/dungeon_master/pipeline_engine/phases/orchestrate_compound_actions.rb) |
-| **`PipelineEngine::Concerns::EntryPoints`** | `run_prompt` / `run_initiative` / `run_rolls`, phase chain (`apply_prompt_phase`), `run_dm_query_flow`, `run_remaining_queue`. | [`pipeline_engine/concerns/entry_points.rb`](../app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb) |
+| **`PipelineEngine::Concerns::EntryPoints`** | `run_prompt` / `run_initiative` / `run_rolls`, phase chain (`apply_prompt_phase`), `run_remaining_queue`. | [`pipeline_engine/concerns/entry_points.rb`](../app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb) |
 | **`PipelineEngine::Concerns::NarrationCoordination`** | `run_accumulated_narrative_phase`, `run_single_action_narrative_phase`, action-queue mode helpers (`per_action_narration?`, …). | [`pipeline_engine/concerns/narration_coordination.rb`](../app/services/dungeon_master/pipeline_engine/concerns/narration_coordination.rb) |
 | **`PipelineEngine::Concerns::ContextCoordination`** | `run_inter_action_context_update`, `run_context_updates_at_encounter_pause`. | [`pipeline_engine/concerns/context_coordination.rb`](../app/services/dungeon_master/pipeline_engine/concerns/context_coordination.rb) |
 | **`PipelineEngine::ActionQueueRunner`** | For each queued action: `AdventureLoop` + `AdventureLoopResolution#resolve`; dispatches on `:status`; **abort** whole turn on `:rejected` (fresh) vs **skip** action (resume). Ends in **`run_accumulated_narrative_phase`** / `:narrated_sequence`. | [`pipeline_engine/action_queue_runner.rb`](../app/services/dungeon_master/pipeline_engine/action_queue_runner.rb) |
@@ -258,27 +257,26 @@ from the bestiary entry) ensures mechanical consistency. The AI identifies
 stats. This prevents the AI from inventing creatures with arbitrary
 (often inflated or deflated) stat blocks.
 
-### 9. DM Query fast path
+### 9. DM Query fast path (retired)
 
-**Decision:** when Intake detects `is_dm_query`, skip the
-entire action pipeline and route to a dedicated DM Query step.
+**Decision (retired):** an early version of the pipeline had a dedicated
+DM Query branch — when Intake set `is_dm_query`, the action pipeline
+was skipped and a separate `dm_query` step answered the question
+directly from retrieved facts. The "Ask GM" toggle in the chat UI fed
+this branch via a `mode: "dm_query"` parameter.
 
-**Why:** many player messages are questions ("How does grappling work?",
-"What's in my inventory?", "What can I see?"). These don't advance the
-game state and shouldn't trigger mechanical resolution, narrative
-generation, or context updates.
-
-Routing questions through the full pipeline would:
-- Waste many AI calls on a non-action
-- Risk context updates reflecting a non-event ("player asked about
-  grappling" shouldn't update the combat context)
-- Add unnecessary latency for a simple Q&A
-
-**Trade-off accepted:** the DM Query step has no context persistence.
-If the player's question reveals something narratively significant ("What
-does the inscription say?"), it won't be captured in the story summary.
-This is acceptable — if the player acts on the information, that action
-will flow through the full pipeline and be captured then.
+**Why retired:** the branch existed because routing questions through
+the full pipeline was perceived as wasteful, but in practice RollRequest
+already returns `needs_roll: false` for genuine OOC questions and the
+Mechanic / Narrate path handles them as a no-roll resolution against the
+same retrieved facts. The dedicated branch added a forced classification
+decision (Intake had to detect `is_dm_query`), a player-facing toggle
+that complicated the UX, and a separate prompt with its own retrieval
+shape — all to answer questions a unified path now handles natively.
+Retirement removes the `Phases::DmQueryBranch` step, the `is_dm_query`
+field on Intake, the `prompt_mode` parameter on `#run_prompt`, the
+`mode:` argument on `DungeonMasterService#execute_prompt`, the chat UI's
+"Ask GM" toggle, and the `dm_query` AdventureMessage type.
 
 ### 10. ERB templates for prompts
 
@@ -637,7 +635,6 @@ decision has been superseded.
 **Current design:** Sanitize and Classify have been merged into a single
 **Intake** step that handles:
 - Security scoring (danger on 0-100 scale)
-- dm_query detection (`is_dm_query` field)
 - Context gap suggestion (`suggested_context`, `context_suggestion_reason`)
 
 Intake runs as one call. The pipeline rejects if `danger_score >= danger_threshold`
@@ -1015,8 +1012,7 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | — | **`ActionQueueRunner`** | Code (queued actions) | `app/services/dungeon_master/pipeline_engine/action_queue_runner.rb` |
 | 0 | **Moderation gate** | Code + Node evaluator `POST /moderate` | `app/services/dungeon_master/moderation_service.rb`, `app/jobs/moderation_check_job.rb`, `evaluator/src/index.js` |
 | 1 | **Intake** | AI | `app/services/dungeon_master/steps/intake.rb` |
-| 1c | **DM Query** | AI (fast path) | `app/services/dungeon_master/steps/dm_query.rb` |
-| 1d | **Sequencer** | AI (toggled) | `app/services/dungeon_master/steps/sequencer.rb` |
+| 1c | **Sequencer** | AI (toggled) | `app/services/dungeon_master/steps/sequencer.rb` |
 | -- | **AdventureLoopResolution** (module) | Code orchestration | `app/services/dungeon_master/adventure_loop_resolution.rb` |
 | 3 | **RollRequest** | AI ×1 (out of combat) | `app/services/dungeon_master/steps/roll_request.rb` + `templates/roll_request.text.erb` |
 | 3′ | **CombatRollRequest** | AI ×1 (combat-active free-text) | `app/services/dungeon_master/steps/combat_roll_request.rb` + `templates/combat_roll_request.text.erb` + `Phases::CombatMechanicResolution` (post-call clamping) |

@@ -36,7 +36,6 @@ class AdventureMessagesController < ApplicationController
       }, status: :unprocessable_entity
     end
 
-    mode = params[:mode]&.strip
     service = dm_service
     admission = DungeonMaster::FloodControl.admit_prompt_submission(user_id: current_user.id)
     player_msg = service.prepare_prompt(player_input)
@@ -44,7 +43,6 @@ class AdventureMessagesController < ApplicationController
       @adventure.id,
       player_msg.id,
       player_input,
-      mode,
       current_user.id,
       { 'prompt_admission' => admission }
     )

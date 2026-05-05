@@ -354,7 +354,7 @@ export interface AdventureMessage {
     | 'combat_log' | 'combat_end' | 'action_result'
     | 'roll_request' | 'roll_result'
     | 'initiative_request' | 'initiative_result'
-    | 'dm_query' | 'usage_limit' | 'system_notice' | 'moderation_flagged'
+    | 'usage_limit' | 'system_notice' | 'moderation_flagged'
   metadata: {
     roll_request?: RollRequest
     roll_requests?: RollRequest[]

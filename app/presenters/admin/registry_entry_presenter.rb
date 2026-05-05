@@ -9,7 +9,7 @@ module Admin
   # optional PipelineRegistryEntry record, then derives human-readable status
   # and assembles the hash.
   class RegistryEntryPresenter
-    TERMINAL_STEPS = %w[narrate dm_query].freeze
+    TERMINAL_STEPS = %w[narrate].freeze
     ERROR_STATUSES = %w[api_error parse_error token_budget_exceeded logging_error].freeze
 
     # @param log_aggregate   [ActiveRecord::Result] grouped aggregate row (first_at, last_at, step_count, …)

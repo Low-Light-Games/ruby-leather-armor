@@ -4,9 +4,8 @@ module DungeonMaster
   module Steps
     # Pipeline Gate: Intake.
     #
-    # Scores danger (prompt injection / meta-gaming), detects DM queries,
-    # and flags potential context domain gaps. Can kill the pipeline on
-    # high danger scores.
+    # Scores danger (prompt injection / meta-gaming) and flags potential
+    # context domain gaps. Can kill the pipeline on high danger scores.
     module Intake
       private
 
@@ -28,8 +27,7 @@ module DungeonMaster
         {
           danger_score: parsed["danger_score"].to_i,
           sanitized_input: parsed["sanitized_input"],
-          reason: parsed["reason"],
-          is_dm_query: parsed["is_dm_query"] == true
+          reason: parsed["reason"]
         }
       end
 

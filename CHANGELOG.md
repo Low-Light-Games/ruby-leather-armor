@@ -9,6 +9,10 @@ Versions **0.2.0–0.4.0** are documented retroactively from merged PR dates (th
 
 ## [Unreleased]
 
+### Removed
+
+- **DM Query fast path** retired end-to-end. The dedicated `Phases::DmQueryBranch` phase, `Steps::DmQuery` step + prompt template, the `is_dm_query` field on Intake, the `prompt_mode` parameter on `PipelineEngine#run_prompt`, the `mode:` argument on `DungeonMasterService#execute_prompt`, the `dm_query` AdventureMessage type and admin badge, and the chat UI's "Ask GM" toggle button are all gone. Out-of-character questions now flow through the regular pipeline — RollRequest emits `needs_roll: false` and Mechanic answers from retrieved facts. Historical `dm_query` messages persist in the database for past adventures and continue to render. See `docs/pipeline_steps.md` Decision 9 for rationale.
+
 ## [0.5.0] - 2026-05-04
 
 Micro-context removal epic plus the post-epic redesign — pgvector retrieval as the world model, deterministic combat as the system of record, and traversal that actually moves the player on the map (#123).
