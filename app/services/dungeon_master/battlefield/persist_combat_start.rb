@@ -57,35 +57,36 @@ module DungeonMaster
           sk == dk && dk.any?
         end
 
-        SCENE_NOTE_MESSAGE_TYPES = %w[narrative action_result].freeze
-        SCENE_NOTE_LIMIT = 3
-        SCENE_NOTE_MAX_CHARS = 200
+        RECENT_EVENTS_MESSAGE_TYPES = %w[narrative action_result].freeze
+        RECENT_EVENTS_LIMIT = 3
+        RECENT_EVENTS_MAX_CHARS = 200
 
         def default_world(adventure = nil)
           note_parts = ["Sparse square grid; diagonal moves cost 1.5 squares (half-square units in engine)."]
           if adventure
             note_parts << "Location: #{adventure.current_location&.name}." if adventure.current_location&.name.present?
-            recent = recent_scene_note(adventure)
-            note_parts << "Scene: #{recent}." if recent.present?
+            recent = recent_events_note(adventure)
+            note_parts << "Recent events: #{recent}" if recent.present?
           end
           { "cells" => {}, "note" => note_parts.join(" ") }
         end
 
-        # Replaces the retired `Adventure.scene_summary` field. Walks the
-        # last few player-facing DM messages (narration + action results)
-        # to seed the battlefield's free-text note with what the scene
-        # was *just* like.
-        def recent_scene_note(adventure)
+        # Walks the last few player-facing DM messages (narration +
+        # action results) to seed the battlefield's free-text note with
+        # what just happened. Replaces the retired `Adventure.scene_summary`
+        # field — combined per-turn DM output is closer to ground truth
+        # than the old AI-generated summary anyway.
+        def recent_events_note(adventure)
           adventure.adventure_messages
-            .for_message_types(SCENE_NOTE_MESSAGE_TYPES)
+            .for_message_types(RECENT_EVENTS_MESSAGE_TYPES)
             .newest_first
-            .limit(SCENE_NOTE_LIMIT)
+            .limit(RECENT_EVENTS_LIMIT)
             .pluck(:content)
             .reverse
             .map { |c| c.to_s.strip }
             .reject(&:empty?)
             .join(" ")
-            .truncate(SCENE_NOTE_MAX_CHARS)
+            .truncate(RECENT_EVENTS_MAX_CHARS)
         end
 
         def default_viewport
