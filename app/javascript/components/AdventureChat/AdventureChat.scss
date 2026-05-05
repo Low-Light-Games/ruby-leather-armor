@@ -444,6 +444,7 @@
       max-height: 80px;
       box-sizing: border-box;
       transition: border-color 0.15s;
+      max-width: none;
 
       &:focus {
         outline: none;
