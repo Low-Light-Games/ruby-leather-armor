@@ -7,6 +7,46 @@ check it against these principles first.
 
 ---
 
+## Project moment (2026-05) — read this first
+
+The project is approaching launch. The exploratory phase is over: the
+architecture has converged on deterministic combat as the system of
+record, pgvector for durable world state, single-call evaluation, and
+an async-only pipeline. We're now consolidating, not branching out.
+
+Two principles below have been **pivoted** as a result and are marked
+`[OUTDATED]` with their pivot story preserved:
+
+- **§3 — Structured decomposition over model reasoning.** The
+  cheap-non-reasoning-model bet didn't pay off; nuance in social,
+  combat-transition, and NPC introduction stayed out of reach no
+  matter how the prompts were tuned. Current direction: capable
+  reasoning models own more of the chain of thought, with the
+  architecture providing the deterministic substrate they orchestrate.
+  The next concrete step is a **GM-orchestrator step** that calls
+  RollRequest, Sequencer, Warmaster, TimeKeeper, etc. as scoped
+  specialist tools. The orchestrator never produces values that need
+  clamping — only intents — and each tool retains its receiving-seam
+  clamp (per the still-binding half of §17).
+- **§10 — Coexistence over migration.** Near launch, maintaining two
+  live paths costs more than it teaches. Default is now direct
+  migration with rollback via git, not via runtime toggle. §4
+  (config toggles for AI-tuning knobs) is unaffected.
+
+Half of **§17** is also pivoted — the "cheap-model policy" subsection
+is downstream of §3 and outdated alongside it. The "clamp at the
+receiving seam" half of §17 is **still binding** and is in fact
+load-bearing for the orchestrator design (every tool the orchestrator
+calls still clamps its own arguments).
+
+Everything else in this document is current. §1 (AI for judgment, code
+for certainty), §8 (audit everything), §11 (prompt isolation), §15
+(no text-parsing fallbacks), §18 (pgvector world state), §19 (no
+ad-hoc data structures), and §20 (code is self-documenting) remain the
+binding principles.
+
+---
+
 ## The fundamental tradeoff: freedom for graphics
 
 This is a text-only adventure. There are no sprites, no animations, no
@@ -103,7 +143,13 @@ is true at a real table.
 
 ---
 
-## 3. Structured decomposition over model reasoning
+## 3. Structured decomposition over model reasoning [OUTDATED — 2026-05-05]
+
+> **Status: pivoted.** This principle is preserved for historicity. The
+> current direction is to let capable reasoning models own more of the
+> chain of thought directly, with the architecture providing the tools
+> they orchestrate rather than the topology they execute. See the pivot
+> note at the bottom of this section.
 
 Do not rely on a single model's ability to reason through a complex,
 multi-part task. Instead, break the task into focused steps and let cheap
@@ -129,12 +175,66 @@ receives a bloated, 13,000-character prompt doing eight things.
 - Context updates were decoupled from narrative so they work from
   unambiguous factual outcomes
 
-**The principle:** our structured "way of thinking" — the pipeline
-topology, the step sequencing, the data contracts between steps — is
-itself a form of reasoning. We externalize the chain of thought into
-architecture rather than hoping the model produces one internally. This
-makes the system model-agnostic: if a cheaper model appears tomorrow,
-we can slot it in without redesigning the flow.
+**The principle (as originally written):** our structured "way of
+thinking" — the pipeline topology, the step sequencing, the data
+contracts between steps — is itself a form of reasoning. We externalize
+the chain of thought into architecture rather than hoping the model
+produces one internally. This makes the system model-agnostic: if a
+cheaper model appears tomorrow, we can slot it in without redesigning
+the flow.
+
+### Why we pivoted
+
+The premise that drove this principle was that cheap, non-reasoning
+models, given small focused prompts, would compose into a system as
+capable as a single big model. We tested that premise extensively:
+
+1. **Single-prompt DM → decomposed pipeline.** Worked. The split
+   produced visible quality gains and motivated the rest of the
+   decomposition arc.
+2. **Per-domain evaluation chains** (beacon → mech_eval → roll_qualifier
+   across six contexts). Worked structurally — concurrency pressure and
+   duplicate-roll bugs taught us where the seams should actually be —
+   but the cheap models on the leaves never quite stuck the landing on
+   judgment-heavy decisions (which skill, which DC, what counts as a
+   surprise round). Tweaking prompts narrowed but never closed the gap.
+3. **Single-call RollRequest / CombatRollRequest with tight prompts.**
+   Cleaner, but the same ceiling: cheap non-reasoning models miss
+   nuance in social encounters, in NPC introductions that should
+   pre-spawn stat blocks, in transitions where "this is about to be
+   combat" should change which step runs next.
+
+The architecture got the prompt sizes small enough that the
+non-reasoning cheap-model bet *should* have paid off. It didn't. No
+amount of further splitting or prompt tuning recovers the nuance the
+model itself doesn't have.
+
+**The current bet:** capable reasoning models, given a small set of
+well-defined tools and access to deterministic state, produce better
+judgment per turn than a fully decomposed pipeline of cheap
+non-reasoning calls. The architecture's job shifts from "be the chain
+of thought" to "be the toolbox and the deterministic substrate the
+reasoning model orchestrates."
+
+**What still holds from the original principle:**
+- Deterministic seams (dice, HP math, clock, action economy, sheet
+  reads) stay deterministic. §1 (AI for judgment, code for certainty)
+  is unaffected.
+- Tools called by the orchestrator remain individually small, focused,
+  and individually loggable. The decomposition didn't go away — its
+  *consumers* changed.
+- §10 (coexistence over migration) still applies: the orchestrator
+  ships behind a `DmConfig` toggle alongside the existing phase chain
+  until the empirical comparison is clear.
+
+**What changed:**
+- The phase chain in `entry_points.rb` is no longer the canonical chain
+  of thought. The orchestrator's tool-call sequence is.
+- Cheap non-reasoning models are no longer the default substrate for
+  judgment-heavy steps. Reasoning models are.
+- "Model-agnostic" is no longer a design goal at the same priority —
+  the pipeline now assumes a reasoning-capable orchestrator at the
+  top.
 
 ---
 
@@ -323,7 +423,12 @@ deleted rather than kept behind a dead toggle.
 
 ---
 
-## 10. Coexistence over migration
+## 10. Coexistence over migration [OUTDATED — 2026-05-05]
+
+> **Status: pivoted as we approach launch.** Coexistence-by-default is
+> retired. The new default is direct migration with rollback via git,
+> not via runtime toggles. Preserved below for historicity. See the
+> pivot note at the bottom of this section.
 
 When introducing a new approach, don't rip out the old one. Keep both
 paths alive behind a toggle and let observation determine which wins.
@@ -346,6 +451,49 @@ retired entirely — it offered no meaningful comparison value and keeping
 it would have required maintaining two diverging code paths. Coexistence
 is the default strategy; retirement is acceptable when the old path is
 strictly dominated and confidence is high.
+
+### Why we pivoted
+
+Coexistence earned its place during the exploratory phase, when we were
+genuinely trying a lot of things at once and the comparison value of
+two live paths beat the cost of maintaining both. As of mid-2026 that
+calculus has flipped:
+
+- **The funnel is narrow now.** The architecture has converged
+  (deterministic combat, pgvector world state, single-call evaluation,
+  async-only pipeline). We're not testing whether to use pgvector — we
+  use pgvector. Most "experiments" today are inside one part of the
+  pipeline, not whole-architecture forks.
+- **Maintenance cost grew faster than insight.** Two live paths means
+  two test surfaces, two prompt sets to keep in sync, two seams to
+  debug when production traffic splits between them. Near launch that
+  cost is no longer free.
+- **Rollback via git is sufficient.** With a small, lean codebase and
+  clean PRs, reverting a merged change is a well-understood operation.
+  We don't need a runtime knob for the same insurance — a revert PR
+  delivers it.
+
+**The current bet:** for changes whose risk we can characterize before
+shipping, prefer direct migration. If the change is wrong, revert. The
+toggle pattern is reserved for changes where comparing the two paths
+*on the same traffic in the same window* is the only way to learn
+which works (rare now, common a year ago).
+
+**What still holds:**
+- §4 (when in doubt, add a toggle) for **AI-tuning knobs** — model
+  selection, token budgets, danger thresholds. Those still need fast
+  iteration without a deploy. The pivot is about *architectural*
+  coexistence, not configuration toggles.
+- The retire-outright precedents (synchronous pipeline, subjugated
+  narration, pre-facts-store consistency check) are now the rule, not
+  the exception.
+
+**What changed:**
+- New architectural changes ship as direct migrations by default. The
+  burden of proof has flipped: justify keeping the old path, not
+  retiring it.
+- "Experiment behind a toggle" is now the special case, requiring a
+  concrete reason the comparison can only be done in production.
 
 ---
 
@@ -570,24 +718,33 @@ behavior. Use explicit negative instructions only for repeated,
 high-cost confusions where the ownership boundary must be reinforced
 (for example traversal vs. stealth).
 
-**Cheap-model policy (required):** treat prompt edits as contract simplification,
-not warning accumulation.
-- Prefer edits that **remove responsibility** from the model (move deterministic
-  state handling to code that already owns it).
-- Prefer edits that **replace ambiguous instructions** with narrower contracts.
-- Prefer edits that **split overloaded prompts** into smaller scoped steps.
-- Do **not** treat additive "DO NOT ..." lists as a primary fix when a
-  deterministic seam already owns the data (counts, HP, roster shape, turn order).
-- If a prompt-only fix cannot be expressed as simplification/replacement, stop and
-  look for the owned deterministic seam first.
-- **Don't hand-hold cheap models.** A long wall of CRITICAL RULES, hard
-  ceilings restated three ways, and SRD anchor tables tells you the
-  prompt is doing the model's job. Strip the prompt to: what we want,
-  the JSON shape, and concrete examples of any non-obvious field. If a
-  cheap model still can't comply, it isn't up to the task — swap the
-  model, don't pile more guardrails into the prompt.
+**Cheap-model policy [OUTDATED — 2026-05-05]:** this subsection is
+preserved for historicity. Its premise (that prompt edits should
+prefer splitting overloaded prompts so cheap non-reasoning models can
+carry their share) is downstream of §3 and outdated alongside it. The
+current direction is the opposite: capable reasoning models can carry
+overloaded prompts, and the orchestrator step deliberately concentrates
+responsibility into one prompt rather than splitting it. The original
+guidance follows for reference.
 
-**Clamp at the receiving seam.** A prompt is a request, not a contract;
+> Treat prompt edits as contract simplification, not warning accumulation.
+> - Prefer edits that **remove responsibility** from the model (move deterministic
+>   state handling to code that already owns it).
+> - Prefer edits that **replace ambiguous instructions** with narrower contracts.
+> - Prefer edits that **split overloaded prompts** into smaller scoped steps.
+> - Do **not** treat additive "DO NOT ..." lists as a primary fix when a
+>   deterministic seam already owns the data (counts, HP, roster shape, turn order).
+> - If a prompt-only fix cannot be expressed as simplification/replacement, stop and
+>   look for the owned deterministic seam first.
+> - **Don't hand-hold cheap models.** A long wall of CRITICAL RULES, hard
+>   ceilings restated three ways, and SRD anchor tables tells you the
+>   prompt is doing the model's job. Strip the prompt to: what we want,
+>   the JSON shape, and concrete examples of any non-obvious field. If a
+>   cheap model still can't comply, it isn't up to the task — swap the
+>   model, don't pile more guardrails into the prompt.
+
+**Clamp at the receiving seam.** *(Still binding — load-bearing for the
+orchestrator design.)* A prompt is a request, not a contract;
 the contract lives in the Ruby that receives the response. Anywhere the
 AI's answer feeds a deterministic system (creature stats, dice formulas,
 JSON shapes, numeric ranges with defensible bounds), the receiving code
