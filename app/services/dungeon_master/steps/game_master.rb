@@ -108,22 +108,16 @@ module DungeonMaster
         roll_spec = request_roll_result["result"]
         Rolls::PlayerRolls.assign_request_ids!([roll_spec])
 
-        intent = {
+        # Use EvaluationResult to produce the intent hash — same shape the
+        # legacy AdventureLoopResolution path persists, so resume_inputs
+        # reads it back without divergence.
+        evaluation = EvaluationResult.new(
           intention: intent_text,
-          destination: nil,
-          combat_transition: nil,
-          combat_combatants: [],
-          consequences: [],
-          mechanical_summary: roll_spec[:mechanical_summary]
-        }
-
-        merged = {
           player_rolls: [roll_spec],
-          npc_actions: [],
-          consequences: [],
-          mechanical_summaries: [roll_spec[:mechanical_summary]],
-          roll_chain: nil
-        }
+          mechanical_summary: roll_spec[:mechanical_summary]
+        )
+        intent = evaluation.to_intent_hash
+        merged = build_game_master_merged(roll_spec)
 
         @loop&.batch_update!(
           new_status: "paused",
@@ -138,6 +132,18 @@ module DungeonMaster
           remaining_actions: [],
           game_master_narrative: lead_narrative
         }
+      end
+
+      def build_game_master_merged(roll_spec)
+        merged = {
+          player_rolls: [roll_spec],
+          npc_actions: [],
+          consequences: [],
+          mechanical_summaries: [roll_spec[:mechanical_summary]].reject(&:blank?),
+          roll_chain: nil
+        }
+        Rolls::PlayerRolls.assign_request_ids!(merged[:player_rolls])
+        merged
       end
 
       def bind_game_master_loop!(intent_text, lead_narrative)
