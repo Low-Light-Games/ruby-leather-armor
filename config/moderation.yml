@@ -6,8 +6,10 @@
 # ignored_categories:  OpenAI Moderation categories that are NEVER treated as violations.
 #                      If every flagged category is on this list the input passes through.
 #                      Combat-heavy RPG content routinely triggers "violence" and
-#                      "violence/graphic"; ignoring them lets the game function normally
-#                      while hate, sexual, and self-harm categories still block.
+#                      "violence/graphic"; "illicit" and "self-harm" similarly produce
+#                      too many false positives in normal play (theft, traps, despair,
+#                      sacrifice scenes). All four families are ignored so the game
+#                      functions normally while hate and sexual categories still block.
 # default_response:    In-world message returned to a non-trusted user when their input
 #                      is flagged. Should read as narrative flavour, not a system error.
 moderation:
@@ -16,4 +18,9 @@ moderation:
   ignored_categories:
     - violence
     - violence/graphic
+    - illicit
+    - illicit/violent
+    - self-harm
+    - self-harm/intent
+    - self-harm/instructions
   default_response: "Your mind wandered to dark places... you recollect yourself after a brief moment and press on."
