@@ -75,6 +75,82 @@ module DungeonMaster
         end
       end
 
+      # Called by Phases::GameMaster when run_game_master returns
+      # :game_master_pending_tools. Validates the tool calls, creates +
+      # binds an AdventureLoop for resume linkage, dispatches the tools,
+      # and synthesizes an :awaiting_rolls result with intent + merged
+      # shapes compatible with RollRequestMetadata + finish_resolution.
+      #
+      # Errors from Tools::Registry surface as AiError so the standard
+      # "DM distracted" path applies + Sentry captures the bad call.
+      def dispatch_game_master_tools(pending_result)
+        intent_text = pending_result[:intent_text]
+        tool_calls  = pending_result[:tool_calls]
+        lead_narrative = pending_result[:lead_narrative]
+
+        begin
+          Tools::Registry.validate_calls!(tool_calls)
+        rescue Tools::Registry::ToolError => e
+          @log.play_log!(
+            "game_master_tool_error",
+            "GameMaster tool validation failed: #{e.message}",
+            parsed_response: { tool_calls: tool_calls, error: e.message }
+          )
+          raise AiError, "GameMaster emitted invalid tool call: #{e.message}"
+        end
+
+        bind_game_master_loop!(intent_text, lead_narrative)
+
+        dispatched = Tools::Registry.dispatch(tool_calls, pipeline_engine: self)
+        request_roll_result = dispatched.find { |c| c["name"] == "request_roll" }
+        raise AiError, "GameMaster dispatch produced no roll spec" unless request_roll_result
+
+        roll_spec = request_roll_result["result"]
+        Rolls::PlayerRolls.assign_request_ids!([roll_spec])
+
+        intent = {
+          intention: intent_text,
+          destination: nil,
+          combat_transition: nil,
+          combat_combatants: [],
+          consequences: [],
+          mechanical_summary: roll_spec[:mechanical_summary]
+        }
+
+        merged = {
+          player_rolls: [roll_spec],
+          npc_actions: [],
+          consequences: [],
+          mechanical_summaries: [roll_spec[:mechanical_summary]],
+          roll_chain: nil
+        }
+
+        @loop&.batch_update!(
+          new_status: "paused",
+          new_data: { "lead_narrative" => lead_narrative },
+          timeline_entry: tl("awaiting_rolls", "Paused for player rolls (GM)")
+        )
+
+        {
+          action: :awaiting_rolls,
+          intent: intent,
+          merged: merged,
+          remaining_actions: [],
+          game_master_narrative: lead_narrative
+        }
+      end
+
+      def bind_game_master_loop!(intent_text, lead_narrative)
+        existing = AdventureLoop.for_registry_entry(@log.registry_entry_uuid).order(:created_at).last
+        loop_row = existing || create_adventure_loop(intent_text, 0)
+        bind_current_loop!(loop_row)
+        @loop.batch_update!(
+          new_status: "resolving",
+          new_data: { "game_master_lead" => true, "lead_narrative_chars" => lead_narrative.length },
+          timeline_entry: tl("game_master_lead", "GM emitted lead narrative + tool calls")
+        )
+      end
+
       def build_game_master_context(intent_text)
         time_ctx = @adventure.time_context.to_h.with_indifferent_access
 
