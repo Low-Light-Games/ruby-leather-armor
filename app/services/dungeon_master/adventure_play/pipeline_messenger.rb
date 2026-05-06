@@ -39,11 +39,19 @@ module DungeonMaster
 
         when :awaiting_rolls
           meta = DungeonMaster::Rolls::RollRequestMetadata.build_persist_metadata(result, @adventure)
-          [persist_message(
+          msgs = []
+          if result[:game_master_narrative].present?
+            msgs << persist_message(
+              role: "dm",
+              content: result[:game_master_narrative],
+              message_type: "narrative")
+          end
+          msgs << persist_message(
             role: "dm",
             content: DungeonMaster::Rolls::RollExplanation.from_summaries(result[:merged][:mechanical_summaries]),
             message_type: "roll_request",
-            metadata: meta)]
+            metadata: meta)
+          msgs
 
         when :awaiting_initiative
           meta = InitiativeRequestMetadata.for_awaiting_initiative(result)
