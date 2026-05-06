@@ -39,6 +39,7 @@ module DungeonMaster
 
         adventure_ended = parsed["adventure_ended"] == true
         player_dead = parsed["player_dead"] == true
+        tool_calls = Array(parsed["tool_calls"])
 
         @log.play_log!(
           "game_master_plan",
@@ -47,18 +48,31 @@ module DungeonMaster
             reasoning: parsed["reasoning"],
             narrative_chars: narrative.length,
             adventure_ended: adventure_ended,
-            player_dead: player_dead
+            player_dead: player_dead,
+            tool_calls: tool_calls
           }
         )
 
-        {
-          action: :narrated,
-          narrative: narrative,
-          adventure_complete: adventure_ended,
-          player_death: player_dead,
-          action_outcomes: [],
-          world_turn_lines: []
-        }
+        if tool_calls.any?
+          # The phase dispatches the tools, synthesizes the awaiting_rolls
+          # result, and creates/binds the AdventureLoop. The step's job
+          # ends here — return the lead narrative + parsed tool_calls.
+          {
+            action: :game_master_pending_tools,
+            lead_narrative: narrative,
+            tool_calls: tool_calls,
+            intent_text: intent_text
+          }
+        else
+          {
+            action: :narrated,
+            narrative: narrative,
+            adventure_complete: adventure_ended,
+            player_death: player_dead,
+            action_outcomes: [],
+            world_turn_lines: []
+          }
+        end
       end
 
       def build_game_master_context(intent_text)
