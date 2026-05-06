@@ -57,6 +57,10 @@ module DungeonMaster
                      'Override only if you want non-reasoning behavior, a more capable model, ' \
                      'or higher reasoning effort on this step.'
 
+      REQUEST_ROLL_TOOL = "#{FAST_CHEAP} Tool-flavored RollRequest invoked by the " \
+                          "GameMaster. Slim schema (no needs_roll, no transition signals); " \
+                          'GM has already decided a roll is required.'.freeze
+
       COMBAT_ROLL_REQUEST = 'Cheapest reasoning model — defaults to gpt-5-nano at ' \
                             'reasoning_effort=minimal. Single AI call when the player types ' \
                             'free-text mid-combat. Carries attack options, action economy, ' \
