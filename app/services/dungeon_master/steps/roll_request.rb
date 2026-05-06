@@ -136,11 +136,7 @@ module DungeonMaster
         )
       end
 
-      # Tool-flavored variant: GM has already decided a roll is required;
-      # this just picks the rule and emits the roll spec. Slim schema —
-      # no needs_roll, no transition / combatants / destination / consequences.
-      # `mechanical_summary` is preserved for resume-path compatibility.
-      def run_roll_request_as_tool(intention)
+      def run_roll_request_as_ai_called_tool(intention)
         scene_retrieval = retrieve_scene_for_roll_request(intention)
         rules           = retrieve_rules_for_roll_request(intention)
 
@@ -167,27 +163,7 @@ module DungeonMaster
           [raw, @ai.parse_json(raw)]
         end
 
-        spec = normalize_roll_request_tool_spec(parsed)
-        Rolls::PlayerRolls.compute_take_values!([spec], sheet: @sheet)
-        spec
-      end
-
-      def normalize_roll_request_tool_spec(parsed)
-        parsed = (parsed || {}).deep_symbolize_keys
-        mechanical_summary = parsed[:mechanical_summary].to_s.presence || '(no mechanical summary)'
-
-        {
-          type: parsed[:type].presence || 'skill_check',
-          skill: parsed[:skill],
-          save: parsed[:save],
-          dc: parsed[:dc],
-          description: parsed[:description].presence || mechanical_summary,
-          rule_slug: parsed[:rule_slug],
-          take_10_eligible: parsed[:take_10_eligible] == true,
-          take_20_eligible: parsed[:take_20_eligible] == true,
-          situational_modifiers: DungeonMaster::Rolls::SituationalModifiers.normalize(parsed[:situational_modifiers]),
-          mechanical_summary: mechanical_summary
-        }.compact
+        Tools::RequestRoll::Result.from_parsed(parsed, sheet: @sheet)
       end
 
       def retrieve_scene_for_roll_request(intention)

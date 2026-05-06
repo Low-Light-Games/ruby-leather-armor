@@ -2,13 +2,6 @@
 
 module DungeonMaster
   module Steps
-    # Pipeline Step: GameMaster.
-    #
-    # Reasoning-model orchestrator that owns out-of-combat turns when the
-    # `gamemaster_orchestrator` feature flag is enabled for the user.
-    # First iteration is intentionally narrow: read intent + world envelope
-    # + story premise, produce the player-facing prose directly. No tool
-    # calls yet — that lands in the next iteration.
     module GameMaster
       RECENT_MESSAGE_LIMIT = 5
       NPC_LOOKUP_LIMIT = 8
@@ -44,80 +37,51 @@ module DungeonMaster
         @log.play_log!(
           "game_master_plan",
           "GameMaster plan: #{parsed['reasoning'].to_s.truncate(160)}",
-          parsed_response: {
+          parsed_response: GameMaster::PlanLogPayload.new(
             reasoning: parsed["reasoning"],
             narrative_chars: narrative.length,
             adventure_ended: adventure_ended,
             player_dead: player_dead,
             tool_calls: tool_calls
-          }
+          ).to_h
         )
 
         if tool_calls.any?
-          # The phase dispatches the tools, synthesizes the awaiting_rolls
-          # result, and creates/binds the AdventureLoop. The step's job
-          # ends here — return the lead narrative + parsed tool_calls.
-          {
-            action: :game_master_pending_tools,
+          GameMaster::PendingToolsResult.new(
             lead_narrative: narrative,
             tool_calls: tool_calls,
             intent_text: intent_text
-          }
+          ).to_h
         else
-          {
-            action: :narrated,
+          GameMaster::NarratedResult.new(
             narrative: narrative,
             adventure_complete: adventure_ended,
-            player_death: player_dead,
-            action_outcomes: [],
-            world_turn_lines: []
-          }
+            player_death: player_dead
+          ).to_h
         end
       end
 
-      # Called by Phases::GameMaster when run_game_master returns
-      # :game_master_pending_tools. Validates the tool calls, creates +
-      # binds an AdventureLoop for resume linkage, dispatches the tools,
-      # and synthesizes an :awaiting_rolls result with intent + merged
-      # shapes compatible with RollRequestMetadata + finish_resolution.
-      #
-      # Errors from Tools::Registry surface as AiError so the standard
-      # "DM distracted" path applies + Sentry captures the bad call.
       def dispatch_game_master_tools(pending_result)
         intent_text = pending_result[:intent_text]
-        tool_calls  = pending_result[:tool_calls]
+        tool_calls = pending_result[:tool_calls]
         lead_narrative = pending_result[:lead_narrative]
 
         begin
           Tools::Registry.validate_calls!(tool_calls)
         rescue Tools::Registry::ToolError => e
-          @log.play_log!(
-            "game_master_tool_error",
-            "GameMaster tool validation failed: #{e.message}",
-            parsed_response: { tool_calls: tool_calls, error: e.message }
-          )
-          raise AiError, "GameMaster emitted invalid tool call: #{e.message}"
+          @log.game_master_tool_error!(tool_calls, e, reraise_as: AiError)
         end
 
-        bind_game_master_loop!(intent_text, lead_narrative)
+        bind_game_master_run_to_adventure_loop(intent_text, lead_narrative)
 
-        dispatched = Tools::Registry.dispatch(tool_calls, pipeline_engine: self)
-        request_roll_result = dispatched.find { |c| c["name"] == "request_roll" }
-        raise AiError, "GameMaster dispatch produced no roll spec" unless request_roll_result
+        request_roll_result = Tools::Registry.dispatch(tool_calls, pipeline_engine: self).request_roll_result
+        raise AiError, "GameMaster dispatch produced no roll request" unless request_roll_result
 
-        roll_spec = request_roll_result["result"]
-        Rolls::PlayerRolls.assign_request_ids!([roll_spec])
-
-        # Use EvaluationResult to produce the intent hash — same shape the
-        # legacy AdventureLoopResolution path persists, so resume_inputs
-        # reads it back without divergence.
         evaluation = EvaluationResult.new(
           intention: intent_text,
-          player_rolls: [roll_spec],
-          mechanical_summary: roll_spec[:mechanical_summary]
+          player_rolls: [request_roll_result.to_h],
+          mechanical_summary: request_roll_result.mechanical_summary
         )
-        intent = evaluation.to_intent_hash
-        merged = build_game_master_merged(roll_spec)
 
         @loop&.batch_update!(
           new_status: "paused",
@@ -125,30 +89,16 @@ module DungeonMaster
           timeline_entry: tl("awaiting_rolls", "Paused for player rolls (GM)")
         )
 
-        {
-          action: :awaiting_rolls,
-          intent: intent,
-          merged: merged,
-          remaining_actions: [],
-          game_master_narrative: lead_narrative
-        }
+        GameMaster::AwaitingRollsResult.new(
+          intent: evaluation.to_intent_hash,
+          merged_pause_state: GameMaster::MergedPauseState.new(request_roll_result: request_roll_result),
+          lead_narrative: lead_narrative
+        ).to_h
       end
 
-      def build_game_master_merged(roll_spec)
-        merged = {
-          player_rolls: [roll_spec],
-          npc_actions: [],
-          consequences: [],
-          mechanical_summaries: [roll_spec[:mechanical_summary]].reject(&:blank?),
-          roll_chain: nil
-        }
-        Rolls::PlayerRolls.assign_request_ids!(merged[:player_rolls])
-        merged
-      end
-
-      def bind_game_master_loop!(intent_text, lead_narrative)
-        existing = AdventureLoop.for_registry_entry(@log.registry_entry_uuid).order(:created_at).last
-        loop_row = existing || create_adventure_loop(intent_text, 0)
+      def bind_game_master_run_to_adventure_loop(intent_text, lead_narrative)
+        existing_adventure_loop = AdventureLoop.last_for_registry_entry(@log.registry_entry_uuid)
+        loop_row = existing_adventure_loop || create_adventure_loop(intent_text, 0)
         bind_current_loop!(loop_row)
         @loop.batch_update!(
           new_status: "resolving",
