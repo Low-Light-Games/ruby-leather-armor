@@ -172,7 +172,7 @@ module DungeonMaster
         return nil if normalized.empty?
 
         ctx = Context.new(adventure: adventure, sheet: sheet, log: log, config: config, ai: ai)
-        find_or_create_creature_sheet(ctx, normalized, normalized)
+        Array(find_or_create_creature_sheet(ctx, normalized, normalized)).first
       rescue StandardError => e
         log&.report_error(e, context: { source: "warmaster_find_or_create_creature_sheet_by_name", name: name.to_s })
         nil
