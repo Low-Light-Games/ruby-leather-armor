@@ -20,7 +20,6 @@ class PlayLog < ApplicationRecord
     roll_request_invented_slug
     combat_action
     combat_mech_eval_resolution_error
-    combat_narrator_failure
     social_event_triggered
   ].freeze
 

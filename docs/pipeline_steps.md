@@ -148,8 +148,9 @@ not the AI.
 In active combat, NPC turns are now resolved entirely by the
 deterministic `Combat::NpcTurn` engine driven off each creature's
 `behavior_policy` JSONB — no per-NPC AI call. AI is only consulted on
-the player's free-text turn (CombatRollRequest, single call) and on the
-end-of-round flavor pass (`CombatNarratorJob`, async, narration only).
+the player's free-text turn (CombatRollRequest, single call); the
+end-of-round flavor narration pass (PR-G `combat_narrator`) was
+reverted in 2026-05 and never replaced.
 
 **Player rolls are different:** the player submits their own roll results
 via the UI. This is a deliberate engagement choice — rolling dice is part
@@ -1132,7 +1133,7 @@ Every AI call produces an `AiLog` record containing:
 
 | Field | Description |
 |---|---|
-| `step` | Pipeline step name (intake, sequencer, roll_request, combat_roll_request, sanity_checker, sanity_checker_world, mechanic, combat_gm, time_keeper, narrate, combat_narrator, context_update, loremaster, npc_action). Historical step names (momentum, social_expansion, chronicler, micro_context_update, macro_narrative_update, enricher, embellisher) still appear in older `AiLog` rows. |
+| `step` | Pipeline step name (intake, sequencer, roll_request, combat_roll_request, sanity_checker, sanity_checker_world, mechanic, combat_gm, time_keeper, narrate, context_update, loremaster, npc_action). Historical step names (momentum, social_expansion, chronicler, micro_context_update, macro_narrative_update, enricher, embellisher, combat_narrator) still appear in older `AiLog` rows. |
 | `prompt_summary` | Truncated description of what was asked |
 | `raw_response` | The complete API response |
 | `parsed_response` | The parsed JSON |

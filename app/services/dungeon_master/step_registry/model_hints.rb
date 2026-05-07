@@ -68,12 +68,6 @@ module DungeonMaster
                             'for combat rolls. Combat math resolves post-call from the sheet ' \
                             'via CombatMechanicResolution.'
 
-      COMBAT_NARRATOR = 'Creative model. Narrates a single deterministic combat round (PR-G of ' \
-                        'the combat-determinism arc) — short sentences, weapon impact, second ' \
-                        'person. Tight token budget; one paragraph. Tune prompt + model for ' \
-                        'voice independently of the default narrate step. Runs async via ' \
-                        'CombatNarratorJob so it never blocks End Turn.'
-
       LOREMASTER = 'Mid-tier model. Structured fact extraction from factual outcomes — ' \
                    'e.g. gpt-4o-mini, gpt-4.1-mini, gpt-5-nano. Runs in parallel with ' \
                    'Narrate/ContextUpdate, so latency is Narrate-bounded.'

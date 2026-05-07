@@ -58,9 +58,7 @@ module DungeonMaster
       'embedding' => Entry.new(model_hint: nil,
                                pipeline: false),
       'encounter_expand' => Entry.new(model_hint: nil,
-                                      pipeline: false),
-      'combat_narrator' => Entry.new(model_hint: H::COMBAT_NARRATOR,
-                                     pipeline: true)
+                                      pipeline: false)
     }.freeze
 
     def self.all_call_types

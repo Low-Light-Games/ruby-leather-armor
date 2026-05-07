@@ -58,9 +58,6 @@ After this arc:
   `Steps::CombatRollRequest`, which inherits the deterministic state
   (action economy, flanking, threats, position) and emits a single roll
   with the same flat shape as out-of-combat RollRequest.
-- **Narration is its own AI step.** One `combat_narrator` call per round
-  produces flavor over the structured deterministic round log. Tuned
-  for a different voice from the default narrator.
 - **`ParallelEvaluation` is retired.** Out-of-combat = RollRequest.
   In-combat default = deterministic. In-combat free text =
   CombatRollRequest. Nothing else needs the legacy chain.
@@ -74,7 +71,6 @@ them so future-us doesn't re-litigate.
 
 | Question | Decision |
 |---|---|
-| Narrator economics | One AI call per round, **its own step** (`combat_narrator`), separate prompt/budget/model from the default `narrate` step, tuned for combat voice. |
 | Behavior-policy shape | **Start small.** v1 schema covers preferred attacks (e.g. "javelin at range, longsword in melee"), morale (flee threshold), and an extensible `ability_triggers` slot. Grow based on playtest. |
 | Action economy UI | **Expose during combat.** Chips for Standard/Move/Swift/Free, filled = available, hollow = spent. Combat-mode textarea placeholder explains it's for creative use beyond standard attacks/maneuvers. |
 | Grid authority migration | **One-pass.** Grid becomes canonical for `(x, y, facing)`. Movement actions update the grid synchronously before the resolver fires. AI-described movement parses into the same structured ops. |
@@ -223,8 +219,8 @@ inheriting deterministic state.
 
 **Ship criteria:**
 - Free-text combat actions ("I throw sand in his eyes") produce the
-  expected roll, action-economy cost, and threading into Combat GM (or
-  combat_narrator after PR-G) for verdict.
+  expected roll, action-economy cost, and threading into Combat GM for
+  verdict.
 - Existing combat regression tests pass.
 
 ### PR-F — Bestiary `behavior_policy` + deterministic NPC turns
@@ -260,12 +256,22 @@ inheriting deterministic state.
 - Backfill rake task populates existing rows.
 - Spec coverage for each policy field.
 
-### PR-G — `combat_narrator` step
+### PR-G — `combat_narrator` step [REMOVED 2026-05-06]
 
-**Goal:** replace `combat_gm`'s mechanical-adjudication role with a pure
-flavor narrator over a structured round log.
+**Status:** shipped, then removed. The implementation never produced
+visible output: `AiClient#chat` enforces `response_format:
+{type: "json_object"}` globally, but the narrator's prompt asked for
+prose without the word "json", so OpenAI 400'd every call and the
+narrator's `rescue` swallowed the error. Combat-end fell back to the
+canned `combat_end_narration_for(reason)` system message and the gap
+went undetected. Reverted in `fix/remove-combat-narrator`. The
+sectional design rationale below is preserved for context if a future
+attempt reintroduces it.
 
-**Scope:**
+**Original goal:** replace `combat_gm`'s mechanical-adjudication role
+with a pure flavor narrator over a structured round log.
+
+**Scope (as shipped):**
 - New step in `StepRegistry`: `combat_narrator`. Own prompt template,
   own token budget, own model knob. Default to a creative-leaning model
   with a tight token budget — output is one paragraph.
@@ -278,11 +284,18 @@ flavor narrator over a structured round log.
   `{ outcome, mutations }`. Decide at implementation time based on
   callers.
 
-**Ship criteria:**
+**Ship criteria (never met):**
 - Narration paragraph reads with combat voice distinct from the default
   narrator.
 - Round log → narration is a pure function (deterministic input ⇒ same
   shape of output).
+
+**If reintroduced:** prompt must request a JSON envelope (e.g.
+`{"narration": "..."}`) so it survives the global `json_object`
+response format, OR `AiClient#chat` must grow a per-call opt-out.
+Also note: only `resolve_end_turn` enqueued the narrator, so combats
+that ended on the player's killing blow never invoked it — the
+trigger surface needs revisiting too.
 
 ### PR-H — `action_event` social-ramification hook
 
@@ -379,9 +392,6 @@ react to, without bloating the combat hot path.
 
 ## Open questions to revisit later
 
-- **Round narration cadence:** every round, or batched (every N rounds
-  for routine fights, always for boss swings)? Current decision: every
-  round. Revisit if `combat_narrator` cost shows up on the meter.
 - **Action-economy expressiveness in v1:** swift action slot for
   quickened spells, full-round actions, immediate actions, free actions
   cap per round. Decide as we hit the first creature/spell that needs
