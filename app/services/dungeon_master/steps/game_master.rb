@@ -34,11 +34,13 @@ module DungeonMaster
         player_dead = parsed["player_dead"] == true
         tool_calls = Array(parsed["tool_calls"])
 
+        reasoning = GameMaster::Reasoning.from_parsed(parsed["reasoning"])
+
         @log.play_log!(
           "game_master_plan",
-          "GameMaster plan: #{parsed['reasoning'].to_s.truncate(160)}",
+          "GameMaster plan: #{reasoning.display_summary.truncate(160)}",
           parsed_response: GameMaster::PlanLogPayload.new(
-            reasoning: parsed["reasoning"],
+            reasoning: reasoning,
             narrative_chars: narrative.length,
             adventure_ended: adventure_ended,
             player_dead: player_dead,

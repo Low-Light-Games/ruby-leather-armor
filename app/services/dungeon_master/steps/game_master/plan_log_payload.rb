@@ -14,7 +14,7 @@ module DungeonMaster
 
         def to_h
           {
-            reasoning: @reasoning,
+            reasoning: @reasoning.to_h,
             narrative_chars: @narrative_chars,
             adventure_ended: @adventure_ended,
             player_dead: @player_dead,
