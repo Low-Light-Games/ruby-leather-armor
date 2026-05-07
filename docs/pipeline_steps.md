@@ -530,10 +530,11 @@ is:
 1. Match by name against the existing `combat_context.participants`
    from the prior turn (carry an id forward).
 2. If no match, look up `@adventure.creature_sheets` by name.
-3. If still nothing, **call `Utilities::Warmaster.resolve_creature`
-   to spawn the sheet via the bestiary-then-AI fallback.** A
-   `context_update_sheet_fallback` PlayLog row records the spawn for
-   observability.
+3. If still nothing, call
+   `Utilities::Warmaster.find_or_create_creature_sheet_by_name(...)`
+   to spawn the sheet via the bestiary-then-AI fallback. The AI cost
+   record is the standard `creature_generation` AiLog written from
+   inside Warmaster.
 4. Only if Warmaster itself raises or returns nil does the repair
    raise `AiError` — that's the truly-broken case.
 
@@ -549,6 +550,28 @@ feature flag) will eventually own this seam through a planned
 ContextUpdate runs. The legacy fallback above is the non-GM path's
 equivalent — same sheet-creation engine (Warmaster), different
 trigger surface.
+
+**Naming conventions for sheet vs. NPC operations.** The codebase
+uses three distinct stores under the loose label "NPC":
+
+- `creature_sheets` — mechanical (HP, AC, attacks). Created and
+  mutated by `Utilities::Warmaster`,
+  `DungeonMaster::CreatureFactory`, and
+  `Mutations::CreatureSheetMutations`.
+- `adventure_npcs` — narrative pgvector store. Written by
+  `Lore::ApplyNpcs` only.
+- `combat_context.participants[]` — live combat tracking; references
+  a `creature_sheet` via `creature_sheet_id`.
+
+Methods that operate on `creature_sheets` use `creature_sheet` in
+their name (e.g.
+`Warmaster.find_or_create_creature_sheet_by_name`,
+`Mutations::CreatureSheetMutations#lookup_target_sheet`). Methods that
+operate on `adventure_npcs` keep the `npc` label (e.g.
+`Lore::ApplyNpcs`). The AI mutation payload key remains
+`mutations[:npcs]` for now; the Ruby class that consumes it is
+`CreatureSheetMutations`, with the translation seam in
+`mutations.rb` (`apply_creature_sheet_mutations`).
 
 ### 19. Travel tracking through the pipeline
 

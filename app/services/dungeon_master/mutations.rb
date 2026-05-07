@@ -13,7 +13,7 @@ module DungeonMaster
       ActionEconomySync.apply!(mutations, adventure: @adventure, log: @log)
       BattlefieldSync.apply!(mutations, adventure: @adventure, log: @log)
       PlayerMutations.new(sheet: @sheet, adventure: @adventure, config: @config, log: @log).call(mutations[:player])
-      NpcMutations.new(adventure: @adventure, log: @log).call(mutations[:npcs])
+      CreatureSheetMutations.new(adventure: @adventure, log: @log).call(mutations[:npcs])
       InventoryMutations.new(
         adventure: @adventure,
         sheet: @sheet,
@@ -38,8 +38,8 @@ module DungeonMaster
       PlayerMutations.new(sheet: @sheet, adventure: @adventure, config: @config, log: @log).call(player_muts)
     end
 
-    def apply_npc_mutations(npc_muts)
-      NpcMutations.new(adventure: @adventure, log: @log).call(npc_muts)
+    def apply_creature_sheet_mutations(creature_sheet_muts)
+      CreatureSheetMutations.new(adventure: @adventure, log: @log).call(creature_sheet_muts)
     end
   end
 end

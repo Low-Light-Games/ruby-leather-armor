@@ -21,7 +21,6 @@ class PlayLog < ApplicationRecord
     combat_action
     combat_mech_eval_resolution_error
     combat_narrator_failure
-    context_update_sheet_fallback
     social_event_triggered
   ].freeze
 

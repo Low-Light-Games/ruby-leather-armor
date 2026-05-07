@@ -212,7 +212,7 @@ module DungeonMaster
         if player_hp_delta.to_i != 0
           apply_player_mutations({ hp_change: player_hp_delta.to_i })
         end
-        apply_npc_mutations(npc_muts) if npc_muts.any?
+        apply_creature_sheet_mutations(npc_muts) if npc_muts.any?
       end
 
       # PF1e dying bleed-out: −1 HP per round + DC 10 CON stabilization roll.

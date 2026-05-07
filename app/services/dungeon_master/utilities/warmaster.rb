@@ -167,6 +167,17 @@ module DungeonMaster
       end
 
       # Auto-roll player initiative from their character sheet
+      def find_or_create_creature_sheet_by_name(adventure:, name:, log:, config:, ai:, sheet: nil)
+        normalized = name.to_s.strip
+        return nil if normalized.empty?
+
+        ctx = Context.new(adventure: adventure, sheet: sheet, log: log, config: config, ai: ai)
+        find_or_create_creature_sheet(ctx, normalized, normalized)
+      rescue StandardError => e
+        log&.report_error(e, context: { source: "warmaster_find_or_create_creature_sheet_by_name", name: name.to_s })
+        nil
+      end
+
       def auto_roll_player_initiative(sheet)
         dex_mod = sheet ? ((sheet.dexterity - 10).to_f / 2).floor : 0
         roll = rand(1..20)
@@ -198,7 +209,7 @@ module DungeonMaster
 
           count.times.each_with_index do |_, i|
             display_name = count > 1 ? "#{display_base} #{i + 1}" : display_base
-            sheet = resolve_creature(ctx, bestiary_id || display_base, display_name)
+            sheet = find_or_create_creature_sheet(ctx, bestiary_id || display_base, display_name)
             creatures << creature_record(sheet, display_name) if sheet
           end
         end
@@ -227,7 +238,7 @@ module DungeonMaster
           # model is allowed to fan out into one stat block per goblin).
           # Either way, walk the result list and emit one creature_record
           # per sheet, suffixing display names so they stay unique.
-          Array(resolve_creature(ctx, name, display_name)).each_with_index do |sheet, idx|
+          Array(find_or_create_creature_sheet(ctx, name, display_name)).each_with_index do |sheet, idx|
             entry_name = idx.zero? ? sheet.name : "#{display_name} #{idx + 1}"
             sheet.update!(name: entry_name) if sheet.name != entry_name
             creatures << creature_record(sheet, entry_name)
@@ -237,7 +248,7 @@ module DungeonMaster
         creatures
       end
 
-      def resolve_creature(ctx, lookup_name, display_name)
+      def find_or_create_creature_sheet(ctx, lookup_name, display_name)
         existing = ctx.adventure.creature_sheets.alive.find_by(name: display_name)
         return existing if existing
 
@@ -475,7 +486,7 @@ module DungeonMaster
         { name: display_name, creature_sheet_id: sheet.id }
       end
 
-      private_class_method :spawn_from_manifest, :spawn_from_names, :resolve_creature,
+      private_class_method :spawn_from_manifest, :spawn_from_names, :find_or_create_creature_sheet,
                            :build_initiative_result, :roll_creature_initiative,
                            :fuzzy_bestiary_match_static, :create_creature_from_bestiary_static,
                            :dynamic_creature_sheet_static, :create_from_template_static,
