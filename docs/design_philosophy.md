@@ -171,7 +171,9 @@ receives a bloated, 13,000-character prompt doing eight things.
   domain stopped earning its keep — see `docs/pipeline_steps.md` Decision 4
 - Combat NPC turns were extracted from the AI-arbitrated combat path into
   the deterministic `Combat::NpcTurn` engine driven by per-creature
-  `behavior_policy`, leaving AI as a flavor pass via `CombatNarratorJob`
+  `behavior_policy`. The follow-on AI flavor-narration pass
+  (`CombatNarratorJob`) was attempted and removed in 2026-05; the
+  end-of-round chat is silent today.
 - Context updates were decoupled from narrative so they work from
   unambiguous factual outcomes
 

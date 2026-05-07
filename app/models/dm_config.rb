@@ -82,7 +82,6 @@ class DmConfig < ApplicationRecord
     'narrative_facts_top_k' => 8,
     'narrative_facts_active_window' => 20,
     'narrative_facts_embedding_model' => 'text-embedding-3-small',
-    'combat_narrator_enabled' => true,
     'step_reasoning_efforts' => {}.freeze,
     'stripe_grace_period_days' => 3
   }.freeze
@@ -156,13 +155,6 @@ class DmConfig < ApplicationRecord
 
   def narrative_facts_top_k
     get('narrative_facts_top_k').to_i
-  end
-
-  # PR-G — when on, End Turn enqueues a CombatNarratorJob that posts a
-  # one-paragraph flavor narration of the round to the chat. Off by
-  # default until the prompt is tuned and a model picked.
-  def combat_narrator_enabled?
-    get('combat_narrator_enabled') == true
   end
 
   def narrative_facts_active_window
