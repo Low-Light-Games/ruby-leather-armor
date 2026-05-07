@@ -2,13 +2,6 @@
 
 module DungeonMaster
   module Steps
-    # Pipeline Step: GameMaster.
-    #
-    # Reasoning-model orchestrator that owns out-of-combat turns when the
-    # `gamemaster_orchestrator` feature flag is enabled for the user.
-    # First iteration is intentionally narrow: read intent + world envelope
-    # + story premise, produce the player-facing prose directly. No tool
-    # calls yet — that lands in the next iteration.
     module GameMaster
       RECENT_MESSAGE_LIMIT = 5
       NPC_LOOKUP_LIMIT = 8
@@ -39,26 +32,81 @@ module DungeonMaster
 
         adventure_ended = parsed["adventure_ended"] == true
         player_dead = parsed["player_dead"] == true
+        tool_calls = Array(parsed["tool_calls"])
+
+        reasoning = GameMaster::Reasoning.from_parsed(parsed["reasoning"])
 
         @log.play_log!(
           "game_master_plan",
-          "GameMaster plan: #{parsed['reasoning'].to_s.truncate(160)}",
-          parsed_response: {
-            reasoning: parsed["reasoning"],
+          "GameMaster plan: #{reasoning.display_summary.truncate(160)}",
+          parsed_response: GameMaster::PlanLogPayload.new(
+            reasoning: reasoning,
             narrative_chars: narrative.length,
             adventure_ended: adventure_ended,
-            player_dead: player_dead
-          }
+            player_dead: player_dead,
+            tool_calls: tool_calls
+          ).to_h
         )
 
-        {
-          action: :narrated,
-          narrative: narrative,
-          adventure_complete: adventure_ended,
-          player_death: player_dead,
-          action_outcomes: [],
-          world_turn_lines: []
-        }
+        if tool_calls.any?
+          GameMaster::PendingToolsResult.new(
+            lead_narrative: narrative,
+            tool_calls: tool_calls,
+            intent_text: intent_text
+          ).to_h
+        else
+          GameMaster::NarratedResult.new(
+            narrative: narrative,
+            adventure_complete: adventure_ended,
+            player_death: player_dead
+          ).to_h
+        end
+      end
+
+      def dispatch_game_master_tools(pending_result)
+        intent_text = pending_result[:intent_text]
+        tool_calls = pending_result[:tool_calls]
+        lead_narrative = pending_result[:lead_narrative]
+
+        begin
+          Tools::Registry.validate_calls!(tool_calls)
+        rescue Tools::Registry::ToolError => e
+          @log.game_master_tool_error!(tool_calls, e, reraise_as: AiError)
+        end
+
+        bind_game_master_run_to_adventure_loop(intent_text, lead_narrative)
+
+        request_roll_result = Tools::Registry.dispatch(tool_calls, pipeline_engine: self).request_roll_result
+        raise AiError, "GameMaster dispatch produced no roll request" unless request_roll_result
+
+        evaluation = EvaluationResult.new(
+          intention: intent_text,
+          player_rolls: [request_roll_result.to_h],
+          mechanical_summary: request_roll_result.mechanical_summary
+        )
+
+        @loop&.batch_update!(
+          new_status: "paused",
+          new_data: { "lead_narrative" => lead_narrative },
+          timeline_entry: tl("awaiting_rolls", "Paused for player rolls (GM)")
+        )
+
+        GameMaster::AwaitingRollsResult.new(
+          intent: evaluation.to_intent_hash,
+          merged_pause_state: GameMaster::MergedPauseState.new(request_roll_result: request_roll_result),
+          lead_narrative: lead_narrative
+        ).to_h
+      end
+
+      def bind_game_master_run_to_adventure_loop(intent_text, lead_narrative)
+        existing_adventure_loop = AdventureLoop.last_for_registry_entry(@log.registry_entry_uuid)
+        loop_row = existing_adventure_loop || create_adventure_loop(intent_text, 0)
+        bind_current_loop!(loop_row)
+        @loop.batch_update!(
+          new_status: "resolving",
+          new_data: { "game_master_lead" => true, "lead_narrative_chars" => lead_narrative.length },
+          timeline_entry: tl("game_master_lead", "GM emitted lead narrative + tool calls")
+        )
       end
 
       def build_game_master_context(intent_text)

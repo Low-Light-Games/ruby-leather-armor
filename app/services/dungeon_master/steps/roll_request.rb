@@ -136,6 +136,36 @@ module DungeonMaster
         )
       end
 
+      def run_roll_request_as_ai_called_tool(intention)
+        scene_retrieval = retrieve_scene_for_roll_request(intention)
+        rules           = retrieve_rules_for_roll_request(intention)
+
+        ctx = RollRequest::Context.new(
+          intent: intention,
+          scene_retrieval: scene_retrieval,
+          relevant_rules: rules,
+          current_location_name: @adventure.current_location&.name,
+        )
+
+        prompt_summary = "RequestRoll (tool): \"#{@log.truncate(intention)}\""
+        system_prompt  = PromptRenderer.render('roll_request_as_tool',
+                                               roll_request_context: ctx)
+        request_body   = { system_prompt: system_prompt, user_message: intention }
+
+        parsed = timed_ai_call('request_roll_tool', prompt_summary, request_body) do
+          raw = @ai.chat(
+            system_prompt: system_prompt,
+            user_message: intention,
+            step_name: 'request_roll_tool',
+            model: @config.model_for('request_roll_tool'),
+            reasoning_effort: @config.reasoning_effort_for('request_roll_tool')
+          )
+          [raw, @ai.parse_json(raw)]
+        end
+
+        Tools::RequestRoll::Result.from_parsed(parsed, sheet: @sheet)
+      end
+
       def retrieve_scene_for_roll_request(intention)
         DungeonMaster::SceneRetrieval::ForResolution.call(
           adventure:   @adventure,

@@ -12,6 +12,10 @@ class AdventureLoop < ApplicationRecord
   scope :for_registry_entry, ->(uuid) { where(registry_entry_uuid: uuid) }
   scope :paused, -> { where(status: "paused") }
 
+  def self.last_for_registry_entry(uuid)
+    for_registry_entry(uuid).order(:created_at).last
+  end
+
   # Prior actions in the same registry entry (lower sequence_index), for progressive_continuity prompts.
   def self.prior_pipeline_outcomes_before(registry_entry_uuid:, current_loop:)
     return [] if registry_entry_uuid.blank? || current_loop.nil?

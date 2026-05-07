@@ -97,6 +97,15 @@ module DungeonMaster
       report_error(e, context: { method: "play_log!", event_type: event_type })
     end
 
+    def game_master_tool_error!(tool_calls, error, reraise_as: nil)
+      play_log!(
+        "game_master_tool_error",
+        "GameMaster tool validation failed: #{error.message}",
+        parsed_response: { tool_calls: tool_calls, error: error.message }
+      )
+      raise reraise_as, "GameMaster emitted invalid tool call: #{error.message}" if reraise_as
+    end
+
     # Emit a tagged Rails.logger message for errors and warnings.
     # Vendor SDKs (Sentry, Datadog, etc.) absorb this automatically.
     def log!(level, message)
