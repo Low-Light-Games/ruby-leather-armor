@@ -202,12 +202,32 @@ module DungeonMaster
           rel.one? ? { "creature_sheet_id" => rel.first.id } : nil
         end
 
-        repaired = matched&.[]("creature_sheet_id")
+        repaired = matched&.[]("creature_sheet_id") || ai_create_sheet_for_participant(row["name"])
         if repaired.present?
           row.merge("creature_sheet_id" => repaired)
         else
           raise AiError, "Combat context update dropped creature_sheet_id for #{row['name'].presence || 'an NPC'}"
         end
+      end
+
+      def ai_create_sheet_for_participant(name)
+        return nil if name.to_s.strip.empty?
+
+        ctx = Utilities::Warmaster::Context.new(
+          adventure: @adventure, sheet: @sheet, log: @log, config: @config, ai: @ai
+        )
+        sheet = Utilities::Warmaster.resolve_creature(ctx, name.to_s, name.to_s)
+        return nil unless sheet
+
+        @log.play_log!(
+          "context_update_sheet_fallback",
+          "ContextUpdate spawned sheet for participant '#{name}' via Warmaster",
+          parsed_response: { participant_name: name.to_s, creature_sheet_id: sheet.id }
+        )
+        sheet.id
+      rescue StandardError => e
+        @log.report_error(e, context: { source: "context_update_sheet_fallback", participant_name: name.to_s })
+        nil
       end
 
       def guard_combat_context_update(val, prev_active:, has_combat_initialization:, has_combat_advancement:)

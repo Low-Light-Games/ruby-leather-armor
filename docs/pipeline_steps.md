@@ -508,6 +508,48 @@ combat snapshot is written to `adventure_loop.data["context_snapshot"]`.
 This creates a debug trail without consuming AI context window — the
 snapshot is in the database but never re-sent to the model.
 
+**Pre-combat participant staging is intentional.** ContextUpdate is
+**expected** to populate `combat_context.participants` with authoritative
+HP / AC / conditions on turns where `active` is still `false`. This is
+load-bearing pre-combat staging, not an incoherence to clamp out.
+
+Canonical example: the player types *"I charge at the goblins."* On that
+turn combat hasn't started yet (Sequencer / RollRequest paths still own
+the resolution), but the goblins are about to be combatants. The right
+thing for ContextUpdate to do is materialize them into `participants`
+NOW so that on the very next turn — when `active` flips to `true` —
+the combat state is already authoritative. Without this, every combat
+onset would race to discover stat blocks at the worst possible moment.
+
+The receiver-side enforcement is in
+`Steps::ContextUpdate#repair_combat_participant_identity`
+(`app/services/dungeon_master/steps/context_update.rb`). When an NPC
+participant arrives without a `creature_sheet_id`, the repair sequence
+is:
+
+1. Match by name against the existing `combat_context.participants`
+   from the prior turn (carry an id forward).
+2. If no match, look up `@adventure.creature_sheets` by name.
+3. If still nothing, **call `Utilities::Warmaster.resolve_creature`
+   to spawn the sheet via the bestiary-then-AI fallback.** A
+   `context_update_sheet_fallback` PlayLog row records the spawn for
+   observability.
+4. Only if Warmaster itself raises or returns nil does the repair
+   raise `AiError` — that's the truly-broken case.
+
+So an `AiError: Combat context update dropped creature_sheet_id for X`
+in production is a **Warmaster-fallback failure**, not a prompt
+incoherence and not "the AI hallucinated a participant." The diagnosis
+is "what made the bestiary lookup miss AND the AI sheet generation
+fail?", not "tighten the ContextUpdate prompt."
+
+The GameMaster-orchestrator path (behind the `gamemaster_orchestrator`
+feature flag) will eventually own this seam through a planned
+`introduce_npc(name, reason)` GM tool that fires *before*
+ContextUpdate runs. The legacy fallback above is the non-GM path's
+equivalent — same sheet-creation engine (Warmaster), different
+trigger surface.
+
 ### 19. Travel tracking through the pipeline
 
 **Decision:** the pipeline tracks the player's location across three
