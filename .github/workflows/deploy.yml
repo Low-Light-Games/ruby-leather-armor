@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -54,7 +58,11 @@ jobs:
             docker compose -f docker-compose.prod.yml build
 
             echo "--- Starting services ---"
-            docker compose -f docker-compose.prod.yml up -d
+            if ! docker compose -f docker-compose.prod.yml up -d --remove-orphans; then
+              echo "--- up -d failed, force-removing wedged containers and retrying ---"
+              docker compose -f docker-compose.prod.yml rm -sf
+              docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            fi
 
             echo "--- Waiting for app to be ready ---"
             timeout 60 bash -c \
