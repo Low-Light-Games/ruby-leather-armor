@@ -4,7 +4,7 @@
 # `app/services/dungeon_master/rules/entries/*.yml`.
 #
 # Written by the `dungeon_master:rules:embed` rake task; read by
-# `DungeonMaster::Rules::Lookup` via pgvector cosine similarity. Replaces
+# `Rules::Lookup` via pgvector cosine similarity. Replaces
 # the static rules-manifest dump that previously rode along with every
 # beacon / mechanical_evaluation prompt.
 #

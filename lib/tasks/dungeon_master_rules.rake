@@ -6,11 +6,11 @@ namespace :dungeon_master do
     task embed: :environment do
       require 'digest'
 
-      DungeonMaster::Rules.clear_cache!
-      entries = DungeonMaster::Rules.all_entries
+      Rules.clear_cache!
+      entries = Rules.all_entries
 
       if entries.empty?
-        puts "[rules:embed] no rule entries found at #{DungeonMaster::Rules::ENTRIES_DIR}"
+        puts "[rules:embed] no rule entries found at #{Rules::ENTRIES_DIR}"
         next
       end
 

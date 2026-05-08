@@ -43,7 +43,7 @@ module DungeonMaster
       end
 
       def retrieve_scene_facts_for_mechanic(intent)
-        DungeonMaster::SceneFacts::ForResolution.call(
+        SceneFacts::ForResolution.call(
           adventure:   @adventure,
           intent_text: intent[:intention].to_s,
           ai:          @ai,

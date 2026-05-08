@@ -236,7 +236,7 @@ module DungeonMaster
       end
 
       def retrieve_established_facts(intention)
-        DungeonMaster::Lore::FactsLookup.call(
+        Lore::FactsLookup.call(
           adventure: @adventure,
           ai: @ai,
           log: @log,
@@ -245,7 +245,7 @@ module DungeonMaster
       end
 
       def retrieve_nearby_npcs(intention)
-        DungeonMaster::Lore::NpcsLookup.call(
+        Lore::NpcsLookup.call(
           adventure: @adventure,
           ai: @ai,
           log: @log,
@@ -254,7 +254,7 @@ module DungeonMaster
       end
 
       def retrieve_nearby_locations(intention)
-        DungeonMaster::Lore::LocationsLookup.call(
+        Lore::LocationsLookup.call(
           adventure: @adventure,
           ai: @ai,
           log: @log,

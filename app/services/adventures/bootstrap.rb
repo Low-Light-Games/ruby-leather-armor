@@ -78,14 +78,14 @@ module Adventures
     def jit_generate_opening_message_if_blank!
       return if @story.opening_message.present?
 
-      DungeonMaster::Lore::GenerateOpeningMessage.call(story: @story, user: @user)
+      Lore::GenerateOpeningMessage.call(story: @story, user: @user)
       @story.reload
     end
 
     # SeedFromAdventure is lossy-with-Sentry internally; this rescue
     # guarantees adventure creation never fails because seeding did.
     def run_narrative_facts_seed(adventure)
-      DungeonMaster::Lore::SeedFromAdventure.call(adventure: adventure, user: @user)
+      Lore::SeedFromAdventure.call(adventure: adventure, user: @user)
     rescue StandardError => e
       ApplicationErrorReporter.notify(
         e, context: { source: "adventures_bootstrap_narrative_facts_seed", adventure_id: adventure.id }

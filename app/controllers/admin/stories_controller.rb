@@ -87,7 +87,7 @@ module Admin
     end
 
     def extract_seed_facts!(story)
-      facts = DungeonMaster::Lore::ExtractFromPremise.call(story: story, user: current_user)
+      facts = Lore::ExtractFromPremise.call(story: story, user: current_user)
       story.update_column(:seed_facts, facts) if facts.is_a?(Array)
     rescue StandardError => e
       ApplicationErrorReporter.notify(e, context: { source: "admin_stories_extract_from_premise", story_id: story.id })

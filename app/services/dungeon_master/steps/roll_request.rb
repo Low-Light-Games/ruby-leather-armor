@@ -167,7 +167,7 @@ module DungeonMaster
       end
 
       def retrieve_scene_for_roll_request(intention)
-        DungeonMaster::SceneRetrieval::ForResolution.call(
+        SceneRetrieval::ForResolution.call(
           adventure:   @adventure,
           intent_text: intention,
           ai:          @ai,
@@ -177,7 +177,7 @@ module DungeonMaster
       end
 
       def retrieve_rules_for_roll_request(intention)
-        DungeonMaster::Rules::Lookup.call(
+        Rules::Lookup.call(
           ai: @ai,
           log: @log,
           query_text: intention,

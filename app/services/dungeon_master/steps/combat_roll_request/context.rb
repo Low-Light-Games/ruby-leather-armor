@@ -30,10 +30,10 @@ module DungeonMaster
           new(
             intent: intent,
             retrieval: {
-              scene_retrieval: DungeonMaster::SceneRetrieval::ForResolution.call(
+              scene_retrieval: SceneRetrieval::ForResolution.call(
                 adventure: adventure, intent_text: intent, ai: ai, log: log, fact_limit: beats_top_k
               ),
-              relevant_rules: DungeonMaster::Rules::Lookup.call(
+              relevant_rules: Rules::Lookup.call(
                 ai: ai, log: log, query_text: "combat: #{intent}", limit: rules_top_k
               )
             },

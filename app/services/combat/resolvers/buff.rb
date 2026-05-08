@@ -27,7 +27,7 @@ module Combat
           additions: [{ 'id' => spell.id, 'source_type' => 'spell' }],
           removals: []
         )
-        changed = DungeonMaster::Mutations::BuffMutations.new(adventure: @adventure, log: buff_log_shim).apply(
+        changed = Mutations::BuffMutations.new(adventure: @adventure, log: buff_log_shim).apply(
           sheet: @sheet, buff_lists: buff_lists
         )
         @sheet.recompute_derived_stats! if changed
