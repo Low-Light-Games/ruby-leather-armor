@@ -18,9 +18,6 @@ module DungeonMaster
 
         reload_world_turn_records!
 
-        intent = result[:intent] || {}
-        return apply_player_flee_combat(result) if intent[:combat_ending]
-
         run_world_turn(result)
       end
 
@@ -31,13 +28,6 @@ module DungeonMaster
         chunk = text.to_s.strip
         merged = cur.present? ? "#{cur}\n\nWorld — #{chunk}" : chunk
         @loop&.batch_update!(new_data: { "pipeline_outcome" => merged.truncate(PIPELINE_OUTCOME_TRUNCATE) })
-      end
-
-      def apply_player_flee_combat(result)
-        advancement = DungeonMaster::WorldTurn::CombatAdvancement.build_full(adventure: @adventure, sheet: @sheet,
-          overrides: { "active" => false })
-        result[:mutations] = DungeonMaster::WorldTurn::CombatAdvancement.merge_into_mutations(result[:mutations], advancement)
-        result
       end
 
       def run_world_turn(result)
@@ -106,9 +96,7 @@ module DungeonMaster
 
         plans_by_id = index_plans_by_creature_sheet_id(npc_action_plans)
 
-        # Each NPC's mutations are applied immediately and sheets are reloaded
-        # before the next NPC resolves, so HP is clamped between plans — a
-        # later NPC won't keep hitting a target a prior NPC just dropped.
+        # TODO: Improve readability — rename live_sheets / extract apply_npc_action_and_reload! so the per-iteration mutation flush is named, not commented.
         acting_npc_ids = acting_npcs.map(&:creature_sheet_id)
         live_sheets    = @adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id)
 

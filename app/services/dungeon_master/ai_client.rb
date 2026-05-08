@@ -116,24 +116,7 @@ module DungeonMaster
       content
     end
 
-    # Compute embeddings for an array of texts in a single HTTP round-trip.
-    #
-    # The OpenAI embeddings endpoint accepts an array `input`, so batching
-    # N texts is one HTTP call rather than N — this is what lets the
-    # per-turn Loremaster apply stay within the "zero added wall-clock
-    # latency" envelope regardless of fact count. Single-text callers pass
-    # a 1-element array and use `embeddings(...).first`.
-    #
-    # Retries follow the same transient-error pattern as `#chat` (rate
-    # limits + retryable Faraday failures retried up to the configured retry budget,
-    # bad-request errors raised immediately).
-    #
-    # AiLog writes are intentionally the caller's responsibility — `AiClient`
-    # holds HTTP + retry only and does not know about `@adventure` / `@log` /
-    # prompt summaries. Call sites wrap this with `DungeonMaster::Logging#ai_log!`
-    # / `#ai_log_error!` using `call_type: "embedding"`. See Lore::ApplyResults
-    # (write path) and Lore::FactsLookup (read path).
-    #
+    # TODO: Improve readability — extract retry policy and batching into named collaborators (RetryPolicy, BatchedEmbeddingClient) instead of a five-paragraph method preamble.
     # @param texts      [Array<String>]  non-empty array of texts to embed
     # @param model      [String]         embedding model id — required; callers
     #                                    read it from DmConfig so the admin UI

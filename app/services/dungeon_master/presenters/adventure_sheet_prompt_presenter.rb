@@ -6,35 +6,12 @@ module DungeonMaster
     class AdventureSheetPromptPresenter
       include CharacterPromptFormatting
 
-      SOCIAL_SKILLS = %w[
-        Bluff Diplomacy Disguise Handle\ Animal Intimidate
-        Knowledge\ (Local) Knowledge\ (Nobility) Linguistics
-        Perception Perform Sense\ Motive Use\ Magic\ Device
-      ].freeze
-
-      TRAVERSAL_SKILLS = %w[
-        Acrobatics Climb Fly Knowledge\ (Geography) Knowledge\ (Nature)
-        Perception Ride Stealth Survival Swim
-      ].freeze
-
-      COMBAT_ITEM_TYPES = %w[weapon armor shield potion ammunition].freeze
-
       def initialize(sheet)
         @sheet = sheet
       end
 
       def identity
         "#{@sheet.name} — #{@sheet.race} #{@sheet.character_class} #{@sheet.level}"
-      end
-
-      def for_category(category)
-        case category
-        when "combat"    then combat_text
-        when "social"    then social_text
-        when "traversal" then traversal_text
-        when "buff"      then buff_text
-        else                  full_text
-        end
       end
 
       def full_text
@@ -51,56 +28,7 @@ module DungeonMaster
         ])
       end
 
-      def combat_text
-        compose([
-          *base_parts,
-          ability_scores_line,
-          hp_currency_line,
-          derived_combat_block,
-          class_abilities_block,
-          feats_block(categories: %w[combat general]),
-          spells_block,
-          items_block(types: COMBAT_ITEM_TYPES, equipped_only: true)
-        ])
-      end
-
-      def social_text
-        compose([
-          *base_parts,
-          "CHA: #{@sheet.charisma}, WIS: #{@sheet.wisdom}, INT: #{@sheet.intelligence}  |  Level: #{@sheet.level}",
-          skills_block(filter: SOCIAL_SKILLS),
-          class_abilities_block,
-          feats_block,
-          items_block(types: %w[wondrous], equipped_only: true)
-        ])
-      end
-
-      def traversal_text
-        compose([
-          *base_parts,
-          "STR: #{@sheet.strength}, DEX: #{@sheet.dexterity}, CON: #{@sheet.constitution}, WIS: #{@sheet.wisdom}  |  Level: #{@sheet.level}",
-          traversal_movement_line,
-          skills_block(filter: TRAVERSAL_SKILLS),
-          class_abilities_block,
-          feats_block,
-          items_block
-        ])
-      end
-
-      def buff_text
-        compose([
-          *base_parts,
-          class_abilities_block,
-          spells_block,
-          items_block(types: %w[potion wondrous])
-        ])
-      end
-
       alias full full_text
-      alias combat combat_text
-      alias social social_text
-      alias traversal traversal_text
-      alias buff buff_text
 
       private
 
@@ -118,11 +46,6 @@ module DungeonMaster
 
       def hp_currency_line
         "HP: #{@sheet.hp}/#{@sheet.max_hp}  |  Currency: #{format_currency(@sheet.currency)}"
-      end
-
-      def traversal_movement_line
-        ds = derived_stats
-        "Speed: #{ds['speed'] || 30} ft  |  Encumbrance: #{ds['encumbrance'] || 'light'}  |  Carry: #{format_carry(ds)}"
       end
 
       def conditions_line

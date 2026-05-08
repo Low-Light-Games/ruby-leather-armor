@@ -11,22 +11,17 @@ module DungeonMaster
                 :consequences, :mechanical_summary
     attr_accessor :player_rolls
 
-    def initialize(intention:, destination: nil, macro_significant: false,
-                   combat_transition: nil, combat_combatants: [], combat_ending: false,
+    def initialize(intention:, destination: nil,
+                   combat_transition: nil, combat_combatants: [],
                    player_rolls: [], consequences: [], mechanical_summary: '')
       @intention = intention.to_s
       @destination = destination.presence
-      @macro_significant = macro_significant == true
       @combat_transition = combat_transition.to_s.presence
       @combat_combatants = Array(combat_combatants).map(&:to_s).reject(&:blank?)
-      @combat_ending = combat_ending == true
       @player_rolls = Array(player_rolls)
       @consequences = Array(consequences).map(&:to_s).reject(&:blank?)
       @mechanical_summary = mechanical_summary.to_s
     end
-
-    def macro_significant? = @macro_significant
-    def combat_ending? = @combat_ending
 
     def combat_starting?
       @combat_transition.present? &&
@@ -39,8 +34,6 @@ module DungeonMaster
         destination: @destination,
         transition: @combat_transition,
         combat_combatants: @combat_combatants,
-        macro_significant: @macro_significant,
-        combat_ending: @combat_ending
       }
     end
   end

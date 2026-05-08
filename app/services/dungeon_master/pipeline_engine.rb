@@ -1,26 +1,9 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  # Pure pipeline logic for the AI Dungeon Master.
-  #
-  # Runs steps in order and returns a result hash describing what happened.
-  # Does NOT persist messages or handle errors -- the calling service
-  # (DungeonMasterService) is responsible for those side effects.
-  #
-  # Flow:
-  #   run_prompt          -> Concerns::EntryPoints + phases (see pipeline_engine/phases/*):
-  #                           IntakeDangerGate -> OrchestrateCompoundActions
-  #                         OrchestrateCompoundActions: run_sequencer -> ActionQueueRunner
-  #                           -> per loop row: AdventureLoopResolution#resolve -> narrate (Concerns::NarrationCoordination)
-  #                         Per-step narrative when action_queue is progressive / progressive_continuity
-  #   run_rolls           -> AdventureLoopResolution#finish_resolution -> continue queue if remaining -> narrative phase
-  #
-  # Orchestration is split across PipelineEngine::Concerns — see pipeline_engine/concerns/*.rb.
-  #
+  # TODO: Improve readability — flow narration duplicates docs/pipeline_diagram.md; clearer phase names should let the orchestrator read top-to-bottom unannotated.
   class PipelineEngine
-    # Step mixins add private methods; order here is not execution order. Outer turn: phases →
-    # ActionQueueRunner → `AdventureLoopResolution#resolve` per queued line. Inner path: RollRequest /
-    # CombatRollRequest → SanityChecker → Combat GM or Mechanic / TimeKeeper / …
+    # TODO: Improve readability — mixin order vs execution order requires a comment; consider explicit composition over module mixins so the call chain is in the source.
     include Steps::Helpers
     include Steps::EvaluatorTransport
     include Steps::Intake

@@ -59,7 +59,6 @@ module DungeonMaster
 
         {
           intention: intents.map { |i| i[:intention] }.compact.join("; "),
-          macro_significant: intents.any? { |i| i[:macro_significant] }
         }
       end
       private_class_method :merge_result_intents

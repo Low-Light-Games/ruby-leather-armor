@@ -2,24 +2,7 @@
 
 module DungeonMaster
   module Steps
-    # Pipeline Step: TimeKeeper
-    #
-    # Runs after Ruling, before output phase. The single orchestrator of
-    # all time-related logic in the budget pipeline:
-    #
-    #   1. Estimates how much in-game time the action consumed
-    #      (code-first for journeys, combat, rest, take_20; AI for freeform)
-    #   2. Consults Harbinger to check for encounter interruptions
-    #   3. Calls GameClock to advance the adventure's time_context
-    #
-    # Estimation priority:
-    #   Journey (known destination) → code: distance / speed_mph
-    #   Journey (freeform)          → AI
-    #   Combat                      → code: 6 seconds per round
-    #   Rest                        → code: 8 hours (long) / 1 hour (short)
-    #   Take 20                     → code: ~40 minutes
-    #   Everything else             → AI
-    #
+    # TODO: Improve readability — name the dispatch methods after the waterfall branches so the source reads as the table rather than restating it in prose.
     module TimeKeeper
       SPEED_FT_TO_MPH = 30.0 / 3.0
 
@@ -166,9 +149,7 @@ module DungeonMaster
             intention: intent[:intention] || intent["intention"],
             destination: intent[:destination] || intent["destination"],
             transition: intent[:transition] || intent["transition"],
-            macro_significant: intent[:macro_significant] || intent["macro_significant"],
             combat_combatants: intent[:combat_combatants] || intent["combat_combatants"],
-            combat_ending: intent[:combat_ending] || intent["combat_ending"],
           }.compact,
           verdict: verdict_result,
           sheet: @sheet ? {

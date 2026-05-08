@@ -9,15 +9,6 @@ module DungeonMaster
           @raw_domain_result = raw_domain_result
         end
 
-        def pre_normalized?
-          return false unless @raw_domain_result.is_a?(Hash)
-
-          @raw_domain_result.key?("context") ||
-            @raw_domain_result.key?(:context) ||
-            @raw_domain_result.key?("unchanged") ||
-            @raw_domain_result.key?(:unchanged)
-        end
-
         def normalized_result
           normalized_domain_result = @raw_domain_result.is_a?(Hash) ? @raw_domain_result.deep_stringify_keys : {}
           {

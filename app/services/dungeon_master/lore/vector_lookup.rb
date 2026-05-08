@@ -40,8 +40,7 @@ module DungeonMaster
       def play_log_event_type  = raise NotImplementedError
       def query_neighbors(_query_embedding) = raise NotImplementedError
 
-      # Shared --------------------------------------------------------
-
+      # TODO: Improve readability — divider signals an abstract-vs-concrete split; extract VectorLookup::Contract (NotImplementedError quartet) from VectorLookup::Shared (concrete helpers).
       def nearest_neighbor_hits(query_embedding)
         query_neighbors(query_embedding).map { |row| hit_class.from_row(row).to_h }
       end

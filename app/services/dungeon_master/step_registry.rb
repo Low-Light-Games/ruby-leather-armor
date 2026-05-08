@@ -4,15 +4,7 @@ require_relative 'step_registry/entry'
 require_relative 'step_registry/model_hints'
 
 module DungeonMaster
-  # Single source of truth for all AI step metadata.
-  #
-  # To add a new AI step: add one entry to STEPS. PlayLog::EVENT_TYPES and
-  # STEP_MODEL_HINTS derive from this registry automatically.
-  #
-  # The `pipeline` flag controls whether a step appears in the DM config
-  # admin UI (model selection). Non-pipeline steps (embedding,
-  # rules_retrieval, encounter_expand, extract_from_premise) are logged
-  # but not configurable per-run.
+  # TODO: Improve readability — implicit derivations (EVENT_TYPES, STEP_MODEL_HINTS) are too magical; the how-to-extend prose is the smell.
   module StepRegistry
     H = ModelHints
 
@@ -37,8 +29,6 @@ module DungeonMaster
                              pipeline: true),
       'combat_context_update' => Entry.new(model_hint: H::COMBAT_CONTEXT_UPDATE,
                                            pipeline: true),
-      'macro_narrative_update' => Entry.new(model_hint: H::MACRO_NARRATIVE_UPDATE,
-                                            pipeline: true),
       'creature_generation' => Entry.new(model_hint: H::CREATURE_GENERATION,
                                          pipeline: true),
       'extract_from_premise' => Entry.new(model_hint: H::EXTRACT_FROM_PREMISE,
@@ -51,8 +41,6 @@ module DungeonMaster
                                        pipeline: true),
       'combat_roll_request' => Entry.new(model_hint: H::COMBAT_ROLL_REQUEST,
                                          pipeline: true),
-      'rules_retrieval' => Entry.new(model_hint: nil,
-                                     pipeline: false),
       'loremaster' => Entry.new(model_hint: H::LOREMASTER,
                                 pipeline: true),
       'embedding' => Entry.new(model_hint: nil,
