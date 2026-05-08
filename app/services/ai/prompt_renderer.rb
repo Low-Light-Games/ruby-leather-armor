@@ -4,7 +4,7 @@ require "erb"
 
 module Ai
   class PromptRenderer
-    TEMPLATE_DIR = Rails.root.join("app/services/dungeon_master/templates")
+    TEMPLATE_DIR = Rails.root.join("app/services/ai/templates")
 
     USER_MESSAGE_SEPARATOR = "---USER_MESSAGE---"
 

@@ -252,7 +252,7 @@ module Ai
         }
       )
       ApplicationErrorReporter.notify(exception, context: {
-        source: "dungeon_master_pipeline_exception",
+        source: "player_turn_pipeline_exception",
         registry_entry_uuid: @registry_entry_uuid,
         adventure_id: @adventure&.id,
         player_message_id: @player_message_id

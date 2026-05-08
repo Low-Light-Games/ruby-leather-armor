@@ -4,7 +4,7 @@ High-level flow of the AI DM pipeline. For per-step prompt/model detail see [Pip
 
 > **Project moment (2026-05):** this document is a snapshot of the pipeline as it runs **today**. A GM-orchestrator step is the next major change — it will replace the fixed phase chain with a reasoning model that delegates to scoped specialist tools. Until that ships, the diagrams below describe live behavior. See `docs/design_philosophy.md` Project moment + §3 / §10 for the pivot rationale.
 
-**Outer shell:** `DungeonMaster::PipelineEngine#run_prompt` runs two explicit phases in order ([`pipeline_engine.rb`](../app/services/dungeon_master/pipeline_engine.rb) — `Phases::IntakeDangerGate`, `Phases::OrchestrateCompoundActions`). Compound actions use **`PipelineEngine::ActionQueueRunner`** for the per-action loop shared with `run_remaining_queue` (fresh queue aborts on `:rejected`; resume skips rejected actions). The narrative/output path is **`run_accumulated_narrative_phase`** → **`run_narrative_phase`** (Stagehand). See [Outer orchestration](pipeline_steps.md#outer-orchestration-pipeline-class) in pipeline_steps.md.
+**Outer shell:** `PlayerTurn::Engine#run_prompt` runs two explicit phases in order ([`pipeline_engine.rb`](../app/services/player_turn/pipeline_engine.rb) — `Phases::IntakeDangerGate`, `Phases::OrchestrateCompoundActions`). Compound actions use **`Engine::ActionQueueRunner`** for the per-action loop shared with `run_remaining_queue` (fresh queue aborts on `:rejected`; resume skips rejected actions). The narrative/output path is **`run_accumulated_narrative_phase`** → **`run_narrative_phase`** (Stagehand). See [Outer orchestration](pipeline_steps.md#outer-orchestration-pipeline-class) in pipeline_steps.md.
 
 ---
 
@@ -12,7 +12,7 @@ High-level flow of the AI DM pipeline. For per-step prompt/model detail see [Pip
 
 ```mermaid
 flowchart TB
-    subgraph entry["Entry — DungeonMasterService"]
+    subgraph entry["Entry — PlayerTurn::Service"]
         A[Player Input] --> PRE0{Usage limit?}
         PRE0 -->|yes| ULIMIT[Return :usage_limit_exceeded]
         PRE0 -->|no| PRE1[Log abandoned pipeline?]
@@ -214,7 +214,7 @@ end
 ```
 
 `broadcast_progress` is a helper in `Steps::Helpers` that invokes an
-`@on_progress` callback when present. `DungeonMasterService` wires that
+`@on_progress` callback when present. `PlayerTurn::Service` wires that
 callback to `AdventureChannel.broadcast_to`, which pushes a
 `pipeline_progress` WebSocket event to the player's browser. The
 `useAdventureMessages` hook patches the content of the thinking sentinel
@@ -235,7 +235,7 @@ runs), so adding a new progress call to a step requires no test changes.
 
 ### Pre-flight checks (before run_prompt)
 
-A controller-level ban gate runs first, then four checks inside `DungeonMasterService#execute_prompt` before the pipeline proper:
+A controller-level ban gate runs first, then four checks inside `PlayerTurn::Service#execute_prompt` before the pipeline proper:
 
 **Controller gate (`AdventureMessagesController#check_ban`)** — If `current_user.banned?`, all three actions (`create`, `roll`, `initiative`) return 403 immediately with `{ banned: true }`. No player message is persisted, no job is enqueued.
 

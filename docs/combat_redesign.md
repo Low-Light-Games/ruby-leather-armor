@@ -20,14 +20,14 @@ opening — combat is the place that principle has been most violated.
 Pathfinder 1e combat is **finite, exact, and testable**. d20 + bonus vs.
 AC, flanking is +2, AoO triggers on movement out of a threatened square,
 cover gives +4. Every interaction has a deterministic answer. Today's
-[`Steps::CombatGm`](../app/services/dungeon_master/steps/combat_gm.rb)
+[`Steps::CombatGm`](../app/services/player_turn/steps/combat_gm.rb)
 asks an LLM to do that arithmetic — the worst possible use of a
 stochastic system.
 
 Three concrete pains:
 
 1. **Cost is quadratic in big battles.** NPC fan-out
-   ([`world_turn` combat advancement](../app/services/dungeon_master/world_turn/combat_advancement.rb))
+   ([`world_turn` combat advancement](../app/services/combat/world_turn/combat_advancement.rb))
    is one AI call per acting NPC per round. A 6-creature encounter with
    8 rounds is ~50 calls just for the NPC turns, before the player even
    acts.
@@ -80,10 +80,10 @@ them so future-us doesn't re-litigate.
 ## What active combat depends on today
 
 Mapping the surface area we have to preserve or replace. From
-[`adventure_loop_resolution.rb`](../app/services/dungeon_master/adventure_loop_resolution.rb),
-[`combat_gm.rb`](../app/services/dungeon_master/steps/combat_gm.rb),
-[`phases/mech_eval_phase.rb`](../app/services/dungeon_master/steps/phases/mech_eval_phase.rb),
-and [`phases/combat_mechanic_resolution.rb`](../app/services/dungeon_master/steps/phases/combat_mechanic_resolution.rb):
+[`adventure_loop_resolution.rb`](../app/services/player_turn/adventure_loop_resolution.rb),
+[`combat_gm.rb`](../app/services/player_turn/steps/combat_gm.rb),
+[`phases/mech_eval_phase.rb`](../app/services/player_turn/steps/phases/mech_eval_phase.rb),
+and [`phases/combat_mechanic_resolution.rb`](../app/services/player_turn/steps/phases/combat_mechanic_resolution.rb):
 
 1. **`CombatMechanicResolution`** — the deterministic post-AI pass that
    resolves `attack_option_id` → attack mode/defense kind/damage,
@@ -354,7 +354,7 @@ react to, without bloating the combat hot path.
   from `DmConfig`; admin UI radio buttons removed.
 - StepRegistry cleanup: removed `beacon`, `mechanical_evaluation`,
   `roll_qualifier` entries and the matching `ModelHints` constants.
-- New `DungeonMaster::EvaluationResult` value object replaces the
+- New `PlayerTurn::EvaluationResult` value object replaces the
   `[intent, evaluations]` tuple at the boundary of the evaluation step.
   Downstream consumers (sanity gate, social expansion) take the value
   object; finish_resolution / Mechanic / Combat GM continue to take the

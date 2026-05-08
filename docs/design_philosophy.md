@@ -352,7 +352,7 @@ had Improved Grapple" is immediately actionable.
 every real error must be observable. The failure path uses
 `ApplicationErrorReporter.notify(exception, context: { ... })` — or
 patterns that already delegate to it, such as
-`DungeonMaster::Logging#report_error` and `#capture_pipeline_exception!`
+`Ai::Logging#report_error` and `#capture_pipeline_exception!`
 — so the exception surfaces in Sentry with a context hash rich enough
 to replay. This applies even when the surrounding operation is
 intentionally degraded rather than aborted: if a step swallows an
@@ -815,17 +815,17 @@ less reliable to reason about.
 **Single-writer principle (per store):**
 
 - **`adventure_narrative_facts`** — sole writer is
-  `DungeonMaster::Lore::ApplyResults`, invoked from
-  `DungeonMaster::Steps::Stagehand` (Loremaster output) on every
+  `Lore::ApplyResults`, invoked from
+  `PlayerTurn::Steps::Stagehand` (Loremaster output) on every
   terminal narrative phase, and from
-  `DungeonMaster::Lore::SeedFromAdventure` at adventure creation
+  `Lore::SeedFromAdventure` at adventure creation
   (bulk-inserts `Story.seed_facts`).
-- **`adventure_npcs`** — sole writer is `DungeonMaster::Lore::ApplyNpcs`,
+- **`adventure_npcs`** — sole writer is `Lore::ApplyNpcs`,
   invoked at seed time from `Lore::SeedFromAdventure` (one row per
   authored `StoryNpc`). Future: `source: "runtime"` for AI-introduced
   NPCs mid-adventure.
 - **`adventure_locations`** — sole writer is
-  `DungeonMaster::Lore::ApplyLocations`, invoked at seed time from
+  `Lore::ApplyLocations`, invoked at seed time from
   `Lore::SeedFromAdventure` after `Maps::PlaceLocations` produces
   deterministic Vogel-spiral coordinates per `story_id`.
 - **`combat_context`** (JSONB) — primary writer is `Steps::ContextUpdate`

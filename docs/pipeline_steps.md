@@ -24,26 +24,26 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md).
 
 ## Outer orchestration (Pipeline class)
 
-The **AI step mixins** (Intake, Sequencer, Narrate, …) implement individual prompts; **`AdventureLoopResolution`** (also mixed into `PipelineEngine`) drives evaluation → sanity → mechanics for each **AdventureLoop** row; the **`DungeonMaster::PipelineEngine`** class wires the **player turn** and **action queue**. Reorder or extend the main line by editing **`#run_prompt`** in [`app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb`](../app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb) (three explicit `apply_prompt_phase` calls).
+The **AI step mixins** (Intake, Sequencer, Narrate, …) implement individual prompts; **`AdventureLoopResolution`** (also mixed into `Engine`) drives evaluation → sanity → mechanics for each **AdventureLoop** row; the **`PlayerTurn::Engine`** class wires the **player turn** and **action queue**. Reorder or extend the main line by editing **`#run_prompt`** in [`app/services/player_turn/engine/concerns/entry_points.rb`](../app/services/player_turn/engine/concerns/entry_points.rb) (three explicit `apply_prompt_phase` calls).
 
 | Phase / component | Role | Source |
 |-------------------|------|--------|
-| **`#run_prompt` + `#apply_prompt_phase`** | Ordered calls: intake + danger gate → sequencer + compound-action loop | [`pipeline_engine/concerns/entry_points.rb`](../app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb) |
-| **`Phases::IntakeDangerGate`** | `run_intake`; danger threshold → `:rejected` | [`pipeline_engine/phases/intake_danger_gate.rb`](../app/services/dungeon_master/pipeline_engine/phases/intake_danger_gate.rb) |
-| **`Phases::OrchestrateCompoundActions`** | `run_sequencer` then **`ActionQueueRunner`** | [`pipeline_engine/phases/orchestrate_compound_actions.rb`](../app/services/dungeon_master/pipeline_engine/phases/orchestrate_compound_actions.rb) |
-| **`PipelineEngine::Concerns::EntryPoints`** | `run_prompt` / `run_initiative` / `run_rolls`, phase chain (`apply_prompt_phase`), `run_remaining_queue`. | [`pipeline_engine/concerns/entry_points.rb`](../app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb) |
-| **`PipelineEngine::Concerns::NarrationCoordination`** | `run_accumulated_narrative_phase`, `run_single_action_narrative_phase`, action-queue mode helpers (`per_action_narration?`, …). | [`pipeline_engine/concerns/narration_coordination.rb`](../app/services/dungeon_master/pipeline_engine/concerns/narration_coordination.rb) |
-| **`PipelineEngine::Concerns::ContextCoordination`** | `run_inter_action_context_update`, `run_context_updates_at_encounter_pause`. | [`pipeline_engine/concerns/context_coordination.rb`](../app/services/dungeon_master/pipeline_engine/concerns/context_coordination.rb) |
-| **`PipelineEngine::ActionQueueRunner`** | For each queued action: `AdventureLoop` + `AdventureLoopResolution#resolve`; dispatches on `:status`; **abort** whole turn on `:rejected` (fresh) vs **skip** action (resume). Ends in **`run_accumulated_narrative_phase`** / `:narrated_sequence`. | [`pipeline_engine/action_queue_runner.rb`](../app/services/dungeon_master/pipeline_engine/action_queue_runner.rb) |
-| **`PipelineEngine::ActionQueueLog`** | Per-action `action_label` on the pipeline log + `play_log!` for queue pause / interrupt / completed. | [`pipeline_engine/action_queue_log.rb`](../app/services/dungeon_master/pipeline_engine/action_queue_log.rb) |
-| **`Narrative::AccumulatedAssembly`** | Merges resolver results + `AdventureLoop` `pipeline_outcome` rows into `PipelineContext` / mutations / `extra` for **`#run_accumulated_narrative_phase`**. | [`narrative/accumulated_assembly.rb`](../app/services/dungeon_master/narrative/accumulated_assembly.rb) |
-| **`Narrative::SingleActionAssembly`** | One-loop `PipelineContext` for progressive per-action narration (`prior_outcomes` when `progressive_continuity`). | [`narrative/single_action_assembly.rb`](../app/services/dungeon_master/narrative/single_action_assembly.rb) |
-| **`Narrative::NarrationPhaseInputs`** | Intent + `PipelineContext` + mutations + optional Stagehand `extra`; return type of `AccumulatedAssembly` / `SingleActionAssembly` for `run_narrative_phase`. | [`narrative/narration_phase_inputs.rb`](../app/services/dungeon_master/narrative/narration_phase_inputs.rb) |
-| **`Narrative::ProgressiveEntry`** | Value object for each progressive narration payload: DM text, `adventure_complete`, queue indices, `action_text`. Built after `run_narrative_phase`; `#to_h` is passed to `on_narrative` and into `:narratives` on `:narrated_sequence`. | [`narrative/progressive_entry.rb`](../app/services/dungeon_master/narrative/progressive_entry.rb) |
+| **`#run_prompt` + `#apply_prompt_phase`** | Ordered calls: intake + danger gate → sequencer + compound-action loop | [`pipeline_engine/concerns/entry_points.rb`](../app/services/player_turn/engine/concerns/entry_points.rb) |
+| **`Phases::IntakeDangerGate`** | `run_intake`; danger threshold → `:rejected` | [`pipeline_engine/phases/intake_danger_gate.rb`](../app/services/player_turn/engine/phases/intake_danger_gate.rb) |
+| **`Phases::OrchestrateCompoundActions`** | `run_sequencer` then **`ActionQueueRunner`** | [`pipeline_engine/phases/orchestrate_compound_actions.rb`](../app/services/player_turn/engine/phases/orchestrate_compound_actions.rb) |
+| **`Engine::Concerns::EntryPoints`** | `run_prompt` / `run_initiative` / `run_rolls`, phase chain (`apply_prompt_phase`), `run_remaining_queue`. | [`pipeline_engine/concerns/entry_points.rb`](../app/services/player_turn/engine/concerns/entry_points.rb) |
+| **`Engine::Concerns::NarrationCoordination`** | `run_accumulated_narrative_phase`, `run_single_action_narrative_phase`, action-queue mode helpers (`per_action_narration?`, …). | [`pipeline_engine/concerns/narration_coordination.rb`](../app/services/player_turn/engine/concerns/narration_coordination.rb) |
+| **`Engine::Concerns::ContextCoordination`** | `run_inter_action_context_update`, `run_context_updates_at_encounter_pause`. | [`pipeline_engine/concerns/context_coordination.rb`](../app/services/player_turn/engine/concerns/context_coordination.rb) |
+| **`Engine::ActionQueueRunner`** | For each queued action: `AdventureLoop` + `AdventureLoopResolution#resolve`; dispatches on `:status`; **abort** whole turn on `:rejected` (fresh) vs **skip** action (resume). Ends in **`run_accumulated_narrative_phase`** / `:narrated_sequence`. | [`pipeline_engine/action_queue_runner.rb`](../app/services/player_turn/engine/action_queue_runner.rb) |
+| **`Engine::ActionQueueLog`** | Per-action `action_label` on the pipeline log + `play_log!` for queue pause / interrupt / completed. | [`pipeline_engine/action_queue_log.rb`](../app/services/player_turn/engine/action_queue_log.rb) |
+| **`Narration::AccumulatedAssembly`** | Merges resolver results + `AdventureLoop` `pipeline_outcome` rows into `PlayerTurn::Context` / mutations / `extra` for **`#run_accumulated_narrative_phase`**. | [`narrative/accumulated_assembly.rb`](../app/services/narration/accumulated_assembly.rb) |
+| **`Narration::SingleActionAssembly`** | One-loop `PlayerTurn::Context` for progressive per-action narration (`prior_outcomes` when `progressive_continuity`). | [`narrative/single_action_assembly.rb`](../app/services/narration/single_action_assembly.rb) |
+| **`Narration::NarrationPhaseInputs`** | Intent + `PlayerTurn::Context` + mutations + optional Stagehand `extra`; return type of `AccumulatedAssembly` / `SingleActionAssembly` for `run_narrative_phase`. | [`narrative/narration_phase_inputs.rb`](../app/services/narration/narration_phase_inputs.rb) |
+| **`Narration::ProgressiveEntry`** | Value object for each progressive narration payload: DM text, `adventure_complete`, queue indices, `action_text`. Built after `run_narrative_phase`; `#to_h` is passed to `on_narrative` and into `:narratives` on `:narrated_sequence`. | [`narrative/progressive_entry.rb`](../app/services/narration/progressive_entry.rb) |
 
 **Per-class contracts** (what must be set on the pipeline before the step, what mutates, prompt inputs) live in the file header comments on each phase and on `ActionQueueRunner`.
 
-`AdventureLoopResolution` now emits typed flow payloads through `DungeonMaster::PipelineFlowResults` (backward-compatible alias: `DungeonMaster::FlowResults`) and only serializes to hashes at the boundary consumed by queue orchestration and resume entrypoints.
+`AdventureLoopResolution` now emits typed flow payloads through `PlayerTurn::FlowResults` (backward-compatible alias: `PlayerTurn::FlowResults`) and only serializes to hashes at the boundary consumed by queue orchestration and resume entrypoints.
 
 Combat attack rolls now follow the same AI-picks / server-resolves pattern as saving-throw `dc_formula`: combat mech-eval selects an `attack_option_id`, and Ruby resolves attack mode, defense targeting, damage metadata, and pending-roll quick actions from that code-built option.
 
@@ -231,7 +231,7 @@ the rolls and evaluations that produced them.
 ### 7. Rules fetched by slug from a YAML index
 
 **Decision:** rules are stored as YAML files keyed by slug, embedded
-into the `rule_embeddings` pgvector table by the `dungeon_master:rules:embed`
+into the `rule_embeddings` pgvector table by the `rules:embed`
 rake task. RollRequest / CombatRollRequest retrieve the top-K relevant
 rules per turn via `Rules::Lookup` and inject them into the prompt as
 the slug-keyed RAG context.
@@ -286,13 +286,13 @@ that complicated the UX, and a separate prompt with its own retrieval
 shape — all to answer questions a unified path now handles natively.
 Retirement removes the `Phases::DmQueryBranch` step, the `is_dm_query`
 field on Intake, the `prompt_mode` parameter on `#run_prompt`, the
-`mode:` argument on `DungeonMasterService#execute_prompt`, the chat UI's
+`mode:` argument on `PlayerTurn::Service#execute_prompt`, the chat UI's
 "Ask GM" toggle, and the `dm_query` AdventureMessage type.
 
 ### 10. ERB templates for prompts
 
 **Decision:** store system prompts as `.text.erb` files under
-`app/services/dungeon_master/templates/`, rendered by a
+`app/services/ai/templates/`, rendered by a
 `PromptRenderer` class.
 
 **Why:** the original implementation used Ruby heredocs embedded in a
@@ -314,14 +314,14 @@ template rendering is sub-millisecond compared to the AI call it feeds.
 
 ### 11. Pipeline class separated from entry services
 
-**Decision:** `DungeonMaster::PipelineEngine` encapsulates pure pipeline logic
+**Decision:** `PlayerTurn::Engine` encapsulates pure pipeline logic
 (step sequencing, branching, data flow). Pipeline entry responsibilities are
-split into focused deterministic services under `DungeonMaster::EntryServices`
+split into focused deterministic services under `PlayerTurn::EntryServices`
 (`PromptExecution`, `ResumePipelineExecution`) with shared dependency wiring in
-`DungeonMaster::EntryRuntime`; `DungeonMasterService` remains a small facade
+`PlayerTurn::EntryRuntime`; `PlayerTurn::Service` remains a small facade
 for controller/job compatibility.
 
-**Why:** the original `DungeonMasterService` was a monolith that mixed
+**Why:** the original `PlayerTurn::Service` was a monolith that mixed
 pipeline orchestration, message persistence, error handling, and step
 implementations. Reading it required holding the entire flow in your head
 to understand any single part.
@@ -336,7 +336,7 @@ The separation means:
 - Steps can be tested against the Pipeline without mocking persistence.
 
 **Trade-off accepted:** more files to navigate. Mitigated by consistent
-naming and the `DungeonMaster::Steps::*` module convention.
+naming and the `PlayerTurn::Steps::*` module convention.
 
 ### 12. Per-step model selection
 
@@ -485,7 +485,7 @@ makes the contract explicit and reviewable: any change to a store's
 shape is one diff in one file.
 
 **Documented exception (Path A encounter pause):**
-`DungeonMaster::EncounterWarmasterBridge` calls
+`Encounters::WarmasterBridge` calls
 `Utilities::Warmaster.persist_pending_combat!` when encounter combat is
 spawned but initiative is still pending. This writes an NPC-only pending
 roster to `combat_context` before ContextUpdate runs, so pause-time
@@ -500,7 +500,7 @@ narrative resolution. This ensures combat state is current at every
 pause point.
 
 **Combat context schema:** the formal field description for `combat_context`
-lives in `app/services/dungeon_master/templates/schemas/contexts/combat.json`
+lives in `app/services/ai/templates/schemas/contexts/combat.json`
 and is injected into the ContextUpdate prompt via
 `PromptRenderer.load_schema`.
 
@@ -627,7 +627,7 @@ failure mode without changing what the player can see.
 message now contains the evaluation summaries as human-readable content
 rather than the static placeholder "The DM awaits your rolls..."
 
-**How:** `DungeonMaster::Rolls::RollExplanation.from_summaries` strips `[DOMAIN]`
+**How:** `PlayerTurn::Rolls::RollExplanation.from_summaries` strips `[DOMAIN]`
 prefixes from the mechanical evaluation summaries and joins them into a
 paragraph. The summaries explain the mechanical reasoning behind the
 requested rolls.
@@ -823,7 +823,7 @@ Principle 17's anti-pattern.
 
 **Decision:** consolidate the constants every new AI step required
 updating (`AiLog::CALL_TYPES`, `DmConfig::STEP_MODEL_HINTS`) into
-a single `DungeonMaster::StepRegistry` module.
+a single `Ai::StepRegistry` module.
 
 **Why:** every new AI step (social expansion, creature generation, etc.)
 required editing constants across multiple files. Missing one caused silent
@@ -832,7 +832,7 @@ each step once with its model hint and pipeline flag. The
 four constants now derive from it automatically.
 
 **How to add a new step:** add one entry to `StepRegistry::STEPS` in
-`app/services/dungeon_master/step_registry.rb`. Set `pipeline: true` for
+`app/services/player_turn/step_registry.rb`. Set `pipeline: true` for
 DM pipeline steps (appears in admin config UI) or `pipeline: false` for
 support services (enricher, embellisher — logged but not configurable).
 
@@ -1019,27 +1019,27 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 
 | # | Step | Type | Source |
 |---|------|------|--------|
-| — | **`#run_prompt` outer phases** | Code (orchestration) | `app/services/dungeon_master/pipeline_engine/concerns/entry_points.rb`, `app/services/dungeon_master/pipeline_engine/phases/*.rb` |
-| — | **`ActionQueueRunner`** | Code (queued actions) | `app/services/dungeon_master/pipeline_engine/action_queue_runner.rb` |
-| 0 | **Moderation gate** | Code + Node evaluator `POST /moderate` | `app/services/dungeon_master/moderation_service.rb`, `app/jobs/moderation_check_job.rb`, `evaluator/src/index.js` |
-| 1 | **Intake** | AI | `app/services/dungeon_master/steps/intake.rb` |
-| 1c | **Sequencer** | AI (toggled) | `app/services/dungeon_master/steps/sequencer.rb` |
-| -- | **AdventureLoopResolution** (module) | Code orchestration | `app/services/dungeon_master/adventure_loop_resolution.rb` |
-| 3 | **RollRequest** | AI ×1 (out of combat) | `app/services/dungeon_master/steps/roll_request.rb` + `templates/roll_request.text.erb` |
-| 3′ | **CombatRollRequest** | AI ×1 (combat-active free-text) | `app/services/dungeon_master/steps/combat_roll_request.rb` + `templates/combat_roll_request.text.erb` + `Phases::CombatMechanicResolution` (post-call clamping) |
-| 4 | **SanityChecker** | AI (parallel, mechanical path) | `app/services/dungeon_master/steps/sanity_checker.rb` |
-| 5 | **Mechanic** | AI (mechanical path, non-combat or inactive combat) | `app/services/dungeon_master/steps/mechanic.rb` |
-| 5′ | **Combat GM** | AI (mechanical path, **active combat** — `combat_active?`) | `app/services/dungeon_master/steps/combat_gm.rb`, `templates/combat_gm.text.erb` |
-| 5a.5 | **World Turn** | Code orchestration (consumes `npc_actions` emitted by Combat GM) | `app/services/dungeon_master/steps/world_turn.rb`, `app/services/dungeon_master/world_turn/*.rb` |
-| 5b | **TimeKeeper** | Code-first, AI fallback | `app/services/dungeon_master/steps/time_keeper.rb` |
-| -- | **Harbinger** (utility) | Code + optional AI | `app/services/dungeon_master/utilities/harbinger.rb` |
-| -- | **Warmaster** (utility) | Code + optional AI | `app/services/dungeon_master/utilities/warmaster.rb` |
-| -- | **GameClock** (utility) | Code-only | `app/services/dungeon_master/utilities/game_clock.rb` |
-| 6 | **Stagehand** | Code-only | `app/services/dungeon_master/steps/stagehand.rb` |
-| 7 | **Narrate** | AI | `app/services/dungeon_master/steps/narrate.rb` |
-| 8a | **ContextUpdate** (combat-only) | AI (parallel with 7/8b) | `app/services/dungeon_master/steps/context_update.rb` |
-| 8b | **Loremaster** | AI (parallel with 7/8a in the output-phase fan-out) — sole writer of `adventure_narrative_facts` (see Decision 37) | `app/services/dungeon_master/steps/loremaster.rb`, `app/services/dungeon_master/lore/apply_results.rb`, `app/services/dungeon_master/lore/extract_from_premise.rb`, `app/services/dungeon_master/lore/facts_lookup.rb` |
-| -- | **Mutations** | App-side | `app/services/dungeon_master/mutations.rb` |
+| — | **`#run_prompt` outer phases** | Code (orchestration) | `app/services/player_turn/engine/concerns/entry_points.rb`, `app/services/player_turn/engine/phases/*.rb` |
+| — | **`ActionQueueRunner`** | Code (queued actions) | `app/services/player_turn/engine/action_queue_runner.rb` |
+| 0 | **Moderation gate** | Code + Node evaluator `POST /moderate` | `app/services/player_turn/moderation_service.rb`, `app/jobs/moderation_check_job.rb`, `evaluator/src/index.js` |
+| 1 | **Intake** | AI | `app/services/player_turn/steps/intake.rb` |
+| 1c | **Sequencer** | AI (toggled) | `app/services/player_turn/steps/sequencer.rb` |
+| -- | **AdventureLoopResolution** (module) | Code orchestration | `app/services/player_turn/adventure_loop_resolution.rb` |
+| 3 | **RollRequest** | AI ×1 (out of combat) | `app/services/player_turn/steps/roll_request.rb` + `templates/roll_request.text.erb` |
+| 3′ | **CombatRollRequest** | AI ×1 (combat-active free-text) | `app/services/player_turn/steps/combat_roll_request.rb` + `templates/combat_roll_request.text.erb` + `Phases::CombatMechanicResolution` (post-call clamping) |
+| 4 | **SanityChecker** | AI (parallel, mechanical path) | `app/services/player_turn/steps/sanity_checker.rb` |
+| 5 | **Mechanic** | AI (mechanical path, non-combat or inactive combat) | `app/services/player_turn/steps/mechanic.rb` |
+| 5′ | **Combat GM** | AI (mechanical path, **active combat** — `combat_active?`) | `app/services/player_turn/steps/combat_gm.rb`, `templates/combat_gm.text.erb` |
+| 5a.5 | **World Turn** | Code orchestration (consumes `npc_actions` emitted by Combat GM) | `app/services/player_turn/steps/world_turn.rb`, `app/services/combat/world_turn/*.rb` |
+| 5b | **TimeKeeper** | Code-first, AI fallback | `app/services/player_turn/steps/time_keeper.rb` |
+| -- | **Harbinger** (utility) | Code + optional AI | `app/services/encounters/harbinger.rb` |
+| -- | **Warmaster** (utility) | Code + optional AI | `app/services/encounters/warmaster.rb` |
+| -- | **GameClock** (utility) | Code-only | `app/services/encounters/game_clock.rb` |
+| 6 | **Stagehand** | Code-only | `app/services/player_turn/steps/stagehand.rb` |
+| 7 | **Narrate** | AI | `app/services/player_turn/steps/narrate.rb` |
+| 8a | **ContextUpdate** (combat-only) | AI (parallel with 7/8b) | `app/services/player_turn/steps/context_update.rb` |
+| 8b | **Loremaster** | AI (parallel with 7/8a in the output-phase fan-out) — sole writer of `adventure_narrative_facts` (see Decision 37) | `app/services/player_turn/steps/loremaster.rb`, `app/services/lore/apply_results.rb`, `app/services/lore/extract_from_premise.rb`, `app/services/lore/facts_lookup.rb` |
+| -- | **Mutations** | App-side | `app/services/player_turn/mutations.rb` |
 
 **Action queue narrative delivery modes:** when `action_queue` is not `false`, the Sequencer splits input into multiple actions. There are two progressive modes:
 
@@ -1182,7 +1182,7 @@ RollRequest → transition: "combat_started", combatants: [...]
 ### Initiative Resolution
 
 1. Player submits initiative → `finalize_combat!` → `combat_context` populated → pipeline continues
-2. Player ignores prompt and sends new action → `DungeonMaster::Rolls::AdventureMechanicalState.auto_finalize_pending_initiative!` →
+2. Player ignores prompt and sends new action → `Adventures::MechanicalState.auto_finalize_pending_initiative!` →
    auto-roll (d20 + DEX mod) → `finalize_combat!` → new action processed in combat context
 
 ### Guards
@@ -1200,7 +1200,7 @@ RollRequest → transition: "combat_started", combatants: [...]
    - `"template"`: tier-scaled generic stat block
    - `"none"`: creature not created
 
-See `app/services/dungeon_master/utilities/warmaster.rb` for implementation detail.
+See `app/services/encounters/warmaster.rb` for implementation detail.
 
 ---
 
