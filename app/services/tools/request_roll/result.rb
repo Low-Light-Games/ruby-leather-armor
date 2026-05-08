@@ -24,14 +24,14 @@ module Tools
           take_20_eligible: parsed[:take_20_eligible] == true,
           take_10_value: take_values[:take_10_value],
           take_20_value: take_values[:take_20_value],
-          situational_modifiers: DungeonMaster::Rolls::SituationalModifiers.normalize(parsed[:situational_modifiers]),
+          situational_modifiers: PlayerTurn::Rolls::SituationalModifiers.normalize(parsed[:situational_modifiers]),
           mechanical_summary: mechanical_summary
         )
       end
 
       def self.compute_take_values(parsed, sheet:)
         stub = parsed.slice(:type, :skill).merge(type: parsed[:type].presence || "skill_check")
-        DungeonMaster::Rolls::PlayerRolls.compute_take_values!([stub], sheet: sheet)
+        PlayerTurn::Rolls::PlayerRolls.compute_take_values!([stub], sheet: sheet)
         stub.slice(:take_10_value, :take_20_value)
       end
 

@@ -53,7 +53,7 @@ RSpec.describe "GameMaster pipeline branch" do
 
   it "stays on the legacy phase chain when the flag is off" do
     # Flag is OFF for everyone (default). The GameMaster step must not run.
-    expect(DungeonMaster::Steps::GameMaster).not_to receive(:instance_method).with(:run_game_master) # smoke-only
+    expect(PlayerTurn::Steps::GameMaster).not_to receive(:instance_method).with(:run_game_master) # smoke-only
     # Real assertion: no game_master_plan PlayLog row gets written.
     stub_openai_chat_with(branch_for: ->(_sys) { { sanitized_input: "noop", danger_score: 0, reason: nil } })
     stub_openai_embeddings

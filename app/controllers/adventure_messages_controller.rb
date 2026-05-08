@@ -119,11 +119,11 @@ class AdventureMessagesController < ApplicationController
   end
 
   def dm_service
-    DungeonMasterService.new(@adventure, user: current_user)
+    PlayerTurn::Service.new(@adventure, user: current_user)
   end
 
   def message_json(message)
-    DungeonMasterService.message_json(message, admin: current_user&.admin?)
+    PlayerTurn::Service.message_json(message, admin: current_user&.admin?)
   end
 
   def render_limit_error(message, code:, reason:)

@@ -7,7 +7,7 @@ class InitiativePipelineJob < ApplicationJob
   def perform(adventure_id, player_message_id, player_initiative, user_id)
     adventure = Adventure.find(adventure_id)
     user = User.find(user_id)
-    service = DungeonMasterService.new(adventure, user: user)
+    service = PlayerTurn::Service.new(adventure, user: user)
 
     result_messages = service.execute_initiative(player_initiative, player_message_id: player_message_id)
     broadcast(adventure, result_messages, admin: user.admin?)
@@ -19,7 +19,7 @@ class InitiativePipelineJob < ApplicationJob
   private
 
   def broadcast(adventure, messages, admin: false)
-    serialized = messages.map { |m| DungeonMasterService.message_json(m, admin: admin) }
+    serialized = messages.map { |m| PlayerTurn::Service.message_json(m, admin: admin) }
     AdventureChannel.broadcast_to(adventure, { type: "pipeline_result", messages: serialized })
   end
 
@@ -34,7 +34,7 @@ class InitiativePipelineJob < ApplicationJob
       metadata: {})
     AdventureChannel.broadcast_to(adventure, {
       type: "pipeline_result",
-      messages: [ DungeonMasterService.message_json(error_msg) ]
+      messages: [ PlayerTurn::Service.message_json(error_msg) ]
     })
   rescue StandardError => e
     ApplicationErrorReporter.notify(e, context: { source: "initiative_pipeline_job_broadcast_error", adventure_id: adventure_id })
