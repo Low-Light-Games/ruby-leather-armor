@@ -84,7 +84,7 @@ module Combat
           player = Combat::PlayerActionResolver::PLAYER_NAME
           ctx['round'] = next_round
           ctx['current_turn'] = player
-          ctx['action_economy'] = DungeonMaster::Battlefield::ActionEconomy
+          ctx['action_economy'] = Battlefield::ActionEconomy
                                   .build_for_turn_holder(player, combat_ctx: ctx)
           @adventure.update!(combat_context: ctx)
         end

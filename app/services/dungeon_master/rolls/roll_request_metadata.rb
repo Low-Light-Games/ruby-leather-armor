@@ -17,7 +17,7 @@ module DungeonMaster
           merged = result[:merged]
           meta = persisted_roll_request_metadata(result, merged, adventure)
           if adventure.combat_active?
-            ::DungeonMaster::Battlefield::EnsureForActiveCombat.call(adventure: adventure)
+            ::Battlefield::EnsureForActiveCombat.call(adventure: adventure)
             adventure.reload
             ref = adventure.combat_context['battlefield_ref']
             if ref.is_a?(Hash)

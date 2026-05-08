@@ -109,7 +109,7 @@ module Combat
     def decrement_action_economy_with_delta!(delta, label:)
       @adventure.with_lock do
         ctx = @adventure.combat_context.deep_dup.deep_stringify_keys
-        ctx['action_economy'] = DungeonMaster::Battlefield::ActionEconomy.apply_delta!(ctx['action_economy'], delta)
+        ctx['action_economy'] = Battlefield::ActionEconomy.apply_delta!(ctx['action_economy'], delta)
         @adventure.update!(combat_context: ctx)
       end
     rescue ArgumentError => e

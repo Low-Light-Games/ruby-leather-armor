@@ -42,7 +42,7 @@ module DungeonMaster
             player_initiative: player_init
           )
         )
-        DungeonMaster::Battlefield::PersistCombatStart.call(adventure: adventure, combat_data: combat_data, sheet: sheet)
+        Battlefield::PersistCombatStart.call(adventure: adventure, combat_data: combat_data, sheet: sheet)
 
         log.log!(:info, "Auto-rolled player initiative (#{player_init}) — player ignored initiative prompt")
       end

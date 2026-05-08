@@ -32,7 +32,7 @@ module DungeonMaster
         out = normalize_inactive_snapshot(out)
 
         if active && current_turn.present?
-          out["action_economy"] = DungeonMaster::Battlefield::ActionEconomy.build_for_turn_holder(
+          out["action_economy"] = Battlefield::ActionEconomy.build_for_turn_holder(
             current_turn, combat_ctx: out.merge(ctx.slice("turn_order")))
         elsif out["active"] != false && ctx["action_economy"].present?
           # TODO: Improve readability — fold both builders (CombatContext.build, CombatAdvancement.build_*) into one value-object constructor with named factory methods so this elsif rationale becomes the method name.

@@ -41,7 +41,7 @@ module DungeonMaster
               attack_options: DungeonMaster::Combat::AttackOptionBuilder.call(sheet: sheet, adventure: adventure),
               action_economy: combat_ctx['action_economy'] || {},
               threats: build_threats_for_player(adventure: adventure),
-              battlefield_summary: DungeonMaster::Battlefield::PromptSerializer.slice_for_adventure(adventure)
+              battlefield_summary: Battlefield::PromptSerializer.slice_for_adventure(adventure)
             },
             state: { round: combat_ctx['round'], current_turn: combat_ctx['current_turn'],
                      current_location_name: adventure.current_location&.name }

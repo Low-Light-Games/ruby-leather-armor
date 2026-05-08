@@ -17,7 +17,7 @@ class CombatActionsController < ApplicationController
   # action-economy availability) and the live participant list so the
   # frontend can pick a target. Cheap, no AI, no mutations.
   def options
-    battlefield = DungeonMaster::Battlefield::ApiSnapshot.for_adventure(@adventure)
+    battlefield = Battlefield::ApiSnapshot.for_adventure(@adventure)
     player_pos = Combat::Positions.player_position(@adventure)
     render json: {
       attack_options: attack_options_for_render,

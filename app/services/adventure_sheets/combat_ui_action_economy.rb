@@ -25,8 +25,8 @@ module AdventureSheets
           econ = ctx["action_economy"]
           raise Error, "Combat action pool missing — wait for turn sync" if econ.blank?
 
-          delta = DungeonMaster::Battlefield::ActionEconomy.equip_toggle_cost_delta
-          new_econ = DungeonMaster::Battlefield::ActionEconomy.apply_delta!(econ, delta)
+          delta = Battlefield::ActionEconomy.equip_toggle_cost_delta
+          new_econ = Battlefield::ActionEconomy.apply_delta!(econ, delta)
           ctx["action_economy"] = new_econ
           adventure.update!(combat_context: ctx)
         end
