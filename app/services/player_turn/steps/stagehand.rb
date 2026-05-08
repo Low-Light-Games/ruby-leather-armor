@@ -34,17 +34,16 @@ module PlayerTurn
         scene_facts   = retrieve_scene_facts_for_narrate(intent)
         outcome_facts = retrieve_outcome_facts_for_narrate(seed)
 
-        prompts = [narrate_evaluator_prompt(narration_context, scene_facts: scene_facts, outcome_facts: outcome_facts)]
-        prompts.concat(build_context_update_prompts(seed, mutations, allow_combat_initialization: true))
-        prompts << loremaster_evaluator_prompt(loremaster_inputs)
+        prompts = [
+          narrate_evaluator_prompt(narration_context, scene_facts: scene_facts, outcome_facts: outcome_facts),
+          combat_context_evaluator_prompt(seed, mutations, allow_combat_initialization: true),
+          loremaster_evaluator_prompt(loremaster_inputs),
+        ]
 
         broadcast_progress("Writing the story...")
         by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
 
-        context_parsed = aggregate_context_update_results(by_step)
-
-        apply_context_update_results(context_parsed,
-          mutations: mutations)
+        persist_combat_context(combat_context_result(by_step, phase: "narrative_phase"), mutations)
 
         broadcast_progress("Remembering the world...")
         apply_loremaster_from_fan_out!(by_step)

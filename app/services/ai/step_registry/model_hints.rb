@@ -30,7 +30,7 @@ module Ai
       NARRATE = 'Creative model. Narrative quality scales with capability — ' \
                 'e.g. gpt-4.1, gpt-4o, gpt-5.'
 
-      COMBAT_CONTEXT_UPDATE = 'Mid-tier model. Domain-scoped JSON update for combat state. ' \
+      COMBAT_CONTEXT_UPDATE = 'Mid-tier model. JSON update for combat state. ' \
                               'Must preserve canonical combat identity. ' \
                               'e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
 

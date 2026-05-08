@@ -31,6 +31,11 @@ class CreatureSheet < ApplicationRecord
       .where("NOT (conditions ?| array[:keys])", keys: ELIMINATED_CONDITIONS)
   }
 
+  def self.unique_id_for_name(name)
+    relation = where(name: name.to_s)
+    relation.one? ? relation.first.id : nil
+  end
+
   def recompute_derived_stats!
     stats = CharacterStats::Calculator.new(self).compute
     update_column(:derived_stats, stats)
