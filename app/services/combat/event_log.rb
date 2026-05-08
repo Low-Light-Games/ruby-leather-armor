@@ -35,7 +35,7 @@ module Combat
       AdventureChannel.broadcast_to(
         adventure,
         type: 'pipeline_action_result',
-        messages: [DungeonMaster::AdventurePlay::MessageSerializer.as_json(msg, admin: user&.admin?)]
+        messages: [Adventures::MessageSerializer.as_json(msg, admin: user&.admin?)]
       )
     rescue StandardError => e
       Rails.logger.warn("[Combat::EventLog] broadcast failed: #{e.message}")

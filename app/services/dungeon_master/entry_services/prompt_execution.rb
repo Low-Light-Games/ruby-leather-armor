@@ -10,7 +10,7 @@ module DungeonMaster
       def call(player_input:, player_message_id:)
         runtime.enforce_pipeline_policy!
         runtime.log.log_abandoned_pipeline_if_needed!
-        DungeonMaster::Rolls::AdventureMechanicalState.auto_finalize_pending_initiative!(
+        Adventures::MechanicalState.auto_finalize_pending_initiative!(
           adventure: runtime.adventure,
           sheet: runtime.sheet,
           log: runtime.log

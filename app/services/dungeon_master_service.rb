@@ -40,7 +40,7 @@ class DungeonMasterService
   def prepare_roll(roll_results_from_player)
     runtime.messenger.persist_message(
       role: "player",
-      content: DungeonMaster::Rolls::RollResultsText.format(roll_results_from_player),
+      content: Adventures::RollResultsText.format(roll_results_from_player),
       message_type: "roll_result",
       metadata: { rolls: roll_results_from_player })
   end
@@ -55,7 +55,7 @@ class DungeonMasterService
 
   def execute_rolls(roll_results_text, player_message_id:)
     resume_execution.call(player_message_id: player_message_id) do
-      metadata = DungeonMaster::Rolls::AdventureMechanicalState.latest_roll_metadata(runtime.adventure)
+      metadata = Adventures::MechanicalState.latest_roll_metadata(runtime.adventure)
       submitted_rolls = runtime.adventure.adventure_messages.find(player_message_id).metadata&.dig("rolls")
       runtime.resume_or_start_pipeline!(metadata, roll_results_text)
       runtime.ensure_run_pipeline!
@@ -67,7 +67,7 @@ class DungeonMasterService
 
   def execute_initiative(player_initiative, player_message_id:)
     resume_execution.call(player_message_id: player_message_id) do
-      metadata = DungeonMaster::Rolls::AdventureMechanicalState.latest_initiative_metadata(runtime.adventure)
+      metadata = Adventures::MechanicalState.latest_initiative_metadata(runtime.adventure)
       resume_content = "Initiative: #{player_initiative}"
       runtime.resume_or_start_pipeline!(metadata, resume_content)
       runtime.ensure_run_pipeline!
@@ -79,7 +79,7 @@ class DungeonMasterService
 
   # Serialize a message for JSON broadcast / API response.
   def self.message_json(message, admin: false)
-    DungeonMaster::AdventurePlay::MessageSerializer.as_json(message, admin: admin)
+    Adventures::MessageSerializer.as_json(message, admin: admin)
   end
 
   private
