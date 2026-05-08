@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  # TODO: Improve readability — replace this hash factory with a Struct/value object so the canonical key set is enforced by the type rather than narrated in prose.
-  class CombatContext
+module Combat
+  class Context
     def self.build(ctx, participants:, **overrides)
       hash = {
         "active"        => ctx["active"],

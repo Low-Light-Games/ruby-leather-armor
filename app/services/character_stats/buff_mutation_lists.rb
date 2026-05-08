@@ -4,8 +4,8 @@ module CharacterStats
   class CharacterStats::BuffMutationLists
     def self.from_payload(buffs_add:, buffs_remove:, log:)
       new(
-        additions: stringify_entry_hashes(CoercedMutationArray.coerce(buffs_add, field: "buffs_add", log: log)),
-        removals: stringify_entry_hashes(CoercedMutationArray.coerce(buffs_remove, field: "buffs_remove", log: log))
+        additions: stringify_entry_hashes(Transformers::CoercedMutationArray.coerce(buffs_add, field: "buffs_add", log: log)),
+        removals: stringify_entry_hashes(Transformers::CoercedMutationArray.coerce(buffs_remove, field: "buffs_remove", log: log))
       )
     end
 

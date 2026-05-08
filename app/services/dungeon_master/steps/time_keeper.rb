@@ -40,10 +40,10 @@ module DungeonMaster
                        end
 
         harbinger_consulted = harbinger_result[:stop_reason] != :skipped
-        time_ctx = Utilities::GameClock.advance_clock!(@adventure, actual_hours,
+        time_ctx = Adventures::GameClock.advance_clock!(@adventure, actual_hours,
                                                        intent: intent,
                                                        reset_encounter_check: harbinger_consulted)
-        thresholds = Utilities::GameClock.check_thresholds(time_ctx)
+        thresholds = Adventures::GameClock.check_thresholds(time_ctx)
 
         apply_fatigue_conditions(thresholds, time_ctx)
         expire_elapsed_buffs(time_ctx)
@@ -303,7 +303,7 @@ module DungeonMaster
       def expire_elapsed_buffs(time_ctx)
         return unless @sheet&.respond_to?(:active_buffs)
 
-        current_hour = Utilities::GameClock.absolute_hours(time_ctx)
+        current_hour = Adventures::GameClock.absolute_hours(time_ctx)
         current = CharacterStats::PersistedJsonArray.list(@sheet.active_buffs).map(&:deep_stringify_keys)
 
         expired = current.select do |b|

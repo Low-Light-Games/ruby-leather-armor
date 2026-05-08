@@ -46,7 +46,7 @@ module Lore
     def embed_facts(facts)
       return {} if facts.empty?
 
-      texts = facts.map { |f| TextNormalizer.indifferent_string(f, "text") }
+      texts = facts.map { |f| Transformers::TextNormalizer.indifferent_string(f, "text") }
 
       if texts.any?(&:empty?)
         @log.report_error(
@@ -93,9 +93,9 @@ module Lore
       inserted_ids = {}
 
       facts.each_with_index do |fact, idx|
-        text = TextNormalizer.indifferent_string(fact, "text")
-        kind = TextNormalizer.indifferent_string(fact, "kind")
-        polarity = TextNormalizer.indifferent_string(fact, "polarity").presence || "asserts"
+        text = Transformers::TextNormalizer.indifferent_string(fact, "text")
+        kind = Transformers::TextNormalizer.indifferent_string(fact, "kind")
+        polarity = Transformers::TextNormalizer.indifferent_string(fact, "polarity").presence || "asserts"
         entities = Array(fact["entities"] || fact[:entities]).map(&:to_s)
         embedding = embeddings_by_idx[idx]
 

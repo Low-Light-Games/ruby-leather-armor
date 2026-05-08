@@ -6,8 +6,8 @@ class DmFloodControlServerMiddleware
   def call(_worker, job, _queue)
     yield
 
-    admission = DungeonMaster::FloodControl.extract_prompt_admission(job)
-    DungeonMaster::FloodControl.release_prompt_submission(admission)
+    admission = FloodControl.extract_prompt_admission(job)
+    FloodControl.release_prompt_submission(admission)
   end
 end
 
@@ -17,7 +17,7 @@ Sidekiq.configure_server do |config|
   end
 
   config.death_handlers << lambda do |job, _exception|
-    admission = DungeonMaster::FloodControl.extract_prompt_admission(job)
-    DungeonMaster::FloodControl.release_prompt_submission(admission)
+    admission = FloodControl.extract_prompt_admission(job)
+    FloodControl.release_prompt_submission(admission)
   end
 end

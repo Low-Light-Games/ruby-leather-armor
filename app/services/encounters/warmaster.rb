@@ -129,7 +129,7 @@ module Encounters
         Combatant.from_creature_sheet(sheet, initiative: row[:initiative].to_i)
       end.sort_by { |combatant| -combatant.initiative }
 
-      CombatContext.pending(
+      Combat::Context.pending(
         participants: npc_combatants.map(&:to_context_hash),
         current_turn: npc_combatants.first&.name,
         turn_order: npc_combatants.map(&:name),
@@ -176,7 +176,7 @@ module Encounters
       creatures = []
 
       Array(names).each do |raw_name|
-        name = TextNormalizer.strip(raw_name)
+        name = Transformers::TextNormalizer.strip(raw_name)
         next if name.blank?
 
         name_counts[name] += 1
@@ -212,9 +212,9 @@ module Encounters
 
     def merge_scene_enemy_names(ctx, creatures, scene_enemy_names)
       novel_scene_names = Array(scene_enemy_names).reject do |scene_name|
-        normalized_scene_name = TextNormalizer.normalized_key(scene_name)
+        normalized_scene_name = Transformers::TextNormalizer.normalized_key(scene_name)
         creatures.any? do |creature|
-          normalized_creature_name = TextNormalizer.normalized_key(creature[:name])
+          normalized_creature_name = Transformers::TextNormalizer.normalized_key(creature[:name])
           creature_first_token = normalized_creature_name.split.first.to_s
 
           normalized_creature_name.include?(normalized_scene_name) ||
@@ -231,7 +231,7 @@ module Encounters
     end
 
     def expand_combatant_names(combatant_names, count)
-      names = Array(combatant_names).map { |name| TextNormalizer.strip(name) }.reject(&:blank?)
+      names = Array(combatant_names).map { |name| Transformers::TextNormalizer.strip(name) }.reject(&:blank?)
       qty = count.to_i
       return names unless names.one? && qty > 1
 
@@ -289,10 +289,10 @@ module Encounters
     def fuzzy_bestiary_match_static(name)
       return nil unless defined?(BestiaryEntry)
 
-      normalized = TextNormalizer.normalized_key(name).singularize
+      normalized = Transformers::TextNormalizer.normalized_key(name).singularize
       BestiaryEntry.find_by("LOWER(name) = ?", normalized) ||
         BestiaryEntry.where("LOWER(name) LIKE ?", "%#{normalized}%").first ||
-        BestiaryEntry.find_by(id: TextNormalizer.singular_identifier(normalized))
+        BestiaryEntry.find_by(id: Transformers::TextNormalizer.singular_identifier(normalized))
     end
 
     def create_creature_from_bestiary_static(ctx, entry, display_name)
@@ -375,7 +375,7 @@ module Encounters
       cr = parsed["cr"].to_i.clamp(1, [party_level + 2, 1].max)
       hp_rolled = roll_hp_static(parsed["hp_formula"])
       hp = [hp_rolled, hp_ceiling_for_cr(cr)].min
-      raw_type = TextNormalizer.normalized_key(parsed["creature_type"])
+      raw_type = Transformers::TextNormalizer.normalized_key(parsed["creature_type"])
       normalized_type = BestiaryEntry::CREATURE_TYPE_MAP[raw_type] ||
                         (CreatureSheet::CREATURE_TYPES.include?(raw_type) ? raw_type : "monster")
       sheet = ctx.adventure.creature_sheets.create!(

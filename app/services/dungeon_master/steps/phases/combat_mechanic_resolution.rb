@@ -123,7 +123,7 @@ module DungeonMaster
               end
 
               dc = resolve_dc_formula(raw[:dc_formula], idx, context: context)
-              save = TextNormalizer.normalized_key(raw[:save])
+              save = Transformers::TextNormalizer.normalized_key(raw[:save])
               skill = SAVE_TO_SKILL_LABEL[save] || save.capitalize
               attrs = raw.except(:dc_formula)
               { domain: 'combat' }.merge(attrs).merge(dc: dc, save: save, skill: skill)
@@ -166,7 +166,7 @@ module DungeonMaster
           end
 
           def resolve_spell_dc(formula_payload, sheet)
-            name = TextNormalizer.strip(formula_payload[:spell_name])
+            name = Transformers::TextNormalizer.strip(formula_payload[:spell_name])
             raise Combat::MechanicResolutionError, 'spell_name required' if name.blank?
 
             spell = SpellDefinition.find_by_name_case_insensitive(name)
@@ -187,7 +187,7 @@ module DungeonMaster
 
             character_class_name = sheet.character_class.to_s
             levels = spell.class_levels || {}
-            slug = TextNormalizer.class_slug_tokens(character_class_name).find do |class_token|
+            slug = Transformers::TextNormalizer.class_slug_tokens(character_class_name).find do |class_token|
               levels.key?(class_token)
             end
             unless slug
@@ -195,7 +195,7 @@ module DungeonMaster
                     "spell #{name} not on character class #{character_class_name.inspect}"
             end
 
-            ability = DungeonMaster::PathfinderCastingAbility.casting_ability_for_slug(slug)
+            ability = Transformers::PathfinderCastingAbility.casting_ability_for_slug(slug)
             unless ability
               raise Combat::MechanicResolutionError.new(
                 "no casting ability mapped for class #{slug.inspect} (spell #{name.inspect})",
@@ -210,14 +210,14 @@ module DungeonMaster
 
           def resolve_ability_dc(formula_payload, context:)
             pattern = formula_payload[:pattern].to_s
-            ability = TextNormalizer.normalized_key(formula_payload[:ability])
+            ability = Transformers::TextNormalizer.normalized_key(formula_payload[:ability])
             unless valid_ability_name?(ability)
               raise Combat::MechanicResolutionError, 'invalid ability for ability_dc'
             end
 
             case pattern
             when 'half_hd_plus_ability'
-              origin = TextNormalizer.strip(formula_payload[:origin_target])
+              origin = Transformers::TextNormalizer.strip(formula_payload[:origin_target])
               raise Combat::MechanicResolutionError, 'origin_target required' if origin.blank?
 
               origin_sheet = Combat::WorldTurn::ParticipantLookup.target_sheet!(

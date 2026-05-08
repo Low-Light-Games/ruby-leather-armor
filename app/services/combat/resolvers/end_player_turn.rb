@@ -28,7 +28,7 @@ module Combat
       end
 
       def advance_game_clock_one_round!
-        DungeonMaster::Utilities::GameClock.advance_clock!(@adventure, ROUND_DURATION_HOURS)
+        Adventures::GameClock.advance_clock!(@adventure, ROUND_DURATION_HOURS)
       rescue StandardError => e
         Rails.logger.warn("[EndPlayerTurn] failed to tick GameClock: #{e.message}")
       end

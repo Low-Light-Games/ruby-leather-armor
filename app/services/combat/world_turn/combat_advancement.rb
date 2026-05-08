@@ -26,7 +26,7 @@ module Combat
 
         participants = Array(ctx["participants"]).map { |p| rebuild_participant_row(p, adventure: adventure, sheet: sheet) }
 
-        out = CombatContext.build(ctx,
+        out = Combat::Context.build(ctx,
           participants: participants, active: active, round: round, current_turn: current_turn)
         out = normalize_inactive_snapshot(out)
 
@@ -43,12 +43,12 @@ module Combat
         ctx          = adventure.combat_context.deep_stringify_keys
         participants = Array(ctx["participants"]).map { |p| rebuild_participant_row(p, adventure: adventure, sheet: sheet) }
 
-        base = CombatContext.build(ctx, participants: participants)
+        base = Combat::Context.build(ctx, participants: participants)
         base = normalize_inactive_snapshot(base)
         if base["active"] != false && ctx["action_economy"].present?
           base["action_economy"] = ctx["action_economy"]
         end
-        Utilities::HashMerge.deep_merge_presence(base, overrides.deep_stringify_keys)
+        Transformers::HashMerge.deep_merge_presence(base, overrides.deep_stringify_keys)
       end
 
       def rebuild_participant_row(p, adventure:, sheet:)

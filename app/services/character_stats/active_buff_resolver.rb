@@ -5,7 +5,7 @@ module CharacterStats
     module_function
 
     def resolve(source_id:, source_type:, adventure:, sheet:, log: nil, allowed_class_ability_ids: nil, buffs_add_entry: {})
-      current_game_hours = Utilities::GameClock.absolute_hours(adventure.time_context)
+      current_game_hours = Adventures::GameClock.absolute_hours(adventure.time_context)
 
       case source_type.to_s
       when "spell"

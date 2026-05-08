@@ -1,9 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  # Maps Pathfinder 1e class slug (lowercase) to the ability that governs spell DCs
-  # for that class's spell list.
-  module PathfinderCastingAbility
+module Transformers
+  module Transformers::PathfinderCastingAbility
     CLASS_TO_CASTING_ABILITY = {
       "wizard" => :intelligence,
       "sorcerer" => :charisma,
@@ -36,8 +34,6 @@ module DungeonMaster
       CLASS_TO_CASTING_ABILITY[slug] if slug
     end
 
-    # Casting stat for a spell list identified by +slug+ (keys in SpellDefinition#class_levels), e.g. "wizard".
-    # Use this when resolving spell DCs so multiclass characters use the stat for the list that grants the spell.
     # @return [Symbol, nil]
     def casting_ability_for_slug(slug)
       return nil if slug.blank?

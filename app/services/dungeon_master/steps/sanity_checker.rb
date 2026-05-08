@@ -136,7 +136,7 @@ module DungeonMaster
         return CapabilityCheckResult.new(allowed: false, reason: condition_violated).to_h if condition_violated.present?
 
         ability_uses = ability_uses.reject do |u|
-          TACTICAL_PHRASE_IGNORE.include?(TextNormalizer.normalized_key(u[:name]))
+          TACTICAL_PHRASE_IGNORE.include?(Transformers::TextNormalizer.normalized_key(u[:name]))
         end
 
         return CapabilityCheckResult.new(allowed: true, reason: nil).to_h if ability_uses.empty?
@@ -156,18 +156,18 @@ module DungeonMaster
 
       def sheet_ability_lookup
         {
-          spells: @sheet.spell_definitions.map { |spell| TextNormalizer.normalized_key(spell.name) },
-          feats: @sheet.feat_definitions.map           { |feat| TextNormalizer.normalized_key(feat.name) },
-          items: @sheet.item_definitions.map           { |item| TextNormalizer.normalized_key(item.name) },
+          spells: @sheet.spell_definitions.map { |spell| Transformers::TextNormalizer.normalized_key(spell.name) },
+          feats: @sheet.feat_definitions.map           { |feat| Transformers::TextNormalizer.normalized_key(feat.name) },
+          items: @sheet.item_definitions.map           { |item| Transformers::TextNormalizer.normalized_key(item.name) },
           class_abilities: @sheet.class_ability_definitions.map do |ability|
-            TextNormalizer.normalized_key(ability.name)
+            Transformers::TextNormalizer.normalized_key(ability.name)
           end,
           class_ability_registry_seeded: ClassAbilityDefinition.exists?
         }
       end
 
       def ability_on_sheet?(name, type, lookup)
-        normalized_name = TextNormalizer.normalized_key(name)
+        normalized_name = Transformers::TextNormalizer.normalized_key(name)
         case type.to_s
         when 'spell'   then lookup[:spells].include?(normalized_name)
         when 'feat'    then lookup[:feats].include?(normalized_name)

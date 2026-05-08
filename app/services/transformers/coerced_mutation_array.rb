@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  # Explicit nil → [] and Array-only mutation payloads (no Kernel#Array coercion).
-  module CoercedMutationArray
+module Transformers
+  module Transformers::CoercedMutationArray
     module_function
 
     def coerce(raw, field:, log: nil)

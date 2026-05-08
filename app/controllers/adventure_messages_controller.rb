@@ -37,7 +37,7 @@ class AdventureMessagesController < ApplicationController
     end
 
     service = dm_service
-    admission = DungeonMaster::FloodControl.admit_prompt_submission(user_id: current_user.id)
+    admission = FloodControl.admit_prompt_submission(user_id: current_user.id)
     player_msg = service.prepare_prompt(player_input)
     PipelineJob.perform_later(
       @adventure.id,
@@ -47,10 +47,10 @@ class AdventureMessagesController < ApplicationController
       { 'prompt_admission' => admission }
     )
     render json: { async: true, messages: [message_json(player_msg)] }, status: :accepted
-  rescue DungeonMaster::FloodControl::PromptBacklogExceeded => e
+  rescue FloodControl::PromptBacklogExceeded => e
     render_limit_error(e.message, code: 'prompt_backlog', reason: 'prompt_backlog')
   rescue StandardError
-    DungeonMaster::FloodControl.release_prompt_submission(admission)
+    FloodControl.release_prompt_submission(admission)
     raise
   end
 

@@ -15,7 +15,7 @@ class PipelineJob < ApplicationJob
     service = DungeonMasterService.new(adventure, user: user)
     admission = options.is_a?(Hash) ? options['prompt_admission'] : nil
 
-    result_messages = DungeonMaster::FloodControl.with_prompt_submission_heartbeat(admission) do
+    result_messages = FloodControl.with_prompt_submission_heartbeat(admission) do
       service.execute_prompt(player_input, player_message_id: player_message_id)
     end
     broadcast(adventure, result_messages, admin: user.admin?)
@@ -23,7 +23,7 @@ class PipelineJob < ApplicationJob
     broadcast_error(adventure_id)
     raise
   ensure
-    DungeonMaster::FloodControl.release_prompt_submission(admission) if defined?(admission)
+    FloodControl.release_prompt_submission(admission) if defined?(admission)
   end
 
   private

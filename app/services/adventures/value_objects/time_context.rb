@@ -16,7 +16,7 @@ module Adventures
         {
           "current_hour" => hour,
           "adventure_day" => adventure_day,
-          "light_conditions" => DungeonMaster::Utilities::GameClock.light_for_hour(hour),
+          "light_conditions" => Adventures::GameClock.light_for_hour(hour),
           "hours_since_last_rest" => hours_since_last_rest,
           "hours_since_last_encounter_check" => hours_since_last_encounter_check
         }

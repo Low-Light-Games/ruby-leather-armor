@@ -8,7 +8,7 @@ module Mutations
     end
 
     def call(npc_muts)
-      CoercedMutationArray.coerce(npc_muts, field: "npcs", log: @log).each do |npc_mut|
+      Transformers::CoercedMutationArray.coerce(npc_muts, field: "npcs", log: @log).each do |npc_mut|
         npc_mut  = npc_mut.deep_symbolize_keys if npc_mut.is_a?(Hash)
         creature = resolve_creature_sheet(npc_mut)
         next unless creature

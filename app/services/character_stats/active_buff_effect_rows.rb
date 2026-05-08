@@ -18,7 +18,7 @@ module CharacterStats
     end
 
     def normalize_adjudicated_effects(raw, log: nil)
-      DungeonMaster::CoercedMutationArray.coerce(raw, field: "adjudicated_effects", log: log).filter_map do |effect|
+      Transformers::CoercedMutationArray.coerce(raw, field: "adjudicated_effects", log: log).filter_map do |effect|
         unless effect.is_a?(Hash)
           PipelineWarn.emit(log, "[ActiveBuffResolver] adjudicated_effects entry must be a Hash — skipped")
           next

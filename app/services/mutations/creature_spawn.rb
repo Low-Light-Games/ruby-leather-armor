@@ -19,7 +19,7 @@ module Mutations
         config: @config
       )
 
-      CoercedMutationArray.coerce(creature_names, field: "new_creatures", log: @log).each do |name|
+      Transformers::CoercedMutationArray.coerce(creature_names, field: "new_creatures", log: @log).each do |name|
         factory.create_for_name(name)
       end
     rescue StandardError => e
