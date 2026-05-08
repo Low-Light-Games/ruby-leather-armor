@@ -1,23 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  # Calls the Node evaluator's /moderate endpoint to classify player input
-  # using the OpenAI Moderation API, then records the result and applies
-  # any user-level consequences (strike increment, auto-ban, trust revocation).
-  #
-  # Used in two modes:
-  #   Blocking  — called inline in DungeonMasterService#execute_prompt for regular users.
-  #               If flagged, the pipeline is short-circuited and a default response returned.
-  #   Async     — enqueued as ModerationCheckJob for trusted users so the pipeline
-  #               proceeds without waiting. Strikes and bans still apply after the fact.
-  #
-  # Usage:
-  #   result = DungeonMaster::ModerationService.call(player_input, user: user)
-  #   result.flagged?       # => true / false
-  #   result.response_text  # => default_response string (only meaningful when flagged)
-  class ModerationService
-    # Outcome of ModerationService.call: whether input was flagged and the safe response
-    # text to return when blocking the pipeline (+response_text+ is nil when not flagged).
+module Moderation
+  class Service
     class Result
       attr_reader :flagged, :response_text
 
@@ -99,8 +83,6 @@ module DungeonMaster
       end
     end
 
-    # Returns true only when at least one flagged category is NOT on the ignore list.
-    # An input that only triggers ignored categories (e.g. violence in an RPG) passes through.
     def meaningful_violation?(categories)
       return false if categories.blank?
 

@@ -45,7 +45,7 @@ module DungeonMaster
           return nil
         end
 
-        moderation = DungeonMaster::ModerationService.call(player_input, user: runtime.user)
+        moderation = Moderation::Service.call(player_input, user: runtime.user)
         return nil unless moderation.flagged?
 
         [runtime.messenger.persist_message(

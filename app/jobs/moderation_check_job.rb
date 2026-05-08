@@ -9,6 +9,6 @@ class ModerationCheckJob < ApplicationJob
 
   def perform(user_id, player_input)
     user = User.find(user_id)
-    DungeonMaster::ModerationService.call(player_input, user: user)
+    Moderation::Service.call(player_input, user: user)
   end
 end
