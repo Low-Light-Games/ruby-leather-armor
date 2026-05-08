@@ -6,7 +6,7 @@ module Mutations
       @sheet = sheet
       @config = config
       @log = log
-      @buff_mutations = BuffMutations.new(adventure: adventure, log: log)
+      @buff_mutations = CharacterStats::BuffMutations.new(adventure: adventure, log: log)
     end
 
     def call(player_muts)

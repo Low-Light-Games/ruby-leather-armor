@@ -86,10 +86,10 @@ module Encounters
                            next
                          end
 
-                         Combatant.from_creature_sheet(sheet, initiative: c[:initiative].to_i)
+                         Combat::Combatant.from_creature_sheet(sheet, initiative: c[:initiative].to_i)
                        end
 
-      player_combatant = Combatant.from_player_sheet(
+      player_combatant = Combat::Combatant.from_player_sheet(
         combat_initialization_request.player_sheet,
         initiative: combat_initialization_request.player_initiative.to_i
       )
@@ -126,7 +126,7 @@ module Encounters
           next
         end
 
-        Combatant.from_creature_sheet(sheet, initiative: row[:initiative].to_i)
+        Combat::Combatant.from_creature_sheet(sheet, initiative: row[:initiative].to_i)
       end.sort_by { |combatant| -combatant.initiative }
 
       Combat::Context.pending(
@@ -250,8 +250,8 @@ module Encounters
       participants.filter_map do |participant|
         next if participant["type"].to_s == "player"
 
-        refreshed = Combatant.refresh_from_live_sources(participant, adventure: adventure, sheet: player_sheet)
-        Combatant.from_context_hash(refreshed)
+        refreshed = Combat::Combatant.refresh_from_live_sources(participant, adventure: adventure, sheet: player_sheet)
+        Combat::Combatant.from_context_hash(refreshed)
       end
     end
 
