@@ -11,7 +11,7 @@ module DungeonMaster
           # ContextUpdate runs before the initiative prompt goes to the player so
           # contexts reflect combat beginning at pause time, not only after the roll.
           run_context_updates(narration_context.combined_seed, mutations)
-          return NarrativePhaseResults.awaiting_initiative(
+          return Narration::PhaseResults.awaiting_initiative(
             intent: intent,
             creature_data: warmaster_result[:creature_data],
             mutations: mutations,
@@ -21,7 +21,7 @@ module DungeonMaster
 
         narration = run_parallel_narrative(intent, narration_context: narration_context, mutations: mutations)
 
-        NarrativePhaseResults.narrated(
+        Narration::PhaseResults.narrated(
           narrative: narration[:narrative],
           adventure_complete: @loop&.get("adventure_complete") == true,
           extras: extra,

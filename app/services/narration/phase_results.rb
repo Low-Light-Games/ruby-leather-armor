@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  module NarrativePhaseResults
+module Narration
+  module PhaseResults
     module_function
 
     class Narrated

@@ -41,7 +41,7 @@ module DungeonMaster
       end
 
       def build_narrate_prompt_payload(pipeline_context, scene_facts:, outcome_facts:)
-        narrate_view = Narrative::NarratePromptView.for_narrate(
+        narrate_view = Narration::NarratePromptView.for_narrate(
           self, pipeline_context, scene_facts: scene_facts, outcome_facts: outcome_facts,
         )
         assert_narration_combined_seed!(pipeline_context)
