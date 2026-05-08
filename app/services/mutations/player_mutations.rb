@@ -25,7 +25,7 @@ module Mutations
         remove: player_muts[:conditions_remove],
         log: @log
       )
-      buff_lists = BuffMutationLists.from_payload(
+      buff_lists = CharacterStats::BuffMutationLists.from_payload(
         buffs_add: player_muts[:buffs_add],
         buffs_remove: player_muts[:buffs_remove],
         log: @log

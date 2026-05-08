@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  # buffs_add / buffs_remove from a player mutation: normalized lists and sheet row snapshot.
-  class BuffMutationLists
+module CharacterStats
+  class CharacterStats::BuffMutationLists
     def self.from_payload(buffs_add:, buffs_remove:, log:)
       new(
         additions: stringify_entry_hashes(CoercedMutationArray.coerce(buffs_add, field: "buffs_add", log: log)),

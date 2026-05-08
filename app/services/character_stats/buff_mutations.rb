@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Mutations
+module CharacterStats
   class BuffMutations
     def initialize(adventure:, log:)
       @adventure = adventure
@@ -10,7 +10,7 @@ module Mutations
     def apply(sheet:, buff_lists:)
       return false unless sheet.respond_to?(:active_buffs)
 
-      rows = BuffMutationLists.active_buff_rows_from_sheet(sheet, log: @log)
+      rows = CharacterStats::BuffMutationLists.active_buff_rows_from_sheet(sheet, log: @log)
       class_ability_ids = class_ability_ids_for_buff_adds(sheet, buff_lists.additions)
 
       changed = apply_removals!(rows, buff_lists.removals)
@@ -80,7 +80,7 @@ module Mutations
       source_type = row["source_type"]
       return false unless source_id.present? && source_type.present?
 
-      resolved = Utilities::ActiveBuffResolver.resolve(
+      resolved = CharacterStats::ActiveBuffResolver.resolve(
         source_id: source_id,
         source_type: source_type,
         adventure: @adventure,

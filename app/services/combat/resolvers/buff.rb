@@ -23,11 +23,11 @@ module Combat
       end
 
       def rehydrate_player_sheet_after_buff!(spell)
-        buff_lists = DungeonMaster::BuffMutationLists.new(
+        buff_lists = CharacterStats::BuffMutationLists.new(
           additions: [{ 'id' => spell.id, 'source_type' => 'spell' }],
           removals: []
         )
-        changed = Mutations::BuffMutations.new(adventure: @adventure, log: buff_log_shim).apply(
+        changed = CharacterStats::BuffMutations.new(adventure: @adventure, log: buff_log_shim).apply(
           sheet: @sheet, buff_lists: buff_lists
         )
         @sheet.recompute_derived_stats! if changed
