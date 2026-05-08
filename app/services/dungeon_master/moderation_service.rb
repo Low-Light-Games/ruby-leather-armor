@@ -69,12 +69,12 @@ module DungeonMaster
       body     = JSON.parse(response.body)
 
       if response.code.to_i >= 400
-        raise AiError, "Moderation evaluator failed (HTTP #{response.code}): #{body["error"] || response.body.truncate(200)}"
+        raise Ai::Error, "Moderation evaluator failed (HTTP #{response.code}): #{body["error"] || response.body.truncate(200)}"
       end
 
       body
     rescue Errno::ECONNREFUSED, Errno::ETIMEDOUT, Net::ReadTimeout, Net::OpenTimeout => e
-      raise AiError, "Moderation evaluator unreachable: #{e.message}"
+      raise Ai::Error, "Moderation evaluator unreachable: #{e.message}"
     end
 
     def handle_flagged!(categories)

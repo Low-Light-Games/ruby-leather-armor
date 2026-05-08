@@ -13,7 +13,7 @@ module DungeonMaster
 
         ctx = build_game_master_context(intent_text)
         prompt_summary = "GameMaster: \"#{@log.truncate(intent_text)}\""
-        system_prompt = PromptRenderer.render("game_master", ctx: ctx)
+        system_prompt = Ai::PromptRenderer.render("game_master", ctx: ctx)
         request_body = { system_prompt: system_prompt, user_message: intent_text }
 
         parsed = timed_ai_call("game_master", prompt_summary, request_body) do
@@ -28,7 +28,7 @@ module DungeonMaster
         end
 
         narrative = parsed["narrative"].to_s.strip
-        raise AiError, "GameMaster returned no narrative" if narrative.empty?
+        raise Ai::Error, "GameMaster returned no narrative" if narrative.empty?
 
         adventure_ended = parsed["adventure_ended"] == true
         player_dead = parsed["player_dead"] == true
@@ -71,13 +71,13 @@ module DungeonMaster
         begin
           Tools::Registry.validate_calls!(tool_calls)
         rescue Tools::Registry::ToolError => e
-          @log.game_master_tool_error!(tool_calls, e, reraise_as: AiError)
+          @log.game_master_tool_error!(tool_calls, e, reraise_as: Ai::Error)
         end
 
         bind_game_master_run_to_adventure_loop(intent_text, lead_narrative)
 
         request_roll_result = Tools::Registry.dispatch(tool_calls, pipeline_engine: self).request_roll_result
-        raise AiError, "GameMaster dispatch produced no roll request" unless request_roll_result
+        raise Ai::Error, "GameMaster dispatch produced no roll request" unless request_roll_result
 
         evaluation = EvaluationResult.new(
           intention: intent_text,

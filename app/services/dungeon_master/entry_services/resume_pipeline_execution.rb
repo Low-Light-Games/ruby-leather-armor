@@ -14,7 +14,7 @@ module DungeonMaster
         runtime.messenger.messages_for(result)
       rescue DungeonMaster::UsageLimitExceeded => e
         runtime.messenger.usage_limit_rejection_messages(e)
-      rescue DungeonMaster::AiError, StandardError => e
+      rescue Ai::Error, StandardError => e
         runtime.messenger.pipeline_exception_messages(e)
       end
 

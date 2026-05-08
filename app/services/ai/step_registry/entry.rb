@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
+module Ai
   module StepRegistry
-    # TODO: Improve readability — fallback semantics belong on DmConfig#model_for / #reasoning_effort_for, not narrated on this PORO.
     class Entry
       attr_reader :model_hint, :pipeline, :default_model, :default_reasoning_effort
 

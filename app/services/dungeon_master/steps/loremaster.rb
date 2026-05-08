@@ -15,12 +15,12 @@ module DungeonMaster
       end
 
       def render_turn_prompt(inputs:)
-        PromptRenderer.render(
+        Ai::PromptRenderer.render(
           "loremaster",
           what_happened:  inputs.what_happened,
           mutations_json: inputs.mutations.present? ? inputs.mutations.to_json : "(no mutations)",
           active_facts:   inputs.active_facts,
-          schema_json:    PromptRenderer.load_schema("loremaster"),
+          schema_json:    Ai::PromptRenderer.load_schema("loremaster"),
         )
       end
 

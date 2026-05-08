@@ -11,7 +11,7 @@ module DungeonMaster
 
       def run_intake(player_input)
         prompt_summary = "Intake: \"#{@log.truncate(player_input)}\""
-        system_prompt = PromptRenderer.render("intake")
+        system_prompt = Ai::PromptRenderer.render("intake")
         request_body = { system_prompt: system_prompt, user_message: player_input }
 
         parsed = timed_ai_call("intake", prompt_summary, request_body) do
@@ -22,7 +22,7 @@ module DungeonMaster
 
         log_context_suggestion(parsed, player_input)
 
-        raise AiError, "Intake returned no sanitized_input — blocking pipeline" if parsed["sanitized_input"].blank?
+        raise Ai::Error, "Intake returned no sanitized_input — blocking pipeline" if parsed["sanitized_input"].blank?
 
         {
           danger_score: parsed["danger_score"].to_i,

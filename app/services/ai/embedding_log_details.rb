@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  # TODO: Improve readability — value object whose attr_reader list already encodes the shape; the prose preamble is redundant.
+module Ai
   class EmbeddingLogDetails
     attr_reader :text_count, :dim, :source
 

@@ -1,7 +1,7 @@
 require "rails_helper"
 require "webmock/rspec"
 
-RSpec.describe DungeonMaster::AiClient do
+RSpec.describe Ai::Client do
   let(:config) { Struct.new(:model, :temperature).new("gpt-4o-mini", 1.0) }
   let(:client) { described_class.new(config) }
   let(:chat_url) { "https://api.openai.com/v1/chat/completions" }
@@ -32,7 +32,7 @@ RSpec.describe DungeonMaster::AiClient do
 
     expect do
       client.chat(system_prompt: "system", user_message: "hello", model: "gpt-4o-mini")
-    end.to raise_error(DungeonMaster::AiError, "AI request rejected: bad request")
+    end.to raise_error(Ai::Error, "AI request rejected: bad request")
 
     expect(client).not_to have_received(:sleep)
     expect(a_request(:post, chat_url)).to have_been_made.once

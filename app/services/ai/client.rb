@@ -2,11 +2,8 @@
 
 require 'bigdecimal'
 
-module DungeonMaster
-  # Thin wrapper around the OpenAI API.
-  # Handles request construction, JSON parsing with fallbacks,
-  # and HTTP-level error mapping.
-  class AiClient
+module Ai
+  class Client
     DEFAULT_MAX_RETRIES = 2
     DEFAULT_RETRY_BASE_DELAY_SECONDS = 0.5
     DEFAULT_RETRY_MAX_DELAY_SECONDS = 8.0
@@ -23,20 +20,14 @@ module DungeonMaster
       @last_usage = nil
     end
 
-    # Send a chat completion request and return the raw content string.
-    # Retries up to the configured retry budget on transient network errors and rate limits.
-    #
     # @param system_prompt [String]
     # @param user_message  [String, nil]  single user message (convenience)
     # @param messages       [Array, nil]   full message list (takes precedence)
     # @param step_name        [String, nil]  pipeline step name for error messages
     # @param model            [String, nil]  per-step model override (falls back to default)
     # @param reasoning_effort [String, nil]  one of "minimal" | "low" | "medium" | "high".
-    #                                        Only sent when the model is a reasoning model
-    #                                        (per OpenaiModelCatalog#reasoning_model?). Non-reasoning
-    #                                        models would 400 if we passed it.
     # @return [String] raw content from the AI
-    # @raise [DungeonMaster::AiError]
+    # @raise [Ai::Error]
     def chat(system_prompt:, user_message: nil, messages: nil, step_name: nil, model: nil, reasoning_effort: nil)
       @last_usage = nil
       effective_model = model || @default_model
@@ -67,21 +58,21 @@ module DungeonMaster
       rescue Faraday::BadRequestError => e
         body = begin; e.response&.dig(:body); rescue StandardError; nil; end
         msg = body.is_a?(Hash) ? body.dig("error", "message") : e.message
-        Rails.logger.error("[DungeonMaster::AiClient] Bad request: #{msg}")
-        raise AiError, "AI request rejected: #{msg}"
+        Rails.logger.error("[Ai::Client] Bad request: #{msg}")
+        raise Error, "AI request rejected: #{msg}"
       rescue Faraday::TooManyRequestsError => e
-        Rails.logger.error("[DungeonMaster::AiClient] Rate limited after #{openai_max_retries + 1} attempts: #{e.message}")
-        raise AiError, "Rate limited by OpenAI after #{openai_max_retries + 1} attempts"
+        Rails.logger.error("[Ai::Client] Rate limited after #{openai_max_retries + 1} attempts: #{e.message}")
+        raise Error, "Rate limited by OpenAI after #{openai_max_retries + 1} attempts"
       rescue Faraday::ClientError => e
-        Rails.logger.error("[DungeonMaster::AiClient] #{e.class}: #{e.message}")
-        raise AiError, "AI request rejected: #{e.message}"
+        Rails.logger.error("[Ai::Client] #{e.class}: #{e.message}")
+        raise Error, "AI request rejected: #{e.message}"
       rescue Faraday::ServerError, Faraday::ConnectionFailed, Faraday::TimeoutError => e
-        Rails.logger.error("[DungeonMaster::AiClient] #{e.class} after #{openai_max_retries + 1} attempts: #{e.message}")
-        raise AiError, "Could not reach the AI service after #{openai_max_retries + 1} attempts. Please try again shortly."
+        Rails.logger.error("[Ai::Client] #{e.class} after #{openai_max_retries + 1} attempts: #{e.message}")
+        raise Error, "Could not reach the AI service after #{openai_max_retries + 1} attempts. Please try again shortly."
       end
 
       if response.dig("error")
-        raise AiError, response.dig("error", "message") || "OpenAI API error"
+        raise Error, response.dig("error", "message") || "OpenAI API error"
       end
 
       content       = response.dig("choices", 0, "message", "content")
@@ -102,7 +93,7 @@ module DungeonMaster
         label = step_name || "unknown"
         @last_failed_raw_response = content
         Rails.logger.error(
-          "[DungeonMaster::AiClient] Token limit hit on '#{label}' step " \
+          "[Ai::Client] Token limit hit on '#{label}' step " \
           "(finish_reason: length, content_length: #{content&.length || 0})"
         )
         raise TokenBudgetExceededError.new(step_name: label, budget: nil)
@@ -110,28 +101,19 @@ module DungeonMaster
 
       if content.nil? || content.strip.empty?
         @last_failed_raw_response = content
-        raise AiError, "Empty response from AI (finish_reason: #{finish_reason || 'unknown'})"
+        raise Error, "Empty response from AI (finish_reason: #{finish_reason || 'unknown'})"
       end
 
       content
     end
 
-    # TODO: Improve readability — extract retry policy and batching into named collaborators (RetryPolicy, BatchedEmbeddingClient) instead of a five-paragraph method preamble.
     # @param texts      [Array<String>]  non-empty array of texts to embed
     # @param model      [String]         embedding model id — required; callers
-    #                                    read it from DmConfig so the admin UI
-    #                                    selection is authoritative and no
-    #                                    hardcoded default can drift from it.
     # @param dimensions [Integer, nil]   optional output-dim truncation (only
-    #                                    honored by `text-embedding-3-*` models).
-    #                                    Pass 1536 when using `-3-large` so its
-    #                                    native-3072 output fits our column.
     # @return [Array<Array<Float>>]      parallel array of vectors (dim =
-    #                                    `dimensions` if given, else model's
-    #                                    native), in the same order as `texts`
-    # @raise [DungeonMaster::AiError]
+    # @raise [Ai::Error]
     def embeddings(texts:, model:, dimensions: nil)
-      raise AiError, "embeddings called with no texts" if texts.nil? || texts.empty?
+      raise Error, "embeddings called with no texts" if texts.nil? || texts.empty?
 
       params = { model: model, input: texts }
       params[:dimensions] = dimensions if dimensions
@@ -143,26 +125,26 @@ module DungeonMaster
       rescue Faraday::BadRequestError => e
         body = begin; e.response&.dig(:body); rescue StandardError; nil; end
         msg = body.is_a?(Hash) ? body.dig("error", "message") : e.message
-        Rails.logger.error("[DungeonMaster::AiClient] Embeddings bad request: #{msg}")
-        raise AiError, "AI embeddings request rejected: #{msg}"
+        Rails.logger.error("[Ai::Client] Embeddings bad request: #{msg}")
+        raise Error, "AI embeddings request rejected: #{msg}"
       rescue Faraday::TooManyRequestsError => e
-        Rails.logger.error("[DungeonMaster::AiClient] Embeddings rate limited after #{openai_max_retries + 1} attempts: #{e.message}")
-        raise AiError, "Embeddings rate limited by OpenAI after #{openai_max_retries + 1} attempts"
+        Rails.logger.error("[Ai::Client] Embeddings rate limited after #{openai_max_retries + 1} attempts: #{e.message}")
+        raise Error, "Embeddings rate limited by OpenAI after #{openai_max_retries + 1} attempts"
       rescue Faraday::ClientError => e
-        Rails.logger.error("[DungeonMaster::AiClient] Embeddings #{e.class}: #{e.message}")
-        raise AiError, "AI embeddings request rejected: #{e.message}"
+        Rails.logger.error("[Ai::Client] Embeddings #{e.class}: #{e.message}")
+        raise Error, "AI embeddings request rejected: #{e.message}"
       rescue Faraday::ServerError, Faraday::ConnectionFailed, Faraday::TimeoutError => e
-        Rails.logger.error("[DungeonMaster::AiClient] Embeddings #{e.class} after #{openai_max_retries + 1} attempts: #{e.message}")
-        raise AiError, "Could not reach the AI embeddings service after #{openai_max_retries + 1} attempts."
+        Rails.logger.error("[Ai::Client] Embeddings #{e.class} after #{openai_max_retries + 1} attempts: #{e.message}")
+        raise Error, "Could not reach the AI embeddings service after #{openai_max_retries + 1} attempts."
       end
 
       if response.is_a?(Hash) && response.dig("error")
-        raise AiError, response.dig("error", "message") || "OpenAI embeddings API error"
+        raise Error, response.dig("error", "message") || "OpenAI embeddings API error"
       end
 
       data = response.is_a?(Hash) ? response["data"] : nil
       unless data.is_a?(Array) && data.length == texts.length
-        raise AiError, "Unexpected embeddings response shape (got #{data&.length || 'nil'} vectors for #{texts.length} texts)"
+        raise Error, "Unexpected embeddings response shape (got #{data&.length || 'nil'} vectors for #{texts.length} texts)"
       end
 
       usage = response["usage"] || {}
@@ -174,19 +156,13 @@ module DungeonMaster
         total_tokens:     prompt_tokens,
       }
 
-      # Sort defensively by `index` — the API is spec'd to return elements
-      # in input order, but aligning on `index` makes the contract explicit
-      # if an upstream shim ever shuffles them.
       data.sort_by { |row| row["index"].to_i }.map { |row| row["embedding"] }
     end
 
-    # Parse a raw JSON string from the AI, with fallback strategies
-    # for when the model returns plain text instead of JSON.
-    #
     # @param raw         [String]
     # @param fallback_as [Symbol, nil]  :dm_response to treat raw text as narrative on parse failure
     # @return [Hash]
-    # @raise [DungeonMaster::AiError]
+    # @raise [Ai::Error]
     def parse_json(raw, fallback_as: nil)
       @last_parse_status = "success"
 
@@ -198,20 +174,17 @@ module DungeonMaster
       JSON.parse(cleaned)
     rescue JSON::ParserError
       Rails.logger.warn(
-        "[DungeonMaster::AiClient] JSON parse failed. " \
+        "[Ai::Client] JSON parse failed. " \
         "Raw (first 500 chars): #{raw&.first(500)}"
       )
 
-      # The Narrate step produces prose that may not be valid JSON.
-      # Treating raw text as narrative is a valid degradation — the
-      # content is still usable. All other steps must parse or fail.
       if fallback_as == :dm_response && cleaned.present?
-        Rails.logger.info("[DungeonMaster::AiClient] Falling back: treating raw response as narrative text")
+        Rails.logger.info("[Ai::Client] Falling back: treating raw response as narrative text")
         @last_parse_status = "parse_fallback"
         { "narrative" => cleaned }
       else
         @last_parse_status = "parse_error"
-        raise AiError, "Failed to parse AI response as JSON"
+        raise Error, "Failed to parse AI response as JSON"
       end
     end
 
@@ -283,7 +256,7 @@ module DungeonMaster
 
     def log_retry(call_type:, model:, attempt:, exception:, delay:, retry_after:)
       Rails.logger.warn(
-        "[DungeonMaster::AiClient] #{call_type} #{exception.class} " \
+        "[Ai::Client] #{call_type} #{exception.class} " \
         "(attempt #{attempt}/#{openai_max_retries + 1}, model=#{model}, delay=#{format('%.3f', delay)}s, retry_after=#{retry_after})"
       )
     end

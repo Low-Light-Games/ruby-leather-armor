@@ -11,8 +11,8 @@
 #
 class DungeonMasterService
   SanitizationRejected     = DungeonMaster::SanitizationRejected
-  AiError                  = DungeonMaster::AiError
-  TokenBudgetExceededError = DungeonMaster::TokenBudgetExceededError
+  AiError                  = Ai::Error
+  TokenBudgetExceededError = Ai::TokenBudgetExceededError
   UsageLimitExceeded       = DungeonMaster::UsageLimitExceeded
 
   def initialize(adventure, user:)

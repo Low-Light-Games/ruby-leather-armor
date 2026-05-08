@@ -34,8 +34,8 @@ module DungeonMaster
           loop:               pipeline_engine.loop,
           combat_state:       Adventures::CombatState.from_raw(live_combat),
           time_context:       adventure.time_context || {},
-          pacing_text:        PromptHelpers.pacing_instructions(pipeline_engine.config),
-          directed_play_text: PromptHelpers.directed_play_instructions(adventure),
+          pacing_text:        Ai::PromptHelpers.pacing_instructions(pipeline_engine.config),
+          directed_play_text: Ai::PromptHelpers.directed_play_instructions(adventure),
           scene_facts:        Array(scene_facts),
           outcome_facts:      Array(outcome_facts),
         )

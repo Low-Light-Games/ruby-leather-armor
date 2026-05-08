@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module DungeonMaster
+module Ai
   class EmbeddingCache
     def initialize
       @store = {}
@@ -20,8 +20,6 @@ module DungeonMaster
       @store[key_for(text, model, dimensions)] = vector
     end
 
-    # Best-effort: per-lookup `VectorLookup#embed_query` still degrades
-    # to [] on its own when this fails.
     def warm!(texts:, model:, ai:, log:, source:, dimensions: nil)
       missing = Array(texts).map(&:to_s).reject(&:empty?).uniq.reject do |t|
         has?(text: t, model: model, dimensions: dimensions)

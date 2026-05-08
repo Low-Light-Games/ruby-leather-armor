@@ -3,8 +3,7 @@
 require_relative 'step_registry/entry'
 require_relative 'step_registry/model_hints'
 
-module DungeonMaster
-  # TODO: Improve readability — implicit derivations (EVENT_TYPES, STEP_MODEL_HINTS) are too magical; the how-to-extend prose is the smell.
+module Ai
   module StepRegistry
     H = ModelHints
 
@@ -61,15 +60,10 @@ module DungeonMaster
       STEPS.select { |_, e| e.model_hint }.transform_values(&:model_hint)
     end
 
-    # Step → preferred default model, for steps that pin one. Consulted
-    # by `DmConfig#model_for` before falling back to the global default.
     def self.default_model_for(step)
       STEPS[step.to_s]&.default_model
     end
 
-    # Step → preferred default `reasoning_effort`, for steps that pin
-    # one. Consulted by `DmConfig#reasoning_effort_for` when no admin
-    # override is set.
     def self.default_reasoning_effort_for(step)
       STEPS[step.to_s]&.default_reasoning_effort
     end

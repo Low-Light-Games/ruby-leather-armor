@@ -14,8 +14,8 @@ module DungeonMaster
 
     # @param adventure [Adventure]
     # @param sheet     [AdventureSheet, nil]  player sheet (used for party_level fallback)
-    # @param log       [DungeonMaster::Logging]
-    # @param ai        [DungeonMaster::AiClient]
+    # @param log       [Ai::Logging]
+    # @param ai        [Ai::Client]
     # @param config    [DmConfig]
     def initialize(adventure, sheet:, log:, ai:, config:)
       @adventure = adventure
@@ -96,7 +96,7 @@ module DungeonMaster
       t0             = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       prompt_summary = "CreatureGeneration: #{name} (party level #{party_level})"
 
-      system_prompt, user_msg = PromptRenderer.render_with_user_message("creature_generation",
+      system_prompt, user_msg = Ai::PromptRenderer.render_with_user_message("creature_generation",
         creature_name: name, party_level: party_level)
 
       request_body = { system_prompt: system_prompt, user_message: user_msg }

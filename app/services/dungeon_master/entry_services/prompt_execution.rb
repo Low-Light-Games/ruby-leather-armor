@@ -31,7 +31,7 @@ module DungeonMaster
         runtime.messenger.usage_limit_rejection_messages(e)
       rescue DungeonMaster::SanitizationRejected => e
         runtime.messenger.sanitization_failure_messages(e)
-      rescue DungeonMaster::AiError, StandardError => e
+      rescue Ai::Error, StandardError => e
         runtime.messenger.pipeline_exception_messages(e)
       end
 

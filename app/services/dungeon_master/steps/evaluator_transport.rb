@@ -22,10 +22,10 @@ module DungeonMaster
         Array(results).each_with_object({}) do |r, h|
           step = r.dig("meta", "step").to_s
           if step.blank?
-            raise AiError, "Evaluator fan_out returned a result without meta.step"
+            raise Ai::Error, "Evaluator fan_out returned a result without meta.step"
           end
           if h.key?(step)
-            raise AiError, "Evaluator fan_out returned duplicate meta.step #{step.inspect}"
+            raise Ai::Error, "Evaluator fan_out returned duplicate meta.step #{step.inspect}"
           end
 
           h[step] = r
@@ -33,7 +33,7 @@ module DungeonMaster
       end
 
       def evaluator_fan_out_result!(by_step, step, phase)
-        by_step[step] || raise(AiError, "Evaluator #{phase} fan_out missing result for meta.step #{step.inspect}")
+        by_step[step] || raise(Ai::Error, "Evaluator #{phase} fan_out missing result for meta.step #{step.inspect}")
       end
 
       # POST /fan_out — returns results indexed by meta["step"].
@@ -92,7 +92,7 @@ module DungeonMaster
           send_evaluator_request!(url, prompts, intention, phase: phase, attempt: attempt)
         rescue RetryableEvaluatorError, Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::ETIMEDOUT,
                Net::OpenTimeout, Net::ReadTimeout, SocketError => e
-          raise AiError, "Evaluator #{phase} failed: #{e.message}" if attempt > evaluator_http_max_retries
+          raise Ai::Error, "Evaluator #{phase} failed: #{e.message}" if attempt > evaluator_http_max_retries
 
           log_evaluator_retry(phase, attempt, e.class == RetryableEvaluatorError ? e.message : e.class.to_s)
           sleep(jittered_evaluator_http_retry_delay(attempt))
@@ -113,7 +113,7 @@ module DungeonMaster
         begin
           body = JSON.parse(response.body)
         rescue JSON::ParserError => e
-          raise AiError, "Evaluator #{phase} returned non-JSON body (HTTP #{response.code}): #{e.message} — raw: #{response.body.truncate(500)}"
+          raise Ai::Error, "Evaluator #{phase} returned non-JSON body (HTTP #{response.code}): #{e.message} — raw: #{response.body.truncate(500)}"
         end
 
         if response.code.to_i >= 500 && attempt <= evaluator_http_max_retries
@@ -123,7 +123,7 @@ module DungeonMaster
         if response.code.to_i >= 400
           persist_partial_logs(Array(body.dig("partial_results")), intention)
           persist_evaluator_failure_log(phase, body)
-          raise AiError, "Evaluator #{phase} failed (HTTP #{response.code}): #{body.dig('error') || response.body.truncate(500)}"
+          raise Ai::Error, "Evaluator #{phase} failed (HTTP #{response.code}): #{body.dig('error') || response.body.truncate(500)}"
         end
 
         persist_node_logs(Array(body), intention)

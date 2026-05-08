@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  class TokenBudgetExceededError < AiError
+module Ai
+  class TokenBudgetExceededError < Error
     attr_reader :step_name, :budget
 
     def initialize(step_name:, budget:)

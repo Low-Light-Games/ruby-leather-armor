@@ -78,7 +78,7 @@ module DungeonMaster
               "World turn participant missing creature_sheet_id before participant lookup: #{npc.name}",
               parsed_response: { npc: npc.name, combat_context: working_ctx }
             )
-            raise AiError, "World turn participant missing creature_sheet_id for #{npc.name}"
+            raise Ai::Error, "World turn participant missing creature_sheet_id for #{npc.name}"
           end
 
           row = working_ctx["participants"].find { |p| p["creature_sheet_id"].to_i == npc.creature_sheet_id.to_i }

@@ -363,7 +363,7 @@ module DungeonMaster
         raw_response = nil
         prompt_summary = "Warmaster/CreatureGeneration: #{name} (party level #{party_level})"
 
-        system_prompt, user_msg = PromptRenderer.render_with_user_message("creature_generation",
+        system_prompt, user_msg = Ai::PromptRenderer.render_with_user_message("creature_generation",
           creature_name: name, party_level: party_level)
 
         request_body = { system_prompt: system_prompt, user_message: user_msg }

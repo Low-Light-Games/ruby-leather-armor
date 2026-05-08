@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
+module Ai
   module StepRegistry
-    # Long-form model_hint strings for the admin UI, kept out of the
-    # main registry hash so step_registry.rb itself stays a focused
-    # table of contents.
     module ModelHints
       FAST_CHEAP = 'Fast, cheap model. e.g. gpt-4.1-nano, gpt-5-nano, gpt-4o-mini.'
 

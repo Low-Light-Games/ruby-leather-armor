@@ -17,14 +17,14 @@ module DungeonMaster
         @story  = story
         @user   = user
         @config = config || DmConfig.instance
-        @ai     = ai || AiClient.new(@config)
+        @ai     = ai || Ai::Client.new(@config)
         @log    = log || Logging.new(adventure: nil, user: @user, dm_service: "standard")
       end
 
       def call
         result = run_generation_call
         opening = result&.dig("opening_message").to_s.strip
-        raise AiError, "Empty opening_message from AI" if opening.empty?
+        raise Ai::Error, "Empty opening_message from AI" if opening.empty?
 
         @story.update!(opening_message: opening)
         opening
@@ -33,7 +33,7 @@ module DungeonMaster
       private
 
       def run_generation_call
-        system_prompt = PromptRenderer.render(
+        system_prompt = Ai::PromptRenderer.render(
           "generate_opening_message",
           premise: @story.premise,
         )

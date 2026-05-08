@@ -30,7 +30,7 @@ module DungeonMaster
           rules_top_k: RULES_TOP_K, beats_top_k: BEATS_TOP_K
         )
         prompt_summary = "CombatRollRequest: \"#{@log.truncate(intention)}\""
-        system_prompt = PromptRenderer.render('combat_roll_request', combat_roll_request_context: ctx)
+        system_prompt = Ai::PromptRenderer.render('combat_roll_request', combat_roll_request_context: ctx)
         request_body = { system_prompt: system_prompt, user_message: intention }
 
         parsed = timed_ai_call('combat_roll_request', prompt_summary, request_body) do

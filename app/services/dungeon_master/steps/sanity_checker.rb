@@ -41,7 +41,7 @@ module DungeonMaster
       def sanity_checker_world_evaluator_prompt(result)
         prompt_context = build_world_prompt_context(intention: result.intention)
 
-        system_prompt = PromptRenderer.render('sanity_checker_world',
+        system_prompt = Ai::PromptRenderer.render('sanity_checker_world',
                                               sanity_context: prompt_context)
 
         EvaluatorPromptPayload.new(
@@ -55,7 +55,7 @@ module DungeonMaster
       def sanity_checker_capability_evaluator_prompt(result)
         prompt_context = build_capability_prompt_context
 
-        system_prompt = PromptRenderer.render('sanity_checker',
+        system_prompt = Ai::PromptRenderer.render('sanity_checker',
                                               sanity_context: prompt_context)
 
         EvaluatorPromptPayload.new(
@@ -110,7 +110,7 @@ module DungeonMaster
         prompt_summary = "SanityChecker/capability: \"#{@log.truncate(intention)}\""
         prompt_context = build_capability_prompt_context
 
-        system_prompt = PromptRenderer.render('sanity_checker',
+        system_prompt = Ai::PromptRenderer.render('sanity_checker',
                                               sanity_context: prompt_context)
 
         request_body = { system_prompt: system_prompt, user_message: intention }
@@ -196,7 +196,7 @@ module DungeonMaster
 
         prompt_context = build_world_prompt_context(intention: intention)
 
-        system_prompt = PromptRenderer.render('sanity_checker_world',
+        system_prompt = Ai::PromptRenderer.render('sanity_checker_world',
                                               sanity_context: prompt_context)
 
         request_body = { system_prompt: system_prompt, user_message: intention }

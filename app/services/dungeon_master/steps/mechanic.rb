@@ -11,13 +11,13 @@ module DungeonMaster
       def run_mechanic(intent, merged, roll_results:, npc_results:)
         prompt_summary = "Mechanic: \"#{@log.truncate(intent[:intention])}\""
 
-        raise AiError, "Mechanic step reached without a character sheet — cannot resolve mechanics" unless @sheet
+        raise Ai::Error, "Mechanic step reached without a character sheet — cannot resolve mechanics" unless @sheet
 
         char_block = CharacterBlock.full(@sheet)
         all_roll_results = [roll_results, npc_results].reject(&:blank?).join("\n\n")
         scene_facts = retrieve_scene_facts_for_mechanic(intent)
 
-        system_prompt = PromptRenderer.render("mechanic",
+        system_prompt = Ai::PromptRenderer.render("mechanic",
           character_block: char_block,
           mechanical_summaries_text: merged[:mechanical_summaries].join("\n\n"),
           roll_results: all_roll_results,
@@ -34,7 +34,7 @@ module DungeonMaster
           [raw, @ai.parse_json(raw)]
         end
 
-        raise AiError, "Mechanic step returned no outcome — model produced: #{parsed.inspect.truncate(200)}" unless parsed["outcome"].present?
+        raise Ai::Error, "Mechanic step returned no outcome — model produced: #{parsed.inspect.truncate(200)}" unless parsed["outcome"].present?
 
         {
           outcome: parsed["outcome"],

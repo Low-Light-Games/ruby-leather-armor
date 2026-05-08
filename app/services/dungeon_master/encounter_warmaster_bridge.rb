@@ -82,7 +82,7 @@ module DungeonMaster
         log:         log,
       )
 
-      system_prompt = PromptRenderer.render("encounter_reconciliation",
+      system_prompt = Ai::PromptRenderer.render("encounter_reconciliation",
         player_action: player_action,
         player_verdict: verdict_outcome,
         encounter_scene: encounter_scene,

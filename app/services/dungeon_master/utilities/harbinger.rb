@@ -108,7 +108,7 @@ module DungeonMaster
         raw = nil
         prompt_summary = "Encounter expansion: #{entry.title}"
 
-        system_prompt, user_msg = PromptRenderer.render_with_user_message("encounter_expansion",
+        system_prompt, user_msg = Ai::PromptRenderer.render_with_user_message("encounter_expansion",
           hint: entry.description,
           location: adventure.current_location&.name || "the wilderness")
 

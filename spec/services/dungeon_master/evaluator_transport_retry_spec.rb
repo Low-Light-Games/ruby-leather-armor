@@ -52,7 +52,7 @@ RSpec.describe DungeonMaster::Steps::EvaluatorTransport do
 
     expect do
       transport.send(:call_evaluator!, "#{transport_host}/fan_out", [{ foo: "bar" }], "intent", phase: "fan_out")
-    end.to raise_error(DungeonMaster::AiError, /Evaluator fan_out failed/)
+    end.to raise_error(Ai::Error, /Evaluator fan_out failed/)
 
     expect(transport).not_to have_received(:persist_node_logs)
     expect(transport).not_to have_received(:persist_partial_logs)
@@ -70,7 +70,7 @@ RSpec.describe DungeonMaster::Steps::EvaluatorTransport do
 
     expect do
       transport.send(:call_evaluator!, "#{transport_host}/fan_out", [{ foo: "bar" }], "intent", phase: "fan_out")
-    end.to raise_error(DungeonMaster::AiError, /Evaluator fan_out failed \(HTTP 500\)/)
+    end.to raise_error(Ai::Error, /Evaluator fan_out failed \(HTTP 500\)/)
 
     expect(a_request(:post, "#{transport_host}/fan_out"))
       .to have_been_made.times(transport.send(:evaluator_http_max_retries) + 1)

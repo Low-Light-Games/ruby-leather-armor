@@ -44,7 +44,7 @@ module DungeonMaster
         ) do
           @ai.embeddings(**embeddings_kwargs(texts))
         end
-      rescue DungeonMaster::AiError => e
+      rescue Ai::Error => e
         @log.report_error(e, context: error_context.with(source: "apply_npcs.embeddings"))
         raise
       end

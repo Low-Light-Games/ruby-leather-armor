@@ -196,7 +196,7 @@ module DungeonMaster
 
       def player_facing_error(error)
         case error
-        when DungeonMaster::TokenBudgetExceededError
+        when Ai::Ai::TokenBudgetExceededError
           "Could not reach the AI service. Please try again shortly."
         else
           error.message

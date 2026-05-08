@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe DungeonMaster::Rules::Lookup do
-  let(:ai)  { instance_double(DungeonMaster::AiClient) }
+  let(:ai)  { instance_double(Ai::Client) }
   let(:log) do
     log_double = double('Logging')
     allow(log_double).to receive(:timed_embedding_call) { |*_args, **_kw, &block| block.call }
@@ -63,10 +63,10 @@ RSpec.describe DungeonMaster::Rules::Lookup do
   end
 
   it 'returns [] and reports the error if embedding raises' do
-    allow(ai).to receive(:embeddings).and_raise(DungeonMaster::AiError, 'boom')
+    allow(ai).to receive(:embeddings).and_raise(Ai::Error, 'boom')
 
     expect(log).to receive(:report_error).with(
-      instance_of(DungeonMaster::AiError),
+      instance_of(Ai::Error),
       context: hash_including(step: 'rules_lookup')
     )
 
@@ -78,7 +78,7 @@ RSpec.describe DungeonMaster::Rules::Lookup do
     RuleEmbedding.create!(slug: 'climbing', domain: 'exploration', name: 'Climbing',
                           brief: 'x', body: 'x', text_digest: 'a', embedding: vec)
 
-    cache = DungeonMaster::EmbeddingCache.new
+    cache = Ai::EmbeddingCache.new
     cache.store(text: 'I climb the wall',
                 model: DmConfig.instance.narrative_facts_embedding_model,
                 vector: vec)

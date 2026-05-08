@@ -13,7 +13,7 @@ module DungeonMaster
         @story  = story
         @user   = user
         @config = config || DmConfig.instance
-        @ai     = ai || AiClient.new(@config)
+        @ai     = ai || Ai::Client.new(@config)
         @log    = log || Logging.new(adventure: nil, user: @user, dm_service: "standard")
       end
 
@@ -37,11 +37,11 @@ module DungeonMaster
       private
 
       def run_extraction_call
-        system_prompt = PromptRenderer.render(
+        system_prompt = Ai::PromptRenderer.render(
           "extract_from_premise",
           premise:         @story.premise,
           opening_message: @story.opening_message,
-          schema_json:     PromptRenderer.load_schema("extract_from_premise"),
+          schema_json:     Ai::PromptRenderer.load_schema("extract_from_premise"),
         )
 
         prompt_summary = "ExtractFromPremise — story ##{@story.id}"

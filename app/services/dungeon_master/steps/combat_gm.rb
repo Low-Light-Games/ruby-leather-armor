@@ -10,7 +10,7 @@ module DungeonMaster
       def run_combat_gm(intent, merged, roll_results:, npc_results:, roll_requests:, submitted_rolls:)
         prompt_summary = "Combat GM: \"#{@log.truncate(intent[:intention])}\""
 
-        raise AiError, "Combat GM reached without a character sheet — cannot resolve combat" unless @sheet
+        raise Ai::Error, "Combat GM reached without a character sheet — cannot resolve combat" unless @sheet
 
         Battlefield::EnsureForActiveCombat.call(adventure: @adventure, sheet: @sheet)
         @adventure.reload
@@ -24,7 +24,7 @@ module DungeonMaster
         deterministic_facts = deterministic_combat_facts(roll_requests, submitted_rolls)
         scene_facts = retrieve_scene_facts_for_combat_gm(intent)
 
-        system_prompt = PromptRenderer.render("combat_gm",
+        system_prompt = Ai::PromptRenderer.render("combat_gm",
           character_block: char_block,
           mechanical_summaries_text: merged[:mechanical_summaries].join("\n\n"),
           roll_results: all_roll_results,
@@ -46,7 +46,7 @@ module DungeonMaster
           [raw, @ai.parse_json(raw)]
         end
 
-        raise AiError, "Combat GM returned no outcome — model produced: #{parsed.inspect.truncate(200)}" unless parsed["outcome"].present?
+        raise Ai::Error, "Combat GM returned no outcome — model produced: #{parsed.inspect.truncate(200)}" unless parsed["outcome"].present?
 
         parsed["outcome"] = deterministic_combat_outcome(roll_requests, submitted_rolls) || parsed["outcome"]
 

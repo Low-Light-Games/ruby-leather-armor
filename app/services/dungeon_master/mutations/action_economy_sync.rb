@@ -16,7 +16,7 @@ module DungeonMaster
         adventure.update!(combat_context: new_ctx)
       rescue ArgumentError => e
         log.log!(:warn, "[action_economy_delta] rejected: #{e.message}")
-        raise AiError, "Invalid action economy for this turn: #{e.message}"
+        raise Ai::Error, "Invalid action economy for this turn: #{e.message}"
       end
     end
   end

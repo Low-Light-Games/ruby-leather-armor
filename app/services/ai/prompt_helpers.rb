@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module DungeonMaster
+module Ai
   module PromptHelpers
     module_function
 

@@ -10,7 +10,7 @@ module DungeonMaster
       private
 
       # Payload for Node POST /fan_out (parallel with context updates in Stagehand).
-      # meta.parse_fallback matches Rails AiClient#parse_json(fallback_as: :dm_response).
+      # meta.parse_fallback matches Rails Ai::Client#parse_json(fallback_as: :dm_response).
       def narrate_evaluator_prompt(pipeline_context, scene_facts:, outcome_facts:)
         prompt_payload = build_narrate_prompt_payload(
           pipeline_context, scene_facts: scene_facts, outcome_facts: outcome_facts,
@@ -26,7 +26,7 @@ module DungeonMaster
 
       def narrative_from_evaluator_result(result)
         parsed = result["parsed_response"] || {}
-        raise AiError, "Narrate step returned no narrative — model produced: #{parsed.inspect.truncate(200)}" unless parsed["narrative"].present?
+        raise Ai::Error, "Narrate step returned no narrative — model produced: #{parsed.inspect.truncate(200)}" unless parsed["narrative"].present?
 
         { narrative: parsed["narrative"] }
       end
@@ -37,7 +37,7 @@ module DungeonMaster
         @log&.play_log!("pipeline_error", "Narrate step reached without an outcome — nothing to narrate",
                         parsed_response: { encounter_scene: @loop&.get("encounter_scene"),
                                            verdict_outcome: @loop&.get("verdict_outcome") }.compact)
-        raise AiError, "Narrate step reached without an outcome — nothing to narrate"
+        raise Ai::Error, "Narrate step reached without an outcome — nothing to narrate"
       end
 
       def build_narrate_prompt_payload(pipeline_context, scene_facts:, outcome_facts:)
@@ -46,7 +46,7 @@ module DungeonMaster
         )
         assert_narration_combined_seed!(pipeline_context)
         {
-          system_prompt: PromptRenderer.render("narrate", narrate_view: narrate_view),
+          system_prompt: Ai::PromptRenderer.render("narrate", narrate_view: narrate_view),
           user_message: pipeline_context.combined_seed
         }
       end

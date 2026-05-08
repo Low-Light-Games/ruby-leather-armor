@@ -5,7 +5,7 @@ require "rails_helper"
 RSpec.describe DungeonMaster::Steps::Helpers do
   let(:ai) do
     instance_double(
-      DungeonMaster::AiClient,
+      Ai::Client,
       last_model_used: "gpt-4.1-nano",
       last_failed_raw_response: nil,
       last_usage: nil,
@@ -43,7 +43,7 @@ RSpec.describe DungeonMaster::Steps::Helpers do
       result = host.timed_ai_call("combat_context_update", "summary", { foo: 1 }) do
         attempt += 1
         if attempt == 1
-          raise DungeonMaster::AiError, "Failed to parse AI response as JSON"
+          raise Ai::Error, "Failed to parse AI response as JSON"
         else
           ["{\"unchanged\":true}", { "unchanged" => true }]
         end
@@ -65,9 +65,9 @@ RSpec.describe DungeonMaster::Steps::Helpers do
 
       expect do
         host.timed_ai_call("combat_context_update", "summary", { foo: 1 }) do
-          raise DungeonMaster::AiError, "Failed to parse AI response as JSON"
+          raise Ai::Error, "Failed to parse AI response as JSON"
         end
-      end.to raise_error(DungeonMaster::AiError, /Failed to parse/)
+      end.to raise_error(Ai::Error, /Failed to parse/)
 
       expect(log).to have_received(:play_log!).with("parse_retry", anything, anything).once
       expect(log).to have_received(:ai_log_error!).once
@@ -78,13 +78,13 @@ RSpec.describe DungeonMaster::Steps::Helpers do
 
       expect do
         host.timed_ai_call("narrate", "summary", { foo: 1 }) do
-          raise DungeonMaster::TokenBudgetExceededError.new(step_name: "narrate", budget: nil)
+          raise Ai::TokenBudgetExceededError.new(step_name: "narrate", budget: nil)
         end
-      end.to raise_error(DungeonMaster::TokenBudgetExceededError)
+      end.to raise_error(Ai::TokenBudgetExceededError)
 
       expect(log).not_to have_received(:play_log!)
       expect(log).to have_received(:ai_log_error!)
-        .with("narrate", "summary", instance_of(DungeonMaster::TokenBudgetExceededError),
+        .with("narrate", "summary", instance_of(Ai::TokenBudgetExceededError),
               hash_including(status: "token_budget_exceeded"))
     end
 
@@ -93,9 +93,9 @@ RSpec.describe DungeonMaster::Steps::Helpers do
 
       expect do
         host.timed_ai_call("mechanic", "summary", { foo: 1 }) do
-          raise DungeonMaster::AiError, "Rate limited by OpenAI"
+          raise Ai::Error, "Rate limited by OpenAI"
         end
-      end.to raise_error(DungeonMaster::AiError, /Rate limited/)
+      end.to raise_error(Ai::Error, /Rate limited/)
 
       expect(log).not_to have_received(:play_log!)
       expect(log).to have_received(:ai_log_error!).once

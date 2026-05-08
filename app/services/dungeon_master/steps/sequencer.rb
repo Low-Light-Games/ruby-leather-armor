@@ -17,7 +17,7 @@ module DungeonMaster
         return [default_action_entry(sanitized_input)] if combat_active?
 
         prompt_summary = "Sequencer: \"#{@log.truncate(sanitized_input)}\""
-        system_prompt = PromptRenderer.render("sequencer")
+        system_prompt = Ai::PromptRenderer.render("sequencer")
         request_body = { system_prompt: system_prompt, user_message: sanitized_input }
 
         parsed = timed_ai_call("sequencer", prompt_summary, request_body) do

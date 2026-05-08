@@ -75,7 +75,7 @@ module DungeonMaster
 
         updated_domain_context = normalized_domain_result["context"] || normalized_domain_result[:context]
         updated_domain_context = {} if unchanged && canonical_combat.present? && updated_domain_context.nil?
-        raise AiError, "combat_context updater returned no context payload" if updated_domain_context.nil?
+        raise Ai::Error, "combat_context updater returned no context payload" if updated_domain_context.nil?
 
         if updated_domain_context.is_a?(Hash)
           updated_domain_context = merge_canonical_combat_context(
@@ -117,11 +117,11 @@ module DungeonMaster
       end
 
       def combat_domain_evaluator_prompt(what_happened, mutations, allow_combat_initialization:)
-        system_prompt = PromptRenderer.render("combat_context_update",
+        system_prompt = Ai::PromptRenderer.render("combat_context_update",
           domain: "combat",
           context_key: "combat_context",
           current_context: @adventure.combat_context,
-          context_schema: PromptRenderer.load_schema("contexts/combat_context"),
+          context_schema: Ai::PromptRenderer.load_schema("contexts/combat_context"),
           what_happened: what_happened,
           mutations_json: mutations.present? ? mutations.to_json : nil,
           canonical_hp: build_canonical_hp,
@@ -174,7 +174,7 @@ module DungeonMaster
         if repaired.present?
           row.merge("creature_sheet_id" => repaired)
         else
-          raise AiError, "Combat context update dropped creature_sheet_id for #{row['name'].presence || 'an NPC'}"
+          raise Ai::Error, "Combat context update dropped creature_sheet_id for #{row['name'].presence || 'an NPC'}"
         end
       end
 

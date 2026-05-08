@@ -36,7 +36,7 @@ module DungeonMaster
           )
 
           intent = metadata['intent']&.deep_symbolize_keys
-          raise AiError, 'Initiative metadata missing intent — state integrity failure' unless intent
+          raise Ai::Error, 'Initiative metadata missing intent — state integrity failure' unless intent
 
           # Atomic combat start: battlefield row + battlefield_ref + action_economy in one transaction.
           Battlefield::PersistCombatStart.call(adventure: @adventure, combat_data: combat_data, sheet: @sheet)

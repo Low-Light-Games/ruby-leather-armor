@@ -125,7 +125,7 @@
           <strong>Default:</strong> model = <code><%= DmStepModelsConfig.default_model %></code>,
           reasoning_effort = <code><%= DmStepModelsConfig.default_reasoning_effort %></code>
         </li>
-        <% DungeonMaster::StepRegistry.pipeline_steps.each do |step| %>
+        <% Ai::StepRegistry.pipeline_steps.each do |step| %>
           <li>
             <strong><%= step.titleize %>:</strong>
             <code><%= @config.model_for(step) %></code>

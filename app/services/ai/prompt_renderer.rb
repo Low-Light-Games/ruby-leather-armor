@@ -2,11 +2,7 @@
 
 require "erb"
 
-module DungeonMaster
-  # Renders ERB prompt templates from app/services/dungeon_master/templates/.
-  # Templates access their locals as instance variables (e.g. @domain).
-  # Compiled templates are cached per-process; call reload! in dev/test
-  # if editing templates without restarting.
+module Ai
   class PromptRenderer
     TEMPLATE_DIR = Rails.root.join("app/services/dungeon_master/templates")
 
@@ -18,9 +14,6 @@ module DungeonMaster
       template.result(ctx.send(:get_binding)).strip
     end
 
-    # Returns [system_prompt, user_message]. Templates that include a
-    # ---USER_MESSAGE--- separator define both halves; templates without
-    # the separator are invalid for this API and raise immediately.
     def self.render_with_user_message(template_name, **locals)
       full = render(template_name, **locals)
       unless full.include?(USER_MESSAGE_SEPARATOR)
@@ -31,9 +24,6 @@ module DungeonMaster
       [parts[0].strip, parts[1].strip]
     end
 
-    # Renders a partial template. Returns empty string if the file does not
-    # exist, so callers can safely inject domain-specific fragments that may
-    # or may not be defined.
     def self.render_partial(partial_path, **locals)
       path = TEMPLATE_DIR.join("#{partial_path}.text.erb")
       return "" unless path.exist?
@@ -43,8 +33,6 @@ module DungeonMaster
       template.result(ctx.send(:get_binding)).strip
     end
 
-    # Loads a JSON schema file from templates/schemas/<name>.json.
-    # Returns the raw string so callers can embed it in prompts or parse it.
     def self.load_schema(name)
       @schemas ||= {}
       @schemas[name] ||= TEMPLATE_DIR.join("schemas", "#{name}.json").read

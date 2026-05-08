@@ -9,8 +9,8 @@ module DungeonMaster
       @adventure = adventure
       @user = user
       @config = DmConfig.instance
-      @ai = DungeonMaster::AiClient.new(@config)
-      @log = DungeonMaster::Logging.new(adventure: adventure, user: user)
+      @ai = Ai::Client.new(@config)
+      @log = Ai::Logging.new(adventure: adventure, user: user)
       @sheet = DungeonMaster::CharacterBlock.load_sheet(adventure)
       @messenger = DungeonMaster::AdventurePlay::PipelineMessenger.new(
         adventure: adventure,

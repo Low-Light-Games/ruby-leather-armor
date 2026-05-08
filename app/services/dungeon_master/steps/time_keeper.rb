@@ -191,7 +191,7 @@ module DungeonMaster
           speed_mph: nil, journey_data: nil }
       end
 
-      # AI errors (TokenBudgetExceededError, AiError) are intentionally allowed to
+      # AI errors (Ai::TokenBudgetExceededError, Ai::Error) are intentionally allowed to
       # propagate here — a wrong elapsed time silently pollutes the game clock, which
       # is harder to diagnose than a visible pipeline failure. (See 46d182f.)
       def estimate_via_ai(intent, verdict_result)
@@ -206,7 +206,7 @@ module DungeonMaster
           has_destination: intent[:destination].present?
         )
 
-        system_prompt = PromptRenderer.render("time_keeper",
+        system_prompt = Ai::PromptRenderer.render("time_keeper",
           time_keeper_context: prompt_context)
 
         request_body = { system_prompt: system_prompt, user_message: intent[:intention] }
@@ -220,7 +220,7 @@ module DungeonMaster
 
         raw_hours = parsed["hours_elapsed"]
         if raw_hours.nil?
-          raise AiError, "TimeKeeper AI returned no hours_elapsed (parsed: #{parsed.inspect.truncate(200)})"
+          raise Ai::Error, "TimeKeeper AI returned no hours_elapsed (parsed: #{parsed.inspect.truncate(200)})"
         end
 
         hours = raw_hours.to_f.clamp(0, 720)

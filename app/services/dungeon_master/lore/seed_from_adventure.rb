@@ -11,8 +11,8 @@ module DungeonMaster
         @adventure = adventure
         @user      = user || adventure.user
         @config    = config || DmConfig.instance
-        @ai        = ai || DungeonMaster::AiClient.new(@config)
-        @log       = log || DungeonMaster::Logging.new(
+        @ai        = ai || Ai::Client.new(@config)
+        @log       = log || Ai::Logging.new(
           adventure: @adventure, user: @user, dm_service: "standard"
         )
       end

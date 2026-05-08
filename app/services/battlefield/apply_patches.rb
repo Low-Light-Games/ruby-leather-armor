@@ -63,7 +63,7 @@ module Battlefield
 
         return if expected_version.to_i == battlefield.version.to_i
 
-        raise DungeonMaster::AiError,
+        raise Ai::Error,
               "battlefield version drift: combat_context has #{expected_version}, row has #{battlefield.version}"
       end
 
@@ -85,7 +85,7 @@ module Battlefield
         when 'shift_viewport' then apply_shift_viewport!(patch_state_data, operation)
         when 'set_cells' then apply_set_cells!(patch_state_data, operation)
         else
-          raise DungeonMaster::AiError,
+          raise Ai::Error,
                 "battlefield patch: unknown op #{name.inspect} (supported: move_token, shift_viewport, set_cells)"
         end
       end
@@ -127,17 +127,17 @@ module Battlefield
       end
 
       def apply_set_cell!(world_cells, cell_payload)
-        raise DungeonMaster::AiError, 'set_cells: each cell must be a Hash' unless cell_payload.is_a?(Hash)
+        raise Ai::Error, 'set_cells: each cell must be a Hash' unless cell_payload.is_a?(Hash)
 
         cell_payload = cell_payload.stringify_keys
         unless cell_payload.key?('x') && cell_payload.key?('y')
-          raise DungeonMaster::AiError, 'set_cells: each cell requires integer x and y'
+          raise Ai::Error, 'set_cells: each cell requires integer x and y'
         end
 
         attrs = cell_payload.except('x', 'y')
         disallowed = attrs.keys - ALLOWED_CELL_ATTRS
         if disallowed.any?
-          raise DungeonMaster::AiError,
+          raise Ai::Error,
                 "set_cells: disallowed cell attribute(s) #{disallowed.inspect} " \
                 "— allowed: #{ALLOWED_CELL_ATTRS.join(', ')}"
         end

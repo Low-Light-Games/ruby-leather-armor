@@ -28,7 +28,7 @@ module DungeonMaster
                        duration_ms:  elapsed_ms(t0),
                        usage:        @ai.last_usage)
           parsed
-        rescue TokenBudgetExceededError, AiError => e
+        rescue Ai::TokenBudgetExceededError, Ai::Error => e
           if attempts == 1 && parse_error_retryable?(e)
             log_parse_retry!(step_name, prompt_summary)
             retry
@@ -37,7 +37,7 @@ module DungeonMaster
           @log.ai_log_error!(step_name, prompt_summary, e,
                              raw_response: raw || @ai.last_failed_raw_response,
                              request_body: request_body,
-                             status:       e.is_a?(TokenBudgetExceededError) ? "token_budget_exceeded" : "api_error",
+                             status:       e.is_a?(Ai::TokenBudgetExceededError) ? "token_budget_exceeded" : "api_error",
                              model_used:   @ai.last_model_used,
                              duration_ms:  elapsed_ms(t0),
                              usage:        @ai.last_usage)
@@ -46,7 +46,7 @@ module DungeonMaster
       end
 
       def parse_error_retryable?(exception)
-        return false if exception.is_a?(TokenBudgetExceededError)
+        return false if exception.is_a?(Ai::TokenBudgetExceededError)
 
         @ai.last_parse_status == "parse_error"
       end

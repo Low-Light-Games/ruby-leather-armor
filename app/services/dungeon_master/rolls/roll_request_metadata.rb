@@ -32,7 +32,7 @@ module DungeonMaster
         # @return [Array<(Hash, Hash)>] [intent, merged] for finish_resolution
         def resume_inputs(metadata)
           intent = metadata['intent']&.deep_symbolize_keys
-          raise AiError, 'Roll-request message metadata missing intent — state integrity failure' unless intent
+          raise Ai::Error, 'Roll-request message metadata missing intent — state integrity failure' unless intent
 
           merged = {
             player_rolls: [],

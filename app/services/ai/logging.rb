@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  # Encapsulates all DM-related logging: PlayLogs (AI calls and pipeline events)
-  # and structured Rails.logger output for errors.
-  # Every write is rescue'd so a logging failure never breaks gameplay.
+module Ai
   class Logging
     attr_accessor :player_message_id, :registry_entry_uuid, :player_message_content, :action_label,
                   :adventure_loop
@@ -74,9 +71,6 @@ module DungeonMaster
       report_error(e, context: { method: "error_registry_entry!" })
     end
 
-    # Write a structured pipeline event (sanity rejections, queue state, etc.)
-    # visible in Admin -> Play Logs. No AI columns are populated.
-    # Pass parsed_response: a Hash to store structured data shown in the pipeline card body.
     def play_log!(event_type, summary, parsed_response: nil)
       log = PlayLog.create!(
         adventure: @adventure,
@@ -106,14 +100,11 @@ module DungeonMaster
       raise reraise_as, "GameMaster emitted invalid tool call: #{error.message}" if reraise_as
     end
 
-    # Emit a tagged Rails.logger message for errors and warnings.
-    # Vendor SDKs (Sentry, Datadog, etc.) absorb this automatically.
     def log!(level, message)
       Rails.logger.public_send(level,
         "[DM adventure=#{@adventure&.id} registry=#{@registry_entry_uuid}] #{message}")
     end
 
-    # Write a full AI exchange record (visible in Admin -> Play Logs).
     def ai_log!(call_type, prompt_summary, raw_response, parsed_response, parse_status:, request_body: nil, model_used: nil, duration_ms: nil, usage: nil)
       summary = @action_label ? "#{@action_label} #{prompt_summary}" : prompt_summary
       log = PlayLog.create!(
@@ -142,7 +133,6 @@ module DungeonMaster
       try_fallback_log(call_type, e)
     end
 
-    # Write an AI error record when a call fails.
     def ai_log_error!(call_type, prompt_summary, error, raw_response: nil, request_body: nil, status: "api_error", model_used: nil, duration_ms: nil, usage: nil)
       summary = @action_label ? "#{@action_label} #{prompt_summary}" : prompt_summary
       log = PlayLog.create!(
@@ -175,16 +165,6 @@ module DungeonMaster
       text.length > length ? "#{text.first(length)}…" : text
     end
 
-    # Times an embedding-style AI call and routes to ai_log! on success
-    # or ai_log_error! on AiError, always re-raising. Parallels
-    # `Steps::Helpers#timed_ai_call` but tuned to the embedding shape:
-    # the block returns the vector Array (not `[raw, parsed]`), and the
-    # caller supplies `model_used` explicitly because embeddings don't
-    # round-trip through `AiClient#last_model_used`.
-    #
-    # `source` is the caller tag carried into the
-    # `EmbeddingLogDetails` payload (e.g. "loremaster", "seed",
-    # "facts_lookup") so Admin > Play Logs can tell sites apart.
     def timed_embedding_call(prompt_summary, model_used:, source:, ai: nil)
       t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       vectors = yield
@@ -197,7 +177,7 @@ module DungeonMaster
         usage:        ai&.last_usage,
       )
       vectors
-    rescue AiError => e
+    rescue Error => e
       ai_log_error!(
         "embedding", prompt_summary, e,
         model_used:  model_used,
@@ -207,13 +187,6 @@ module DungeonMaster
       raise
     end
 
-    # Times a chat-style AI call and routes to ai_log! on success or
-    # ai_log_error! on AiError / TokenBudgetExceededError, always
-    # re-raising. Sibling of timed_embedding_call; equivalent to
-    # Steps::Helpers#timed_ai_call but usable from non-Step services
-    # (Lore::SeedFromAdventure, Embellisher, Enricher, …) that receive
-    # `ai` explicitly rather than as an ivar. Block must return
-    # [raw_response, parsed_response].
     def timed_chat_call(call_type, prompt_summary, ai:, request_body: nil)
       attempts = 0
       t0 = nil
@@ -231,7 +204,7 @@ module DungeonMaster
           usage:        ai.last_usage,
         )
         parsed
-      rescue TokenBudgetExceededError, AiError => e
+      rescue TokenBudgetExceededError, Error => e
         if attempts == 1 && parse_error_retryable?(ai, e)
           play_log!(
             "parse_retry",
@@ -264,7 +237,6 @@ module DungeonMaster
       ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0) * 1000).round
     end
 
-    # Sentry + Rails.error for pipeline exceptions surfaced to the player — never raises.
     def capture_pipeline_exception!(exception)
       Rails.logger.error(
         "[DM pipeline exception adventure=#{@adventure&.id} registry=#{@registry_entry_uuid}] " \
@@ -287,12 +259,6 @@ module DungeonMaster
       })
     end
 
-    # When the player starts a new prompt while a roll/initiative request is still pending.
-    # Sentry + context-merged error notification. Public so best-effort
-    # services like `Lore::ApplyResults` (Loremaster apply path) can
-    # observe their lossy failures without losing the structured
-    # registry/adventure/user context. Internal callers below `private`
-    # still invoke the same method directly.
     def report_error(exception, context: {})
       full_context = {
         registry_entry_uuid: @registry_entry_uuid,
@@ -372,8 +338,6 @@ module DungeonMaster
       report_error(e, context: { method: "enqueue_registry_entry_event!", registry_entry_uuid: @registry_entry_uuid })
     end
 
-    # Last-resort write when the primary ai_log! or ai_log_error! fails.
-    # Uses minimal fields to maximize the chance of passing validation.
     def try_fallback_log(call_type, original_error)
       PlayLog.create!(
         adventure: @adventure,
