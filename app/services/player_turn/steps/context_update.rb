@@ -23,13 +23,20 @@ module PlayerTurn
         end
       end
 
-      Result = Struct.new(:unchanged, :context, keyword_init: true) do
+      class Result
+        attr_reader :context
+
         def self.from_parsed(parsed)
           hash = parsed.is_a?(Hash) ? parsed.deep_stringify_keys : {}
           new(unchanged: hash["unchanged"] == true, context: hash["context"])
         end
 
-        def unchanged? = unchanged
+        def initialize(unchanged:, context:)
+          @unchanged = unchanged
+          @context   = context
+        end
+
+        def unchanged? = @unchanged
       end
 
       private
@@ -57,7 +64,9 @@ module PlayerTurn
         canonical_combat = combat_mutation_state.canonical_combat_context
 
         return snapshot_contexts_to_loop unless result.context.present? || canonical_combat.present?
+
         return snapshot_contexts_to_loop if result.unchanged? && canonical_combat.blank?
+
 
         updated = result.context || (canonical_combat.present? ? {} : nil)
         raise Ai::Error, "combat_context updater returned no context payload" if updated.nil?
@@ -116,6 +125,7 @@ module PlayerTurn
       def repair_participant_identity(participant, existing_participants)
         row = participant.is_a?(Hash) ? participant.deep_stringify_keys : {}
         return row unless row["type"].to_s == "npc"
+
         return row if row["creature_sheet_id"].present?
 
         repaired_id = existing_participants.find do |existing|
