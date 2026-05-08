@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  class EncounterWarmasterBridge
+module Encounters
+  class WarmasterBridge
     class Result
       attr_reader :payload, :pipeline_outcome
 
@@ -18,8 +18,8 @@ module DungeonMaster
       if encounter_entry
         creatures_data = loop&.get("encounter_creatures")
         scene_enemy_names = hostile_npc_names_at_current_location(adventure)
-        warmaster_result = Utilities::Warmaster.initialize_from_encounter!(
-          encounter_initialization_request: Utilities::Warmaster::EncounterInitializationRequest.new(
+        warmaster_result = Encounters::Warmaster.initialize_from_encounter!(
+          encounter_initialization_request: Encounters::Warmaster::EncounterInitializationRequest.new(
             adventure: adventure,
             encounter_entry: encounter_entry,
             creatures_data: creatures_data,
@@ -32,7 +32,7 @@ module DungeonMaster
         )
 
         if warmaster_result[:status] == :awaiting_initiative
-          Utilities::Warmaster.persist_pending_combat!(
+          Encounters::Warmaster.persist_pending_combat!(
             adventure: adventure,
             creature_data: warmaster_result[:creature_data]
           )

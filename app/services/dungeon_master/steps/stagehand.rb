@@ -138,8 +138,8 @@ module DungeonMaster
                        .map(&:to_s).reject(&:blank?).uniq
         return nil if combatants.empty?
 
-        Utilities::Warmaster.initialize_from_names!(
-          names_preparation_request: Utilities::Warmaster::NamesPreparationRequest.new(
+        Encounters::Warmaster.initialize_from_names!(
+          names_preparation_request: Encounters::Warmaster::NamesPreparationRequest.new(
             adventure: @adventure,
             combatant_names: combatants,
             sheet: @sheet,

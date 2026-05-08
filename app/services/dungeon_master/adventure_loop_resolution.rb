@@ -214,7 +214,7 @@ module DungeonMaster
 
     # Harbinger Path A: delegate loop + warmaster glue, then persist narration seed here.
     def dispatch_encounter_warmaster(intent, time_result, mutations:)
-      result = EncounterWarmasterBridge.call(
+      result = Encounters::WarmasterBridge.call(
         loop: @loop, adventure: @adventure, sheet: @sheet, log: @log, config: @config, ai: @ai,
         intent: intent, time_result: time_result, mutations: mutations)
       store_pipeline_outcome!(result.pipeline_outcome)

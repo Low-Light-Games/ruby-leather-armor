@@ -337,7 +337,7 @@ module DungeonMaster
 
         return no_op if (since_last + estimated[:hours]) < freq
 
-        Utilities::Harbinger.consult(
+        Encounters::Harbinger.consult(
           hours_needed: estimated[:hours],
           adventure: @adventure,
           terrain: estimated[:terrain],

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  # TODO: Improve readability — class may be obsolete; resolution lives in Utilities::Warmaster and the only documented caller (Mutations#handle_new_creatures) is unreachable.
+  # TODO: Improve readability — class may be obsolete; resolution lives in Encounters::Warmaster and the only documented caller (Mutations#handle_new_creatures) is unreachable.
   class CreatureFactory
     CREATURE_TEMPLATE = {
       1  => { str: 13, dex: 13, con: 12, int: 6,  wis: 10, cha: 8,  ac: 13, bab: 1,  hp: "1d10+2",   speed: 30 },
