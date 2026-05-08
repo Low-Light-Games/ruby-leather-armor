@@ -11,7 +11,7 @@ module AdventureSheets
 
         ctx = adventure.combat_context
         turn = ctx["current_turn"].to_s
-        player_name = DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME
+        player_name = Combat::TurnCalculator::PLAYER_NAME
         raise Error, "Only on your turn" unless turn == player_name
       end
 

@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  module Combat
-    # SpellDefinition lookups shared by the deterministic combat
-    # resolvers. Centralizes the `spell:<id>` namespace stripping and
-    # the not-found error so individual resolvers don't restate it.
+module Combat
+  module Options
     module SpellLookup
       module_function
 

@@ -1,12 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  module Combat
-    # Shared scaffolding for the per-category spell option builders
-    # (BuffOptionBuilder, HealOptionBuilder). Each subclass declares
-    # its own `match?` predicate and `option_for(spell)` constructor;
-    # the base handles iterating the player's spellbook, gating on
-    # the standard action, and the resolve_option_id! lookup.
+module Combat
+  module Options
     class SpellOptionBuilderBase
       class << self
         # @param sheet [AdventureSheet]
@@ -32,13 +27,12 @@ module DungeonMaster
           option = call(sheet: sheet, adventure: adventure).find { |o| o[:id] == option_id.to_s }
           return option if option
 
-          raise DungeonMaster::CombatMechanicResolutionError.new(
+          raise Combat::MechanicResolutionError.new(
             "unknown or unavailable #{kind_label} option_id: #{option_id.inspect}",
             code: unknown_code
           )
         end
 
-        # Subclasses override.
         def match?(_spell)
           raise NotImplementedError
         end

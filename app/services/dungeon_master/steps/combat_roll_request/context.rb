@@ -38,7 +38,7 @@ module DungeonMaster
               )
             },
             combat: {
-              attack_options: DungeonMaster::Combat::AttackOptionBuilder.call(sheet: sheet, adventure: adventure),
+              attack_options: Combat::Options::AttackOptionBuilder.call(sheet: sheet, adventure: adventure),
               action_economy: combat_ctx['action_economy'] || {},
               threats: build_threats_for_player(adventure: adventure),
               battlefield_summary: Battlefield::PromptSerializer.slice_for_adventure(adventure)

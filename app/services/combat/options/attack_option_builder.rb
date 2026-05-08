@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  module Combat
+module Combat
+  module Options
     module AttackOptionBuilder
       MONK_UNARMED_DICE = {
         20 => "2d10",
@@ -29,7 +29,7 @@ module DungeonMaster
           option = call(sheet: sheet, adventure: adventure).find { |entry| entry[:id] == option_id.to_s }
           return option if option
 
-          raise DungeonMaster::CombatMechanicResolutionError.new(
+          raise Combat::MechanicResolutionError.new(
             "unknown or unavailable attack_option_id: #{option_id.inspect}",
             code: :unknown_attack_option
           )

@@ -207,7 +207,7 @@ module DungeonMaster
         end
 
         def npcs_have_opening_turn?(combat_data)
-          combat_data['current_turn'] != Utilities::CombatTurnCalculator::PLAYER_NAME
+          combat_data['current_turn'] != Combat::TurnCalculator::PLAYER_NAME
         end
 
         def player_turn_combat_start_message(combat_data)

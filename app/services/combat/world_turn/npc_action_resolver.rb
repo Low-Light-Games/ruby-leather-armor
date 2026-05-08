@@ -1,11 +1,10 @@
 # frozen_string_literal: true
 
-module DungeonMaster
+module Combat
   module WorldTurn
-    # Resolves one NPC's structured npc_action JSON: flee / surrender / attack + {Rolls::CombatDice}.
     module NpcActionResolver
       class << self
-        PLAYER = Utilities::CombatTurnCalculator::PLAYER_NAME # canonical name — see CombatTurnCalculator::PLAYER_NAME
+        PLAYER = Combat::TurnCalculator::PLAYER_NAME # canonical name — see CombatTurnCalculator::PLAYER_NAME
 
         # @return [Hash] :lines (Array<String>), :npc_muts, :player_hp_delta
         def resolve(npc:, parsed:, combat_ctx:, player_sheet:, adventure:)
@@ -85,8 +84,8 @@ module DungeonMaster
 
         # @return [Hash] :atk => d20_attack_vs_ac result, :damage => Integer or nil if miss
         def attack_roll_vs_ac(mod:, dice:, ac:)
-          atk = Rolls::CombatDice.d20_attack_vs_ac(modifier: mod, ac: ac)
-          damage = atk[:hit] ? Rolls::CombatDice.roll_damage_expression(dice) : nil
+          atk = Combat::Dice.d20_attack_vs_ac(modifier: mod, ac: ac)
+          damage = atk[:hit] ? Combat::Dice.roll_damage_expression(dice) : nil
           { atk: atk, damage: damage }
         end
       end

@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
+module Combat
   module WorldTurn
-    # combat_state_advancement payloads for ContextUpdate (canonical sheet merge).
     module CombatAdvancement
       module_function
 
@@ -35,7 +34,6 @@ module DungeonMaster
           out["action_economy"] = Battlefield::ActionEconomy.build_for_turn_holder(
             current_turn, combat_ctx: out.merge(ctx.slice("turn_order")))
         elsif out["active"] != false && ctx["action_economy"].present?
-          # TODO: Improve readability — fold both builders (CombatContext.build, CombatAdvancement.build_*) into one value-object constructor with named factory methods so this elsif rationale becomes the method name.
           out["action_economy"] = ctx["action_economy"]
         end
         out
@@ -54,7 +52,7 @@ module DungeonMaster
       end
 
       def rebuild_participant_row(p, adventure:, sheet:)
-        Utilities::Combatant.refresh_from_live_sources(p, adventure: adventure, sheet: sheet)
+        Combat::Combatant.refresh_from_live_sources(p, adventure: adventure, sheet: sheet)
       end
 
       def normalize_inactive_snapshot(ctx)

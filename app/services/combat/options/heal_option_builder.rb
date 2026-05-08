@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  module Combat
-    # Builds combat HUD self-heal options from the player's spellbook.
+module Combat
+  module Options
     class HealOptionBuilder < SpellOptionBuilderBase
       SELF_HEAL_RANGES = %w[personal touch].freeze
 

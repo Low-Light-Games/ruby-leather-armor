@@ -2,17 +2,16 @@
 
 module Combat
   module Resolvers
-    # Self-heal spell-cast leg of Combat::PlayerActionResolver.
     module Heal
       private
 
       def resolve_heal
-        spell = DungeonMaster::Combat::SpellLookup.fetch!(@params[:spell_id] || @params[:attack_option_id])
-        option = DungeonMaster::Combat::HealOptionBuilder.resolve_option_id!(
+        spell = Combat::Options::SpellLookup.fetch!(@params[:spell_id] || @params[:attack_option_id])
+        option = Combat::Options::HealOptionBuilder.resolve_option_id!(
           sheet: @sheet, adventure: @adventure, option_id: "spell:#{spell.id}"
         )
 
-        rolled = DungeonMaster::Rolls::CombatDice.roll_damage_expression(option[:dice].to_s)
+        rolled = Combat::Dice.roll_damage_expression(option[:dice].to_s)
         hp_before = @sheet.hp.to_i
         hp_after = [hp_before + rolled, @sheet.max_hp.to_i].min
         @sheet.update!(hp: hp_after)
@@ -24,7 +23,7 @@ module Combat
         log_action_event!(payload)
         Combat::EventLog.write!(adventure: @adventure, content: payload[:message], user: @user)
         { status: :resolved, result: payload }
-      rescue DungeonMaster::CombatMechanicResolutionError => e
+      rescue Combat::MechanicResolutionError => e
         raise Combat::ResolverError.new(e.message, code: e.code || :unknown_heal_option)
       end
     end

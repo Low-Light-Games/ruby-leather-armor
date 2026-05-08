@@ -34,7 +34,7 @@ module DungeonMaster
         broadcast_progress("The world reacts...")
 
         base_ctx = (@adventure.combat_context || {}).deep_dup.deep_stringify_keys
-        calc     = Utilities::CombatTurnCalculator.call(
+        calc     = Combat::TurnCalculator.call(
           combat_context: base_ctx,
           player_acted_this_round: result[:precombat_opener] != true
         )
@@ -53,7 +53,7 @@ module DungeonMaster
           apply_player_mutations({ conditions_add: ["disabled"] })
         end
 
-        working_ctx = DungeonMaster::WorldTurn::LiveContext.merge_live_participants(
+        working_ctx = Combat::WorldTurn::LiveContext.merge_live_participants(
           base_ctx, adventure: @adventure, sheet: @sheet)
 
         acting_npcs = filter_acting_npcs(calc[:npc_turns], working_ctx)
@@ -84,7 +84,7 @@ module DungeonMaster
           row = working_ctx["participants"].find { |p| p["creature_sheet_id"].to_i == npc.creature_sheet_id.to_i }
           next if row.blank?
 
-          fighter = Utilities::Combatant.from_context_hash(row)
+          fighter = Combat::Combatant.from_context_hash(row)
           fighter if !fighter.eliminated_from_encounter? && fighter.can_act?
         end
       end
@@ -112,7 +112,7 @@ module DungeonMaster
 
           reload_player_sheet!
 
-          npc_action_result = DungeonMaster::WorldTurn::NpcActionResolver.resolve(
+          npc_action_result = Combat::WorldTurn::NpcActionResolver.resolve(
             npc: npc, parsed: plan, combat_ctx: working_ctx,
             player_sheet: @sheet, adventure: @adventure)
           lines.concat(npc_action_result[:lines])
@@ -124,7 +124,7 @@ module DungeonMaster
           reload_world_turn_records!
           live_sheets.merge!(@adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id))
 
-          end_info = Utilities::CombatEndResolver.check_combat_end(adventure: @adventure, sheet: @sheet, instant_death: instant_death)
+          end_info = Combat::EndResolver.check_combat_end(adventure: @adventure, sheet: @sheet, instant_death: instant_death)
           if should_stop_world_turn_early?(end_info)
             early_stop = true
             break
@@ -155,7 +155,7 @@ module DungeonMaster
       end
 
       def log_world_turn_resolution(npc, plan, npc_action_result)
-        payload = DungeonMaster::WorldTurn::NpcActionResolutionLogPayload.new(
+        payload = Combat::WorldTurn::NpcActionResolutionLogPayload.new(
           npc_name:        npc.name,
           action:          plan[:action],
           attack_modifier: plan[:attack_modifier],
@@ -179,18 +179,18 @@ module DungeonMaster
 
       def build_result_with_combat_advancement(result, calc, base_ctx, early_stop)
         next_slice = if early_stop
-                       { "current_turn" => Utilities::CombatTurnCalculator::PLAYER_NAME,
+                       { "current_turn" => Combat::TurnCalculator::PLAYER_NAME,
                          "round" => base_ctx["round"].to_i }
                      else
                        calc[:next_state]
                      end
 
-        advancement = DungeonMaster::WorldTurn::CombatAdvancement.build_after_world_turn(
+        advancement = Combat::WorldTurn::CombatAdvancement.build_after_world_turn(
           next_slice, base_ctx, adventure: @adventure, sheet: @sheet)
-        end_info    = Utilities::CombatEndResolver.check_combat_end(adventure: @adventure, sheet: @sheet, instant_death: instant_death_enabled?)
-        advancement = DungeonMaster::WorldTurn::CombatAdvancement.merge_combat_end_into_advancement(advancement, end_info)
+        end_info    = Combat::EndResolver.check_combat_end(adventure: @adventure, sheet: @sheet, instant_death: instant_death_enabled?)
+        advancement = Combat::WorldTurn::CombatAdvancement.merge_combat_end_into_advancement(advancement, end_info)
 
-        result[:mutations]            = DungeonMaster::WorldTurn::CombatAdvancement.merge_into_mutations(result[:mutations], advancement)
+        result[:mutations]            = Combat::WorldTurn::CombatAdvancement.merge_into_mutations(result[:mutations], advancement)
         result[:player_death]         = true if end_info.dig(:interaction, :player_death)
         result[:player_incapacitated] = true if end_info.dig(:interaction, :player_incapacitated)
         result
@@ -209,7 +209,7 @@ module DungeonMaster
         apply_player_mutations({ hp_change: DYING_BLEED_HP_PER_ROUND })
         @sheet&.reload
 
-        if Utilities::CombatEndResolver.check_player_status(@sheet, instant_death: instant_death_enabled?) == :dead
+        if Combat::EndResolver.check_player_status(@sheet, instant_death: instant_death_enabled?) == :dead
           return finalize_bleed_out_death(result)
         end
 
@@ -220,16 +220,16 @@ module DungeonMaster
       def finalize_bleed_out_death(result)
         append_pipeline_outcome!("#{@sheet&.name || 'The player'} has bled out and died.")
 
-        advancement = DungeonMaster::WorldTurn::CombatAdvancement.build_full(
+        advancement = Combat::WorldTurn::CombatAdvancement.build_full(
           adventure: @adventure, sheet: @sheet, overrides: { "active" => false })
-        result[:mutations] = DungeonMaster::WorldTurn::CombatAdvancement.merge_into_mutations(result[:mutations], advancement)
+        result[:mutations] = Combat::WorldTurn::CombatAdvancement.merge_into_mutations(result[:mutations], advancement)
         result[:player_death] = true
         result
       end
 
       def roll_stabilization_check!
         con_mod = @sheet.derived_stats.dig("mods", "constitution").to_i
-        roll = Rolls::CombatDice.roll_d20
+        roll = Combat::Dice.roll_d20
         if roll + con_mod >= DYING_BLEED_STABILIZE_DC
           apply_player_mutations({ conditions_add: ["stabilized"] })
           append_pipeline_outcome!("#{@sheet&.name || 'The player'} stabilizes (CON check: #{roll}+#{con_mod}).")
@@ -248,13 +248,13 @@ module DungeonMaster
       end
 
       def player_dead_before_npc_turns?(instant_death)
-        @sheet && Utilities::CombatEndResolver.check_player_status(@sheet, instant_death: instant_death) == :dead
+        @sheet && Combat::EndResolver.check_player_status(@sheet, instant_death: instant_death) == :dead
       end
 
       def should_apply_dying_bleed?(instant_death)
         return false unless @sheet
 
-        Utilities::CombatEndResolver.check_player_status(@sheet, instant_death: instant_death) == :dying &&
+        Combat::EndResolver.check_player_status(@sheet, instant_death: instant_death) == :dying &&
           !Array(@sheet.conditions).include?("stabilized")
       end
 

@@ -40,7 +40,7 @@ module DungeonMaster
               combat_ctx: combat_ctx,
               adventure: adventure,
               sheet: sheet,
-              lookup_context: DungeonMaster::WorldTurn::ParticipantLookup::LookupContext.new(
+              lookup_context: Combat::WorldTurn::ParticipantLookup::LookupContext.new(
                 combat_ctx: combat_ctx,
                 player_sheet: sheet,
                 adventure: adventure
@@ -75,7 +75,7 @@ module DungeonMaster
             case type
             when 'attack_roll'
               if raw[:dc].present?
-                raise DungeonMaster::CombatMechanicResolutionError.new(
+                raise Combat::MechanicResolutionError.new(
                   "attack_roll must not include dc from model (roll index #{idx})",
                   code: :forbidden_attack_dc
                 )
@@ -83,19 +83,19 @@ module DungeonMaster
 
               option_id = raw[:attack_option_id].to_s
               if option_id.blank?
-                raise DungeonMaster::CombatMechanicResolutionError.new(
+                raise Combat::MechanicResolutionError.new(
                   "attack_roll must include attack_option_id (roll index #{idx})",
                   code: :missing_attack_option_id
                 )
               end
 
-              option = DungeonMaster::Combat::AttackOptionBuilder.resolve_option_id!(
+              option = Combat::Options::AttackOptionBuilder.resolve_option_id!(
                 sheet: context.sheet,
                 adventure: context.adventure,
                 option_id: option_id
               )
 
-              dc = DungeonMaster::WorldTurn::ParticipantLookup.defense_dc_for_target!(
+              dc = Combat::WorldTurn::ParticipantLookup.defense_dc_for_target!(
                 raw[:target],
                 option[:defense_kind],
                 context: context.lookup_context
@@ -116,7 +116,7 @@ module DungeonMaster
               ).compact
             when 'saving_throw'
               if raw[:dc].present?
-                raise DungeonMaster::CombatMechanicResolutionError.new(
+                raise Combat::MechanicResolutionError.new(
                   "saving_throw must not include dc from model (roll index #{idx})",
                   code: :forbidden_save_dc
                 )
@@ -128,7 +128,7 @@ module DungeonMaster
               attrs = raw.except(:dc_formula)
               { domain: 'combat' }.merge(attrs).merge(dc: dc, save: save, skill: skill)
             else
-              raise DungeonMaster::CombatMechanicResolutionError.new(
+              raise Combat::MechanicResolutionError.new(
                 "unsupported player_roll type: #{type.inspect}",
                 code: :unsupported_roll_type
               )
@@ -158,7 +158,7 @@ module DungeonMaster
             when 'ability_dc'
               resolve_ability_dc(formula_payload, context: context)
             else
-              raise DungeonMaster::CombatMechanicResolutionError.new(
+              raise Combat::MechanicResolutionError.new(
                 "unsupported dc_formula.kind: #{kind.inspect} (roll index #{idx})",
                 code: :unsupported_dc_formula
               )
@@ -167,11 +167,11 @@ module DungeonMaster
 
           def resolve_spell_dc(formula_payload, sheet)
             name = TextNormalizer.strip(formula_payload[:spell_name])
-            raise DungeonMaster::CombatMechanicResolutionError, 'spell_name required' if name.blank?
+            raise Combat::MechanicResolutionError, 'spell_name required' if name.blank?
 
             spell = SpellDefinition.find_by_name_case_insensitive(name)
             unless spell
-              raise DungeonMaster::CombatMechanicResolutionError.new(
+              raise Combat::MechanicResolutionError.new(
                 "spell not found: #{name.inspect}",
                 code: :spell_not_found
               )
@@ -179,7 +179,7 @@ module DungeonMaster
 
             caster = formula_payload[:caster].to_s.presence || 'player'
             unless caster == 'player'
-              raise DungeonMaster::CombatMechanicResolutionError.new(
+              raise Combat::MechanicResolutionError.new(
                 'spell_dc only supports player-cast spells (caster must be "player"); use ability_dc for NPC abilities',
                 code: :unsupported_npc_spell_dc
               )
@@ -191,13 +191,13 @@ module DungeonMaster
               levels.key?(class_token)
             end
             unless slug
-              raise DungeonMaster::CombatMechanicResolutionError,
+              raise Combat::MechanicResolutionError,
                     "spell #{name} not on character class #{character_class_name.inspect}"
             end
 
             ability = DungeonMaster::PathfinderCastingAbility.casting_ability_for_slug(slug)
             unless ability
-              raise DungeonMaster::CombatMechanicResolutionError.new(
+              raise Combat::MechanicResolutionError.new(
                 "no casting ability mapped for class #{slug.inspect} (spell #{name.inspect})",
                 code: :no_casting_ability_for_class
               )
@@ -212,15 +212,15 @@ module DungeonMaster
             pattern = formula_payload[:pattern].to_s
             ability = TextNormalizer.normalized_key(formula_payload[:ability])
             unless valid_ability_name?(ability)
-              raise DungeonMaster::CombatMechanicResolutionError, 'invalid ability for ability_dc'
+              raise Combat::MechanicResolutionError, 'invalid ability for ability_dc'
             end
 
             case pattern
             when 'half_hd_plus_ability'
               origin = TextNormalizer.strip(formula_payload[:origin_target])
-              raise DungeonMaster::CombatMechanicResolutionError, 'origin_target required' if origin.blank?
+              raise Combat::MechanicResolutionError, 'origin_target required' if origin.blank?
 
-              origin_sheet = DungeonMaster::WorldTurn::ParticipantLookup.target_sheet!(
+              origin_sheet = Combat::WorldTurn::ParticipantLookup.target_sheet!(
                 origin,
                 context: context.lookup_context
               )
@@ -228,7 +228,7 @@ module DungeonMaster
               hd = origin_sheet.level.to_i
               10 + (hd / 2) + mod
             else
-              raise DungeonMaster::CombatMechanicResolutionError,
+              raise Combat::MechanicResolutionError,
                     "unsupported ability_dc pattern: #{pattern.inspect}"
             end
           end
@@ -236,11 +236,11 @@ module DungeonMaster
           def ability_modifier_from_sheet(sheet, ability)
             name = ability.to_s
             unless CharacterStats::GameRules::ABILITIES.include?(name)
-              raise DungeonMaster::CombatMechanicResolutionError,
+              raise Combat::MechanicResolutionError,
                     "invalid ability #{ability.inspect} for modifier"
             end
             unless sheet.respond_to?(name)
-              raise DungeonMaster::CombatMechanicResolutionError,
+              raise Combat::MechanicResolutionError,
                     "sheet does not expose ability #{name.inspect}"
             end
 

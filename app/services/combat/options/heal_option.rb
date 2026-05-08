@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  module Combat
-    # HUD payload for one healing button. Wraps a SpellDefinition + the
-    # caster's level into the dice expression the resolver will roll
-    # (caster-level bonus baked in, capped at effect.maxBonus).
+module Combat
+  module Options
     class HealOption
       def initialize(spell, sheet)
         @spell = spell
@@ -26,7 +23,6 @@ module DungeonMaster
 
       private
 
-      # Cure Light Wounds at L1 → "1d8+1"; capped at effect.maxBonus.
       def dice
         base = @effect['dice'].to_s
         per_level = @effect['bonusPerLevel'].to_i

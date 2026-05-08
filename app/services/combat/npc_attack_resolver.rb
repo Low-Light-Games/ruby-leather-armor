@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # Resolves a single deterministic NPC attack against a target sheet.
-  # Used by PR-D's AoO trigger and (later) PR-F's NPC behavior engine.
-  # Pure server-side dice — clients never roll for NPCs.
   module NpcAttackResolver
     DEFAULT_NATURAL_DAMAGE = '1d4'
 
@@ -86,7 +83,7 @@ module Combat
     end
 
     def roll_attack(attack_bonus, defense_dc)
-      natural = DungeonMaster::Rolls::CombatDice.roll_d20
+      natural = Combat::Dice.roll_d20
       total = natural + attack_bonus
       hit = (total >= defense_dc || natural == 20) && natural != 1
       { hit: hit, natural: natural, total: total, defense_dc: defense_dc }
@@ -96,7 +93,7 @@ module Combat
     # @param weapon [Combat::EquippedWeapon]
     # @return [Combat::DamageRoll]
     def roll_damage(attacker, weapon)
-      base = DungeonMaster::Rolls::CombatDice.roll_damage_expression(weapon.damage_dice.to_s)
+      base = Combat::Dice.roll_damage_expression(weapon.damage_dice.to_s)
       total = [base + str_mod(attacker), 1].max
       Combat::DamageRoll.new(total: total, type: weapon.damage_type)
     end

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module DungeonMaster
+module Combat
   module WorldTurn
     class NpcActionResult
       attr_reader :lines, :npc_mutations, :player_hp_delta, :battlefield_patches

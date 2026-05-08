@@ -25,7 +25,7 @@ module DungeonMaster
 
     def combat_starting?
       @combat_transition.present? &&
-        DungeonMaster::CombatTransitions.start?(@combat_transition)
+        Combat::Transitions.start?(@combat_transition)
     end
 
     def to_intent_hash

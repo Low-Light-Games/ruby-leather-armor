@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  module Combat
-    # Builds combat HUD self-buff options from the player's spellbook.
+module Combat
+  module Options
     class BuffOptionBuilder < SpellOptionBuilderBase
       SELF_BUFF_RANGES = %w[personal touch].freeze
       BUFF_EFFECT_TYPES = %w[ac_bonus attack_bonus save_bonus skill_bonus

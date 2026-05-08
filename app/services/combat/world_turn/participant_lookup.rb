@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
+module Combat
   module WorldTurn
-    # AC / creature_sheet_id from combat_context participant rows + live sheets.
     module ParticipantLookup
       module_function
 
@@ -39,13 +38,12 @@ module DungeonMaster
         (creature_sheet&.derived_stats || {})["ac"]&.to_i
       end
 
-      # Strict combat targeting: participant names only (case-insensitive exact). "player" → PC sheet.
       # @return [Array<Symbol, AdventureSheet|CreatureSheet>] `[:player, sheet]` or `[:creature, sheet]`
       def resolve_target_sheet!(target_name, context: nil, **kwargs)
         lookup = context || LookupContext.new(**kwargs)
         normalized_target_name = target_name.to_s.strip
         if normalized_target_name.casecmp("player").zero?
-          raise DungeonMaster::CombatMechanicResolutionError, "player sheet required" if lookup.player_sheet.nil?
+          raise Combat::MechanicResolutionError, "player sheet required" if lookup.player_sheet.nil?
 
           return [:player, lookup.player_sheet]
         end
@@ -53,13 +51,13 @@ module DungeonMaster
         participants = Array(lookup.combat_ctx["participants"])
         matches = participants.select { |participant| participant["name"].to_s.strip.casecmp(normalized_target_name).zero? }
         if matches.empty?
-          raise DungeonMaster::CombatMechanicResolutionError.new(
+          raise Combat::MechanicResolutionError.new(
             "target not in combat participants: #{target_name.inspect}",
             code: :target_not_found
           )
         end
         if matches.size > 1
-          raise DungeonMaster::CombatMechanicResolutionError.new(
+          raise Combat::MechanicResolutionError.new(
             "ambiguous combat target: #{target_name.inspect}",
             code: :ambiguous_target
           )
@@ -68,7 +66,7 @@ module DungeonMaster
         creature_sheet_id = matches.first["creature_sheet_id"].to_i
         creature = lookup.adventure.creature_sheets.find_by(id: creature_sheet_id)
         unless creature
-          raise DungeonMaster::CombatMechanicResolutionError.new(
+          raise Combat::MechanicResolutionError.new(
             "creature sheet missing for participant (id=#{creature_sheet_id})",
             code: :creature_missing
           )
@@ -88,7 +86,7 @@ module DungeonMaster
         lookup = context || LookupContext.new(**kwargs)
         stat_key = DEFENSE_KIND_TO_STAT[defense_kind.to_s]
         unless stat_key
-          raise DungeonMaster::CombatMechanicResolutionError.new(
+          raise Combat::MechanicResolutionError.new(
             "invalid defense_kind: #{defense_kind.inspect}",
             code: :invalid_defense_kind
           )
@@ -98,7 +96,7 @@ module DungeonMaster
         derived_stats = sheet.derived_stats || {}
         defense_dc = derived_stats[stat_key] || derived_stats[stat_key.to_sym]
         if defense_dc.nil?
-          raise DungeonMaster::CombatMechanicResolutionError.new(
+          raise Combat::MechanicResolutionError.new(
             "missing #{stat_key} on target sheet",
             code: :missing_derived_stat
           )

@@ -133,7 +133,7 @@ module Battlefield
       end
 
       def default_action_economy(combat_context)
-        holder = combat_context["current_turn"].presence || DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME
+        holder = combat_context["current_turn"].presence || Combat::TurnCalculator::PLAYER_NAME
         ActionEconomy.build_for_turn_holder(holder, combat_ctx: combat_context)
       end
 

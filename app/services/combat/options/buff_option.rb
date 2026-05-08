@@ -1,10 +1,7 @@
 # frozen_string_literal: true
 
-module DungeonMaster
-  module Combat
-    # HUD payload for one buff button. Wraps a SpellDefinition in the
-    # exact { id, label, source_type, source_id, duration, summary,
-    # action_cost } shape the combat_action/options endpoint emits.
+module Combat
+  module Options
     class BuffOption
       def initialize(spell)
         @spell = spell

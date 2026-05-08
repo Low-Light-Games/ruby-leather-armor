@@ -81,7 +81,7 @@ module DungeonMaster
           .deep_symbolize_keys
           .merge(rule_slug: raw[:rule_slug])
           .compact
-      rescue DungeonMaster::CombatMechanicResolutionError => e
+      rescue Combat::MechanicResolutionError => e
         @log&.play_log!(
           'combat_mech_eval_resolution_error',
           "CombatRollRequest: #{e.message}",
@@ -115,7 +115,7 @@ module DungeonMaster
           combat_ctx: combat_ctx,
           adventure: @adventure,
           sheet: @sheet,
-          lookup_context: DungeonMaster::WorldTurn::ParticipantLookup::LookupContext.new(
+          lookup_context: Combat::WorldTurn::ParticipantLookup::LookupContext.new(
             combat_ctx: combat_ctx, player_sheet: @sheet, adventure: @adventure
           )
         )

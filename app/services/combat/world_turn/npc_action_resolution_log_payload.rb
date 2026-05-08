@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module DungeonMaster
+module Combat
   module WorldTurn
     class NpcActionResolutionLogPayload
       def initialize(npc_name:, action:, attack_modifier:, damage_dice:, player_hp_delta:, npc_mutations:, lines:)

@@ -358,7 +358,7 @@ module DungeonMaster
         @effective_combat_active_for_timekeeper = if !combat_active? || @sheet.nil?
                                                     false
                                                   else
-                                                    end_info = Utilities::CombatEndResolver.check_combat_end(
+                                                    end_info = Combat::EndResolver.check_combat_end(
                                                       adventure: @adventure,
                                                       sheet: @sheet,
                                                       instant_death: @config.instant_death?

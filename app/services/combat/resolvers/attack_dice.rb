@@ -2,10 +2,6 @@
 
 module Combat
   module Resolvers
-    # Dice + ability-bonus helpers for the player attack flow. Mixed in
-    # by Combat::Resolvers::Attack to keep that module under the
-    # Cursor module-length cap. Reads @sheet, @submitted_dice from the
-    # includer.
     module AttackDice
       private
 
@@ -22,7 +18,7 @@ module Combat
         natural = if @submitted_dice
                     validate_natural!(@submitted_dice[:attack_natural], 1..20, 'attack_natural')
                   else
-                    DungeonMaster::Rolls::CombatDice.roll_d20
+                    Combat::Dice.roll_d20
                   end
         total = natural + attack_bonus
         hit = (total >= defense_dc || natural == 20) && natural != 1
@@ -36,7 +32,7 @@ module Combat
         base = if @submitted_dice
                  validate_natural!(@submitted_dice[:damage_natural], 1..1000, 'damage_natural')
                else
-                 DungeonMaster::Rolls::CombatDice.roll_damage_expression(option[:damage].to_s)
+                 Combat::Dice.roll_damage_expression(option[:damage].to_s)
                end
         { natural: base, total: [base + ability, 1].max }
       end

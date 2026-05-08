@@ -2,10 +2,6 @@
 
 module Combat
   module Resolvers
-    # Param/sheet lookups for the player attack flow. Mixed in by
-    # Combat::Resolvers::Attack to keep that module under the
-    # module-length cap. Reads @adventure, @sheet, @params from the
-    # includer.
     module AttackLookups
       private
 
@@ -16,10 +12,10 @@ module Combat
                                           code: :missing_attack_option_id)
         end
 
-        DungeonMaster::Combat::AttackOptionBuilder.resolve_option_id!(
+        Combat::Options::AttackOptionBuilder.resolve_option_id!(
           sheet: @sheet, adventure: @adventure, option_id: option_id
         )
-      rescue DungeonMaster::CombatMechanicResolutionError => e
+      rescue Combat::MechanicResolutionError => e
         raise Combat::ResolverError.new(e.message, code: e.code || :unknown_attack_option)
       end
 
