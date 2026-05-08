@@ -73,8 +73,9 @@ jobs:
 
       - name: Start evaluator (background)
         # Rails calls into this on every action, so it must be running before
-        # `playwright test` boots the Rails server. Health-check via /health
-        # before continuing so we don't race the first request.
+        # Playwright's webServer config (in playwright.config.js) boots Rails.
+        # Health-check via /health before continuing so we don't race the
+        # first request.
         run: |
           cd evaluator && node src/index.js > "$RUNNER_TEMP/evaluator.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/evaluator.pid"
