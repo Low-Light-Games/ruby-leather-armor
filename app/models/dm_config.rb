@@ -4,7 +4,12 @@ class DmConfig < ApplicationRecord
   # Single-row configuration for the AI Dungeon Master.
   # Settings are stored as a JSON hash, making it easy to add new knobs
   # without migrations.
-  STEP_MODEL_HINTS = DungeonMaster::StepRegistry.model_hints.freeze
+  #
+  # NOTE: per-step model + reasoning_effort live in
+  # `config/dm_step_models.yml` (read via `DmStepModelsConfig`), not in
+  # this DB row. `#model_for`, `#reasoning_effort_for`, and `#model`
+  # delegate there so call sites in the pipeline still read
+  # `config.model_for(:narrate)` etc.
 
   # Closed whitelist for the narrative facts store's embedding model
   # selector (see Decision 37). The `adventure_narrative_facts.embedding`
@@ -65,9 +70,6 @@ class DmConfig < ApplicationRecord
     'pacing_words_min' => 40,
     'pacing_words_max' => 120,
     'danger_threshold' => 30,
-    'model' => 'gpt-5-nano',
-    'reasoning_effort' => 'minimal',
-    'step_models' => {},
     'action_queue' => 'progressive',
     'show_roll_dc' => true,
     'creature_creation_fallback' => 'ai',
@@ -82,11 +84,10 @@ class DmConfig < ApplicationRecord
     'narrative_facts_top_k' => 8,
     'narrative_facts_active_window' => 20,
     'narrative_facts_embedding_model' => 'text-embedding-3-small',
-    'step_reasoning_efforts' => {}.freeze,
     'stripe_grace_period_days' => 3
   }.freeze
 
-  REASONING_EFFORTS = %w[minimal low medium high].freeze
+  REASONING_EFFORTS = DmStepModelsConfig::REASONING_EFFORTS
 
   def self.instance
     first_or_create!(settings: DEFAULTS)
@@ -117,32 +118,24 @@ class DmConfig < ApplicationRecord
     get('danger_threshold').to_i
   end
 
+  # Global default model — sourced from config/dm_step_models.yml.
   def model
-    get('model')
+    DmStepModelsConfig.default_model
   end
 
+  # Resolved model for a pipeline step — sourced from
+  # config/dm_step_models.yml (per-step override → default_model).
   def model_for(step)
-    overrides = get('step_models') || {}
-    overrides[step.to_s].presence ||
-      DungeonMaster::StepRegistry.default_model_for(step) ||
-      model
+    DmStepModelsConfig.model_for(step)
   end
 
-  # Returns "minimal" | "low" | "medium" | "high" | nil for the given
-  # step. Resolution order: admin per-step override → registry pin →
-  # global default. AiClient drops the `reasoning_effort` param when
-  # the resolved model is not a reasoning model, so non-reasoning model
-  # overrides stay safe.
+  # Returns "minimal" | "low" | "medium" | "high" for the given step.
+  # Sourced from config/dm_step_models.yml (per-step override →
+  # default_reasoning_effort). AiClient drops the param when the
+  # resolved model isn't a reasoning model, so non-reasoning overrides
+  # stay safe.
   def reasoning_effort_for(step)
-    overrides = get('step_reasoning_efforts') || {}
-    override  = overrides[step.to_s].to_s
-    return override if REASONING_EFFORTS.include?(override)
-
-    pinned = DungeonMaster::StepRegistry.default_reasoning_effort_for(step)
-    return pinned if pinned
-
-    global = get('reasoning_effort').to_s
-    REASONING_EFFORTS.include?(global) ? global : nil
+    DmStepModelsConfig.reasoning_effort_for(step)
   end
 
   def instant_death?

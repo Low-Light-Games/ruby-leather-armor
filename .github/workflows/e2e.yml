@@ -36,8 +36,15 @@ jobs:
 
     env:
       RAILS_ENV: playwright
-      STUB_OPENAI: "true"
       DATABASE_URL: postgres://exercises:sekret@localhost:5432/exercises_playwright
+      EVALUATOR_URL: http://localhost:3001
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      # Telemetry — events tagged `environment: playwright` by AxiomShipper.
+      # Add AXIOM_API_KEY + AXIOM_DATASET to the `Test` GitHub Environment
+      # (Settings → Environments → Test → Add secret) to opt in. Absent
+      # values make ShipPlayLogJob short-circuit cleanly.
+      AXIOM_API_KEY: ${{ secrets.AXIOM_API_KEY }}
+      AXIOM_DATASET: ${{ secrets.AXIOM_DATASET }}
 
     steps:
       - uses: actions/checkout@v4
@@ -61,6 +68,24 @@ jobs:
       - name: Prepare database
         run: bundle exec rails db:prepare db:seed
 
+      - name: Install evaluator deps
+        run: cd evaluator && npm ci --omit=dev
+
+      - name: Start evaluator (background)
+        # Rails calls into this on every action, so it must be running before
+        # `playwright test` boots the Rails server. Health-check via /health
+        # before continuing so we don't race the first request.
+        run: |
+          cd evaluator && node src/index.js > "$RUNNER_TEMP/evaluator.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/evaluator.pid"
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3001/health >/dev/null 2>&1; then
+              echo "evaluator ready"; exit 0
+            fi
+            sleep 1
+          done
+          echo "evaluator did not become ready"; cat "$RUNNER_TEMP/evaluator.log"; exit 1
+
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@v4
@@ -78,6 +103,13 @@ jobs:
 
       - name: Run Playwright tests
         run: npx playwright test
+
+      - name: Stop evaluator
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/evaluator.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/evaluator.pid")" 2>/dev/null || true
+          fi
 
       - name: Upload test artifacts
         if: failure()

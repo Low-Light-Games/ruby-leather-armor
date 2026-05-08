@@ -47,9 +47,7 @@ Rails.application.routes.draw do
       end
     end
     resources :feature_flags, only: [:index, :edit, :update]
-    resource :dm_config, only: [:show, :update] do
-      get :models, on: :member
-    end
+    resource :dm_config, only: [:show, :update]
     resource :billing, only: [:show], controller: "billing"
     resources :users, only: [:index, :show] do
       member do

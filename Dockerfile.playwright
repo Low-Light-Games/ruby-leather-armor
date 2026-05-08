@@ -1,0 +1,17 @@
+# Local Playwright runner image, built from Docker Hub only.
+# Avoids relying on mcr.microsoft.com (Azure blob backend has been EOFing
+# on this host's Docker daemon).
+FROM node:20-bookworm
+
+WORKDIR /work
+
+# Install only the @playwright/test version we use, then let it pull its own
+# system deps + browsers. Keeping this in the image (not at runtime) means
+# `docker compose run` is fast and offline-capable.
+COPY package.json package-lock.json /work/
+RUN npm install --no-audit --no-fund \
+    && npx --yes playwright install --with-deps chromium \
+    && rm -rf /root/.npm
+
+# Default command; overridable via `docker compose run --rm playwright ...`.
+CMD ["npx", "playwright", "test"]

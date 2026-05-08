@@ -113,127 +113,26 @@
     </div>
 
     <div class="config-section">
-      <h2>Model</h2>
-
-      <div class="config-field">
-        <label for="model">OpenAI Model</label>
-        <select name="model" id="model-select" class="config-select">
-          <% @models_with_metadata.each do |m| %>
-            <option value="<%= m["id"] %>"
-                    data-description="<%= m["description"] %>"
-                    data-input-cost="<%= m["input_cost"] %>"
-                    data-output-cost="<%= m["output_cost"] %>"
-                    data-reasoning-model="<%= m["reasoning_model"] %>"
-                    <%= 'selected' if m["id"] == @config.model %>>
-              <%= m["name"] %><%= " ⚙️" if m["reasoning_model"] %>
-            </option>
-          <% end %>
-          <% unless @models_with_metadata.any? { |m| m["id"] == @config.model } %>
-            <option value="<%= @config.model %>" selected><%= @config.model %> (unavailable)</option>
-          <% end %>
-        </select>
-
-        <div class="model-details" id="model-details"></div>
-
-        <p class="field-hint">
-          Chat-completion models available on your OpenAI account.
-          Models marked with ⚙️ are reasoning models.
-        </p>
-      </div>
-
-      <div class="config-field">
-        <label for="reasoning_effort">Reasoning Effort</label>
-        <% current_global_effort = @config.get("reasoning_effort").to_s %>
-        <select name="reasoning_effort" id="reasoning_effort" class="config-select">
-          <% DmConfig::REASONING_EFFORTS.each do |eff| %>
-            <option value="<%= eff %>" <%= 'selected' if current_global_effort == eff %>>
-              <%= eff.titleize %>
-            </option>
-          <% end %>
-        </select>
-        <p class="field-hint">
-          Default <code>reasoning_effort</code> applied to reasoning models (⚙️).
-          Ignored when the resolved model isn't a reasoning model.
-          <strong>Minimal</strong> = fastest/cheapest, <strong>High</strong> = deepest reasoning.
-          Per-step overrides below take precedence; some steps pin their own default.
-        </p>
-      </div>
-    </div>
-
-    <div class="config-section">
-      <h2 class="collapsible-header" id="pipeline-steps-toggle">
-        Pipeline Steps
-        <span class="collapse-arrow" id="pipeline-steps-arrow">▸</span>
-      </h2>
-      <div id="pipeline-steps-body" style="display: none;">
-        <p class="field-hint" style="margin-bottom: 12px;">
-          Configure the model and reasoning effort for each pipeline step.
-          Steps with no override use the global default above (or a step-pinned default).
-          Steps marked with ➡️ may benefit from a capable model.
-          Steps marked with ⚠️ have baseline high context or reasoning needs — choose a capable model.
-          The <strong>Effort</strong> column only applies when the resolved model is a reasoning model (⚙️).
-        </p>
-
-        <% current_step_models = @config.get("step_models") || {} %>
-        <% current_step_efforts = @config.get("step_reasoning_efforts") || {} %>
-        <div class="pipeline-step-list">
-          <div class="pipeline-step-header">
-            <span class="psh-label">Step</span>
-            <span class="psh-model">Model</span>
-            <span class="psh-effort">Effort</span>
-            <span class="psh-actions"></span>
-          </div>
-          <% DungeonMaster::StepRegistry.pipeline_steps.each do |step| %>
-            <% pinned_effort = DungeonMaster::StepRegistry.default_reasoning_effort_for(step) %>
-            <div class="pipeline-step-row<%= ' pipeline-step-row-warning' if DmConfig::STEP_MODEL_HINTS[step].to_s.start_with?('⚠️') %>">
-              <div class="psr-label-block">
-                <label class="psr-label"><%= step.titleize %></label>
-                <span class="psr-hint"><%= DmConfig::STEP_MODEL_HINTS[step] %></span>
-              </div>
-              <div class="psr-model-block">
-                <select name="step_models[<%= step %>]"
-                        class="config-select step-model-select"
-                        data-step="<%= step %>"
-                        id="step_models_<%= step %>">
-                  <option value="">(Default)</option>
-                  <% @models_with_metadata.each do |m| %>
-                    <option value="<%= m["id"] %>"
-                            data-reasoning-model="<%= m["reasoning_model"] %>"
-                            data-input-cost="<%= m["input_cost"] %>"
-                            data-output-cost="<%= m["output_cost"] %>"
-                            <%= 'selected' if current_step_models[step] == m["id"] %>>
-                      <%= m["name"] %><%= " ⚙️" if m["reasoning_model"] %>
-                    </option>
-                  <% end %>
-                </select>
-                <span class="psr-cost" id="step_cost_<%= step %>"></span>
-              </div>
-              <div class="psr-effort-block">
-                <% default_label = pinned_effort ? "(Pinned: #{pinned_effort.titleize})" : "(Default)" %>
-                <select name="step_reasoning_efforts[<%= step %>]"
-                        class="config-select step-effort-select"
-                        data-step="<%= step %>"
-                        id="step_reasoning_efforts_<%= step %>">
-                  <option value=""><%= default_label %></option>
-                  <% DmConfig::REASONING_EFFORTS.each do |eff| %>
-                    <option value="<%= eff %>"
-                            <%= 'selected' if current_step_efforts[step] == eff %>>
-                      <%= eff.titleize %>
-                    </option>
-                  <% end %>
-                </select>
-              </div>
-              <button type="button" class="btn-reset-step" data-step="<%= step %>" title="Reset this step to default model and effort">&#x21ba;</button>
-            </div>
-          <% end %>
-        </div>
-
-        <div class="budget-actions">
-          <button type="button" class="btn-reset-budgets" id="reset-budgets-btn">
-            Reset all step models and efforts to default
-          </button>
-        </div>
-      </div>
+      <h2>Models &amp; Reasoning Effort</h2>
+      <p class="field-hint">
+        Per-step model and <code>reasoning_effort</code> assignments live in
+        <code>config/dm_step_models.yml</code> — versioned in the repo so dev,
+        staging, playwright, and prod always agree. Edit that file (and
+        deploy) to change them. Current resolved values:
+      </p>
+      <ul class="field-hint">
+        <li>
+          <strong>Default:</strong> model = <code><%= DmStepModelsConfig.default_model %></code>,
+          reasoning_effort = <code><%= DmStepModelsConfig.default_reasoning_effort %></code>
+        </li>
+        <% DungeonMaster::StepRegistry.pipeline_steps.each do |step| %>
+          <li>
+            <strong><%= step.titleize %>:</strong>
+            <code><%= @config.model_for(step) %></code>
+            (effort: <code><%= @config.reasoning_effort_for(step) %></code>)
+          </li>
+        <% end %>
+      </ul>
     </div>
 
     <div class="config-section">
@@ -348,19 +247,6 @@
     document.getElementById('threshold-display').textContent = this.value;
   });
 
-  // Collapsible Pipeline Steps section
-  document.getElementById('pipeline-steps-toggle').addEventListener('click', function() {
-    var body = document.getElementById('pipeline-steps-body');
-    var arrow = document.getElementById('pipeline-steps-arrow');
-    if (body.style.display === 'none') {
-      body.style.display = 'block';
-      arrow.textContent = '▾';
-    } else {
-      body.style.display = 'none';
-      arrow.textContent = '▸';
-    }
-  });
-
   // Collapsible Narrative Facts Store section
   document.getElementById('narrative-facts-toggle').addEventListener('click', function() {
     var body = document.getElementById('narrative-facts-body');
@@ -373,109 +259,6 @@
       arrow.textContent = '▸';
     }
   });
-
-  function getDefaultModelName() {
-    var select = document.getElementById('model-select');
-    var opt = select.options[select.selectedIndex];
-    return opt ? opt.textContent.trim() : '';
-  }
-
-  function getModelNameForStep(stepSelect) {
-    var opt = stepSelect.options[stepSelect.selectedIndex];
-    return (opt && opt.value) ? opt.textContent.trim() : null;
-  }
-
-  function getDefaultModelCosts() {
-    var select = document.getElementById('model-select');
-    var opt = select.options[select.selectedIndex];
-    if (!opt) return { input: null, output: null };
-    return { input: opt.dataset.inputCost, output: opt.dataset.outputCost };
-  }
-
-  function updateStepPricing() {
-    var defaultCosts = getDefaultModelCosts();
-    var defaultName = getDefaultModelName();
-
-    document.querySelectorAll('.step-model-select').forEach(function(stepSelect) {
-      var step = stepSelect.dataset.step;
-      var costEl = document.getElementById('step_cost_' + step);
-      if (!costEl) return;
-
-      var opt = stepSelect.options[stepSelect.selectedIndex];
-      var inputCost, outputCost, label;
-
-      if (opt && opt.value) {
-        inputCost = opt.dataset.inputCost;
-        outputCost = opt.dataset.outputCost;
-        label = opt.textContent.trim();
-      } else {
-        inputCost = defaultCosts.input;
-        outputCost = defaultCosts.output;
-        label = defaultName;
-      }
-
-      if (inputCost && outputCost) {
-        costEl.innerHTML = '$' + inputCost + ' in · $' + outputCost + ' out <small>/ 1M tok</small>';
-      } else {
-        costEl.textContent = '';
-      }
-    });
-  }
-
-  // Update pricing when any step model changes
-  document.querySelectorAll('.step-model-select').forEach(function(select) {
-    select.addEventListener('change', function() {
-      updateStepPricing();
-    });
-  });
-
-  // Reset all step models and efforts to default
-  document.getElementById('reset-budgets-btn').addEventListener('click', function() {
-    document.querySelectorAll('.step-model-select').forEach(function(select) {
-      select.value = '';
-    });
-    document.querySelectorAll('.step-effort-select').forEach(function(select) {
-      select.value = '';
-    });
-    updateStepPricing();
-  });
-
-  // Per-step reset buttons
-  document.querySelectorAll('.btn-reset-step').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var step = this.dataset.step;
-      document.getElementById('step_models_' + step).value = '';
-      var effortSel = document.getElementById('step_reasoning_efforts_' + step);
-      if (effortSel) effortSel.value = '';
-      updateStepPricing();
-    });
-  });
-
-  // Model details panel
-  function updateModelDetails() {
-    var select = document.getElementById('model-select');
-    var opt = select.options[select.selectedIndex];
-    var panel = document.getElementById('model-details');
-    if (!opt) { panel.innerHTML = ''; return; }
-
-    var id = opt.value;
-    var desc = opt.dataset.description;
-    var inputCost = opt.dataset.inputCost;
-    var outputCost = opt.dataset.outputCost;
-    var isReasoning = opt.dataset.reasoningModel === 'true';
-
-    var parts = ['<span class="md-id">' + id + '</span>'];
-    if (isReasoning) parts.push('<span class="md-reasoning-badge">Reasoning model</span>');
-    if (desc) parts.push('<span class="md-desc">' + desc + '</span>');
-    if (inputCost && inputCost !== '')
-      parts.push('<span class="md-cost">$' + inputCost + ' in · $' + outputCost + ' out <small>per 1M tokens</small></span>');
-
-    panel.innerHTML = parts.join('');
-    updateStepPricing();
-  }
-
-  document.getElementById('model-select').addEventListener('change', updateModelDetails);
-  updateModelDetails();
 </script>
 
 

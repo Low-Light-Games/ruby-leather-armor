@@ -3,8 +3,6 @@ module Admin
 
     def show
       @config = DmConfig.instance
-      available_ids = fetch_available_model_ids
-      @models_with_metadata = OpenaiModelCatalog.for_models(available_ids)
       render layout: 'admin'
     end
 
@@ -41,32 +39,8 @@ module Admin
         new_settings["danger_threshold"] = params[:danger_threshold].to_i.clamp(0, 100)
       end
 
-      if params[:model].present?
-        new_settings["model"] = params[:model]
-      end
-
-      if params[:reasoning_effort].present? &&
-         DmConfig::REASONING_EFFORTS.include?(params[:reasoning_effort])
-        new_settings["reasoning_effort"] = params[:reasoning_effort]
-      end
-
-      if params[:step_models].present?
-        models = {}
-        DungeonMaster::StepRegistry.pipeline_steps.each do |step|
-          val = params[:step_models][step]
-          models[step] = val if val.present?
-        end
-        new_settings["step_models"] = models
-      end
-
-      if params[:step_reasoning_efforts].present?
-        efforts = {}
-        DungeonMaster::StepRegistry.pipeline_steps.each do |step|
-          val = params[:step_reasoning_efforts][step].to_s
-          efforts[step] = val if DmConfig::REASONING_EFFORTS.include?(val)
-        end
-        new_settings["step_reasoning_efforts"] = efforts
-      end
+      # Per-step model + reasoning_effort assignments live in
+      # config/dm_step_models.yml — versioned, not editable here.
 
       if params[:narrative_facts_embedding_model].present? &&
          DmConfig::EMBEDDING_MODEL_IDS.include?(params[:narrative_facts_embedding_model])
@@ -89,25 +63,7 @@ module Admin
       redirect_to admin_dm_config_path, notice: "DM settings updated."
     end
 
-    def models
-      render json: OpenaiModelCatalog.for_models(fetch_available_model_ids)
-    end
-
     private
-
-    def fetch_available_model_ids
-      client = OpenAI::Client.new
-      response = client.models.list
-      response.fetch("data", [])
-        .map { |m| OpenaiModelCatalog.normalize(m["id"]) }
-        .select { |id| OpenaiModelCatalog.chat_model?(id) }
-        .uniq
-        .sort
-    rescue StandardError => e
-      ApplicationErrorReporter.notify(e, context: { source: "dm_configs_fetch_openai_models" })
-      Rails.logger.error("[DmConfigsController] Failed to fetch OpenAI models: #{e.message}")
-      [DmConfig::DEFAULTS["model"]]
-    end
 
     def require_admin
       unless current_user&.admin?
