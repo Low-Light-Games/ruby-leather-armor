@@ -2,17 +2,7 @@
 
 module Combat
   module Resolvers
-    # End-of-player-turn resolution: spends what's left of the player's
-    # action economy, fans out the NPC initiative band via Combat::NpcTurn
-    # (each NPC walks its ProgrammedBehavior — attack at range, approach
-    # if out of reach, flee under morale), and refreshes the player's
-    # economy for the next round. The wire-protocol kind stays
-    # 'end_turn' since the frontend payload union depends on it.
     module EndPlayerTurn
-      # PF1e round = 6 seconds. Advance the GameClock by one round whenever
-      # the player ends a turn so per-minute / per-hour buff durations
-      # actually tick down across long combats — without this, a 20-minute
-      # Shield reads "20 min remaining" round 1 and round 50 alike.
       ROUND_DURATION_HOURS = 6.0 / 3600
 
       private
@@ -50,10 +40,6 @@ module Combat
         ids = ordered_npc_creature_sheet_ids(@adventure.combat_context || {})
         return [] if ids.empty?
 
-        # Preserve the initiative order encoded in `ids` — DB row id is
-        # creation order, not initiative. .where(id: ids) returns rows in
-        # arbitrary order, so re-sort by index_of(creature.id) and drop
-        # any that are already down.
         by_id = @adventure.creature_sheets.where(id: ids).where('hp > 0').index_by(&:id)
         ids.filter_map { |id| by_id[id] }
       end

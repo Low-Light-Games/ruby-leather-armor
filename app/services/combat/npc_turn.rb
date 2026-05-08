@@ -1,20 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # Deterministic engine for one NPC's combat turn (PR-F of the
-  # combat-determinism arc — see docs/combat_redesign.md). Walks the
-  # creature's ProgrammedBehavior and the grid to pick:
-  #
-  #   1. The first preferred attack whose engagement range matches the
-  #      current distance to the player.
-  #   2. If no attack matches and approach_when_out_of_reach is true,
-  #      step toward the player up to the creature's speed and pick the
-  #      best attack from the new position.
-  #   3. If HP fraction is at or below morale.flee_at_hp_pct, step
-  #      directly away from the player instead of attacking.
-  #
-  # Returns an array of NpcTurnEvent records (move, attack, flee, skip)
-  # suitable for serialization back to the HUD.
   module NpcTurn
     DEFAULT_NPC_SPEED_SQUARES = 6
 
@@ -133,8 +119,6 @@ module Combat
       ).to_h
     end
 
-    # ── helpers ──────────────────────────────────────────────────────
-
     def should_flee?(creature, policy)
       threshold = policy.flee_at_hp_pct
       return false unless threshold.positive?
@@ -157,8 +141,6 @@ module Combat
       "creature_#{creature.id}"
     end
 
-    # Approach/retreat walkers extracted to Combat::Movement so the
-    # module stays under the length cap.
     def approach_step(**) = Movement.approach_step(**)
     def retreat_step(**)  = Movement.retreat_step(**)
   end

@@ -1,14 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # Canonical (x, y) position for a single combatant on the battlefield
-  # grid. Returned by Combat::Positions accessors and passed to
-  # Combat::Rules. Chebyshev distance — every diagonal counts as 1
-  # square — see docs/combat_redesign.md PR-C.
-  #
-  # Coordinates live in a sub-hash so the constructor stays under the
-  # parameter-list cap. Read sites can keep using `position.x` /
-  # `position.y` via the shim accessors.
   class Position
     attr_reader :token_id, :label, :coordinates, :type, :creature_sheet_id
 

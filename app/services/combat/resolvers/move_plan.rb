@@ -2,13 +2,6 @@
 
 module Combat
   module Resolvers
-    # Bundled record threaded through Combat::Resolvers::Move — origin
-    # square, target coordinates, distance, action-economy delta the
-    # commit phase will spend, the human-readable mode label, and the
-    # AoO outcomes resolved against the departure square (empty for
-    # 5-foot steps and withdraws). Carries the contract between
-    # build_move_plan!, commit_move!, and emit_move_payload so each
-    # helper signature stays one parameter wide.
     class MovePlan
       attr_reader :origin, :target_x, :target_y, :distance, :delta, :mode, :aoo_outcomes
 

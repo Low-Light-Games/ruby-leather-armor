@@ -1,14 +1,8 @@
 # frozen_string_literal: true
 
 module CharacterStats
-  # Static Pathfinder 1e lookup tables shared across all calculators.
-  #
-  # Include this module in any calculator class that needs access to the tables.
-  # None of the constants carry behaviour — they are pure data.
   module GameRules
     ABILITIES = %w[strength dexterity constitution intelligence wisdom charisma].freeze
-
-    # ── Class data (OGC mechanical tables) ────────────────────────
 
     CLASS_DATA = {
       "barbarian"  => { hit_die: 12, bab: "full",  good_saves: %w[fort], skill_points: 4 },
@@ -23,8 +17,6 @@ module CharacterStats
       "sorcerer"   => { hit_die: 6,  bab: "1/2",   good_saves: %w[will], skill_points: 2 },
       "wizard"     => { hit_die: 6,  bab: "1/2",   good_saves: %w[will], skill_points: 2 },
     }.freeze
-
-    # ── Race data (OGC mechanical tables) ─────────────────────────
 
     RACE_DATA = {
       "human"    => { size: "Medium", speed: 30, fixed: {},
@@ -48,8 +40,6 @@ module CharacterStats
                       flex_count: 1, skill_bonuses: { "Intimidate" => 2 } },
     }.freeze
 
-    # ── Carry capacity table (OGC) — indexed by STR score ─────────
-    # Each entry: [light_load_max, medium_load_max, heavy_load_max]
     CARRY_CAPACITY = [
       [0, 0, 0],          # STR 0
       [3, 6, 10],         # STR 1
@@ -82,8 +72,6 @@ module CharacterStats
       [400, 800, 1200],   # STR 28
       [466, 933, 1400],   # STR 29
     ].freeze
-
-    # ── Skill table (OGC) ─────────────────────────────────────────
 
     SKILLS = [
       { name: "Acrobatics",                key: "dexterity",     trained_only: false, acp: true },

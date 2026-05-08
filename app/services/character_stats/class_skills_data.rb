@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 module CharacterStats
-  # Pathfinder 1e class skill lists (Core Rulebook / SRD). Skill strings must match Calculator's
-  # skill list exactly (same casing as PATHFINDER_SKILLS / pathfinder_skills.ts).
-  #
-  # Client mirror (keep identical): app/javascript/rules/pathfinder_class_skills.ts (`CLASS_SKILLS_BY_ID`).
   class ClassSkillsData
     LISTS = {
       "barbarian" => [

@@ -1,15 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # Canonical position accessor for the combat grid (PR-C of the
-  # combat-determinism arc — see docs/combat_redesign.md).
-  #
-  # Until this module landed, "where is X?" was answered by reading the
-  # AI-narrated `combat_context` participants list — strings, not
-  # coordinates. The deterministic resolver (PR-B) and the rules engine
-  # (PR-D) need *coordinates* to answer flanking, AoO, cover, reach.
-  # This module is the one place that translates between the
-  # `adventure_battlefields.tokens` JSON shape and the combat code.
   module Positions
     SQUARE_FEET = 5
     PLAYER_TOKEN_ID = 'player'
@@ -51,15 +42,10 @@ module Combat
       (speed_feet.to_i / SQUARE_FEET).clamp(1, 30)
     end
 
-    # Updates the player token in the active battlefield row to (x, y) and
-    # bumps the version. Returns the updated battlefield. Caller must already
-    # hold a transaction if it needs strict atomicity with other mutations.
     def move_player_token!(adventure, at_x:, at_y:)
       move_token!(adventure, token_id: PLAYER_TOKEN_ID, at_x: at_x, at_y: at_y)
     end
 
-    # Generic token mover used for both player (PR-C) and NPCs (PR-F).
-    # Same atomicity contract as move_player_token!.
     def move_token!(adventure, token_id:, at_x:, at_y:)
       battlefield = active_battlefield(adventure)
       raise ArgumentError, 'no active battlefield' unless battlefield

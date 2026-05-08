@@ -40,7 +40,6 @@ module PlayerTurn
 
       def apply_context_update_results(context_result, mutations:)
         persist_combat_context(context_result, mutations)
-        handle_new_creatures(context_result["new_creatures"]) if context_result["new_creatures"].present?
       end
 
       def run_context_update_fan_out(what_happened, mutations, allow_combat_initialization:)

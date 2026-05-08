@@ -1,12 +1,6 @@
 # frozen_string_literal: true
 
 module CharacterStats
-  # Computes the ability score pipeline for a sheet-like source.
-  #
-  # Handles: racial modifiers, condition penalties, final ability scores,
-  # ability modifiers, BAB, and base save progressions.
-  #
-  # Returns a plain Hash consumed by the Calculator orchestrator.
   class AbilityScoreCalculator
     include GameRules
 
@@ -16,7 +10,6 @@ module CharacterStats
     end
 
     # @return [Hash] with keys:
-    #   :race_info, :final_scores, :mods, :active_conditions, :bab, :good_saves
     def compute
       race_info  = RACE_DATA[@src.race] || RACE_DATA["human"]
       class_info = CLASS_DATA[@src.character_class]
@@ -43,8 +36,6 @@ module CharacterStats
 
     private
 
-    # ── Conditions ──────────────────────────────────────────────────
-
     def active_conditions
       @active_conditions ||= PersistedJsonArray.list(@src.try(:conditions))
     end
@@ -64,8 +55,6 @@ module CharacterStats
       end
       adjusted
     end
-
-    # ── Ability score pipeline ───────────────────────────────────────
 
     def compute_racial_mods(race_info)
       mods = ABILITIES.each_with_object({}) { |a, h| h[a] = 0 }
@@ -97,8 +86,6 @@ module CharacterStats
       end
       adjusted
     end
-
-    # ── BAB & saves ─────────────────────────────────────────────────
 
     def compute_bab(progression, level)
       case progression

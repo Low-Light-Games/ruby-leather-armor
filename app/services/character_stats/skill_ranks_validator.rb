@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 module CharacterStats
-  # Server-side Pathfinder 1e skill rank rules (budget, per-rank cost, max ranks per skill).
-  # Mirrors app/javascript/rules/pathfinder_skill_ranks.ts — keep in sync.
   class SkillRanksValidator
     VALID_SKILL_NAMES = GameRules::SKILLS.map { |s| s[:name] }.freeze
 

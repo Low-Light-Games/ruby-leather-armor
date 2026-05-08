@@ -1,15 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # Builds the JSON payload returned to the controller after an attack
-  # resolves. Extracted from the resolver so the resolver code stays
-  # focused on dispatch + state mutation, not on which keys the
-  # frontend expects.
-  #
-  # Constructor takes three grouped hashes — the attack inputs, the
-  # roll outcome, and the situational modifiers — keeping the
-  # signature small enough for static analysis without a giant
-  # positional argument list.
   class AttackResolutionPayload
     # @param attack_input [Hash] option, target_name, attack_bonus, defense_dc
     # @param attack_outcome [Hash] attack: roll, damage: roll, target_state

@@ -20,17 +20,6 @@ module Mutations
     @on_sheet_update&.call
   end
 
-  def handle_new_creatures(creature_names)
-    CreatureSpawn.new(
-      adventure: @adventure,
-      sheet: @sheet,
-      log: @log,
-      ai: @ai,
-      config: @config,
-      on_error: ->(step, err) { pipeline_error!(step, err) }
-    ).call(creature_names)
-  end
-
   def apply_player_mutations(player_muts)
     PlayerMutations.new(sheet: @sheet, adventure: @adventure, config: @config, log: @log).call(player_muts)
   end

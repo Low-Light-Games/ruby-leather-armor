@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # Result hashes Combat::NpcTurn used to inline. Each event reports one
-  # creature's outcome for the round (an attack, an approach move, a
-  # skipped turn, a flee), serialized to the same hash shape the HUD
-  # already consumes (so the wire format is unchanged).
   module NpcTurnEvent
     KIND_ATTACK = 'npc_attack'
     KIND_MOVE   = 'npc_move'

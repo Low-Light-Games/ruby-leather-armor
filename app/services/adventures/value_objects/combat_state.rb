@@ -32,7 +32,6 @@ module Adventures
       end
       private_class_method :build_participants
 
-      # rubocop:disable Metrics/ParameterLists
       def initialize(active:, round:, current_turn:, participants:, turn_order:,
                      action_economy:, battlefield_ref:, last_battlefield_ref:,
                      terrain_notes:, raw:)
@@ -47,7 +46,6 @@ module Adventures
         @terrain_notes        = terrain_notes
         @raw                  = raw
       end
-      # rubocop:enable Metrics/ParameterLists
 
       def active? = @active
       def has_participants? = @participants.any?

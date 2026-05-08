@@ -1,16 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # PR-H of the combat-determinism arc — see docs/combat_redesign.md.
-  #
-  # Pure heuristic over a deterministic combat action_event. Returns a
-  # trigger payload when the action has plausible social ramifications
-  # — drawing steel in a tavern, casting a spell with NPCs watching,
-  # dropping an enemy in front of an audience — otherwise nil. The AI
-  # never runs here; this is the gate.
-  #
-  # Triggered events get logged as `social_event_triggered` rows that
-  # `Combat::SocialEventResolution` consumes on the next pipeline pass.
   module SocialEventTrigger
     SENSITIVE_ATTACK_KINDS = %w[attack].freeze
 

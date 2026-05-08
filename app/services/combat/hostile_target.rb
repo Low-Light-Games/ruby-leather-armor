@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # Per-participant snapshot rendered by the combat HUD's targets list.
-  # Wraps a CreatureSheet in the exact shape the frontend expects so the
-  # controller doesn't hand-roll a hash literal at the boundary.
   class HostileTarget
     attr_reader :creature
 

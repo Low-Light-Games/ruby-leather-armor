@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # Builds the JSON payload returned to the controller after a move
-  # resolves. Mirrors AttackResolutionPayload — extracted from the
-  # resolver to keep the resolver focused on dispatch + state mutation
-  # and to satisfy Cursor's hash-payload boundary cop.
   class MoveResolutionPayload
     # @param origin [Combat::Position]
     # @param destination [Hash] x, y

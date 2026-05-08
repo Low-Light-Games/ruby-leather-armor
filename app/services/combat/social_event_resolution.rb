@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # PlayLog payload describing a combat action that crossed the social
-  # threshold (a hostile act in front of NPCs). Persisted under
-  # event_type 'social_event_triggered' for the next pipeline pass to
-  # read.
   class SocialEventResolution
     KIND = 'social_event_triggered'
 
