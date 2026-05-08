@@ -14,6 +14,7 @@ load Rails.root.join('db', 'seeds', 'feature_flags.rb')
 
 # Story content — must run before encounter_tables, which depends on stories existing
 load Rails.root.join('db', 'seeds', 'combat_story.rb')
+load Rails.root.join('db', 'seeds', 'long_road_story.rb')
 load Rails.root.join('db', 'seeds', 'encounter_tables.rb')
 
 def seed_playwright_sidebar_fixture!
@@ -148,9 +149,24 @@ if Rails.env.development? || Rails.env.staging? || Rails.env.playwright?
   lead_user.onboarding_state = 'new'
   lead_user.save!
 
+  # Paid Playwright user — exercises code paths gated on `current_user.paid?`
+  # without admin overrides. plan_key 'hero' picks a generous token budget so
+  # individual e2e runs are never cut off by the monthly limit.
+  paid_user = User.find_or_initialize_by(email: 'paid@example.com')
+  paid_user.admin = false
+  paid_user.password = 'paid123'
+  paid_user.onboarding_state = 'in_progress'
+  paid_user.save!
+
+  paid_profile = paid_user.stripe_profile || paid_user.build_stripe_profile
+  paid_profile.plan_key = 'hero'
+  paid_profile.grace_period_ends_at = nil
+  paid_profile.save!
+
   puts "Created/updated admin user: #{admin.email} (password: admin123)"
   puts "Created/updated test user: #{test_user.email} (password: test123)"
   puts "Created/updated lead user (onboarding new): #{lead_user.email} (password: lead123)"
+  puts "Created/updated paid user: #{paid_user.email} (password: paid123, plan: #{paid_profile.plan_key})"
 
   minmax_sheets = [
     {
@@ -183,7 +199,7 @@ if Rails.env.development? || Rails.env.staging? || Rails.env.playwright?
     }
   ]
 
-  [[admin, 0], [test_user, 1]].each do |user, sheet_idx|
+  [[admin, 0], [test_user, 1], [paid_user, 1]].each do |user, sheet_idx|
     unless user.sheets.exists?
       user.sheets.create!(minmax_sheets[sheet_idx])
       puts "Created sheet '#{minmax_sheets[sheet_idx][:name]}' for #{user.email}"

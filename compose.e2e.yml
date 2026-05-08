@@ -1,0 +1,132 @@
+# Isolated e2e stack — DO NOT mix with compose.yml.
+#
+# Hard isolation from ../app's compose:
+#   - explicit project name `e2e` (vs `app`)
+#   - container names pinned to `e2e-*`
+#   - volumes prefixed `e2e_*`
+#   - host ports 3100 / 5433 (vs 3000 / unpublished)
+#
+# Tests run against real OpenAI. Put your key in .env at the repo root
+# (gitignored); compose's env_file directive injects it into both `app` and
+# `evaluator`. Redis is still absent — the playwright env uses inline jobs,
+# async ActionCable, and :null_store cache.
+#
+# Bring up:    docker compose -f compose.e2e.yml up -d --build
+# Run tests:   docker compose -f compose.e2e.yml run --rm playwright
+#              (pass extra args:  ... run --rm playwright npx playwright test test/e2e/sheets/)
+# Tear down:   docker compose -f compose.e2e.yml down            (keeps DB)
+# Wipe DB:     docker compose -f compose.e2e.yml down -v
+# Tail app:    docker compose -f compose.e2e.yml logs -f app
+
+name: e2e
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        RAILS_ENV: development
+    container_name: e2e-app
+    command:
+      - bash
+      - -lc
+      - |
+        set -e
+        rm -f tmp/pids/server.pid
+        bundle check >/dev/null 2>&1 || bundle install
+        yarn install --check-files
+        yarn build
+        bundle exec rails db:prepare
+        exec bundle exec rails server -b 0.0.0.0 -p 3000
+    env_file:
+      - .env
+    environment:
+      RAILS_ENV: playwright
+      DATABASE_URL: postgres://exercises:sekret@postgres:5432/exercises_playwright
+      EVALUATOR_URL: http://evaluator:3001
+      BIND: tcp://0.0.0.0:3000
+      RAILS_MAX_THREADS: "5"
+      SECRET_KEY_BASE: playwright-secret-key-base-not-for-production-use-only
+    depends_on:
+      postgres:
+        condition: service_healthy
+      evaluator:
+        condition: service_started
+    ports:
+      - "3100:3000"
+    volumes:
+      - .:/app
+      - e2e_bundle:/bundle
+      - e2e_node_modules:/app/node_modules
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:3000/up || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 60
+      start_period: 90s
+
+  evaluator:
+    build:
+      context: .
+      args:
+        RAILS_ENV: development
+    container_name: e2e-evaluator
+    command: node evaluator/src/index.js
+    env_file:
+      - .env
+    environment:
+      EVALUATOR_MAX_PARALLEL: "7"
+    volumes:
+      - .:/app
+      - e2e_node_modules:/app/node_modules
+      # Bind mount masks /app/evaluator/node_modules baked into the image;
+      # this named volume restores it (Docker pre-populates from the image
+      # on first start). Without it, evaluator crashes with MODULE_NOT_FOUND.
+      - e2e_evaluator_node_modules:/app/evaluator/node_modules
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: e2e-postgres
+    environment:
+      POSTGRES_DB: exercises_playwright
+      POSTGRES_USER: exercises
+      POSTGRES_PASSWORD: sekret
+    ports:
+      - "5433:5432"
+    volumes:
+      - e2e_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U exercises -d exercises_playwright"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  # On-demand test runner. Stays out of `up` thanks to the `test` profile —
+  # invoke explicitly:  docker compose -f compose.e2e.yml run --rm playwright
+  # Image tag must track @playwright/test in package.json.
+  playwright:
+    build:
+      context: .
+      dockerfile: Dockerfile.playwright
+    image: e2e-playwright:local
+    container_name: e2e-playwright
+    profiles: ["test"]
+    working_dir: /work
+    environment:
+      BASE_URL: http://app:3000
+      CI: "1"
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - .:/work
+      # Image-built /work/node_modules pre-populates this volume on first run.
+      - e2e_test_node_modules:/work/node_modules
+    command: ["npx", "playwright", "test"]
+
+volumes:
+  e2e_postgres_data:
+  e2e_bundle:
+  e2e_node_modules:
+  e2e_evaluator_node_modules:
+  e2e_test_node_modules:
