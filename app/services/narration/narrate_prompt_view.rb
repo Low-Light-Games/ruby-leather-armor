@@ -22,7 +22,7 @@ module Narration
     def self.for_narrate(pipeline_engine, pipeline_context, scene_facts:, outcome_facts:)
       adventure   = pipeline_engine.adventure
       sheet       = pipeline_engine.sheet
-      live_combat = WorldTurn::LiveContext.merge_live_participants(
+      live_combat = Combat::WorldTurn::LiveContext.merge_live_participants(
         adventure.combat_context || {}, adventure: adventure, sheet: sheet
       )
 
