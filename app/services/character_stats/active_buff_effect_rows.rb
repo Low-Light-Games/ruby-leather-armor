@@ -20,18 +20,18 @@ module CharacterStats
     def normalize_adjudicated_effects(raw, log: nil)
       Transformers::CoercedMutationArray.coerce(raw, field: "adjudicated_effects", log: log).filter_map do |effect|
         unless effect.is_a?(Hash)
-          PipelineWarn.emit(log, "[ActiveBuffResolver] adjudicated_effects entry must be a Hash — skipped")
+          PlayerTurn::LogWarn.emit(log, "[ActiveBuffResolver] adjudicated_effects entry must be a Hash — skipped")
           next
         end
         h = effect.deep_stringify_keys
         target = h["target"].to_s
         unless ALLOWED_BUFF_TARGETS.include?(target)
-          PipelineWarn.emit(log, "[ActiveBuffResolver] adjudicated effect dropped unknown target '#{target}'")
+          PlayerTurn::LogWarn.emit(log, "[ActiveBuffResolver] adjudicated effect dropped unknown target '#{target}'")
           next
         end
         bonus_type = h["bonusType"] || h["bonus_type"]
         unless bonus_type.present?
-          PipelineWarn.emit(log, "[ActiveBuffResolver] adjudicated effect dropped missing bonusType for target '#{target}'")
+          PlayerTurn::LogWarn.emit(log, "[ActiveBuffResolver] adjudicated effect dropped missing bonusType for target '#{target}'")
           next
         end
         if (camel_formula = h["bonusFormula"]).is_a?(Hash)
@@ -43,7 +43,7 @@ module CharacterStats
         has_formula = h["bonus_formula"].is_a?(Hash)
         bonus_blank = !h.key?("bonus") || h["bonus"].nil? || (h["bonus"].is_a?(String) && h["bonus"].strip.empty?)
         unless has_formula || !bonus_blank
-          PipelineWarn.emit(log, "[ActiveBuffResolver] adjudicated effect dropped missing bonus/bonus_formula for target '#{target}'")
+          PlayerTurn::LogWarn.emit(log, "[ActiveBuffResolver] adjudicated effect dropped missing bonus/bonus_formula for target '#{target}'")
           next
         end
 

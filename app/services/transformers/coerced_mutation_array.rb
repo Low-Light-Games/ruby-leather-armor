@@ -8,7 +8,7 @@ module Transformers
       return [] if raw.nil?
 
       unless raw.is_a?(Array)
-        Utilities::PipelineWarn.emit(log, "[mutations] #{field} must be Array or nil (#{raw.class} ignored)")
+        PlayerTurn::LogWarn.emit(log, "[mutations] #{field} must be Array or nil (#{raw.class} ignored)")
         return []
       end
 

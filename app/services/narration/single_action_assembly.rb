@@ -22,7 +22,7 @@ module Narration
                      :player_incapacitated
                    end
 
-      ctx = PipelineContext.new(
+      ctx = PlayerTurn::Context.new(
         combined_seed: outcome,
         player_action: loop&.player_intent,
         prior_outcomes: prior,

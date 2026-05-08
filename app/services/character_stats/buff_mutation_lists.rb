@@ -14,7 +14,7 @@ module CharacterStats
       return [] if raw.nil?
 
       unless raw.is_a?(Array)
-        Utilities::PipelineWarn.emit(log, "[buffs] sheet.active_buffs must be Array or nil (#{raw.class} treated as empty)")
+        PlayerTurn::LogWarn.emit(log, "[buffs] sheet.active_buffs must be Array or nil (#{raw.class} treated as empty)")
         return []
       end
 

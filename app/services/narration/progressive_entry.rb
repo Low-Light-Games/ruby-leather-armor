@@ -14,7 +14,7 @@ module Narration
       @action_text        = action_text
     end
 
-    # @param phase [Hash] return value of PipelineEngine#run_narrative_phase
+    # @param phase [Hash] return value of PlayerTurn::Engine#run_narrative_phase
     def self.from_narrative_phase(phase, sequence_index:, total_actions:, action_text:)
       new(
         narrative: phase[:narrative],

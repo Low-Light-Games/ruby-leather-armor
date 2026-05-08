@@ -22,7 +22,7 @@ module CharacterStats
           allowed_class_ability_ids: allowed_class_ability_ids
         )
       else
-        PipelineWarn.emit(log, "[ActiveBuffResolver] Unknown source_type '#{source_type}' for '#{source_id}' — skipped")
+        PlayerTurn::LogWarn.emit(log, "[ActiveBuffResolver] Unknown source_type '#{source_type}' for '#{source_id}' — skipped")
         []
       end
     end
@@ -30,7 +30,7 @@ module CharacterStats
     def resolve_spell(source_id, sheet:, current_game_hours:, log: nil)
       defn = SpellDefinition.find_by(id: source_id)
       unless defn
-        PipelineWarn.emit(log, "[ActiveBuffResolver] SpellDefinition '#{source_id}' not found — skipped")
+        PlayerTurn::LogWarn.emit(log, "[ActiveBuffResolver] SpellDefinition '#{source_id}' not found — skipped")
         return []
       end
 
@@ -50,7 +50,7 @@ module CharacterStats
     def resolve_item(source_id, current_game_hours:, log: nil)
       defn = ItemDefinition.find_by(id: source_id)
       unless defn
-        PipelineWarn.emit(log, "[ActiveBuffResolver] ItemDefinition '#{source_id}' not found — skipped")
+        PlayerTurn::LogWarn.emit(log, "[ActiveBuffResolver] ItemDefinition '#{source_id}' not found — skipped")
         return []
       end
 
@@ -72,12 +72,12 @@ module CharacterStats
       entry ||= {}
       defn = ClassAbilityDefinition.find_by(id: source_id)
       unless defn
-        PipelineWarn.emit(log, "[ActiveBuffResolver] ClassAbilityDefinition '#{source_id}' not found — skipped")
+        PlayerTurn::LogWarn.emit(log, "[ActiveBuffResolver] ClassAbilityDefinition '#{source_id}' not found — skipped")
         return []
       end
 
       unless sheet.respond_to?(:class_ability_definitions)
-        PipelineWarn.emit(log, "[ActiveBuffResolver] class_ability '#{source_id}' sheet has no class abilities — skipped")
+        PlayerTurn::LogWarn.emit(log, "[ActiveBuffResolver] class_ability '#{source_id}' sheet has no class abilities — skipped")
         return []
       end
 
@@ -87,7 +87,7 @@ module CharacterStats
                   sheet.class_ability_definitions.exists?(id: source_id.to_s)
                 end
       unless allowed
-        PipelineWarn.emit(log, "[ActiveBuffResolver] class_ability '#{source_id}' not available for this character — skipped")
+        PlayerTurn::LogWarn.emit(log, "[ActiveBuffResolver] class_ability '#{source_id}' not available for this character — skipped")
         return []
       end
 
@@ -96,7 +96,7 @@ module CharacterStats
       merged = from_definition + from_mutation
 
       if merged.empty?
-        PipelineWarn.emit(log, "[ActiveBuffResolver] class_ability '#{source_id}' has no catalog or adjudicated effects — skipped")
+        PlayerTurn::LogWarn.emit(log, "[ActiveBuffResolver] class_ability '#{source_id}' has no catalog or adjudicated effects — skipped")
         return []
       end
 
