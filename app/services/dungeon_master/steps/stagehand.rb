@@ -40,7 +40,6 @@ module DungeonMaster
 
         prompts = [narrate_evaluator_prompt(narration_context, scene_facts: scene_facts, outcome_facts: outcome_facts)]
         prompts.concat(build_context_update_prompts(seed, mutations, allow_combat_initialization: true))
-        prompts << macro_context_evaluator_prompt(seed) if intent[:macro_significant]
         prompts << loremaster_evaluator_prompt(loremaster_inputs)
 
         broadcast_progress("Writing the story...")
@@ -49,14 +48,8 @@ module DungeonMaster
         by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
 
         context_parsed = aggregate_context_update_results(by_step)
-        macro_parsed = if intent[:macro_significant]
-                         evaluator_fan_out_result!(by_step, "macro_narrative_update", "narrative_phase")["parsed_response"] || {}
-                       else
-                         {}
-                       end
 
-        apply_context_update_results(context_parsed, macro_parsed,
-          macro_significant: intent[:macro_significant],
+        apply_context_update_results(context_parsed,
           mutations: mutations)
 
         broadcast_progress("Remembering the world...")

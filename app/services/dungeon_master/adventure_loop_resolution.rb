@@ -48,7 +48,7 @@ module DungeonMaster
     end
 
     def skip_world_sanity_for_privileged_player?
-      # TODO: remove this once the world sanity, that piece of garbage, is actually working properly instead of killing every fucking things a player tries to do
+      # TODO: restore the privileged-player condition once the world sanity check stops over-rejecting valid player actions.
       true # @adventure.skip_world_sanity_check? && (@adventure.user.paid? || @adventure.user.admin)
     end
 

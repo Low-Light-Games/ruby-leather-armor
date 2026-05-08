@@ -21,12 +21,6 @@ module DungeonMaster
         parts.empty? ? "none" : parts.join(", ")
       end
 
-      def format_carry(ds)
-        caps = ds["carry_capacity"]
-        return "unknown" unless caps.is_a?(Hash)
-
-        "#{ds['total_weight'] || '?'}/#{caps['heavy'] || '?'} lbs"
-      end
     end
   end
 end

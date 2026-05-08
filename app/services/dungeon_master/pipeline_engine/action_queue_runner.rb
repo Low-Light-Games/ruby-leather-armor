@@ -4,28 +4,7 @@ require "set"
 
 module DungeonMaster
   class PipelineEngine
-    # Centralizes the per-action resolve loop + `case result[:status]` that
-    # previously duplicated `orchestrate_actions` and `run_remaining_queue`.
-    #
-    # Assumes:
-    #   - `pipeline` has @adventure, @log, @config, @ai, @sheet and mixin-provided
-    #     private helpers: create_adventure_loop, resolve, tl, plus PipelineEngine::Concerns
-    #     NarrationCoordination (per-action + accumulated narrate), ContextCoordination
-    #     (inter-action + encounter-pause context updates).
-    #   - Action-queue log lines use PipelineEngine::ActionQueueLog (see action_queue_log.rb).
-    #   - Before each `resolve`, @loop is bound to the AdventureLoop for that
-    #     action index (this runner assigns it).
-    #
-    # Sets:
-    #   - pipeline.@loop per iteration; clears log action_label when finished.
-    #   - AdventureLoop rows and timeline entries via batch_update! as today.
-    #
-    # Prompts:
-    #   - None directly; `resolve` delegates to AdventureLoopResolution / step mixins.
-    #
-    # Semantics:
-    #   - `abort_on_rejected: true` — first :rejected returns immediately (fresh queue).
-    #   - `abort_on_rejected: false` — :rejected marks loop errored and continues (resume queue).
+    # TODO: Improve readability — Assumes/Sets/Semantics contract block means dependencies on pipeline_engine ivar state are too implicit; switch to explicit constructor injection.
     class ActionQueueRunner
       def initialize(pipeline_engine)
         @pipeline_engine = pipeline_engine
@@ -258,11 +237,9 @@ module DungeonMaster
         entry = normalize_action_entry(entry)
         prerequisite = entry.prerequisite
         blocked_text = entry.text
-        prior_intent = (prior_result && prior_result[:intent].is_a?(Hash)) ? prior_result[:intent].deep_dup : {}
 
         BlockedActionResolution.new(
           action_text: blocked_text,
-          prior_intent: prior_intent,
           action_outcome: blocked_action_outcome(blocked_text, prerequisite)
         ).to_h
       end

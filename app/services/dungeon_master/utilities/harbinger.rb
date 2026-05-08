@@ -2,23 +2,12 @@
 
 module DungeonMaster
   module Utilities
-    # Harbinger — deterministic encounter-checking utility.
-    #
-    # Pure code (dice rolls against encounter tables), no AI except for
-    # optional encounter narrative expansion. Called by TimeKeeper when
-    # significant time passes. Simulates the passage in segments, rolls
-    # for encounters per segment, and may grant fewer hours than requested
-    # if an encounter or fatigue interrupts.
-    #
-    # Does NOT compute speed, distance, or destinations — those are
-    # provided by the caller (TimeKeeper).
+    # TODO: Improve readability — the "no AI except for X" caveat is the smell; split the AI-driven encounter expansion into a separate collaborator so this module is genuinely deterministic.
     module Harbinger
       JOURNEY_FATIGUE_HOURS = 8
 
       module_function
 
-      # Main entry point. Returns a result hash.
-      #
       # @param hours_needed [Float] how many hours the caller wants
       # @param adventure [Adventure] for encounter table + location lookup
       # @param terrain [String, nil] terrain type for encounter rolls

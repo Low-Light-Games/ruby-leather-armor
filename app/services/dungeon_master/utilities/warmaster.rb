@@ -2,30 +2,13 @@
 
 module DungeonMaster
   module Utilities
-    # Warmaster — combat initialization utility.
-    #
-    # Creates creature sheets, rolls creature initiative, and prepares
-    # combat_context for the adventure. Supports two entry paths:
-    #
-    #   Path A (Encounter table): receives an EncounterTableEntry with a
-    #           creature_manifest for deterministic spawning.
-    #   Path B (Narrative-originated): receives a list of combatant names
-    #           from the combat beacon for fuzzy bestiary + dynamic creation.
-    #
-    # Returns { status: :awaiting_initiative, ... } so the pipeline can
-    # pause and ask the player to roll initiative. If the player ignores
-    # the prompt, the pipeline auto-rolls using their DEX modifier.
+    # TODO: Improve readability — split into EncounterSpawner (Path A) and NameSpawner (Path B); single-class-two-paths is what forces the contract block.
     module Warmaster
       include Mutations
 
       module_function
 
-      # Path A: from Harbinger encounter table roll
-      # creatures_data:    optional structured array from encounter_expand AI (via AdventureLoop)
-      #                    e.g. [{ "name" => "goblin", "count" => 4 }]
-      # scene_enemy_names: optional array of creature-type strings for pre-established
-      #                    hostile NPCs in the scene. Merged in after the encounter-table
-      #                    creatures so they join the combat.
+      # TODO: Improve readability — explicit kwargs on EncounterInitializationRequest would describe the request shape better than this prose preamble.
       def initialize_from_encounter!(encounter_initialization_request: nil, **kwargs)
         encounter_initialization_request ||= EncounterInitializationRequest.new(**kwargs)
         warmaster_context = Context.new(
@@ -94,12 +77,7 @@ module DungeonMaster
         }
       end
 
-      # Compute the finalized combat state from creature data and player initiative.
-      # Pure computation — does NOT write to the adventure record.
-      # Returns a hash suitable for passing as combat_initialization in mutations,
-      # which ContextUpdate will write verbatim to adventure.combat_context.
-      #
-      # +adventure+ and +player_sheet+ are required to load canonical HP/conditions from sheets.
+      # TODO: Improve readability — promote this to a #compute method on a CombatInitialization value object so the purity / write-free contract is structural.
       def compute_combat_initialization(combat_initialization_request: nil, **kwargs)
         combat_initialization_request ||= CombatInitializationRequest.new(**kwargs)
         raise ArgumentError, "player_sheet required for combat initialization" unless combat_initialization_request.player_sheet
@@ -222,11 +200,7 @@ module DungeonMaster
             next
           end
 
-          # AI fallback can return either a single sheet or an array of
-          # sheets (when the prompt sees a plural like "Goblin Scouts" the
-          # model is allowed to fan out into one stat block per goblin).
-          # Either way, walk the result list and emit one creature_record
-          # per sheet, suffixing display names so they stay unique.
+          # TODO: Improve readability — single-vs-array polymorphism should be normalized at the AI parse boundary, not branched on by every caller.
           Array(resolve_creature(ctx, name, display_name)).each_with_index do |sheet, idx|
             entry_name = idx.zero? ? sheet.name : "#{display_name} #{idx + 1}"
             sheet.update!(name: entry_name) if sheet.name != entry_name
@@ -250,9 +224,7 @@ module DungeonMaster
       end
 
       def merge_scene_enemy_names(ctx, creatures, scene_enemy_names)
-        # Merge pre-established hostile NPCs into the encounter creatures.
-        # Skip any whose creature-type name overlaps with an encounter creature already spawned
-        # to avoid doubling up (e.g. encounter already has orcs, scene also says "orc patrol").
+        # TODO: Improve readability — overlap-check belongs in a named predicate (already_spawned?) instead of an inline reject block.
         novel_scene_names = Array(scene_enemy_names).reject do |scene_name|
           normalized_scene_name = TextNormalizer.normalized_key(scene_name)
           creatures.any? do |creature|
@@ -408,10 +380,7 @@ module DungeonMaster
                         model_used: ctx.ai.last_model_used, duration_ms: duration_ms,
                         usage: ctx.ai.last_usage)
 
-        # The prompt allows array responses for plural names ("Goblin
-        # Scouts" → array of stat blocks). Single hash → single sheet,
-        # array → one sheet per element. spawn_from_names handles either
-        # shape on the way back.
+        # TODO: Improve readability — same boundary-normalization issue as above; array-vs-hash should be resolved on parse, not at every consumer.
         entries = parsed.is_a?(Array) ? parsed : [parsed]
         entries.each_with_index.filter_map do |entry, idx|
           next unless entry.is_a?(Hash)
@@ -447,19 +416,13 @@ module DungeonMaster
         sheet
       end
 
-      # Rough HP ceiling per CR — covers the upper end of the SRD HP range
-      # for that CR (e.g. CR 1 ≈ 12-15 HP, CR 5 ≈ 50-60 HP). 12×CR + 5 keeps
-      # CR 1 around 17 HP and CR 10 around 125 HP, which leaves the low CR
-      # space tight (where AI hallucinations actually hurt) without over-
-      # constraining mid-tier templates.
+      # TODO: Improve readability — magic-number formula deserves a NAMED CONSTANT and a one-test SRD reference, not a justification paragraph.
       def hp_ceiling_for_cr(cr)
         12 * cr + 5
       end
 
       def roll_hp_static(formula)
-        # AI sometimes returns the formula as an array (["1d8", "+2"] or
-        # ["1d8+2"]) instead of a single string. Flatten + join with no
-        # separator so both shapes parse the same as "1d8+2".
+        # TODO: Improve readability — formula coercion (Array → joined string) belongs behind a normalize_formula helper, not in this method body.
         formula = Array(formula).join if formula.is_a?(Array)
         return 10 unless formula.present?
 

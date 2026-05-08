@@ -35,8 +35,7 @@ module DungeonMaster
           out["action_economy"] = DungeonMaster::Battlefield::ActionEconomy.build_for_turn_holder(
             current_turn, combat_ctx: out.merge(ctx.slice("turn_order")))
         elsif out["active"] != false && ctx["action_economy"].present?
-          # Keep current turn economy on active snapshots when no fresh turn-holder
-          # economy was computed above.
+          # TODO: Improve readability — fold both builders (CombatContext.build, CombatAdvancement.build_*) into one value-object constructor with named factory methods so this elsif rationale becomes the method name.
           out["action_economy"] = ctx["action_economy"]
         end
         out

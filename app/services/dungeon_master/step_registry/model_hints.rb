@@ -45,9 +45,6 @@ module DungeonMaster
                                  'pre-validation stories whose opening_message is blank — ' \
                                  'e.g. gpt-4.1, gpt-4.1-mini, gpt-5-mini.'
 
-      MACRO_NARRATIVE_UPDATE = 'Mid-tier model. Judges narrative significance — ' \
-                               'e.g. gpt-4.1-mini, gpt-4o-mini, gpt-5-nano.'
-
       CREATURE_GENERATION = 'Mid-tier model recommended. Must produce valid PF1e stat blocks ' \
                             '— e.g. gpt-4.1-mini, gpt-4o-mini, o3-mini.'
 

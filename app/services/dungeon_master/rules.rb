@@ -20,34 +20,6 @@ module DungeonMaster
         @entries ||= load_all_entries
       end
 
-      # Compact manifest for inclusion in prompts (slug + name + domain + brief summary).
-      def manifest
-        all_entries.map do |slug, entry|
-          brief = entry[:text].to_s.split(/\.(\s|\z)/).first&.strip
-          brief = "#{brief}." if brief.present? && !brief.end_with?(".")
-          { slug: slug, name: entry[:name], domain: entry[:domain], brief: brief }
-        end
-      end
-
-      # Fetch concatenated rule text for the given slugs.
-      def fetch(*slugs)
-        slugs = slugs.flatten.map(&:to_s)
-        matched = slugs.filter_map { |s| all_entries[s] }
-        return "" if matched.empty?
-
-        matched.map { |e| "=== #{e[:name]} ===\n#{e[:text].strip}" }.join("\n\n")
-      end
-
-      # Fetch only the entries matching a given domain from the requested slugs.
-      def fetch_for_domain(domain, slugs)
-        domain = domain.to_s
-        slugs = Array(slugs).map(&:to_s)
-        matched = slugs.filter_map { |s| all_entries[s] if all_entries.dig(s, :domain) == domain }
-        return "" if matched.empty?
-
-        matched.map { |e| "=== #{e[:name]} ===\n#{e[:text].strip}" }.join("\n\n")
-      end
-
       # DM guidance text for a domain (kept as plain text files).
       def guidance_for(domain)
         domain = domain.to_s

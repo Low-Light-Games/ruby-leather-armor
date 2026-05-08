@@ -2,32 +2,9 @@
 
 module DungeonMaster
   module Steps
-    # Pipeline Step: SanityChecker.
-    #
-    # Two sub-checks under one umbrella:
-    #
-    #   A) Capability Check — validates that the player possesses the spells,
-    #      feats, items, or class abilities they intend to *use*. Runs in parallel
-    #      with MechanicalEvaluation inside the full affected-domain gate.
-    #      Split responsibility: the AI extracts *what* is being used (NLP problem),
-    #      Ruby verifies *ownership* deterministically against the sheet (not AI).
-    #      This means prompt rules can never cause a false rejection — if the model
-    #      keeps mis-classifying a tactical phrase ("surprise attack"), the Ruby
-    #      lookup simply won't find it on the sheet and the fallback is allow.
-    #
-    #   B) World Consistency Check — validates that the entities, targets, or
-    #      objects the player references actually exist in the current scene.
-    #      AI-only for the same reason: scene state lives in prose context.
-    #      Runs ALWAYS (via full gate or standalone).
-    #
-    # When both run together (full gate with sheet), they use Node POST /fan_out
-    # — no Ruby Thread.new.
+    # TODO: Improve readability — split the two sub-checks (capability vs world-consistency) into separate classes; the umbrella is what forces the contract block.
     module SanityChecker
-      # Tactical phrases the extractor may mis-classify as named abilities.
-      # When a false rejection is observed in play logs, add the normalized
-      # lowercase name here instead of adjusting the prompt.
-      # The architecture guarantees this is the only place that ever needs
-      # to change for this class of problem.
+      # TODO: Improve readability — known-edge-case curation belongs in a seed/YAML, not a hand-curated constant with maintenance instructions.
       TACTICAL_PHRASE_IGNORE = [
         'surprise attack',
         'sneak up',

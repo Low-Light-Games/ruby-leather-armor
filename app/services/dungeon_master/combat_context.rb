@@ -1,14 +1,7 @@
 # frozen_string_literal: true
 
 module DungeonMaster
-  # Factory for the combat_context hash that flows through the pipeline and is
-  # persisted on adventure.combat_context. Canonical keys:
-  #   active, round, current_turn, turn_order, participants, terrain_notes,
-  #   battlefield_ref (optional), last_battlefield_ref (optional)
-  #
-  # Usage:
-  #   CombatContext.build(ctx, participants: refreshed_rows)
-  #   CombatContext.build(ctx, participants: rows, active: false, round: 3)
+  # TODO: Improve readability — replace this hash factory with a Struct/value object so the canonical key set is enforced by the type rather than narrated in prose.
   class CombatContext
     def self.build(ctx, participants:, **overrides)
       hash = {

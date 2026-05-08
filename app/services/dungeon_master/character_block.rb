@@ -9,40 +9,10 @@ module DungeonMaster
       AdventureSheet.for_adventure(adventure)
     end
 
-    def for(sheet, category: nil)
-      raise ArgumentError, "CharacterBlock requires a sheet" unless sheet
-
-      Presenters::AdventureSheetPromptPresenter.new(sheet).for_category(category)
-    end
-
-    def identity(sheet)
-      raise ArgumentError, "CharacterBlock requires a sheet" unless sheet
-
-      Presenters::AdventureSheetPromptPresenter.new(sheet).identity
-    end
-
     def full(sheet)
       raise ArgumentError, "CharacterBlock requires a sheet" unless sheet
 
       Presenters::AdventureSheetPromptPresenter.new(sheet).full
-    end
-
-    def social(sheet)
-      raise ArgumentError, "CharacterBlock requires a sheet" unless sheet
-
-      Presenters::AdventureSheetPromptPresenter.new(sheet).social
-    end
-
-    def traversal(sheet)
-      raise ArgumentError, "CharacterBlock requires a sheet" unless sheet
-
-      Presenters::AdventureSheetPromptPresenter.new(sheet).traversal
-    end
-
-    def buff(sheet)
-      raise ArgumentError, "CharacterBlock requires a sheet" unless sheet
-
-      Presenters::AdventureSheetPromptPresenter.new(sheet).buff
     end
 
     def creature_stats_for(adventure)

@@ -2,12 +2,7 @@
 
 module DungeonMaster
   module SceneRetrieval
-    # Value object returned by `SceneRetrieval::ForResolution`. Carries
-    # the three retrieval slices the GM-facing prompts consume:
-    # established facts, nearby locations (with relative distance and
-    # bearing), and known NPCs. Consumers (`partials/scene_retrieval`)
-    # iterate via the readers; tests and Admin tooling read the hash form
-    # via `#to_h`.
+    # TODO: Improve readability — value object whose attr_reader list already encodes the shape; the prose preamble is redundant.
     class Retrieval
       attr_reader :facts, :locations, :npcs
 

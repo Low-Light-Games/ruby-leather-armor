@@ -25,60 +25,32 @@ module DungeonMaster
 
       private
 
-      def run_context_updates(what_happened, mutations, macro_significant: false, allow_combat_initialization: true)
+      def run_context_updates(what_happened, mutations, allow_combat_initialization: true)
         broadcast_progress("Remembering the world...")
-        context_result, macro_result = run_context_update_fan_out(
+        context_result = run_context_update_fan_out(
           what_happened, mutations,
-          macro_significant: macro_significant,
           allow_combat_initialization: allow_combat_initialization,
         )
 
-        apply_context_update_results(context_result, macro_result,
-          macro_significant: macro_significant,
+        apply_context_update_results(context_result,
           mutations: mutations)
       rescue => e
         pipeline_error!("context_updates", e)
       end
 
       # Used by Stagehand parallel narrative (narrate + context in one fan_out).
-      def apply_context_update_results(context_result, macro_result, macro_significant:, mutations:)
+      def apply_context_update_results(context_result, mutations:)
         persist_combat_context(context_result, mutations)
         handle_new_creatures(context_result["new_creatures"]) if context_result["new_creatures"].present?
-
-        if should_persist_macro_story_summary?(macro_significant, macro_result)
-          @adventure.update!(story_summary: macro_result["story_summary"])
-        end
       end
 
-      def run_context_update_fan_out(what_happened, mutations, macro_significant:, allow_combat_initialization:)
+      def run_context_update_fan_out(what_happened, mutations, allow_combat_initialization:)
         prompts = build_context_update_prompts(what_happened, mutations,
           allow_combat_initialization: allow_combat_initialization)
-        prompts << macro_context_evaluator_prompt(what_happened) if macro_significant
 
         by_step = evaluator_fan_out!(prompts, what_happened, phase: "context_update")
 
-        context_result = aggregate_context_update_results(by_step)
-        macro_result = if macro_significant
-                         evaluator_fan_out_result!(by_step, "macro_narrative_update", "context_update")["parsed_response"] || {}
-                       else
-                         {}
-                       end
-
-        [context_result, macro_result]
-      end
-
-      def macro_context_evaluator_prompt(what_happened)
-        system_prompt, user_msg = PromptRenderer.render_with_user_message("macro_narrative_update",
-          story_intro: @adventure.story.preview,
-          story_summary: @adventure.story_summary,
-          what_happened: what_happened)
-
-        {
-          system_prompt: system_prompt,
-          user_message:  user_msg,
-          model:         @config.model_for("macro_narrative_update"),
-          meta:          { step: "macro_narrative_update" }
-        }
+        aggregate_context_update_results(by_step)
       end
 
       def persist_combat_context(parsed, mutations = nil)
@@ -172,10 +144,6 @@ module DungeonMaster
           raw_domain_result: combat_parsed
         )
         { "combat_context" => domain_result_parser.normalized_result }
-      end
-
-      def should_persist_macro_story_summary?(macro_significant, macro_result)
-        macro_significant && macro_result["story_summary"].present?
       end
 
       def prepare_combat_context_update(val, existing:)

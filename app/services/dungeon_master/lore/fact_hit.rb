@@ -2,18 +2,7 @@
 
 module DungeonMaster
   module Lore
-    # Single retrieval result returned by `Lore::FactsLookup`. Consumers
-    # (sanity_checker_world prompt renderer, Admin retrieval panel) work
-    # off the hash form via `#to_h`, so the key set is the contract.
-    #
-    # Shape:
-    #   fact_id  — Integer, AdventureNarrativeFact#id.
-    #   text     — String, the stored fact text (not truncated — the
-    #              prompt renderer decides how to fit it).
-    #   kind     — "event" | "state" | "entity".
-    #   polarity — "asserts" | "negates".
-    #   distance — Float, cosine distance from the query embedding
-    #              (smaller is closer).
+    # TODO: Improve readability — value object whose attr_reader list already encodes the shape; the prose preamble is redundant.
     class FactHit
       attr_reader :fact_id, :text, :kind, :polarity, :distance
 
