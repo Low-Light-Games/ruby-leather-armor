@@ -4,10 +4,6 @@ module PlayerTurn
   module CharacterBlock
     module_function
 
-    def load_sheet(adventure)
-      AdventureSheet.for_adventure(adventure)
-    end
-
     def full(sheet)
       raise ArgumentError, "CharacterBlock requires a sheet" unless sheet
 

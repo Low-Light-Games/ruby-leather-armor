@@ -182,7 +182,7 @@ module PlayerTurn
 
     def player_facing_error(error)
       case error
-      when Ai::Ai::TokenBudgetExceededError
+      when Ai::TokenBudgetExceededError
         "Could not reach the AI service. Please try again shortly."
       else
         error.message

@@ -10,7 +10,7 @@ module PlayerTurn
       @config = DmConfig.instance
       @ai = Ai::Client.new(@config)
       @log = Ai::Logging.new(adventure: adventure, user: user)
-      @sheet = PlayerTurn::CharacterBlock.load_sheet(adventure)
+      @sheet = AdventureSheet.for_adventure(adventure)
       @messenger = PlayerTurn::Messenger.new(
         adventure: adventure,
         log: @log,

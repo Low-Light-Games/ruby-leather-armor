@@ -4,7 +4,7 @@ module Battlefield
   class EnsureForActiveCombat
     class << self
       def call(adventure:, sheet: nil)
-        sheet ||= CharacterBlock.load_sheet(adventure)
+        sheet ||= AdventureSheet.for_adventure(adventure)
         return unless sheet
 
         adventure.with_lock do
