@@ -3,41 +3,44 @@ const { login, beginAdventure } = require('../support/auth');
 const { forceMaxRoll, sendChatMessage } = require('../support/chat');
 const { submitActiveRollPanel } = require('../support/rolls');
 
-// Regression lock for "I attack a named StoryNpc mid-conversation".
+// Stab a named StoryNpc → attack roll → hit → initiative → combat starts.
 //
-// Seed story: "The Envoy's Gambit" (db/seeds/envoys_gambit_story.rb)
-//   - sealed audience chamber
-//   - one antagonist StoryNpc named "Lord Velkar Mhonn"
-//   - opening message drops the player mid-confrontation, knife on knee
+// Seed story: "The Envoy's Gambit" (db/seeds/envoys_gambit_story.rb) drops
+// the player into a sealed audience chamber opposite the named antagonist
+// "Lord Velkar Mhonn", so lore retrieval surfaces him in the AI's context
+// and combat_combatants carries his name verbatim (the orcs scenario's
+// {name:, count:} → ['name'] mangling does not apply).
 //
-// The named StoryNpc surfaces through lore retrieval into the AI's
-// context, so the AI emits "Lord Velkar Mhonn" verbatim into
-// combat_combatants (the orcs scenario's `["name"]` mangling does not
-// happen here). After the player rolls, the post-roll narrative-phase
-// fan-out runs combat-context-update against the freshly-named Velkar
-// participant; the AI emits Velkar without a creature_sheet_id, and
-// Steps::ContextUpdate#repair_participant_identity raises:
-//   Ai::Error("Combat context update dropped creature_sheet_id for
-//             Lord Velkar Mhonn")
-// which Pipeline::Messenger renders as a system message:
-//   "The Dungeon Master is momentarily distracted… (<error.message>)"
+// Expected flow:
+//   1. Player attacks → RollRequest emits an attack roll vs Velkar's AC.
+//   2. Player rolls 20, hits, narrative confirms the strike landed.
+//   3. Stagehand Path B fires Warmaster.initialize_from_names!, which
+//      pauses for an initiative roll.
+//   4. Player rolls initiative; combat HUD renders.
 //
-// The day combat-context-update tolerates the dropped sheet_id (or
-// Warmaster pre-populates it before the fan-out), this assertion flips
-// and the spec needs to be rewritten for the happy path.
+// Currently flaky against gpt-5-nano + gpt-4.1-nano: RollRequest
+// sometimes returns Initiative directly, combat-context-update sometimes
+// rejects the named participant on missing creature_sheet_id, or the
+// pipeline auto-resolves the attack as a non-roll narrative outcome.
+// Asserting the *desired* end state so AI improvements upstream flip
+// the spec green.
 
 test.describe("The Envoy's Gambit — live OpenAI", () => {
-  test('regression: attacking a named StoryNpc surfaces the dropped creature_sheet_id error', async ({ page }) => {
+  test('attacking a named StoryNpc → attack roll → hit → initiative → combat starts', async ({ page }) => {
     await forceMaxRoll(page);
     await login(page, 'paid');
     await beginAdventure(page, { story: /Envoy's Gambit/i });
 
     await sendChatMessage(page, 'I attack Lord Velkar Mhonn with my dagger.');
+    await submitActiveRollPanel(page, { typeMatch: /Attack/i });
+
+    const hitMessage = page.locator('.chat-message', {
+      hasText: /(hit|damage|wound|strike|HP)/i,
+    });
+    await expect(hitMessage.first()).toBeVisible({ timeout: 90_000 });
+
     await submitActiveRollPanel(page);
 
-    const droppedSheetIdMessage = page.locator('.chat-message', {
-      hasText: /dropped creature_sheet_id/i,
-    });
-    await expect(droppedSheetIdMessage).toBeVisible({ timeout: 120_000 });
+    await expect(page.locator('.combat-hud')).toBeVisible({ timeout: 60_000 });
   });
 });
