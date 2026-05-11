@@ -81,6 +81,37 @@ module PlayerTurn
       bind_current_loop!(
         AdventureLoop.for_registry_entry(@log.registry_entry_uuid).paused.order(:created_at).last
       )
+      rehydrate_cast_roster_from_loop!
+    end
+
+    # When the player's roll resumes a paused turn (RollPipelineJob),
+    # we instantiate a fresh `PlayerTurn::Engine` and lose the
+    # in-memory `@current_cast_roster` the original PipelineJob built
+    # in `run_evaluation_phase`. Stagehand still needs it to decide
+    # whether `maybe_initialize_combat` fires, so rehydrate from the
+    # loop snapshot `Steps::CastResolve#log_cast_roster_to_loop`
+    # persisted at evaluation time.
+    def rehydrate_cast_roster_from_loop!
+      return if @loop.nil?
+
+      stored = @loop.get("cast_roster")
+      return if stored.blank? || !stored.is_a?(Hash)
+
+      entries = Array(stored["entries"]).filter_map do |row|
+        next nil unless row.is_a?(Hash)
+
+        creature_sheet_id = Integer(row["creature_sheet_id"], exception: false)
+        next nil unless creature_sheet_id&.positive?
+
+        PlayerTurn::CastRosterEntry.new(
+          adventure_npc_id:  Integer(row["adventure_npc_id"], exception: false),
+          creature_sheet_id: creature_sheet_id,
+          name:              row["name"].to_s,
+          attitude:          row["attitude"].to_s.presence || "indifferent",
+          location_name:     row["location_name"],
+        )
+      end
+      @current_cast_roster = PlayerTurn::CastRoster.new(entries: entries)
     end
 
     def tl(step, summary)

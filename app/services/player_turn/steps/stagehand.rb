@@ -134,11 +134,12 @@ module PlayerTurn
           .map { |id, kind, text| { fact_id: id, kind: kind, text: text } }
       end
 
-      # Combat-init is now a pure projection of the cast roster the
-      # CastResolver step minted at the top of this action: filter to
-      # hostile entries, hand the integer creature_sheet_ids to
-      # Warmaster, done. No name strings on the wire, no impromptu
-      # "Name" creatures, no per-turn AI generation step.
+      # Combat-init is a pure projection of the cast roster the
+      # CastResolver step minted at the top of this action plus the
+      # action's explicit `target_creature_sheet_id`. Warmaster decides
+      # who joins (target + already-hostile roster entries); the cast
+      # resolver doesn't guess at hostility and we don't enroll
+      # bystanders just because they share a scene with the target.
       def maybe_initialize_combat(intent)
         return nil if stagehand_combat_active?
 
@@ -149,8 +150,9 @@ module PlayerTurn
         return nil if roster.empty?
 
         result = Encounters::Warmaster.persist_combat_from_cast_roster!(
-          adventure:   @adventure,
-          cast_roster: roster,
+          adventure:                @adventure,
+          cast_roster:              roster,
+          target_creature_sheet_id: intent[:target_creature_sheet_id] || intent["target_creature_sheet_id"],
         )
         return nil if result[:status] == :no_creatures
 

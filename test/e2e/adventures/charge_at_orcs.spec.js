@@ -25,10 +25,15 @@ test.describe('Charge at orc patrol — live OpenAI', () => {
     await sendChatMessage(page, 'I charge at the orc patrol');
     await submitActiveRollPanel(page, { typeMatch: /Attack/i });
 
-    const hitMessage = page.locator('.chat-message', {
-      hasText: /(hit|damage|wound|strike|HP)/i,
-    });
-    await expect(hitMessage.first()).toBeVisible({ timeout: 90_000 });
+    // The DM narrates the attack outcome as an `action_result` message
+    // before the engine prompts for initiative. The narrative wording
+    // is AI-driven and varies turn to turn ("strikes true", "lands a
+    // blow", "the dagger bites home"...), so assert on the message
+    // *type* rather than fishing for keywords like /hit|damage/.
+    const actionResult = page.locator('.chat-message.msg-type-action_result');
+    await expect(actionResult.first()).toBeVisible({ timeout: 90_000 });
+
+    await submitActiveRollPanel(page);
 
     await expect(page.locator('.combat-hud')).toBeVisible({ timeout: 60_000 });
   });

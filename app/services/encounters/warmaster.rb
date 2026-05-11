@@ -104,16 +104,28 @@ module Encounters
     end
 
     # Persists a pending combat context built directly from a
-    # `PlayerTurn::CastRoster`. The single Stagehand path: hostile
-    # roster entries become the NPC side of the upcoming initiative
-    # round. All entries are real `creature_sheet_id`s that have
-    # already been minted by `Encounters::CastResolver`, so this
-    # method is pure persistence — no name-fuzzy-matching, no AI.
-    def persist_combat_from_cast_roster!(adventure:, cast_roster:)
-      hostile = cast_roster.hostile_entries.select(&:creature_sheet_id)
-      return { status: :no_creatures } if hostile.empty?
+    # `PlayerTurn::CastRoster`. The CastResolver names every creature
+    # in the scene the player could plausibly interact with — most are
+    # bystanders, only some are foes. Two rules decide who joins the
+    # initiative round:
+    #
+    #   1. The action's `target_creature_sheet_id` (from RollRequest)
+    #      always joins. The player just initiated combat against them;
+    #      hostility is implicit in the act, decided by code, not by the
+    #      cast resolver guessing at intent.
+    #   2. Roster entries already tagged `hostile` (named NPCs the world
+    #      knows are enemies from prior turns) join too — Velkar
+    #      shouldn't sit out because the player named his bodyguard.
+    #
+    # Indifferent / friendly entries stay out. They can be drawn in by
+    # the world turn or a follow-up player action. This avoids the
+    # "two groups already fighting → both become enemies of the player"
+    # failure mode that a roster-wide enrollment would produce.
+    def persist_combat_from_cast_roster!(adventure:, cast_roster:, target_creature_sheet_id: nil)
+      combatants = pick_initial_combatants(cast_roster, target_creature_sheet_id)
+      return { status: :no_creatures } if combatants.empty?
 
-      creature_data = hostile.map do |entry|
+      creature_data = combatants.map do |entry|
         {
           name:              entry.name,
           creature_sheet_id: entry.creature_sheet_id,
@@ -123,6 +135,15 @@ module Encounters
 
       persist_pending_combat!(adventure: adventure, creature_data: creature_data)
       { status: :awaiting_initiative, creature_data: creature_data }
+    end
+
+    def pick_initial_combatants(cast_roster, target_creature_sheet_id)
+      with_sheets    = cast_roster.entries.select(&:creature_sheet_id)
+      pre_hostile    = with_sheets.select(&:hostile?)
+      target_id      = target_creature_sheet_id.to_i
+      target         = (with_sheets.find { |e| e.creature_sheet_id.to_i == target_id } if target_id.positive?)
+
+      ([target].compact + pre_hostile).uniq { |e| e.creature_sheet_id }
     end
 
     def auto_roll_player_initiative(sheet)
