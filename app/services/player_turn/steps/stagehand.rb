@@ -5,18 +5,12 @@ module PlayerTurn
     module Stagehand
       private
 
-      # Always runs `run_parallel_narrative` first — the player must
-      # see the narrative for the action they just took, even when
-      # that action initiated combat. Without this, attacking an
-      # unintroduced NPC silently transitioned to "Roll for
-      # initiative!" with no description of the attack landing
-      # (the dominant attack_envoy.spec.js failure mode).
-      #
-      # When combat-init fires, the narrative rides on top as the
-      # `opener_outcome`: Messenger persists it as an `action_result`
-      # message before the `initiative_request`, so the chat reads
-      # narrative → "Roll for initiative!" instead of jumping
-      # straight to the prompt.
+      # Invariant: narrate first, even on combat-init turns. The
+      # narrative for the action that started combat must be persisted
+      # as `action_result` (the `opener_outcome` ride-along on
+      # `awaiting_initiative`) before `initiative_request` reaches the
+      # client, otherwise the chat jumps straight to the prompt with no
+      # description of the attack landing.
       def run_narrative_phase(intent, narration_context:, mutations:, extra: {})
         warmaster_result = maybe_initialize_combat(intent)
         narration = run_parallel_narrative(intent, narration_context: narration_context, mutations: mutations)
@@ -134,12 +128,6 @@ module PlayerTurn
           .map { |id, kind, text| { fact_id: id, kind: kind, text: text } }
       end
 
-      # Combat-init is a pure projection of the cast roster the
-      # CastResolver step minted at the top of this action plus the
-      # action's explicit `target_creature_sheet_id`. Warmaster decides
-      # who joins (target + already-hostile roster entries); the cast
-      # resolver doesn't guess at hostility and we don't enroll
-      # bystanders just because they share a scene with the target.
       def maybe_initialize_combat(intent)
         return nil if stagehand_combat_active?
 

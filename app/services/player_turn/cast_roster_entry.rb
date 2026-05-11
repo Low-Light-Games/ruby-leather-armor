@@ -2,13 +2,11 @@
 
 module PlayerTurn
   # One row of `PlayerTurn::CastRoster` — a thin projection of an
-  # `AdventureNpc` that downstream steps target by integer id.
-  #
-  # Per `.cursor/rules/no-ad-hoc-structures.mdc` this is a real class
-  # rather than a `Struct.new(...)` inside the parent file: the keys
-  # are the contract that `roll_request.text.erb` (commit 11) and
-  # `Encounters::Warmaster.persist_pending_combat!` (commit 13) read,
-  # and a class header documents that contract once.
+  # `AdventureNpc` that downstream steps target by integer id. The keys
+  # are the contract that `roll_request.text.erb` and
+  # `Encounters::Warmaster.persist_combat_from_cast_roster!` read, so
+  # per `.cursor/rules/no-ad-hoc-structures.mdc` it lives as a named
+  # class rather than an inline Struct.
   class CastRosterEntry
     attr_reader :adventure_npc_id, :creature_sheet_id, :name, :attitude, :location_name
 

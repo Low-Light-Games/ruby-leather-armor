@@ -1,14 +1,10 @@
 # frozen_string_literal: true
 
 module Encounters
-  # Combat persistence + initiative wiring. The "impromptu chain"
-  # (`initialize_from_names!` → `prepare_from_names!` → `spawn_from_names`
-  # → `resolve_creature` → `dynamic_creature_sheet_static` →
-  # `create_from_ai_static`) is gone. Identity now lives upstream in
-  # `Encounters::CastResolver` (and, for table-driven encounters, in
-  # `Encounters::WarmasterBridge`'s manifest path), so by the time
-  # combat-init is requested every NPC already has a real
-  # `creature_sheet_id` to point at.
+  # Combat persistence + initiative wiring. Identity is owned upstream by
+  # `Encounters::CastResolver` (free-text path) or `WarmasterBridge`'s
+  # manifest (table-driven encounters), so every NPC arriving here
+  # already has a real `creature_sheet_id` to point at.
   module Warmaster
     include Mutations
 
@@ -29,7 +25,7 @@ module Encounters
                   else
                     encounter_initialization_request.log.log!(
                       :warn,
-                      "Warmaster: encounter entry '#{encounter_initialization_request.encounter_entry.title}' has no manifest — cannot spawn creatures (free-text encounters were retired with the cast resolver epic)"
+                      "Warmaster: encounter entry '#{encounter_initialization_request.encounter_entry.title}' has no manifest — cannot spawn creatures (free-text encounters are no longer supported)"
                     )
                     []
                   end
@@ -103,24 +99,11 @@ module Encounters
       )
     end
 
-    # Persists a pending combat context built directly from a
-    # `PlayerTurn::CastRoster`. The CastResolver names every creature
-    # in the scene the player could plausibly interact with — most are
-    # bystanders, only some are foes. Two rules decide who joins the
-    # initiative round:
-    #
-    #   1. The action's `target_creature_sheet_id` (from RollRequest)
-    #      always joins. The player just initiated combat against them;
-    #      hostility is implicit in the act, decided by code, not by the
-    #      cast resolver guessing at intent.
-    #   2. Roster entries already tagged `hostile` (named NPCs the world
-    #      knows are enemies from prior turns) join too — Velkar
-    #      shouldn't sit out because the player named his bodyguard.
-    #
-    # Indifferent / friendly entries stay out. They can be drawn in by
-    # the world turn or a follow-up player action. This avoids the
-    # "two groups already fighting → both become enemies of the player"
-    # failure mode that a roster-wide enrollment would produce.
+    # Persists a pending combat context built from a `PlayerTurn::CastRoster`.
+    # `pick_initial_combatants` decides who joins: the action's explicit
+    # `target_creature_sheet_id` plus any pre-existing hostile roster
+    # entries. Indifferent / friendly bystanders stay out — they can be
+    # pulled in by the world turn or a follow-up player action.
     def persist_combat_from_cast_roster!(adventure:, cast_roster:, target_creature_sheet_id: nil)
       combatants = pick_initial_combatants(cast_roster, target_creature_sheet_id)
       return { status: :no_creatures } if combatants.empty?

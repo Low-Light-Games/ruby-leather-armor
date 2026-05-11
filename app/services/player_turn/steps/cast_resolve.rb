@@ -7,13 +7,12 @@ module PlayerTurn
     # real `AdventureNpc` (with `creature_sheet_id`) via the four-tier
     # deterministic lookup in `Encounters::CastResolver`.
     #
-    # Returns a `PlayerTurn::CastRoster`. Errors propagate by design —
-    # without a roster, RollRequest can't reference creatures by id, and
-    # downstream identity-repair would have to invent again. Per
+    # Returns a `PlayerTurn::CastRoster`. Errors propagate by design:
+    # without a roster, RollRequest cannot reference creatures by id and
+    # any downstream identity recovery would have to invent again. Per
     # `.cursor/rules/error-reporting-sentry.mdc` the underlying service
     # already reports to Sentry before re-raising; this layer just lets
-    # the failure surface so the turn aborts loudly instead of degrading
-    # silently into the very behavior this epic exists to delete.
+    # the failure surface so the turn aborts loudly.
     module CastResolve
       private
 

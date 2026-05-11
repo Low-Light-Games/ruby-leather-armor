@@ -3,14 +3,11 @@
 module PlayerTurn
   # Output of a RollRequest (or CombatRollRequest) evaluation step.
   #
-  # The `combat_combatants` free-form name list — and the
-  # `normalized_combatants` parser that mangled it into `["name"]` —
-  # are gone. Identity is owned by the cast roster (commit 10) and
-  # surfaced here as a single optional integer `target_creature_sheet_id`
-  # that points at one row of that roster. `combat_transition` stays
-  # as a separate signal: a hostile target can be observed, lied to,
-  # intimidated or avoided, and a friendly target can be attacked, so
-  # combat-start and target identity are orthogonal and stay that way.
+  # `target_creature_sheet_id` is an optional integer ID pointing at one
+  # row of the upstream cast roster. `combat_transition` is an
+  # independent signal — a hostile target can be observed, lied to,
+  # intimidated, or avoided, and a friendly target can be attacked, so
+  # combat-start and target identity stay orthogonal.
   class EvaluationResult
     attr_reader :intention, :destination, :combat_transition,
                 :target_creature_sheet_id,

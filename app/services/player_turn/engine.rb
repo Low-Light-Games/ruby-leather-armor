@@ -84,13 +84,11 @@ module PlayerTurn
       rehydrate_cast_roster_from_loop!
     end
 
-    # When the player's roll resumes a paused turn (RollPipelineJob),
-    # we instantiate a fresh `PlayerTurn::Engine` and lose the
-    # in-memory `@current_cast_roster` the original PipelineJob built
-    # in `run_evaluation_phase`. Stagehand still needs it to decide
-    # whether `maybe_initialize_combat` fires, so rehydrate from the
-    # loop snapshot `Steps::CastResolve#log_cast_roster_to_loop`
-    # persisted at evaluation time.
+    # When the player's roll resumes a paused turn the original engine
+    # is gone, so the in-memory `@current_cast_roster` it built has to
+    # be reconstructed from the loop snapshot
+    # `Steps::CastResolve#log_cast_roster_to_loop` wrote — otherwise
+    # Stagehand sees an empty roster and silently skips combat init.
     def rehydrate_cast_roster_from_loop!
       return if @loop.nil?
 

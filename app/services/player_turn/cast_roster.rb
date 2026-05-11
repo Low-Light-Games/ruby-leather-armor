@@ -54,8 +54,8 @@ module PlayerTurn
       @entries.select(&:hostile?)
     end
 
-    # Prompt-facing single-line summary per entry. Pure presentation —
-    # commit 11 will start consuming this from `roll_request.text.erb`.
+    # Prompt-facing single-line summary per entry. Consumed by
+    # `roll_request.text.erb` to expose the roster to the AI.
     def prompt_lines
       @entries.map do |entry|
         loc = entry.location_name.to_s.strip

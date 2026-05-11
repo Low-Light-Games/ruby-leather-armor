@@ -4,15 +4,14 @@ module PlayerTurn
   module Steps
     module ContextUpdate
       # One participant delta from the `combat_context_update` AI step's
-      # `participant_updates` array. Per the new contract (commit 15) the
-      # AI no longer rewrites the full participant block — it only
-      # describes deltas keyed on the integer `creature_sheet_id` that
-      # the canonical combat context already owns.
+      # `participant_updates` array. The AI describes per-participant
+      # deltas keyed on the integer `creature_sheet_id` already owned by
+      # the canonical combat context; the canonical participant block
+      # itself is owned by CombatGM mutations and is never rewritten here.
       #
       # `hp_delta`, `conditions_added`, and `conditions_removed` are all
-      # individually optional. An entry with only `creature_sheet_id`
-      # and nothing else is a no-op (the AI emitted it but had nothing
-      # to change), kept around for log completeness.
+      # individually optional. An entry with only `creature_sheet_id` is
+      # a no-op kept around so log readers can see what the AI emitted.
       class ParticipantUpdate
         attr_reader :creature_sheet_id, :hp_delta, :conditions_added, :conditions_removed
 

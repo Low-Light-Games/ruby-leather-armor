@@ -23,12 +23,12 @@ module PlayerTurn
         end
       end
 
-      # Per commit 15, the AI's combat_context_update output is no
-      # longer a full context block — it's a small set of pure deltas
-      # the code applies on top of the canonical participant list
-      # (which lives in @adventure.combat_context["participants"] and
-      # is overwritten by `combat_initialization` / merged by
-      # `combat_state_advancement` mutations from CombatGM).
+      # The AI's combat_context_update output is a small set of pure
+      # deltas (round, turn_order, active flag, per-participant updates)
+      # that the code applies on top of the canonical participant list
+      # in `@adventure.combat_context["participants"]`. The canonical
+      # list is owned by `combat_initialization` / `combat_state_advancement`
+      # mutations from CombatGM — never by this AI step.
       class Result
         attr_reader :round, :turn_order, :active, :participant_updates
 
@@ -67,10 +67,6 @@ module PlayerTurn
 
         def unchanged? = @unchanged
 
-        # The shape changed, so callers that used to ask for `.context`
-        # now project participants themselves; this accessor stays as a
-        # short escape hatch for tests/logs that want to see whether
-        # there was anything substantive to apply.
         def empty?
           @unchanged && @participant_updates.empty? && @round.nil? && @turn_order.empty? && @active.nil?
         end
@@ -156,12 +152,10 @@ module PlayerTurn
         base_context["active"]
       end
 
-      # The harden path. Every NPC participant carried in the canonical
-      # context (whether from the prior turn or just installed by
-      # combat_initialization mutations) MUST resolve to a real
-      # creature_sheets row. Anything else is a sign that something
-      # upstream invented identity — raise loudly so we see it in
-      # Sentry instead of silently corrupting the next turn.
+      # Invariant: every NPC participant in the canonical combat context
+      # MUST point at a real `creature_sheets` row. Anything else means
+      # something upstream invented identity — raise loudly so we see it
+      # in Sentry instead of silently corrupting the next turn.
       def validate_participant_identities!(participants)
         Array(participants).each do |raw|
           row = raw.is_a?(Hash) ? raw.deep_stringify_keys : {}

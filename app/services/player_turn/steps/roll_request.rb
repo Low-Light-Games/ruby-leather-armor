@@ -49,10 +49,10 @@ module PlayerTurn
         result
       end
 
-      # Replace AI-emitted DCs on opposed skill checks with the
-      # deterministic value derived from the target sheet. The model's
-      # DC for opposed types is a soft-banned field; keep the player
-      # turn going even when the model emits one.
+      # Soft-clamp the DC for opposed skill checks: the prompt asks the
+      # model to omit `dc` for opposed types, but a model emission is
+      # never raised on — we override with the deterministic value and
+      # keep the player turn going (see `Combat::OpposedRollResolution`).
       def apply_opposed_dc_resolution!(result)
         return unless result.target_creature_sheet_id
 
@@ -108,12 +108,9 @@ module PlayerTurn
         }.compact
       end
 
-      # Per .cursor/rules/clamp-at-the-boundary.mdc: don't trust the
-      # AI's claim that an id is real. Coerce to Integer, then make
-      # sure it actually points at a roster entry. Anything else is
-      # treated as if the AI had omitted the field — log it (so we can
-      # see how often the model points at a nonexistent target) and
-      # let downstream code handle the no-target path.
+      # Clamp at the boundary (`.cursor/rules/clamp-at-the-boundary.mdc`):
+      # coerce to Integer and require a roster hit. An AI-emitted id
+      # that doesn't resolve is logged and treated as omitted.
       def validated_target_id(raw, cast_roster:)
         return nil if raw.nil? || raw == ""
 
@@ -159,12 +156,10 @@ module PlayerTurn
         )
       end
 
-      # Orchestrator-tool path: the GameMaster phase dispatches
-      # `request_roll` as a tool call. CastResolver runs as an
-      # invisible pre-step here too — the orchestrator doesn't see
-      # it (no Tools::Registry entry) but the new identity contract
-      # holds the moment `use_game_master?` flips on, exactly as it
-      # does on the Sequencer path.
+      # Tool-call path used by the GameMaster orchestrator. CastResolver
+      # still runs as an invisible pre-step so target identity holds
+      # whether or not `use_game_master?` is on; it has no
+      # `Tools::Registry` entry, so the orchestrator never sees it.
       def run_roll_request_as_ai_called_tool(intention)
         cast_roster      = run_cast_resolve(intention)
         @current_cast_roster = cast_roster
