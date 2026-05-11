@@ -21,7 +21,7 @@ module Combat
         if npcs.all?(&:eliminated_from_encounter?)
           return {
             npc_turns: [],
-            next_state: CombatTurnNextState.new(round: round, active: false).to_h
+            next_state: TurnNextState.new(round: round, active: false).to_h
           }
         end
 
@@ -74,7 +74,7 @@ module Combat
 
         {
           npc_turns: npc_turns,
-          next_state: CombatTurnNextState.new(round: round, active: true).to_h
+          next_state: TurnNextState.new(round: round, active: true).to_h
         }
       end
 
@@ -89,14 +89,14 @@ module Combat
       def next_round_state(npc_turns, round)
         {
           npc_turns: npc_turns,
-          next_state: CombatTurnNextState.new(round: round + 1, active: true).to_h
+          next_state: TurnNextState.new(round: round + 1, active: true).to_h
         }
       end
 
       def missing_player_state(round)
         {
           npc_turns: [],
-          next_state: CombatTurnNextState.new(round: round, active: true).to_h
+          next_state: TurnNextState.new(round: round, active: true).to_h
         }
       end
 

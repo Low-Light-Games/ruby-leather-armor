@@ -469,7 +469,7 @@ that another step already owns.
 | Store | Sole writer | Surface area |
 |---|---|---|
 | `adventures.combat_context` | `Steps::ContextUpdate` | Live combat state. Warmaster emits a deterministic hash that ContextUpdate writes verbatim via a `combat_initialization` mutation. |
-| `adventures.time_context` | `Utilities::GameClock` | Code-only clock advancement; no AI call. |
+| `adventures.time_context` | `Adventures::GameClock` | Code-only clock advancement; no AI call. |
 | `adventure_narrative_facts` | `Steps::Loremaster` (via `Lore::ApplyResults`) | Durable facts, both seed (`Lore::ExtractFromPremise` at story save) and per-turn (Loremaster in the output fan-out). Both call `Lore::ApplyResults`, which is the actual single insert seam. |
 | `adventure_npcs` | `Lore::ApplyNpcs` | NPC creation and updates flow through Loremaster's NPC mutations only. |
 | `adventure_locations` | `Lore::ApplyLocations` | Location creation and `(x, y)` placement via deterministic Vogel-spiral seeding (`Maps::PlaceLocations`). |
@@ -486,7 +486,7 @@ shape is one diff in one file.
 
 **Documented exception (Path A encounter pause):**
 `Encounters::WarmasterBridge` calls
-`Utilities::Warmaster.persist_pending_combat!` when encounter combat is
+`Encounters::Warmaster.persist_pending_combat!` when encounter combat is
 spawned but initiative is still pending. This writes an NPC-only pending
 roster to `combat_context` before ContextUpdate runs, so pause-time
 state does not fall back to stale ended-combat snapshots. ContextUpdate
@@ -576,7 +576,7 @@ returns an `attack_option_id` (never a DC) for an `attack_roll`, or a
 the rest:
 - `attack_option_id` → `AttackOptionBuilder.resolve_option_id!` → attack
   mode, defense kind, source type/id, damage dice, damage type.
-- `defense_kind` + target → `WorldTurn::ParticipantLookup.defense_dc_for_target!`.
+- `defense_kind` + target → `Combat::WorldTurn::ParticipantLookup.defense_dc_for_target!`.
 - `dc_formula` → `resolve_spell_dc` / `resolve_ability_dc` against the
   caster's sheet.
 
@@ -588,7 +588,7 @@ free-text path closed rather than silently degrading.
   object and forwards participant targeting through
   `WorldTurn::ParticipantLookup::LookupContext` instead of threading multiple
   `combat_ctx` / `sheet` / `adventure` keyword arguments through each helper.
-- `Utilities::Warmaster` entrypoints accept explicit request objects
+- `Encounters::Warmaster` entrypoints accept explicit request objects
   (`EncounterInitializationRequest`, `NamesPreparationRequest`,
   `CombatInitializationRequest`) so call sites pass one cohesive object per
   operation boundary rather than spreading utility construction arguments
@@ -1034,7 +1034,7 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | 5b | **TimeKeeper** | Code-first, AI fallback | `app/services/player_turn/steps/time_keeper.rb` |
 | -- | **Harbinger** (utility) | Code + optional AI | `app/services/encounters/harbinger.rb` |
 | -- | **Warmaster** (utility) | Code + optional AI | `app/services/encounters/warmaster.rb` |
-| -- | **GameClock** (utility) | Code-only | `app/services/encounters/game_clock.rb` |
+| -- | **GameClock** (utility) | Code-only | `app/services/adventures/game_clock.rb` |
 | 6 | **Stagehand** | Code-only | `app/services/player_turn/steps/stagehand.rb` |
 | 7 | **Narrate** | AI | `app/services/player_turn/steps/narrate.rb` |
 | 8a | **ContextUpdate** (combat-only) | AI (parallel with 7/8b) | `app/services/player_turn/steps/context_update.rb` |

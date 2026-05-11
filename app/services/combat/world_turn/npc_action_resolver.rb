@@ -4,7 +4,7 @@ module Combat
   module WorldTurn
     module NpcActionResolver
       class << self
-        PLAYER = Combat::TurnCalculator::PLAYER_NAME # canonical name — see CombatTurnCalculator::PLAYER_NAME
+        PLAYER = Combat::TurnCalculator::PLAYER_NAME
 
         # @return [Hash] :lines (Array<String>), :npc_muts, :player_hp_delta
         def resolve(npc:, parsed:, combat_ctx:, player_sheet:, adventure:)

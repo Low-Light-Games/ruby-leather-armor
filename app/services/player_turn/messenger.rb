@@ -106,10 +106,10 @@ module PlayerTurn
       )
 
       admin = @user&.admin?
-      to_broadcast = [MessageSerializer.as_json(msg, admin: admin)]
+      to_broadcast = [Adventures::MessageSerializer.as_json(msg, admin: admin)]
 
       persist_event_messages(narrative_entry).each do |event_msg|
-        to_broadcast << MessageSerializer.as_json(event_msg, admin: admin)
+        to_broadcast << Adventures::MessageSerializer.as_json(event_msg, admin: admin)
       end
 
       AdventureChannel.broadcast_to(@adventure, { type: "pipeline_action_result", messages: to_broadcast })
