@@ -72,7 +72,7 @@ module Adventures
     def jit_generate_opening_message_if_blank!
       return if @story.opening_message.present?
 
-      Lore::GenerateOpeningMessage.call(story: @story, user: @user)
+      Authoring::GenerateOpeningMessage.call(story: @story, user: @user)
       @story.reload
     end
 

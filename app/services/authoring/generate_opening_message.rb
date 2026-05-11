@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Lore
+module Authoring
   class GenerateOpeningMessage
     MODEL_KEY = "generate_opening_message"
 
@@ -29,7 +29,7 @@ module Lore
 
     def run_generation_call
       system_prompt = Ai::PromptRenderer.render(
-        "generate_opening_message",
+        "authoring/generate_opening_message",
         premise: @story.premise,
       )
 

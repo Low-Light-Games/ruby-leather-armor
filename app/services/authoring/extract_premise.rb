@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-module Lore
-  class ExtractFromPremise
+module Authoring
+  class ExtractPremise
     EXTRACTOR_MODEL_KEY = "extract_from_premise"
 
     def self.call(story:, user: nil, ai: nil, log: nil, config: nil)
@@ -27,7 +27,7 @@ module Lore
       @log.report_error(e, context: error_context)
       @log.play_log!(
         "extract_from_premise_failure",
-        "ExtractFromPremise failed: #{e.class}",
+        "ExtractPremise failed: #{e.class}",
         parsed_response: { error: e.message.to_s.truncate(500) },
       )
       []
@@ -37,13 +37,13 @@ module Lore
 
     def run_extraction_call
       system_prompt = Ai::PromptRenderer.render(
-        "extract_from_premise",
+        "authoring/extract_premise",
         premise:         @story.premise,
         opening_message: @story.opening_message,
-        schema_json:     Ai::PromptRenderer.load_schema("extract_from_premise"),
+        schema_json:     Ai::PromptRenderer.load_schema("authoring/extract_premise"),
       )
 
-      prompt_summary = "ExtractFromPremise — story ##{@story.id}"
+      prompt_summary = "ExtractPremise — story ##{@story.id}"
 
       @log.timed_chat_call(EXTRACTOR_MODEL_KEY, prompt_summary, ai: @ai) do
         raw = @ai.chat(
@@ -57,7 +57,7 @@ module Lore
     end
 
     def error_context
-      ErrorContext.new(
+      Lore::ErrorContext.new(
         step:         "extract_from_premise",
         adventure_id: nil,
         loop_id:      nil,
