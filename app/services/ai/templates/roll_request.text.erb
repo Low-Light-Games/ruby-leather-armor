@@ -8,6 +8,18 @@ the kind of check; the engine resolves the actual modifier.
 === PLAYER POSITION ===
 <%= @roll_request_context.current_location_name.presence || "(unknown — no current location set)" %>
 
+=== CAST ROSTER (creatures already in scope this action) ===
+<% if @roll_request_context.cast_roster.empty? -%>
+(no creatures in scope)
+<% else -%>
+<% @roll_request_context.cast_roster.prompt_lines.each do |line| -%>
+<%= line %>
+<% end -%>
+
+Each entry is `[id=<integer>] Name (attitude) — at <location>`. The
+`id` is a real `creature_sheet_id` you can hand back to the engine.
+<% end -%>
+
 <%= PromptRenderer.render_partial("partials/scene_retrieval", scene_retrieval: @roll_request_context.scene_retrieval) %>
 === ALLOWED RULES (closest match first) ===
 <% if @roll_request_context.relevant_rules.any? -%>
@@ -38,8 +50,24 @@ Set `needs_roll: false` with `no_roll_reason: "no rule retrieved"`.
   hedging. If the destination is not in NEARBY LOCATIONS, write the
   bare place name the player used. If the action has no destination,
   null.
-- `transition`: "combat_started" + populated `combatants` only when the
-  action initiates combat with hostiles. Null/empty otherwise.
+- `target_creature_sheet_id`: when the action is directed at a single
+  creature in CAST ROSTER, copy that entry's `id` (an integer) into
+  this field. Examples: an attack against `[id=273] Lord Velkar Mhonn`
+  → `273`. A Stealth check to slip past `[id=274] orc patrol` → `274`.
+  A Diplomacy attempt on `[id=99] Captain Mira` → `99`. Omit the field
+  entirely (do NOT emit `null`) when the action has no creature target
+  — climbing a wall, jumping a chasm, perceiving the room, hiding from
+  no one in particular. The id MUST come from the CAST ROSTER above;
+  never invent one.
+- `transition`: "combat_started" only when the action initiates combat.
+  This is independent of `target_creature_sheet_id` — a hostile target
+  can be observed, lied to, intimidated, or avoided without combat
+  starting; a friendly target can be attacked and combat will start.
+  Decide each field on its own merits. Null otherwise.
+- For opposed rolls (Stealth, Bluff, Diplomacy, Disguise, Sleight of
+  Hand, Intimidate, attack rolls), prefer to OMIT the `dc` field — the
+  engine resolves the DC from the target's defending stat. Emit `dc`
+  only for environmental/static checks (climb a wall, jump a chasm).
 - `ability_use_claimed`: a spell/feat/item the player named explicitly.
 - `situational_modifiers`: each entry MUST be `{ "source": "<short
   phrase>", "modifier": <integer> }`. Never a bare string. Empty array
@@ -61,7 +89,7 @@ Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
     "rule_slug": "swim"
   },
   "transition": null,
-  "combatants": [],
+  "target_creature_sheet_id": 273,
   "destination": null,
   "consequences": [],
   "ability_use_claimed": null,

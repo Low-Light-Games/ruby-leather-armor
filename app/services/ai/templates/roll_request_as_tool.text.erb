@@ -8,6 +8,19 @@ produce the roll spec.
 === PLAYER POSITION ===
 <%= @roll_request_context.current_location_name.presence || "(unknown — no current location set)" %>
 
+=== CAST ROSTER (creatures already in scope this action) ===
+<% if @roll_request_context.cast_roster.empty? -%>
+(no creatures in scope)
+<% else -%>
+<% @roll_request_context.cast_roster.prompt_lines.each do |line| -%>
+<%= line %>
+<% end -%>
+
+Each entry is `[id=<integer>] Name (attitude) — at <location>`. The
+`id` is a real `creature_sheet_id` you can hand back as
+`target_creature_sheet_id`.
+<% end -%>
+
 <%= PromptRenderer.render_partial("partials/scene_retrieval", scene_retrieval: @roll_request_context.scene_retrieval) %>
 <% if @roll_request_context.relevant_rules.any? -%>
 === ALLOWED RULES (closest match first) ===
@@ -32,6 +45,11 @@ Pick a generic skill or save that fits based on Pathfinder 1E rules.
 <% end -%>
 === FIELD GUIDANCE ===
 - `mechanical_summary`: a short sentence framing the *attempt*, not the outcome.
+- `target_creature_sheet_id`: when the action is directed at a single
+  creature in CAST ROSTER, copy that entry's `id` (an integer) into
+  this field. Omit the field entirely (do NOT emit `null`) when the
+  action has no creature target. The id MUST come from the CAST ROSTER
+  above; never invent one.
 - `situational_modifiers`: each entry MUST be `{ "source": "<short
   phrase>", "modifier": <integer> }`. Never a bare string. Empty
   array if none apply.
@@ -48,6 +66,7 @@ markdown):
   "take_20_eligible": <boolean>,
   "situational_modifiers": [],
   "rule_slug": "<slug copied from the chosen rule>",
+  "target_creature_sheet_id": <integer; omit when no creature target>,
   "mechanical_summary": "<short attempt-flavored sentence>",
   "reasoning": "<short explanation of the rule choice>"
 }

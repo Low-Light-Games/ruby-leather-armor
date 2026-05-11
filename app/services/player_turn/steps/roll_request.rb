@@ -38,7 +38,8 @@ module PlayerTurn
           [raw, @ai.parse_json(raw)]
         end
 
-        result = build_roll_request_evaluation_result(parsed: parsed, intention: intention)
+        result = build_roll_request_evaluation_result(parsed: parsed, intention: intention,
+                                                      cast_roster: cast_roster)
 
         warn_on_invented_rule_slug!(parsed, rules)
         log_roll_request_to_loop(result)
@@ -47,7 +48,7 @@ module PlayerTurn
         result
       end
 
-      def build_roll_request_evaluation_result(parsed:, intention:)
+      def build_roll_request_evaluation_result(parsed:, intention:, cast_roster: nil)
         parsed = (parsed || {}).deep_symbolize_keys
         rolls = if needs_roll?(parsed)
                   [normalize_roll(parsed[:roll], mechanical_summary: parsed[:mechanical_summary])]
@@ -59,7 +60,7 @@ module PlayerTurn
           intention: intention,
           destination: parsed[:destination],
           combat_transition: parsed[:transition],
-          combat_combatants: normalized_combatants(parsed[:combatants]),
+          target_creature_sheet_id: validated_target_id(parsed[:target_creature_sheet_id], cast_roster: cast_roster),
           player_rolls: rolls,
           consequences: PlayerTurn::Rolls::Consequences.normalize(parsed[:consequences]),
           mechanical_summary: parsed[:mechanical_summary].to_s.presence || '(no mechanical summary)'
@@ -85,17 +86,31 @@ module PlayerTurn
         }.compact
       end
 
-      def normalized_combatants(raw)
-        Array(raw).flat_map do |entry|
-          case entry
-          when Hash
-            key, value = entry.to_a.first
-            count = value.to_i
-            count.positive? ? Array.new(count, key.to_s) : [key.to_s]
-          else
-            [entry.to_s]
-          end
-        end.reject(&:blank?)
+      # Per .cursor/rules/clamp-at-the-boundary.mdc: don't trust the
+      # AI's claim that an id is real. Coerce to Integer, then make
+      # sure it actually points at a roster entry. Anything else is
+      # treated as if the AI had omitted the field — log it (so we can
+      # see how often the model points at a nonexistent target) and
+      # let downstream code handle the no-target path.
+      def validated_target_id(raw, cast_roster:)
+        return nil if raw.nil? || raw == ""
+
+        id = Integer(raw, exception: false)
+        return nil unless id&.positive?
+
+        roster = cast_roster || PlayerTurn::CastRoster.empty
+        return id if roster.find_by_creature_sheet_id(id)
+
+        @log.play_log!(
+          'roll_request_unknown_target',
+          "RollRequest emitted target_creature_sheet_id=#{id} not in cast roster",
+          parsed_response: {
+            emitted_target_id: id,
+            roster_ids: roster.entries.map(&:creature_sheet_id),
+            roster_names: roster.entries.map(&:name),
+          }
+        )
+        nil
       end
 
       def warn_on_invented_rule_slug!(parsed, retrieved_rules)
