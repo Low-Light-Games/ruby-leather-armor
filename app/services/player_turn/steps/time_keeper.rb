@@ -88,6 +88,7 @@ module PlayerTurn
 
         origin = origin_adventure_location
         return nil unless origin
+        return nil if origin.id == destination.id
 
         unless @sheet&.derived_stats
           raise ArgumentError, "Character sheet or derived_stats missing for journey calculation"
