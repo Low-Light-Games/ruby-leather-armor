@@ -17,13 +17,12 @@ module Encounters
 
       if encounter_entry
         creatures_data = loop&.get("encounter_creatures")
-        scene_enemy_names = hostile_npc_names_at_current_location(adventure)
         warmaster_result = Encounters::Warmaster.initialize_from_encounter!(
           encounter_initialization_request: Encounters::Warmaster::EncounterInitializationRequest.new(
             adventure: adventure,
             encounter_entry: encounter_entry,
             creatures_data: creatures_data,
-            scene_enemy_names: scene_enemy_names,
+            scene_enemy_names: nil,
             sheet: sheet,
             log: log,
             config: config,
@@ -35,6 +34,12 @@ module Encounters
           Encounters::Warmaster.persist_pending_combat!(
             adventure: adventure,
             creature_data: warmaster_result[:creature_data]
+          )
+
+          register_spawned_creatures_as_adventure_npcs(
+            adventure: adventure,
+            creature_data: warmaster_result[:creature_data],
+            log: log, ai: ai,
           )
 
           loop&.batch_update!(
@@ -122,17 +127,36 @@ module Encounters
       "#{encounter_scene}\n\n#{verdict_outcome}"
     end
 
-    def self.hostile_npc_names_at_current_location(adventure)
-      current_location_name = adventure&.current_location&.name
-      return [] if current_location_name.blank?
+    # Mirror Harbinger-spawned creatures into adventure_npcs so the
+    # cast roster on the next player turn finds them via the existing
+    # AdventureNpc tier of the deterministic lookup. Without this the
+    # next CastResolver call would fall through to the bestiary tiers
+    # and create a duplicate sheet for the same enemy.
+    def self.register_spawned_creatures_as_adventure_npcs(adventure:, creature_data:, log:, ai:)
+      records = Array(creature_data).filter_map do |row|
+        next unless row.is_a?(Hash)
 
-      AdventureNpc.for_adventure(adventure)
-                  .at_location(current_location_name)
-                  .hostile
-                  .pluck(:name)
-                  .uniq
+        c = row.deep_symbolize_keys
+        next unless c[:creature_sheet_id]
+        next if AdventureNpc.where(adventure_id: adventure.id, creature_sheet_id: c[:creature_sheet_id]).exists?
+
+        Lore::NpcRecord.new(
+          name:              c[:name].to_s.presence || "Creature",
+          attitude:          "unfriendly",
+          creature_sheet_id: c[:creature_sheet_id],
+        )
+      end
+      return if records.empty?
+
+      Lore::ApplyNpcs.call(
+        adventure:   adventure,
+        log:         log,
+        ai:          ai,
+        npc_records: records,
+        source:      "runtime",
+      )
     end
 
-    private_class_method :reconcile_encounter
+    private_class_method :reconcile_encounter, :register_spawned_creatures_as_adventure_npcs
   end
 end

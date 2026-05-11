@@ -5,7 +5,7 @@
 # These are the cast-resolver's deterministic fallback when a creature name
 # the AI emits doesn't match an existing AdventureNpc, an existing
 # CreatureSheet, or any named BestiaryEntry. Stat blocks are calibrated
-# for a CR-3 baseline (mid-tier of Encounters::Warmaster::CREATURE_TEMPLATE)
+# for a CR-3 baseline (mid-tier of Encounters::Warmaster::CREATURE_TEMPLATE before commit 13 retired it)
 # and varied per role per the type enum the cast resolver picks from.
 #
 # Idempotent on default_for_type — re-running db:seed is safe.

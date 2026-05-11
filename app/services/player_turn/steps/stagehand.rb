@@ -121,26 +121,27 @@ module PlayerTurn
           .map { |id, kind, text| { fact_id: id, kind: kind, text: text } }
       end
 
+      # Combat-init is now a pure projection of the cast roster the
+      # CastResolver step minted at the top of this action: filter to
+      # hostile entries, hand the integer creature_sheet_ids to
+      # Warmaster, done. No name strings on the wire, no impromptu
+      # "Name" creatures, no per-turn AI generation step.
       def maybe_initialize_combat(intent)
         return nil if stagehand_combat_active?
 
         transition = intent[:transition] || intent["transition"]
         return nil unless combat_transition?(transition)
 
-        combatants = Array(intent[:combat_combatants] || intent["combat_combatants"])
-                       .map(&:to_s).reject(&:blank?).uniq
-        return nil if combatants.empty?
+        roster = @current_cast_roster || PlayerTurn::CastRoster.empty
+        return nil if roster.empty?
 
-        Encounters::Warmaster.initialize_from_names!(
-          names_preparation_request: Encounters::Warmaster::NamesPreparationRequest.new(
-            adventure: @adventure,
-            combatant_names: combatants,
-            sheet: @sheet,
-            log: @log,
-            config: @config,
-            ai: @ai
-          )
+        result = Encounters::Warmaster.persist_combat_from_cast_roster!(
+          adventure:   @adventure,
+          cast_roster: roster,
         )
+        return nil if result[:status] == :no_creatures
+
+        result
       end
 
       def combat_transition?(transition)

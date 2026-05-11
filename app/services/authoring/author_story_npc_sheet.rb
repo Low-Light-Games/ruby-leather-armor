@@ -10,7 +10,8 @@ module Authoring
   # `.cursor/rules/clamp-at-the-boundary.mdc`: prompt is intentionally short
   # and the receiving Ruby enforces every numeric range.
   class AuthorStoryNpcSheet
-    MODEL_KEY = "creature_generation"
+    MODEL_KEY    = "creature_generation"
+    TEMPLATE_KEY = "authoring/creature_generation"
 
     ABILITY_SCORE_RANGE = (1..40).freeze
     AC_RANGE            = (1..50).freeze
@@ -40,7 +41,7 @@ module Authoring
 
     def run_generation_call
       system_prompt, user_msg = Ai::PromptRenderer.render_with_user_message(
-        MODEL_KEY,
+        TEMPLATE_KEY,
         creature_name: @story_npc.name,
         party_level:   default_party_level,
       )

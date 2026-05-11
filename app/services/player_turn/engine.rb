@@ -25,7 +25,8 @@ module PlayerTurn
     include Concerns::ContextCoordination
     include Concerns::EntryPoints
 
-    attr_reader :adventure, :user, :config, :log, :ai, :sheet, :loop, :run_pipeline
+    attr_reader :adventure, :user, :config, :log, :ai, :sheet, :loop, :run_pipeline,
+                :current_cast_roster
 
     def initialize(adventure:, config:, ai:, log:, sheet:, user: nil, run_pipeline: nil,
       on_progress: nil, on_sheet_update: nil, on_narrative: nil)
