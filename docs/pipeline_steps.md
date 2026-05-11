@@ -586,7 +586,7 @@ free-text path closed rather than silently degrading.
 **Signature ownership note (readability refactor):**
 - `CombatMechanicResolution` carries a small `CombatResolutionContext` value
   object and forwards participant targeting through
-  `WorldTurn::ParticipantLookup::LookupContext` instead of threading multiple
+  `Combat::WorldTurn::ParticipantLookup::LookupContext` instead of threading multiple
   `combat_ctx` / `sheet` / `adventure` keyword arguments through each helper.
 - `Encounters::Warmaster` entrypoints accept explicit request objects
   (`EncounterInitializationRequest`, `NamesPreparationRequest`,
