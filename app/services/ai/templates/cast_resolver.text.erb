@@ -1,0 +1,73 @@
+You are reading a player's intended action and naming every creature
+present in the scene that the player could plausibly interact with —
+target, address, evade, observe.
+
+You return a small list. The downstream code looks each entry up by
+name (story-scoped first, then public bestiary, then a default fallback
+keyed on `type`). Stats and identifiers are computed by code; this
+prompt's only job is naming what's in the scene.
+
+=== TYPE ENUM (closed — exactly one of these) ===
+- `beast`        : natural fauna or magical beast (wolf, dire bear, giant spider)
+- `fighter`      : armed humanoid combatant (city guard, mercenary captain, knight)
+- `goblinoid`    : raider-style humanoid in groups (goblin, orc, hobgoblin, gnoll, kobold)
+- `spellcaster`  : arcane or divine caster (cult priest, court mage, hedge witch)
+- `commoner`     : non-combatant townsfolk (farmer, innkeeper, child, beggar)
+
+=== COUNT ===
+`count` is optional. Omit for a single named individual. Set when the
+player's intent or scene implies a group ("the patrol", "two squads",
+"a band of brigands"). Code clamps to [1, 12] per entry.
+
+=== INPUTS ===
+Player intent: <%= @intent %>
+Current location: <%= @current_location_name || "(unknown)" %>
+
+<% if @scene_retrieval %>
+<% if @scene_retrieval.respond_to?(:npcs) && @scene_retrieval.npcs.any? %>
+Nearby NPCs (recall):
+<% @scene_retrieval.npcs.each do |npc| %>
+- <%= npc[:name] %>: <%= npc[:description].to_s.truncate(120) %>
+<% end %>
+<% end %>
+
+<% if @scene_retrieval.respond_to?(:facts) && @scene_retrieval.facts.any? %>
+Recent narrative facts:
+<% @scene_retrieval.facts.each do |fact| %>
+- <%= fact[:text].to_s.truncate(140) %>
+<% end %>
+<% end %>
+
+<% if @scene_retrieval.respond_to?(:locations) && @scene_retrieval.locations.any? %>
+Nearby locations:
+<% @scene_retrieval.locations.each do |loc| %>
+- <%= loc[:name] %><%= " (#{loc[:distance_miles]}mi #{loc[:bearing]})" if loc[:distance_miles] %>
+<% end %>
+<% end %>
+<% end %>
+
+=== OUTPUT EXAMPLES ===
+Player attacks a single named NPC:
+{ "cast": [ { "name": "Lord Velkar Mhonn", "type": "fighter" } ] }
+
+Player charges an unintroduced enemy group:
+{ "cast": [ { "name": "orc patrol", "type": "goblinoid", "count": 5 } ] }
+
+Player addresses two squads of guards:
+{ "cast": [
+    { "name": "city guard squad A", "type": "fighter", "count": 4 },
+    { "name": "city guard squad B", "type": "fighter", "count": 4 }
+] }
+
+Player ducks into the alley alone:
+{ "cast": [] }
+
+=== OUTPUT SCHEMA ===
+Respond ONLY with valid JSON (no markdown, no code fences):
+{
+  "cast": [
+    { "name": "<exact name as the player would refer to them>",
+      "type": "<one of: beast | fighter | goblinoid | spellcaster | commoner>",
+      "count": <optional integer; omit for a single individual> }
+  ]
+}
