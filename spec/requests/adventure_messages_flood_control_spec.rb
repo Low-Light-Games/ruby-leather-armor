@@ -102,6 +102,13 @@ RSpec.describe "Adventure Messages flood control", type: :request do
   end
 
   describe "Rack::Attack throttles" do
+    # Rack::Attack buckets counters by `Time.now.to_i / period`. Without a
+    # frozen clock a long test (121 HTTP round-trips) can straddle a minute
+    # boundary, the bucket key rolls over, and the final request lands in a
+    # fresh counter — masking the throttle and surfacing as 422 (no pending
+    # roll) instead of the expected 429.
+    around { |ex| travel_to(Time.zone.now.beginning_of_minute) { ex.run } }
+
     it "returns a user_rate 429 after the per-user burst is exceeded" do
       RackAttackConfig::USER_RATE_LIMIT.times do
         post "/adventures/#{adventure.id}/messages/roll",
