@@ -136,11 +136,13 @@ module Encounters
         @log.play_log!(
           "cast_resolver_unresolved",
           "CastResolver: no bestiary entry for name=#{name.inspect} type=#{type.inspect}",
-          parsed_response: { name: name, type: type, count: count, adventure_id: @adventure.id },
+          parsed_response: CastResolverEvents::Unresolved.new(
+            name: name, type: type, count: count, adventure_id: @adventure.id,
+          ).to_h,
         )
         ApplicationErrorReporter.notify(
           RuntimeError.new("CastResolver default lookup miss for type=#{type.inspect}"),
-          context: { source: "cast_resolver_unresolved", adventure_id: @adventure.id, name: name, type: type },
+          context: error_context.with(source: "cast_resolver_unresolved", name: name, type: type),
         )
         return []
       end
@@ -149,7 +151,9 @@ module Encounters
         @log.play_log!(
           "cast_resolver_default_fallback",
           "CastResolver: default_for_type=#{type} for name=#{name.inspect}",
-          parsed_response: { name: name, type: type, count: count, bestiary_entry_id: bestiary.id },
+          parsed_response: CastResolverEvents::DefaultFallback.new(
+            name: name, type: type, count: count, bestiary_entry_id: bestiary.id,
+          ).to_h,
         )
       end
 
@@ -204,12 +208,12 @@ module Encounters
       @log.play_log!(
         "cast_resolver",
         "CastResolver: AI=#{ai_entries.size} entries -> #{members.size} roster member(s)",
-        parsed_response: {
-          intent: @intent_text.truncate(160),
-          ai_entries: ai_entries,
-          roster_member_ids: members.map(&:id),
+        parsed_response: CastResolverEvents::Resolved.new(
+          intent:              @intent_text,
+          ai_entries:          ai_entries,
+          roster_member_ids:   members.map(&:id),
           roster_member_names: members.map(&:name),
-        },
+        ).to_h,
       )
     end
 
@@ -217,16 +221,16 @@ module Encounters
       @log.play_log!(
         "cast_resolver_overspawn",
         "CastResolver: #{members.size} > threshold #{OVERSPAWN_THRESHOLD}",
-        parsed_response: {
+        parsed_response: CastResolverEvents::Overspawn.new(
           adventure_id: @adventure.id,
           member_count: members.size,
           threshold:    OVERSPAWN_THRESHOLD,
-          intent:       @intent_text.truncate(160),
-        },
+          intent:       @intent_text,
+        ).to_h,
       )
       ApplicationErrorReporter.notify(
         RuntimeError.new("CastResolver overspawn: #{members.size} members"),
-        context: { source: "cast_resolver_overspawn", adventure_id: @adventure.id, member_count: members.size },
+        context: error_context.with(source: "cast_resolver_overspawn", member_count: members.size),
       )
     end
 

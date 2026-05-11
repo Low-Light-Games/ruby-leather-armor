@@ -126,11 +126,11 @@ module PlayerTurn
         @log.play_log!(
           'roll_request_unknown_target',
           "RollRequest emitted target_creature_sheet_id=#{id} not in cast roster",
-          parsed_response: {
+          parsed_response: UnknownTargetEvent.new(
             emitted_target_id: id,
-            roster_ids: roster.entries.map(&:creature_sheet_id),
-            roster_names: roster.entries.map(&:name),
-          }
+            roster_ids:        roster.entries.map(&:creature_sheet_id),
+            roster_names:      roster.entries.map(&:name),
+          ).to_h
         )
         nil
       end

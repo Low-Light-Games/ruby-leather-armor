@@ -68,7 +68,7 @@ module PlayerTurn
         @log&.play_log!(
           'combat_roll_request_unknown_target',
           "CombatRollRequest: target_creature_sheet_id=#{id} not in active combat (valid=#{valid_ids.inspect})",
-          parsed_response: { requested_id: id, valid_ids: valid_ids }
+          parsed_response: UnknownTargetEvent.new(requested_id: id, valid_ids: valid_ids).to_h
         )
         nil
       end

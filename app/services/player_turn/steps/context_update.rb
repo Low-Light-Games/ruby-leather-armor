@@ -189,13 +189,13 @@ module PlayerTurn
             @log.play_log!(
               "context_update_unknown_id",
               "ContextUpdate: participant_updates references unknown creature_sheet_id=#{update.creature_sheet_id}",
-              parsed_response: {
-                requested_id:    update.creature_sheet_id,
-                roster_ids:      roster_by_id.keys,
-                hp_delta:        update.hp_delta,
-                added:           update.conditions_added,
-                removed:         update.conditions_removed,
-              },
+              parsed_response: UnknownIdEvent.new(
+                requested_id: update.creature_sheet_id,
+                roster_ids:   roster_by_id.keys,
+                hp_delta:     update.hp_delta,
+                added:        update.conditions_added,
+                removed:      update.conditions_removed,
+              ).to_h,
             )
             next
           end

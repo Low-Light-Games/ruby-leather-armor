@@ -73,28 +73,20 @@ module Combat
     def self.report_dc_clamp_violation!(skill:, ai_dc:, code_dc:, target_sheet:, log:)
       return if ai_dc.blank?
 
+      event = DcClampEvent.new(
+        skill: skill, ai_dc: ai_dc, code_dc: code_dc, target_sheet_id: target_sheet.id,
+      )
       ApplicationErrorReporter.notify(
         RuntimeError.new(
           "RollRequest emitted dc=#{ai_dc.inspect} for opposed skill #{skill.inspect} " \
           "(code resolved dc=#{code_dc} from target sheet)"
         ),
-        context: {
-          source:           "opposed_roll_dc_clamp",
-          skill:            skill,
-          ai_dc:            ai_dc,
-          code_dc:          code_dc,
-          target_sheet_id:  target_sheet.id,
-        },
+        context: event.to_sentry_context,
       )
       log&.play_log!(
         "opposed_roll_dc_clamp",
         "OpposedRollResolution: clamped AI dc=#{ai_dc.inspect} for opposed skill #{skill.inspect}; using code dc=#{code_dc}",
-        parsed_response: {
-          skill:           skill,
-          ai_dc:           ai_dc,
-          code_dc:         code_dc,
-          target_sheet_id: target_sheet.id,
-        },
+        parsed_response: event.to_h,
       )
     end
   end
