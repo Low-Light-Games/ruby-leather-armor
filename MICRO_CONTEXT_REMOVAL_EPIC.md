@@ -817,7 +817,7 @@ To prevent scope creep during implementation:
 - `Lore::ApplyResults` and the existing `adventure_narrative_facts` table —
   preserved. Extended to NPCs and locations via parallel writers
   (`ApplyNpcs`, `ApplyLocations`), not replaced.
-- Sheet system (`Sheet`, `AdventureSheet`, `CreatureSheet`, all join
+- Sheet system (`Sheet`, `AdventureSheet`, `AdventureActorSheet`, all join
   tables) — untouched.
 - `EncounterTable` and `EncounterTableEntry` — untouched.
 - Per-step DmConfig model selection mechanism — untouched.

@@ -104,15 +104,15 @@ and [`phases/combat_mechanic_resolution.rb`](../app/services/player_turn/steps/p
 4. **Combat-start hand-off** — `intent[:transition]` + the per-action
    `PlayerTurn::CastRoster` (persisted on the AdventureLoop by the
    upstream `CastResolve` step) triggers Warmaster prep. RollRequest
-   emits a `transition` flag plus an optional `target_creature_sheet_id`
+   emits a `transition` flag plus an optional `target_actor_sheet_id`
    on the intent hash; combatants are picked from the cast roster, not
    re-derived from a name list.
 
    **Replaces the retired `combat_combatants` field** (PR-I-era contract).
    Identity is owned by code from the moment the cast roster is built —
-   `creature_sheet_id` is an integer that already exists in the database
+   `actor_sheet_id` is an integer that already exists in the database
    when RollRequest sees the prompt. Warmaster picks combatants
-   deterministically: the action's `target_creature_sheet_id` plus any
+   deterministically: the action's `target_actor_sheet_id` plus any
    pre-existing hostile cast-roster entries. Indifferent / friendly
    bystanders stay out of combat (combat itself doesn't yet know how to
    carry non-hostile participants; the bridge is intentionally narrow).
@@ -152,7 +152,7 @@ new surfaces.
 - `POST /adventures/:id/combat_action` with
   `{ kind: "attack", attack_option_id, target_id }`.
 - Resolver: roll d20, add attack bonus from sheet, compare to target AC
-  (sheet for player-side, creature_sheet for NPC-side), roll damage on
+  (sheet for player-side, adventure_actor_sheet for NPC-side), roll damage on
   hit, apply HP delta, emit `action_event`, decrement action economy.
 - Frontend: render attack-option buttons in the combat HUD, wired to the
   endpoint.
@@ -242,7 +242,7 @@ inheriting deterministic state.
 **Goal:** kill the per-NPC AI fan-out. This is the cost-collapse moment.
 
 **Scope:**
-- Migration: add `behavior_policy` JSON column to `creature_sheets`.
+- Migration: add `behavior_policy` JSON column to `adventure_actor_sheets`.
 - v1 schema:
   ```json
   {

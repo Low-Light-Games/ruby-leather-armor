@@ -28,7 +28,7 @@ Located in `app/models/`. 38 model files total.
 | ---------------- | --------------------------------------------------------------------------------------- |
 | `Sheet`          | Player character sheet with base stats, derived stat calculations, and currency helpers |
 | `AdventureSheet` | Snapshot copy of a `Sheet` scoped to a specific adventure instance                      |
-| `CreatureSheet`  | NPC/monster stat block with creature types, attitudes, and origin tracking              |
+| `AdventureActorSheet`  | NPC/monster stat block with creature types, attitudes, and origin tracking              |
 
 
 ### Sheet Join Tables
@@ -44,9 +44,9 @@ Each sheet type has its own set of join tables for feats, spells, and items:
 | `AdventureSheetFeat`  | Links feats to an `AdventureSheet`                         |
 | `AdventureSheetSpell` | Links spells to an `AdventureSheet`                        |
 | `AdventureSheetItem`  | Links items to an `AdventureSheet`                         |
-| `CreatureSheetFeat`   | Links feats to a `CreatureSheet`                           |
-| `CreatureSheetSpell`  | Links spells to a `CreatureSheet`                          |
-| `CreatureSheetItem`   | Links items to a `CreatureSheet`                           |
+| `AdventureActorSheetFeat`   | Links feats to a `AdventureActorSheet`                           |
+| `AdventureActorSheetSpell`  | Links spells to a `AdventureActorSheet`                          |
+| `AdventureActorSheetItem`   | Links items to a `AdventureActorSheet`                           |
 
 
 ### Catalog / Definitions
@@ -81,7 +81,7 @@ Each sheet type has its own set of join tables for feats, spells, and items:
 | --------------------- | ------------------------------------------------------------------------------------------- |
 | `EncounterTable`      | Container for a set of random encounter entries                                             |
 | `EncounterTableEntry` | Single encounter possibility with weight, terrain/level filters, and optional AI generation |
-| `BestiaryEntry`       | OGL/SRD Pathfinder creature template used to seed `CreatureSheet` instances                 |
+| `BestiaryEntry`       | OGL/SRD Pathfinder creature template used to seed `AdventureActorSheet` instances                 |
 
 
 ### AI Pipeline & Logging
