@@ -5,7 +5,7 @@
 # exercise the post-roll combat-context-update path with a *named*
 # antagonist. The named StoryNpc surfaces through lore retrieval as a
 # CastResolver candidate; combat-init then projects the same
-# `creature_sheet_id` into the canonical participants block, and
+# `actor_sheet_id` into the canonical participants block, and
 # Steps::ContextUpdate validates that id round-trips on every subsequent
 # turn (see #validate_participant_identities!).
 
@@ -42,7 +42,7 @@ audience_chamber = story.story_locations.find_by!(name: "Velkar's Audience Chamb
 
 # Hand-authored BestiaryEntry for Lord Velkar Mhonn. No AI is invoked at
 # seed time — this stat block is the canonical, human-reviewed sheet that
-# Lore::SeedFromAdventure clones into a per-Adventure CreatureSheet at
+# Lore::SeedFromAdventure clones into a per-Adventure AdventureActorSheet at
 # adventure creation. Calibrated as a CR-4 aristocrat-fighter hybrid so a
 # mid-tier party that escalates the audience to combat hits a real fight.
 velkar_sheet = BestiaryEntry.find_or_initialize_by(id: "story_envoys_gambit_velkar")

@@ -17,8 +17,8 @@ produce the roll spec.
 <% end -%>
 
 Each entry is `[id=<integer>] Name (attitude) — at <location>`. The
-`id` is a real `creature_sheet_id` you can hand back as
-`target_creature_sheet_id`.
+`id` is a real `actor_sheet_id` you can hand back as
+`target_actor_sheet_id`.
 <% end -%>
 
 <%= PromptRenderer.render_partial("partials/scene_retrieval", scene_retrieval: @roll_request_context.scene_retrieval) %>
@@ -45,7 +45,7 @@ Pick a generic skill or save that fits based on Pathfinder 1E rules.
 <% end -%>
 === FIELD GUIDANCE ===
 - `mechanical_summary`: a short sentence framing the *attempt*, not the outcome.
-- `target_creature_sheet_id`: when the action is directed at a single
+- `target_actor_sheet_id`: when the action is directed at a single
   creature in CAST ROSTER, copy that entry's `id` (an integer) into
   this field. Omit the field entirely (do NOT emit `null`) when the
   action has no creature target. The id MUST come from the CAST ROSTER
@@ -66,7 +66,7 @@ markdown):
   "take_20_eligible": <boolean>,
   "situational_modifiers": [],
   "rule_slug": "<slug copied from the chosen rule>",
-  "target_creature_sheet_id": <integer; omit when no creature target>,
+  "target_actor_sheet_id": <integer; omit when no creature target>,
   "mechanical_summary": "<short attempt-flavored sentence>",
   "reasoning": "<short explanation of the rule choice>"
 }

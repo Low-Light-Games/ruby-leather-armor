@@ -145,7 +145,7 @@ module PlayerTurn
             intention: intent[:intention] || intent["intention"],
             destination: intent[:destination] || intent["destination"],
             transition: intent[:transition] || intent["transition"],
-            target_creature_sheet_id: intent[:target_creature_sheet_id] || intent["target_creature_sheet_id"],
+            target_actor_sheet_id: intent[:target_actor_sheet_id] || intent["target_actor_sheet_id"],
           }.compact,
           verdict: verdict_result,
           sheet: @sheet ? {

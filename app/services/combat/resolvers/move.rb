@@ -97,10 +97,10 @@ module Combat
       end
 
       def creature_for_position(position)
-        sid = position.creature_sheet_id
+        sid = position.actor_sheet_id
         return nil if sid.blank?
 
-        @adventure.creature_sheets.find_by(id: sid.to_i)
+        @adventure.adventure_actor_sheets.find_by(id: sid.to_i)
       end
 
       def commit_move!(plan)

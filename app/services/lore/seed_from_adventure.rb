@@ -59,7 +59,7 @@ module Lore
       return if story_npcs.empty?
 
       records = story_npcs.map do |npc|
-        NpcRecord.from_story_npc(npc, creature_sheet_id: clone_sheet_for(npc))
+        NpcRecord.from_story_npc(npc, actor_sheet_id: clone_sheet_for(npc))
       end
 
       ApplyNpcs.call(
@@ -87,7 +87,7 @@ module Lore
       bestiary_entry = story_npc.bestiary_entry
       return nil unless bestiary_entry
 
-      sheet = Encounters::CreatureCreation.from_bestiary(
+      sheet = Encounters::ActorSheetCreation.from_bestiary(
         adventure:      @adventure,
         bestiary_entry: bestiary_entry,
         display_name:   story_npc.name,
@@ -95,7 +95,7 @@ module Lore
       sheet&.id
     rescue StandardError => e
       @log.report_error(e, context: {
-        step:         "seed_clone_creature_sheet",
+        step:         "seed_clone_adventure_actor_sheet",
         adventure_id: @adventure&.id,
         story_npc_id: story_npc.id,
         source:       "seed_from_adventure",

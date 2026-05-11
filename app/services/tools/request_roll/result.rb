@@ -7,7 +7,7 @@ module Tools
                   :take_10_eligible, :take_20_eligible,
                   :take_10_value, :take_20_value,
                   :situational_modifiers, :mechanical_summary, :request_id,
-                  :target_creature_sheet_id
+                  :target_actor_sheet_id
 
       def self.from_parsed(parsed, sheet:)
         parsed = (parsed || {}).deep_symbolize_keys
@@ -27,7 +27,7 @@ module Tools
           take_20_value: take_values[:take_20_value],
           situational_modifiers: PlayerTurn::Rolls::SituationalModifiers.normalize(parsed[:situational_modifiers]),
           mechanical_summary: mechanical_summary,
-          target_creature_sheet_id: coerce_target_id(parsed[:target_creature_sheet_id])
+          target_actor_sheet_id: coerce_target_id(parsed[:target_actor_sheet_id])
         )
       end
 
@@ -48,7 +48,7 @@ module Tools
                      take_10_eligible:, take_20_eligible:,
                      take_10_value:, take_20_value:,
                      situational_modifiers:, mechanical_summary:,
-                     request_id: nil, target_creature_sheet_id: nil)
+                     request_id: nil, target_actor_sheet_id: nil)
         @type = type
         @skill = skill
         @save = save
@@ -62,7 +62,7 @@ module Tools
         @situational_modifiers = situational_modifiers
         @mechanical_summary = mechanical_summary
         @request_id = request_id || SecureRandom.uuid
-        @target_creature_sheet_id = target_creature_sheet_id
+        @target_actor_sheet_id = target_actor_sheet_id
       end
 
       def to_h
@@ -80,7 +80,7 @@ module Tools
           situational_modifiers: @situational_modifiers,
           mechanical_summary: @mechanical_summary,
           request_id: @request_id,
-          target_creature_sheet_id: @target_creature_sheet_id
+          target_actor_sheet_id: @target_actor_sheet_id
         }.compact
       end
     end

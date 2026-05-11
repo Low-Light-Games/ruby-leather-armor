@@ -8,11 +8,11 @@ module PlayerTurn
   # per `.cursor/rules/no-ad-hoc-structures.mdc` it lives as a named
   # class rather than an inline Struct.
   class CastRosterEntry
-    attr_reader :adventure_npc_id, :creature_sheet_id, :name, :attitude, :location_name
+    attr_reader :adventure_npc_id, :actor_sheet_id, :name, :attitude, :location_name
 
-    def initialize(adventure_npc_id:, creature_sheet_id:, name:, attitude:, location_name: nil)
+    def initialize(adventure_npc_id:, actor_sheet_id:, name:, attitude:, location_name: nil)
       @adventure_npc_id  = adventure_npc_id
-      @creature_sheet_id = creature_sheet_id
+      @actor_sheet_id = actor_sheet_id
       @name              = name
       @attitude          = attitude
       @location_name     = location_name
@@ -25,7 +25,7 @@ module PlayerTurn
     def to_h
       {
         adventure_npc_id:  adventure_npc_id,
-        creature_sheet_id: creature_sheet_id,
+        actor_sheet_id: actor_sheet_id,
         name:              name,
         attitude:          attitude,
         location_name:     location_name,

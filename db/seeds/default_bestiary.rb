@@ -4,7 +4,7 @@
 #
 # These are the cast-resolver's deterministic fallback when a creature name
 # the AI emits doesn't match an existing AdventureNpc, an existing
-# CreatureSheet, or any named BestiaryEntry. Stat blocks are calibrated
+# AdventureActorSheet, or any named BestiaryEntry. Stat blocks are calibrated
 # for a CR-3 baseline and varied per role per the type enum the cast
 # resolver picks from.
 #

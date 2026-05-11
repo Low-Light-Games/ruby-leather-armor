@@ -4,7 +4,7 @@ module CharacterStats
   class CombatCalculator
     include GameRules
 
-    # @param source [Sheet, AdventureSheet, CreatureSheet]
+    # @param source [Sheet, AdventureSheet, AdventureActorSheet]
     # @param feats  [Array<SheetFeat|AdventureSheetFeat>]  pre-loaded pivot records
     # @param items  [Array<SheetItem|AdventureSheetItem>]  pre-loaded pivot records
     def initialize(source, feats:, items:)

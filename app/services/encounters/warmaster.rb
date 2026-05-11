@@ -4,7 +4,7 @@ module Encounters
   # Combat persistence + initiative wiring. Identity is owned upstream by
   # `Encounters::CastResolver` (free-text path) or `WarmasterBridge`'s
   # manifest (table-driven encounters), so every NPC arriving here
-  # already has a real `creature_sheet_id` to point at.
+  # already has a real `actor_sheet_id` to point at.
   module Warmaster
     include Mutations
 
@@ -42,13 +42,13 @@ module Encounters
                          next unless c.is_a?(Hash)
 
                          c = c.deep_symbolize_keys
-                         sheet = combat_initialization_request.adventure.creature_sheets.find_by(id: c[:creature_sheet_id])
+                         sheet = combat_initialization_request.adventure.adventure_actor_sheets.find_by(id: c[:actor_sheet_id])
                          unless sheet
-                           Rails.logger.warn("[Warmaster] creature_sheet id=#{c[:creature_sheet_id]} not found — omitted from combat")
+                           Rails.logger.warn("[Warmaster] adventure_actor_sheet id=#{c[:actor_sheet_id]} not found — omitted from combat")
                            next
                          end
 
-                         Combat::Combatant.from_creature_sheet(sheet, initiative: c[:initiative].to_i)
+                         Combat::Combatant.from_adventure_actor_sheet(sheet, initiative: c[:initiative].to_i)
                        end
 
       player_combatant = Combat::Combatant.from_player_sheet(
@@ -82,13 +82,13 @@ module Encounters
         next unless c.is_a?(Hash)
 
         row = c.deep_symbolize_keys
-        sheet = adventure.creature_sheets.find_by(id: row[:creature_sheet_id])
+        sheet = adventure.adventure_actor_sheets.find_by(id: row[:actor_sheet_id])
         unless sheet
-          Rails.logger.warn("[Warmaster] creature_sheet id=#{row[:creature_sheet_id]} not found — omitted from pending combat")
+          Rails.logger.warn("[Warmaster] adventure_actor_sheet id=#{row[:actor_sheet_id]} not found — omitted from pending combat")
           next
         end
 
-        Combat::Combatant.from_creature_sheet(sheet, initiative: row[:initiative].to_i)
+        Combat::Combatant.from_adventure_actor_sheet(sheet, initiative: row[:initiative].to_i)
       end.sort_by { |combatant| -combatant.initiative }
 
       Combat::Context.pending(
@@ -101,17 +101,17 @@ module Encounters
 
     # @param adventure [Adventure]
     # @param cast_roster [PlayerTurn::CastRoster]
-    # @param target_creature_sheet_id [Integer, nil]
+    # @param target_actor_sheet_id [Integer, nil]
     # @return [Hash{Symbol => Object}] :status, plus :creature_data when :awaiting_initiative
-    def persist_combat_from_cast_roster!(adventure:, cast_roster:, target_creature_sheet_id: nil)
-      combatants = pick_initial_combatants(cast_roster, target_creature_sheet_id)
+    def persist_combat_from_cast_roster!(adventure:, cast_roster:, target_actor_sheet_id: nil)
+      combatants = pick_initial_combatants(cast_roster, target_actor_sheet_id)
       return { status: :no_creatures } if combatants.empty?
 
       creature_data = combatants.map do |entry|
         {
           name:              entry.name,
-          creature_sheet_id: entry.creature_sheet_id,
-          initiative:        roll_initiative_for_sheet_id(adventure, entry.creature_sheet_id),
+          actor_sheet_id: entry.actor_sheet_id,
+          initiative:        roll_initiative_for_sheet_id(adventure, entry.actor_sheet_id),
         }
       end
 
@@ -119,13 +119,13 @@ module Encounters
       { status: :awaiting_initiative, creature_data: creature_data }
     end
 
-    def pick_initial_combatants(cast_roster, target_creature_sheet_id)
-      with_sheets    = cast_roster.entries.select(&:creature_sheet_id)
+    def pick_initial_combatants(cast_roster, target_actor_sheet_id)
+      with_sheets    = cast_roster.entries.select(&:actor_sheet_id)
       pre_hostile    = with_sheets.select(&:hostile?)
-      target_id      = target_creature_sheet_id.to_i
-      target         = (with_sheets.find { |e| e.creature_sheet_id.to_i == target_id } if target_id.positive?)
+      target_id      = target_actor_sheet_id.to_i
+      target         = (with_sheets.find { |e| e.actor_sheet_id.to_i == target_id } if target_id.positive?)
 
-      ([target].compact + pre_hostile).uniq { |e| e.creature_sheet_id }
+      ([target].compact + pre_hostile).uniq { |e| e.actor_sheet_id }
     end
 
     def auto_roll_player_initiative(sheet)
@@ -159,7 +159,7 @@ module Encounters
           next
         end
 
-        sheets = Encounters::CreatureCreation.from_bestiary(
+        sheets = Encounters::ActorSheetCreation.from_bestiary(
           adventure:      ctx.adventure,
           bestiary_entry: bestiary,
           display_name:   display_base,
@@ -204,12 +204,12 @@ module Encounters
 
     def prepare_creature_data(adventure, creatures)
       creatures.map do |c|
-        c.merge(initiative: roll_initiative_for_sheet_id(adventure, c[:creature_sheet_id]))
+        c.merge(initiative: roll_initiative_for_sheet_id(adventure, c[:actor_sheet_id]))
       end
     end
 
-    def roll_initiative_for_sheet_id(adventure, creature_sheet_id)
-      creature = adventure.creature_sheets.find_by(id: creature_sheet_id)
+    def roll_initiative_for_sheet_id(adventure, actor_sheet_id)
+      creature = adventure.adventure_actor_sheets.find_by(id: actor_sheet_id)
       return rand(1..20) unless creature
 
       dex_mod = ((creature.dexterity - 10).to_f / 2).floor
@@ -218,7 +218,7 @@ module Encounters
     end
 
     def creature_record(sheet, display_name)
-      { name: display_name, creature_sheet_id: sheet.id }
+      { name: display_name, actor_sheet_id: sheet.id }
     end
 
     private_class_method :spawn_from_manifest, :build_initiative_result,

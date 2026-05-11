@@ -2,9 +2,9 @@
 
 module PlayerTurn
   module Presenters
-    class CreatureSheetPromptPresenter
-      def initialize(creature_sheet)
-        @creature = creature_sheet
+    class AdventureActorSheetPromptPresenter
+      def initialize(adventure_actor_sheet)
+        @creature = adventure_actor_sheet
       end
 
       def stats_line
@@ -14,7 +14,7 @@ module PlayerTurn
       end
 
       def self.stats_lines_for_adventure(adventure)
-        creatures = adventure.creature_sheets.to_a
+        creatures = adventure.adventure_actor_sheets.to_a
         return nil if creatures.empty?
 
         creatures.map { |c| new(c).stats_line }.join("\n")

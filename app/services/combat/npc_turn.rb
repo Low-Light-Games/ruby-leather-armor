@@ -6,7 +6,7 @@ module Combat
 
     module_function
 
-    # @param creature [CreatureSheet]
+    # @param creature [AdventureActorSheet]
     # @param adventure [Adventure]
     # @param target_sheet [AdventureSheet]
     # @return [Array<Hash>] events; each has :kind and a :payload
@@ -14,7 +14,7 @@ module Combat
       return [skip_event(creature, 'creature is down')] if creature.hp.to_i <= 0
 
       policy = ProgrammedBehavior.for(creature)
-      npc_pos = Positions.position_for_creature_sheet(adventure, creature.id)
+      npc_pos = Positions.position_for_adventure_actor_sheet(adventure, creature.id)
       target_pos = Positions.player_position(adventure)
 
       unless npc_pos&.coordinates_present? && target_pos&.coordinates_present?
@@ -75,7 +75,7 @@ module Combat
     end
 
     def post_approach_action(ctx)
-      new_pos = Positions.position_for_creature_sheet(ctx.adventure, ctx.creature.id)
+      new_pos = Positions.position_for_adventure_actor_sheet(ctx.adventure, ctx.creature.id)
       new_distance = new_pos.distance_to(ctx.target_pos)
       attack_pref = ctx.policy.preferred_attacks.find { |p| p.matches_distance?(new_distance) }
       if attack_pref

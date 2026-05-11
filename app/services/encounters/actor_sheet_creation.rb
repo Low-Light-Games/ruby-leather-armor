@@ -7,11 +7,11 @@ module Encounters
   #   * Encounters::EncounterWarmasterBridge — Harbinger random encounters
   #   * Encounters::Warmaster          — the bestiary path (delegates here)
   #
-  # All callers reach a CreatureSheet through `from_bestiary`. There is no
+  # All callers reach a AdventureActorSheet through `from_bestiary`. There is no
   # AI generator on the per-turn hot path — story NPCs are statted at
   # authoring time (Authoring::AuthorStoryNpcSheet) and cold-spawned
   # creatures fall back deterministically to a `default_for_type` BestiaryEntry.
-  module CreatureCreation
+  module ActorSheetCreation
     MIN_COUNT = 1
     MAX_COUNT = 12
 
@@ -19,7 +19,7 @@ module Encounters
     # @param bestiary_entry [BestiaryEntry]
     # @param display_name [String, nil]
     # @param count [Integer] clamped to [MIN_COUNT, MAX_COUNT]
-    # @return [Array<CreatureSheet>]
+    # @return [Array<AdventureActorSheet>]
     def self.from_bestiary(adventure:, bestiary_entry:, display_name: nil, count: 1)
       raise ArgumentError, "bestiary_entry required" if bestiary_entry.nil?
 
@@ -32,8 +32,8 @@ module Encounters
         instance_name = effective_count > 1 ? "#{base_name} #{idx + 1}" : base_name
         hp_value = roll_hp(bestiary_entry.hp_formula)
 
-        sheet = adventure.creature_sheets.create!(
-          bestiary_entry.to_creature_sheet_attrs(display_name: instance_name).merge(
+        sheet = adventure.adventure_actor_sheets.create!(
+          bestiary_entry.to_adventure_actor_sheet_attrs(display_name: instance_name).merge(
             hp:     hp_value,
             max_hp: hp_value,
             origin: "bestiary"

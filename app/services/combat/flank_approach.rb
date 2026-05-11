@@ -102,8 +102,8 @@ module Combat
     end
 
     def ally_token?(pos, self_creature)
-      pos.coordinates_present? && pos.creature_sheet_id.present? &&
-        pos.creature_sheet_id.to_i != self_creature.id
+      pos.coordinates_present? && pos.actor_sheet_id.present? &&
+        pos.actor_sheet_id.to_i != self_creature.id
     end
 
     def chebyshev(from, to)

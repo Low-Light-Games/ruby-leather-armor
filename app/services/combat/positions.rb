@@ -20,8 +20,8 @@ module Combat
       for_adventure(adventure).find { |p| p.token_id == PLAYER_TOKEN_ID }
     end
 
-    def position_for_creature_sheet(adventure, creature_sheet_id)
-      for_adventure(adventure).find { |p| p.creature_sheet_id.to_i == creature_sheet_id.to_i }
+    def position_for_adventure_actor_sheet(adventure, actor_sheet_id)
+      for_adventure(adventure).find { |p| p.actor_sheet_id.to_i == actor_sheet_id.to_i }
     end
 
     def occupied?(adventure, at_x:, at_y:, except_token_id: nil)
@@ -75,7 +75,7 @@ module Combat
         label: raw['label'].to_s,
         coordinates: { x: raw['x'], y: raw['y'] },
         type: raw['type'],
-        creature_sheet_id: raw['creature_sheet_id']
+        actor_sheet_id: raw['actor_sheet_id']
       )
     end
 

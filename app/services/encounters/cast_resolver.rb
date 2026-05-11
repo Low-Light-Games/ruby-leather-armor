@@ -3,17 +3,17 @@
 module Encounters
   # Single AI step + four-tier deterministic lookup that turns the cast
   # resolver's `[{name, type, count}]` output into a roster of
-  # AdventureNpc rows, each with a creature_sheet_id linked to a real
-  # CreatureSheet. RollRequest then targets one of those rows by ID
+  # AdventureNpc rows, each with a actor_sheet_id linked to a real
+  # AdventureActorSheet. RollRequest then targets one of those rows by ID
   # — no more name strings on the wire, no more impromptu "Name"
   # creatures.
   #
   # The four tiers (highest-first):
   #   1. Existing AdventureNpc by name (with sheet) — reuse the row.
-  #   2. Existing CreatureSheet by name in this adventure — adopt onto
+  #   2. Existing AdventureActorSheet by name in this adventure — adopt onto
   #      the AdventureNpc (creating one if missing).
   #   3. BestiaryEntry by name (story-scoped first, then public) —
-  #      Encounters::CreatureCreation.from_bestiary mints sheet(s).
+  #      Encounters::ActorSheetCreation.from_bestiary mints sheet(s).
   #   4. BestiaryEntry by default_for_type — same minting path with
   #      the type's default stat block (lookup cannot miss after
   #      seeds run; a miss is an alarming-but-recoverable Sentry event).
@@ -108,19 +108,19 @@ module Encounters
 
     def parse_count(raw)
       n = Integer(raw) rescue 1
-      n.clamp(1, Encounters::CreatureCreation::MAX_COUNT)
+      n.clamp(1, Encounters::ActorSheetCreation::MAX_COUNT)
     end
 
     # @return [AdventureNpc, nil]
     def reuse_or_adopt_single(name)
       existing_npc = lookup_adventure_npc_by_name(name)
-      return existing_npc if existing_npc&.creature_sheet_id
+      return existing_npc if existing_npc&.actor_sheet_id
 
-      sheet = lookup_creature_sheet_by_name(name)
+      sheet = lookup_adventure_actor_sheet_by_name(name)
       return nil unless sheet
 
       if existing_npc
-        existing_npc.update!(creature_sheet_id: sheet.id) if existing_npc.creature_sheet_id.nil?
+        existing_npc.update!(actor_sheet_id: sheet.id) if existing_npc.actor_sheet_id.nil?
         existing_npc
       else
         insert_runtime_npcs([sheet], display_name_override: name).first
@@ -154,7 +154,7 @@ module Encounters
         )
       end
 
-      sheets = Encounters::CreatureCreation.from_bestiary(
+      sheets = Encounters::ActorSheetCreation.from_bestiary(
         adventure:      @adventure,
         bestiary_entry: bestiary,
         display_name:   name,
@@ -170,8 +170,8 @@ module Encounters
         .first
     end
 
-    def lookup_creature_sheet_by_name(name)
-      @adventure.creature_sheets.where("LOWER(name) = ?", name.downcase).first
+    def lookup_adventure_actor_sheet_by_name(name)
+      @adventure.adventure_actor_sheets.where("LOWER(name) = ?", name.downcase).first
     end
 
     def bestiary_by_name(name)
@@ -189,7 +189,7 @@ module Encounters
         Lore::NpcRecord.new(
           name:              display_name_override || sheet.name,
           attitude:          DEFAULT_ATTITUDE,
-          creature_sheet_id: sheet.id,
+          actor_sheet_id: sheet.id,
         )
       end
       Lore::ApplyNpcs.call(

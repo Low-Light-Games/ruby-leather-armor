@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-class CreatureSheetItem < ApplicationRecord
-  belongs_to :creature_sheet
+class AdventureActorSheetItem < ApplicationRecord
+  belongs_to :adventure_actor_sheet, foreign_key: :actor_sheet_id, inverse_of: :adventure_actor_sheet_items
   belongs_to :item_definition, foreign_key: :item_definition_id
 
   validates :quantity, numericality: { only_integer: true, greater_than: 0 }
@@ -18,7 +18,7 @@ class CreatureSheetItem < ApplicationRecord
     slot = effective_slot
     return if slot == "none"
 
-    conflict = creature_sheet.creature_sheet_items
+    conflict = adventure_actor_sheet.adventure_actor_sheet_items
                              .where(equipped: true)
                              .where.not(id: id)
                              .select { |si| si.effective_slot == slot }

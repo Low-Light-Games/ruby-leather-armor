@@ -152,15 +152,15 @@ module PlayerTurn
         base_context["active"]
       end
 
-      # @raise [Ai::Error] when any NPC participant has no live `creature_sheets` row
+      # @raise [Ai::Error] when any NPC participant has no live `adventure_actor_sheets` row
       def validate_participant_identities!(participants)
         Array(participants).each do |raw|
           row = raw.is_a?(Hash) ? raw.deep_stringify_keys : {}
           next unless row["type"].to_s == "npc"
 
-          id = Integer(row["creature_sheet_id"], exception: false)
-          unless id&.positive? && @adventure.creature_sheets.exists?(id: id)
-            raise Ai::Error, "Combat context carries unknown creature_sheet_id=#{row['creature_sheet_id'].inspect} for #{row['name'].presence || 'an NPC'}"
+          id = Integer(row["actor_sheet_id"], exception: false)
+          unless id&.positive? && @adventure.adventure_actor_sheets.exists?(id: id)
+            raise Ai::Error, "Combat context carries unknown actor_sheet_id=#{row['actor_sheet_id'].inspect} for #{row['name'].presence || 'an NPC'}"
           end
         end
       end
@@ -170,18 +170,18 @@ module PlayerTurn
         roster_by_id = roster.each_with_object({}) do |participant, h|
           next unless participant["type"].to_s == "npc"
 
-          id = Integer(participant["creature_sheet_id"], exception: false)
+          id = Integer(participant["actor_sheet_id"], exception: false)
           h[id] = participant if id&.positive?
         end
 
         Array(updates).each do |update|
-          participant = roster_by_id[update.creature_sheet_id]
+          participant = roster_by_id[update.actor_sheet_id]
           unless participant
             @log.play_log!(
               "context_update_unknown_id",
-              "ContextUpdate: participant_updates references unknown creature_sheet_id=#{update.creature_sheet_id}",
+              "ContextUpdate: participant_updates references unknown actor_sheet_id=#{update.actor_sheet_id}",
               parsed_response: UnknownIdEvent.new(
-                requested_id: update.creature_sheet_id,
+                requested_id: update.actor_sheet_id,
                 roster_ids:   roster_by_id.keys,
                 hp_delta:     update.hp_delta,
                 added:        update.conditions_added,
@@ -270,7 +270,7 @@ module PlayerTurn
       def build_canonical_hp
         lines = []
         lines << "Player: #{@sheet.hp}/#{@sheet.max_hp}" if @sheet
-        @adventure.creature_sheets.each { |c| lines << "[id=#{c.id}] #{c.name}: #{c.hp}/#{c.max_hp}" }
+        @adventure.adventure_actor_sheets.each { |c| lines << "[id=#{c.id}] #{c.name}: #{c.hp}/#{c.max_hp}" }
         lines.any? ? lines.join("\n") : nil
       end
 

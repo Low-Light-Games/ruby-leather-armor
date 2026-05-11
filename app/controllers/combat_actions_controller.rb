@@ -34,7 +34,7 @@ class CombatActionsController < ApplicationController
 
   # POST /adventures/:adventure_id/combat_action
   #
-  # Body: { kind: "attack", attack_option_id, target_creature_sheet_id, submitted_dice? }
+  # Body: { kind: "attack", attack_option_id, target_actor_sheet_id, submitted_dice? }
   def create
     result = Combat::PlayerActionResolver.call(
       adventure: @adventure,
@@ -74,7 +74,7 @@ class CombatActionsController < ApplicationController
   end
 
   def combat_action_params
-    params.permit(:kind, :attack_option_id, :target_creature_sheet_id, :x, :y, :withdraw, :spell_id).to_h
+    params.permit(:kind, :attack_option_id, :target_actor_sheet_id, :x, :y, :withdraw, :spell_id).to_h
   end
 
   def submitted_dice_params
@@ -99,10 +99,10 @@ class CombatActionsController < ApplicationController
     @hostile_targets ||= combat_participants.filter_map do |participant|
       next if participant_is_player?(participant)
 
-      sid = participant['creature_sheet_id']
+      sid = participant['actor_sheet_id']
       next if sid.blank?
 
-      creature = @adventure.creature_sheets.find_by(id: sid.to_i)
+      creature = @adventure.adventure_actor_sheets.find_by(id: sid.to_i)
       next unless creature
 
       Combat::HostileTarget.new(creature).to_h

@@ -6,7 +6,7 @@ module Combat
       attr_reader :inputs, :creature, :target_name, :damage_ability_bonus
 
       # @param inputs [Combat::Resolvers::AttackInput] resolved option +
-      # @param creature [CreatureSheet] the chosen target
+      # @param creature [AdventureActorSheet] the chosen target
       # @param target_name [String] display label for the prompt
       # @param damage_ability_bonus [Integer] STR/DEX/etc bonus the
       def initialize(inputs:, creature:, target_name:, damage_ability_bonus:)
@@ -24,7 +24,7 @@ module Combat
           attack_option_id: option[:id].to_s,
           attack_label: option[:label].to_s,
           target_name: target_name,
-          target_creature_sheet_id: creature.id,
+          target_actor_sheet_id: creature.id,
           attack_bonus: inputs.attack_bonus,
           defense_dc: inputs.defense_dc,
           defense_kind: option[:defense_kind],

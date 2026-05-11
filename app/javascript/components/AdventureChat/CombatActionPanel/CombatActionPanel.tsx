@@ -144,7 +144,7 @@ export const CombatActionPanel = ({
       const response = await postCombatAction(adventureId, {
         kind: 'attack',
         attack_option_id: option.id,
-        target_creature_sheet_id: target.creature_sheet_id,
+        target_actor_sheet_id: target.actor_sheet_id,
       })
       handleResponse(response)
       await refreshCombatTargetOptions()
@@ -193,7 +193,7 @@ export const CombatActionPanel = ({
       const response = await postCombatAction(adventureId, {
         kind: 'attack',
         attack_option_id: pending.attack_option_id,
-        target_creature_sheet_id: pending.target_creature_sheet_id,
+        target_actor_sheet_id: pending.target_actor_sheet_id,
         submitted_dice: { attack_natural: attack.natural, damage_natural: damage },
       })
       handleResponse(response)
@@ -223,7 +223,7 @@ export const CombatActionPanel = ({
   if (!options) return null
 
   const target = selectedTargetId != null
-    ? options.targets.find(t => t.creature_sheet_id === selectedTargetId) || null
+    ? options.targets.find(t => t.actor_sheet_id === selectedTargetId) || null
     : null
   const aliveTargets = options.targets.filter(t => !t.dropped)
   const noActions = options.attack_options.length === 0
@@ -272,7 +272,7 @@ export const CombatActionPanel = ({
             disabled={submitting}
           >
             {aliveTargets.map(t => (
-              <option key={t.creature_sheet_id} value={t.creature_sheet_id}>
+              <option key={t.actor_sheet_id} value={t.actor_sheet_id}>
                 {t.name} ({t.hp}/{t.max_hp} HP)
               </option>
             ))}

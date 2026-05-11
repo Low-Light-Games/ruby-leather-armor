@@ -11,7 +11,7 @@ class Adventure < ApplicationRecord
   has_many :adventure_loops, dependent: :nullify
   has_many :pipeline_registry_entries, dependent: :destroy
   has_many :pipelines, dependent: :destroy
-  has_many :creature_sheets, dependent: :destroy
+  has_many :adventure_actor_sheets, dependent: :destroy
   has_many :adventure_battlefields, dependent: :destroy
   has_many :story_npcs, dependent: :destroy
   has_many :experience_suggestions, dependent: :destroy

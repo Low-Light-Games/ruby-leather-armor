@@ -83,7 +83,7 @@ module PlayerTurn
           intention: intent_text,
           player_rolls: [request_roll_result.to_h],
           mechanical_summary: request_roll_result.mechanical_summary,
-          target_creature_sheet_id: request_roll_result.target_creature_sheet_id
+          target_actor_sheet_id: request_roll_result.target_actor_sheet_id
         )
 
         @loop&.batch_update!(

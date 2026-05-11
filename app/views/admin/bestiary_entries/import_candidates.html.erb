@@ -58,7 +58,7 @@
 
           <% unless already %>
             <%= form_tag import_admin_bestiary_entries_path, method: :post, class: "import-form" do %>
-              <%= hidden_field_tag :creature_sheet_id, sheet.id %>
+              <%= hidden_field_tag :actor_sheet_id, sheet.id %>
               <div class="form-row">
                 <label for="bestiary_name_<%= sheet.id %>">Bestiary name:</label>
                 <input type="text" name="bestiary_name" id="bestiary_name_<%= sheet.id %>"

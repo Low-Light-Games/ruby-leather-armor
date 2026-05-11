@@ -50,9 +50,9 @@ module PlayerTurn
       end
 
       def apply_opposed_dc_resolution!(result)
-        return unless result.target_creature_sheet_id
+        return unless result.target_actor_sheet_id
 
-        target_sheet = @adventure.creature_sheets.find_by(id: result.target_creature_sheet_id)
+        target_sheet = @adventure.adventure_actor_sheets.find_by(id: result.target_actor_sheet_id)
         return unless target_sheet
 
         result.player_rolls.each do |roll|
@@ -78,7 +78,7 @@ module PlayerTurn
           intention: intention,
           destination: parsed[:destination],
           combat_transition: parsed[:transition],
-          target_creature_sheet_id: validated_target_id(parsed[:target_creature_sheet_id], cast_roster: cast_roster),
+          target_actor_sheet_id: validated_target_id(parsed[:target_actor_sheet_id], cast_roster: cast_roster),
           player_rolls: rolls,
           consequences: PlayerTurn::Rolls::Consequences.normalize(parsed[:consequences]),
           mechanical_summary: parsed[:mechanical_summary].to_s.presence || '(no mechanical summary)'
@@ -112,14 +112,14 @@ module PlayerTurn
         return nil unless id&.positive?
 
         roster = cast_roster || PlayerTurn::CastRoster.empty
-        return id if roster.find_by_creature_sheet_id(id)
+        return id if roster.find_by_actor_sheet_id(id)
 
         @log.play_log!(
           'roll_request_unknown_target',
-          "RollRequest emitted target_creature_sheet_id=#{id} not in cast roster",
+          "RollRequest emitted target_actor_sheet_id=#{id} not in cast roster",
           parsed_response: UnknownTargetEvent.new(
             emitted_target_id: id,
-            roster_ids:        roster.entries.map(&:creature_sheet_id),
+            roster_ids:        roster.entries.map(&:actor_sheet_id),
             roster_names:      roster.entries.map(&:name),
           ).to_h
         )

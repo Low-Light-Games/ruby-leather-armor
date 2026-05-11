@@ -93,12 +93,12 @@ module PlayerTurn
       entries = Array(stored["entries"]).filter_map do |row|
         next nil unless row.is_a?(Hash)
 
-        creature_sheet_id = Integer(row["creature_sheet_id"], exception: false)
-        next nil unless creature_sheet_id&.positive?
+        actor_sheet_id = Integer(row["actor_sheet_id"], exception: false)
+        next nil unless actor_sheet_id&.positive?
 
         PlayerTurn::CastRosterEntry.new(
           adventure_npc_id:  Integer(row["adventure_npc_id"], exception: false),
-          creature_sheet_id: creature_sheet_id,
+          actor_sheet_id: actor_sheet_id,
           name:              row["name"].to_s,
           attitude:          row["attitude"].to_s.presence || "indifferent",
           location_name:     row["location_name"],

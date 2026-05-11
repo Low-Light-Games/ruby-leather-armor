@@ -72,16 +72,16 @@ module PlayerTurn
 
       def filter_acting_npcs(npc_turns, working_ctx)
         npc_turns.filter_map do |npc|
-          if npc.creature_sheet_id.blank?
+          if npc.actor_sheet_id.blank?
             @log.play_log!(
               "pipeline_error",
-              "World turn participant missing creature_sheet_id before participant lookup: #{npc.name}",
+              "World turn participant missing actor_sheet_id before participant lookup: #{npc.name}",
               parsed_response: { npc: npc.name, combat_context: working_ctx }
             )
-            raise Ai::Error, "World turn participant missing creature_sheet_id for #{npc.name}"
+            raise Ai::Error, "World turn participant missing actor_sheet_id for #{npc.name}"
           end
 
-          row = working_ctx["participants"].find { |p| p["creature_sheet_id"].to_i == npc.creature_sheet_id.to_i }
+          row = working_ctx["participants"].find { |p| p["actor_sheet_id"].to_i == npc.actor_sheet_id.to_i }
           next if row.blank?
 
           fighter = Combat::Combatant.from_context_hash(row)
@@ -94,16 +94,16 @@ module PlayerTurn
         early_stop = false
         return [lines, early_stop] unless acting_npcs.any?
 
-        plans_by_id = index_plans_by_creature_sheet_id(npc_action_plans)
+        plans_by_id = index_plans_by_actor_sheet_id(npc_action_plans)
 
-        acting_npc_ids = acting_npcs.map(&:creature_sheet_id)
-        live_sheets    = @adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id)
+        acting_npc_ids = acting_npcs.map(&:actor_sheet_id)
+        live_sheets    = @adventure.adventure_actor_sheets.where(id: acting_npc_ids).index_by(&:id)
 
         acting_npcs.each do |npc|
-          live_sheet = live_sheets[npc.creature_sheet_id]
+          live_sheet = live_sheets[npc.actor_sheet_id]
           next if npc_sheet_unavailable_or_eliminated?(live_sheet)
 
-          plan = plans_by_id[npc.creature_sheet_id.to_i]
+          plan = plans_by_id[npc.actor_sheet_id.to_i]
           unless plan
             log_missing_plan(npc)
             next
@@ -121,7 +121,7 @@ module PlayerTurn
           apply_npc_battlefield_patches(npc_action_result[:battlefield_patches])
 
           reload_world_turn_records!
-          live_sheets.merge!(@adventure.creature_sheets.where(id: acting_npc_ids).index_by(&:id))
+          live_sheets.merge!(@adventure.adventure_actor_sheets.where(id: acting_npc_ids).index_by(&:id))
 
           end_info = Combat::EndResolver.check_combat_end(adventure: @adventure, sheet: @sheet, instant_death: instant_death)
           if should_stop_world_turn_early?(end_info)
@@ -133,12 +133,12 @@ module PlayerTurn
         [lines, early_stop]
       end
 
-      def index_plans_by_creature_sheet_id(plans)
+      def index_plans_by_actor_sheet_id(plans)
         Array(plans).each_with_object({}) do |raw, idx|
           next unless raw.is_a?(Hash)
 
           plan = raw.deep_symbolize_keys
-          id   = plan[:creature_sheet_id].to_i
+          id   = plan[:actor_sheet_id].to_i
           next if id.zero?
 
           idx[id] = plan
@@ -148,8 +148,8 @@ module PlayerTurn
       def log_missing_plan(npc)
         @log.play_log!(
           "world_turn_missing_plan",
-          "World turn: no plan emitted for #{npc.name} (creature_sheet_id=#{npc.creature_sheet_id}); skipping.",
-          parsed_response: { npc: npc.name, creature_sheet_id: npc.creature_sheet_id }
+          "World turn: no plan emitted for #{npc.name} (actor_sheet_id=#{npc.actor_sheet_id}); skipping.",
+          parsed_response: { npc: npc.name, actor_sheet_id: npc.actor_sheet_id }
         )
       end
 

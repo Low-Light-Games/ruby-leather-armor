@@ -3,7 +3,7 @@ import type { CombatDiceStrategy } from '../types/auth'
 import type { BattlefieldSnapshot } from '../types'
 
 export interface CombatTarget {
-  creature_sheet_id: number
+  actor_sheet_id: number
   name: string
   hp: number
   max_hp: number
@@ -167,7 +167,7 @@ export interface CombatAttackPending {
     attack_option_id: string
     attack_label: string
     target_name: string
-    target_creature_sheet_id: number
+    target_actor_sheet_id: number
     attack_bonus: number
     defense_dc: number
     defense_kind: string
@@ -183,7 +183,7 @@ export type CombatAttackResponse = CombatAttackResolved | CombatAttackPending
 export interface CombatAttackBody {
   kind: 'attack'
   attack_option_id: string
-  target_creature_sheet_id: number
+  target_actor_sheet_id: number
   submitted_dice?: { attack_natural: number; damage_natural: number }
 }
 

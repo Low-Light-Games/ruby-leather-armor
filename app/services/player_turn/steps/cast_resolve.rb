@@ -4,7 +4,7 @@ module PlayerTurn
   module Steps
     # Pipeline step: between Sequencer and RollRequest, identify every
     # creature implicated by the player's intent and resolve each to a
-    # real `AdventureNpc` (with `creature_sheet_id`) via the four-tier
+    # real `AdventureNpc` (with `actor_sheet_id`) via the four-tier
     # deterministic lookup in `Encounters::CastResolver`.
     #
     # Returns a `PlayerTurn::CastRoster`. Errors propagate by design:

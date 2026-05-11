@@ -94,7 +94,7 @@ def seed_playwright_combat_fixture!
     fixture_sheet.sheet_spells.find_or_create_by!(spell_id: spell.id, storage_type: 'spellbook')
   end
 
-  adventure.creature_sheets.where(name: ['Goblin Scout', 'Goblin Soldier']).destroy_all
+  adventure.adventure_actor_sheets.where(name: ['Goblin Scout', 'Goblin Soldier']).destroy_all
   goblin_attrs = {
     creature_type: 'npc',
     origin: 'template',
@@ -106,12 +106,12 @@ def seed_playwright_combat_fixture!
                          'crit_range' => 19, 'crit_multiplier' => 2 }]
   }
   goblins = ['Goblin Scout', 'Goblin Soldier'].map do |name|
-    sheet = adventure.creature_sheets.create!(goblin_attrs.merge(name: name))
+    sheet = adventure.adventure_actor_sheets.create!(goblin_attrs.merge(name: name))
     sheet.recompute_derived_stats!
     sheet
   end
 
-  creature_data = goblins.map { |g| { creature_sheet_id: g.id, name: g.name, initiative: 1 } }
+  creature_data = goblins.map { |g| { actor_sheet_id: g.id, name: g.name, initiative: 1 } }
 
   combat_data = Encounters::Warmaster.compute_combat_initialization(
     adventure: adventure,

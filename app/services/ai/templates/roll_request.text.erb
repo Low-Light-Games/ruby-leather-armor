@@ -17,7 +17,7 @@ the kind of check; the engine resolves the actual modifier.
 <% end -%>
 
 Each entry is `[id=<integer>] Name (attitude) — at <location>`. The
-`id` is a real `creature_sheet_id` you can hand back to the engine.
+`id` is a real `actor_sheet_id` you can hand back to the engine.
 <% end -%>
 
 <%= PromptRenderer.render_partial("partials/scene_retrieval", scene_retrieval: @roll_request_context.scene_retrieval) %>
@@ -50,7 +50,7 @@ Set `needs_roll: false` with `no_roll_reason: "no rule retrieved"`.
   hedging. If the destination is not in NEARBY LOCATIONS, write the
   bare place name the player used. If the action has no destination,
   null.
-- `target_creature_sheet_id`: when the action is directed at a single
+- `target_actor_sheet_id`: when the action is directed at a single
   creature in CAST ROSTER, copy that entry's `id` (an integer) into
   this field. Examples: an attack against `[id=273] Lord Velkar Mhonn`
   → `273`. A Stealth check to slip past `[id=274] orc patrol` → `274`.
@@ -60,7 +60,7 @@ Set `needs_roll: false` with `no_roll_reason: "no rule retrieved"`.
   no one in particular. The id MUST come from the CAST ROSTER above;
   never invent one.
 - `transition`: "combat_started" only when the action initiates combat.
-  This is independent of `target_creature_sheet_id` — a hostile target
+  This is independent of `target_actor_sheet_id` — a hostile target
   can be observed, lied to, intimidated, or avoided without combat
   starting; a friendly target can be attacked and combat will start.
   Decide each field on its own merits. Null otherwise.
@@ -89,7 +89,7 @@ Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
     "rule_slug": "swim"
   },
   "transition": null,
-  "target_creature_sheet_id": 273,
+  "target_actor_sheet_id": 273,
   "destination": null,
   "consequences": [],
   "ability_use_claimed": null,

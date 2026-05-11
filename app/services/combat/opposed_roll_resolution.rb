@@ -47,7 +47,7 @@ module Combat
     end
 
     # @param roll [Hash]
-    # @param target_sheet [CreatureSheet, nil]
+    # @param target_sheet [AdventureActorSheet, nil]
     # @param log [#play_log!, nil]
     # @return [Integer, nil]
     def self.resolve_dc(roll:, target_sheet:, log: nil)

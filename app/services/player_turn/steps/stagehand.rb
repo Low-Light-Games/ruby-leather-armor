@@ -134,7 +134,7 @@ module PlayerTurn
         result = Encounters::Warmaster.persist_combat_from_cast_roster!(
           adventure:                @adventure,
           cast_roster:              roster,
-          target_creature_sheet_id: intent[:target_creature_sheet_id] || intent["target_creature_sheet_id"],
+          target_actor_sheet_id: intent[:target_actor_sheet_id] || intent["target_actor_sheet_id"],
         )
         return nil if result[:status] == :no_creatures
 

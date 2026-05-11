@@ -20,7 +20,7 @@ const { submitActiveRollPanel } = require('../support/rolls');
 //
 // Currently flaky against gpt-5-nano + gpt-4.1-nano: RollRequest
 // sometimes returns Initiative directly, combat-context-update sometimes
-// rejects the named participant on missing creature_sheet_id, or the
+// rejects the named participant on missing actor_sheet_id, or the
 // pipeline auto-resolves the attack as a non-roll narrative outcome.
 // Asserting the *desired* end state so AI improvements upstream flip
 // the spec green.

@@ -25,7 +25,7 @@ module Combat
       new(label: 'natural attack', damage_dice: damage_dice, damage_type: nil, ranged: false)
     end
 
-    # @param raw [Hash] one entry from CreatureSheet#equipped_weapons
+    # @param raw [Hash] one entry from AdventureActorSheet#equipped_weapons
     def self.from_raw(raw)
       new(
         label: raw['name'].presence || raw[:name].presence || DEFAULT_LABEL,

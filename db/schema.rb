@@ -10,10 +10,75 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_11_130100) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_11_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
+
+  create_table "adventure_actor_sheet_feats", force: :cascade do |t|
+    t.bigint "actor_sheet_id", null: false
+    t.string "feat_id", null: false
+    t.string "choice"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["actor_sheet_id", "feat_id", "choice"], name: "idx_adventure_actor_sheet_feats_unique", unique: true
+    t.index ["actor_sheet_id"], name: "index_adventure_actor_sheet_feats_on_actor_sheet_id"
+  end
+
+  create_table "adventure_actor_sheet_items", force: :cascade do |t|
+    t.bigint "actor_sheet_id", null: false
+    t.string "item_definition_id", null: false
+    t.integer "quantity", default: 1, null: false
+    t.boolean "equipped", default: false, null: false
+    t.string "slot_override"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["actor_sheet_id"], name: "index_adventure_actor_sheet_items_on_actor_sheet_id"
+    t.index ["item_definition_id"], name: "index_adventure_actor_sheet_items_on_item_definition_id"
+  end
+
+  create_table "adventure_actor_sheet_spells", force: :cascade do |t|
+    t.bigint "actor_sheet_id", null: false
+    t.string "spell_id", null: false
+    t.string "storage_type", default: "known", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["actor_sheet_id", "spell_id", "storage_type"], name: "idx_adventure_actor_sheet_spells_unique", unique: true
+    t.index ["actor_sheet_id"], name: "index_adventure_actor_sheet_spells_on_actor_sheet_id"
+  end
+
+  create_table "adventure_actor_sheets", force: :cascade do |t|
+    t.bigint "adventure_id", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.string "creature_type", default: "npc", null: false
+    t.string "attitude", default: "indifferent"
+    t.integer "strength", default: 10, null: false
+    t.integer "dexterity", default: 10, null: false
+    t.integer "constitution", default: 10, null: false
+    t.integer "intelligence", default: 10, null: false
+    t.integer "wisdom", default: 10, null: false
+    t.integer "charisma", default: 10, null: false
+    t.integer "level", default: 1, null: false
+    t.string "race"
+    t.string "racial_bonus_attribute"
+    t.string "character_class"
+    t.integer "hp", default: 0, null: false
+    t.integer "max_hp", default: 0, null: false
+    t.jsonb "derived_stats", default: {}, null: false
+    t.string "equipped_armor_id"
+    t.string "equipped_shield_id"
+    t.jsonb "equipped_weapons", default: [], null: false
+    t.jsonb "details", default: {}, null: false
+    t.jsonb "currency", default: {"gold"=>0, "copper"=>0, "silver"=>0, "platinum"=>0}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "origin", default: "unknown"
+    t.jsonb "conditions", default: [], null: false
+    t.jsonb "behavior_policy", default: {}, null: false
+    t.index ["adventure_id", "name"], name: "index_adventure_actor_sheets_on_adventure_id_and_name"
+    t.index ["adventure_id"], name: "index_adventure_actor_sheets_on_adventure_id"
+  end
 
   create_table "adventure_battlefields", force: :cascade do |t|
     t.bigint "adventure_id", null: false
@@ -115,11 +180,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_11_130100) do
     t.bigint "last_seen_loop_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.bigint "creature_sheet_id"
+    t.bigint "actor_sheet_id"
+    t.index ["actor_sheet_id"], name: "index_adventure_npcs_on_actor_sheet_id"
     t.index ["adventure_id", "location_name"], name: "index_adventure_npcs_on_adventure_and_location"
     t.index ["adventure_id", "name"], name: "index_adventure_npcs_seed_unique_per_adventure", unique: true, where: "((source)::text = 'seed'::text)"
     t.index ["adventure_id"], name: "index_adventure_npcs_on_adventure_id"
-    t.index ["creature_sheet_id"], name: "index_adventure_npcs_on_creature_sheet_id"
     t.index ["embedding"], name: "index_adventure_npcs_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["last_seen_loop_id"], name: "index_adventure_npcs_on_last_seen_loop_id"
     t.index ["story_npc_id"], name: "index_adventure_npcs_on_story_npc_id"
@@ -291,71 +356,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_11_130100) do
     t.jsonb "duration_formula"
     t.index ["name"], name: "index_class_ability_definitions_on_name"
     t.index ["pf1e_class"], name: "index_class_ability_definitions_on_pf1e_class"
-  end
-
-  create_table "creature_sheet_feats", force: :cascade do |t|
-    t.bigint "creature_sheet_id", null: false
-    t.string "feat_id", null: false
-    t.string "choice"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["creature_sheet_id", "feat_id", "choice"], name: "idx_creature_sheet_feats_unique", unique: true
-    t.index ["creature_sheet_id"], name: "index_creature_sheet_feats_on_creature_sheet_id"
-  end
-
-  create_table "creature_sheet_items", force: :cascade do |t|
-    t.bigint "creature_sheet_id", null: false
-    t.string "item_definition_id", null: false
-    t.integer "quantity", default: 1, null: false
-    t.boolean "equipped", default: false, null: false
-    t.string "slot_override"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["creature_sheet_id"], name: "index_creature_sheet_items_on_creature_sheet_id"
-    t.index ["item_definition_id"], name: "index_creature_sheet_items_on_item_definition_id"
-  end
-
-  create_table "creature_sheet_spells", force: :cascade do |t|
-    t.bigint "creature_sheet_id", null: false
-    t.string "spell_id", null: false
-    t.string "storage_type", default: "known", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["creature_sheet_id", "spell_id", "storage_type"], name: "idx_creature_sheet_spells_unique", unique: true
-    t.index ["creature_sheet_id"], name: "index_creature_sheet_spells_on_creature_sheet_id"
-  end
-
-  create_table "creature_sheets", force: :cascade do |t|
-    t.bigint "adventure_id", null: false
-    t.string "name", null: false
-    t.text "description"
-    t.string "creature_type", default: "npc", null: false
-    t.string "attitude", default: "indifferent"
-    t.integer "strength", default: 10, null: false
-    t.integer "dexterity", default: 10, null: false
-    t.integer "constitution", default: 10, null: false
-    t.integer "intelligence", default: 10, null: false
-    t.integer "wisdom", default: 10, null: false
-    t.integer "charisma", default: 10, null: false
-    t.integer "level", default: 1, null: false
-    t.string "race"
-    t.string "racial_bonus_attribute"
-    t.string "character_class"
-    t.integer "hp", default: 0, null: false
-    t.integer "max_hp", default: 0, null: false
-    t.jsonb "derived_stats", default: {}, null: false
-    t.string "equipped_armor_id"
-    t.string "equipped_shield_id"
-    t.jsonb "equipped_weapons", default: [], null: false
-    t.jsonb "details", default: {}, null: false
-    t.jsonb "currency", default: {"gold"=>0, "copper"=>0, "silver"=>0, "platinum"=>0}, null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.string "origin", default: "unknown"
-    t.jsonb "conditions", default: [], null: false
-    t.jsonb "behavior_policy", default: {}, null: false
-    t.index ["adventure_id", "name"], name: "index_creature_sheets_on_adventure_id_and_name"
-    t.index ["adventure_id"], name: "index_creature_sheets_on_adventure_id"
   end
 
   create_table "dm_configs", force: :cascade do |t|
@@ -726,6 +726,13 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_11_130100) do
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true, where: "(provider IS NOT NULL)"
   end
 
+  add_foreign_key "adventure_actor_sheet_feats", "adventure_actor_sheets", column: "actor_sheet_id"
+  add_foreign_key "adventure_actor_sheet_feats", "feat_definitions", column: "feat_id"
+  add_foreign_key "adventure_actor_sheet_items", "adventure_actor_sheets", column: "actor_sheet_id"
+  add_foreign_key "adventure_actor_sheet_items", "item_definitions"
+  add_foreign_key "adventure_actor_sheet_spells", "adventure_actor_sheets", column: "actor_sheet_id"
+  add_foreign_key "adventure_actor_sheet_spells", "spell_definitions", column: "spell_id"
+  add_foreign_key "adventure_actor_sheets", "adventures"
   add_foreign_key "adventure_battlefields", "adventures"
   add_foreign_key "adventure_locations", "adventures"
   add_foreign_key "adventure_locations", "story_locations"
@@ -736,9 +743,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_11_130100) do
   add_foreign_key "adventure_narrative_facts", "adventure_loops", column: "invalidated_at_loop_id"
   add_foreign_key "adventure_narrative_facts", "adventure_narrative_facts", column: "invalidated_by_fact_id"
   add_foreign_key "adventure_narrative_facts", "adventures"
+  add_foreign_key "adventure_npcs", "adventure_actor_sheets", column: "actor_sheet_id"
   add_foreign_key "adventure_npcs", "adventure_loops", column: "last_seen_loop_id"
   add_foreign_key "adventure_npcs", "adventures"
-  add_foreign_key "adventure_npcs", "creature_sheets"
   add_foreign_key "adventure_npcs", "story_npcs"
   add_foreign_key "adventure_sheet_feats", "adventure_sheets"
   add_foreign_key "adventure_sheet_feats", "feat_definitions", column: "feat_id"
@@ -752,13 +759,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_11_130100) do
   add_foreign_key "adventures", "stories"
   add_foreign_key "adventures", "users"
   add_foreign_key "bestiary_entries", "stories"
-  add_foreign_key "creature_sheet_feats", "creature_sheets"
-  add_foreign_key "creature_sheet_feats", "feat_definitions", column: "feat_id"
-  add_foreign_key "creature_sheet_items", "creature_sheets"
-  add_foreign_key "creature_sheet_items", "item_definitions"
-  add_foreign_key "creature_sheet_spells", "creature_sheets"
-  add_foreign_key "creature_sheet_spells", "spell_definitions", column: "spell_id"
-  add_foreign_key "creature_sheets", "adventures"
   add_foreign_key "encounter_table_entries", "encounter_tables"
   add_foreign_key "encounter_tables", "stories"
   add_foreign_key "experience_suggestions", "adventures"

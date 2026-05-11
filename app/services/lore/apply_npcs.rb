@@ -72,7 +72,7 @@ module Lore
           row = AdventureNpc.create!(
             adventure_id:      @adventure.id,
             story_npc_id:      record.story_npc_id,
-            creature_sheet_id: record.creature_sheet_id,
+            actor_sheet_id: record.actor_sheet_id,
             name:              record.name,
             description:       record.description,
             attitude:          record.attitude,
@@ -114,7 +114,7 @@ module Lore
           name:              record.name,
           attitude:          record.attitude,
           location_name:     record.location_name,
-          creature_sheet_id: record.creature_sheet_id,
+          actor_sheet_id: record.actor_sheet_id,
           source:            @source,
         },
       )

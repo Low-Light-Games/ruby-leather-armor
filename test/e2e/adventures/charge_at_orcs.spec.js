@@ -9,8 +9,8 @@ const { submitActiveRollPanel } = require('../support/rolls');
 // models) this is currently flaky: RollRequest sometimes returns
 // roll.skill=Initiative or a hallucinated skill, the post-roll
 // combat-context-update sometimes rejects the AI-named participant on
-// missing creature_sheet_id ("Combat context update dropped
-// creature_sheet_id for orc patrol"). The deterministic regression for
+// missing actor_sheet_id ("Combat context update dropped
+// actor_sheet_id for orc patrol"). The deterministic regression for
 // the sheet-id surface lives in test/e2e/adventures/attack_envoy.spec.js;
 // this spec asserts the *desired* end state (an attack-style roll
 // followed by a hit and combat HUD) so that AI improvements upstream

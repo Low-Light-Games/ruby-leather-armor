@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # OGL/SRD-only creature templates from the Pathfinder Reference Document.
-# Used to deterministically create CreatureSheet instances at runtime.
+# Used to deterministically create AdventureActorSheet instances at runtime.
 class BestiaryEntry < ApplicationRecord
   self.primary_key = :id
 
@@ -41,10 +41,10 @@ class BestiaryEntry < ApplicationRecord
 
   def normalized_creature_type
     raw = creature_type.to_s.downcase.strip
-    CREATURE_TYPE_MAP[raw] || (CreatureSheet::CREATURE_TYPES.include?(raw) ? raw : "monster")
+    CREATURE_TYPE_MAP[raw] || (AdventureActorSheet::CREATURE_TYPES.include?(raw) ? raw : "monster")
   end
 
-  def to_creature_sheet_attrs(display_name: nil)
+  def to_adventure_actor_sheet_attrs(display_name: nil)
     {
       name: display_name || name,
       creature_type: normalized_creature_type,

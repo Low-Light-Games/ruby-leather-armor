@@ -40,7 +40,7 @@ module PlayerTurn
             row = raw.is_a?(Hash) ? raw.deep_stringify_keys : {}
             next nil unless row['type'].to_s == 'npc'
 
-            id = Integer(row['creature_sheet_id'], exception: false)
+            id = Integer(row['actor_sheet_id'], exception: false)
             next nil unless id&.positive?
 
             { id: id, name: row['name'].to_s, attitude: (row['attitude'] || 'unfriendly').to_s }

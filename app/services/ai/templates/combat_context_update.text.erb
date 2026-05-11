@@ -13,7 +13,7 @@ Your job is to describe ONLY the deltas the engine should apply to the existing 
 <% end -%>
 
 <% if @canonical_participants.present? -%>
-=== CURRENT PARTICIPANTS (the only creature_sheet_id values you may reference) ===
+=== CURRENT PARTICIPANTS (the only actor_sheet_id values you may reference) ===
 <%= @canonical_participants.to_json %>
 <% end -%>
 
@@ -22,7 +22,7 @@ Your job is to describe ONLY the deltas the engine should apply to the existing 
 
 === INSTRUCTIONS ===
 1. Respond with `"unchanged": true` (and omit every other field) when nothing in WHAT HAPPENED touches combat HP/conditions/turn-flow that mutations did not already capture.
-2. `participant_updates` is a free-text-event delta channel. Each entry MUST reference an existing `creature_sheet_id` from CURRENT PARTICIPANTS (an integer). Never invent ids; never include the player. Use `participant_updates` only for HP or condition changes that came from the narrative itself and are NOT already reflected in MUTATIONS APPLIED — typically incidental damage or a status that the deterministic engine did not roll for.
+2. `participant_updates` is a free-text-event delta channel. Each entry MUST reference an existing `actor_sheet_id` from CURRENT PARTICIPANTS (an integer). Never invent ids; never include the player. Use `participant_updates` only for HP or condition changes that came from the narrative itself and are NOT already reflected in MUTATIONS APPLIED — typically incidental damage or a status that the deterministic engine did not roll for.
 3. `hp_delta` is the integer change to apply on top of CANONICAL HP. Use a negative number for damage (`-7`), a positive number for healing (`+4`), and `0` (or omit) when only conditions change. The engine clamps to `[0, max_hp]`.
 4. `conditions_added` and `conditions_removed` are short string arrays of condition names (e.g. `"prone"`, `"frightened"`). Omit either when empty.
 5. `round` and `turn_order` are top-level fields. Emit them only when the narrative itself advanced the round or reordered initiative — and even then only if MUTATIONS APPLIED did not already do so. Otherwise omit.
@@ -38,7 +38,7 @@ Example — incidental damage from a narrative event:
 {
   "unchanged": false,
   "participant_updates": [
-    { "creature_sheet_id": 273, "hp_delta": -3, "conditions_added": ["prone"] }
+    { "actor_sheet_id": 273, "hp_delta": -3, "conditions_added": ["prone"] }
   ],
   "reasoning": "Lord Velkar slipped on the wet stone for 3 bludgeoning and went prone."
 }

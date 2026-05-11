@@ -41,13 +41,13 @@ module PlayerTurn
 
       def build_combat_roll_request_evaluation_result(parsed:, intention:)
         parsed = (parsed || {}).deep_symbolize_keys
-        target_id = combat_validated_target_id(parsed[:target_creature_sheet_id])
+        target_id = combat_validated_target_id(parsed[:target_actor_sheet_id])
         rolls = needs_roll?(parsed) ? [normalize_combat_roll(parsed[:roll], parsed[:mechanical_summary])] : []
         apply_combat_opposed_dc!(rolls, target_id)
 
         EvaluationResult.new(
           intention: intention,
-          target_creature_sheet_id: target_id,
+          target_actor_sheet_id: target_id,
           player_rolls: rolls,
           consequences: Array(parsed[:consequences]).map(&:to_s).reject(&:blank?),
           mechanical_summary: parsed[:mechanical_summary].to_s.presence || '(no mechanical summary)'
@@ -67,7 +67,7 @@ module PlayerTurn
 
         @log&.play_log!(
           'combat_roll_request_unknown_target',
-          "CombatRollRequest: target_creature_sheet_id=#{id} not in active combat (valid=#{valid_ids.inspect})",
+          "CombatRollRequest: target_actor_sheet_id=#{id} not in active combat (valid=#{valid_ids.inspect})",
           parsed_response: UnknownTargetEvent.new(requested_id: id, valid_ids: valid_ids).to_h
         )
         nil
@@ -79,14 +79,14 @@ module PlayerTurn
           row = p.is_a?(Hash) ? p.deep_stringify_keys : {}
           next nil unless row['type'].to_s == 'npc'
 
-          Integer(row['creature_sheet_id'], exception: false)
+          Integer(row['actor_sheet_id'], exception: false)
         end.compact
       end
 
       def apply_combat_opposed_dc!(rolls, target_id)
         return if rolls.empty? || target_id.nil?
 
-        target_sheet = @adventure.creature_sheets.find_by(id: target_id)
+        target_sheet = @adventure.adventure_actor_sheets.find_by(id: target_id)
         return unless target_sheet
 
         rolls.each do |roll|

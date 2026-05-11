@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# Shared currency helpers for Sheet, AdventureSheet, and CreatureSheet.
+# Shared currency helpers for Sheet, AdventureSheet, and AdventureActorSheet.
 #
 # All three store currency in a JSONB column with the same schema:
 #   { "gold" => N, "silver" => N, "copper" => N, "platinum" => N }
