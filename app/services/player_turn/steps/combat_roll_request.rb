@@ -41,14 +41,61 @@ module PlayerTurn
 
       def build_combat_roll_request_evaluation_result(parsed:, intention:)
         parsed = (parsed || {}).deep_symbolize_keys
+        target_id = combat_validated_target_id(parsed[:target_creature_sheet_id])
         rolls = needs_roll?(parsed) ? [normalize_combat_roll(parsed[:roll], parsed[:mechanical_summary])] : []
+        apply_combat_opposed_dc!(rolls, target_id)
 
         EvaluationResult.new(
           intention: intention,
+          target_creature_sheet_id: target_id,
           player_rolls: rolls,
           consequences: Array(parsed[:consequences]).map(&:to_s).reject(&:blank?),
           mechanical_summary: parsed[:mechanical_summary].to_s.presence || '(no mechanical summary)'
         )
+      end
+
+      def combat_validated_target_id(raw)
+        return nil if raw.nil? || raw == ''
+
+        id = Integer(raw, exception: false)
+        return nil unless id&.positive?
+
+        valid_ids = combat_participant_ids
+        return id if valid_ids.empty?
+        return id if valid_ids.include?(id)
+
+        @log&.play_log!(
+          'combat_roll_request_unknown_target',
+          "CombatRollRequest: target_creature_sheet_id=#{id} not in active combat (valid=#{valid_ids.inspect})",
+          parsed_response: { requested_id: id, valid_ids: valid_ids }
+        )
+        nil
+      end
+
+      def combat_participant_ids
+        combat_ctx = @adventure.combat_context.is_a?(Hash) ? @adventure.combat_context : {}
+        Array(combat_ctx['participants']).filter_map do |p|
+          row = p.is_a?(Hash) ? p.deep_stringify_keys : {}
+          next nil unless row['type'].to_s == 'npc'
+
+          Integer(row['creature_sheet_id'], exception: false)
+        end.compact
+      end
+
+      def apply_combat_opposed_dc!(rolls, target_id)
+        return if rolls.empty? || target_id.nil?
+
+        target_sheet = @adventure.creature_sheets.find_by(id: target_id)
+        return unless target_sheet
+
+        rolls.each do |roll|
+          next unless roll[:type].to_s == 'skill_check'
+
+          new_dc = Combat::OpposedRollResolution.resolve_dc(
+            roll: roll, target_sheet: target_sheet, log: @log
+          )
+          roll[:dc] = new_dc if new_dc
+        end
       end
 
       def needs_roll?(parsed)

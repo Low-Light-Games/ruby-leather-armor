@@ -21,6 +21,19 @@ Action economy available: <%= @combat_roll_request_context.action_economy_chips.
 === IMMEDIATE THREATS (adjacent or near) ===
 <%= @combat_roll_request_context.threats_text %>
 
+=== CAST ROSTER (creatures already in scope this combat) ===
+<% @combat_roll_request_context.cast_roster_lines.each do |line| -%>
+<%= line %>
+<% end -%>
+<% unless @combat_roll_request_context.cast_roster_empty? -%>
+
+Each entry is `[id=<integer>] Name (attitude)`. The `id` is a real
+`creature_sheet_id` you can hand back to the engine via
+`target_creature_sheet_id` for non-attack rolls (Stealth, Bluff,
+Diplomacy, Intimidate, Sense Motive, Sleight of Hand, etc.). Attack
+rolls keep using `attack_option_id` + `target` (the participant name).
+<% end -%>
+
 <% if @combat_roll_request_context.battlefield_summary.present? -%>
 === BATTLEFIELD ===
 <%= @combat_roll_request_context.battlefield_summary %>
@@ -50,7 +63,16 @@ Action economy available: <%= @combat_roll_request_context.action_economy_chips.
 - For a `skill_check`: emit `skill` and `dc` from the matching rule
   above (or a sensible PF1e default if no rule fits). Defensive
   casting while threatened is a Concentration check (DC 15 + spell
-  level).
+  level). When the check is directed at a single creature in CAST
+  ROSTER (Diplomacy on a guard, Stealth past a foe, Bluff to feint),
+  also emit `target_creature_sheet_id` (an integer copied verbatim
+  from the CAST ROSTER `id`). For opposed checks (Stealth, Bluff,
+  Diplomacy, Disguise, Sleight of Hand, Intimidate) prefer to OMIT
+  `dc` — the engine resolves the DC from the target's defending stat.
+  Omit `target_creature_sheet_id` entirely (do NOT emit `null`) when
+  the check has no creature target — Concentration, Climb, Acrobatics
+  to stand from prone, etc. The id MUST come from CAST ROSTER above;
+  never invent one.
 
 === BUFF / UTILITY SPELLS — NO ROLL ===
 Self-buffs and personal utility spells (shield, mage armor, bless,
@@ -84,7 +106,14 @@ Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
     "description": "Cast scorching ray at the goblin.",
     "rule_slug": null
   },
+  "target_creature_sheet_id": 273,
   "action_cost": "standard",
   "mechanical_summary": "One-sentence factual summary.",
   "reasoning": "One short sentence explaining the call."
 }
+
+`target_creature_sheet_id` belongs at the top level (NOT inside
+`roll`). Omit it entirely for attack_roll/saving_throw/buff branches
+and for skill_checks with no creature target. The example above shows
+it filled in for clarity — most attack-roll responses will not include
+it.

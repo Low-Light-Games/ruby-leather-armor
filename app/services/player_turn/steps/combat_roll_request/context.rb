@@ -6,7 +6,7 @@ module PlayerTurn
       class Context
         attr_reader :intent, :scene_retrieval, :relevant_rules, :attack_options,
                     :action_economy, :threats, :battlefield, :combat_state,
-                    :current_location_name
+                    :current_location_name, :combat_cast_roster
 
         def self.build(intent:, adventure:, sheet:, ai:, log:,
                        rules_top_k:, beats_top_k:)
@@ -26,11 +26,30 @@ module PlayerTurn
               attack_options: Combat::Options::AttackOptionBuilder.call(sheet: sheet, adventure: adventure),
               action_economy: combat_ctx['action_economy'] || {},
               threats: build_threats_for_player(adventure: adventure),
-              battlefield_summary: Battlefield::PromptSerializer.slice_for_adventure(adventure)
+              battlefield_summary: Battlefield::PromptSerializer.slice_for_adventure(adventure),
+              cast_roster: build_combat_cast_roster(combat_ctx: combat_ctx)
             },
             state: { round: combat_ctx['round'], current_turn: combat_ctx['current_turn'],
                      current_location_name: adventure.current_location&.name }
           )
+        end
+
+        # In-combat cast roster — projection of `combat_context.participants`
+        # NPC rows down to the same `[id=N] Name` shape RollRequest's prompt
+        # uses out of combat. Lets the AI hand back `target_creature_sheet_id`
+        # (an integer) for non-attack rolls (Diplomacy mid-fight, Stealth to
+        # break line-of-sight, Sleight of Hand to lift a key off a guard,
+        # etc.) the same way RollRequest does.
+        def self.build_combat_cast_roster(combat_ctx:)
+          Array(combat_ctx['participants']).filter_map do |raw|
+            row = raw.is_a?(Hash) ? raw.deep_stringify_keys : {}
+            next nil unless row['type'].to_s == 'npc'
+
+            id = Integer(row['creature_sheet_id'], exception: false)
+            next nil unless id&.positive?
+
+            { id: id, name: row['name'].to_s, attitude: (row['attitude'] || 'unfriendly').to_s }
+          end
         end
 
         def self.build_threats_for_player(adventure:)
@@ -52,6 +71,7 @@ module PlayerTurn
           @action_economy = combat[:action_economy] || {}
           @threats = Array(combat[:threats])
           @battlefield = combat[:battlefield_summary]
+          @combat_cast_roster = Array(combat[:cast_roster])
           @combat_state = state || {}
           @current_location_name = @combat_state[:current_location_name]
         end
@@ -87,6 +107,22 @@ module PlayerTurn
           return '(no immediate threats)' if @threats.empty?
 
           @threats.map { |t| "- #{t[:name]} at (#{t[:x]}, #{t[:y]}) — #{t[:distance_squares] * 5}ft" }.join("\n")
+        end
+
+        def cast_roster_lines
+          return ['(no creatures in scope)'] if @combat_cast_roster.empty?
+
+          @combat_cast_roster.map do |entry|
+            "[id=#{entry[:id]}] #{entry[:name]} (#{entry[:attitude]})"
+          end
+        end
+
+        def cast_roster_empty?
+          @combat_cast_roster.empty?
+        end
+
+        def cast_roster_ids
+          @combat_cast_roster.map { |entry| entry[:id] }
         end
 
         private
