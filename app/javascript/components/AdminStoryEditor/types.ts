@@ -2,6 +2,7 @@ import type {
   StoryLocationData,
   EncounterTableData, EncounterTableEntryData,
   StoryNpcData,
+  BestiaryEntryData,
   NpcRole, NpcAttitude,
 } from '../../types'
 
@@ -10,6 +11,7 @@ export type {
   StoryLocationData,
   EncounterTableData, EncounterTableEntryData,
   StoryNpcData,
+  BestiaryEntryData,
 }
 
 // ---- Client-side identity layer for locations ----

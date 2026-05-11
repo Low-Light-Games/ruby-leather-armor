@@ -1,6 +1,6 @@
 module Admin
   class StoriesController < BaseController
-    before_action :set_story, only: [:show, :update, :destroy]
+    before_action :set_story, only: [:show, :update, :destroy, :generate_npc_sheet]
 
     # GET /admin/stories — server-rendered story list
     def index
@@ -41,14 +41,52 @@ module Admin
 
     # PATCH /admin/stories/:id
     def update
-      if @story.update(story_params)
+      ActiveRecord::Base.transaction do
+        unless @story.update(story_params)
+          render json: { errors: @story.errors.full_messages }, status: :unprocessable_entity
+          raise ActiveRecord::Rollback
+        end
+
+        missing = named_story_npcs_missing_bestiary(@story)
+        if missing.any?
+          render json: {
+            errors: missing.map { |npc| "StoryNpc #{npc.name.presence || "##{npc.id}"} has no bestiary entry — generate one before saving." }
+          }, status: :unprocessable_entity
+          raise ActiveRecord::Rollback
+        end
+
         if @story.saved_change_to_premise? || @story.saved_change_to_opening_message?
           extract_seed_facts!(@story)
         end
         render json: story_json(@story)
-      else
-        render json: { errors: @story.errors.full_messages }, status: :unprocessable_entity
       end
+    end
+
+    # POST /admin/stories/:id/generate_npc_sheet
+    # Body: { story_npc_id: <int> }
+    # Calls Authoring::AuthorStoryNpcSheet, persists/refreshes a
+    # story-scoped BestiaryEntry, and links the StoryNpc to it.
+    # Returns the bestiary entry JSON for the editor to render.
+    def generate_npc_sheet
+      story_npc = @story.story_npcs.find(params.require(:story_npc_id))
+      attrs = Authoring::AuthorStoryNpcSheet.call(story_npc: story_npc, user: current_user)
+
+      bestiary = story_npc.bestiary_entry || BestiaryEntry.new(
+        id:       SecureRandom.uuid,
+        story_id: @story.id,
+        source:   "ai-draft"
+      )
+      bestiary.assign_attributes(attrs)
+      bestiary.save!
+
+      story_npc.update!(bestiary_entry_id: bestiary.id) if story_npc.bestiary_entry_id.nil?
+
+      render json: bestiary_entry_json(bestiary.reload)
+    rescue ActiveRecord::RecordNotFound => e
+      render json: { errors: [e.message] }, status: :not_found
+    rescue Ai::Error, StandardError => e
+      ApplicationErrorReporter.notify(e, context: { source: "admin_stories_generate_npc_sheet", story_id: @story.id, story_npc_id: params[:story_npc_id] })
+      render json: { errors: ["Generation failed: #{e.class}"] }, status: :unprocessable_entity
     end
 
     # DELETE /admin/stories/:id (soft-delete)
@@ -81,9 +119,30 @@ module Admin
         ],
         story_npcs_attributes: [
           :id, :source, :name, :role, :location_id, :description,
-          :knowledge, :attitude, :secret, :_destroy
+          :knowledge, :attitude, :secret, :_destroy,
+          { bestiary_entry_attributes: [
+            :id, :name, :creature_type, :cr, :alignment, :size,
+            :strength, :dexterity, :constitution, :intelligence, :wisdom, :charisma,
+            :hp_formula, :ac, :base_attack, :speed, :description, :source
+          ] }
         ]
       )
+    end
+
+    # Story is invalid for save when any non-deleted, named StoryNpc lacks
+    # a bestiary entry. Anonymous (blank-name) drafts are allowed mid-edit.
+    def named_story_npcs_missing_bestiary(story)
+      story.story_npcs.story_level.where(bestiary_entry_id: nil).reject do |npc|
+        npc.name.to_s.strip.empty?
+      end
+    end
+
+    def bestiary_entry_json(entry)
+      entry.as_json(only: [
+        :id, :name, :creature_type, :cr, :alignment, :size,
+        :strength, :dexterity, :constitution, :intelligence, :wisdom, :charisma,
+        :hp_formula, :ac, :base_attack, :speed, :description, :source
+      ])
     end
 
     def extract_seed_facts!(story)
@@ -108,8 +167,10 @@ module Admin
           }
         )
       }
-      base["story_npcs"] = story.story_npcs.story_level.order(:id).map { |npc|
-        npc.as_json(only: [:id, :source, :name, :role, :location_id, :description, :knowledge, :attitude, :secret])
+      base["story_npcs"] = story.story_npcs.story_level.includes(:bestiary_entry).order(:id).map { |npc|
+        json = npc.as_json(only: [:id, :source, :name, :role, :location_id, :description, :knowledge, :attitude, :secret])
+        json["bestiary_entry"] = npc.bestiary_entry ? bestiary_entry_json(npc.bestiary_entry) : nil
+        json
       }
       base
     end

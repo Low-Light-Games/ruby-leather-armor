@@ -74,6 +74,21 @@ export const buildPayload = (args: PayloadArgs) => {
       }
       if (npc.id) attrs.id = npc.id
       if (npc._destroy) attrs._destroy = true
+
+      const sheet = npc.bestiary_entry
+      if (sheet && sheet.id) {
+        attrs.bestiary_entry_attributes = {
+          id: sheet.id,
+          name: sheet.name, creature_type: sheet.creature_type, cr: sheet.cr,
+          alignment: sheet.alignment, size: sheet.size,
+          strength: sheet.strength, dexterity: sheet.dexterity,
+          constitution: sheet.constitution, intelligence: sheet.intelligence,
+          wisdom: sheet.wisdom, charisma: sheet.charisma,
+          ac: sheet.ac, hp_formula: sheet.hp_formula,
+          base_attack: sheet.base_attack, speed: sheet.speed,
+          description: sheet.description, source: sheet.source,
+        }
+      }
       return attrs
     })
   }

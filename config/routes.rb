@@ -38,7 +38,11 @@ Rails.application.routes.draw do
         patch :update_story_element
       end
     end
-    resources :stories, only: [:index, :new, :show, :create, :update, :destroy]
+    resources :stories, only: [:index, :new, :show, :create, :update, :destroy] do
+      member do
+        post :generate_npc_sheet
+      end
+    end
     resources :play_logs, only: [:index, :show] do
       collection do
         get :pipelines
