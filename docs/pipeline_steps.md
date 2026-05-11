@@ -166,7 +166,20 @@ The pipeline's evaluation step has gone through three generations:
 1. **Per-domain chain (retired):** six parallel beacon AI calls → up to six sequential MechanicalEvaluation calls → up to six parallel RollQualifier calls. 8–14 concurrent OpenAI calls per turn, stressed the DB connection pool, and frequently produced duplicate rolls because each domain evaluated independently.
 2. **UnifiedEvaluation (retired):** one AI call handling all six domains in a single prompt. Fixed the parallelism issues but coupled prompt size to total domain count and made per-domain model tuning impossible.
 3. **ParallelEvaluation (retired):** restored the 3-phase chain but offloaded concurrency to a dedicated Node.js microservice via `Promise.all`. Recovered observability and per-phase model selection at the cost of three serial round-trips.
-4. **RollRequest / CombatRollRequest (current):** a single AI call backed by pgvector RAG over rules (`adventure_narrative_facts` for scene beats, `rule_embeddings` for rule definitions). The prompt carries no character block and no full micro-context dump — just the player's intent, the top-K relevant rules, and the top-K recent narrative facts. Combat-active turns hit `Steps::CombatRollRequest` instead, which augments the prompt with attack options, action economy, threats, and battlefield text. Combat math (DCs, damage, defense kind) resolves post-call from the sheet via `Phases::CombatMechanicResolution`, clamped by the AI-emitted `attack_option_id`.
+4. **RollRequest / CombatRollRequest (current):** a single AI call backed by pgvector RAG over rules (`adventure_narrative_facts` for scene beats, `rule_embeddings` for rule definitions). The prompt carries no character block and no full micro-context dump — just the player's intent, the top-K relevant rules, the top-K recent narrative facts, and (out of combat) the **cast roster** of creatures the upstream `CastResolver` step has already resolved to real `creature_sheet_id`s. Combat-active turns hit `Steps::CombatRollRequest` instead, which augments the prompt with attack options, action economy, threats, and battlefield text. Combat math (DCs, damage, defense kind) resolves post-call from the sheet via `Phases::CombatMechanicResolution`, clamped by the AI-emitted `attack_option_id`.
+
+#### CastResolver — naming the scene before RollRequest sees it
+
+Out of combat, `Steps::CastResolve` (delegating to `Encounters::CastResolver`) runs at the very top of every action — before RollRequest. The AI's only job is to name every creature the player could plausibly target / address / evade / observe, with a closed five-entry type enum (`beast`, `fighter`, `goblinoid`, `spellcaster`, `commoner`) and an optional `count`. Code resolves each `{name, type, count}` deterministically against four tiers:
+
+1. existing `AdventureNpc` for this adventure with that name (reuse the row),
+2. existing `CreatureSheet` for this adventure with that name (adopt onto an `AdventureNpc`),
+3. `BestiaryEntry` by name (story-scoped first, then public), minted into N `CreatureSheet`s via `Encounters::CreatureCreation.from_bestiary`,
+4. `BestiaryEntry.default_for(type)` — the seeded default per type, same minting path.
+
+The resolved `PlayerTurn::CastRoster` is persisted on the `AdventureLoop` (so it survives `RollPipelineJob`'s pause/resume cycle) and rendered into the RollRequest prompt as `[id=N] Name (attitude) — at <loc>`. RollRequest's `target_creature_sheet_id` field copies one of those integers verbatim, eliminating the entire "AI invents a creature, code tries to back-fill identity" failure surface that the retired `combat_combatants` field carried. Stats and identifiers are 100 % code-owned; the AI's only contribution is naming and (optionally) grouping.
+
+Costs: one extra cheap-reasoning AI call per turn (same model tier as RollRequest, ~30 output tokens) plus one optional Sentry event when the type-default fallback fires (`cast_resolver_default_fallback` or, if the lookup somehow misses entirely, `cast_resolver_unresolved`).
 
 The 3-phase chain is gone: there are no `beacon`, `mechanical_evaluation`, or `roll_qualifier` AI steps anymore. The Node evaluator microservice still exists and is still used by Stagehand (parallel narrate + context updates), WorldTurn (per-NPC actions in legacy AI-driven combat — currently dead in favor of `Combat::NpcTurn`), the sanity gate, and ContextUpdate fan-outs, but no longer for an evaluation chain.
 
@@ -1025,6 +1038,7 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | 1 | **Intake** | AI | `app/services/player_turn/steps/intake.rb` |
 | 1c | **Sequencer** | AI (toggled) | `app/services/player_turn/steps/sequencer.rb` |
 | -- | **AdventureLoopResolution** (module) | Code orchestration | `app/services/player_turn/adventure_loop_resolution.rb` |
+| 2.5 | **CastResolver** | AI ×1 + code 4-tier resolution (out of combat) | `app/services/player_turn/steps/cast_resolve.rb`, `app/services/encounters/cast_resolver.rb`, `app/services/encounters/creature_creation.rb`, `app/services/player_turn/cast_roster.rb` + `templates/cast_resolver.text.erb` |
 | 3 | **RollRequest** | AI ×1 (out of combat) | `app/services/player_turn/steps/roll_request.rb` + `templates/roll_request.text.erb` |
 | 3′ | **CombatRollRequest** | AI ×1 (combat-active free-text) | `app/services/player_turn/steps/combat_roll_request.rb` + `templates/combat_roll_request.text.erb` + `Phases::CombatMechanicResolution` (post-call clamping) |
 | 4 | **SanityChecker** | AI (parallel, mechanical path) | `app/services/player_turn/steps/sanity_checker.rb` |
@@ -1052,8 +1066,9 @@ Interrupted queues (encounter, social scene, roll request) fall back to the accu
 
 | Component | AI? | Notes |
 |---|---|---|
-| RollRequest | ✅ AI ×1 | Out-of-combat single call. Top-K rules + scene beats from pgvector; no character block. Emits one roll spec or "no roll" plus cross-cutting signals (transition, combatants, destination) |
-| CombatRollRequest | ✅ AI ×1 + ❌ code clamping (`Phases::CombatMechanicResolution`) | Combat-active free-text. Carries attack options, action economy, threats, battlefield text. Emits `attack_option_id` (never DC) for combat rolls; Ruby resolves attack mode, defense kind, damage metadata, and AC / save DCs from the sheet |
+| CastResolver | ✅ AI ×1 + ❌ code 4-tier lookup | Out-of-combat. AI names every creature in the scene as `[{name, type, count}]` against a closed five-entry type enum; code resolves each entry deterministically against existing AdventureNpc → existing CreatureSheet → BestiaryEntry by name → BestiaryEntry by `default_for_type`. Output `PlayerTurn::CastRoster` is persisted on the AdventureLoop and carried through pause/resume |
+| RollRequest | ✅ AI ×1 | Out-of-combat single call. Top-K rules + cast roster + scene beats from pgvector; no character block. Emits one roll spec or "no roll" plus an optional `target_creature_sheet_id` (an integer copied from the cast roster) and orthogonal `transition` signal. Opposed roll DCs are resolved post-call by `Combat::OpposedRollResolution` from the target sheet |
+| CombatRollRequest | ✅ AI ×1 + ❌ code clamping (`Phases::CombatMechanicResolution`) | Combat-active free-text. Carries attack options, action economy, threats, battlefield text. Emits `attack_option_id` (never DC) for combat rolls; Ruby resolves attack mode, defense kind, damage metadata, and AC / save DCs from the sheet. Free-text rolls share the same optional `target_creature_sheet_id` contract as out-of-combat RollRequest, sourced from the live combat roster |
 | Mechanic | ✅ AI | Post-roll arbitration + structured mutations when combat is not active. No-roll actions resolve through this same step with `rolls: []`. |
 | Combat GM | ✅ AI | Post-roll arbitration during **active combat** (battlefield slice + PF1e combat guidance); emits `battlefield_patches` + `action_economy_delta` |
 | World Turn (orchestration) | ❌ Code | Sequential NPC dice + mutation application in initiative order, combat advancement, and combat-end handling. Consumes `npc_actions` already emitted by Combat GM. |
@@ -1170,14 +1185,18 @@ TimeKeeper → Harbinger (roll encounter) → encounter_entry found
 ### Path B — Narrative-originated combat
 
 ```
-RollRequest → transition: "combat_started", combatants: [...]
-  → Stagehand#maybe_initialize_combat
-    → Warmaster.initialize_from_names!
-      → fuzzy bestiary lookup + dynamic fallback
-      → roll creature initiative
-      → return :awaiting_initiative
-  → Pipeline pauses, sends initiative_request to player
+CastResolver (top of action) → cast roster of integer creature_sheet_ids (already minted)
+  → RollRequest → transition: "combat_started", target_creature_sheet_id: <int from roster>
+    → roll resolution
+    → Stagehand#maybe_initialize_combat
+      → Warmaster.persist_combat_from_cast_roster!
+          (combatants = target + pre-existing hostiles; bystanders stay out)
+        → roll creature initiative for each combatant's sheet
+        → return :awaiting_initiative
+    → Pipeline pauses, sends initiative_request to player
 ```
+
+There is no name-fuzzy-matching, no per-turn AI generation, and no `initialize_from_names!` anymore. Identity is owned by code from the moment the cast roster is built; combat-init is a pure projection of that roster keyed on `target_creature_sheet_id`.
 
 ### Initiative Resolution
 
@@ -1193,14 +1212,35 @@ RollRequest → transition: "combat_started", combatants: [...]
 
 ### Creature Resolution Chain
 
-1. **Manifest** (if `EncounterTableEntry#has_manifest?`): deterministic bestiary lookup by ID
-2. **Fuzzy bestiary match**: singularize → exact LOWER → ILIKE → id fallback
-3. **Dynamic fallback** (per `creature_creation_fallback` config):
-   - `"ai"`: AI generates PF1e stat block via `creature_generation` step
-   - `"template"`: tier-scaled generic stat block
-   - `"none"`: creature not created
+There is one resolution chain — `Encounters::CreatureCreation.from_bestiary` — fed from two upstream points:
 
-See `app/services/encounters/warmaster.rb` for implementation detail.
+- **CastResolver** (out-of-combat narrative path). The four-tier lookup in `Encounters::CastResolver` selects a `BestiaryEntry` (story → public → `default_for_type`) and hands it to `from_bestiary`.
+- **EncounterWarmasterBridge** (Harbinger encounter path). `EncounterTableEntry#manifest` already carries `bestiary_entry_id`s; the bridge feeds each row to the same `from_bestiary` call.
+
+`from_bestiary` clones the bestiary stat block onto N `CreatureSheet` rows on the adventure, applying display-name disambiguation (`orc patrol`, `orc patrol 2`, …). No AI runs at this seam — the `creature_generation` AI step is reserved exclusively for the `Authoring::AuthorStoryNpcSheet` flow at story-save time, where a human reviews and signs off on each generated bestiary entry. The runtime pipeline never invokes `creature_generation` (its `step_registry.rb` flag is `pipeline: false`).
+
+See `app/services/encounters/cast_resolver.rb`, `app/services/encounters/creature_creation.rb`, and `app/services/encounters/warmaster.rb` for implementation detail.
+
+### `Authoring::` namespace vs runtime pipeline
+
+AI steps are split into two strict tiers, marked by `Ai::StepRegistry`'s `pipeline:` flag and mirrored in the folder structure:
+
+- **`pipeline: true`** — runs during a player turn, on every adventure, against the `AdventureLoop`. Lives under `app/services/player_turn/steps/` (and `app/services/encounters/cast_resolver.rb` for the new top-of-turn step). Examples: `intake`, `sequencer`, `cast_resolver`, `roll_request`, `mechanic`, `combat_gm`, `narrate`, `loremaster`, `time_keeper`, `context_update`.
+- **`pipeline: false`** — runs at story-save / authoring time, never during a player turn. Lives under `app/services/authoring/`. Examples: `creature_generation` (mints a `BestiaryEntry`'s stat block for a named StoryNpc, behind `Authoring::AuthorStoryNpcSheet`), `extract_from_premise`, `generate_opening_message`, `embedding`, `encounter_expand`.
+
+Why two tiers? Authoring AI is run by humans on-demand and reviewed before a story ships. Runtime AI runs automatically on every player turn and pays a real per-turn cost. The split keeps them from leaking into each other: a runtime caller can't accidentally trigger `creature_generation` (which would add a per-turn AI bill plus an unsigned stat block), and an authoring tool can't accidentally piggyback on the runtime registry's per-step model defaults. The folder name and the registry flag are redundant on purpose — they catch each other in code review.
+
+### `BestiaryEntry`'s three flavors
+
+`BestiaryEntry` is a multi-flavor table. Exactly one of the following three is true per row, enforced by scope and convention:
+
+| flavor | columns set | scopes | use |
+|---|---|---|---|
+| **Public bestiary** | `story_id` null, `default_for_type` null | `BestiaryEntry.public_bestiary` | the SRD-style shared catalog |
+| **Story-scoped** | `story_id` present, `default_for_type` null | `BestiaryEntry.for_story(story)` | named NPCs hand-statted (or AI-drafted + human-reviewed) for one story; `StoryNpc#bestiary_entry_id` always points here |
+| **Default-by-type** | `story_id` null, `default_for_type` present | `BestiaryEntry.default_for(type)` | the five seeded fallbacks (`beast`, `fighter`, `goblinoid`, `spellcaster`, `commoner`) used by `CastResolver` when the AI's `name` doesn't resolve to anything more specific |
+
+The single table keeps the `from_bestiary` minting path branchless — each tier of `CastResolver`'s lookup just hands a different row to the same code. Adding a flavor (e.g. faction-scoped) means a new column + a new scope, not a new table or a new mint path.
 
 ---
 

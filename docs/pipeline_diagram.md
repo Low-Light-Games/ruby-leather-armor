@@ -50,10 +50,11 @@ flowchart TB
         ACTION_LOOP[Create AdventureLoop record] --> RESOLVE[AdventureLoopResolution.resolve]
     end
 
-    subgraph resolve["AdventureLoopResolution.resolve — evaluation + sanity gate"]
+    subgraph resolve["AdventureLoopResolution.resolve — cast + evaluation + sanity gate"]
         RESOLVE --> COMBAT_BR{combat_active?}
-        COMBAT_BR -->|yes| CRR["Steps::CombatRollRequest — single AI call ☆\n(attack options, action economy, threats, battlefield)\n+ Phases::CombatMechanicResolution post-call clamp"]
-        COMBAT_BR -->|no| RR["Steps::RollRequest — single AI call ☆\n(top-K rules + scene beats from pgvector)"]
+        COMBAT_BR -->|yes| CRR["Steps::CombatRollRequest — single AI call ☆\n(attack options, action economy, threats, battlefield)\n+ Phases::CombatMechanicResolution post-call clamp\n+ optional target_creature_sheet_id from live combat roster"]
+        COMBAT_BR -->|no| CAST["Steps::CastResolve — single AI call ☆\n(name+type+count of creatures in scene)\n+ code 4-tier lookup → PlayerTurn::CastRoster persisted on AdventureLoop"]
+        CAST --> RR["Steps::RollRequest — single AI call ☆\n(top-K rules + scene beats from pgvector + cast roster)\nemits optional target_creature_sheet_id (id from roster)\n+ orthogonal transition signal"]
     end
 
     CRR & RR --> SANITY_GATE
@@ -138,10 +139,11 @@ flowchart TB
     subgraph output_phase["Narrative phase — run_accumulated_narrative_phase → run_narrative_phase"]
         OUTPUT_PHASE --> STAGEHAND[run_output_phase — Stagehand]
         STAGEHAND --> COMBAT_CHECK{RollRequest signaled\ncombat_started?}
-        COMBAT_CHECK -->|yes| WARMASTER_B[Warmaster Path B — from RollRequest]
-        WARMASTER_B --> WB1[initialize_from_names!  ☆ AI for unknown creatures]
-        WB1 --> WB2{Creatures spawned?}
-        WB2 -->|yes| PAUSE_INIT_B[Return :awaiting_initiative]
+        COMBAT_CHECK -->|yes| WARMASTER_B[Warmaster Path B — from cast roster]
+        WARMASTER_B --> WB1[persist_combat_from_cast_roster!  — code\ncombatants = target_creature_sheet_id + pre-existing hostiles]
+        WB1 --> WB2{Combatants picked?}
+        WB2 -->|yes| WB3[roll initiatives from existing creature sheets — code]
+        WB3 --> PAUSE_INIT_B[Return :awaiting_initiative]
         WB2 -->|no| NARRATE_PHASE
         COMBAT_CHECK -->|no| NARRATE_PHASE
 
@@ -296,13 +298,23 @@ The outer orchestration loop: for each action in the queue:
 
 The inner pipeline entry point. Dispatches deterministically on combat state:
 
-- **Out of combat → `Steps::RollRequest`** — single AI call. Top-K rules
-  retrieved from `rule_embeddings` via `Rules::Lookup`; top-K narrative
-  beats retrieved from `adventure_narrative_facts` via `Lore::FactsLookup`.
-  Prompt has no character block and no JSONB context dump — just the
-  intent + retrieved rules + retrieved beats. The model emits one roll
-  spec (or "no roll") plus the cross-cutting signals downstream code
-  consumes.
+- **Out of combat → `Steps::CastResolve` then `Steps::RollRequest`** —
+  two AI calls. CastResolve runs first: the AI emits
+  `[{name, type, count}]` against a closed five-entry type enum and code
+  resolves each entry through the four-tier deterministic lookup
+  (existing AdventureNpc → existing CreatureSheet → BestiaryEntry by name
+  → BestiaryEntry by `default_for_type`). The resulting
+  `PlayerTurn::CastRoster` is persisted on the AdventureLoop so it
+  survives `RollPipelineJob`'s pause/resume cycle.
+
+  RollRequest then runs as a single AI call. Top-K rules retrieved from
+  `rule_embeddings` via `Rules::Lookup`; top-K narrative beats retrieved
+  from `adventure_narrative_facts` via `Lore::FactsLookup`. The cast
+  roster is rendered as `[id=N] Name (attitude) — at <loc>` and joined
+  to the prompt. The model emits one roll spec (or "no roll") plus the
+  optional `target_creature_sheet_id` (an integer copied verbatim from
+  the cast roster — omitted when there is no target) and the orthogonal
+  `transition` signal.
 - **Combat-active → `Steps::CombatRollRequest`** — single AI call. Same
   shape as RollRequest, plus combat-aware context: legal attack options
   (computed pre-call by `Combat::AttackOptionBuilder`), action economy,
@@ -310,12 +322,23 @@ The inner pipeline entry point. Dispatches deterministically on combat state:
   battlefield slice. Combat rolls emit `attack_option_id` (never DC) for
   attack rolls and `dc_formula` for saving throws; DCs and damage are
   resolved post-call by `Phases::CombatMechanicResolution` from the
-  sheet + grid.
+  sheet + grid. Free-text rolls share the same optional
+  `target_creature_sheet_id` contract as out-of-combat RollRequest,
+  sourced from the live combat roster.
 
-Both steps return an {EvaluationResult} value object holding
-`intention`, `destination`, `combat_transition`, `combat_combatants`,
-`player_rolls`, `consequences`, `mechanical_summary`, plus the
-`combat_starting?` predicate.
+Both steps return an `EvaluationResult` value object holding
+`intention`, `destination`, `transition`, `target_creature_sheet_id`
+(optional), `player_rolls`, `consequences`, `mechanical_summary`, plus
+the `combat_starting?` predicate. Identity is owned by code from the
+moment the cast roster is built; RollRequest never invents a creature
+name.
+
+Opposed roll DCs (Stealth vs Perception, Bluff vs Sense Motive, etc.)
+are resolved post-call by `Combat::OpposedRollResolution` from the
+target's sheet — the AI is asked to omit `dc` for opposed rolls and is
+overridden with the code-resolved value if it emits one anyway (the
+override is reported to Sentry as `opposed_roll_dc_conflict` so prompt
+quality regressions stay visible).
 
 The previous 3-phase ParallelEvaluation chain (beacon → mechanical_evaluation
 → roll_qualifier via the Node evaluator's `/fan_out` and `/sequential`)
@@ -435,10 +458,12 @@ Triggered when TimeKeeper's Harbinger rolls an encounter. The encounter table en
 
 #### Path B — RollRequest combat-started transition (Stagehand)
 
-Triggered during the output phase when Stagehand detects that RollRequest emitted `transition: "combat_started"` (or any `_to_combat` value). This handles narrative-originated combat: the player's description triggered a fight without an encounter table roll. Combatant names from `combat_combatants` are passed to `Warmaster.initialize_from_names!`.
+Triggered during the output phase when Stagehand detects that RollRequest emitted `transition: "combat_started"` (or any `_to_combat` value). This handles narrative-originated combat: the player's description triggered a fight without an encounter table roll. Combatants are picked deterministically from the `PlayerTurn::CastRoster` already attached to the AdventureLoop — `Warmaster.persist_combat_from_cast_roster!` takes the action's `target_creature_sheet_id` (the creature the player aimed at) plus any cast-roster entries already marked `hostile`. Indifferent / friendly bystanders stay out of combat.
+
+There is no name-fuzzy-matching, no `initialize_from_names!`, and no per-turn AI generation on this path — every combatant is a real `creature_sheet_id` minted by the upstream `CastResolver` step.
 
 In both paths, `Warmaster`:
-1. Finds or creates `CreatureSheet` records (bestiary lookup → fuzzy match → AI generation → template fallback).
+1. Resolves each combatant to an existing `CreatureSheet` (Path A from the `EncounterTableEntry#manifest`'s bestiary IDs, Path B from the cast roster's already-minted sheets).
 2. Rolls each creature's initiative (d20 + DEX modifier, +4 for Improved Initiative feat).
 3. Returns `{ status: :awaiting_initiative, creature_data: [...] }`.
 
@@ -470,7 +495,7 @@ Multiple resolved/encounter results are **merged**: intentions concatenated with
 
 #### Stagehand (Path B combat check)
 
-Before narration, Stagehand checks if the most recent action's evaluation signaled a combat transition (`combat_started`, `*_to_combat`). If yes and no combat is already active, calls `Warmaster.initialize_from_names!` and potentially returns `:awaiting_initiative` before narration runs at all.
+Stagehand always runs the parallel narrative fan-out first — the player gets the hit / Stealth / etc. outcome prose. After that, if the most recent action's evaluation signaled a combat transition (`combat_started`, `*_to_combat`) and no combat is already active, Stagehand calls `Warmaster.persist_combat_from_cast_roster!` and emits the awaiting-initiative hand-off as a follow-up message. The "Roll for initiative!" system message rides on top of the narrative, not in lieu of it.
 
 #### Narration fan-out
 
@@ -523,8 +548,9 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 |-----------|-----|-------|
 | Intake | ✅ AI | Danger scoring, sanitization, DM query detection |
 | Sequencer | ✅ AI | Action splitting (skipped if `action_queue` off) |
-| RollRequest | ✅ AI ×1 | Out-of-combat single call. Top-K rules + scene beats from pgvector; no character block. Emits one roll spec or "no roll" plus cross-cutting signals |
-| CombatRollRequest | ✅ AI ×1 + ❌ code clamping (`Phases::CombatMechanicResolution`) | Combat-active free-text. Carries attack options, action economy, threats, battlefield text. Emits `attack_option_id` (never DC); Ruby resolves attack mode, defense kind, damage metadata, and DCs from the sheet |
+| CastResolver | ✅ AI ×1 + ❌ code 4-tier lookup | Out-of-combat. Names every creature in the scene as `[{name, type, count}]` against a closed five-entry type enum; code resolves each entry against existing AdventureNpc → existing CreatureSheet → BestiaryEntry by name → BestiaryEntry by `default_for_type`. Output `PlayerTurn::CastRoster` is persisted on the AdventureLoop |
+| RollRequest | ✅ AI ×1 | Out-of-combat single call. Top-K rules + cast roster + scene beats from pgvector; no character block. Emits one roll spec (or "no roll") plus optional `target_creature_sheet_id` (id from the cast roster) and orthogonal `transition` signal. Opposed-roll DCs are resolved post-call from the target sheet by `Combat::OpposedRollResolution` |
+| CombatRollRequest | ✅ AI ×1 + ❌ code clamping (`Phases::CombatMechanicResolution`) | Combat-active free-text. Carries attack options, action economy, threats, battlefield text. Emits `attack_option_id` (never DC); Ruby resolves attack mode, defense kind, damage metadata, and DCs from the sheet. Free-text rolls share the same optional `target_creature_sheet_id` contract sourced from the live combat roster |
 | Combat::PlayerActionResolver | ❌ Code | Deterministic Combat HUD path: server-authoritative attack / move / end-turn |
 | Combat::NpcTurn | ❌ Code | Per-NPC turn engine driven off `behavior_policy` (no AI call per NPC) |
 | World consistency check | ✅ AI | Scene/entity validation |
@@ -539,8 +565,9 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | Auto-success filter | ❌ Code | Math against character sheet |
 | apply_mutations | ❌ Code | Structured writes to DB |
 | resolve_npc_actions | ❌ Code | Dice rolling |
-| Warmaster creature spawn (bestiary match) | ❌ Code | DB lookup |
-| Warmaster creature spawn (unknown creature) | ✅ AI | When bestiary lookup fails |
+| Warmaster combatant selection (Path B) | ❌ Code | Picks `target_creature_sheet_id` + pre-existing hostiles from the cast roster (no name-fuzzy matching, no per-turn AI) |
+| Warmaster creature spawn (Path A — encounter manifest) | ❌ Code | `EncounterTableEntry#manifest` carries bestiary IDs; the bridge mints sheets via `Encounters::CreatureCreation.from_bestiary` |
+| `creature_generation` AI step | ✅ AI (authoring-time only — `pipeline: false`) | Runs from `Authoring::AuthorStoryNpcSheet` to draft a `BestiaryEntry` for a named StoryNpc, gated by human review. Never invoked on the runtime player-turn path |
 | Warmaster initiative rolls | ❌ Code | d20 + DEX modifier |
 | Warmaster finalize_combat! | ❌ Code | Sorts initiative order |
 | Narrate | ✅ AI | Prose generation |
@@ -577,8 +604,9 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | **Moderation gate** | Code (blocking or async Sidekiq) | Classify player input via OpenAI moderation API. Regular users: blocking — flags short-circuit the pipeline and increment strikes; auto-ban at `max_strikes`. Trusted users: async via `ModerationCheckJob` — no pipeline delay; strikes and bans still apply. Skipped entirely when `moderation.enabled: false`. |
 | **Intake** | AI | Score danger, sanitize input, detect DM query, flag context gaps. |
 | **Sequencer** | AI | Split compound player input into ordered discrete actions. Skipped if `action_queue` off. |
-| **RollRequest** | AI ×1 | Out-of-combat single call. Top-K rules from `rule_embeddings` + top-K scene beats from `adventure_narrative_facts`. Emits one roll spec (or "no roll") plus cross-cutting signals. |
-| **CombatRollRequest** | AI ×1 + code clamping | Combat-active free-text. Carries attack options, action economy, AoO threats, and a battlefield slice. Emits `attack_option_id` (never DC); `Phases::CombatMechanicResolution` resolves attack mode, defense kind, damage, and DCs from the sheet. |
+| **CastResolver** | AI ×1 + code | Out-of-combat. Names every creature the action could touch; code resolves each one to a real `creature_sheet_id` via the four-tier deterministic lookup. Output cast roster is persisted on the AdventureLoop and consumed by RollRequest, Stagehand, and Warmaster. |
+| **RollRequest** | AI ×1 | Out-of-combat single call. Top-K rules from `rule_embeddings` + cast roster + top-K scene beats from `adventure_narrative_facts`. Emits one roll spec (or "no roll") plus optional `target_creature_sheet_id` (id from the cast roster) and orthogonal `transition` signal. |
+| **CombatRollRequest** | AI ×1 + code clamping | Combat-active free-text. Carries attack options, action economy, AoO threats, and a battlefield slice. Emits `attack_option_id` (never DC); `Phases::CombatMechanicResolution` resolves attack mode, defense kind, damage, and DCs from the sheet. Free-text rolls share the same optional `target_creature_sheet_id` contract sourced from the live combat roster. |
 | **World consistency check** | AI | Validate referenced entities exist in current scene. Runs in the sanity gate (mechanics path) or standalone (non-mechanics path). Bypassed on both paths when the adventure's `skip_world_sanity_check` flag is set. |
 | **Capability check** | AI | Validate player has required spells/feats/items. Runs in the sanity gate whenever one or more domains are affected. Always runs regardless of `skip_world_sanity_check`. |
 | **Auto-success filter** | Code | Remove rolls the character cannot possibly fail (DC ≤ 0, guaranteed modifier, Take 10 covers DC). Never removes attack rolls. |
@@ -588,7 +616,7 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | **TimeKeeper** | Code + AI | Estimate time (code-first: journey/combat/rest/take_20, then AI) → consult Harbinger → advance GameClock → apply fatigue. |
 | **Harbinger** | Code + AI | Segment-based encounter check against table. AI expands encounter scene if entry is non-fixed. |
 | **GameClock** | Code | Advance current_hour, adventure_day, light_conditions, hours_since_last_rest, hours_since_last_encounter_check. |
-| **Warmaster** | Code + AI | Initialize combat: spawn creatures (bestiary → AI → template), roll initiative. Two paths: encounter table (A) or narrative-triggered combat (B). |
+| **Warmaster** | Code | Initialize combat from existing `creature_sheet_id`s, roll initiative. Two paths: encounter table (A — sheets from `Encounters::CreatureCreation.from_bestiary` against the `EncounterTableEntry#manifest`) or narrative-triggered combat (B — sheets minted upstream by `CastResolver`, picked here as `target_creature_sheet_id` + pre-existing hostiles). No per-turn AI. |
 | **Narrate** | AI | Prose generation from outcome + retrieved scene facts + journey/encounter data + pacing directives. |
 | **ContextUpdate** | AI | Update `combat_context` (when combat is active or transitioning), `scene_summary`, and `scene_history`. |
 | **Loremaster** | AI | Sole writer of `adventure_narrative_facts` and the per-adventure NPC / location stores. Reads verdict outcome plus retrieved facts and emits new event/state/entity rows. |

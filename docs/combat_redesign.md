@@ -101,10 +101,24 @@ and [`phases/combat_mechanic_resolution.rb`](../app/services/player_turn/steps/p
    roll lands but lacks `damage`/`source_type`/etc. With deterministic
    resolution, this whole path becomes unreachable and gets deleted in
    PR-I.
-4. **Combat-start hand-off** — `intent[:transition]` + `intent[:combat_combatants]`
-   triggers Warmaster prep. RollRequest emits these flat keys directly
-   on the intent hash, so combat START via RollRequest works without
-   any adapter.
+4. **Combat-start hand-off** — `intent[:transition]` + the per-action
+   `PlayerTurn::CastRoster` (persisted on the AdventureLoop by the
+   upstream `CastResolve` step) triggers Warmaster prep. RollRequest
+   emits a `transition` flag plus an optional `target_creature_sheet_id`
+   on the intent hash; combatants are picked from the cast roster, not
+   re-derived from a name list.
+
+   **Replaces the retired `combat_combatants` field** (PR-I-era contract).
+   Identity is owned by code from the moment the cast roster is built —
+   `creature_sheet_id` is an integer that already exists in the database
+   when RollRequest sees the prompt. Warmaster picks combatants
+   deterministically: the action's `target_creature_sheet_id` plus any
+   pre-existing hostile cast-roster entries. Indifferent / friendly
+   bystanders stay out of combat (combat itself doesn't yet know how to
+   carry non-hostile participants; the bridge is intentionally narrow).
+   No name-fuzzy-matching, no `initialize_from_names!`, no per-turn AI
+   stat-block generation. See `docs/pipeline_steps.md` for the four-tier
+   `CastResolver` lookup that mints the sheets in the first place.
 
 ---
 
