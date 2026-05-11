@@ -5,7 +5,14 @@
 class BestiaryEntry < ApplicationRecord
   self.primary_key = :id
 
+  belongs_to :story, optional: true
+
   validates :id, :name, :source, presence: true
+  validates :default_for_type, uniqueness: true, allow_nil: true
+
+  scope :public_bestiary, -> { where(story_id: nil, default_for_type: nil) }
+  scope :for_story,       ->(story) { where(story_id: story.id) }
+  scope :default_for,     ->(type) { where(default_for_type: type.to_s) }
 
   def modifier_for(ability)
     score = send(ability)

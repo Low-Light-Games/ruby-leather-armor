@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_05_000000) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_11_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -271,8 +271,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_05_000000) do
     t.string "environment"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "story_id"
+    t.string "default_for_type"
     t.index ["cr"], name: "index_bestiary_entries_on_cr"
     t.index ["creature_type"], name: "index_bestiary_entries_on_creature_type"
+    t.index ["default_for_type"], name: "index_bestiary_entries_on_default_for_type_unique", unique: true, where: "(default_for_type IS NOT NULL)"
+    t.index ["story_id"], name: "index_bestiary_entries_on_story_id"
   end
 
   create_table "class_ability_definitions", id: :string, force: :cascade do |t|
@@ -742,6 +746,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_05_000000) do
   add_foreign_key "adventures", "adventure_locations", column: "current_location_id", on_delete: :nullify
   add_foreign_key "adventures", "stories"
   add_foreign_key "adventures", "users"
+  add_foreign_key "bestiary_entries", "stories"
   add_foreign_key "creature_sheet_feats", "creature_sheets"
   add_foreign_key "creature_sheet_feats", "feat_definitions", column: "feat_id"
   add_foreign_key "creature_sheet_items", "creature_sheets"
