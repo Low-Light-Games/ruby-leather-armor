@@ -15,8 +15,8 @@ RSpec.describe "Adventure Messages flood control", type: :request do
     end
 
     it "returns 429 without persisting the player prompt when the backlog gate rejects" do
-      allow(DungeonMaster::FloodControl).to receive(:admit_prompt_submission)
-        .and_raise(DungeonMaster::FloodControl::PromptBacklogExceeded, "Wait your turn.")
+      allow(FloodControl).to receive(:admit_prompt_submission)
+        .and_raise(FloodControl::PromptBacklogExceeded, "Wait your turn.")
 
       expect do
         post "/adventures/#{adventure.id}/messages",
@@ -56,7 +56,7 @@ RSpec.describe "Adventure Messages flood control", type: :request do
         metadata: { "intent" => { "intention" => "Hide in shadows" } }
       )
 
-      expect(DungeonMaster::FloodControl).not_to receive(:admit_prompt_submission)
+      expect(FloodControl).not_to receive(:admit_prompt_submission)
 
       post "/adventures/#{adventure.id}/messages/roll",
            params: { roll_value: 15, roll_description: "Stealth", resolution_method: "roll" },
@@ -90,7 +90,7 @@ RSpec.describe "Adventure Messages flood control", type: :request do
         metadata: { "creature_data" => [{ "name" => "Goblin" }] }
       )
 
-      expect(DungeonMaster::FloodControl).not_to receive(:admit_prompt_submission)
+      expect(FloodControl).not_to receive(:admit_prompt_submission)
 
       post "/adventures/#{adventure.id}/messages/initiative",
            params: { initiative: 12 },
@@ -102,6 +102,13 @@ RSpec.describe "Adventure Messages flood control", type: :request do
   end
 
   describe "Rack::Attack throttles" do
+    # Rack::Attack buckets counters by `Time.now.to_i / period`. Without a
+    # frozen clock a long test (121 HTTP round-trips) can straddle a minute
+    # boundary, the bucket key rolls over, and the final request lands in a
+    # fresh counter — masking the throttle and surfacing as 422 (no pending
+    # roll) instead of the expected 429.
+    around { |ex| travel_to(Time.zone.now.beginning_of_minute) { ex.run } }
+
     it "returns a user_rate 429 after the per-user burst is exceeded" do
       RackAttackConfig::USER_RATE_LIMIT.times do
         post "/adventures/#{adventure.id}/messages/roll",

@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # Human-readable wrap-up of one resolved attack — attacker / target /
-  # weapon labels plus a single sentence ("Goblin (shortsword) vs You:
-  # 17 vs AC 14 — hits for 4 piercing damage."). Persisted alongside
-  # the dice payload in Combat::NpcAttackOutcome.
   class AttackSummary
     # @param actors [Hash{attacker:, target_sheet:, target_kind:}]
     # @param weapon [Hash]

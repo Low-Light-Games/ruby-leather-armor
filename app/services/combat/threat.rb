@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # An attacker (Combat::Position) whose reach covers a particular
-  # square — produced by Combat::Rules.aoo_threats_against and consumed
-  # by the AoO leg of Combat::PlayerActionResolver.
   class Threat
     attr_reader :position, :reach_squares
 

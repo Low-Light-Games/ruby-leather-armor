@@ -1,16 +1,6 @@
 # frozen_string_literal: true
 
 module CharacterStats
-  # PF1e condition definitions, validation, and upgrade/stacking logic.
-  #
-  # Each condition maps to its mechanical effects:
-  #   - ability_penalties:  permanent ability score reductions while active
-  #   - effective_scores:   forced ability scores (e.g. paralyzed → STR 0)
-  #   - speed_multiplier:   multiplied against final speed (e.g. exhausted → 0.5)
-  #   - roll_penalties:     penalties to specific roll categories
-  #   - ac_modifiers:       situational AC adjustments
-  #   - restrictions:       actions the character cannot perform
-  #   - upgrades_to:        stacking rule (applying X while X is active → Y)
   module Conditions
     DEFINITIONS = {
       "fatigued" => {
@@ -74,7 +64,6 @@ module CharacterStats
         ability_penalties: { "dexterity" => -4 },
         restrictions: %w[cannot_move deny_dex_to_ac_vs_non_grappler],
       },
-      # Combat / narrative flags (tracked on sheets; minimal mechanical defs)
       "fled" => {},
       "surrendered" => {},
       "dead" => {},
@@ -82,7 +71,6 @@ module CharacterStats
       "petrified" => {
         restrictions: %w[cannot_act deny_dex_to_ac],
       },
-      # Dying stabilization flag: character stopped losing HP but is still at negative HP.
       "stabilized" => {},
     }.freeze
 
@@ -92,8 +80,6 @@ module CharacterStats
       VALID_CONDITIONS.include?(name.to_s)
     end
 
-    # Combined ability penalties from all active conditions.
-    # Returns e.g. { "strength" => -8, "dexterity" => -6 }
     def self.ability_penalties(active_conditions)
       combined = {}
       Array(active_conditions).each do |cond_name|
@@ -107,8 +93,6 @@ module CharacterStats
       combined
     end
 
-    # Effective score overrides (e.g. paralyzed → STR 0, DEX 0).
-    # Returns e.g. { "strength" => 0, "dexterity" => 0 }
     def self.effective_scores(active_conditions)
       overrides = {}
       Array(active_conditions).each do |cond_name|
@@ -123,7 +107,6 @@ module CharacterStats
       overrides
     end
 
-    # Speed multiplier — takes the most restrictive across conditions.
     def self.speed_multiplier(active_conditions)
       multiplier = 1.0
       Array(active_conditions).each do |cond_name|
@@ -137,7 +120,6 @@ module CharacterStats
       multiplier
     end
 
-    # All restrictions from active conditions (deduplicated).
     def self.restrictions(active_conditions)
       Array(active_conditions).flat_map do |cond_name|
         defn = DEFINITIONS[cond_name]
@@ -145,8 +127,6 @@ module CharacterStats
       end.uniq
     end
 
-    # Handles stacking/upgrade: adding a condition that already exists triggers
-    # its upgrade path. Returns the new conditions array.
     def self.upgrade(current_conditions, adding)
       current = current_conditions.dup
       defn = DEFINITIONS[adding]

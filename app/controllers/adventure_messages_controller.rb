@@ -29,7 +29,7 @@ class AdventureMessagesController < ApplicationController
       return render json: { error: 'Message too long (max 500 characters)' }, status: :unprocessable_entity
     end
 
-    if DungeonMaster::Rolls::AdventureMechanicalState.latest_pending_initiative_request(@adventure)
+    if Adventures::MechanicalState.latest_pending_initiative_request(@adventure)
       return render json: {
         error: 'Submit your initiative roll above before sending another message.',
         error_code: 'initiative_pending'
@@ -37,7 +37,7 @@ class AdventureMessagesController < ApplicationController
     end
 
     service = dm_service
-    admission = DungeonMaster::FloodControl.admit_prompt_submission(user_id: current_user.id)
+    admission = FloodControl.admit_prompt_submission(user_id: current_user.id)
     player_msg = service.prepare_prompt(player_input)
     PipelineJob.perform_later(
       @adventure.id,
@@ -47,16 +47,16 @@ class AdventureMessagesController < ApplicationController
       { 'prompt_admission' => admission }
     )
     render json: { async: true, messages: [message_json(player_msg)] }, status: :accepted
-  rescue DungeonMaster::FloodControl::PromptBacklogExceeded => e
+  rescue FloodControl::PromptBacklogExceeded => e
     render_limit_error(e.message, code: 'prompt_backlog', reason: 'prompt_backlog')
   rescue StandardError
-    DungeonMaster::FloodControl.release_prompt_submission(admission)
+    FloodControl.release_prompt_submission(admission)
     raise
   end
 
   # POST /adventures/:adventure_id/messages/initiative
   def initiative
-    unless DungeonMaster::Rolls::AdventureMechanicalState.latest_pending_initiative_request(@adventure)
+    unless Adventures::MechanicalState.latest_pending_initiative_request(@adventure)
       return render json: {
         error: 'There is no pending initiative request to resolve.',
         error_code: 'initiative_not_requested'
@@ -77,20 +77,20 @@ class AdventureMessagesController < ApplicationController
 
   # POST /adventures/:adventure_id/messages/roll
   def roll
-    unless DungeonMaster::Rolls::AdventureMechanicalState.latest_pending_roll_request(@adventure)
+    unless Adventures::MechanicalState.latest_pending_roll_request(@adventure)
       return render json: {
         error: 'There is no pending roll request to resolve.',
         error_code: 'roll_not_requested'
       }, status: :unprocessable_entity
     end
 
-    rolls = DungeonMaster::Rolls::RollSubmission.new(params).to_a
+    rolls = Adventures::RollSubmission.new(params).to_a
     service = dm_service
     roll_msg = service.prepare_roll(rolls)
-    roll_text = DungeonMaster::Rolls::RollResultsText.format(rolls)
+    roll_text = Adventures::RollResultsText.format(rolls)
     RollPipelineJob.perform_later(@adventure.id, roll_msg.id, roll_text, current_user.id)
     render json: { async: true, messages: [message_json(roll_msg)] }, status: :accepted
-  rescue DungeonMaster::Rolls::RollSubmission::InvalidValueError => e
+  rescue Adventures::RollSubmission::InvalidValueError => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
@@ -119,11 +119,11 @@ class AdventureMessagesController < ApplicationController
   end
 
   def dm_service
-    DungeonMasterService.new(@adventure, user: current_user)
+    PlayerTurn::Service.new(@adventure, user: current_user)
   end
 
   def message_json(message)
-    DungeonMasterService.message_json(message, admin: current_user&.admin?)
+    PlayerTurn::Service.message_json(message, admin: current_user&.admin?)
   end
 
   def render_limit_error(message, code:, reason:)

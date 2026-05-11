@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Asynchronously ships a PipelineRegistryEntry lifecycle event to Axiom.
-# Enqueued by DungeonMaster::Logging after each status transition.
+# Enqueued by Ai::Logging after each status transition.
 #
 # Errors are not rescued: Sidekiq retries on failure and sentry-rails captures
 # persistent failures via its Sidekiq error handler.

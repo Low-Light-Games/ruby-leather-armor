@@ -17,7 +17,7 @@
 # reasoning_effort. Non-reasoning models silently ignore it (AiClient
 # strips the param). Effort values: minimal | low | medium | high.
 #
-# Hint copy for each step: app/services/dungeon_master/step_registry/model_hints.rb
+# Hint copy for each step: app/services/ai/step_registry/model_hints.rb
 
 default_model: gpt-4.1-nano
 default_reasoning_effort: minimal

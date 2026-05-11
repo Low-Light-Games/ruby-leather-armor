@@ -2,7 +2,6 @@
 
 module Combat
   module Resolvers
-    # Wire payload returned to the HUD when a buff cast resolves.
     class BuffPayload
       def initialize(option:, spell:)
         @option = option

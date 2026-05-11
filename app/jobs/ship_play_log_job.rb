@@ -6,7 +6,7 @@
 # to S3 first; only the resulting URLs are included in the Axiom event, keeping
 # ingestion volume lean.
 #
-# Enqueued by DungeonMaster::Logging after both PlayLog.create! AND
+# Enqueued by Ai::Logging after both PlayLog.create! AND
 # attach_usage_record! have returned — ensuring AiUsageRecord is already
 # persisted before this job reads the record.
 #

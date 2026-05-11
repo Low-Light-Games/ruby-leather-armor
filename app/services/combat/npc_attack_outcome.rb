@@ -1,14 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # Result of one deterministic NPC attack against a sheet — emitted by
-  # Combat::NpcAttackResolver and used by both the AoO leg of
-  # PlayerActionResolver and (later) PR-F's NPC turn engine. The hash
-  # form is what the controller serializes to the frontend.
-  #
-  # Constructor takes four grouped value hashes instead of 13 flat
-  # kwargs so the signature stays small enough for static analysis;
-  # to_h flattens them back out for the API surface.
   class NpcAttackOutcome
     attr_reader :summary, :attack_roll, :damage, :target_state
 

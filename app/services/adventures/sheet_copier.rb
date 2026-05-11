@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
 module Adventures
-  # Copies a player Sheet into an AdventureSheet for a given adventure,
-  # including feat, spell, and item pivot records. Class abilities are not copied;
-  # they are resolved live from class/level via {SheetClassAbilities}.
   class SheetCopier
     def initialize(adventure, sheet, max_hp:, currency:)
       @adventure = adventure

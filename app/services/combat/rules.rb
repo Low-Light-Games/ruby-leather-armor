@@ -1,20 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # Pure deterministic PF1e rules over Combat::Positions (PR-D of the
-  # combat-determinism arc — see docs/combat_redesign.md). Code answers
-  # "is X flanked?", "what NPCs threaten Y?", "is there cover between A
-  # and B?" — no AI involvement, no I/O.
-  #
-  # Coordinate space follows Combat::Positions: integer (x, y) with
-  # Chebyshev distance (every diagonal counts as 1 square). Reach is
-  # measured in squares, default 1 for natural / one-handed weapons.
-  #
-  # Cover modeling is intentionally minimal until the world layer
-  # (battlefield.world.cells) actually carries cover terrain. For now,
-  # `cover_between` returns 0 unless an intervening *creature* sits
-  # between attacker and target on the orthogonal/diagonal line — the
-  # only cover source code can derive without terrain data.
   module Rules
     DEFAULT_REACH_SQUARES = 1
     FLANKING_BONUS = 2
@@ -22,11 +8,6 @@ module Combat
 
     module_function
 
-    # PF1e flanking: an ally must threaten the target from directly
-    # opposite the attacker through the target's square. Faction-aware
-    # ally selection is deferred — every non-target combatant counts as
-    # a potential flanking partner.
-    #
     # @param attacker [Combat::Position]
     # @param target [Combat::Position]
     # @param allies [Array<Combat::Position>]
@@ -38,9 +19,6 @@ module Combat
       Array(allies).any? { |ally| ally_at_mirror?(ally, attacker, target, mirror_x, mirror_y) }
     end
 
-    # Returns Combat::Threat records for combatants whose reach covers
-    # +mover_from+ — they get a free swing if +mover_from+ leaves it.
-    #
     # @param mover [Combat::Position]
     # @param mover_from [Combat::Position, nil]
     # @param others [Array<Combat::Position>]
@@ -56,10 +34,6 @@ module Combat
       end
     end
 
-    # Soft cover only — terrain cover lands when world.cells carries
-    # cover types. An intervening creature on the straight line (or
-    # diagonal) between attacker and target grants +4 AC to the target.
-    #
     # @param attacker [Combat::Position]
     # @param target [Combat::Position]
     # @param others [Array<Combat::Position>]
@@ -88,8 +62,6 @@ module Combat
       [(attacker.x.to_i - square[:x].to_i).abs, (attacker.y.to_i - square[:y].to_i).abs].max <= reach_squares
     end
 
-    # ── helpers ────────────────────────────────────────────────────────
-
     def can_flank_from?(attacker, target, reach_squares)
       return false unless attacker&.coordinates_present? && target&.coordinates_present?
 
@@ -117,8 +89,6 @@ module Combat
       chebyshev <= reach_squares
     end
 
-    # Linearly interpolated points on the attacker→target line, excluding
-    # both endpoints. Used by cover_between to find intervening squares.
     def line_between(attacker, target)
       dx = target.x.to_i - attacker.x.to_i
       dy = target.y.to_i - attacker.y.to_i

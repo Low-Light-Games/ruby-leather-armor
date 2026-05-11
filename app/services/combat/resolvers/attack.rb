@@ -2,11 +2,6 @@
 
 module Combat
   module Resolvers
-    # Attack resolution for Combat::PlayerActionResolver. Mixed in so
-    # the dispatcher class stays small. Reads @adventure, @sheet,
-    # @user, @params, @submitted_dice from the includer. Lookups,
-    # dice, and the response payload live in dedicated sibling modules
-    # so this one stays focused on the resolve_attack flow.
     module Attack
       def self.included(base)
         base.include(Combat::Resolvers::AttackLookups)
@@ -45,11 +40,6 @@ module Combat
         )
       end
 
-      # Refuse melee/melee_touch attacks against targets outside reach. Ranged
-      # modes are unrestricted here. When either combatant has no grid position
-      # (e.g. legacy combats started before the battlefield grid existed) we
-      # skip the check rather than blocking — the attack just resolves like
-      # before.
       def ensure_target_in_reach!(option, target)
         return if ranged_mode?(option[:attack_mode])
 

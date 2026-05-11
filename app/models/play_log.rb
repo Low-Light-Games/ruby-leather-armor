@@ -23,7 +23,7 @@ class PlayLog < ApplicationRecord
     social_event_triggered
   ].freeze
 
-  EVENT_TYPES = (DungeonMaster::StepRegistry.all_call_types + PIPELINE_EVENT_TYPES).freeze
+  EVENT_TYPES = (Ai::StepRegistry.all_call_types + PIPELINE_EVENT_TYPES).freeze
 
   DM_SERVICES = %w[standard].freeze
 

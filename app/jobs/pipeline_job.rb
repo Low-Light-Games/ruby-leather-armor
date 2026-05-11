@@ -12,10 +12,10 @@ class PipelineJob < ApplicationJob
 
     adventure = Adventure.find(adventure_id)
     user = User.find(user_id)
-    service = DungeonMasterService.new(adventure, user: user)
+    service = PlayerTurn::Service.new(adventure, user: user)
     admission = options.is_a?(Hash) ? options['prompt_admission'] : nil
 
-    result_messages = DungeonMaster::FloodControl.with_prompt_submission_heartbeat(admission) do
+    result_messages = FloodControl.with_prompt_submission_heartbeat(admission) do
       service.execute_prompt(player_input, player_message_id: player_message_id)
     end
     broadcast(adventure, result_messages, admin: user.admin?)
@@ -23,7 +23,7 @@ class PipelineJob < ApplicationJob
     broadcast_error(adventure_id)
     raise
   ensure
-    DungeonMaster::FloodControl.release_prompt_submission(admission) if defined?(admission)
+    FloodControl.release_prompt_submission(admission) if defined?(admission)
   end
 
   private
@@ -52,7 +52,7 @@ class PipelineJob < ApplicationJob
   end
 
   def broadcast(adventure, messages, admin: false)
-    serialized = messages.map { |m| DungeonMasterService.message_json(m, admin: admin) }
+    serialized = messages.map { |m| PlayerTurn::Service.message_json(m, admin: admin) }
     AdventureChannel.broadcast_to(adventure, { type: 'pipeline_result', messages: serialized })
   end
 
@@ -68,7 +68,7 @@ class PipelineJob < ApplicationJob
     )
     AdventureChannel.broadcast_to(adventure, {
                                     type: 'pipeline_result',
-                                    messages: [DungeonMasterService.message_json(error_msg)]
+                                    messages: [PlayerTurn::Service.message_json(error_msg)]
                                   })
   rescue StandardError => e
     ApplicationErrorReporter.notify(e, context: { source: 'pipeline_job_broadcast_error', adventure_id: adventure_id })

@@ -1,11 +1,6 @@
 # frozen_string_literal: true
 
 module CharacterStats
-  # Computes all combat-derived statistics for a character.
-  #
-  # Depends on the output of AbilityScoreCalculator (:ability) and
-  # EncumbranceCalculator (:enc).  Handles armor/shield bonuses, feat stat
-  # bonuses, equipment stat bonuses, AC, saves, attacks, HP, and initiative.
   class CombatCalculator
     include GameRules
 
@@ -39,7 +34,6 @@ module CharacterStats
       attack_buff      = ActiveBuffStacking.stacked_value_for_target(active_buff_rows, "attack")
       damage_buff      = ActiveBuffStacking.stacked_value_for_target(active_buff_rows, "damage")
 
-      # ── Saves ────────────────────────────────────────────────────
       fort = compute_base_save(good_saves.include?("fort"), @src.level) +
              mods["constitution"] + feat_stat_bonuses[:fort_save] + equip_stat_bonuses[:fort_save] + save_buff
       ref  = compute_base_save(good_saves.include?("ref"),  @src.level) +
@@ -47,7 +41,6 @@ module CharacterStats
       will = compute_base_save(good_saves.include?("will"), @src.level) +
              mods["wisdom"] + feat_stat_bonuses[:will_save] + equip_stat_bonuses[:will_save] + save_buff
 
-      # ── Encumbrance limits → max DEX and ACP ─────────────────────
       enc_limits    = enc[:enc_limits]
       armor_max_dex = equip[:max_dex_bonus]
       enc_max_dex   = enc_limits[:max_dex]
@@ -59,14 +52,12 @@ module CharacterStats
 
       total_acp = equip[:armor_check_penalty] + enc_limits[:acp]
 
-      # ── Size adjustments ─────────────────────────────────────────
       size     = race_info[:size]
       ac_size  = size == "Small" ? 1 : 0
       cmb_size = size == "Small" ? -1 : 0
 
       ac_buff_max_by_type = ActiveBuffStacking.max_per_bonus_type_for_target(active_buff_rows, "ac")
 
-      # ── AC ───────────────────────────────────────────────────────
       cond_ac_mod = ac_modifier_from_conditions(active_conds)
 
       armor_buff  = ac_buff_max_by_type.delete("armor") || 0
@@ -82,23 +73,19 @@ module CharacterStats
               feat_stat_bonuses[:ac] + equip_stat_bonuses[:ac] + cond_ac_mod + other_buff_ac
       ff_ac = 10 + ac_size + armor_ac + shield_ac + cond_ac_mod + other_buff_ac
 
-      # ── CMB / CMD / Initiative ────────────────────────────────────
       cmb        = bab + mods["strength"] + cmb_size
       cmd        = 10 + bab + mods["strength"] + effective_dex_mod + cmb_size
       initiative = effective_dex_mod + feat_stat_bonuses[:initiative] + equip_stat_bonuses[:initiative]
 
-      # ── HP ───────────────────────────────────────────────────────
       hit_die  = class_info ? class_info[:hit_die] : 8
       hp_bonus = feat_stat_bonuses[:hp] + equip_stat_bonuses[:hp]
       max_hp   = compute_max_hp(hit_die, mods["constitution"], @src.level, hp_bonus)
 
-      # ── Attacks ──────────────────────────────────────────────────
       melee_attack  = bab + mods["strength"] + ac_size +
                       feat_stat_bonuses[:melee_attack] + equip_stat_bonuses[:melee_attack] + attack_buff
       ranged_attack = bab + effective_dex_mod + ac_size +
                       feat_stat_bonuses[:ranged_attack] + equip_stat_bonuses[:ranged_attack] + attack_buff
 
-      # ── Breakdowns ───────────────────────────────────────────────
       buff_breakdown_entries = ac_buff_max_by_type.filter_map do |bonus_type, val|
         { label: "Buff (#{bonus_type})", value: val } if val.nonzero?
       end
@@ -154,7 +141,6 @@ module CharacterStats
       }
     end
 
-    # Exposed for EncumbranceCalculator (needs speed_30/speed_20) and Calculator.
     def compute_equipment_bonuses
       result = empty_equipment_bonuses
 
@@ -186,22 +172,15 @@ module CharacterStats
 
     private
 
-    # ── Saves ────────────────────────────────────────────────────────
-
-    # Pathfinder 1e: good = floor(level/2)+2, poor = floor((level-1)/3)
     def compute_base_save(good, level)
       good ? (level / 2.0).floor + 2 : ((level - 1) / 3.0).floor
     end
-
-    # ── HP ───────────────────────────────────────────────────────────
 
     def compute_max_hp(hit_die, con_mod, level, hp_bonus)
       lv1       = [hit_die + con_mod, 1].max
       per_level = [(hit_die / 2) + 1 + con_mod, 1].max
       [[lv1 + (level - 1) * per_level + hp_bonus, 1].max, 1].max
     end
-
-    # ── Feat stat bonuses ────────────────────────────────────────────
 
     def compute_feat_stat_bonuses
       result = empty_stat_bonuses
@@ -230,8 +209,6 @@ module CharacterStats
 
       result
     end
-
-    # ── Equipment stat bonuses ───────────────────────────────────────
 
     def compute_equipment_stat_bonuses
       result = empty_stat_bonuses
@@ -277,8 +254,6 @@ module CharacterStats
       end
     end
 
-    # ── Conditions ───────────────────────────────────────────────────
-
     def empty_equipment_bonuses
       {
         armor_bonus: 0,
@@ -319,9 +294,6 @@ module CharacterStats
       end
     end
 
-    # ── Breakdowns ───────────────────────────────────────────────────
-
-    # compact drops optional nil lines (e.g. buff_save_breakdown_line when save_buff is zero).
     def build_breakdown(*entries)
       entries.flatten.compact.select { |e| e[:value].to_i != 0 || e[:label] == "Base" }
     end

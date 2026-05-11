@@ -40,7 +40,7 @@ class SafeRackAttackStore
   def safe(event, fallback:, context:)
     yield
   rescue Redis::BaseError, IOError, SystemCallError, Timeout::Error => e
-    DungeonMaster::FloodControl.record_fail_open(event, exception: e, context: context)
+    FloodControl.record_fail_open(event, exception: e, context: context)
     fallback
   end
 end

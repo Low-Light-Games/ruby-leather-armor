@@ -1,28 +1,9 @@
 # frozen_string_literal: true
 
 module Combat
-  # Picks where an approaching NPC should land when it can't already
-  # attack from its current square. Pulls flank-aware destination
-  # selection out of Combat::NpcTurn so that module stays under the
-  # length cap.
-  #
-  # The heuristic per NPC:
-  #   * enumerate the eight squares adjacent to the player
-  #   * keep ones reachable within this NPC's speed and not occupied
-  #   * +5 if an ally already sits on the *opposite* square (flank)
-  #   * −1 per other ally that already crowds this candidate
-  #   * tie-break on shortest path so we don't burn movement
-  #
-  # Each NPC decides in isolation but reads the live battlefield, so
-  # earlier-acting allies' moves ARE visible — over a few turns the herd
-  # spreads out and incidental flanks emerge without a real planner.
   module FlankApproach
     module_function
 
-    # Bundled inputs for preferred_destination — keeps the kwarg list
-    # under the parameter-list cap and gives helpers something to thread.
-    # npc_id is derived from self_creature.id so callers don't have to
-    # thread both.
     class Inputs
       attr_reader :adventure, :npc_pos, :target_pos, :self_creature, :speed
 
@@ -41,8 +22,6 @@ module Combat
 
     # @param inputs [Inputs]
     # @return [Combat::Position, nil] desired stopping square, or nil
-    #   when no adjacency square is reachable (caller should fall back
-    #   to walking straight at the target).
     def preferred_destination(inputs)
       others = Positions.for_adventure(inputs.adventure)
       candidates = reachable_adjacency_squares(inputs, others)
@@ -63,10 +42,6 @@ module Combat
       end
     end
 
-    # Walks one step at a time, recomputing direction each tick so the
-    # NPC can reach off-axis flank squares (the fixed-direction
-    # walk_until_blocked can't bend mid-path). Stops on arrival, on
-    # blockage, or when speed runs out.
     def walk_toward(adventure:, start_pos:, destination:, speed:, npc_id:)
       cur_x = start_pos.x.to_i
       cur_y = start_pos.y.to_i
@@ -104,10 +79,6 @@ module Combat
       tally
     end
 
-    # An ally flanks if it sits on the *opposite* square from this
-    # candidate, mirrored across the target. Allies are NPC tokens with
-    # a creature_sheet_id other than ours; the player token never
-    # qualifies (the player is the *target*, not a flank partner).
     def flanks_ally?(square, target_pos, self_creature, others)
       mirror_x = (target_pos.x.to_i * 2) - square[:x]
       mirror_y = (target_pos.y.to_i * 2) - square[:y]

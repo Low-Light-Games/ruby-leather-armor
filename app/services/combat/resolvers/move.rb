@@ -2,10 +2,6 @@
 
 module Combat
   module Resolvers
-    # Move + withdraw + 5-foot step resolution. Mixed into
-    # Combat::PlayerActionResolver. The grid is canonical for positions
-    # (PR-C); rules engine answers AoO threats (PR-D); withdraw skips
-    # the departure-square AoO and costs a full round.
     module Move
       MOVE_MODES_WITHOUT_AOO = ['5-foot step', 'withdraw'].freeze
 
@@ -78,9 +74,6 @@ module Combat
                                         code: :out_of_reach)
       end
 
-      # Withdraw is the only mode whose departure square does NOT provoke.
-      # Standard move provokes from the departure square. 5-foot step
-      # never provokes.
       def aoo_outcomes_for(mode, origin)
         return [] if MOVE_MODES_WITHOUT_AOO.include?(mode)
 
@@ -134,18 +127,6 @@ module Combat
         { status: :resolved, result: payload }
       end
 
-      # Three movement modes:
-      #
-      #   * 5-foot step — 1 square; legal as long as the move slot has
-      #     not been spent this round and no full-round action was
-      #     claimed. The standard action does NOT need to still be
-      #     available — textbook PF1e lets a character 5-ft step after
-      #     a standard attack. Never provokes; spends the move slot.
-      #   * withdraw    — full-round; departure square does NOT provoke
-      #     (textbook PF1e safe-retreat); requires both standard and
-      #     move unspent so spend_full_round can claim them together.
-      #   * move        — anything else; standard provoke from the
-      #     departure square.
       def movement_cost_delta(distance, withdraw: false)
         econ = (@adventure.combat_context || {})['action_economy'] || {}
         return withdraw_delta!(econ) if withdraw

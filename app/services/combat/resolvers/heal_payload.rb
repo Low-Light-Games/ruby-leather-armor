@@ -2,7 +2,6 @@
 
 module Combat
   module Resolvers
-    # Wire payload returned to the HUD when a self-heal cast resolves.
     class HealPayload
       def initialize(option:, hp_before:, hp_after:, max_hp:, rolled:)
         @option = option

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module Adventures
-  # Computes starting HP and remaining currency for a sheet entering an adventure.
   class StartingStats
     HIT_DIE_MAP = {
       "barbarian" => 12, "bard" => 8, "cleric" => 8, "druid" => 8,
@@ -18,8 +17,6 @@ module Adventures
       @sheet = sheet
     end
 
-    # Max hit die + CON modifier at level 1,
-    # then (hit_die/2 + 1 + CON mod) per additional level.
     def starting_hp
       hit_die  = HIT_DIE_MAP[@sheet.character_class] || 8
       con_mod  = constitution_modifier
@@ -31,8 +28,6 @@ module Adventures
       [total_hp, 1].max
     end
 
-    # Remaining currency after subtracting item purchase costs.
-    # Works in copper pieces to avoid floating-point drift.
     def remaining_currency
       currency = (@sheet.currency || {}).deep_dup
       total_cp = (currency["platinum"].to_i * 1000) +

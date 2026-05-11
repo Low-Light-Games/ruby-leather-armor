@@ -1,16 +1,6 @@
 # frozen_string_literal: true
 
 module CharacterStats
-  # Thin orchestrator that assembles all derived character stats.
-  #
-  # Delegates to four focused sub-calculators:
-  #   AbilityScoreCalculator — racial mods, conditions, ability mods, BAB
-  #   CombatCalculator       — AC, saves, attacks, HP, initiative
-  #   EncumbranceCalculator  — carry weight, encumbrance tier, effective speed
-  #   SkillCalculator        — skill totals and rank bonuses
-  #
-  # The public interface is unchanged: Calculator.new(source).compute returns the
-  # same Hash as before, suitable for storing in the derived_stats JSONB column.
   class Calculator
     # @param source [Sheet, AdventureSheet, CreatureSheet]
     # @param feats  [Array]  pre-loaded feat pivot records (loaded from DB if nil)
@@ -21,7 +11,6 @@ module CharacterStats
       @items = items || load_items(source)
     end
 
-    # Returns the full derived_stats Hash.
     def compute
       ability  = AbilityScoreCalculator.new(@src).compute
       combat   = CombatCalculator.new(@src, feats: @feats, items: @items)
@@ -42,14 +31,10 @@ module CharacterStats
         total_acp: cbt[:armor_check_penalty],
       )
 
-      # ── Speed: encumbrance/armor → condition multiplier → active buffs ──
       speed = enc[:effective_speed]
       cond_speed_mult = Conditions.speed_multiplier(ability[:active_conditions])
       speed = (speed * cond_speed_mult).floor if cond_speed_mult < 1.0
 
-      # Apply active_buffs with target: "speed".
-      # Stacking rule: group by bonus_type; highest per type; sum distinct types.
-      # TODO: extend to target: "str", "dex", etc. when ability-score buff phase lands.
       speed_buffs = PersistedJsonArray.list(@src.try(:active_buffs)).select { |b| b["target"] == "speed" }
       unless speed_buffs.empty?
         buff_speed = speed_buffs
@@ -97,7 +82,6 @@ module CharacterStats
       }
     end
 
-    # Intelligence modifier after racial + optional flex bonus (matches client skill-point budget).
     def self.intelligence_modifier_for_skill_budget(source)
       AbilityScoreCalculator.new(source).compute[:mods]["intelligence"] || 0
     end

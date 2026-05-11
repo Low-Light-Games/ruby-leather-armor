@@ -1,11 +1,6 @@
 # frozen_string_literal: true
 
 module CharacterStats
-  # Computes carry capacity, encumbrance tier, and effective movement speed
-  # for a character based on their equipped and carried items.
-  #
-  # Pure calculation — no database access. Receives pre-loaded item records
-  # and pre-computed strength score + size from the caller.
   class EncumbranceCalculator
     include GameRules
 
@@ -23,7 +18,6 @@ module CharacterStats
     # @param base_speed [Integer]  racial base speed in feet
     # @param equip [Hash]          result of CombatCalculator#equipment_bonuses
     # @return [Hash] with keys: :total_weight, :carry_capacity, :encumbrance,
-    #   :enc_limits, :effective_speed
     def compute(base_speed:, equip:)
       total_weight  = compute_total_weight
       carry_caps    = carry_capacity
@@ -50,12 +44,10 @@ module CharacterStats
         (item.weight || 0).to_f * (si.quantity || 1)
       end
 
-      # 50 coins = 1 lb (Pathfinder 1e)
       coin_weight = @coin_count.to_f / 50.0
       item_weight + coin_weight
     end
 
-    # Returns [light_max, medium_max, heavy_max] for the character's STR + size
     def carry_capacity
       str = [@str_score, 0].max
       caps = if str < CARRY_CAPACITY.length
@@ -69,7 +61,6 @@ module CharacterStats
                rem_caps.map { |v| v * multiplier }
              end
 
-      # Small creatures carry 3/4 of Medium
       @size == "Small" ? caps.map { |v| (v * 0.75).floor } : caps
     end
 
@@ -92,8 +83,6 @@ module CharacterStats
       end
     end
 
-    # Armor may set a specific reduced speed for base 30 or base 20 ft.
-    # Encumbrance reduces speed independently.  The most restrictive wins.
     def compute_effective_speed(base_speed, equip, encumbrance)
       armor_speed = base_speed >= 30 ? equip[:speed_30] : equip[:speed_20]
 

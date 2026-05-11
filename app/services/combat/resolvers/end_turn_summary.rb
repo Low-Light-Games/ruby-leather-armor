@@ -2,10 +2,6 @@
 
 module Combat
   module Resolvers
-    # Wire payload returned to the HUD when the player ends their turn —
-    # carries the new round number, the per-NPC events, and a one-line
-    # human summary. The 'end_turn' kind is the wire-protocol contract
-    # the frontend payload union still keys off.
     class EndTurnSummary
       KIND = 'end_turn'
 

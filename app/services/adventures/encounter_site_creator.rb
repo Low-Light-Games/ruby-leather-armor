@@ -13,14 +13,14 @@ module Adventures
       x = from.x.to_f + ((to.x.to_f - from.x.to_f) * f)
       y = from.y.to_f + ((to.y.to_f - from.y.to_f) * f)
 
-      record = DungeonMaster::Lore::LocationRecord.new(
+      record = Lore::LocationRecord.new(
         name:        next_encounter_site_name(adventure),
         description: build_description(from: from, to: to, fraction: f),
         x:           x,
         y:           y,
       )
 
-      created = DungeonMaster::Lore::ApplyLocations.call(
+      created = Lore::ApplyLocations.call(
         adventure:        adventure,
         log:              log,
         ai:               ai,

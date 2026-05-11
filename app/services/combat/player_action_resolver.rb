@@ -1,31 +1,7 @@
 # frozen_string_literal: true
 
 module Combat
-  # Deterministic resolver for a single player combat action initiated
-  # from the combat HUD (PR-B of the combat-determinism arc — see
-  # docs/combat_redesign.md). The AI is NOT in this path; for the
-  # routine cases — pick an attack option, pick a target, resolve hit
-  # + damage + HP delta — this is the entire pipeline.
-  #
-  # Two dice strategies, selected by `User#combat_dice_strategy`:
-  #
-  #   * "server" — RNG happens here, the resolver returns the final
-  #     `:resolved` result in one round-trip.
-  #   * "client" — the resolver returns a `:awaiting_player_dice`
-  #     payload describing the rolls the player needs to make. The
-  #     frontend posts the natural results back; a second `.call` with
-  #     `submitted_dice:` resolves the action.
-  #
-  # The same shape comes back to the controller in both branches so the
-  # frontend has one rendering surface.
-  #
-  # The dispatcher itself is intentionally small: action-kind validation,
-  # action-economy bookkeeping, action_event logging. The heavy lifting
-  # lives in the per-kind Resolvers::* concerns.
   class PlayerActionResolver
-    # Backwards-compatible alias for the pre-refactor error class. New
-    # code raises Combat::ResolverError directly; existing callers that
-    # rescue PlayerActionResolver::Error keep working.
     Error = Combat::ResolverError
 
     SUPPORTED_KINDS = %w[attack move end_turn buff heal].freeze
@@ -34,7 +10,7 @@ module Combat
       'touch_ac' => 'touch_ac',
       'flat_footed_ac' => 'flat_footed_ac'
     }.freeze
-    PLAYER_NAME = DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME
+    PLAYER_NAME = Combat::TurnCalculator::PLAYER_NAME
 
     include Combat::Resolvers::Attack
     include Combat::Resolvers::Move
@@ -73,8 +49,6 @@ module Combat
 
     private
 
-    # ── Validation ──────────────────────────────────────────────────────
-
     def ensure_combat_active!
       return if @adventure.combat_active?
 
@@ -97,34 +71,20 @@ module Combat
       raise Combat::ResolverError.new("unsupported combat action kind: #{kind.inspect}", code: :unsupported_kind)
     end
 
-    # ── Shared helpers used across resolver concerns ────────────────────
-
-    # Read-modify-write of combat_context.action_economy. Wrapped in
-    # @adventure.with_lock so it serializes against any other writer
-    # (notably AdventureSheets::CombatUiActionEconomy.apply_equip_toggle!).
-    # Without the lock, two near-simultaneous spends on independent slots
-    # (e.g. equip → spend_move racing attack → spend_standard) could each
-    # read the old context and the second write would silently clobber the
-    # first slot's spend.
     def decrement_action_economy_with_delta!(delta, label:)
       @adventure.with_lock do
         ctx = @adventure.combat_context.deep_dup.deep_stringify_keys
-        ctx['action_economy'] = DungeonMaster::Battlefield::ActionEconomy.apply_delta!(ctx['action_economy'], delta)
+        ctx['action_economy'] = Battlefield::ActionEconomy.apply_delta!(ctx['action_economy'], delta)
         @adventure.update!(combat_context: ctx)
       end
     rescue ArgumentError => e
       raise Combat::ResolverError.new("action economy refused #{label}: #{e.message}", code: :action_economy_refused)
     end
 
-    # If the action just dropped the last hostile NPC (or otherwise satisfies
-    # CombatEndResolver), flip combat_context['active'] to false and tag the
-    # response so the frontend can react. Idempotent — ContextUpdate stays
-    # the sole writer of the rest of the context fields, but this single
-    # boolean is fair game from the deterministic HUD path.
     def maybe_end_combat!(result)
       return result unless result.is_a?(Hash)
 
-      end_state = DungeonMaster::Utilities::CombatEndResolver.check_combat_end(
+      end_state = Combat::EndResolver.check_combat_end(
         adventure: @adventure, sheet: @sheet,
         instant_death: defined?(DmConfig) ? DmConfig.instance.instant_death? : false
       )
@@ -150,10 +110,6 @@ module Combat
       Rails.logger.warn("[PlayerActionResolver] combat-end persist failed: #{e.message}")
     end
 
-    # Drop a single system message describing how the fight wrapped up so
-    # the chat doesn't just go silent when combat ends. Skipped on
-    # player_death — apply_player_death_terminus! already persists +
-    # broadcasts its own message.
     def broadcast_combat_end_narration!(reason)
       return if reason == 'player_death'
 
@@ -166,7 +122,7 @@ module Combat
       AdventureChannel.broadcast_to(
         @adventure,
         type: 'pipeline_action_result',
-        messages: [DungeonMaster::AdventurePlay::MessageSerializer.as_json(msg, admin: @user&.admin?)]
+        messages: [Adventures::MessageSerializer.as_json(msg, admin: @user&.admin?)]
       )
     end
 
@@ -177,11 +133,6 @@ module Combat
       end
     end
 
-    # When the deterministic NPC turn engine just killed the player (instant_death
-    # homebrew or HP <= -CON), the AI pipeline path that normally calls
-    # PipelineMessenger#persist_event_messages is bypassed entirely. Mark the
-    # adventure ended here and broadcast a player_death message so the UI's
-    # AdventureChannel listener flips to the death screen.
     def apply_player_death_terminus!
       return if @adventure.ended?
 
@@ -194,7 +145,7 @@ module Combat
       AdventureChannel.broadcast_to(
         @adventure,
         type: 'pipeline_action_result',
-        messages: [DungeonMaster::AdventurePlay::MessageSerializer.as_json(msg, admin: @user&.admin?)]
+        messages: [Adventures::MessageSerializer.as_json(msg, admin: @user&.admin?)]
       )
     end
 

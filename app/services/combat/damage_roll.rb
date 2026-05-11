@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 module Combat
-  # Result of one rolled damage expression — total + damage type.
-  # Combat::NpcAttackResolver passes one of these (or nil, when the
-  # attack missed) through apply_damage_to and AttackSummary. Implements
-  # `[]` so existing hash-style access keeps compiling.
   class DamageRoll
     attr_reader :total, :type
 

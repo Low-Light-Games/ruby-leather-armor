@@ -6,8 +6,6 @@ module Adventures
     # @param sheet   [Sheet]
     # @param user    [User]
     # @param options [Hash]
-    #   :directed_dm [Boolean] default false
-    #   :skip_world_sanity_check [Boolean] default false
     def initialize(story:, sheet:, user:, **options)
       @story    = story
       @sheet    = sheet
@@ -71,21 +69,15 @@ module Adventures
       )
     end
 
-    # Self-healing path for stories created before opening_message was
-    # required: generate one from the premise, persist it back to the
-    # story, then proceed. Subsequent adventures from the same story
-    # reuse the persisted value at no AI cost.
     def jit_generate_opening_message_if_blank!
       return if @story.opening_message.present?
 
-      DungeonMaster::Lore::GenerateOpeningMessage.call(story: @story, user: @user)
+      Lore::GenerateOpeningMessage.call(story: @story, user: @user)
       @story.reload
     end
 
-    # SeedFromAdventure is lossy-with-Sentry internally; this rescue
-    # guarantees adventure creation never fails because seeding did.
     def run_narrative_facts_seed(adventure)
-      DungeonMaster::Lore::SeedFromAdventure.call(adventure: adventure, user: @user)
+      Lore::SeedFromAdventure.call(adventure: adventure, user: @user)
     rescue StandardError => e
       ApplicationErrorReporter.notify(
         e, context: { source: "adventures_bootstrap_narrative_facts_seed", adventure_id: adventure.id }

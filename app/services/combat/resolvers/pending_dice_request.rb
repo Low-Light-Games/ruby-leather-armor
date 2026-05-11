@@ -2,18 +2,13 @@
 
 module Combat
   module Resolvers
-    # Wire payload sent to the HUD when the player has elected to roll
-    # their own attack dice — describes everything the client needs to
-    # show the prompt and post the natural-result back.
     class PendingDiceRequest
       attr_reader :inputs, :creature, :target_name, :damage_ability_bonus
 
       # @param inputs [Combat::Resolvers::AttackInput] resolved option +
-      #   target + bonus/DC + situational, threaded from build_attack_inputs!
       # @param creature [CreatureSheet] the chosen target
       # @param target_name [String] display label for the prompt
       # @param damage_ability_bonus [Integer] STR/DEX/etc bonus the
-      #   client adds to its rolled natural before posting the result
       def initialize(inputs:, creature:, target_name:, damage_ability_bonus:)
         @inputs = inputs
         @creature = creature

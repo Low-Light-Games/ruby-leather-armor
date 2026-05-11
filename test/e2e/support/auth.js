@@ -1,3 +1,5 @@
+const { expect } = require('@playwright/test');
+
 const CREDENTIALS = {
   admin: { email: 'admin@example.com', password: 'admin123' },
   user:  { email: 'test@example.com',  password: 'test123'  },
@@ -7,15 +9,17 @@ const CREDENTIALS = {
 };
 
 async function login(page, role = 'user') {
-  const { email, password } = CREDENTIALS[role];
+  const creds = CREDENTIALS[role];
+  if (!creds) throw new Error(`Unknown role '${role}' — pick one of: ${Object.keys(CREDENTIALS).join(', ')}`);
+
   await page.goto('/adventures/new');
   await page.waitForLoadState('networkidle');
 
   const emailInput = page.locator('input[type="email"]');
   if (!(await emailInput.isVisible())) return; // already logged in
 
-  await emailInput.fill(email);
-  await page.locator('input[type="password"]').fill(password);
+  await emailInput.fill(creds.email);
+  await page.locator('input[type="password"]').fill(creds.password);
   await Promise.all([
     page.waitForResponse(res => res.url().includes('/login')),
     page.getByRole('button', { name: 'Login' }).click(),
@@ -23,14 +27,13 @@ async function login(page, role = 'user') {
   await page.locator('#story-select').waitFor({ timeout: 10_000 });
 }
 
-// Selects the first available story and sheet, then clicks Begin Adventure.
-// Always picks by position so it is independent of seed data ordering.
-async function createAdventure(page) {
-  const storySelect = page.locator('#story-select');
-  await storySelect.waitFor({ timeout: 10_000 });
-  const storyOptions = await storySelect.locator('option').all();
-  const firstStoryValue = await storyOptions[1].getAttribute('value');
-  await storySelect.selectOption(firstStoryValue);
+// @param  page    Playwright Page
+// @param  options { story, sheet } — both optional, can be string|RegExp.
+//                 When omitted the first available option is used. The story
+//                 selector skips position 0 (the placeholder); strings are
+//                 treated as exact match, RegExps as case-insensitive search.
+async function beginAdventure(page, { story, sheet } = {}) {
+  await selectFirstOrMatching(page.locator('#story-select'), story, '#story-select');
 
   const sheetSelect = page.locator('#sheet-select');
   await sheetSelect.waitFor({ timeout: 5_000 });
@@ -38,9 +41,7 @@ async function createAdventure(page) {
     const sel = document.querySelector('#sheet-select');
     return sel && sel.options.length > 1;
   }, { timeout: 5_000 });
-  const sheetOptions = await sheetSelect.locator('option').all();
-  const firstSheetValue = await sheetOptions[1].getAttribute('value');
-  await sheetSelect.selectOption(firstSheetValue);
+  await selectFirstOrMatching(sheetSelect, sheet, '#sheet-select');
 
   await Promise.all([
     page.waitForURL(/\/adventures\/\d+/, { timeout: 30_000 }),
@@ -48,4 +49,20 @@ async function createAdventure(page) {
   ]);
 }
 
-module.exports = { login, createAdventure, CREDENTIALS };
+async function selectFirstOrMatching(selectLocator, matcher, debugLabel) {
+  await selectLocator.waitFor({ timeout: 10_000 });
+  const options = await selectLocator.locator('option').all();
+  if (options.length <= 1) throw new Error(`${debugLabel} has no real options`);
+
+  let optionValue;
+  if (matcher == null) {
+    optionValue = await options[1].getAttribute('value');
+  } else {
+    const optionLocator = selectLocator.locator('option', { hasText: matcher });
+    optionValue = await optionLocator.first().getAttribute('value');
+    expect(optionValue, `${debugLabel} option matching ${matcher} must exist`).toBeTruthy();
+  }
+  await selectLocator.selectOption(optionValue);
+}
+
+module.exports = { login, beginAdventure, CREDENTIALS };

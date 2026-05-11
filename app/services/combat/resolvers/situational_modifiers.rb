@@ -2,9 +2,6 @@
 
 module Combat
   module Resolvers
-    # Per-attack situational state (flanking + cover) — bundled together
-    # so the resolver can carry the boolean and the numeric bonus
-    # together instead of as four loose locals.
     class SituationalModifiers
       attr_reader :flanking, :flanking_bonus, :cover, :cover_bonus
 

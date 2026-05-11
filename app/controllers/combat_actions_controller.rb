@@ -17,7 +17,7 @@ class CombatActionsController < ApplicationController
   # action-economy availability) and the live participant list so the
   # frontend can pick a target. Cheap, no AI, no mutations.
   def options
-    battlefield = DungeonMaster::Battlefield::ApiSnapshot.for_adventure(@adventure)
+    battlefield = Battlefield::ApiSnapshot.for_adventure(@adventure)
     player_pos = Combat::Positions.player_position(@adventure)
     render json: {
       attack_options: attack_options_for_render,
@@ -84,15 +84,15 @@ class CombatActionsController < ApplicationController
   end
 
   def attack_options_for_render
-    DungeonMaster::Combat::AttackOptionBuilder.call(sheet: @adventure_sheet, adventure: @adventure)
+    Combat::Options::AttackOptionBuilder.call(sheet: @adventure_sheet, adventure: @adventure)
   end
 
   def buff_options_for_render
-    DungeonMaster::Combat::BuffOptionBuilder.call(sheet: @adventure_sheet, adventure: @adventure)
+    Combat::Options::BuffOptionBuilder.call(sheet: @adventure_sheet, adventure: @adventure)
   end
 
   def heal_options_for_render
-    DungeonMaster::Combat::HealOptionBuilder.call(sheet: @adventure_sheet, adventure: @adventure)
+    Combat::Options::HealOptionBuilder.call(sheet: @adventure_sheet, adventure: @adventure)
   end
 
   def hostile_targets
@@ -118,6 +118,6 @@ class CombatActionsController < ApplicationController
   end
 
   def participant_is_player?(participant)
-    participant['name'].to_s.casecmp(DungeonMaster::Utilities::CombatTurnCalculator::PLAYER_NAME).zero?
+    participant['name'].to_s.casecmp(Combat::TurnCalculator::PLAYER_NAME).zero?
   end
 end

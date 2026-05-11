@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 module CharacterStats
-  # PF1e-style stacking for persisted active_buff rows: same bonus_type → highest
-  # value wins; distinct bonus_types → sum of each group's winner.
   module ActiveBuffStacking
     module_function
 

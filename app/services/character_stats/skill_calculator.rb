@@ -1,11 +1,6 @@
 # frozen_string_literal: true
 
 module CharacterStats
-  # Computes the full skill list for a character, including rank bonuses,
-  # racial bonuses, feat bonuses, equipment bonuses, and ACP penalties.
-  #
-  # Skill rank budget enforcement and cap logic mirror the client-side rules in
-  # app/javascript/rules/pathfinder_skill_ranks.ts.
   class SkillCalculator
     include GameRules
 

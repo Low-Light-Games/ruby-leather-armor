@@ -144,6 +144,6 @@ class SheetPresenter
     adventure = @sheet.try(:adventure)
     return nil unless adventure&.respond_to?(:time_context)
 
-    DungeonMaster::Utilities::GameClock.absolute_hours(adventure.time_context)
+    Adventures::GameClock.absolute_hours(adventure.time_context)
   end
 end
