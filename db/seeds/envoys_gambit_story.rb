@@ -42,15 +42,43 @@ end
 
 audience_chamber = story.story_locations.find_by!(name: "Velkar's Audience Chamber")
 
+# Hand-authored BestiaryEntry for Lord Velkar Mhonn. No AI is invoked at
+# seed time — this stat block is the canonical, human-reviewed sheet that
+# Lore::SeedFromAdventure clones into a per-Adventure CreatureSheet at
+# adventure creation. Calibrated as a CR-4 aristocrat-fighter hybrid so a
+# mid-tier party that escalates the audience to combat hits a real fight.
+velkar_sheet = BestiaryEntry.find_or_initialize_by(id: "story_envoys_gambit_velkar")
+velkar_sheet.assign_attributes(
+  name:          "Lord Velkar Mhonn",
+  story_id:      story.id,
+  source:        "manual",
+  cr:            4,
+  creature_type: "humanoid",
+  alignment:     "LE",
+  size:          "Medium",
+  strength:      13, dexterity: 14, constitution: 12,
+  intelligence:  16, wisdom:    14, charisma:     16,
+  hp_formula:    "4d10+8",
+  ac:            17,
+  base_attack:   4,
+  speed:         30,
+  special_abilities: [],
+  feats:         ["Combat Expertise", "Weapon Finesse"],
+  skills:        { "Diplomacy" => 12, "Sense Motive" => 9, "Bluff" => 10, "Intimidate" => 8 },
+  description:   "Coalition envoy in formal black-and-silver. Aristocrat-fighter hybrid; composed, watchful, dangerous when cornered."
+)
+velkar_sheet.save!
+
 velkar = story.story_npcs.find_or_initialize_by(name: "Lord Velkar Mhonn")
 velkar.update!(
   source: "manual",
   role: "antagonist",
   attitude: "unfriendly",
   location: audience_chamber,
+  bestiary_entry_id: velkar_sheet.id,
   description: "An older Coalition envoy in formal black-and-silver. Composed, watchful, faintly amused. His authority in this room is total.",
   knowledge: "Knows the contents of the broken-seal letter, knows it implicates the player's faction in a failed assassination attempt three years ago, and is fully prepared to leak it before nightfall unless the player concedes.",
   secret: false
 )
 
-puts "Seeded 1 location and 1 NPC for '#{story.title}'"
+puts "Seeded 1 location, 1 NPC, and 1 hand-authored bestiary stat block for '#{story.title}'"
