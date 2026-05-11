@@ -70,14 +70,15 @@ module Lore
       records.each_with_index do |record, record_index|
         begin
           row = AdventureNpc.create!(
-            adventure_id:  @adventure.id,
-            story_npc_id:  record.story_npc_id,
-            name:          record.name,
-            description:   record.description,
-            attitude:      record.attitude,
-            location_name: record.location_name,
-            source:        @source,
-            embedding:     embeddings_by_index[record_index],
+            adventure_id:      @adventure.id,
+            story_npc_id:      record.story_npc_id,
+            creature_sheet_id: record.creature_sheet_id,
+            name:              record.name,
+            description:       record.description,
+            attitude:          record.attitude,
+            location_name:     record.location_name,
+            source:            @source,
+            embedding:         embeddings_by_index[record_index],
           )
           inserted << row
           log_stored(row, record)
@@ -109,11 +110,12 @@ module Lore
         "adventure_npc_stored",
         "#{@source}: stored NPC ##{row.id} (#{record.name})",
         parsed_response: {
-          npc_id:        row.id,
-          name:          record.name,
-          attitude:      record.attitude,
-          location_name: record.location_name,
-          source:        @source,
+          npc_id:            row.id,
+          name:              record.name,
+          attitude:          record.attitude,
+          location_name:     record.location_name,
+          creature_sheet_id: record.creature_sheet_id,
+          source:            @source,
         },
       )
     end
