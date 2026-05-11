@@ -8,7 +8,7 @@ module PlayerTurn
 
       private
 
-      def run_roll_request(intention)
+      def run_roll_request(intention, cast_roster: nil)
         broadcast_progress('Reading the situation...')
 
         scene_retrieval = retrieve_scene_for_roll_request(intention)
@@ -19,6 +19,7 @@ module PlayerTurn
           scene_retrieval: scene_retrieval,
           relevant_rules: rules,
           current_location_name: @adventure.current_location&.name,
+          cast_roster: cast_roster,
         )
 
         prompt_summary = "RollRequest: \"#{@log.truncate(intention)}\""
@@ -121,15 +122,24 @@ module PlayerTurn
         )
       end
 
+      # Orchestrator-tool path: the GameMaster phase dispatches
+      # `request_roll` as a tool call. CastResolver runs as an
+      # invisible pre-step here too — the orchestrator doesn't see
+      # it (no Tools::Registry entry) but the new identity contract
+      # holds the moment `use_game_master?` flips on, exactly as it
+      # does on the Sequencer path.
       def run_roll_request_as_ai_called_tool(intention)
-        scene_retrieval = retrieve_scene_for_roll_request(intention)
-        rules           = retrieve_rules_for_roll_request(intention)
+        cast_roster      = run_cast_resolve(intention)
+        @current_cast_roster = cast_roster
+        scene_retrieval  = retrieve_scene_for_roll_request(intention)
+        rules            = retrieve_rules_for_roll_request(intention)
 
         ctx = RollRequest::Context.new(
           intent: intention,
           scene_retrieval: scene_retrieval,
           relevant_rules: rules,
           current_location_name: @adventure.current_location&.name,
+          cast_roster: cast_roster,
         )
 
         prompt_summary = "RequestRoll (tool): \"#{@log.truncate(intention)}\""
