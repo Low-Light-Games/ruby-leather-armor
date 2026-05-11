@@ -19,7 +19,7 @@ A player types something like *"I try to pick the lock on the chest"*. That inpu
 ```
 Player input
   │
-  ├─ Triage ──────────── Sanitize (AI) ║ Classify (AI)   ← parallel
+  ├─ Intake (AI) ─────── sanitizes input and scores danger (0–100)
   │
   ├─ Sequencer (AI) ──── splits compound actions into a queue
   │
@@ -57,10 +57,9 @@ Player input
 
 | Step | What it does |
 |---|---|
-| **Sanitize** | Scores input danger (0–100) and produces a cleaned version |
-| **Classify** | Tags the action domain: combat, traversal, social, exploration, rest, inventory |
+| **Intake** | Single AI call at the top of every turn: sanitizes the player input and scores its real-world danger (0–100). The earlier separate `Sanitize` and `Classify` steps were folded into Intake; action-domain classification was retired entirely with the micro-context cleanup |
 | **Sequencer** | Breaks compound actions (*"I search the room and then open the door"*) into ordered sub-actions |
-| **RollRequest** | Out-of-combat single AI call. Decides whether the intent needs a die roll, emits one roll spec (or "no roll") plus the cross-cutting signals (affected_contexts, transition, combatants). Prompt has no character block — top-K rules and scene_facts retrieval (intent + current location + active combat participants), retrieved from pgvector |
+| **RollRequest** | Out-of-combat single AI call. Decides whether the intent needs a die roll, emits one roll spec (or "no roll") plus the cross-cutting signals (`transition`, `combatants`). Prompt has no character block — top-K rules and scene_facts retrieval (intent + current location + active combat participants), retrieved from pgvector |
 | **CombatRollRequest** | In-combat free-text single AI call. Same shape as RollRequest, but the prompt carries attack options, action economy, threats, and the battlefield slice. Combat rolls emit `attack_option_id`; DCs and damage are resolved post-call from the sheet via `CombatMechanicResolution` |
 | **Sanity Checker** | Capability check (sheet-based) + world consistency check (pgvector retrieval against `adventure_narrative_facts`, `adventure_npcs`, and `adventure_locations`) |
 | **Mechanic** | Post-roll arbitration out of combat. Also handles no-roll auto-success outcomes — every action flows through this verdict path |
