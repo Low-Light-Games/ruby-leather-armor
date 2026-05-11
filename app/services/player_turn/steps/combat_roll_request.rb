@@ -62,6 +62,7 @@ module PlayerTurn
 
         valid_ids = combat_participant_ids
         return id if valid_ids.empty?
+
         return id if valid_ids.include?(id)
 
         @log&.play_log!(

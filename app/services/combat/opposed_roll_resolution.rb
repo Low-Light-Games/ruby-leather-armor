@@ -37,6 +37,7 @@ module Combat
     def self.code_dc_for(skill:, target_sheet:)
       opposing = SKILL_TO_OPPOSING_SKILL[normalize(skill)]
       return nil unless opposing
+
       return nil unless target_sheet&.derived_stats.is_a?(Hash)
 
       skills = Array(target_sheet.derived_stats["skills"])
@@ -54,6 +55,7 @@ module Combat
 
       skill = roll[:skill].to_s
       return roll[:dc] unless opposed?(skill)
+
       return roll[:dc] unless target_sheet
 
       code_dc = code_dc_for(skill: skill, target_sheet: target_sheet)

@@ -51,6 +51,7 @@ module PlayerTurn
 
         def self.coerce_bool(raw)
           return nil if raw.nil?
+
           return raw if raw == true || raw == false
 
           nil
@@ -149,6 +150,7 @@ module PlayerTurn
 
       def canonical_or_ai_active(canonical_combat:, base_context:, ai_active:)
         return canonical_combat["active"] if canonical_combat.present? && canonical_combat.key?("active")
+
         return ai_active if !ai_active.nil?
 
         base_context["active"]

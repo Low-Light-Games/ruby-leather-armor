@@ -27,6 +27,7 @@ module Encounters
     # @return [Array<CreatureSheet>] persisted, derived stats recomputed
     def self.from_bestiary(adventure:, bestiary_entry:, display_name: nil, count: 1)
       raise ArgumentError, "bestiary_entry required" if bestiary_entry.nil?
+
       raise ArgumentError, "adventure required"      if adventure.nil?
 
       effective_count = count.to_i.clamp(MIN_COUNT, MAX_COUNT)

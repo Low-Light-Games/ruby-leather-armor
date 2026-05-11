@@ -101,6 +101,7 @@ module Authoring
       raw = Array(raw).join if raw.is_a?(Array)
       formula = raw.to_s.strip
       return "3d8" if formula.empty?
+
       return formula if formula =~ /\A\d+d\d+([+-]\d+)?\z/
 
       "3d8"

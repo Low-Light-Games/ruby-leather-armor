@@ -61,6 +61,7 @@ module PlayerTurn
 
         result.player_rolls.each do |roll|
           next unless roll.is_a?(Hash)
+
           next unless roll[:type].to_s == "skill_check"
 
           roll[:dc] = Combat::OpposedRollResolution.resolve_dc(

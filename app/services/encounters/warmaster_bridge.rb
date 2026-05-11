@@ -138,6 +138,7 @@ module Encounters
 
         c = row.deep_symbolize_keys
         next unless c[:creature_sheet_id]
+
         next if AdventureNpc.where(adventure_id: adventure.id, creature_sheet_id: c[:creature_sheet_id]).exists?
 
         Lore::NpcRecord.new(
