@@ -6,10 +6,6 @@ class StoryNpc < ApplicationRecord
   belongs_to :location, class_name: "StoryLocation", optional: true
   belongs_to :bestiary_entry, optional: true
 
-  # Nested edits flow through the admin story editor — Save with the
-  # already-generated BestiaryEntry's id picks up author tweaks. Creation
-  # is gated to the dedicated Generate endpoint so all new entries go
-  # through Authoring::AuthorStoryNpcSheet.
   accepts_nested_attributes_for :bestiary_entry, update_only: true
 
   SOURCES   = %w[manual].freeze

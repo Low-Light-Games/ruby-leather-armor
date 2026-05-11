@@ -1,23 +1,10 @@
 # frozen_string_literal: true
 
 module Combat
-  # Deterministic DC resolution for opposed skill checks.
-  #
-  # Pathfinder 1e's canonical "opposed check" is two d20 rolls compared
-  # to each other. Translating that to a single d20-vs-DC mechanic so
-  # the player only rolls once, we use the standard "passive defender"
-  # convention: `DC = 10 + opposing skill total`. The defender is
-  # implicitly taking 10. Same shape `Combat::Dice.take_10` uses
-  # elsewhere in this codebase, and the same number a Take-10 player
-  # roll would clear, so behaviour is symmetric.
-  #
-  # Per .cursor/rules/clamp-at-the-boundary.mdc: the prompt asks the
-  # model to omit `dc` for opposed types, but a real model will still
-  # occasionally emit one. We do not raise — punishing a player turn
-  # for a model misstep is the wrong trade. Per
-  # .cursor/rules/error-reporting-sentry.mdc: report the violation to
-  # Sentry (so we can watch prompt-quality regression over time) and
-  # proceed with the code-resolved DC.
+  # PF1e opposed checks resolved as `DC = 10 + opposing skill total`
+  # (passive defender, equivalent to Take-10). When the AI emits a `dc`
+  # for an opposed skill anyway, we report it but use the code DC
+  # rather than raising — a model misstep should not abort the turn.
   module OpposedRollResolution
     SKILL_TO_OPPOSING_SKILL = {
       "stealth"          => "Perception",

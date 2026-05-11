@@ -1,9 +1,7 @@
 # frozen_string_literal: true
 
-# Per-adventure NPC, written by `Lore::ApplyNpcs` (sole writer; §18
-# single-writer invariant for the new structured stores). Replaces
-# the NPC-shaped reads previously served by `traversal_context` and
-# `social_context`.
+# Sole writer: Lore::ApplyNpcs (single-writer invariant per
+# docs/design_philosophy.md §18).
 class AdventureNpc < ApplicationRecord
   ATTITUDES = %w[friendly indifferent unfriendly].freeze
   SOURCES   = %w[seed runtime].freeze

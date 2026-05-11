@@ -1,13 +1,9 @@
 # frozen_string_literal: true
 
 module PlayerTurn
-  # Output of a RollRequest (or CombatRollRequest) evaluation step.
-  #
-  # `target_actor_sheet_id` is an optional integer ID pointing at one
-  # row of the upstream cast roster. `combat_transition` is an
-  # independent signal — a hostile target can be observed, lied to,
-  # intimidated, or avoided, and a friendly target can be attacked, so
-  # combat-start and target identity stay orthogonal.
+  # Invariant: target identity and combat-transition are orthogonal
+  # signals. A hostile target can be observed or negotiated with; a
+  # friendly target can be attacked. Neither one implies the other.
   class EvaluationResult
     attr_reader :intention, :destination, :combat_transition,
                 :target_actor_sheet_id,

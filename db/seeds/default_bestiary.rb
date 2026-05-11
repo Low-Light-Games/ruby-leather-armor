@@ -1,14 +1,7 @@
 # frozen_string_literal: true
 
-# Default-by-type BestiaryEntry rows.
-#
-# These are the cast-resolver's deterministic fallback when a creature name
-# the AI emits doesn't match an existing AdventureNpc, an existing
-# AdventureActorSheet, or any named BestiaryEntry. Stat blocks are calibrated
-# for a CR-3 baseline and varied per role per the type enum the cast
-# resolver picks from.
-#
-# Idempotent on default_for_type — re-running db:seed is safe.
+# Cast-resolver fallback BestiaryEntries, one per type-enum value.
+# Idempotent on default_for_type. Stat blocks target a CR-3 baseline.
 
 DEFAULT_BESTIARY_ENTRIES ||= [
   {

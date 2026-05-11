@@ -1,8 +1,7 @@
 # frozen_string_literal: true
 
-# Combat HUD endpoints — deterministic per-action resolution that bypasses
-# the AI pipeline (PR-B of the combat-determinism arc; see
-# docs/combat_redesign.md).
+# Combat HUD endpoints — deterministic per-action resolution that
+# bypasses the AI pipeline. See docs/combat_redesign.md.
 class CombatActionsController < ApplicationController
   before_action :set_adventure
   before_action -> { authorize(@adventure, :show?) }
@@ -12,10 +11,6 @@ class CombatActionsController < ApplicationController
   before_action :set_adventure_sheet
 
   # GET /adventures/:adventure_id/combat_action/options
-  #
-  # Returns the attack options the HUD can render right now (subject to
-  # action-economy availability) and the live participant list so the
-  # frontend can pick a target. Cheap, no AI, no mutations.
   def options
     battlefield = Battlefield::ApiSnapshot.for_adventure(@adventure)
     player_pos = Combat::Positions.player_position(@adventure)
@@ -33,8 +28,6 @@ class CombatActionsController < ApplicationController
   end
 
   # POST /adventures/:adventure_id/combat_action
-  #
-  # Body: { kind: "attack", attack_option_id, target_actor_sheet_id, submitted_dice? }
   def create
     result = Combat::PlayerActionResolver.call(
       adventure: @adventure,

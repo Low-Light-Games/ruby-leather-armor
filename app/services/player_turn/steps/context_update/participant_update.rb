@@ -3,15 +3,6 @@
 module PlayerTurn
   module Steps
     module ContextUpdate
-      # One participant delta from the `combat_context_update` AI step's
-      # `participant_updates` array. The AI describes per-participant
-      # deltas keyed on the integer `actor_sheet_id` already owned by
-      # the canonical combat context; the canonical participant block
-      # itself is owned by CombatGM mutations and is never rewritten here.
-      #
-      # `hp_delta`, `conditions_added`, and `conditions_removed` are all
-      # individually optional. An entry with only `actor_sheet_id` is
-      # a no-op kept around so log readers can see what the AI emitted.
       class ParticipantUpdate
         attr_reader :actor_sheet_id, :hp_delta, :conditions_added, :conditions_removed
 

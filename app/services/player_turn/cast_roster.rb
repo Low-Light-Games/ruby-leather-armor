@@ -1,16 +1,9 @@
 # frozen_string_literal: true
 
 module PlayerTurn
-  # Snapshot of the cast in scope for one player action — produced by
-  # `Steps::CastResolve` (which delegates to `Encounters::CastResolver`)
-  # and consumed downstream by `Steps::RollRequest`, `Steps::Stagehand`,
-  # and `Encounters::Warmaster.persist_pending_combat!`.
-  #
-  # Each `CastRosterEntry` is a thin projection of an `AdventureNpc` row
-  # with its linked `actor_sheet_id` — the integer ID is the only
-  # thing downstream code or prompts ever need to refer to a creature.
-  # Names live alongside the ID strictly for prompt rendering and
-  # human-readable logs.
+  # Invariant: actor_sheet_id is the only handle downstream code or
+  # prompts use to refer to a cast member. Names accompany the ID
+  # strictly for prompt rendering and human-readable logs.
   class CastRoster
     attr_reader :entries
 

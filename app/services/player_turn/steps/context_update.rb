@@ -23,12 +23,10 @@ module PlayerTurn
         end
       end
 
-      # The AI's combat_context_update output is a small set of pure
-      # deltas (round, turn_order, active flag, per-participant updates)
-      # that the code applies on top of the canonical participant list
-      # in `@adventure.combat_context["participants"]`. The canonical
-      # list is owned by `combat_initialization` / `combat_state_advancement`
-      # mutations from CombatGM — never by this AI step.
+      # Invariant: the canonical participant list belongs to
+      # combat_initialization / combat_state_advancement mutations.
+      # This AI step contributes deltas only (round, turn_order, active,
+      # per-participant updates) and never owns identity.
       class Result
         attr_reader :round, :turn_order, :active, :participant_updates
 

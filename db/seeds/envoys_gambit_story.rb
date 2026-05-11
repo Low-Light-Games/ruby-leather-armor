@@ -1,13 +1,6 @@
 # frozen_string_literal: true
 
-# ── The Envoy's Gambit ────────────────────────────────────────────────────────
-# Single-room conversational story used by the attack_envoy e2e test to
-# exercise the post-roll combat-context-update path with a *named*
-# antagonist. The named StoryNpc surfaces through lore retrieval as a
-# CastResolver candidate; combat-init then projects the same
-# `actor_sheet_id` into the canonical participants block, and
-# Steps::ContextUpdate validates that id round-trips on every subsequent
-# turn (see #validate_participant_identities!).
+# Single-room conversational story exercised by attack_envoy.spec.js.
 
 story = Story.find_or_initialize_by(title: "The Envoy's Gambit")
 story.preview = "A diplomatic audience turns hostile. The envoy across the table knows more than they should — and is no longer pretending otherwise."
@@ -40,11 +33,8 @@ end
 
 audience_chamber = story.story_locations.find_by!(name: "Velkar's Audience Chamber")
 
-# Hand-authored BestiaryEntry for Lord Velkar Mhonn. No AI is invoked at
-# seed time — this stat block is the canonical, human-reviewed sheet that
-# Lore::SeedFromAdventure clones into a per-Adventure AdventureActorSheet at
-# adventure creation. Calibrated as a CR-4 aristocrat-fighter hybrid so a
-# mid-tier party that escalates the audience to combat hits a real fight.
+# Hand-authored, no AI at seed time — the canonical reviewed sheet
+# Lore::SeedFromAdventure clones at adventure creation.
 velkar_sheet = BestiaryEntry.find_or_initialize_by(id: "story_envoys_gambit_velkar")
 velkar_sheet.assign_attributes(
   name:          "Lord Velkar Mhonn",

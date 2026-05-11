@@ -1,14 +1,8 @@
 # frozen_string_literal: true
 
 module Authoring
-  # Story-save AI generator that produces a draft BestiaryEntry attribute
-  # hash for a given StoryNpc. Used by Admin::StoriesController#generate_npc_sheet
-  # only — there is no Sidekiq job, no seed-time invocation, and no
-  # programmatic call from outside the admin editor.
-  #
-  # Output is clamped at the boundary per
-  # `.cursor/rules/clamp-at-the-boundary.mdc`: prompt is intentionally short
-  # and the receiving Ruby enforces every numeric range.
+  # Invoked only from Admin::StoriesController#generate_npc_sheet. No
+  # background jobs, no seed-time callers, no per-turn use.
   class AuthorStoryNpcSheet
     MODEL_KEY    = "creature_generation"
     TEMPLATE_KEY = "authoring/creature_generation"

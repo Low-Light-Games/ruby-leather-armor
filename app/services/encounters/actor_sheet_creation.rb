@@ -1,16 +1,9 @@
 # frozen_string_literal: true
 
 module Encounters
-  # Single public creature-instantiation surface. Used by:
-  #   * Encounters::CastResolver       — turning AI-named creatures into sheets
-  #   * Lore::SeedFromAdventure        — adventure-creation clones for StoryNpcs
-  #   * Encounters::EncounterWarmasterBridge — Harbinger random encounters
-  #   * Encounters::Warmaster          — the bestiary path (delegates here)
-  #
-  # All callers reach a AdventureActorSheet through `from_bestiary`. There is no
-  # AI generator on the per-turn hot path — story NPCs are statted at
-  # authoring time (Authoring::AuthorStoryNpcSheet) and cold-spawned
-  # creatures fall back deterministically to a `default_for_type` BestiaryEntry.
+  # Sole entry point for minting AdventureActorSheets at runtime. No AI
+  # is invoked here; story NPCs are statted at authoring time and
+  # cold-spawned creatures fall back to a `default_for_type` BestiaryEntry.
   module ActorSheetCreation
     MIN_COUNT = 1
     MAX_COUNT = 12

@@ -2,19 +2,17 @@ module Admin
   class StoriesController < BaseController
     before_action :set_story, only: [:show, :update, :destroy, :generate_npc_sheet]
 
-    # GET /admin/stories — server-rendered story list
+    # GET /admin/stories
     def index
       @stories = Story.kept.order(created_at: :desc)
     end
 
-    # GET /admin/stories/new — SPA mount for creating a new story
+    # GET /admin/stories/new
     def new
       render layout: 'admin'
     end
 
-    # GET /admin/stories/:id — SPA mount for editing a story
-    #   HTML: serves SPA shell
-    #   JSON: returns story data for the React editor
+    # GET /admin/stories/:id
     def show
       respond_to do |format|
         format.html { render layout: 'admin' }
@@ -85,7 +83,7 @@ module Admin
       render json: { errors: ["Generation failed: #{e.class}"] }, status: :unprocessable_entity
     end
 
-    # DELETE /admin/stories/:id (soft-delete)
+    # DELETE /admin/stories/:id
     def destroy
       @story.discard!
       respond_to do |format|

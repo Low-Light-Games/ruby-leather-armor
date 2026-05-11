@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-# OGL/SRD-only creature templates from the Pathfinder Reference Document.
-# Used to deterministically create AdventureActorSheet instances at runtime.
+# Licensing invariant: OGL/SRD content from the Pathfinder Reference
+# Document only. Custom or paid-content stat blocks must not land here.
 class BestiaryEntry < ApplicationRecord
   self.primary_key = :id
 

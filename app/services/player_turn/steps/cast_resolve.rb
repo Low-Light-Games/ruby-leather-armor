@@ -2,17 +2,10 @@
 
 module PlayerTurn
   module Steps
-    # Pipeline step: between Sequencer and RollRequest, identify every
-    # creature implicated by the player's intent and resolve each to a
-    # real `AdventureNpc` (with `actor_sheet_id`) via the four-tier
-    # deterministic lookup in `Encounters::CastResolver`.
-    #
-    # Returns a `PlayerTurn::CastRoster`. Errors propagate by design:
-    # without a roster, RollRequest cannot reference creatures by id and
-    # any downstream identity recovery would have to invent again. Per
-    # `.cursor/rules/error-reporting-sentry.mdc` the underlying service
-    # already reports to Sentry before re-raising; this layer just lets
-    # the failure surface so the turn aborts loudly.
+    # Resolves the cast in scope between Sequencer and RollRequest.
+    # Failures propagate uncaught: RollRequest cannot target creatures
+    # without a roster, and inventing identity downstream is the bug
+    # this step exists to prevent.
     module CastResolve
       private
 

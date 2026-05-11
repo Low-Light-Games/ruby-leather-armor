@@ -1,25 +1,18 @@
 # frozen_string_literal: true
 
 module Encounters
-  # Single AI step + four-tier deterministic lookup that turns the cast
-  # resolver's `[{name, type, count}]` output into a roster of
-  # AdventureNpc rows, each with a actor_sheet_id linked to a real
-  # AdventureActorSheet. RollRequest then targets one of those rows by ID
-  # — no more name strings on the wire, no more impromptu "Name"
-  # creatures.
+  # Resolves cast entries to AdventureNpc rows backed by AdventureActorSheets.
   #
-  # The four tiers (highest-first):
-  #   1. Existing AdventureNpc by name (with sheet) — reuse the row.
-  #   2. Existing AdventureActorSheet by name in this adventure — adopt onto
-  #      the AdventureNpc (creating one if missing).
-  #   3. BestiaryEntry by name (story-scoped first, then public) —
-  #      Encounters::ActorSheetCreation.from_bestiary mints sheet(s).
-  #   4. BestiaryEntry by default_for_type — same minting path with
-  #      the type's default stat block (lookup cannot miss after
-  #      seeds run; a miss is an alarming-but-recoverable Sentry event).
+  # Tiers (highest-first):
+  #   1. Existing AdventureNpc by name (with sheet) — reuse.
+  #   2. Existing AdventureActorSheet by name — adopt onto AdventureNpc.
+  #   3. BestiaryEntry by name (story-scoped first, then public) — mint via
+  #      Encounters::ActorSheetCreation.from_bestiary.
+  #   4. BestiaryEntry default_for_type — same minting path; a miss past
+  #      seeds is reported to Sentry.
   #
-  # Cast resolver creations are written as source: "runtime" so they
-  # don't collide with the seed-only `(adventure_id, name)` unique index.
+  # Writes use source: "runtime" to avoid the seed-only
+  # `(adventure_id, name)` unique index.
   class CastResolver
     AI_STEP_NAME = "cast_resolver"
     OVERSPAWN_THRESHOLD = 15
