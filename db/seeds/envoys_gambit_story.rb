@@ -3,13 +3,11 @@
 # ── The Envoy's Gambit ────────────────────────────────────────────────────────
 # Single-room conversational story used by the attack_envoy e2e test to
 # exercise the post-roll combat-context-update path with a *named*
-# antagonist. The named StoryNpc surfaces through lore retrieval into the
-# AI's context, so when the player attacks the envoy the pipeline emits
-# combatants with that exact name — which means RollRequest's combatants
-# normalizer keeps the name (instead of mangling it to "name") and the
-# downstream combat-context-update step deterministically reaches the
-# "dropped creature_sheet_id for Lord Velkar Mhonn" guard in
-# Steps::ContextUpdate#repair_participant_identity.
+# antagonist. The named StoryNpc surfaces through lore retrieval as a
+# CastResolver candidate; combat-init then projects the same
+# `creature_sheet_id` into the canonical participants block, and
+# Steps::ContextUpdate validates that id round-trips on every subsequent
+# turn (see #validate_participant_identities!).
 
 story = Story.find_or_initialize_by(title: "The Envoy's Gambit")
 story.preview = "A diplomatic audience turns hostile. The envoy across the table knows more than they should — and is no longer pretending otherwise."
