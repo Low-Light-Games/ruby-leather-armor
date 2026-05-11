@@ -40,12 +40,33 @@ module PlayerTurn
 
         result = build_roll_request_evaluation_result(parsed: parsed, intention: intention,
                                                       cast_roster: cast_roster)
+        apply_opposed_dc_resolution!(result)
 
         warn_on_invented_rule_slug!(parsed, rules)
         log_roll_request_to_loop(result)
 
         Rolls::PlayerRolls.compute_take_values!(result.player_rolls, sheet: @sheet)
         result
+      end
+
+      # Replace AI-emitted DCs on opposed skill checks with the
+      # deterministic value derived from the target sheet. The model's
+      # DC for opposed types is a soft-banned field; keep the player
+      # turn going even when the model emits one.
+      def apply_opposed_dc_resolution!(result)
+        return unless result.target_creature_sheet_id
+
+        target_sheet = @adventure.creature_sheets.find_by(id: result.target_creature_sheet_id)
+        return unless target_sheet
+
+        result.player_rolls.each do |roll|
+          next unless roll.is_a?(Hash)
+          next unless roll[:type].to_s == "skill_check"
+
+          roll[:dc] = Combat::OpposedRollResolution.resolve_dc(
+            roll: roll, target_sheet: target_sheet, log: @log,
+          )
+        end
       end
 
       def build_roll_request_evaluation_result(parsed:, intention:, cast_roster: nil)
