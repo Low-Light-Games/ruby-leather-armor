@@ -9,11 +9,6 @@ module PlayerTurn
       resolve_with_mechanics(result)
     end
 
-    # Out-of-combat, the cast resolver hands RollRequest a roster of
-    # real `creature_sheet_id`s before any AI step gets to invent
-    # identities. Combat already has a structured live roster, so the
-    # in-combat free-text path (CombatRollRequest) reads
-    # `target_creature_sheet_id` straight off the active combat context.
     def run_evaluation_phase(intention)
       if combat_active?
         @current_cast_roster = PlayerTurn::CastRoster.empty

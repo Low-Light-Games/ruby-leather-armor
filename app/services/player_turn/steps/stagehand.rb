@@ -5,12 +5,6 @@ module PlayerTurn
     module Stagehand
       private
 
-      # Invariant: narrate first, even on combat-init turns. The
-      # narrative for the action that started combat must be persisted
-      # as `action_result` (the `opener_outcome` ride-along on
-      # `awaiting_initiative`) before `initiative_request` reaches the
-      # client, otherwise the chat jumps straight to the prompt with no
-      # description of the attack landing.
       def run_narrative_phase(intent, narration_context:, mutations:, extra: {})
         warmaster_result = maybe_initialize_combat(intent)
         narration = run_parallel_narrative(intent, narration_context: narration_context, mutations: mutations)

@@ -31,7 +31,7 @@ module Authoring
       @log       = log || Ai::Logging.new(adventure: nil, user: @user, dm_service: "standard")
     end
 
-    # @return [Hash] BestiaryEntry attribute hash, every value clamped.
+    # @return [Hash]
     def call
       raw_attrs = run_generation_call
       clamp_attrs(raw_attrs)
@@ -63,7 +63,6 @@ module Authoring
     end
 
     def default_party_level
-      # Authoring time has no live party; use a neutral mid-tier baseline.
       4
     end
 
@@ -94,9 +93,8 @@ module Authoring
       n.clamp(range.min, range.max)
     end
 
-    # Tolerates array-shaped formulas like ["1d8", "+2"] (cheap-model quirk).
-    # Final shape: a single PF1e dice notation string. Empty/unparseable
-    # falls back to a flat 3d8.
+    # @param raw [String, Array<String>]
+    # @return [String] PF1e dice notation
     def normalize_hp_formula(raw)
       raw = Array(raw).join if raw.is_a?(Array)
       formula = raw.to_s.strip

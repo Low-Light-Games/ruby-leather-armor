@@ -42,8 +42,7 @@ module Encounters
       @scene_retrieval = scene_retrieval
     end
 
-    # @return [Array<AdventureNpc>] roster for this turn — one row per
-    #   resolved creature instance (count > 1 produces N rows).
+    # @return [Array<AdventureNpc>]
     def call
       ai_entries = run_ai_call
       members = ai_entries.flat_map { |entry| resolve_entry(entry) }
@@ -112,9 +111,7 @@ module Encounters
       n.clamp(1, Encounters::CreatureCreation::MAX_COUNT)
     end
 
-    # Tier 1 + Tier 2 collapsed into a single reuse-or-adopt path. Returns
-    # a persisted AdventureNpc with creature_sheet_id, or nil if nothing
-    # to reuse (caller falls through to bestiary tiers).
+    # @return [AdventureNpc, nil]
     def reuse_or_adopt_single(name)
       existing_npc = lookup_adventure_npc_by_name(name)
       return existing_npc if existing_npc&.creature_sheet_id

@@ -63,10 +63,6 @@ module Admin
     end
 
     # POST /admin/stories/:id/generate_npc_sheet
-    # Body: { story_npc_id: <int> }
-    # Calls Authoring::AuthorStoryNpcSheet, persists/refreshes a
-    # story-scoped BestiaryEntry, and links the StoryNpc to it.
-    # Returns the bestiary entry JSON for the editor to render.
     def generate_npc_sheet
       story_npc = @story.story_npcs.find(params.require(:story_npc_id))
       attrs = Authoring::AuthorStoryNpcSheet.call(story_npc: story_npc, user: current_user)
@@ -129,8 +125,6 @@ module Admin
       )
     end
 
-    # Story is invalid for save when any non-deleted, named StoryNpc lacks
-    # a bestiary entry. Anonymous (blank-name) drafts are allowed mid-edit.
     def named_story_npcs_missing_bestiary(story)
       story.story_npcs.story_level.where(bestiary_entry_id: nil).reject do |npc|
         npc.name.to_s.strip.empty?

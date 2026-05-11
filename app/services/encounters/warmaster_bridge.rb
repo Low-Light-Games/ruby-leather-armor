@@ -127,11 +127,9 @@ module Encounters
       "#{encounter_scene}\n\n#{verdict_outcome}"
     end
 
-    # Mirror Harbinger-spawned creatures into adventure_npcs so the
-    # cast roster on the next player turn finds them via the existing
-    # AdventureNpc tier of the deterministic lookup. Without this the
-    # next CastResolver call would fall through to the bestiary tiers
-    # and create a duplicate sheet for the same enemy.
+    # Dedup invariant: every Harbinger-spawned sheet must back an
+    # AdventureNpc row, otherwise the next CastResolver pass falls
+    # through the AdventureNpc tier and mints a duplicate sheet.
     def self.register_spawned_creatures_as_adventure_npcs(adventure:, creature_data:, log:, ai:)
       records = Array(creature_data).filter_map do |row|
         next unless row.is_a?(Hash)

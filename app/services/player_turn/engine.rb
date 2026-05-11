@@ -84,11 +84,6 @@ module PlayerTurn
       rehydrate_cast_roster_from_loop!
     end
 
-    # When the player's roll resumes a paused turn the original engine
-    # is gone, so the in-memory `@current_cast_roster` it built has to
-    # be reconstructed from the loop snapshot
-    # `Steps::CastResolve#log_cast_roster_to_loop` wrote — otherwise
-    # Stagehand sees an empty roster and silently skips combat init.
     def rehydrate_cast_roster_from_loop!
       return if @loop.nil?
 

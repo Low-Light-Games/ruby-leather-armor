@@ -34,12 +34,7 @@ module PlayerTurn
           )
         end
 
-        # In-combat cast roster — projection of `combat_context.participants`
-        # NPC rows down to the same `[id=N] Name` shape RollRequest's prompt
-        # uses out of combat. Lets the AI hand back `target_creature_sheet_id`
-        # (an integer) for non-attack rolls (Diplomacy mid-fight, Stealth to
-        # break line-of-sight, Sleight of Hand to lift a key off a guard,
-        # etc.) the same way RollRequest does.
+        # @return [Array<Hash>] one `{ id:, name:, attitude: }` per NPC participant
         def self.build_combat_cast_roster(combat_ctx:)
           Array(combat_ctx['participants']).filter_map do |raw|
             row = raw.is_a?(Hash) ? raw.deep_stringify_keys : {}

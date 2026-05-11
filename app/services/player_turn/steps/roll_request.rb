@@ -49,10 +49,6 @@ module PlayerTurn
         result
       end
 
-      # Soft-clamp the DC for opposed skill checks: the prompt asks the
-      # model to omit `dc` for opposed types, but a model emission is
-      # never raised on — we override with the deterministic value and
-      # keep the player turn going (see `Combat::OpposedRollResolution`).
       def apply_opposed_dc_resolution!(result)
         return unless result.target_creature_sheet_id
 
@@ -108,9 +104,7 @@ module PlayerTurn
         }.compact
       end
 
-      # Clamp at the boundary (`.cursor/rules/clamp-at-the-boundary.mdc`):
-      # coerce to Integer and require a roster hit. An AI-emitted id
-      # that doesn't resolve is logged and treated as omitted.
+      # @return [Integer, nil]
       def validated_target_id(raw, cast_roster:)
         return nil if raw.nil? || raw == ""
 
@@ -156,10 +150,6 @@ module PlayerTurn
         )
       end
 
-      # Tool-call path used by the GameMaster orchestrator. CastResolver
-      # still runs as an invisible pre-step so target identity holds
-      # whether or not `use_game_master?` is on; it has no
-      # `Tools::Registry` entry, so the orchestrator never sees it.
       def run_roll_request_as_ai_called_tool(intention)
         cast_roster      = run_cast_resolve(intention)
         @current_cast_roster = cast_roster

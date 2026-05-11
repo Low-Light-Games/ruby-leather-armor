@@ -15,16 +15,11 @@ module Encounters
     MIN_COUNT = 1
     MAX_COUNT = 12
 
-    # Persists `count` CreatureSheet rows projected from a BestiaryEntry.
-    #
-    # When count > 1, each instance is independently HP-rolled and gets a
-    # numbered name suffix ("Goblin Patrol Member 1", "... 2", ...).
-    #
     # @param adventure [Adventure]
     # @param bestiary_entry [BestiaryEntry]
-    # @param display_name [String, nil] overrides bestiary entry's name
+    # @param display_name [String, nil]
     # @param count [Integer] clamped to [MIN_COUNT, MAX_COUNT]
-    # @return [Array<CreatureSheet>] persisted, derived stats recomputed
+    # @return [Array<CreatureSheet>]
     def self.from_bestiary(adventure:, bestiary_entry:, display_name: nil, count: 1)
       raise ArgumentError, "bestiary_entry required" if bestiary_entry.nil?
 
@@ -49,10 +44,8 @@ module Encounters
       end
     end
 
-    # Rolls a Pathfinder-style hit-dice formula like "3d10+6" or "1d8-1".
-    # Falls back to 10 for an empty/unparseable formula. Tolerant of
-    # array-shaped inputs (`["1d8", "+2"]`) per cheap-AI quirks (clamp at
-    # the boundary — see `.cursor/rules/clamp-at-the-boundary.mdc`).
+    # @param formula [String, Array<String>] PF1e dice notation
+    # @return [Integer]
     def self.roll_hp(formula)
       formula = Array(formula).join if formula.is_a?(Array)
       return 10 if formula.to_s.strip.empty?

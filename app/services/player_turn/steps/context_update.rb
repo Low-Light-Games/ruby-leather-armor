@@ -152,10 +152,7 @@ module PlayerTurn
         base_context["active"]
       end
 
-      # Invariant: every NPC participant in the canonical combat context
-      # MUST point at a real `creature_sheets` row. Anything else means
-      # something upstream invented identity — raise loudly so we see it
-      # in Sentry instead of silently corrupting the next turn.
+      # @raise [Ai::Error] when any NPC participant has no live `creature_sheets` row
       def validate_participant_identities!(participants)
         Array(participants).each do |raw|
           row = raw.is_a?(Hash) ? raw.deep_stringify_keys : {}

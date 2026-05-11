@@ -82,10 +82,7 @@ module Lore
       )
     end
 
-    # Clones the StoryNpc's BestiaryEntry stat block into a per-Adventure
-    # CreatureSheet. Returns the new sheet id, or nil if the StoryNpc has
-    # no bestiary entry (allowed today during the staged StoryNpc roll-out;
-    # becomes a save-time validation in a later commit).
+    # @return [Integer, nil]
     def clone_sheet_for(story_npc)
       bestiary_entry = story_npc.bestiary_entry
       return nil unless bestiary_entry

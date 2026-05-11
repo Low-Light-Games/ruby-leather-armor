@@ -99,11 +99,10 @@ module Encounters
       )
     end
 
-    # Persists a pending combat context built from a `PlayerTurn::CastRoster`.
-    # `pick_initial_combatants` decides who joins: the action's explicit
-    # `target_creature_sheet_id` plus any pre-existing hostile roster
-    # entries. Indifferent / friendly bystanders stay out — they can be
-    # pulled in by the world turn or a follow-up player action.
+    # @param adventure [Adventure]
+    # @param cast_roster [PlayerTurn::CastRoster]
+    # @param target_creature_sheet_id [Integer, nil]
+    # @return [Hash{Symbol => Object}] :status, plus :creature_data when :awaiting_initiative
     def persist_combat_from_cast_roster!(adventure:, cast_roster:, target_creature_sheet_id: nil)
       combatants = pick_initial_combatants(cast_roster, target_creature_sheet_id)
       return { status: :no_creatures } if combatants.empty?

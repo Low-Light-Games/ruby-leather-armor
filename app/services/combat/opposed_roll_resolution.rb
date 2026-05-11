@@ -46,10 +46,10 @@ module Combat
       DEFENDER_PASSIVE_BASE + total
     end
 
-    # Returns the DC the engine should use for `roll` against
-    # `target_sheet`. Falls back to the AI's `dc` when the roll isn't
-    # opposed or the target is unknown — RollRequest still owns
-    # terrain/static DCs (climbing a wall, jumping a chasm).
+    # @param roll [Hash]
+    # @param target_sheet [CreatureSheet, nil]
+    # @param log [#play_log!, nil]
+    # @return [Integer, nil]
     def self.resolve_dc(roll:, target_sheet:, log: nil)
       return roll[:dc] unless roll.is_a?(Hash)
 
