@@ -5,19 +5,32 @@ module PlayerTurn
     module Stagehand
       private
 
+      # Always runs `run_parallel_narrative` first — the player must
+      # see the narrative for the action they just took, even when
+      # that action initiated combat. Without this, attacking an
+      # unintroduced NPC silently transitioned to "Roll for
+      # initiative!" with no description of the attack landing
+      # (the dominant attack_envoy.spec.js failure mode).
+      #
+      # When combat-init fires, the narrative rides on top as the
+      # `opener_outcome`: Messenger persists it as an `action_result`
+      # message before the `initiative_request`, so the chat reads
+      # narrative → "Roll for initiative!" instead of jumping
+      # straight to the prompt.
       def run_narrative_phase(intent, narration_context:, mutations:, extra: {})
         warmaster_result = maybe_initialize_combat(intent)
+        narration = run_parallel_narrative(intent, narration_context: narration_context, mutations: mutations)
+
         if warmaster_result && warmaster_result[:status] == :awaiting_initiative
-          run_context_updates(narration_context.combined_seed, mutations)
+          opener_outcome = narration[:narrative].to_s.presence
+          extras_with_opener = opener_outcome ? extra.merge(opener_outcome: opener_outcome) : extra
           return Narration::PhaseResults.awaiting_initiative(
             intent: intent,
             creature_data: warmaster_result[:creature_data],
             mutations: mutations,
-            extras: extra,
+            extras: extras_with_opener,
           ).to_h
         end
-
-        narration = run_parallel_narrative(intent, narration_context: narration_context, mutations: mutations)
 
         Narration::PhaseResults.narrated(
           narrative: narration[:narrative],
