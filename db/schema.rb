@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_11_130000) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_11_130100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -115,9 +115,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_11_130000) do
     t.bigint "last_seen_loop_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "creature_sheet_id"
     t.index ["adventure_id", "location_name"], name: "index_adventure_npcs_on_adventure_and_location"
     t.index ["adventure_id", "name"], name: "index_adventure_npcs_seed_unique_per_adventure", unique: true, where: "((source)::text = 'seed'::text)"
     t.index ["adventure_id"], name: "index_adventure_npcs_on_adventure_id"
+    t.index ["creature_sheet_id"], name: "index_adventure_npcs_on_creature_sheet_id"
     t.index ["embedding"], name: "index_adventure_npcs_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
     t.index ["last_seen_loop_id"], name: "index_adventure_npcs_on_last_seen_loop_id"
     t.index ["story_npc_id"], name: "index_adventure_npcs_on_story_npc_id"
@@ -670,7 +672,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_11_130000) do
     t.boolean "secret", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "bestiary_entry_id"
     t.index ["adventure_id"], name: "index_story_npcs_on_adventure_id"
+    t.index ["bestiary_entry_id"], name: "index_story_npcs_on_bestiary_entry_id"
     t.index ["location_id"], name: "index_story_npcs_on_location_id"
     t.index ["story_id"], name: "index_story_npcs_on_story_id"
   end
@@ -734,6 +738,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_11_130000) do
   add_foreign_key "adventure_narrative_facts", "adventures"
   add_foreign_key "adventure_npcs", "adventure_loops", column: "last_seen_loop_id"
   add_foreign_key "adventure_npcs", "adventures"
+  add_foreign_key "adventure_npcs", "creature_sheets"
   add_foreign_key "adventure_npcs", "story_npcs"
   add_foreign_key "adventure_sheet_feats", "adventure_sheets"
   add_foreign_key "adventure_sheet_feats", "feat_definitions", column: "feat_id"
@@ -772,6 +777,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_11_130000) do
   add_foreign_key "sheets", "users"
   add_foreign_key "story_locations", "stories"
   add_foreign_key "story_npcs", "adventures"
+  add_foreign_key "story_npcs", "bestiary_entries"
   add_foreign_key "story_npcs", "stories"
   add_foreign_key "story_npcs", "story_locations", column: "location_id", on_delete: :nullify
   add_foreign_key "user_stripe_profiles", "users"

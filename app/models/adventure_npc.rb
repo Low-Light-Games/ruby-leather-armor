@@ -10,6 +10,7 @@ class AdventureNpc < ApplicationRecord
 
   belongs_to :adventure
   belongs_to :story_npc, optional: true
+  belongs_to :creature_sheet, optional: true
   belongs_to :last_seen_loop,
              class_name: "AdventureLoop",
              foreign_key: :last_seen_loop_id,
@@ -25,6 +26,7 @@ class AdventureNpc < ApplicationRecord
   scope :at_location,   ->(location_name) { where(location_name: location_name) }
   scope :hostile,       -> { where(attitude: "unfriendly") }
   scope :non_hostile,   -> { where.not(attitude: "unfriendly") }
+  scope :with_sheet,    -> { where.not(creature_sheet_id: nil) }
   scope :nearest_for, ->(adventure, embedding, limit:) {
     for_adventure(adventure)
       .nearest_neighbors(:embedding, embedding, distance: "cosine")
