@@ -296,11 +296,11 @@ module Encounters
     end
 
     def create_creature_from_bestiary_static(ctx, entry, display_name)
-      hp = roll_hp_static(entry.hp_formula)
-      attrs = entry.to_creature_sheet_attrs(display_name: display_name)
-      sheet = ctx.adventure.creature_sheets.create!(attrs.merge(hp: hp, max_hp: hp, origin: "bestiary"))
-      sheet.recompute_derived_stats!
-      sheet
+      Encounters::CreatureCreation.from_bestiary(
+        adventure:      ctx.adventure,
+        bestiary_entry: entry,
+        display_name:   display_name
+      ).first
     end
 
     def dynamic_creature_sheet_static(ctx, name, party_level:)
@@ -402,15 +402,7 @@ module Encounters
     end
 
     def roll_hp_static(formula)
-      formula = Array(formula).join if formula.is_a?(Array)
-      return 10 unless formula.present?
-
-      if formula.to_s =~ /(\d+)d(\d+)([+-]\d+)?/
-        count, die, mod = $1.to_i, $2.to_i, ($3 || 0).to_i
-        count.times.sum { rand(1..die) } + mod
-      else
-        formula.to_i.nonzero? || 10
-      end
+      Encounters::CreatureCreation.roll_hp(formula)
     end
 
     def creature_record(sheet, display_name)
