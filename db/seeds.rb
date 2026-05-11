@@ -112,14 +112,14 @@ def seed_playwright_combat_fixture!
 
   creature_data = goblins.map { |g| { creature_sheet_id: g.id, name: g.name, initiative: 1 } }
 
-  combat_data = DungeonMaster::Utilities::Warmaster.compute_combat_initialization(
+  combat_data = Encounters::Warmaster.compute_combat_initialization(
     adventure: adventure,
     player_sheet: adventure_sheet,
     creature_data: creature_data,
     player_initiative: 99
   )
 
-  DungeonMaster::Battlefield::PersistCombatStart.call(
+  Battlefield::PersistCombatStart.call(
     adventure: adventure, combat_data: combat_data, sheet: adventure_sheet
   )
 
