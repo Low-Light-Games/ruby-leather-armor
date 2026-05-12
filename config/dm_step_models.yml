@@ -33,6 +33,7 @@ step_models:
   roll_request: gpt-5-nano
   request_roll_tool: gpt-5-nano
   combat_roll_request: gpt-5-nano
+  cast_resolver: gpt-5-nano
 
 # Per-step reasoning_effort overrides. Empty hash = every step uses
 # default_reasoning_effort. Only meaningful when the resolved model is a
