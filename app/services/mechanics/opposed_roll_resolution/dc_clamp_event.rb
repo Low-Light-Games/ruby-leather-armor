@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Combat
+module Mechanics
   module OpposedRollResolution
     class DcClampEvent
       attr_reader :skill, :ai_dc, :code_dc, :target_sheet_id

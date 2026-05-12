@@ -334,7 +334,7 @@ moment the cast roster is built; RollRequest never invents a creature
 name.
 
 Opposed roll DCs (Stealth vs Perception, Bluff vs Sense Motive, etc.)
-are resolved post-call by `Combat::OpposedRollResolution` from the
+are resolved post-call by `Mechanics::OpposedRollResolution` from the
 target's sheet — the AI is asked to omit `dc` for opposed rolls and is
 overridden with the code-resolved value if it emits one anyway (the
 override is reported to Sentry as `opposed_roll_dc_conflict` so prompt
@@ -549,7 +549,7 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | Intake | ✅ AI | Danger scoring, sanitization, DM query detection |
 | Sequencer | ✅ AI | Action splitting (skipped if `action_queue` off) |
 | CastResolver | ✅ AI ×1 + ❌ code 4-tier lookup | Out-of-combat. Names every creature in the scene as `[{name, type, count}]` against a closed five-entry type enum; code resolves each entry against existing AdventureNpc → existing AdventureActorSheet → BestiaryEntry by name → BestiaryEntry by `default_for_type`. Output `PlayerTurn::CastRoster` is persisted on the AdventureLoop |
-| RollRequest | ✅ AI ×1 | Out-of-combat single call. Top-K rules + cast roster + scene beats from pgvector; no character block. Emits one roll spec (or "no roll") plus optional `target_actor_sheet_id` (id from the cast roster) and orthogonal `transition` signal. Opposed-roll DCs are resolved post-call from the target sheet by `Combat::OpposedRollResolution` |
+| RollRequest | ✅ AI ×1 | Out-of-combat single call. Top-K rules + cast roster + scene beats from pgvector; no character block. Emits one roll spec (or "no roll") plus optional `target_actor_sheet_id` (id from the cast roster) and orthogonal `transition` signal. Opposed-roll DCs are resolved post-call from the target sheet by `Mechanics::OpposedRollResolution` |
 | CombatRollRequest | ✅ AI ×1 + ❌ code clamping (`Phases::CombatMechanicResolution`) | Combat-active free-text. Carries attack options, action economy, threats, battlefield text. Emits `attack_option_id` (never DC); Ruby resolves attack mode, defense kind, damage metadata, and DCs from the sheet. Free-text rolls share the same optional `target_actor_sheet_id` contract sourced from the live combat roster |
 | Combat::PlayerActionResolver | ❌ Code | Deterministic Combat HUD path: server-authoritative attack / move / end-turn |
 | Combat::NpcTurn | ❌ Code | Per-NPC turn engine driven off `behavior_policy` (no AI call per NPC) |

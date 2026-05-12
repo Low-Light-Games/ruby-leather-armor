@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
-module Combat
-  # PF1e opposed checks resolved as `DC = 10 + opposing skill total`
-  # (passive defender, equivalent to Take-10). When the AI emits a `dc`
-  # for an opposed skill anyway, we report it but use the code DC
-  # rather than raising — a model misstep should not abort the turn.
+module Mechanics
   module OpposedRollResolution
     SKILL_TO_OPPOSING_SKILL = {
       "stealth"          => "Perception",

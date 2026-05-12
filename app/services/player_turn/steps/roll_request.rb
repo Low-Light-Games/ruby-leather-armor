@@ -60,7 +60,7 @@ module PlayerTurn
 
           next unless roll[:type].to_s == "skill_check"
 
-          roll[:dc] = Combat::OpposedRollResolution.resolve_dc(
+          roll[:dc] = Mechanics::OpposedRollResolution.resolve_dc(
             roll: roll, target_sheet: target_sheet, log: @log,
           )
         end
