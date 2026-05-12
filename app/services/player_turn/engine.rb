@@ -90,21 +90,21 @@ module PlayerTurn
       stored = @loop.get("cast_roster")
       return if stored.blank? || !stored.is_a?(Hash)
 
-      entries = Array(stored["entries"]).filter_map do |row|
+      members = Array(stored["members"]).filter_map do |row|
         next nil unless row.is_a?(Hash)
 
         actor_sheet_id = Integer(row["actor_sheet_id"], exception: false)
         next nil unless actor_sheet_id&.positive?
 
-        PlayerTurn::CastRosterEntry.new(
+        PlayerTurn::CastMember.new(
           adventure_npc_id:  Integer(row["adventure_npc_id"], exception: false),
-          actor_sheet_id: actor_sheet_id,
+          actor_sheet_id:    actor_sheet_id,
           name:              row["name"].to_s,
           attitude:          row["attitude"].to_s.presence || "indifferent",
           location_name:     row["location_name"],
         )
       end
-      @current_cast_roster = PlayerTurn::CastRoster.new(entries: entries)
+      @current_cast_roster = PlayerTurn::CastRoster.new(members: members)
     end
 
     def tl(step, summary)

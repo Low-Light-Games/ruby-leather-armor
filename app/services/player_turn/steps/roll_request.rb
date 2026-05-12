@@ -119,8 +119,8 @@ module PlayerTurn
           "RollRequest emitted target_actor_sheet_id=#{id} not in cast roster",
           parsed_response: UnknownTargetEvent.new(
             emitted_target_id: id,
-            roster_ids:        roster.entries.map(&:actor_sheet_id),
-            roster_names:      roster.entries.map(&:name),
+            roster_ids:        roster.members.map(&:actor_sheet_id),
+            roster_names:      roster.members.map(&:name),
           ).to_h
         )
         nil

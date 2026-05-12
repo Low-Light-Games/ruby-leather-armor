@@ -26,7 +26,7 @@ module PlayerTurn
         summary = if roster.empty?
                     "No cast in scope"
                   else
-                    "Cast: #{roster.entries.map(&:name).join(', ').truncate(180)}"
+                    "Cast: #{roster.members.map(&:name).join(', ').truncate(180)}"
                   end
 
         @loop.batch_update!(

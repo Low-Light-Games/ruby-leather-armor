@@ -2,59 +2,59 @@
 
 module PlayerTurn
   class CastRoster
-    attr_reader :entries
+    attr_reader :members
 
     def self.empty
-      new(entries: [])
+      new(members: [])
     end
 
     def self.from_adventure_npcs(npcs)
-      entries = Array(npcs).filter_map do |npc|
+      members = Array(npcs).filter_map do |npc|
         next nil unless npc.respond_to?(:id) && npc.respond_to?(:actor_sheet_id)
 
-        CastRosterEntry.new(
+        CastMember.new(
           adventure_npc_id:  npc.id,
-          actor_sheet_id: npc.actor_sheet_id,
+          actor_sheet_id:    npc.actor_sheet_id,
           name:              npc.name,
           attitude:          npc.attitude,
           location_name:     npc.location_name,
         )
       end
-      new(entries: entries)
+      new(members: members)
     end
 
-    def initialize(entries:)
-      @entries = Array(entries).freeze
+    def initialize(members:)
+      @members = Array(members).freeze
     end
 
     def empty?
-      @entries.empty?
+      @members.empty?
     end
 
     def size
-      @entries.size
+      @members.size
     end
 
     def find_by_actor_sheet_id(id)
       id = id.to_i
-      @entries.find { |e| e.actor_sheet_id.to_i == id }
+      @members.find { |m| m.actor_sheet_id.to_i == id }
     end
 
-    def hostile_entries
-      @entries.select(&:hostile?)
+    def hostile_members
+      @members.select(&:hostile?)
     end
 
     # @return [Array<String>]
     def prompt_lines
-      @entries.map do |entry|
-        location_name = entry.location_name.to_s.strip
+      @members.map do |member|
+        location_name = member.location_name.to_s.strip
         location_suffix = location_name.empty? ? "" : " — at #{location_name}"
-        "[id=#{entry.actor_sheet_id}] #{entry.name} (#{entry.attitude})#{location_suffix}"
+        "[id=#{member.actor_sheet_id}] #{member.name} (#{member.attitude})#{location_suffix}"
       end
     end
 
     def to_h
-      { entries: @entries.map(&:to_h) }
+      { members: @members.map(&:to_h) }
     end
   end
 end

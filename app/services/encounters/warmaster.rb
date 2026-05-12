@@ -107,11 +107,11 @@ module Encounters
       combatants = pick_initial_combatants(cast_roster, target_actor_sheet_id)
       return { status: :no_creatures } if combatants.empty?
 
-      creature_data = combatants.map do |entry|
+      creature_data = combatants.map do |member|
         {
-          name:              entry.name,
-          actor_sheet_id: entry.actor_sheet_id,
-          initiative:        roll_initiative_for_sheet_id(adventure, entry.actor_sheet_id),
+          name:              member.name,
+          actor_sheet_id:    member.actor_sheet_id,
+          initiative:        roll_initiative_for_sheet_id(adventure, member.actor_sheet_id),
         }
       end
 
@@ -120,12 +120,12 @@ module Encounters
     end
 
     def pick_initial_combatants(cast_roster, target_actor_sheet_id)
-      with_sheets    = cast_roster.entries.select(&:actor_sheet_id)
+      with_sheets    = cast_roster.members.select(&:actor_sheet_id)
       pre_hostile    = with_sheets.select(&:hostile?)
       target_id      = target_actor_sheet_id.to_i
-      target         = (with_sheets.find { |e| e.actor_sheet_id.to_i == target_id } if target_id.positive?)
+      target         = (with_sheets.find { |m| m.actor_sheet_id.to_i == target_id } if target_id.positive?)
 
-      ([target].compact + pre_hostile).uniq { |e| e.actor_sheet_id }
+      ([target].compact + pre_hostile).uniq { |m| m.actor_sheet_id }
     end
 
     def auto_roll_player_initiative(sheet)
