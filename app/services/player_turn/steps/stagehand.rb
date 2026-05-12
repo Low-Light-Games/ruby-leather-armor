@@ -48,11 +48,7 @@ module PlayerTurn
         broadcast_progress("Writing the story...")
         by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
 
-        if combat_context_required
-          persist_combat_context(combat_context_delta(by_step, phase: "narrative_phase"), mutations)
-        else
-          snapshot_contexts_to_loop
-        end
+        update_or_snapshot_combat_context(by_step, mutations, required: combat_context_required, phase: "narrative_phase")
 
         broadcast_progress("Remembering the world...")
         apply_loremaster_from_fan_out!(by_step)
@@ -147,6 +143,14 @@ module PlayerTurn
         return nil if result[:status] == :no_creatures
 
         result
+      end
+
+      def update_or_snapshot_combat_context(by_step, mutations, required:, phase:)
+        if required
+          persist_combat_context(combat_context_delta(by_step, phase: phase), mutations)
+        else
+          snapshot_contexts_to_loop
+        end
       end
 
       def combat_transition?(transition)

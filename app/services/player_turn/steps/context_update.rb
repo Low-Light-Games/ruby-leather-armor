@@ -19,7 +19,7 @@ module PlayerTurn
         end
       end
 
-      class Delta
+      class CombatContextChangeSet
         attr_reader :round, :turn_order, :active, :participant_updates
 
         def self.from_parsed(parsed)
@@ -74,16 +74,12 @@ module PlayerTurn
         pipeline_error!("context_updates", e)
       end
 
-      # Suppress the AI step when it cannot affect combat state: combat is
-      # inactive AND no combat_initialization mutation is present this turn.
       def combat_context_update_required?(mutations)
-        return true if combat_active?
-
-        CombatMutationState.new(mutations).has_combat_initialization?
+        combat_active? || CombatMutationState.new(mutations).has_combat_initialization?
       end
 
       def combat_context_delta(by_step, phase:)
-        Delta.from_parsed(evaluator_fan_out_result!(by_step, STEP_NAME, phase)["parsed_response"])
+        CombatContextChangeSet.from_parsed(evaluator_fan_out_result!(by_step, STEP_NAME, phase)["parsed_response"])
       end
 
       def persist_combat_context(delta, mutations)
@@ -91,9 +87,7 @@ module PlayerTurn
         prev_active = prev_combat["active"]
         canonical_combat = CombatMutationState.new(mutations).canonical_combat_context
 
-        if canonical_combat.blank? && !combat_active_or_pending?(prev_combat) && delta.empty?
-          return snapshot_contexts_to_loop
-        end
+        return snapshot_contexts_to_loop if no_combat_projection_needed?(canonical_combat: canonical_combat, prev_combat: prev_combat, delta: delta)
 
         base_context = base_context_for_projection(canonical_combat: canonical_combat, prev_combat: prev_combat)
         return snapshot_contexts_to_loop if base_context.blank?
@@ -126,6 +120,10 @@ module PlayerTurn
 
       def combat_active_or_pending?(prev_combat)
         prev_combat.is_a?(Hash) && (prev_combat["active"] == true || Array(prev_combat["participants"]).any?)
+      end
+
+      def no_combat_projection_needed?(canonical_combat:, prev_combat:, delta:)
+        canonical_combat.blank? && !combat_active_or_pending?(prev_combat) && delta.empty?
       end
 
       def base_context_for_projection(canonical_combat:, prev_combat:)

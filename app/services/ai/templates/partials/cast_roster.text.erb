@@ -1,0 +1,9 @@
+<% unless @cast_roster.nil? || @cast_roster.empty? -%>
+=== CAST ROSTER (creatures already in scope this action) ===
+<% @cast_roster.prompt_lines.each do |line| -%>
+<%= line %>
+<% end -%>
+
+Each entry is `[id=<integer>] Name (attitude) — at <location>`. The
+`id` is a real `actor_sheet_id` you can hand back as `target_actor_sheet_id`.
+<% end -%>

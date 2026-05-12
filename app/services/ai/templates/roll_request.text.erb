@@ -8,15 +8,7 @@ the kind of check; the engine resolves the actual modifier.
 === PLAYER POSITION ===
 <%= @roll_request_context.current_location_name.presence || "(unknown — no current location set)" %>
 
-<% unless @roll_request_context.cast_roster.empty? -%>
-=== CAST ROSTER (creatures already in scope this action) ===
-<% @roll_request_context.cast_roster.prompt_lines.each do |line| -%>
-<%= line %>
-<% end -%>
-
-Each entry is `[id=<integer>] Name (attitude) — at <location>`. The
-`id` is a real `actor_sheet_id` you can hand back to the engine.
-<% end -%>
+<%= PromptRenderer.render_partial("partials/cast_roster", cast_roster: @roll_request_context.cast_roster) %>
 
 <%= PromptRenderer.render_partial("partials/scene_retrieval", scene_retrieval: @roll_request_context.scene_retrieval) %>
 === ALLOWED RULES (closest match first) ===
