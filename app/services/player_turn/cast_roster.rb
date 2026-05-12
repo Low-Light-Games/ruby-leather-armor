@@ -47,9 +47,9 @@ module PlayerTurn
     # @return [Array<String>]
     def prompt_lines
       @entries.map do |entry|
-        loc = entry.location_name.to_s.strip
-        loc_part = loc.empty? ? "" : " — at #{loc}"
-        "[id=#{entry.actor_sheet_id}] #{entry.name} (#{entry.attitude})#{loc_part}"
+        location_name = entry.location_name.to_s.strip
+        location_suffix = location_name.empty? ? "" : " — at #{location_name}"
+        "[id=#{entry.actor_sheet_id}] #{entry.name} (#{entry.attitude})#{location_suffix}"
       end
     end
 

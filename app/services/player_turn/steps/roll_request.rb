@@ -151,8 +151,7 @@ module PlayerTurn
       end
 
       def run_roll_request_as_ai_called_tool(intention)
-        cast_roster      = run_cast_resolve(intention)
-        @current_cast_roster = cast_roster
+        @current_cast_roster = run_cast_resolve(intention)
         scene_retrieval  = retrieve_scene_for_roll_request(intention)
         rules            = retrieve_rules_for_roll_request(intention)
 
@@ -161,7 +160,7 @@ module PlayerTurn
           scene_retrieval: scene_retrieval,
           relevant_rules: rules,
           current_location_name: @adventure.current_location&.name,
-          cast_roster: cast_roster,
+          cast_roster: @current_cast_roster,
         )
 
         prompt_summary = "RequestRoll (tool): \"#{@log.truncate(intention)}\""

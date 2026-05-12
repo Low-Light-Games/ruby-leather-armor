@@ -19,7 +19,7 @@ module PlayerTurn
         end
       end
 
-      class Result
+      class Delta
         attr_reader :round, :turn_order, :active, :participant_updates
 
         def self.from_parsed(parsed)
@@ -74,7 +74,7 @@ module PlayerTurn
         prompts = [combat_context_evaluator_prompt(what_happened, mutations,
           allow_combat_initialization: allow_combat_initialization)]
         by_step = evaluator_fan_out!(prompts, what_happened, phase: "context_update")
-        persist_combat_context(combat_context_result(by_step, phase: "context_update"), mutations)
+        persist_combat_context(combat_context_delta(by_step, phase: "context_update"), mutations)
       rescue => e
         pipeline_error!("context_updates", e)
       end
@@ -87,16 +87,16 @@ module PlayerTurn
         CombatMutationState.new(mutations).has_combat_initialization?
       end
 
-      def combat_context_result(by_step, phase:)
-        Result.from_parsed(evaluator_fan_out_result!(by_step, STEP_NAME, phase)["parsed_response"])
+      def combat_context_delta(by_step, phase:)
+        Delta.from_parsed(evaluator_fan_out_result!(by_step, STEP_NAME, phase)["parsed_response"])
       end
 
-      def persist_combat_context(result, mutations)
+      def persist_combat_context(delta, mutations)
         prev_combat = @adventure.combat_context.is_a?(Hash) ? @adventure.combat_context.deep_stringify_keys : {}
         prev_active = prev_combat["active"]
         canonical_combat = CombatMutationState.new(mutations).canonical_combat_context
 
-        if canonical_combat.blank? && !combat_active_or_pending?(prev_combat) && result.empty?
+        if canonical_combat.blank? && !combat_active_or_pending?(prev_combat) && delta.empty?
           return snapshot_contexts_to_loop
         end
 
@@ -105,11 +105,11 @@ module PlayerTurn
 
         validate_participant_identities!(base_context["participants"])
 
-        participants = apply_participant_updates(base_context["participants"], result.participant_updates)
-        round        = result.round.presence || base_context["round"]
-        turn_order   = result.turn_order.presence || Array(base_context["turn_order"])
+        participants = apply_participant_updates(base_context["participants"], delta.participant_updates)
+        round        = delta.round.presence || base_context["round"]
+        turn_order   = delta.turn_order.presence || Array(base_context["turn_order"])
         current_turn = (turn_order.first if turn_order.any?) || base_context["current_turn"]
-        active       = canonical_or_ai_active(canonical_combat: canonical_combat, base_context: base_context, ai_active: result.active)
+        active       = canonical_or_ai_active(canonical_combat: canonical_combat, base_context: base_context, ai_active: delta.active)
 
         updated = base_context.merge(
           "active"       => active,
@@ -134,11 +134,7 @@ module PlayerTurn
       end
 
       def base_context_for_projection(canonical_combat:, prev_combat:)
-        if canonical_combat.present?
-          canonical_combat.deep_stringify_keys
-        else
-          prev_combat
-        end
+        canonical_combat.present? ? canonical_combat.deep_stringify_keys : prev_combat
       end
 
       def canonical_or_ai_active(canonical_combat:, base_context:, ai_active:)

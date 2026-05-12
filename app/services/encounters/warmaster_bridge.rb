@@ -131,15 +131,15 @@ module Encounters
       records = Array(creature_data).filter_map do |row|
         next unless row.is_a?(Hash)
 
-        c = row.deep_symbolize_keys
-        next unless c[:actor_sheet_id]
+        creature = row.deep_symbolize_keys
+        next unless creature[:actor_sheet_id]
 
-        next if AdventureNpc.where(adventure_id: adventure.id, actor_sheet_id: c[:actor_sheet_id]).exists?
+        next if AdventureNpc.where(adventure_id: adventure.id, actor_sheet_id: creature[:actor_sheet_id]).exists?
 
         Lore::NpcRecord.new(
-          name:              c[:name].to_s.presence || "Creature",
+          name:              creature[:name].to_s.presence || "Creature",
           attitude:          "unfriendly",
-          actor_sheet_id: c[:actor_sheet_id],
+          actor_sheet_id: creature[:actor_sheet_id],
         )
       end
       return if records.empty?

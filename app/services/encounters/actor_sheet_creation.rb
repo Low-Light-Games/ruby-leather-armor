@@ -20,7 +20,7 @@ module Encounters
 
       Array.new(effective_count) do |idx|
         instance_name = effective_count > 1 ? "#{base_name} #{idx + 1}" : base_name
-        hp_value = roll_hp(bestiary_entry.hp_formula)
+        hp_value = resolve_hp_dice_formula(bestiary_entry.hp_formula)
 
         sheet = adventure.adventure_actor_sheets.create!(
           bestiary_entry.to_adventure_actor_sheet_attrs(display_name: instance_name).merge(
@@ -36,7 +36,7 @@ module Encounters
 
     # @param formula [String, Array<String>] PF1e dice notation
     # @return [Integer]
-    def self.roll_hp(formula)
+    def self.resolve_hp_dice_formula(formula)
       formula = Array(formula).join if formula.is_a?(Array)
       return 10 if formula.to_s.strip.empty?
 

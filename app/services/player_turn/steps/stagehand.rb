@@ -49,7 +49,7 @@ module PlayerTurn
         by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
 
         if combat_context_required
-          persist_combat_context(combat_context_result(by_step, phase: "narrative_phase"), mutations)
+          persist_combat_context(combat_context_delta(by_step, phase: "narrative_phase"), mutations)
         else
           snapshot_contexts_to_loop
         end

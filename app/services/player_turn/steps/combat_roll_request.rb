@@ -92,10 +92,9 @@ module PlayerTurn
         rolls.each do |roll|
           next unless roll[:type].to_s == 'skill_check'
 
-          new_dc = Combat::OpposedRollResolution.resolve_dc(
+          roll[:dc] = Combat::OpposedRollResolution.resolve_dc(
             roll: roll, target_sheet: target_sheet, log: @log
           )
-          roll[:dc] = new_dc if new_dc
         end
       end
 
