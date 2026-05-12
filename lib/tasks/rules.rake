@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+namespace :dungeon_master do
 namespace :rules do
   desc 'Embed every rule entry from rules/entries into rule_embeddings (idempotent on text_digest).'
   task embed: :environment do
@@ -87,4 +88,5 @@ namespace :rules do
   def embed_text_for(entry)
     ["#{entry[:name]} (#{entry[:domain]})", entry[:text].to_s.strip].join("\n").strip
   end
+end
 end
