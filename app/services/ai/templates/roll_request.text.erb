@@ -8,10 +8,8 @@ the kind of check; the engine resolves the actual modifier.
 === PLAYER POSITION ===
 <%= @roll_request_context.current_location_name.presence || "(unknown — no current location set)" %>
 
+<% unless @roll_request_context.cast_roster.empty? -%>
 === CAST ROSTER (creatures already in scope this action) ===
-<% if @roll_request_context.cast_roster.empty? -%>
-(no creatures in scope)
-<% else -%>
 <% @roll_request_context.cast_roster.prompt_lines.each do |line| -%>
 <%= line %>
 <% end -%>
@@ -44,34 +42,20 @@ Set `needs_roll: false` with `no_roll_reason: "no rule retrieved"`.
 
 <% end -%>
 === OTHER FIELDS ===
-- `destination`: when the player is heading to a known place, copy the
-  exact location name from NEARBY LOCATIONS verbatim — bare name only,
-  no parentheticals, no distance, no bearing, no qualifiers, no
-  hedging. If the destination is not in NEARBY LOCATIONS, write the
-  bare place name the player used. If the action has no destination,
-  null.
+- `destination`: when the player heads to a known place, copy the
+  exact location name from NEARBY LOCATIONS verbatim — bare name
+  only, no parentheticals, no distance, no bearing, no qualifiers.
 - `target_actor_sheet_id`: when the action is directed at a single
-  creature in CAST ROSTER, copy that entry's `id` (an integer) into
-  this field. Examples: an attack against `[id=273] Lord Velkar Mhonn`
-  → `273`. A Stealth check to slip past `[id=274] orc patrol` → `274`.
-  A Diplomacy attempt on `[id=99] Captain Mira` → `99`. Omit the field
-  entirely (do NOT emit `null`) when the action has no creature target
-  — climbing a wall, jumping a chasm, perceiving the room, hiding from
-  no one in particular. The id MUST come from the CAST ROSTER above;
-  never invent one.
-- `transition`: "combat_started" only when the action initiates combat.
-  This is independent of `target_actor_sheet_id` — a hostile target
-  can be observed, lied to, intimidated, or avoided without combat
-  starting; a friendly target can be attacked and combat will start.
-  Decide each field on its own merits. Null otherwise.
+  creature in CAST ROSTER, copy that entry's `id` (an integer).
+- `transition`: "combat_started" only when the action initiates
+  combat. This is independent of `target_actor_sheet_id`.
 - For opposed rolls (Stealth, Bluff, Diplomacy, Disguise, Sleight of
-  Hand, Intimidate, attack rolls), prefer to OMIT the `dc` field — the
-  engine resolves the DC from the target's defending stat. Emit `dc`
-  only for environmental/static checks (climb a wall, jump a chasm).
+  Hand, Intimidate, attack rolls), prefer to omit `dc` — the engine
+  resolves the DC from the target's defending stat. Emit `dc` only
+  for environmental/static checks (climb a wall, jump a chasm).
 - `ability_use_claimed`: a spell/feat/item the player named explicitly.
-- `situational_modifiers`: each entry MUST be `{ "source": "<short
-  phrase>", "modifier": <integer> }`. Never a bare string. Empty array
-  if none apply.
+- `situational_modifiers`: each entry is `{ "source": "<short
+  phrase>", "modifier": <integer> }`. Empty array if none apply.
 
 Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
 {
@@ -99,5 +83,4 @@ Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
 
 `consequences` are rare — leave the array empty unless the action has
 an automatic non-roll side-effect the player needs to see. When
-present, each entry MUST be `{ "description": "<text>" }`, never a
-bare string.
+present, each entry is `{ "description": "<text>" }`.
