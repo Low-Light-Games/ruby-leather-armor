@@ -81,10 +81,10 @@ module PlayerTurn
       bind_current_loop!(
         AdventureLoop.for_registry_entry(@log.registry_entry_uuid).paused.order(:created_at).last
       )
-      rehydrate_cast_roster_from_loop!
+      restore_cast_roster_from_paused_loop!
     end
 
-    def rehydrate_cast_roster_from_loop!
+    def restore_cast_roster_from_paused_loop!
       return if @loop.nil?
 
       stored = @loop.get("cast_roster")
