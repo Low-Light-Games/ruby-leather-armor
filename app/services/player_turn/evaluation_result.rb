@@ -13,7 +13,7 @@ module PlayerTurn
       @intention                = intention.to_s
       @destination              = destination.presence
       @combat_transition        = combat_transition.to_s.presence
-      @target_actor_sheet_id = coerce_target_id(target_actor_sheet_id)
+      @target_actor_sheet_id = Coerce.actor_sheet_id(target_actor_sheet_id)
       @player_rolls             = Array(player_rolls)
       @consequences             = Array(consequences).map(&:to_s).reject(&:blank?)
       @mechanical_summary       = mechanical_summary.to_s
@@ -31,14 +31,6 @@ module PlayerTurn
         transition:               @combat_transition,
         target_actor_sheet_id: @target_actor_sheet_id,
       }.compact
-    end
-
-    private
-
-    def coerce_target_id(raw)
-      return nil if raw.nil? || raw == ""
-
-      Integer(raw, exception: false)
     end
   end
 end

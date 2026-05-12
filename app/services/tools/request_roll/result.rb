@@ -27,7 +27,7 @@ module Tools
           take_20_value: take_values[:take_20_value],
           situational_modifiers: PlayerTurn::Rolls::SituationalModifiers.normalize(parsed[:situational_modifiers]),
           mechanical_summary: mechanical_summary,
-          target_actor_sheet_id: coerce_target_id(parsed[:target_actor_sheet_id])
+          target_actor_sheet_id: Coerce.actor_sheet_id(parsed[:target_actor_sheet_id])
         )
       end
 
@@ -35,13 +35,6 @@ module Tools
         stub = parsed.slice(:type, :skill).merge(type: parsed[:type].presence || "skill_check")
         PlayerTurn::Rolls::PlayerRolls.compute_take_values!([stub], sheet: sheet)
         stub.slice(:take_10_value, :take_20_value)
-      end
-
-      def self.coerce_target_id(raw)
-        return nil if raw.nil? || raw == ""
-
-        id = Integer(raw, exception: false)
-        id&.positive? ? id : nil
       end
 
       def initialize(type:, skill:, save:, dc:, description:, rule_slug:,
