@@ -25,7 +25,6 @@ module PlayerTurn
         def self.from_parsed(parsed)
           hash = parsed.is_a?(Hash) ? parsed.deep_stringify_keys : {}
           new(
-            unchanged: hash["unchanged"] == true,
             round:      coerce_int(hash["round"]),
             turn_order: Array(hash["turn_order"]).map { |n| n.to_s.strip }.reject(&:empty?),
             active:     coerce_bool(hash["active"]),
@@ -47,32 +46,28 @@ module PlayerTurn
           nil
         end
 
-        def initialize(unchanged:, round:, turn_order:, active:, participant_updates:)
-          @unchanged           = unchanged
+        def initialize(round:, turn_order:, active:, participant_updates:)
           @round               = round
           @turn_order          = turn_order
           @active              = active
           @participant_updates = participant_updates
         end
 
-        def unchanged? = @unchanged
-
         def empty?
-          @unchanged && @participant_updates.empty? && @round.nil? && @turn_order.empty? && @active.nil?
+          @participant_updates.empty? && @round.nil? && @turn_order.empty? && @active.nil?
         end
       end
 
       private
 
-      def run_context_updates(what_happened, mutations, allow_combat_initialization: true)
+      def run_context_updates(what_happened, mutations)
         unless combat_context_update_required?(mutations)
           snapshot_contexts_to_loop
           return
         end
 
         broadcast_progress("Remembering the world...")
-        prompts = [combat_context_evaluator_prompt(what_happened, mutations,
-          allow_combat_initialization: allow_combat_initialization)]
+        prompts = [combat_context_evaluator_prompt(what_happened, mutations)]
         by_step = evaluator_fan_out!(prompts, what_happened, phase: "context_update")
         persist_combat_context(combat_context_delta(by_step, phase: "context_update"), mutations)
       rescue => e
@@ -209,15 +204,14 @@ module PlayerTurn
         participant["conditions"] = ((current - removed) | added).uniq
       end
 
-      def combat_context_evaluator_prompt(what_happened, mutations, allow_combat_initialization:)
+      def combat_context_evaluator_prompt(what_happened, mutations)
         system_prompt = Ai::PromptRenderer.render("combat_context_update",
           current_context: @adventure.combat_context,
           context_schema: Ai::PromptRenderer.load_schema("contexts/combat_context"),
           what_happened: what_happened,
           mutations_json: mutations.present? ? mutations.to_json : nil,
           canonical_hp: build_canonical_hp,
-          canonical_participants: canonical_combat_participants,
-          allow_combat_initialization: allow_combat_initialization)
+          canonical_participants: canonical_combat_participants)
 
         {
           system_prompt: system_prompt,

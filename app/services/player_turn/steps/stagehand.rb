@@ -42,7 +42,7 @@ module PlayerTurn
           loremaster_evaluator_prompt(loremaster_inputs),
         ]
         if combat_context_required
-          prompts << combat_context_evaluator_prompt(seed, mutations, allow_combat_initialization: true)
+          prompts << combat_context_evaluator_prompt(seed, mutations)
         end
 
         broadcast_progress("Writing the story...")

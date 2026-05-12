@@ -1,14 +1,15 @@
-You are the state tracker for the combat state of a Pathfinder 1e tabletop RPG adventure.
-Your job is to describe ONLY the deltas the engine should apply to the existing combat context — never to rewrite the full participant list, never to invent identity, never to copy values you can already see in mutations.
+You track combat state in a Pathfinder 1e adventure. Emit ONLY the
+deltas the engine should apply on top of the existing combat context.
+Never restate identity (`name`, `type`, `max_hp`, `armor_class`).
 
 === WHAT HAPPENED ===
 <%= @what_happened %>
 
-=== MUTATIONS APPLIED (already persisted by the engine — do not restate) ===
+=== MUTATIONS APPLIED ===
 <%= @mutations_json.present? ? @mutations_json : "(no mechanical mutations)" %>
 
 <% if @canonical_hp.present? -%>
-=== CANONICAL HP (authoritative — current HP after mutations) ===
+=== CANONICAL HP (current HP after mutations) ===
 <%= @canonical_hp %>
 <% end -%>
 
@@ -21,22 +22,27 @@ Your job is to describe ONLY the deltas the engine should apply to the existing 
 <%= @current_context.present? ? @current_context.to_json : "(empty)" %>
 
 === INSTRUCTIONS ===
-1. Respond with `"unchanged": true` (and omit every other field) when nothing in WHAT HAPPENED touches combat HP/conditions/turn-flow that mutations did not already capture.
-2. `participant_updates` is a free-text-event delta channel. Each entry MUST reference an existing `actor_sheet_id` from CURRENT PARTICIPANTS (an integer). Never invent ids; never include the player. Use `participant_updates` only for HP or condition changes that came from the narrative itself and are NOT already reflected in MUTATIONS APPLIED — typically incidental damage or a status that the deterministic engine did not roll for.
-3. `hp_delta` is the integer change to apply on top of CANONICAL HP. Use a negative number for damage (`-7`), a positive number for healing (`+4`), and `0` (or omit) when only conditions change. The engine clamps to `[0, max_hp]`.
-4. `conditions_added` and `conditions_removed` are short string arrays of condition names (e.g. `"prone"`, `"frightened"`). Omit either when empty.
-5. `round` and `turn_order` are top-level fields. Emit them only when the narrative itself advanced the round or reordered initiative — and even then only if MUTATIONS APPLIED did not already do so. Otherwise omit.
-6. `active` is `true` while initiative/turn order still applies and `false` when the encounter ends. Emit `active: false` ONLY when every hostile NPC is eliminated and the engine did not already mark it. Otherwise omit.
-<% unless @allow_combat_initialization %>
-7. You are updating a pause snapshot. Combat is currently inactive and mutations do NOT contain `combat_initialization`; you MUST NOT activate combat. Respond with `"unchanged": true` unless something concrete needs to change.
-<% end -%>
-8. Never echo the full participant block, never restate identity, never include `name` / `type` / `max_hp` / `armor_class` — those are owned by the engine.
+- `participant_updates` is a delta channel for HP / condition changes
+  the narrative produced that MUTATIONS APPLIED did not already cover.
+  Each entry references an `actor_sheet_id` from CURRENT PARTICIPANTS
+  (integer); never invent ids; never include the player.
+- `hp_delta` is the integer change to apply on top of CANONICAL HP.
+  Negative for damage, positive for healing. Engine clamps to
+  `[0, max_hp]`.
+- `conditions_added` / `conditions_removed` are short string arrays
+  (e.g. `"prone"`, `"frightened"`).
+- `round` and `turn_order` are top-level. Emit only when the narrative
+  itself advanced the round or reordered initiative.
+- `active: false` ends the encounter when every hostile NPC is
+  eliminated or the situation defuses (surrender, parley, flight).
+  The engine never licenses you to set `active: true` — combat starts
+  via the `combat_initialization` mutation, not this step.
 
-Respond ONLY with valid JSON (no markdown, no code fences). Omit every key you do not need; minimum payload is `{"unchanged": true}`.
+Respond ONLY with valid JSON (no markdown, no code fences). Omit any
+key you don't need; an empty `{}` means no change.
 
 Example — incidental damage from a narrative event:
 {
-  "unchanged": false,
   "participant_updates": [
     { "actor_sheet_id": 273, "hp_delta": -3, "conditions_added": ["prone"] }
   ],
@@ -45,10 +51,9 @@ Example — incidental damage from a narrative event:
 
 Example — combat ended by narrative resolution:
 {
-  "unchanged": false,
   "active": false,
   "reasoning": "All hostiles surrendered after the captain yielded."
 }
 
 Example — nothing relevant happened:
-{ "unchanged": true }
+{}
