@@ -14,10 +14,6 @@ module PlayerTurn
           @mutations["combat_initialization"].is_a?(Hash)
         end
 
-        def has_combat_advancement?
-          @mutations["combat_state_advancement"].is_a?(Hash)
-        end
-
         def canonical_combat_context
           @mutations["combat_initialization"] || @mutations["combat_state_advancement"]
         end
@@ -73,6 +69,11 @@ module PlayerTurn
       private
 
       def run_context_updates(what_happened, mutations, allow_combat_initialization: true)
+        unless combat_context_update_required?(mutations)
+          snapshot_contexts_to_loop
+          return
+        end
+
         broadcast_progress("Remembering the world...")
         prompts = [combat_context_evaluator_prompt(what_happened, mutations,
           allow_combat_initialization: allow_combat_initialization)]
@@ -82,6 +83,14 @@ module PlayerTurn
         pipeline_error!("context_updates", e)
       end
 
+      # Suppress the AI step when it cannot affect combat state: combat is
+      # inactive AND no combat_initialization mutation is present this turn.
+      def combat_context_update_required?(mutations)
+        return true if combat_active?
+
+        CombatMutationState.new(mutations).has_combat_initialization?
+      end
+
       def combat_context_result(by_step, phase:)
         Result.from_parsed(evaluator_fan_out_result!(by_step, STEP_NAME, phase)["parsed_response"])
       end
@@ -89,8 +98,7 @@ module PlayerTurn
       def persist_combat_context(result, mutations)
         prev_combat = @adventure.combat_context.is_a?(Hash) ? @adventure.combat_context.deep_stringify_keys : {}
         prev_active = prev_combat["active"]
-        combat_mutation_state = CombatMutationState.new(mutations)
-        canonical_combat = combat_mutation_state.canonical_combat_context
+        canonical_combat = CombatMutationState.new(mutations).canonical_combat_context
 
         if canonical_combat.blank? && !combat_active_or_pending?(prev_combat) && result.empty?
           return snapshot_contexts_to_loop
@@ -114,11 +122,6 @@ module PlayerTurn
           "current_turn" => current_turn,
           "participants" => participants,
         )
-
-        updated = guard_combat_context_update(
-          updated, prev_active: prev_active, combat_mutation_state: combat_mutation_state,
-        )
-        return snapshot_contexts_to_loop if updated.blank?
 
         @adventure.update!(combat_context: updated)
         @adventure.reload
@@ -230,24 +233,6 @@ module PlayerTurn
           model: @config.model_for(STEP_NAME),
           meta: { step: STEP_NAME }
         }
-      end
-
-      def guard_combat_context_update(val, prev_active:, combat_mutation_state:)
-        return val if combat_mutation_state.has_combat_initialization?
-
-        if combat_mutation_state.has_combat_advancement?
-          return val if prev_active == true
-
-          @log.play_log!("combat_context_guard", "Ignored combat_state_advancement while combat inactive")
-          return nil
-        end
-
-        if prev_active != true && val["active"] == true
-          @log.play_log!("combat_context_guard", "Ignored synthetic combat activation without combat_initialization")
-          return nil
-        end
-
-        val
       end
 
       def snapshot_contexts_to_loop
