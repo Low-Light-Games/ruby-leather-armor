@@ -3,6 +3,8 @@
 module Encounters
   module CastResolverEvents
     class Unresolved
+      include Hashable
+
       attr_reader :name, :type, :count, :adventure_id
 
       def initialize(name:, type:, count:, adventure_id:)
@@ -10,10 +12,6 @@ module Encounters
         @type         = type
         @count        = count
         @adventure_id = adventure_id
-      end
-
-      def to_h
-        { name: @name, type: @type, count: @count, adventure_id: @adventure_id }
       end
     end
   end
