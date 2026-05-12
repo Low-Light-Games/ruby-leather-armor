@@ -22,7 +22,6 @@ module Encounters
             adventure: adventure,
             encounter_entry: encounter_entry,
             creatures_data: creatures_data,
-            scene_enemy_names: nil,
             sheet: sheet,
             log: log,
             config: config,
