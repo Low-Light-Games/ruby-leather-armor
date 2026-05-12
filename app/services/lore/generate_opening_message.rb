@@ -13,7 +13,7 @@ module Lore
       @user   = user
       @config = config || DmConfig.instance
       @ai     = ai || Ai::Client.new(@config)
-      @log    = log || Logging.new(adventure: nil, user: @user, dm_service: "standard")
+      @log    = log || Ai::Logging.new(adventure: nil, user: @user, dm_service: "standard")
     end
 
     def call
