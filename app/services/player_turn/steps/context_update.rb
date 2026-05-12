@@ -97,7 +97,7 @@ module PlayerTurn
         participants = apply_participant_updates(base_context["participants"], delta.participant_updates)
         round        = delta.round.presence || base_context["round"]
         turn_order   = delta.turn_order.presence || Array(base_context["turn_order"])
-        current_turn = (turn_order.first if turn_order.any?) || base_context["current_turn"]
+        current_turn = delta.turn_order.presence ? turn_order.first : base_context["current_turn"]
         active       = canonical_or_ai_active(canonical_combat: canonical_combat, base_context: base_context, ai_active: delta.active)
 
         updated = base_context.merge(
