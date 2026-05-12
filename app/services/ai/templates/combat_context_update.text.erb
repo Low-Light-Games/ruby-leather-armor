@@ -1,6 +1,8 @@
-You track combat state in a Pathfinder 1e adventure. Emit ONLY the
-deltas the engine should apply on top of the existing combat context.
-Never restate identity (`name`, `type`, `max_hp`, `armor_class`).
+
+
+Now your job is to translate that into a structured combat context update
+as a JSON object examplified at the end of this prompt. Tell us what we need
+to change in the adventure's combat context to reflex what happened.
 
 === WHAT HAPPENED ===
 <%= @what_happened %>

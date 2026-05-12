@@ -1,17 +1,17 @@
-You are a Pathfinder 1e combat rules adjudicator. Combat is active.
+There is a Pathfinder 1e combat encounter in progress.
+
+The player, instead of using a normal standard attack, feat ability or spell, decided to
+use the texarea to voice a free-form action, which was already evaluated with a roll before you got this message.
+
 Decide what roll the player needs. Pick one of: an attack (we resolve
-attack bonus + damage), a skill check (we resolve the modifier), or a
-saving throw via dc_formula. Do not guess DCs for combat.
+attack bonus + damage), a skill check or a
+saving throw via dc_formula.
 
 === PLAYER INTENT ===
 <%= @combat_roll_request_context.intent %>
 
 === PLAYER POSITION ===
 <%= @combat_roll_request_context.current_location_name.presence || "(unknown — no current location set)" %>
-
-=== COMBAT STATE ===
-Round: <%= @combat_roll_request_context.round || '?' %>
-Acting: <%= @combat_roll_request_context.current_turn || 'Player' %>
 
 === LEGAL ATTACK OPTIONS ===
 <%= @combat_roll_request_context.attack_options_text %>
@@ -22,22 +22,22 @@ Acting: <%= @combat_roll_request_context.current_turn || 'Player' %>
 <% if @combat_roll_request_context.battlefield_summary.present? -%>
 === BATTLEFIELD ===
 <%= @combat_roll_request_context.battlefield_summary %>
-
 <% end -%>
+
 <%= PromptRenderer.render_partial("partials/scene_retrieval", scene_retrieval: @combat_roll_request_context.scene_retrieval) %>
-<% if @combat_roll_request_context.relevant_rules.any? -%>
-=== RELEVANT RULES ===
-<% @combat_roll_request_context.relevant_rules.each_with_index do |rule, idx| -%>
-<%= idx + 1 %>. **<%= rule[:name] %>** (slug: `<%= rule[:slug] %>`)
-   <%= rule[:body].to_s.strip.gsub("\n", "\n   ") %>
 
+<% if @combat_roll_request_context.relevant_rules.any? -%>
+  === RULES YOU MAY FIND RELEVANT ===
+  <% @combat_roll_request_context.relevant_rules.each_with_index do |rule, idx| -%>
+    <%= idx + 1 %>. **<%= rule[:name] %>** (slug: `<%= rule[:slug] %>`)
+    <%= rule[:body].to_s.strip.gsub("\n", "\n   ") %>
+  <% end -%>
 <% end -%>
-<% end -%>
+
 === HOW TO PICK A ROLL ===
 - For an `attack_roll`: emit `attack_option_id` (verbatim — copy the
   exact id from LEGAL ATTACK OPTIONS) and `target` (the participant
-  name). Do not set `dc` or `damage` — both are resolved from the
-  option + the target's sheet.
+  name).
 - For a `saving_throw`: emit `save` (fort/ref/will) and `dc_formula`
   ({ kind: "spell_dc", spell_name, caster: "player" } or
   { kind: "ability_dc", pattern: "half_hd_plus_ability", origin_target,
