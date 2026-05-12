@@ -50,31 +50,38 @@ module Adventures
       def active? = @active
       def has_participants? = @participants.any?
       def participant_names = @participants.map(&:name)
+      def npc_participants = @participants.select(&:npc?)
+      def npc_actor_sheet_ids = npc_participants.filter_map(&:actor_sheet_id)
 
       def to_h = @raw
 
       class Participant
-        attr_reader :name, :type, :hp, :max_hp
+        attr_reader :name, :type, :hp, :max_hp, :actor_sheet_id, :attitude
 
         def self.from_raw(raw)
           return nil unless raw.is_a?(Hash)
 
           new(
-            name:   (raw["name"] || raw[:name]).to_s,
-            type:   raw["type"] || raw[:type],
-            hp:     raw["hp"] || raw[:hp],
-            max_hp: raw["max_hp"] || raw[:max_hp],
+            name:           (raw["name"] || raw[:name]).to_s,
+            type:           raw["type"] || raw[:type],
+            hp:             raw["hp"] || raw[:hp],
+            max_hp:         raw["max_hp"] || raw[:max_hp],
+            actor_sheet_id: Coerce.actor_sheet_id(raw["actor_sheet_id"] || raw[:actor_sheet_id]),
+            attitude:       (raw["attitude"] || raw[:attitude] || "unfriendly").to_s,
           )
         end
 
-        def initialize(name:, type: nil, hp: nil, max_hp: nil)
-          @name   = name
-          @type   = type
-          @hp     = hp
-          @max_hp = max_hp
+        def initialize(name:, type: nil, hp: nil, max_hp: nil, actor_sheet_id: nil, attitude: "unfriendly")
+          @name           = name
+          @type           = type
+          @hp             = hp
+          @max_hp         = max_hp
+          @actor_sheet_id = actor_sheet_id
+          @attitude       = attitude
         end
 
         def player?  = @type.to_s == "player"
+        def npc?     = @type.to_s == "npc"
         def hostile? = !player?
         def alive?   = @hp.is_a?(Numeric) && @hp.positive?
       end

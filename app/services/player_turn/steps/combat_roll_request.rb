@@ -74,13 +74,7 @@ module PlayerTurn
       end
 
       def combat_participant_ids
-        combat_ctx = @adventure.combat_context.is_a?(Hash) ? @adventure.combat_context : {}
-        Array(combat_ctx['participants']).filter_map do |p|
-          row = p.is_a?(Hash) ? p.deep_stringify_keys : {}
-          next nil unless row['type'].to_s == 'npc'
-
-          Integer(row['actor_sheet_id'], exception: false)
-        end.compact
+        Adventures::CombatState.from_adventure(@adventure).npc_actor_sheet_ids
       end
 
       def apply_combat_opposed_dc!(rolls, target_id)
@@ -145,7 +139,7 @@ module PlayerTurn
       end
 
       def combat_resolution_context
-        combat_ctx = @adventure.combat_context.is_a?(Hash) ? @adventure.combat_context : {}
+        combat_ctx = Adventures::CombatState.from_adventure(@adventure).to_h
         PlayerTurn::Steps::Phases::CombatMechanicResolution::CombatResolutionContext.new(
           combat_ctx: combat_ctx,
           adventure: @adventure,

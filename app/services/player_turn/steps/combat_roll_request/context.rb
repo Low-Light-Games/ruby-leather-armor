@@ -10,7 +10,7 @@ module PlayerTurn
 
         def self.build(intent:, adventure:, sheet:, ai:, log:,
                        rules_top_k:, beats_top_k:)
-          combat_ctx = adventure.combat_context.is_a?(Hash) ? adventure.combat_context : {}
+          combat_state = Adventures::CombatState.from_adventure(adventure)
 
           new(
             intent: intent,
@@ -24,26 +24,22 @@ module PlayerTurn
             },
             combat: {
               attack_options: Combat::Options::AttackOptionBuilder.call(sheet: sheet, adventure: adventure),
-              action_economy: combat_ctx['action_economy'] || {},
+              action_economy: combat_state.action_economy,
               threats: build_threats_for_player(adventure: adventure),
               battlefield_summary: Battlefield::PromptSerializer.slice_for_adventure(adventure),
-              cast_roster: build_combat_cast_roster(combat_ctx: combat_ctx)
+              cast_roster: build_combat_cast_roster(combat_state: combat_state)
             },
-            state: { round: combat_ctx['round'], current_turn: combat_ctx['current_turn'],
+            state: { round: combat_state.round, current_turn: combat_state.current_turn,
                      current_location_name: adventure.current_location&.name }
           )
         end
 
-        # @return [Array<Hash>] one `{ id:, name:, attitude: }` per NPC participant
-        def self.build_combat_cast_roster(combat_ctx:)
-          Array(combat_ctx['participants']).filter_map do |raw|
-            row = raw.is_a?(Hash) ? raw.deep_stringify_keys : {}
-            next nil unless row['type'].to_s == 'npc'
+        # @return [Array<Hash>] one `{ id:, name:, attitude: }` per NPC participant with a sheet id
+        def self.build_combat_cast_roster(combat_state:)
+          combat_state.npc_participants.filter_map do |participant|
+            next nil unless participant.actor_sheet_id
 
-            id = Integer(row['actor_sheet_id'], exception: false)
-            next nil unless id&.positive?
-
-            { id: id, name: row['name'].to_s, attitude: (row['attitude'] || 'unfriendly').to_s }
+            { id: participant.actor_sheet_id, name: participant.name, attitude: participant.attitude }
           end
         end
 
