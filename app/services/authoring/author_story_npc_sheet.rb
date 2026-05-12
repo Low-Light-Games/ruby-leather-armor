@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 module Authoring
-  # Invoked only from Admin::StoriesController#generate_npc_sheet. No
-  # background jobs, no seed-time callers, no per-turn use.
   class AuthorStoryNpcSheet
     MODEL_KEY    = "creature_generation"
     TEMPLATE_KEY = "authoring/creature_generation"

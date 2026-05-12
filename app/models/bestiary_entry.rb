@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-# Licensing invariant: OGL/SRD content from the Pathfinder Reference
-# Document only. Custom or paid-content stat blocks must not land here.
 class BestiaryEntry < ApplicationRecord
   self.primary_key = :id
 

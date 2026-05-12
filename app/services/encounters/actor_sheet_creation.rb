@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
 module Encounters
-  # Sole entry point for minting AdventureActorSheets at runtime. No AI
-  # is invoked here; story NPCs are statted at authoring time and
-  # cold-spawned creatures fall back to a `default_for_type` BestiaryEntry.
   module ActorSheetCreation
     MIN_COUNT = 1
     MAX_COUNT = 12

@@ -1,9 +1,6 @@
 # frozen_string_literal: true
 
 module PlayerTurn
-  # Invariant: actor_sheet_id is the only handle downstream code or
-  # prompts use to refer to a cast member. Names accompany the ID
-  # strictly for prompt rendering and human-readable logs.
   class CastRoster
     attr_reader :entries
 

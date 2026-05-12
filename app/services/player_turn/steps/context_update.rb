@@ -19,10 +19,6 @@ module PlayerTurn
         end
       end
 
-      # Invariant: the canonical participant list belongs to
-      # combat_initialization / combat_state_advancement mutations.
-      # This AI step contributes deltas only (round, turn_order, active,
-      # per-participant updates) and never owns identity.
       class Result
         attr_reader :round, :turn_order, :active, :participant_updates
 

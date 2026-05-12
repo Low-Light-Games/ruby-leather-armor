@@ -1,18 +1,6 @@
 # frozen_string_literal: true
 
 module Encounters
-  # Resolves cast entries to AdventureNpc rows backed by AdventureActorSheets.
-  #
-  # Tiers (highest-first):
-  #   1. Existing AdventureNpc by name (with sheet) — reuse.
-  #   2. Existing AdventureActorSheet by name — adopt onto AdventureNpc.
-  #   3. BestiaryEntry by name (story-scoped first, then public) — mint via
-  #      Encounters::ActorSheetCreation.from_bestiary.
-  #   4. BestiaryEntry default_for_type — same minting path; a miss past
-  #      seeds is reported to Sentry.
-  #
-  # Writes use source: "runtime" to avoid the seed-only
-  # `(adventure_id, name)` unique index.
   class CastResolver
     AI_STEP_NAME = "cast_resolver"
     OVERSPAWN_THRESHOLD = 15

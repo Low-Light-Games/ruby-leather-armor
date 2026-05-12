@@ -2,10 +2,6 @@
 
 module PlayerTurn
   module Steps
-    # Resolves the cast in scope between Sequencer and RollRequest.
-    # Failures propagate uncaught: RollRequest cannot target creatures
-    # without a roster, and inventing identity downstream is the bug
-    # this step exists to prevent.
     module CastResolve
       private
 

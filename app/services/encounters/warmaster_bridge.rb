@@ -36,7 +36,7 @@ module Encounters
             creature_data: warmaster_result[:creature_data]
           )
 
-          register_spawned_creatures_as_adventure_npcs(
+          register_spawned_creatures_as_adventure_npcs_for_dedup!(
             adventure: adventure,
             creature_data: warmaster_result[:creature_data],
             log: log, ai: ai,
@@ -127,10 +127,7 @@ module Encounters
       "#{encounter_scene}\n\n#{verdict_outcome}"
     end
 
-    # Dedup invariant: every Harbinger-spawned sheet must back an
-    # AdventureNpc row, otherwise the next CastResolver pass falls
-    # through the AdventureNpc tier and mints a duplicate sheet.
-    def self.register_spawned_creatures_as_adventure_npcs(adventure:, creature_data:, log:, ai:)
+    def self.register_spawned_creatures_as_adventure_npcs_for_dedup!(adventure:, creature_data:, log:, ai:)
       records = Array(creature_data).filter_map do |row|
         next unless row.is_a?(Hash)
 
@@ -156,6 +153,6 @@ module Encounters
       )
     end
 
-    private_class_method :reconcile_encounter, :register_spawned_creatures_as_adventure_npcs
+    private_class_method :reconcile_encounter, :register_spawned_creatures_as_adventure_npcs_for_dedup!
   end
 end
