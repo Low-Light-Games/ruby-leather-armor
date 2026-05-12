@@ -4,7 +4,7 @@ module CharacterStats
   class AbilityScoreCalculator
     include GameRules
 
-    # @param source [Sheet, AdventureSheet, CreatureSheet]
+    # @param source [Sheet, AdventureSheet, AdventureActorSheet]
     def initialize(source)
       @src = source
     end

@@ -1,0 +1,40 @@
+Name every creature present in the scene that the player could
+plausibly interact with — target, address, evade, observe.
+
+=== TYPE (pick one) ===
+- beast        (wolf, dire bear, giant spider)
+- fighter      (city guard, mercenary captain, knight)
+- goblinoid    (goblin, orc, hobgoblin, gnoll, kobold)
+- spellcaster  (cult priest, court mage, hedge witch)
+- commoner     (farmer, innkeeper, child, beggar)
+
+`count` is optional; set it for groups ("the patrol", "two squads").
+
+=== INPUTS ===
+Player intent: <%= @intent %>
+Current location: <%= @current_location_name || "(unknown)" %>
+
+<% if @scene_retrieval && @scene_retrieval.respond_to?(:npcs) && @scene_retrieval.npcs.any? %>
+Nearby NPCs (recall):
+<% @scene_retrieval.npcs.each do |npc| %>
+- <%= npc[:name] %>: <%= npc[:description].to_s.truncate(120) %>
+<% end %>
+<% end %>
+
+<% if @scene_retrieval && @scene_retrieval.respond_to?(:facts) && @scene_retrieval.facts.any? %>
+Recent narrative facts:
+<% @scene_retrieval.facts.each do |fact| %>
+- <%= fact[:text].to_s.truncate(140) %>
+<% end %>
+<% end %>
+
+=== EXAMPLES ===
+{ "cast": [ { "name": "Lord Velkar Mhonn", "type": "fighter" } ] }
+{ "cast": [ { "name": "orc patrol", "type": "goblinoid", "count": 5 } ] }
+{ "cast": [
+    { "name": "city guard squad A", "type": "fighter", "count": 4 },
+    { "name": "city guard squad B", "type": "fighter", "count": 4 }
+] }
+{ "cast": [] }
+
+Respond ONLY with valid JSON of shape `{ "cast": [ { "name", "type", "count"? } ] }`.

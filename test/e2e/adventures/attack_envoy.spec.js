@@ -20,7 +20,7 @@ const { submitActiveRollPanel } = require('../support/rolls');
 //
 // Currently flaky against gpt-5-nano + gpt-4.1-nano: RollRequest
 // sometimes returns Initiative directly, combat-context-update sometimes
-// rejects the named participant on missing creature_sheet_id, or the
+// rejects the named participant on missing actor_sheet_id, or the
 // pipeline auto-resolves the attack as a non-roll narrative outcome.
 // Asserting the *desired* end state so AI improvements upstream flip
 // the spec green.
@@ -34,10 +34,12 @@ test.describe("The Envoy's Gambit — live OpenAI", () => {
     await sendChatMessage(page, 'I attack Lord Velkar Mhonn with my dagger.');
     await submitActiveRollPanel(page, { typeMatch: /Attack/i });
 
-    const hitMessage = page.locator('.chat-message', {
-      hasText: /(hit|damage|wound|strike|HP)/i,
-    });
-    await expect(hitMessage.first()).toBeVisible({ timeout: 90_000 });
+    // AI narrative wording is too variable to keyword-match reliably.
+    // The action_result message type is what matters: it's the post-roll
+    // outcome the engine emits before the initiative prompt. See
+    // charge_at_orcs.spec.js for the same rationale.
+    const actionResult = page.locator('.chat-message.msg-type-action_result');
+    await expect(actionResult.first()).toBeVisible({ timeout: 90_000 });
 
     await submitActiveRollPanel(page);
 

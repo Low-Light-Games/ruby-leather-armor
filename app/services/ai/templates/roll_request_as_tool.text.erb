@@ -8,6 +8,8 @@ produce the roll spec.
 === PLAYER POSITION ===
 <%= @roll_request_context.current_location_name.presence || "(unknown — no current location set)" %>
 
+<%= PromptRenderer.render_partial("partials/cast_roster", cast_roster: @roll_request_context.cast_roster) %>
+
 <%= PromptRenderer.render_partial("partials/scene_retrieval", scene_retrieval: @roll_request_context.scene_retrieval) %>
 <% if @roll_request_context.relevant_rules.any? -%>
 === ALLOWED RULES (closest match first) ===
@@ -32,9 +34,10 @@ Pick a generic skill or save that fits based on Pathfinder 1E rules.
 <% end -%>
 === FIELD GUIDANCE ===
 - `mechanical_summary`: a short sentence framing the *attempt*, not the outcome.
-- `situational_modifiers`: each entry MUST be `{ "source": "<short
-  phrase>", "modifier": <integer> }`. Never a bare string. Empty
-  array if none apply.
+- `target_actor_sheet_id`: when the action is directed at a single
+  creature in CAST ROSTER, copy that entry's `id` (an integer).
+- `situational_modifiers`: each entry is `{ "source": "<short
+  phrase>", "modifier": <integer> }`. Empty array if none apply.
 
 Respond ONLY with valid JSON in this exact shape (no wrapper keys, no
 markdown):
@@ -48,6 +51,7 @@ markdown):
   "take_20_eligible": <boolean>,
   "situational_modifiers": [],
   "rule_slug": "<slug copied from the chosen rule>",
+  "target_actor_sheet_id": <integer; omit when no creature target>,
   "mechanical_summary": "<short attempt-flavored sentence>",
   "reasoning": "<short explanation of the rule choice>"
 }

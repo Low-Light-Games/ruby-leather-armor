@@ -8,7 +8,7 @@ module PlayerTurn
 
       private
 
-      def run_roll_request(intention)
+      def run_roll_request(intention, cast_roster: nil)
         broadcast_progress('Reading the situation...')
 
         scene_retrieval = retrieve_scene_for_roll_request(intention)
@@ -19,6 +19,7 @@ module PlayerTurn
           scene_retrieval: scene_retrieval,
           relevant_rules: rules,
           current_location_name: @adventure.current_location&.name,
+          cast_roster: cast_roster,
         )
 
         prompt_summary = "RollRequest: \"#{@log.truncate(intention)}\""
@@ -37,7 +38,9 @@ module PlayerTurn
           [raw, @ai.parse_json(raw)]
         end
 
-        result = build_roll_request_evaluation_result(parsed: parsed, intention: intention)
+        result = build_roll_request_evaluation_result(parsed: parsed, intention: intention,
+                                                      cast_roster: cast_roster)
+        apply_opposed_dc_resolution!(result)
 
         warn_on_invented_rule_slug!(parsed, rules)
         log_roll_request_to_loop(result)
@@ -46,7 +49,24 @@ module PlayerTurn
         result
       end
 
-      def build_roll_request_evaluation_result(parsed:, intention:)
+      def apply_opposed_dc_resolution!(result)
+        return unless result.target_actor_sheet_id
+
+        target_sheet = @adventure.adventure_actor_sheets.find_by(id: result.target_actor_sheet_id)
+        return unless target_sheet
+
+        result.player_rolls.each do |roll|
+          next unless roll.is_a?(Hash)
+
+          next unless roll[:type].to_s == "skill_check"
+
+          roll[:dc] = Mechanics::OpposedRollResolution.resolve_dc(
+            roll: roll, target_sheet: target_sheet, log: @log,
+          )
+        end
+      end
+
+      def build_roll_request_evaluation_result(parsed:, intention:, cast_roster: nil)
         parsed = (parsed || {}).deep_symbolize_keys
         rolls = if needs_roll?(parsed)
                   [normalize_roll(parsed[:roll], mechanical_summary: parsed[:mechanical_summary])]
@@ -58,7 +78,7 @@ module PlayerTurn
           intention: intention,
           destination: parsed[:destination],
           combat_transition: parsed[:transition],
-          combat_combatants: normalized_combatants(parsed[:combatants]),
+          target_actor_sheet_id: validated_target_id(parsed[:target_actor_sheet_id], cast_roster: cast_roster),
           player_rolls: rolls,
           consequences: PlayerTurn::Rolls::Consequences.normalize(parsed[:consequences]),
           mechanical_summary: parsed[:mechanical_summary].to_s.presence || '(no mechanical summary)'
@@ -84,17 +104,26 @@ module PlayerTurn
         }.compact
       end
 
-      def normalized_combatants(raw)
-        Array(raw).flat_map do |entry|
-          case entry
-          when Hash
-            key, value = entry.to_a.first
-            count = value.to_i
-            count.positive? ? Array.new(count, key.to_s) : [key.to_s]
-          else
-            [entry.to_s]
-          end
-        end.reject(&:blank?)
+      # @return [Integer, nil]
+      def validated_target_id(raw, cast_roster:)
+        return nil if raw.nil? || raw == ""
+
+        id = Integer(raw, exception: false)
+        return nil unless id&.positive?
+
+        roster = cast_roster || PlayerTurn::CastRoster.empty
+        return id if roster.find_by_actor_sheet_id(id)
+
+        @log.play_log!(
+          'roll_request_unknown_target',
+          "RollRequest emitted target_actor_sheet_id=#{id} not in cast roster",
+          parsed_response: UnknownTargetEvent.new(
+            emitted_target_id: id,
+            roster_ids:        roster.members.map(&:actor_sheet_id),
+            roster_names:      roster.members.map(&:name),
+          ).to_h
+        )
+        nil
       end
 
       def warn_on_invented_rule_slug!(parsed, retrieved_rules)
@@ -122,14 +151,16 @@ module PlayerTurn
       end
 
       def run_roll_request_as_ai_called_tool(intention)
-        scene_retrieval = retrieve_scene_for_roll_request(intention)
-        rules           = retrieve_rules_for_roll_request(intention)
+        @current_cast_roster = run_cast_resolve(intention)
+        scene_retrieval  = retrieve_scene_for_roll_request(intention)
+        rules            = retrieve_rules_for_roll_request(intention)
 
         ctx = RollRequest::Context.new(
           intent: intention,
           scene_retrieval: scene_retrieval,
           relevant_rules: rules,
           current_location_name: @adventure.current_location&.name,
+          cast_roster: @current_cast_roster,
         )
 
         prompt_summary = "RequestRoll (tool): \"#{@log.truncate(intention)}\""

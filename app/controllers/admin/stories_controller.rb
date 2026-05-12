@@ -1,20 +1,18 @@
 module Admin
   class StoriesController < BaseController
-    before_action :set_story, only: [:show, :update, :destroy]
+    before_action :set_story, only: [:show, :update, :destroy, :generate_npc_sheet]
 
-    # GET /admin/stories — server-rendered story list
+    # GET /admin/stories
     def index
       @stories = Story.kept.order(created_at: :desc)
     end
 
-    # GET /admin/stories/new — SPA mount for creating a new story
+    # GET /admin/stories/new
     def new
       render layout: 'admin'
     end
 
-    # GET /admin/stories/:id — SPA mount for editing a story
-    #   HTML: serves SPA shell
-    #   JSON: returns story data for the React editor
+    # GET /admin/stories/:id
     def show
       respond_to do |format|
         format.html { render layout: 'admin' }
@@ -41,17 +39,51 @@ module Admin
 
     # PATCH /admin/stories/:id
     def update
-      if @story.update(story_params)
+      ActiveRecord::Base.transaction do
+        unless @story.update(story_params)
+          render json: { errors: @story.errors.full_messages }, status: :unprocessable_entity
+          raise ActiveRecord::Rollback
+        end
+
+        missing = named_story_npcs_missing_bestiary(@story)
+        if missing.any?
+          render json: {
+            errors: missing.map { |npc| "StoryNpc #{npc.name.presence || "##{npc.id}"} has no bestiary entry — generate one before saving." }
+          }, status: :unprocessable_entity
+          raise ActiveRecord::Rollback
+        end
+
         if @story.saved_change_to_premise? || @story.saved_change_to_opening_message?
           extract_seed_facts!(@story)
         end
         render json: story_json(@story)
-      else
-        render json: { errors: @story.errors.full_messages }, status: :unprocessable_entity
       end
     end
 
-    # DELETE /admin/stories/:id (soft-delete)
+    # POST /admin/stories/:id/generate_npc_sheet
+    def generate_npc_sheet
+      story_npc = @story.story_npcs.find(params.require(:story_npc_id))
+      attrs = Authoring::AuthorStoryNpcSheet.call(story_npc: story_npc, user: current_user)
+
+      bestiary = story_npc.bestiary_entry || BestiaryEntry.new(
+        id:       SecureRandom.uuid,
+        story_id: @story.id,
+        source:   "ai-draft"
+      )
+      bestiary.assign_attributes(attrs)
+      bestiary.save!
+
+      story_npc.update!(bestiary_entry_id: bestiary.id) if story_npc.bestiary_entry_id.nil?
+
+      render json: bestiary_entry_json(bestiary.reload)
+    rescue ActiveRecord::RecordNotFound => e
+      render json: { errors: [e.message] }, status: :not_found
+    rescue Ai::Error, StandardError => e
+      ApplicationErrorReporter.notify(e, context: { source: "admin_stories_generate_npc_sheet", story_id: @story.id, story_npc_id: params[:story_npc_id] })
+      render json: { errors: ["Generation failed: #{e.class}"] }, status: :unprocessable_entity
+    end
+
+    # DELETE /admin/stories/:id
     def destroy
       @story.discard!
       respond_to do |format|
@@ -81,13 +113,32 @@ module Admin
         ],
         story_npcs_attributes: [
           :id, :source, :name, :role, :location_id, :description,
-          :knowledge, :attitude, :secret, :_destroy
+          :knowledge, :attitude, :secret, :_destroy,
+          { bestiary_entry_attributes: [
+            :id, :name, :creature_type, :cr, :alignment, :size,
+            :strength, :dexterity, :constitution, :intelligence, :wisdom, :charisma,
+            :hp_formula, :ac, :base_attack, :speed, :description, :source
+          ] }
         ]
       )
     end
 
+    def named_story_npcs_missing_bestiary(story)
+      story.story_npcs.story_level.where(bestiary_entry_id: nil).reject do |npc|
+        npc.name.to_s.strip.empty?
+      end
+    end
+
+    def bestiary_entry_json(entry)
+      entry.as_json(only: [
+        :id, :name, :creature_type, :cr, :alignment, :size,
+        :strength, :dexterity, :constitution, :intelligence, :wisdom, :charisma,
+        :hp_formula, :ac, :base_attack, :speed, :description, :source
+      ])
+    end
+
     def extract_seed_facts!(story)
-      facts = Lore::ExtractFromPremise.call(story: story, user: current_user)
+      facts = Authoring::ExtractPremise.call(story: story, user: current_user)
       story.update_column(:seed_facts, facts) if facts.is_a?(Array)
     rescue StandardError => e
       ApplicationErrorReporter.notify(e, context: { source: "admin_stories_extract_from_premise", story_id: story.id })
@@ -108,8 +159,10 @@ module Admin
           }
         )
       }
-      base["story_npcs"] = story.story_npcs.story_level.order(:id).map { |npc|
-        npc.as_json(only: [:id, :source, :name, :role, :location_id, :description, :knowledge, :attitude, :secret])
+      base["story_npcs"] = story.story_npcs.story_level.includes(:bestiary_entry).order(:id).map { |npc|
+        json = npc.as_json(only: [:id, :source, :name, :role, :location_id, :description, :knowledge, :attitude, :secret])
+        json["bestiary_entry"] = npc.bestiary_entry ? bestiary_entry_json(npc.bestiary_entry) : nil
+        json
       }
       base
     end

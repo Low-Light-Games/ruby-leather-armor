@@ -7,11 +7,11 @@ module Admin
       @entries = BestiaryEntry.order(:name)
       @entries = @entries.where("LOWER(name) LIKE ?", "%#{params[:q].downcase}%") if params[:q].present?
       @total = BestiaryEntry.count
-      @ai_candidates = CreatureSheet.ai_generated.select(:name).distinct.pluck(:name)
+      @ai_candidates = AdventureActorSheet.ai_generated.select(:name).distinct.pluck(:name)
     end
 
     def import_candidates
-      sheets = CreatureSheet.ai_generated.alphabetical
+      sheets = AdventureActorSheet.ai_generated.alphabetical
       @candidates = sheets.group_by(&:name).map do |name, group|
         representative = group.max_by(&:updated_at)
         existing = BestiaryEntry.where("LOWER(name) = ?", name.downcase.strip.singularize).exists?
@@ -20,7 +20,7 @@ module Admin
     end
 
     def import
-      sheet = CreatureSheet.find(params[:creature_sheet_id])
+      sheet = AdventureActorSheet.find(params[:actor_sheet_id])
 
       name = params[:bestiary_name].presence || sheet.name
       entry_id = name.downcase.strip.gsub(/\s+/, "_")

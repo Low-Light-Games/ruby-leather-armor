@@ -9,8 +9,8 @@ const { submitActiveRollPanel } = require('../support/rolls');
 // models) this is currently flaky: RollRequest sometimes returns
 // roll.skill=Initiative or a hallucinated skill, the post-roll
 // combat-context-update sometimes rejects the AI-named participant on
-// missing creature_sheet_id ("Combat context update dropped
-// creature_sheet_id for orc patrol"). The deterministic regression for
+// missing actor_sheet_id ("Combat context update dropped
+// actor_sheet_id for orc patrol"). The deterministic regression for
 // the sheet-id surface lives in test/e2e/adventures/attack_envoy.spec.js;
 // this spec asserts the *desired* end state (an attack-style roll
 // followed by a hit and combat HUD) so that AI improvements upstream
@@ -25,10 +25,15 @@ test.describe('Charge at orc patrol — live OpenAI', () => {
     await sendChatMessage(page, 'I charge at the orc patrol');
     await submitActiveRollPanel(page, { typeMatch: /Attack/i });
 
-    const hitMessage = page.locator('.chat-message', {
-      hasText: /(hit|damage|wound|strike|HP)/i,
-    });
-    await expect(hitMessage.first()).toBeVisible({ timeout: 90_000 });
+    // The DM narrates the attack outcome as an `action_result` message
+    // before the engine prompts for initiative. The narrative wording
+    // is AI-driven and varies turn to turn ("strikes true", "lands a
+    // blow", "the dagger bites home"...), so assert on the message
+    // *type* rather than fishing for keywords like /hit|damage/.
+    const actionResult = page.locator('.chat-message.msg-type-action_result');
+    await expect(actionResult.first()).toBeVisible({ timeout: 90_000 });
+
+    await submitActiveRollPanel(page);
 
     await expect(page.locator('.combat-hud')).toBeVisible({ timeout: 60_000 });
   });

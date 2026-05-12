@@ -115,7 +115,7 @@ module Battlefield
             "label" => name,
             "x" => x,
             "y" => y,
-            "creature_sheet_id" => p["creature_sheet_id"],
+            "actor_sheet_id" => p["actor_sheet_id"],
             "type" => p["type"]
           }.compact
         end
@@ -125,8 +125,8 @@ module Battlefield
       def token_id_for(p, i)
         if p["type"].to_s == "player"
           "player"
-        elsif p["creature_sheet_id"].present?
-          "creature_#{p['creature_sheet_id']}"
+        elsif p["actor_sheet_id"].present?
+          "creature_#{p['actor_sheet_id']}"
         else
           "token_#{i}_#{p['name'].to_s.parameterize.underscore.presence || 'npc'}"
         end

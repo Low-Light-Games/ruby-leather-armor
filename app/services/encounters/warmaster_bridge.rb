@@ -17,13 +17,11 @@ module Encounters
 
       if encounter_entry
         creatures_data = loop&.get("encounter_creatures")
-        scene_enemy_names = hostile_npc_names_at_current_location(adventure)
         warmaster_result = Encounters::Warmaster.initialize_from_encounter!(
           encounter_initialization_request: Encounters::Warmaster::EncounterInitializationRequest.new(
             adventure: adventure,
             encounter_entry: encounter_entry,
             creatures_data: creatures_data,
-            scene_enemy_names: scene_enemy_names,
             sheet: sheet,
             log: log,
             config: config,
@@ -35,6 +33,12 @@ module Encounters
           Encounters::Warmaster.persist_pending_combat!(
             adventure: adventure,
             creature_data: warmaster_result[:creature_data]
+          )
+
+          register_spawned_creatures_as_adventure_npcs_for_dedup!(
+            adventure: adventure,
+            creature_data: warmaster_result[:creature_data],
+            log: log, ai: ai,
           )
 
           loop&.batch_update!(
@@ -122,17 +126,32 @@ module Encounters
       "#{encounter_scene}\n\n#{verdict_outcome}"
     end
 
-    def self.hostile_npc_names_at_current_location(adventure)
-      current_location_name = adventure&.current_location&.name
-      return [] if current_location_name.blank?
+    def self.register_spawned_creatures_as_adventure_npcs_for_dedup!(adventure:, creature_data:, log:, ai:)
+      records = Array(creature_data).filter_map do |row|
+        next unless row.is_a?(Hash)
 
-      AdventureNpc.for_adventure(adventure)
-                  .at_location(current_location_name)
-                  .hostile
-                  .pluck(:name)
-                  .uniq
+        creature = row.deep_symbolize_keys
+        next unless creature[:actor_sheet_id]
+
+        next if AdventureNpc.where(adventure_id: adventure.id, actor_sheet_id: creature[:actor_sheet_id]).exists?
+
+        Lore::NpcRecord.new(
+          name:              creature[:name].to_s.presence || "Creature",
+          attitude:          "unfriendly",
+          actor_sheet_id: creature[:actor_sheet_id],
+        )
+      end
+      return if records.empty?
+
+      Lore::ApplyNpcs.call(
+        adventure:   adventure,
+        log:         log,
+        ai:          ai,
+        npc_records: records,
+        source:      "runtime",
+      )
     end
 
-    private_class_method :reconcile_encounter
+    private_class_method :reconcile_encounter, :register_spawned_creatures_as_adventure_npcs_for_dedup!
   end
 end

@@ -84,15 +84,13 @@ combat_entries = [
     creature_manifest: [
       { "bestiary_entry_id" => "skeleton", "count" => 5, "display_name" => "Skeleton Archer" }
     ] },
-  { title: "Ambush from the Ruins",  entry_type: "ai_prompt", weight: 2,
-    description: "Enemies have set a clever ambush using the battlefield terrain — describe the setup, who they are, how many, and what tactical advantage they press." },
-  { title: "Desperate Skirmish",     entry_type: "ai_prompt", weight: 1,
-    description: "Two enemy factions are fighting each other and the player blunders into the middle. Describe both sides, their disposition toward the player, and the chaotic battlefield." },
 ]
 
 combat_entries.each do |attrs|
   entry = table.encounter_table_entries.find_or_initialize_by(title: attrs[:title])
   entry.update!(attrs)
 end
+
+table.encounter_table_entries.where(entry_type: "ai_prompt").destroy_all
 
 puts "Seeded encounter table for '#{story.title}'"

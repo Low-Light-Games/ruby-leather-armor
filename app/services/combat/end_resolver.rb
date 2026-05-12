@@ -22,7 +22,7 @@ module Combat
     def check_combat_end(adventure:, sheet:, instant_death: false)
       player_status = check_player_status(sheet, instant_death: instant_death)
       npc_ids = combat_npc_sheet_ids(adventure)
-      npcs = adventure.creature_sheets.where(id: npc_ids)
+      npcs = adventure.adventure_actor_sheets.where(id: npc_ids)
 
       all_npcs_down = if npc_ids.empty?
                         false
@@ -53,7 +53,7 @@ module Combat
 
       Array(ctx["participants"]).filter_map do |p|
         p = p.stringify_keys if p.respond_to?(:stringify_keys)
-        sid = p["creature_sheet_id"]
+        sid = p["actor_sheet_id"]
         sid.to_i if sid.present?
       end.uniq
     end

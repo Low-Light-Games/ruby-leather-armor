@@ -3,9 +3,9 @@
 module Encounters
   module Warmaster
     class EncounterInitializationRequest
-      attr_reader :adventure, :encounter_entry, :sheet, :log, :config, :ai, :creatures_data, :scene_enemy_names
+      attr_reader :adventure, :encounter_entry, :sheet, :log, :config, :ai, :creatures_data
 
-      def initialize(adventure:, encounter_entry:, sheet:, log:, config:, ai:, creatures_data: nil, scene_enemy_names: nil)
+      def initialize(adventure:, encounter_entry:, sheet:, log:, config:, ai:, creatures_data: nil)
         @adventure = adventure
         @encounter_entry = encounter_entry
         @sheet = sheet
@@ -13,7 +13,6 @@ module Encounters
         @config = config
         @ai = ai
         @creatures_data = creatures_data
-        @scene_enemy_names = scene_enemy_names
       end
     end
   end

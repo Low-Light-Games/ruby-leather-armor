@@ -8,6 +8,7 @@ module PlayerTurn
     include Steps::GameMaster
     include Steps::Sequencer
     include Steps::SanityChecker
+    include Steps::CastResolve
     include Steps::RollRequest
     include Steps::CombatRollRequest
     include Steps::Mechanic
@@ -24,7 +25,8 @@ module PlayerTurn
     include Concerns::ContextCoordination
     include Concerns::EntryPoints
 
-    attr_reader :adventure, :user, :config, :log, :ai, :sheet, :loop, :run_pipeline
+    attr_reader :adventure, :user, :config, :log, :ai, :sheet, :loop, :run_pipeline,
+                :current_cast_roster
 
     def initialize(adventure:, config:, ai:, log:, sheet:, user: nil, run_pipeline: nil,
       on_progress: nil, on_sheet_update: nil, on_narrative: nil)
@@ -79,6 +81,30 @@ module PlayerTurn
       bind_current_loop!(
         AdventureLoop.for_registry_entry(@log.registry_entry_uuid).paused.order(:created_at).last
       )
+      restore_cast_roster_from_paused_loop!
+    end
+
+    def restore_cast_roster_from_paused_loop!
+      return if @loop.nil?
+
+      stored = @loop.get("cast_roster")
+      return if stored.blank? || !stored.is_a?(Hash)
+
+      members = Array(stored["members"]).filter_map do |row|
+        next nil unless row.is_a?(Hash)
+
+        actor_sheet_id = Integer(row["actor_sheet_id"], exception: false)
+        next nil unless actor_sheet_id&.positive?
+
+        PlayerTurn::CastMember.new(
+          adventure_npc_id:  Integer(row["adventure_npc_id"], exception: false),
+          actor_sheet_id:    actor_sheet_id,
+          name:              row["name"].to_s,
+          attitude:          row["attitude"].to_s.presence || "indifferent",
+          location_name:     row["location_name"],
+        )
+      end
+      @current_cast_roster = PlayerTurn::CastRoster.new(members: members)
     end
 
     def tl(step, summary)

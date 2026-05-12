@@ -6,7 +6,8 @@ module Tools
       attr_reader :type, :skill, :save, :dc, :description, :rule_slug,
                   :take_10_eligible, :take_20_eligible,
                   :take_10_value, :take_20_value,
-                  :situational_modifiers, :mechanical_summary, :request_id
+                  :situational_modifiers, :mechanical_summary, :request_id,
+                  :target_actor_sheet_id
 
       def self.from_parsed(parsed, sheet:)
         parsed = (parsed || {}).deep_symbolize_keys
@@ -25,7 +26,8 @@ module Tools
           take_10_value: take_values[:take_10_value],
           take_20_value: take_values[:take_20_value],
           situational_modifiers: PlayerTurn::Rolls::SituationalModifiers.normalize(parsed[:situational_modifiers]),
-          mechanical_summary: mechanical_summary
+          mechanical_summary: mechanical_summary,
+          target_actor_sheet_id: Coerce.actor_sheet_id(parsed[:target_actor_sheet_id])
         )
       end
 
@@ -38,7 +40,8 @@ module Tools
       def initialize(type:, skill:, save:, dc:, description:, rule_slug:,
                      take_10_eligible:, take_20_eligible:,
                      take_10_value:, take_20_value:,
-                     situational_modifiers:, mechanical_summary:, request_id: nil)
+                     situational_modifiers:, mechanical_summary:,
+                     request_id: nil, target_actor_sheet_id: nil)
         @type = type
         @skill = skill
         @save = save
@@ -52,6 +55,7 @@ module Tools
         @situational_modifiers = situational_modifiers
         @mechanical_summary = mechanical_summary
         @request_id = request_id || SecureRandom.uuid
+        @target_actor_sheet_id = target_actor_sheet_id
       end
 
       def to_h
@@ -68,7 +72,8 @@ module Tools
           take_20_value: @take_20_value,
           situational_modifiers: @situational_modifiers,
           mechanical_summary: @mechanical_summary,
-          request_id: @request_id
+          request_id: @request_id,
+          target_actor_sheet_id: @target_actor_sheet_id
         }.compact
       end
     end

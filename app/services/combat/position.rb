@@ -2,14 +2,14 @@
 
 module Combat
   class Position
-    attr_reader :token_id, :label, :coordinates, :type, :creature_sheet_id
+    attr_reader :token_id, :label, :coordinates, :type, :actor_sheet_id
 
-    def initialize(token_id:, label:, coordinates: { x: nil, y: nil }, type: nil, creature_sheet_id: nil)
+    def initialize(token_id:, label:, coordinates: { x: nil, y: nil }, type: nil, actor_sheet_id: nil)
       @token_id = token_id
       @label = label
       @coordinates = (coordinates || {}).to_h
       @type = type
-      @creature_sheet_id = creature_sheet_id
+      @actor_sheet_id = actor_sheet_id
     end
 
     def x

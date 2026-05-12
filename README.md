@@ -19,15 +19,23 @@ A player types something like *"I try to pick the lock on the chest"*. That inpu
 ```
 Player input
   │
-  ├─ Triage ──────────── Sanitize (AI) ║ Classify (AI)   ← parallel
+  ├─ Intake (AI) ─────── sanitizes input and scores danger (0–100)
   │
   ├─ Sequencer (AI) ──── splits compound actions into a queue
   │
   └─ Per action:
        │
+       ├─ CastResolver (AI, out-of-combat only):
+       │      names every creature the action could touch and resolves each
+       │      one to a real `actor_sheet_id` via the four-tier lookup
+       │      (existing AdventureNpc → existing AdventureActorSheet → BestiaryEntry
+       │      by name → BestiaryEntry by `default_for_type`). Output is a
+       │      cast roster of integer IDs that downstream steps reference
+       │      directly — no name strings on the wire.
+       │
        ├─ Evaluation (single AI call):
-       │    ├─ RollRequest         ── out-of-combat: rules+beats RAG, picks one roll spec or "no roll"
-       │    └─ CombatRollRequest   ── in-combat free-text: attack options + battlefield context
+       │    ├─ RollRequest         ── out-of-combat: rules+beats RAG + cast roster, picks one roll spec or "no roll"; emits optional `target_actor_sheet_id` (an id from the roster) and orthogonal `transition` signal
+       │    └─ CombatRollRequest   ── in-combat free-text: attack options + battlefield context + live participant ids
        │
        ├─ Sanity Checker (AI/code) ── capability + world consistency
        │
@@ -57,11 +65,11 @@ Player input
 
 | Step | What it does |
 |---|---|
-| **Sanitize** | Scores input danger (0–100) and produces a cleaned version |
-| **Classify** | Tags the action domain: combat, traversal, social, exploration, rest, inventory |
+| **Intake** | Single AI call at the top of every turn: sanitizes the player input and scores its real-world danger (0–100). The earlier separate `Sanitize` and `Classify` steps were folded into Intake; action-domain classification was retired entirely with the micro-context cleanup |
 | **Sequencer** | Breaks compound actions (*"I search the room and then open the door"*) into ordered sub-actions |
-| **RollRequest** | Out-of-combat single AI call. Decides whether the intent needs a die roll, emits one roll spec (or "no roll") plus the cross-cutting signals (affected_contexts, transition, combatants). Prompt has no character block — top-K rules and scene_facts retrieval (intent + current location + active combat participants), retrieved from pgvector |
-| **CombatRollRequest** | In-combat free-text single AI call. Same shape as RollRequest, but the prompt carries attack options, action economy, threats, and the battlefield slice. Combat rolls emit `attack_option_id`; DCs and damage are resolved post-call from the sheet via `CombatMechanicResolution` |
+| **CastResolver** | Out-of-combat single AI call at the top of every action. Names every creature the player could plausibly interact with (target / address / evade / observe) as `[{name, type, count}]` against a closed five-entry type enum (`beast`, `fighter`, `goblinoid`, `spellcaster`, `commoner`). Code resolves each entry deterministically through the four-tier lookup and persists the cast roster on the `AdventureLoop` so RollRequest, Stagehand, and the resume path all see the same integer `actor_sheet_id`s. Cheapest reasoning model — same tier as RollRequest |
+| **RollRequest** | Out-of-combat single AI call. Decides whether the intent needs a die roll, emits one roll spec (or "no roll"), and — when the action targets a single creature — copies that creature's `actor_sheet_id` from the cast roster into `target_actor_sheet_id` (omitted when there is no target). The orthogonal `transition` signal indicates combat-start. Prompt has no character block — top-K rules + cast roster + scene_facts retrieval, all from pgvector |
+| **CombatRollRequest** | In-combat free-text single AI call. Same shape as RollRequest, but the prompt carries attack options, action economy, threats, and the battlefield slice. Combat rolls emit `attack_option_id`; DCs and damage are resolved post-call from the sheet via `CombatMechanicResolution`. Free-text rolls share the same optional `target_actor_sheet_id` contract as RollRequest, sourced from the live combat roster |
 | **Sanity Checker** | Capability check (sheet-based) + world consistency check (pgvector retrieval against `adventure_narrative_facts`, `adventure_npcs`, and `adventure_locations`) |
 | **Mechanic** | Post-roll arbitration out of combat. Also handles no-roll auto-success outcomes — every action flows through this verdict path |
 | **Combat GM** | Post-roll arbitration in combat: produces structured mutations + battlefield patches; consumes deterministic attack-roll facts assembled from the resolved `attack_option_id` |
@@ -79,7 +87,8 @@ Player input
 | **Mutations** | Applies HP changes, conditions, inventory updates, and other state changes to the database |
 | **GameClock** | Advances the in-game clock, recalculates light conditions and fatigue thresholds |
 | **Harbinger** | Checks encounter tables for random encounters based on time, location, and noise |
-| **Warmaster** | Initializes combat: creates creature sheets, rolls NPC initiative, sets turn order |
+| **Warmaster** | Initializes combat from the cast roster: combatants are the action's `target_actor_sheet_id` plus any pre-existing hostile roster entries (indifferent / friendly bystanders stay out). Rolls NPC initiative, sets turn order, persists the pending combat context. No name-fuzzy-matching, no per-turn AI generation — every participant is a real `actor_sheet_id` minted by the `CastResolver` upstream |
+| **ActorSheetCreation** | `Encounters::ActorSheetCreation.from_bestiary` — the single deterministic path that turns a `BestiaryEntry` (story-scoped, public, or `default_for_type`) into N `AdventureActorSheet` rows on an Adventure. Used by the cast resolver, the encounter bridge, and the authoring tools |
 | **CombatMechanicResolution** | Normalizes combat mech-eval JSON into authoritative attack/save DCs from live sheet data |
 | **World Turn** | Resolves post-player NPC turns in active combat, advances turn/round state, and short-circuits on combat end |
 | **Stagehand** | Orchestrates the final output shape — decides what gets sent back to the player |

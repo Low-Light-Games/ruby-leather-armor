@@ -2,7 +2,7 @@
 
 module CharacterStats
   class Calculator
-    # @param source [Sheet, AdventureSheet, CreatureSheet]
+    # @param source [Sheet, AdventureSheet, AdventureActorSheet]
     # @param feats  [Array]  pre-loaded feat pivot records (loaded from DB if nil)
     # @param items  [Array]  pre-loaded item pivot records (loaded from DB if nil)
     def initialize(source, feats: nil, items: nil)
@@ -93,7 +93,7 @@ module CharacterStats
 
       return source.adventure_sheet_feats.includes(:feat_definition) if adventure_sheet_source?(source)
 
-      return source.creature_sheet_feats.includes(:feat_definition) if creature_sheet_source?(source)
+      return source.adventure_actor_sheet_feats.includes(:feat_definition) if adventure_actor_sheet_source?(source)
 
       []
     end
@@ -103,7 +103,7 @@ module CharacterStats
 
       return source.adventure_sheet_items.includes(:item_definition) if adventure_sheet_source?(source)
 
-      return source.creature_sheet_items.includes(:item_definition) if creature_sheet_source?(source)
+      return source.adventure_actor_sheet_items.includes(:item_definition) if adventure_actor_sheet_source?(source)
 
       []
     end
@@ -116,8 +116,8 @@ module CharacterStats
       source.respond_to?(:adventure_sheet_feats) && source.respond_to?(:adventure_sheet_items)
     end
 
-    def creature_sheet_source?(source)
-      source.respond_to?(:creature_sheet_feats) && source.respond_to?(:creature_sheet_items)
+    def adventure_actor_sheet_source?(source)
+      source.respond_to?(:adventure_actor_sheet_feats) && source.respond_to?(:adventure_actor_sheet_items)
     end
   end
 end

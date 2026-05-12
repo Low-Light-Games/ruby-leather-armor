@@ -37,14 +37,14 @@ module Combat
       end
 
       def active_npcs_in_initiative_order
-        ids = ordered_npc_creature_sheet_ids(@adventure.combat_context || {})
+        ids = ordered_npc_actor_sheet_ids(@adventure.combat_context || {})
         return [] if ids.empty?
 
-        by_id = @adventure.creature_sheets.where(id: ids).where('hp > 0').index_by(&:id)
+        by_id = @adventure.adventure_actor_sheets.where(id: ids).where('hp > 0').index_by(&:id)
         ids.filter_map { |id| by_id[id] }
       end
 
-      def ordered_npc_creature_sheet_ids(ctx)
+      def ordered_npc_actor_sheet_ids(ctx)
         participants = Array(ctx['participants'])
         names_to_ids = participants_name_to_id(participants)
         ordered_names = Array(ctx['turn_order'])
@@ -52,12 +52,12 @@ module Combat
         ids = ordered_names.filter_map { |n| names_to_ids[n.to_s] }
         return ids unless ids.empty?
 
-        participants.filter_map { |p| p['creature_sheet_id']&.to_i }
+        participants.filter_map { |p| p['actor_sheet_id']&.to_i }
       end
 
       def participants_name_to_id(participants)
         participants.each_with_object({}) do |p, acc|
-          sid = p['creature_sheet_id']
+          sid = p['actor_sheet_id']
           acc[p['name'].to_s] = sid.to_i if sid
         end
       end

@@ -21,24 +21,24 @@ module Combat
         end
       end
 
-      def creature_sheet_id_for_name(name, combat_ctx)
+      def actor_sheet_id_for_name(name, combat_ctx)
         participant = Array(combat_ctx["participants"]).find { |entry| entry["name"].to_s == name.to_s }
-        creature_sheet_id = participant && participant["creature_sheet_id"]
-        creature_sheet_id.present? ? creature_sheet_id.to_i : nil
+        actor_sheet_id = participant && participant["actor_sheet_id"]
+        actor_sheet_id.present? ? actor_sheet_id.to_i : nil
       end
 
       def ac_for_name(name, context: nil, **kwargs)
         lookup = context || LookupContext.new(**kwargs)
         return lookup.player_sheet.derived_stats.fetch("ac").to_i if name.to_s.casecmp("player").zero?
 
-        creature_sheet_id = creature_sheet_id_for_name(name, lookup.combat_ctx)
-        return nil unless creature_sheet_id
+        actor_sheet_id = actor_sheet_id_for_name(name, lookup.combat_ctx)
+        return nil unless actor_sheet_id
 
-        creature_sheet = lookup.adventure.creature_sheets.find_by(id: creature_sheet_id)
-        (creature_sheet&.derived_stats || {})["ac"]&.to_i
+        adventure_actor_sheet = lookup.adventure.adventure_actor_sheets.find_by(id: actor_sheet_id)
+        (adventure_actor_sheet&.derived_stats || {})["ac"]&.to_i
       end
 
-      # @return [Array<Symbol, AdventureSheet|CreatureSheet>] `[:player, sheet]` or `[:creature, sheet]`
+      # @return [Array<Symbol, AdventureSheet|AdventureActorSheet>] `[:player, sheet]` or `[:creature, sheet]`
       def resolve_target_sheet!(target_name, context: nil, **kwargs)
         lookup = context || LookupContext.new(**kwargs)
         normalized_target_name = target_name.to_s.strip
@@ -63,11 +63,11 @@ module Combat
           )
         end
 
-        creature_sheet_id = matches.first["creature_sheet_id"].to_i
-        creature = lookup.adventure.creature_sheets.find_by(id: creature_sheet_id)
+        actor_sheet_id = matches.first["actor_sheet_id"].to_i
+        creature = lookup.adventure.adventure_actor_sheets.find_by(id: actor_sheet_id)
         unless creature
           raise Combat::MechanicResolutionError.new(
-            "creature sheet missing for participant (id=#{creature_sheet_id})",
+            "creature sheet missing for participant (id=#{actor_sheet_id})",
             code: :creature_missing
           )
         end

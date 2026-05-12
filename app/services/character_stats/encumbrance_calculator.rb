@@ -4,7 +4,7 @@ module CharacterStats
   class EncumbranceCalculator
     include GameRules
 
-    # @param items [Array<SheetItem|AdventureSheetItem|CreatureSheetItem>]
+    # @param items [Array<SheetItem|AdventureSheetItem|AdventureActorSheetItem>]
     # @param str_score [Integer]  final (post-racial, post-condition) STR score
     # @param size [String]        "Medium" or "Small"
     # @param coin_count [Integer] total coin count (50 coins = 1 lb)

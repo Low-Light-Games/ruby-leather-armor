@@ -16,10 +16,10 @@ module Combat
           case action
           when "flee"
             lines << "#{npc.name} disengages and flees."
-            npc_muts << { creature_sheet_id: npc.creature_sheet_id, name: npc.name, conditions_add: ["fled"] }
+            npc_muts << { actor_sheet_id: npc.actor_sheet_id, name: npc.name, conditions_add: ["fled"] }
           when "surrender"
             lines << "#{npc.name} surrenders."
-            npc_muts << { creature_sheet_id: npc.creature_sheet_id, name: npc.name, conditions_add: ["surrendered"] }
+            npc_muts << { actor_sheet_id: npc.actor_sheet_id, name: npc.name, conditions_add: ["surrendered"] }
           when "attack"
             attack_resolution = resolve_attack(npc, parsed, combat_ctx, player_sheet, adventure)
             lines.concat(attack_resolution[:lines])
@@ -71,8 +71,8 @@ module Combat
               if roll[:atk][:hit]
                 dmg = roll[:damage]
                 lines << "#{npc.name} attacks #{target}: hit for #{dmg}."
-                tid = ParticipantLookup.creature_sheet_id_for_name(target, combat_ctx)
-                npc_muts << { creature_sheet_id: tid, name: target, hp_change: -dmg } if tid.present?
+                tid = ParticipantLookup.actor_sheet_id_for_name(target, combat_ctx)
+                npc_muts << { actor_sheet_id: tid, name: target, hp_change: -dmg } if tid.present?
               else
                 lines << "#{npc.name} attacks #{target}: miss."
               end

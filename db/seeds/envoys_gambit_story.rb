@@ -1,15 +1,6 @@
 # frozen_string_literal: true
 
-# ── The Envoy's Gambit ────────────────────────────────────────────────────────
-# Single-room conversational story used by the attack_envoy e2e test to
-# exercise the post-roll combat-context-update path with a *named*
-# antagonist. The named StoryNpc surfaces through lore retrieval into the
-# AI's context, so when the player attacks the envoy the pipeline emits
-# combatants with that exact name — which means RollRequest's combatants
-# normalizer keeps the name (instead of mangling it to "name") and the
-# downstream combat-context-update step deterministically reaches the
-# "dropped creature_sheet_id for Lord Velkar Mhonn" guard in
-# Steps::ContextUpdate#repair_participant_identity.
+# Single-room conversational story exercised by attack_envoy.spec.js.
 
 story = Story.find_or_initialize_by(title: "The Envoy's Gambit")
 story.preview = "A diplomatic audience turns hostile. The envoy across the table knows more than they should — and is no longer pretending otherwise."
@@ -42,15 +33,40 @@ end
 
 audience_chamber = story.story_locations.find_by!(name: "Velkar's Audience Chamber")
 
+# Hand-authored, no AI at seed time — the canonical reviewed sheet
+# Lore::SeedFromAdventure clones at adventure creation.
+velkar_sheet = BestiaryEntry.find_or_initialize_by(id: "story_envoys_gambit_velkar")
+velkar_sheet.assign_attributes(
+  name:          "Lord Velkar Mhonn",
+  story_id:      story.id,
+  source:        "manual",
+  cr:            4,
+  creature_type: "humanoid",
+  alignment:     "LE",
+  size:          "Medium",
+  strength:      13, dexterity: 14, constitution: 12,
+  intelligence:  16, wisdom:    14, charisma:     16,
+  hp_formula:    "4d10+8",
+  ac:            17,
+  base_attack:   4,
+  speed:         30,
+  special_abilities: [],
+  feats:         ["Combat Expertise", "Weapon Finesse"],
+  skills:        { "Diplomacy" => 12, "Sense Motive" => 9, "Bluff" => 10, "Intimidate" => 8 },
+  description:   "Coalition envoy in formal black-and-silver. Aristocrat-fighter hybrid; composed, watchful, dangerous when cornered."
+)
+velkar_sheet.save!
+
 velkar = story.story_npcs.find_or_initialize_by(name: "Lord Velkar Mhonn")
 velkar.update!(
   source: "manual",
   role: "antagonist",
   attitude: "unfriendly",
   location: audience_chamber,
+  bestiary_entry_id: velkar_sheet.id,
   description: "An older Coalition envoy in formal black-and-silver. Composed, watchful, faintly amused. His authority in this room is total.",
   knowledge: "Knows the contents of the broken-seal letter, knows it implicates the player's faction in a failed assassination attempt three years ago, and is fully prepared to leak it before nightfall unless the player concedes.",
   secret: false
 )
 
-puts "Seeded 1 location and 1 NPC for '#{story.title}'"
+puts "Seeded 1 location, 1 NPC, and 1 hand-authored bestiary stat block for '#{story.title}'"

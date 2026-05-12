@@ -7,7 +7,7 @@
 #   - Player position update after a successful traversal action
 #
 # StoryLocations have no x/y; coordinates are assigned per-adventure by
-# Lore::ExtractFromPremise during Adventures::Bootstrap. The premise below
+# Authoring::ExtractPremise during Adventures::Bootstrap. The premise below
 # is written to nudge that step toward placing the two points roughly a
 # kilometre apart over open water.
 

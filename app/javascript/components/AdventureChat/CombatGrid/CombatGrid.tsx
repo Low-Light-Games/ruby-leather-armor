@@ -31,7 +31,7 @@ function parseRawToken(id: string, raw: Record<string, unknown>): Omit<ResolvedT
     x,
     y,
     type: typeof raw.type === 'string' ? raw.type : 'npc',
-    creatureSheetId: typeof raw.creature_sheet_id === 'number' ? raw.creature_sheet_id : null,
+    creatureSheetId: typeof raw.actor_sheet_id === 'number' ? raw.actor_sheet_id : null,
     isPlayer: id === 'player',
   }
 }
@@ -67,7 +67,7 @@ function readTokens(tokens: Record<string, Record<string, unknown>>): ResolvedTo
 
 function findCreatureHp(targets: CombatTarget[] | undefined, creatureSheetId: number | null) {
   if (!targets || creatureSheetId == null) return null
-  return targets.find(t => t.creature_sheet_id === creatureSheetId) || null
+  return targets.find(t => t.actor_sheet_id === creatureSheetId) || null
 }
 
 function tightViewportFor(tokens: ResolvedToken[], viewport: ViewportRect, speedSquares: number): ViewportRect {

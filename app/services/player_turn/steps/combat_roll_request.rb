@@ -98,7 +98,7 @@ module PlayerTurn
       end
 
       def combat_resolution_context
-        combat_ctx = @adventure.combat_context.is_a?(Hash) ? @adventure.combat_context : {}
+        combat_ctx = Adventures::CombatState.from_adventure(@adventure).to_h
         PlayerTurn::Steps::Phases::CombatMechanicResolution::CombatResolutionContext.new(
           combat_ctx: combat_ctx,
           adventure: @adventure,

@@ -10,7 +10,7 @@ module PlayerTurn
 
         def self.build(intent:, adventure:, sheet:, ai:, log:,
                        rules_top_k:, beats_top_k:)
-          combat_ctx = adventure.combat_context.is_a?(Hash) ? adventure.combat_context : {}
+          combat_state = Adventures::CombatState.from_adventure(adventure)
 
           new(
             intent: intent,
@@ -24,11 +24,11 @@ module PlayerTurn
             },
             combat: {
               attack_options: Combat::Options::AttackOptionBuilder.call(sheet: sheet, adventure: adventure),
-              action_economy: combat_ctx['action_economy'] || {},
+              action_economy: combat_state.action_economy,
               threats: build_threats_for_player(adventure: adventure),
               battlefield_summary: Battlefield::PromptSerializer.slice_for_adventure(adventure)
             },
-            state: { round: combat_ctx['round'], current_turn: combat_ctx['current_turn'],
+            state: { round: combat_state.round, current_turn: combat_state.current_turn,
                      current_location_name: adventure.current_location&.name }
           )
         end
@@ -66,15 +66,6 @@ module PlayerTurn
 
         def battlefield_summary
           @battlefield
-        end
-
-        def action_economy_chips
-          chips = []
-          chips << 'Standard' if @action_economy['standard_available']
-          chips << 'Move'     if @action_economy['move_available']
-          chips << 'Swift'    if @action_economy['swift_available']
-          chips << 'Free'
-          chips
         end
 
         def attack_options_text

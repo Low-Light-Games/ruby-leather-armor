@@ -7,7 +7,7 @@ module Combat
     KIND_SKIP   = 'npc_skip'
     KIND_FLEE   = 'npc_flee'
 
-    # @param creature [CreatureSheet]
+    # @param creature [AdventureActorSheet]
     # @param attack_pref [Combat::ProgrammedBehavior::AttackPreference]
     # @param outcome [Combat::NpcAttackOutcome]
     class Attack
@@ -30,7 +30,7 @@ module Combat
       end
     end
 
-    # @param creature [CreatureSheet]
+    # @param creature [AdventureActorSheet]
     # @param from [Hash{x: Integer, y: Integer}]
     # @param to [Hash{x: Integer, y: Integer}]
     class Move
@@ -54,7 +54,7 @@ module Combat
       end
     end
 
-    # @param creature [CreatureSheet]
+    # @param creature [AdventureActorSheet]
     # @param reason [String]
     class Skip
       attr_reader :creature, :reason
@@ -74,7 +74,7 @@ module Combat
       end
     end
 
-    # @param creature [CreatureSheet]
+    # @param creature [AdventureActorSheet]
     # @param from [Hash{x: Integer, y: Integer}]
     # @param to [Hash{x: Integer, y: Integer}]
     class Flee

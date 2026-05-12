@@ -6,8 +6,8 @@ module Combat
 
     module_function
 
-    # @param attacker [CreatureSheet]
-    # @param target_sheet [CreatureSheet, AdventureSheet]
+    # @param attacker [AdventureActorSheet]
+    # @param target_sheet [AdventureActorSheet, AdventureSheet]
     # @param target_kind [Symbol]
     # @param attack_pref [Combat::ProgrammedBehavior::AttackPreference, nil]
     # @return [Combat::NpcAttackOutcome]
@@ -29,7 +29,7 @@ module Combat
       )
     end
 
-    # @param creature [CreatureSheet]
+    # @param creature [AdventureActorSheet]
     # @param weapon [Combat::EquippedWeapon]
     def attack_bonus_for(creature, weapon)
       stats = creature.derived_stats || {}
@@ -38,7 +38,7 @@ module Combat
       bonus.to_i
     end
 
-    # @param creature [CreatureSheet]
+    # @param creature [AdventureActorSheet]
     # @param attack_pref [Combat::ProgrammedBehavior::AttackPreference, nil]
     # @return [Combat::EquippedWeapon]
     def pick_weapon_for_attack(creature, attack_pref)
@@ -58,13 +58,13 @@ module Combat
       label.casecmp(name.to_s).zero?
     end
 
-    # @param sheet [CreatureSheet, AdventureSheet]
+    # @param sheet [AdventureActorSheet, AdventureSheet]
     def ac_for(sheet)
       stats = sheet.derived_stats || {}
       (stats['ac'] || stats[:ac]).to_i
     end
 
-    # @param creature [CreatureSheet]
+    # @param creature [AdventureActorSheet]
     def str_mod(creature)
       mods = (creature.derived_stats || {})['mods'] || {}
       val = mods['strength']
@@ -73,7 +73,7 @@ module Combat
       ((creature.strength.to_i - 10) / 2).floor
     end
 
-    # @param creature [CreatureSheet]
+    # @param creature [AdventureActorSheet]
     # @return [Combat::EquippedWeapon]
     def primary_weapon_for(creature)
       first = Array(creature.equipped_weapons).find { |w| weapon_with_dice?(w) }
@@ -89,7 +89,7 @@ module Combat
       { hit: hit, natural: natural, total: total, defense_dc: defense_dc }
     end
 
-    # @param attacker [CreatureSheet]
+    # @param attacker [AdventureActorSheet]
     # @param weapon [Combat::EquippedWeapon]
     # @return [Combat::DamageRoll]
     def roll_damage(attacker, weapon)
@@ -98,7 +98,7 @@ module Combat
       Combat::DamageRoll.new(total: total, type: weapon.damage_type)
     end
 
-    # @param sheet [CreatureSheet, AdventureSheet]
+    # @param sheet [AdventureActorSheet, AdventureSheet]
     # @param damage [Combat::DamageRoll, nil] nil when the attack missed
     def apply_damage_to(sheet, damage)
       hp_before = sheet.hp.to_i
@@ -114,7 +114,7 @@ module Combat
       { hp_before: hp_before, hp_after: hp_after, dropped: dropped }
     end
 
-    # @param weapon [Hash, nil] raw entry from CreatureSheet#equipped_weapons
+    # @param weapon [Hash, nil] raw entry from AdventureActorSheet#equipped_weapons
     def weapon_with_dice?(weapon)
       weapon.is_a?(Hash) && (weapon['damage_dice'] || weapon[:damage_dice]).to_s.match?(/\d+d\d+/)
     end

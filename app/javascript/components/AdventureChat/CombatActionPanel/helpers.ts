@@ -33,11 +33,11 @@ export function describeAttackOption(option: CombatAttackOption): string {
 }
 
 export function pickAliveTargetId(targets: CombatTarget[], previousId: number | null): number | null {
-  const previousStillAlive = previousId != null && targets.some(t => t.creature_sheet_id === previousId && !t.dropped)
+  const previousStillAlive = previousId != null && targets.some(t => t.actor_sheet_id === previousId && !t.dropped)
   if (previousStillAlive) return previousId
 
   const firstAlive = targets.find(t => !t.dropped)
-  return firstAlive ? firstAlive.creature_sheet_id : null
+  return firstAlive ? firstAlive.actor_sheet_id : null
 }
 
 export function makeResolvedEntry(

@@ -51,6 +51,12 @@ module Ai
                      'Override only if you want non-reasoning behavior, a more capable model, ' \
                      'or higher reasoning effort on this step.'
 
+      CAST_RESOLVER = 'Cheapest reasoning model — same tier as RollRequest. Single AI call ' \
+                      'between Sequencer and RollRequest that emits [{name,type,count}] for ' \
+                      'every creature implicated by the player\'s intent + scene context. ' \
+                      'Stats and identifiers come from the deterministic 4-tier lookup in ' \
+                      'Encounters::CastResolver, not from this prompt.'
+
       REQUEST_ROLL_TOOL = "#{FAST_CHEAP} Tool-flavored RollRequest invoked by the " \
                           "GameMaster. Slim schema (no needs_roll, no transition signals); " \
                           'GM has already decided a roll is required.'.freeze

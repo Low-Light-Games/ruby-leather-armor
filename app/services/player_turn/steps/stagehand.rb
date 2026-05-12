@@ -7,17 +7,18 @@ module PlayerTurn
 
       def run_narrative_phase(intent, narration_context:, mutations:, extra: {})
         warmaster_result = maybe_initialize_combat(intent)
+        narration = run_parallel_narrative(intent, narration_context: narration_context, mutations: mutations)
+
         if warmaster_result && warmaster_result[:status] == :awaiting_initiative
-          run_context_updates(narration_context.combined_seed, mutations)
+          opener_outcome = narration[:narrative].to_s.presence
+          extras_with_opener = opener_outcome ? extra.merge(opener_outcome: opener_outcome) : extra
           return Narration::PhaseResults.awaiting_initiative(
             intent: intent,
             creature_data: warmaster_result[:creature_data],
             mutations: mutations,
-            extras: extra,
+            extras: extras_with_opener,
           ).to_h
         end
-
-        narration = run_parallel_narrative(intent, narration_context: narration_context, mutations: mutations)
 
         Narration::PhaseResults.narrated(
           narrative: narration[:narrative],
@@ -34,16 +35,20 @@ module PlayerTurn
         scene_facts   = retrieve_scene_facts_for_narrate(intent)
         outcome_facts = retrieve_outcome_facts_for_narrate(seed)
 
+        combat_context_required = combat_context_update_required?(mutations)
+
         prompts = [
           narrate_evaluator_prompt(narration_context, scene_facts: scene_facts, outcome_facts: outcome_facts),
-          combat_context_evaluator_prompt(seed, mutations, allow_combat_initialization: true),
           loremaster_evaluator_prompt(loremaster_inputs),
         ]
+        if combat_context_required
+          prompts << combat_context_evaluator_prompt(seed, mutations)
+        end
 
         broadcast_progress("Writing the story...")
         by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
 
-        persist_combat_context(combat_context_result(by_step, phase: "narrative_phase"), mutations)
+        update_or_snapshot_combat_context(by_step, mutations, required: combat_context_required, phase: "narrative_phase")
 
         broadcast_progress("Remembering the world...")
         apply_loremaster_from_fan_out!(by_step)
@@ -127,20 +132,25 @@ module PlayerTurn
         transition = intent[:transition] || intent["transition"]
         return nil unless combat_transition?(transition)
 
-        combatants = Array(intent[:combat_combatants] || intent["combat_combatants"])
-                       .map(&:to_s).reject(&:blank?).uniq
-        return nil if combatants.empty?
+        roster = @current_cast_roster || PlayerTurn::CastRoster.empty
+        return nil if roster.empty?
 
-        Encounters::Warmaster.initialize_from_names!(
-          names_preparation_request: Encounters::Warmaster::NamesPreparationRequest.new(
-            adventure: @adventure,
-            combatant_names: combatants,
-            sheet: @sheet,
-            log: @log,
-            config: @config,
-            ai: @ai
-          )
+        result = Encounters::Warmaster.persist_combat_from_cast_roster!(
+          adventure:                @adventure,
+          cast_roster:              roster,
+          target_actor_sheet_id: intent[:target_actor_sheet_id] || intent["target_actor_sheet_id"],
         )
+        return nil if result[:status] == :no_creatures
+
+        result
+      end
+
+      def update_or_snapshot_combat_context(by_step, mutations, required:, phase:)
+        if required
+          persist_combat_context(combat_context_delta(by_step, phase: phase), mutations)
+        else
+          snapshot_contexts_to_loop
+        end
       end
 
       def combat_transition?(transition)

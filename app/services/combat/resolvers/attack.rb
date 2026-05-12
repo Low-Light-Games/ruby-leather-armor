@@ -45,7 +45,7 @@ module Combat
 
         creature = target.first
         attacker_pos = Combat::Positions.player_position(@adventure)
-        target_pos = Combat::Positions.position_for_creature_sheet(@adventure, creature.id)
+        target_pos = Combat::Positions.position_for_adventure_actor_sheet(@adventure, creature.id)
         return unless attacker_pos&.coordinates_present? && target_pos&.coordinates_present?
 
         reach = Combat::Rules.reach_for(option)
@@ -62,7 +62,7 @@ module Combat
       def situational_modifiers_for(option, target)
         creature = target.first
         attacker_pos = Combat::Positions.player_position(@adventure)
-        target_pos = Combat::Positions.position_for_creature_sheet(@adventure, creature.id)
+        target_pos = Combat::Positions.position_for_adventure_actor_sheet(@adventure, creature.id)
         unless attacker_pos&.coordinates_present? && target_pos&.coordinates_present?
           return Combat::Resolvers::SituationalModifiers.zero
         end

@@ -20,13 +20,13 @@ module Combat
       end
 
       def lookup_target!
-        target_id = @params[:target_creature_sheet_id]
+        target_id = @params[:target_actor_sheet_id]
         if target_id.blank?
-          raise Combat::ResolverError.new('target_creature_sheet_id is required',
+          raise Combat::ResolverError.new('target_actor_sheet_id is required',
                                           code: :missing_target)
         end
 
-        creature = @adventure.creature_sheets.find_by(id: target_id.to_i)
+        creature = @adventure.adventure_actor_sheets.find_by(id: target_id.to_i)
         raise Combat::ResolverError.new("creature not found: id=#{target_id}", code: :target_not_found) unless creature
 
         if creature.hp.to_i <= 0

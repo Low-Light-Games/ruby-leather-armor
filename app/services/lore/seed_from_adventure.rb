@@ -55,10 +55,12 @@ module Lore
     end
 
     def seed_npcs!
-      records = StoryNpc.for_adventure(@adventure)
-                        .ordered_by_id
-                        .map { |npc| NpcRecord.from_story_npc(npc) }
-      return if records.empty?
+      story_npcs = StoryNpc.for_adventure(@adventure).ordered_by_id.to_a
+      return if story_npcs.empty?
+
+      records = story_npcs.map do |npc|
+        NpcRecord.from_story_npc(npc, actor_sheet_id: clone_sheet_for(npc))
+      end
 
       ApplyNpcs.call(
         adventure:   @adventure,
@@ -78,6 +80,27 @@ module Lore
         "ApplyNpcs seed failed: #{e.class}",
         parsed_response: { error: e.message.to_s.truncate(500) },
       )
+    end
+
+    # @return [Integer, nil]
+    def clone_sheet_for(story_npc)
+      bestiary_entry = story_npc.bestiary_entry
+      return nil unless bestiary_entry
+
+      sheet = Encounters::ActorSheetCreation.from_bestiary(
+        adventure:      @adventure,
+        bestiary_entry: bestiary_entry,
+        display_name:   story_npc.name,
+      ).first
+      sheet&.id
+    rescue StandardError => e
+      @log.report_error(e, context: {
+        step:         "seed_clone_adventure_actor_sheet",
+        adventure_id: @adventure&.id,
+        story_npc_id: story_npc.id,
+        source:       "seed_from_adventure",
+      })
+      nil
     end
 
     def seed_locations!

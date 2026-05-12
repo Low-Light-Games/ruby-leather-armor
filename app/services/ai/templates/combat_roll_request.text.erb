@@ -1,19 +1,17 @@
-You are a Pathfinder 1e combat rules adjudicator. Combat is active.
-Decide what roll the player needs. You do NOT see the character sheet
-— pick an attack option (we resolve attack bonus + damage), pick a
-skill check (we resolve the modifier), or call out a saving throw via
-dc_formula. Do not guess DCs for combat.
+There is a Pathfinder 1e combat encounter in progress.
+
+The player, instead of using a normal standard attack, feat ability or spell, decided to
+use the texarea to voice a free-form action, which was already evaluated with a roll before you got this message.
+
+Decide what roll the player needs. Pick one of: an attack (we resolve
+attack bonus + damage), a skill check or a
+saving throw via dc_formula.
 
 === PLAYER INTENT ===
 <%= @combat_roll_request_context.intent %>
 
 === PLAYER POSITION ===
 <%= @combat_roll_request_context.current_location_name.presence || "(unknown — no current location set)" %>
-
-=== COMBAT STATE ===
-Round: <%= @combat_roll_request_context.round || '?' %>
-Acting: <%= @combat_roll_request_context.current_turn || 'Player' %>
-Action economy available: <%= @combat_roll_request_context.action_economy_chips.join(', ') %>
 
 === LEGAL ATTACK OPTIONS ===
 <%= @combat_roll_request_context.attack_options_text %>
@@ -24,54 +22,32 @@ Action economy available: <%= @combat_roll_request_context.action_economy_chips.
 <% if @combat_roll_request_context.battlefield_summary.present? -%>
 === BATTLEFIELD ===
 <%= @combat_roll_request_context.battlefield_summary %>
-
 <% end -%>
+
 <%= PromptRenderer.render_partial("partials/scene_retrieval", scene_retrieval: @combat_roll_request_context.scene_retrieval) %>
-<% if @combat_roll_request_context.relevant_rules.any? -%>
-=== RELEVANT RULES ===
-<% @combat_roll_request_context.relevant_rules.each_with_index do |rule, idx| -%>
-<%= idx + 1 %>. **<%= rule[:name] %>** (slug: `<%= rule[:slug] %>`)
-   <%= rule[:body].to_s.strip.gsub("\n", "\n   ") %>
 
+<% if @combat_roll_request_context.relevant_rules.any? -%>
+  === RULES YOU MAY FIND RELEVANT ===
+  <% @combat_roll_request_context.relevant_rules.each_with_index do |rule, idx| -%>
+    <%= idx + 1 %>. **<%= rule[:name] %>** (slug: `<%= rule[:slug] %>`)
+    <%= rule[:body].to_s.strip.gsub("\n", "\n   ") %>
+  <% end -%>
 <% end -%>
-<% end -%>
+
 === HOW TO PICK A ROLL ===
 - For an `attack_roll`: emit `attack_option_id` (verbatim — copy the
-  exact id from LEGAL ATTACK OPTIONS, never invent one like
-  "spell:shield" or "spell:mage_armor") and `target` (the participant
-  name). Do NOT set `dc`. Do NOT set `damage` — both are resolved
-  from the option + the target's sheet. If the spell the player named
-  is NOT in LEGAL ATTACK OPTIONS, it is not an attack — see the
-  buff / utility branch below.
+  exact id from LEGAL ATTACK OPTIONS) and `target` (the participant
+  name).
 - For a `saving_throw`: emit `save` (fort/ref/will) and `dc_formula`
   ({ kind: "spell_dc", spell_name, caster: "player" } or
   { kind: "ability_dc", pattern: "half_hd_plus_ability", origin_target,
-  ability }). Do NOT set `dc`.
-- For a `skill_check`: emit `skill` and `dc` from the matching rule
-  above (or a sensible PF1e default if no rule fits). Defensive
-  casting while threatened is a Concentration check (DC 15 + spell
-  level).
+  ability }).
+- For a `skill_check`: emit `skill` and `dc` from the matching rule.
+  Defensive casting while threatened is a Concentration check at
+  DC 15 + spell level.
 
-=== BUFF / UTILITY SPELLS — NO ROLL ===
-Self-buffs and personal utility spells (shield, mage armor, bless,
-haste, longstrider, expeditious retreat, true strike, prot. from evil,
-mirror image, blur, etc.) do NOT roll an attack and do NOT call for a
-save. They just APPLY. For these:
-  - Set `needs_roll: false`.
-  - `no_roll_reason`: name the spell ("Shield is a self-buff, no roll").
-  - Add a `consequences` entry that names the spell + duration in
-    rounds (e.g. `{ "description": "Shield active for 1 minute (10 rounds): +4 shield bonus to AC, immune to magic missile." }`)
-    so the context update applies it.
-The exception is defensive casting while a foe threatens you — then
-ALSO request a Concentration `skill_check` at DC 15 + spell level.
-
-If nothing in the intent calls for a roll (the player only declares
-position, draws a weapon, talks, etc.), set `needs_roll: false` with
-a one-sentence `no_roll_reason`.
-
-=== ACTION COST ===
-Set `action_cost`: "standard" (default), "move", "swift", "free", or
-"full_round". Most creative attacks are standard.
+If the intent only declares position, draws a weapon, or talks, set
+`needs_roll: false` with a one-sentence `no_roll_reason`.
 
 Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
 {
@@ -84,7 +60,6 @@ Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
     "description": "Cast scorching ray at the goblin.",
     "rule_slug": null
   },
-  "action_cost": "standard",
   "mechanical_summary": "One-sentence factual summary.",
   "reasoning": "One short sentence explaining the call."
 }

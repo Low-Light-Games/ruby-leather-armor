@@ -48,7 +48,12 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
   }
 
   const isNew = mode === 'create' && !currentStoryId
-  const canSave = title.trim() && preview.trim() && premise.trim() && openingMessage.trim() && !hasDuplicateNames
+  const namedNpcsMissingSheet = npcs.filter(n =>
+    !n._destroy && n.name.trim() !== '' && (!n.bestiary_entry || !n.bestiary_entry.id)
+  )
+  const hasNamedNpcMissingSheet = namedNpcsMissingSheet.length > 0
+  const canSave = title.trim() && preview.trim() && premise.trim() && openingMessage.trim()
+    && !hasDuplicateNames && !hasNamedNpcMissingSheet
   const isEditMode = !!currentStoryId
   const savedLocations = locations.filter(l => l.id && !l._destroy)
   const savedNpcs = npcs.filter(n => n.id && !n._destroy)
@@ -126,7 +131,15 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
             npcs={npcs} setNpcs={setNpcs}
             npcsOpen={npcsOpen} setNpcsOpen={setNpcsOpen}
             savedLocations={savedLocations}
+            storyId={currentStoryId}
           />
+        )}
+
+        {hasNamedNpcMissingSheet && (
+          <div className="feedback-error" style={{ marginTop: 12 }}>
+            Generate a bestiary stat block for every named NPC before saving:&nbsp;
+            {namedNpcsMissingSheet.map(n => n.name).join(', ')}
+          </div>
         )}
 
         <div className="editor-actions">
