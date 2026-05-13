@@ -9,7 +9,9 @@ module PlayerTurn
                     :current_hour,
                     :adventure_day,
                     :light_conditions,
+                    :scene_facts_summary,
                     :npcs_at_location_summary,
+                    :nearby_locations_summary,
                     :recent_dm_messages_slice,
                     :story_premise
 
@@ -18,7 +20,9 @@ module PlayerTurn
                        current_hour:,
                        adventure_day:,
                        light_conditions:,
+                       scene_facts_summary:,
                        npcs_at_location_summary:,
+                       nearby_locations_summary:,
                        recent_dm_messages_slice:,
                        story_premise:)
           @intent_text              = intent_text
@@ -26,7 +30,9 @@ module PlayerTurn
           @current_hour             = current_hour
           @adventure_day            = adventure_day
           @light_conditions         = light_conditions
+          @scene_facts_summary      = scene_facts_summary
           @npcs_at_location_summary = npcs_at_location_summary
+          @nearby_locations_summary = nearby_locations_summary
           @recent_dm_messages_slice = recent_dm_messages_slice
           @story_premise            = story_premise
         end
