@@ -41,7 +41,11 @@ The **AI step mixins** (Intake, Sequencer, Narrate, …) implement individual pr
 | **`Narration::NarrationPhaseInputs`** | Intent + `PlayerTurn::Context` + mutations + optional Stagehand `extra`; return type of `AccumulatedAssembly` / `SingleActionAssembly` for `run_narrative_phase`. | [`narrative/narration_phase_inputs.rb`](../app/services/narration/narration_phase_inputs.rb) |
 | **`Narration::ProgressiveEntry`** | Value object for each progressive narration payload: DM text, `adventure_complete`, queue indices, `action_text`. Built after `run_narrative_phase`; `#to_h` is passed to `on_narrative` and into `:narratives` on `:narrated_sequence`. | [`narrative/progressive_entry.rb`](../app/services/narration/progressive_entry.rb) |
 
-**Per-class contracts** (what must be set on the pipeline before the step, what mutates, prompt inputs) live in the file header comments on each phase and on `ActionQueueRunner`.
+**Per-class contracts** (what must be set on the pipeline before the step,
+what mutates, prompt inputs) live in concise boundary docs and YARD tags
+(`@param`, `@return`, hash shape) on each phase and on
+`ActionQueueRunner`. Explanatory prose comments are not the default:
+prefer self-documenting method names and value-object boundaries.
 
 `AdventureLoopResolution` now emits typed flow payloads through `PlayerTurn::FlowResults` (backward-compatible alias: `PlayerTurn::FlowResults`) and only serializes to hashes at the boundary consumed by queue orchestration and resume entrypoints.
 
@@ -567,19 +571,20 @@ caused a wasted evaluation iteration for a non-existent combat context and
 skewed downstream steps. The classification should answer "what is the
 player trying to accomplish?" not "does this involve spellcasting?"
 
-### 21. Combat math is clamped at the receiving seam
+### 21. Combat math is deterministically translated at the receiving seam
 
 **Decision:** the combat free-text path (`Steps::CombatRollRequest`) asks
-the model only for a structured roll choice — the type, the `attack_option_id`
-or `dc_formula`, and audit metadata. DCs and damage are computed in Ruby by
+the model only for the smallest structured choice - roll type and either
+`attack_option_id` or `dc_formula` plus audit metadata. DCs and damage are
+computed in Ruby by
 `Phases::CombatMechanicResolution`, which clamps the AI's choice against the
 live attack options and live battlefield (defense kind, AC / touch AC /
 flat-footed AC, save DCs, source weapon, damage dice).
 
 **Why:** combat math is the canonical example of "code for certainty" (see
-Design Philosophy §1). The AI is only the mouthpiece that picks which legal
-option the player is using; the bounds and the math are owned by the sheet
-and the grid.
+Design Philosophy §1). The receiving seam is a deterministic translator from
+AI judgment into canonical mechanics. The AI picks intent from legal options;
+sheet/grid/rules code owns final numbers and bounds.
 
 **How:** the prompt template `combat_roll_request` lists legal attack options
 the player has *right now* (resolved deterministically before the call), the
@@ -694,23 +699,25 @@ The Node evaluator microservice still exists and is still used by
 Stagehand (parallel narrate + context updates), the sanity gate, and
 ContextUpdate fan-outs, but no longer for a per-domain evaluation chain.
 
-### 25a. Cheap-model prompt policy: simplify, don't stack warnings
+### 25a. Prompt contract policy: simplify and minimize AI responsibility
 
-**Decision:** when prompt changes are needed for reliability on cheap models,
-changes must simplify ownership and contracts rather than layering additional
-negative instructions.
+**Decision:** when prompt changes are needed for reliability, simplify
+ownership and contracts rather than layering additional negative
+instructions.
 
 **Why:** additive warning prompts ("DO NOT X", "DO NOT Y", "ALSO DO NOT Z")
-increase token noise and ambiguity. Small models fail more often when asked to
-remember long exception lists. Reliability improves when prompts are narrowed:
-remove responsibilities the step should not own, replace ambiguous rules with
-single clear contracts, or split overloaded prompts.
+increase token noise and ambiguity. Reliability improves when prompts are
+narrowed: remove responsibilities the step should not own, replace ambiguous
+rules with single clear contracts, or split overloaded prompts.
 
 **Rule of thumb:**
 - If data is deterministic and already owned in code (HP, turn order, roster
   shape, state transitions), fix in code at that seam.
 - If behavior is language interpretation owned by AI, simplify/replace the prompt
   contract instead of appending more prohibitions.
+- Prefer asking AI for the smallest useful decision (`needs_roll?`,
+  target/skill, legal option id), then derive deterministic mechanics
+  (DC, modifiers, terrain effects, passive checks) in code.
 
 **Anti-pattern:** code that parses player text or AI prose to "repair" model
 output. This violates Design Philosophy §15 and §17.
