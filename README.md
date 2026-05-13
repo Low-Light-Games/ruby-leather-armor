@@ -138,6 +138,13 @@ For local development without Docker: `bundle install && yarn install && bin/dev
 
 The `docs/` folder contains detailed design documents for the pipeline, individual steps, utilities, and architectural decisions. This README is an abridged overview — refer to the docs for implementation specifics.
 
+## Engineering Signals
+
+- **AI for judgment, code for certainty**: AI decides intent, narrative, and ambiguous rulings; code resolves deterministic mechanics from authoritative state.
+- **Keep AI contracts small**: ask for the minimum decision needed (`needs_roll?`, target selection, option id), then derive DCs, damage, and bounds in code.
+- **Receiving seam translates to canonical state**: AI output can be near-correct in shape; receiving code normalizes and clamps before persistence.
+- **Code is self-documenting; comments are exceptions**: prefer clear names and small boundaries. When boundary docs are needed, use concise YARD contract tags (`@param`, `@return`, hash shape).
+
 ## Testing Philosophy
 
 The automated spec suite is intentionally narrow. Most regression coverage

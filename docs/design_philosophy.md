@@ -113,6 +113,17 @@ positive scope over long lists of forbidden behaviors. Use explicit
 "do not do X" language only for repeated, high-cost confusions where the
 boundary must be hard, such as traversal vs. stealth.
 
+**Corollary: make the AI's job as small as possible.** Ask the model for
+judgment, classification, and intent selection - not for deterministic
+mechanics code already owns. Prefer:
+
+- "does this action need a roll?" over "emit full roll + final DC"
+- "which target / skill applies?" over "compute stat-driven DC math"
+- "which legal attack option id?" over "invent attack math from prose"
+
+Then let the receiving seam resolve canonical numbers from the live sheet,
+terrain, battlefield, and rules data.
+
 **Example:** inventory should talk about concrete item-state changes
 (gain, lose, equip, consume, loot), not "resources" in the abstract.
 Traversal should describe movement and location change, while exploration
@@ -745,21 +756,22 @@ guidance follows for reference.
 >   cheap model still can't comply, it isn't up to the task — swap the
 >   model, don't pile more guardrails into the prompt.
 
-**Clamp at the receiving seam.** *(Still binding — load-bearing for the
-orchestrator design.)* A prompt is a request, not a contract;
-the contract lives in the Ruby that receives the response. Anywhere the
-AI's answer feeds a deterministic system (creature stats, dice formulas,
-JSON shapes, numeric ranges with defensible bounds), the receiving code
-clamps it before persisting:
+**Deterministic boundary translation at the receiving seam.** *(Still
+binding - load-bearing for the orchestrator design.)* A prompt is a
+request, not a contract; the contract lives in the Ruby that receives the
+response. The receiving seam's job is to translate "close enough"
+AI output into canonical deterministic values before persistence:
 - `Warmaster.create_from_ai_static` clamps `cr` to `[1, party_level + 2]`
   and HP to `12·cr + 5` regardless of what the AI returned.
 - `roll_hp_static` flattens array-shaped formulas (`["1d8", "+2"]`) so
-  cheap models that return wrapped values still parse correctly.
+  models that return wrapped values still parse correctly.
 - Ability scores get `.clamp(1, 40)` at the same boundary.
 
-The pattern: prompt asks politely with concrete examples; code enforces
-the actual invariant. Don't add a lengthy "DO NOT exceed CR X" section
-to the prompt and hope. If the bound is real, write the clamp.
+The pattern: prompt asks for intent in a small contract; code normalizes
+shape and enforces invariants from authoritative state. Do not ask the
+AI to emit values code can derive more reliably (terrain-aware DCs,
+sheet-based attack math, passive perception checks). If the bound or math
+is real, own it in code.
 
 **Examples:**
 
@@ -943,17 +955,9 @@ the method, extract a class, replace a flag with a predicate, or pull
 the magic number into a named constant. Most "explanatory" comments
 disappear once the code itself is shaped to be the explanation.
 
-**Comments earn their place only when they capture something the
-code cannot:**
-- YARD documentation of param types (no explanation, just the class, and if it's a HASH, it's format)
-- A non-obvious invariant the type system can't express.
-- A trade-off deliberately accepted (with a one-line reason).
-- An external constraint — API quirk, DB limitation, browser bug,
-  third-party-library footgun.
-- A short pointer to the `docs/` section or `§N` of this file that
-  owns the full rationale.
-- A workaround for a specific bug or incident, with enough context
-  that a future reader knows when it's safe to remove.
+**Comments should be avoided, and when present, can only be:**
+- YARD contract docs (`@param`, `@return`, hash shape) when type/shape
+  needs to be explicit at the boundary.
 
 **Anti-patterns we remove on sight:**
 
@@ -968,11 +972,14 @@ code cannot:**
   has sections, it's two methods.
 - Stale "TODO" / "FIXME" lines older than the most recent rewrite of
   the surrounding code.
+- Methods and variables with names like Result, Contract, and others
+  that could apply to most anything. We want over specific naming like
+  render_combat_context_for_adventure_loop_debugging. Lean overly descriptive.
 
 **The bar:** if removing the comment wouldn't confuse a future
 reader, don't write it. If the WHY is non-obvious enough that a
-reader would wonder, write the shortest possible note that captures
-it — one line if you can, never more than three.
+reader would wonder, encapsulate and make the name relay what you were 
+going to comment.
 
 The durable "why" belongs in the documents listed in §14, not
 scattered across service files where it will silently go stale.
