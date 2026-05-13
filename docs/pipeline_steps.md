@@ -358,7 +358,9 @@ naming and the `PlayerTurn::Steps::*` module convention.
 ### 12. Per-step model selection
 
 **Decision:** each pipeline step can use a different AI model, configured
-via `DmConfig#model_for(step)` with a global default fallback.
+via `DmConfig#model_for(step)` with a global default fallback. Model
+routing is versioned in `config/dm_step_models.yml` (read by
+`DmStepModelsConfig`), not edited in `/admin/dm_config`.
 
 **Why:** steps have fundamentally different cognitive demands:
 
@@ -379,9 +381,8 @@ This also future-proofs for fine-tuning: steps with consistent schemas
 You can fine-tune a cheap model on logged examples and slot it in for one
 step without affecting others.
 
-**Trade-off accepted:** more configuration complexity. The admin UI
-mitigates this with per-step suggestions, model cost display, and
-sensible defaults.
+**Trade-off accepted:** more configuration complexity. We accept this in
+exchange for explicit, versioned model routing per environment.
 
 ### 13. Reasoning field on all AI outputs
 
@@ -1267,6 +1268,28 @@ This is visible in the admin pipeline logs for diagnostic purposes.
 
 ## Configuration
 
+### Model routing source of truth (`config/dm_step_models.yml`)
+
+Per-step AI model selection is **not** edited in `/admin/dm_config`.
+The versioned YAML file `config/dm_step_models.yml` is the canonical
+source used by all environments (dev/staging/playwright/prod).
+
+Resolution order:
+
+1. `step_models[step]` / `step_reasoning_efforts[step]`
+2. `default_model` / `default_reasoning_effort`
+
+Runtime path:
+
+- Pipeline step calls `DmConfig#model_for(step)` / `#reasoning_effort_for(step)`
+- `DmConfig` delegates to `DmStepModelsConfig`
+- `DmStepModelsConfig` reads `config/dm_step_models.yml`
+
+Current default: `gpt-5-nano` with `minimal` reasoning effort for all
+steps (unless overridden in `step_models` / `step_reasoning_efforts`).
+
+---
+
 ### Moderation config (`config/moderation.yml`)
 
 Loaded at boot from the YAML file — changes require a redeploy. Not editable via the admin UI.
@@ -1279,7 +1302,7 @@ Loaded at boot from the YAML file — changes require a redeploy. Not editable v
 
 ### DmConfig settings (admin UI — `/admin/dm_config`)
 
-All pipeline behavior is configurable through `DmConfig` (admin UI at
+Most pipeline behavior is configurable through `DmConfig` (admin UI at
 `/admin/dm_config`):
 
 | Setting | Default | Affects |
@@ -1289,9 +1312,9 @@ All pipeline behavior is configurable through `DmConfig` (admin UI at
 | `pacing_words_min` | `40` | Narrate: minimum word count target when verbose is off |
 | `pacing_words_max` | `120` | Narrate: maximum word count target when verbose is off |
 | `temperature` | `0.8` | All steps: creativity/randomness (non-reasoning models only) |
-| `model` | `gpt-5-nano` | Default model for all steps. Cheapest reasoning model in the catalog. Override per step via `step_models`. |
-| `reasoning_effort` | `minimal` | Default `reasoning_effort` for reasoning models. Override per step via `step_reasoning_efforts`. Ignored when the resolved model is not a reasoning model. |
-| `step_models[step]` | `{}` | Per-step model override |
+| `model` | `gpt-5-nano` | Resolved default model from `config/dm_step_models.yml` (shown in admin, edited in YAML). |
+| `reasoning_effort` | `minimal` | Resolved default effort from `config/dm_step_models.yml` (shown in admin, edited in YAML). |
+| `step_models[step]` | `{}` | YAML-only per-step override in `config/dm_step_models.yml` (not editable in `/admin/dm_config`). |
 | `action_queue` | `"progressive"` | Controls action splitting and narrative delivery. `false` — no splitting; `"progressive"` — split compound inputs, stream each action's narrative immediately via `pipeline_action_result` WebSocket events; `"progressive_continuity"` — as progressive, plus each action is narrated with prior action outcomes from `AdventureLoop` injected into the narrate prompt. Per-adventure override: `dm_settings["action_queue"]`. |
 | `creature_creation_fallback` | `"ai"` | `"ai"` (bestiary + AI gen), `"template"` (bestiary + generic stats), `"none"` |
 | `skip_world_sanity_check` _(per-adventure attribute)_ | `false` | Per-adventure toggle set at creation time. When on, the world consistency check is bypassed on both the mechanical and non-mechanical resolution paths. The capability check always runs. |

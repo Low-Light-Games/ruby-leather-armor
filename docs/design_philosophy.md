@@ -253,16 +253,17 @@ reasoning model orchestrates."
 
 ## 4. When in doubt, add a toggle
 
-Every significant behavioral choice should be admin-configurable without
-code changes. Getting the most out of AI requires empirical tuning, and
-the feedback loop must be fast: change a setting, observe the result,
-adjust.
+Every significant behavioral choice should be quickly tunable without
+deep code changes. Runtime behavior knobs belong in admin config; model
+routing belongs in the versioned `config/dm_step_models.yml` contract.
+Getting the most out of AI requires empirical tuning and a short
+feedback loop.
 
 **Current toggles:**
 - `sanitization_threshold` — danger score cutoff (0-100)
 - `verbose` / `pacing_words_min` / `pacing_words_max` — narration length
 - `temperature` — creativity/randomness
-- Per-step model selection and token budgets
+- Token budgets and runtime thresholds
 - `directed_dm` — per-adventure narrative steering
 
 **Why toggles over code branches:** a developer changing an `if` statement,
