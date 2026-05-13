@@ -955,18 +955,9 @@ the method, extract a class, replace a flag with a predicate, or pull
 the magic number into a named constant. Most "explanatory" comments
 disappear once the code itself is shaped to be the explanation.
 
-**Comments earn their place only when they capture something the
-code cannot:**
+**Comments should be avoided, and when present, can only be:**
 - YARD contract docs (`@param`, `@return`, hash shape) when type/shape
-  needs to be explicit at the boundary
-- A non-obvious invariant the type system can't express.
-- A trade-off deliberately accepted (with a one-line reason).
-- An external constraint — API quirk, DB limitation, browser bug,
-  third-party-library footgun.
-- A short pointer to the `docs/` section or `§N` of this file that
-  owns the full rationale.
-- A workaround for a specific bug or incident, with enough context
-  that a future reader knows when it's safe to remove.
+  needs to be explicit at the boundary.
 
 **Anti-patterns we remove on sight:**
 
@@ -981,11 +972,14 @@ code cannot:**
   has sections, it's two methods.
 - Stale "TODO" / "FIXME" lines older than the most recent rewrite of
   the surrounding code.
+- Methods and variables with names like Result, Contract, and others
+  that could apply to most anything. We want over specific naming like
+  render_combat_context_for_adventure_loop_debugging. Lean overly descriptive.
 
 **The bar:** if removing the comment wouldn't confuse a future
 reader, don't write it. If the WHY is non-obvious enough that a
-reader would wonder, write the shortest possible note that captures
-it — one line if you can, never more than three.
+reader would wonder, encapsulate and make the name relay what you were 
+going to comment.
 
 The durable "why" belongs in the documents listed in §14, not
 scattered across service files where it will silently go stale.
