@@ -36,9 +36,10 @@ The player just declared an intention and we need you to decide what roll they n
 - `target_actor_sheet_id`: when the action will interact directly with a
   creature in CAST ROSTER, copy that entry's `id` (an integer).
 - `transition`: "combat_started" only when the action should initiate combat (e.g. player takes an hostile action in a tense room).
-- For generic long-travel / wandering intents, do not add a Perception
-  gate unless the player explicitly says they are searching, scouting,
-  watching for danger, or inspecting details.
+- For generic long-travel / wandering / time-passing intents with no
+  explicit obstacle, set `needs_roll: false`. Do not invent awareness
+  checks (Perception, Knowledge, etc.) unless the player explicitly says
+  they are searching, scouting, watching for danger, or inspecting details.
 - For opposed rolls (Stealth, Bluff, Diplomacy, Disguise, Sleight of
   Hand, Intimidate, attack rolls), prefer to omit `dc` — the engine
   resolves the DC from the target's defending stat. Emit `dc` only
