@@ -4,7 +4,10 @@ module PlayerTurn
   module Steps
     module GameMaster
       RECENT_MESSAGE_LIMIT = 5
+      FACT_LOOKUP_LIMIT = 8
       NPC_LOOKUP_LIMIT = 8
+      LOCATION_LOOKUP_LIMIT = 6
+      WEIGHTED_LOCATION_REPEATS = 3
 
       private
 
@@ -55,6 +58,7 @@ module PlayerTurn
             intent_text: intent_text
           ).to_h
         else
+          enqueue_loremaster_after_game_master(narrative)
           GameMaster::NarratedResult.new(
             narrative: narrative,
             adventure_complete: adventure_ended,
@@ -112,6 +116,7 @@ module PlayerTurn
 
       def build_game_master_context(intent_text)
         time_ctx = @adventure.time_context.to_h.with_indifferent_access
+        retrieval = retrieve_scene_for_game_master(intent_text)
 
         Steps::GameMaster::Context.new(
           intent_text: intent_text,
@@ -119,24 +124,108 @@ module PlayerTurn
           current_hour: time_ctx["current_hour"] || 8,
           adventure_day: time_ctx["adventure_day"] || 1,
           light_conditions: time_ctx["light_conditions"] || "day",
-          npcs_at_location_summary: render_nearby_npcs_summary(intent_text),
+          scene_facts_summary: render_scene_facts_summary(retrieval.facts),
+          npcs_at_location_summary: render_nearby_npcs_summary(retrieval.npcs),
+          nearby_locations_summary: render_nearby_locations_summary(retrieval.locations),
           recent_dm_messages_slice: render_recent_dm_messages,
           story_premise: @adventure.story&.premise.to_s.presence || "(no premise on file)"
         )
       end
 
-      def render_nearby_npcs_summary(intent_text)
-        hits = Lore::NpcsLookup.new(
+      def retrieve_scene_for_game_master(intent_text)
+        locations = retrieve_locations_for_game_master(intent_text)
+        npcs = retrieve_npcs_for_game_master(intent_text, locations)
+        facts = retrieve_facts_for_game_master(intent_text, locations, npcs)
+
+        SceneRetrieval::Retrieval.new(
+          facts: facts,
+          locations: locations,
+          npcs: npcs
+        )
+      end
+
+      def retrieve_locations_for_game_master(intent_text)
+        Lore::LocationsLookup.call(
           adventure: @adventure,
           ai: @ai,
           log: @log,
-          query_text: [intent_text, @adventure.current_location&.name].compact.join(" — "),
+          query_text: game_master_locations_query(intent_text),
+          limit: LOCATION_LOOKUP_LIMIT,
+        )
+      end
+
+      def retrieve_npcs_for_game_master(intent_text, locations)
+        Lore::NpcsLookup.call(
+          adventure: @adventure,
+          ai: @ai,
+          log: @log,
+          query_text: game_master_npcs_query(intent_text, locations),
           limit: NPC_LOOKUP_LIMIT
-        ).call
+        )
+      end
 
-        return "(none known)" if hits.empty?
+      def retrieve_facts_for_game_master(intent_text, locations, npcs)
+        Lore::FactsLookup.call(
+          adventure: @adventure,
+          ai: @ai,
+          log: @log,
+          query_text: game_master_facts_query(intent_text, locations, npcs),
+          limit: FACT_LOOKUP_LIMIT
+        )
+      end
 
-        hits.map { |h| "  - #{h[:name]} (#{h[:attitude] || 'unknown attitude'})" }.join("\n")
+      def game_master_locations_query(intent_text)
+        location = weighted_current_location
+        [intent_text, location].compact.join(" ")
+      end
+
+      def game_master_npcs_query(intent_text, locations)
+        location_names = locations.first(3).map { |loc| loc[:name] }.compact
+        [intent_text, weighted_current_location, location_names.join(" ")].reject(&:blank?).join(" ")
+      end
+
+      def game_master_facts_query(intent_text, locations, npcs)
+        location_names = locations.first(3).map { |loc| loc[:name] }.compact
+        npc_names = npcs.first(4).map { |npc| npc[:name] }.compact
+
+        [
+          intent_text,
+          weighted_current_location,
+          location_names.join(" "),
+          npc_names.join(" ")
+        ].reject(&:blank?).join(" ")
+      end
+
+      def weighted_current_location
+        name = @adventure.current_location&.name.to_s.strip
+        return nil if name.blank?
+
+        ([name] * WEIGHTED_LOCATION_REPEATS).join(" ")
+      end
+
+      def render_scene_facts_summary(facts)
+        return "(none retrieved)" if facts.empty?
+
+        facts.map { |fact| "  - #{fact[:text]}" }.join("\n")
+      end
+
+      def render_nearby_npcs_summary(hits)
+        return "(none retrieved)" if hits.empty?
+
+        hits.map do |hit|
+          location = hit[:location_name].presence || "unknown location"
+          "  - #{hit[:name]} (#{hit[:attitude] || 'unknown attitude'}, at #{location})"
+        end.join("\n")
+      end
+
+      def render_nearby_locations_summary(locations)
+        return "(none retrieved)" if locations.empty?
+
+        locations.map do |loc|
+          distance = loc[:distance_miles].present? ? "#{loc[:distance_miles]}mi" : "unknown distance"
+          bearing = loc[:bearing].presence || "unknown bearing"
+          "  - #{loc[:name]} (#{distance}, #{bearing})"
+        end.join("\n")
       end
 
       def render_recent_dm_messages
@@ -150,6 +239,30 @@ module PlayerTurn
         return "(no prior DM messages)" if rows.empty?
 
         rows.map.with_index(1) { |c, i| "#{i}. #{c.to_s.truncate(280)}" }.join("\n\n")
+      end
+
+      def enqueue_loremaster_after_game_master(narrative)
+        return if narrative.blank?
+
+        GameMasterLoremasterJob.perform_later(
+          @adventure.id,
+          narrative.to_s,
+          registry_entry_uuid: @log.registry_entry_uuid,
+          adventure_loop_id: @loop&.id,
+          user_id: @user&.id
+        )
+      rescue StandardError => e
+        @log.report_error(e, context: {
+          step: "loremaster",
+          adventure_id: @adventure&.id,
+          loop_id: @loop&.id,
+          source: "game_master_loremaster_enqueue",
+        })
+        @log.play_log!(
+          "loremaster_failure",
+          "GameMaster loremaster enqueue failed: #{e.class}",
+          parsed_response: { error: e.message.to_s.truncate(500) },
+        )
       end
     end
   end

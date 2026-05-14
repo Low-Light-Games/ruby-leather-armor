@@ -17,7 +17,7 @@ Located in `app/models/`. 38 model files total.
 | ------------------- | ------------------------------------------------------------------------------------------------ |
 | `ApplicationRecord` | Base class for all Active Record models                                                          |
 | `User`              | Authenticated user; has many sheets, adventures, and dm_logs                                     |
-| `DmConfig`          | Singleton configuration for DM settings, AI model selection, token budgets, and evaluation modes |
+| `DmConfig`          | Singleton configuration for runtime DM settings (thresholds, pacing, toggles); model routing is sourced from `config/dm_step_models.yml` |
 | `FeatureFlag`       | Runtime feature toggles for A/B testing and gradual rollouts                                     |
 
 
@@ -145,7 +145,7 @@ Located in `app/controllers/`. 23 controller files total.
 | `AdminController`                 | Admin base controller with role guard                                      |
 | `admin/DmLogsController`          | Browse and inspect DM activity logs                                        |
 | `admin/AiLogsController`          | Browse AI call logs with pipeline run visualization                        |
-| `admin/DmConfigsController`       | Manage DM configuration (model selection, token budgets, evaluation modes) |
+| `admin/DmConfigsController`       | Manage runtime DM configuration (thresholds, pacing, toggles); per-step model routing is YAML-backed |
 | `admin/StoryController`           | Full CRUD for stories and all world-building sub-resources                 |
 | `admin/AdventuresController`      | View and manage all user adventures                                        |
 | `admin/BestiaryEntriesController` | Import and manage OGL creature templates                                   |
@@ -192,7 +192,7 @@ Located in `app/views/`. The application is primarily a JSON API; HTML views are
 - **Join table pattern**: Many-to-many relationships (feats, spells, items) are managed through explicit join-table models to support adventure-scoped snapshots.
 - **AI pipeline**: `AdventureMessagesController` triggers an async multi-step pipeline (`PlayerTurn::Engine`) tracked by `PipelineRegistryEntry` (logs/admin correlation), domain `Pipeline`, and `AdventureLoop`; results are streamed back via Action Cable.
 - **Entry-service boundary**: `PlayerTurn::Service` is now a compatibility facade; prompt/roll/initiative entrypoints are owned by focused deterministic services (`PlayerTurn::EntryServices::PromptExecution`, `PlayerTurn::EntryServices::ResumePipelineExecution`) with shared runtime wiring in `PlayerTurn::EntryRuntime`.
-- **Singleton config**: `DmConfig` holds a single global configuration record accessed by pipeline steps for model and budget decisions.
+- **Singleton config**: `DmConfig` holds runtime settings; per-step model/routing defaults are versioned in `config/dm_step_models.yml` and resolved through `DmConfig#model_for`.
 - **Value-object construction seams**: builder-style hash assembly is being replaced with explicit constructors at boundaries (for example `Adventures::TimeContext`, `Adventures::CombatState`, `Onboarding::SheetBlueprint`, and battlefield action-economy payload objects) to keep invariants owned close to object creation.
 - **Narrative state via pgvector**: durable world state lives in `adventure_narrative_facts`, `adventure_npcs`, and `adventure_locations` (each table embeds + has structured columns). The world consistency check, narrator, and encounter wiring read from these surfaces by retrieval rather than from JSONB context blobs. `combat_context` (for live combat state) and `time_context` (for the clock) survive as the only structured JSONB context fields on `Adventure`.
 

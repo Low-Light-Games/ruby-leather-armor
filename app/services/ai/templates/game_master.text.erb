@@ -13,8 +13,15 @@ Player message:
 
 - Current location: <%= @ctx.current_location_name %>
 - Hour <%= @ctx.current_hour %>, Day <%= @ctx.adventure_day %>, <%= @ctx.light_conditions %>
-- Named NPCs you know are present (in crowded places this is not exhaustive):
+
+- Retrieved world facts relevant to this player message:
+  <%= @ctx.scene_facts_summary %>
+
+- Retrieved NPCs relevant to this player message:
   <%= @ctx.npcs_at_location_summary %>
+
+- Retrieved locations relevant to this player message:
+  <%= @ctx.nearby_locations_summary %>
 
 The story the player is playing through is the following:
 <STORY>

@@ -12,6 +12,7 @@
   },
   "notes": [
     "Scope: record only facts a new DM joining this session would need to know that are not already on the character sheet.",
+    "Do not bias toward only major plot beats. Include minor but operative facts that can affect future interpretation: letters/documents received, secrets learned, promises/threats made, and environmental state changes like barricaded gates.",
     "Stability: prefer canonical, self-contained phrasing so the same fact retrieves for varied paraphrased intents (e.g. 'the party is in the middle of the ocean', not 'we are swimming').",
     "State replacement: when a state transitions (e.g. 'blinded' -> 'not blinded'), emit the new state fact AND an `invalidates` entry for the old one, pairing them via `replacement_source_idx`.",
     "replacement_source_idx: if the invalidated fact simply stopped being true with no replacement (e.g. a cause resolved), pass null. The plan's schema pairs this with the row's invalidated_by_fact_id column at apply time.",

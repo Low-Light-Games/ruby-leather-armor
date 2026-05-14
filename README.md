@@ -107,7 +107,10 @@ The system separates concerns into three layers:
 - **DungeonMaster::PipelineEngine** — pure orchestration logic: step sequencing, branching, parallelism, and pause/resume for dice rolls.
 - **Step modules** (`DungeonMaster::Steps::*`) — each step is an isolated module with its own ERB prompt template and structured output contract.
 
-Each AI step can be configured independently (model, token budget, on/off toggle) through `DmConfig`, an admin-editable settings object.
+Runtime DM behavior (thresholds, pacing, toggles) is configured through
+`DmConfig`. Per-step model routing is versioned in
+`config/dm_step_models.yml` and resolved at runtime via
+`DmConfig#model_for`.
 
 Prompts live as ERB templates in `app/services/dungeon_master/templates/`, keeping prompt engineering separate from pipeline logic. The single-call evaluation step (`roll_request` out of combat, `combat_roll_request` in combat) carries no character block; combat rolls emit an `attack_option_id` and DC/damage resolution happens post-call in Ruby via `CombatMechanicResolution`.
 
