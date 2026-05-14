@@ -36,6 +36,7 @@ class GameMasterLoremasterJob < ApplicationJob
 
   def resolve_user(adventure, user_id)
     return User.find(user_id) if user_id.present?
+
     return adventure.user if adventure.respond_to?(:user) && adventure.user.present?
 
     raise ActiveRecord::RecordNotFound, "Missing user for GameMasterLoremasterJob adventure_id=#{adventure.id}"
