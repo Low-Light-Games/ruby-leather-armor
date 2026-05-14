@@ -58,6 +58,7 @@ module PlayerTurn
             intent_text: intent_text
           ).to_h
         else
+          enqueue_loremaster_after_game_master(narrative)
           GameMaster::NarratedResult.new(
             narrative: narrative,
             adventure_complete: adventure_ended,
@@ -238,6 +239,30 @@ module PlayerTurn
         return "(no prior DM messages)" if rows.empty?
 
         rows.map.with_index(1) { |c, i| "#{i}. #{c.to_s.truncate(280)}" }.join("\n\n")
+      end
+
+      def enqueue_loremaster_after_game_master(narrative)
+        return if narrative.blank?
+
+        GameMasterLoremasterJob.perform_later(
+          @adventure.id,
+          narrative.to_s,
+          registry_entry_uuid: @log.registry_entry_uuid,
+          adventure_loop_id: @loop&.id,
+          user_id: @user&.id
+        )
+      rescue StandardError => e
+        @log.report_error(e, context: {
+          step: "loremaster",
+          adventure_id: @adventure&.id,
+          loop_id: @loop&.id,
+          source: "game_master_loremaster_enqueue",
+        })
+        @log.play_log!(
+          "loremaster_failure",
+          "GameMaster loremaster enqueue failed: #{e.class}",
+          parsed_response: { error: e.message.to_s.truncate(500) },
+        )
       end
     end
   end
