@@ -263,7 +263,6 @@ feedback loop.
 - `sanitization_threshold` — danger score cutoff (0-100)
 - `verbose` / `pacing_words_min` / `pacing_words_max` — narration length
 - `temperature` — creativity/randomness
-- Token budgets and runtime thresholds
 - `directed_dm` — per-adventure narrative steering
 
 **Why toggles over code branches:** a developer changing an `if` statement,
