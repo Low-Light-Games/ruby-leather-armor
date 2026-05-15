@@ -10,6 +10,7 @@ class SessionsController < ApplicationController
     
     if user && user.authenticate(params[:password])
       session[:user_id] = user.id
+      session.delete(:oauth_new_signup)
       render json: { user: user_json(user) }
     else
       render json: { error: 'Invalid email or password' }, status: :unauthorized
@@ -18,12 +19,16 @@ class SessionsController < ApplicationController
 
   def destroy
     session[:user_id] = nil
+    session.delete(:oauth_new_signup)
     render json: { message: 'Logged out successfully' }
   end
 
   def show
     if current_user
-      render json: { user: user_json(current_user) }
+      render json: {
+        user: user_json(current_user),
+        oauth_new_signup: session.delete(:oauth_new_signup) == true
+      }
     else
       render json: { user: nil }
     end

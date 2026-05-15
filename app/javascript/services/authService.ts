@@ -7,5 +7,11 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
     method: 'GET',
     credentials: 'same-origin',
   })
+
+  const redditTracker = (window as Window & { rdt?: (...args: string[]) => void }).rdt
+  if (payload.oauth_new_signup && typeof redditTracker === 'function') {
+    redditTracker('track', 'SignUp')
+  }
+
   return payload.user
 }
