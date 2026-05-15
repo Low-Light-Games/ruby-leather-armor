@@ -76,7 +76,6 @@ module PlayerTurn
 
         EvaluationResult.new(
           intention: intention,
-          destination: parsed[:destination],
           combat_transition: parsed[:transition],
           target_actor_sheet_id: validated_target_id(parsed[:target_actor_sheet_id], cast_roster: cast_roster),
           player_rolls: rolls,

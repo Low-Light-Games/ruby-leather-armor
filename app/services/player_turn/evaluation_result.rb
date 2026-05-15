@@ -2,16 +2,14 @@
 
 module PlayerTurn
   class EvaluationResult
-    attr_reader :intention, :destination, :combat_transition,
+    attr_reader :intention, :combat_transition,
                 :target_actor_sheet_id,
                 :consequences, :mechanical_summary
     attr_accessor :player_rolls
 
-    def initialize(intention:, destination: nil,
-                   combat_transition: nil, target_actor_sheet_id: nil,
+    def initialize(intention:, combat_transition: nil, target_actor_sheet_id: nil,
                    player_rolls: [], consequences: [], mechanical_summary: '')
       @intention                = intention.to_s
-      @destination              = destination.presence
       @combat_transition        = combat_transition.to_s.presence
       @target_actor_sheet_id = Coerce.actor_sheet_id(target_actor_sheet_id)
       @player_rolls             = Array(player_rolls)
@@ -27,7 +25,6 @@ module PlayerTurn
     def to_intent_hash
       {
         intention:                @intention,
-        destination:              @destination,
         transition:               @combat_transition,
         target_actor_sheet_id: @target_actor_sheet_id,
       }.compact

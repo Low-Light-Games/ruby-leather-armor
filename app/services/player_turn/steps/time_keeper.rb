@@ -80,10 +80,7 @@ module PlayerTurn
       end
 
       def try_journey_estimate(intent)
-        raw_destination = intent[:destination] || intent["destination"]
-        return nil if raw_destination.blank?
-
-        destination = resolve_destination(raw_destination)
+        destination = destination_for_timekeeper(intent)
         return nil unless destination
 
         origin = origin_adventure_location
@@ -140,10 +137,11 @@ module PlayerTurn
 
       def deterministic_step_inputs(intent, verdict_result)
         loc = @adventure.current_location
+        destination = destination_for_timekeeper(intent)
         {
           intent: {
             intention: intent[:intention] || intent["intention"],
-            destination: intent[:destination] || intent["destination"],
+            destination: destination&.name,
             transition: intent[:transition] || intent["transition"],
             target_actor_sheet_id: intent[:target_actor_sheet_id] || intent["target_actor_sheet_id"],
           }.compact,
@@ -190,13 +188,14 @@ module PlayerTurn
       def estimate_via_ai(intent, verdict_result)
         time_ctx = @adventure.time_context || {}
         outcome  = verdict_result&.dig(:outcome) || intent[:intention]
+        destination = destination_for_timekeeper(intent)
         prompt_summary = "TimeKeeper: \"#{@log.truncate(outcome)}\""
         prompt_context = PromptViews::TimeKeeperPromptContext.new(
           loop: @loop,
           outcome: outcome,
           time_context: time_ctx,
           combat_active: effective_combat_active_for_timekeeper?,
-          has_destination: intent[:destination].present?
+          has_destination: destination.present?
         )
 
         system_prompt = Ai::PromptRenderer.render("time_keeper",
@@ -217,7 +216,7 @@ module PlayerTurn
         end
 
         hours = raw_hours.to_f.clamp(0, 720)
-        hours = enforce_destination_floor(hours, intent)
+        hours = enforce_destination_floor(hours, destination)
 
         distance = parsed["distance_miles"]&.to_f
         is_journey = distance.present? && distance > 0
@@ -230,7 +229,7 @@ module PlayerTurn
           speed_mph: is_journey && hours > 0 ? (distance / hours) : nil,
           journey_data: is_journey ? {
             origin: @adventure.current_location&.name,
-            destination: intent[:destination] || "unknown",
+            destination: destination&.name || "unknown",
             distance_miles: distance,
             terrain_type: nil,
             speed_mph: hours > 0 ? (distance / hours).round(2) : 0,
@@ -242,8 +241,8 @@ module PlayerTurn
 
       DESTINATION_AI_FLOOR_HOURS = 0.25
 
-      def enforce_destination_floor(hours, intent)
-        return hours unless (intent[:destination] || intent["destination"]).present?
+      def enforce_destination_floor(hours, destination)
+        return hours unless destination.present?
 
         return hours if hours >= DESTINATION_AI_FLOOR_HOURS
 
@@ -251,7 +250,7 @@ module PlayerTurn
           "time_keeper_ai_floor",
           "AI estimated #{hours.round(4)}h with a destination set; flooring to #{DESTINATION_AI_FLOOR_HOURS}h.",
           parsed_response: { ai_hours: hours, floor: DESTINATION_AI_FLOOR_HOURS,
-                             destination: intent[:destination] || intent["destination"] },
+                             destination: destination.name },
         )
         DESTINATION_AI_FLOOR_HOURS
       end
@@ -358,6 +357,28 @@ module PlayerTurn
         return contained_in_destination if contained_in_destination
 
         scope.where("LOWER(name) LIKE ?", "%#{haystack}%").min_by { |loc| loc.name.length }
+      end
+
+      def destination_for_timekeeper(intent)
+        raw_destination = intent[:destination] || intent["destination"]
+        explicit_destination = resolve_destination(raw_destination)
+        return explicit_destination if explicit_destination
+
+        infer_destination_from_intention(intent[:intention] || intent["intention"])
+      end
+
+      def infer_destination_from_intention(intention_text)
+        text = intention_text.to_s.strip.downcase
+        return nil if text.empty?
+
+        scope = AdventureLocation.for_adventure(@adventure)
+        matches = scope.select do |location|
+          candidate = location.name.to_s.strip.downcase
+          next false if candidate.empty?
+
+          text.match?(/\b#{Regexp.escape(candidate)}\b/)
+        end
+        matches.max_by { |location| location.name.length }
       end
 
       def update_player_position!(estimated, harbinger_result, actual_hours)
