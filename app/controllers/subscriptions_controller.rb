@@ -13,13 +13,17 @@ class SubscriptionsController < ApplicationController
 
     unless valid_success_session?
       redirect_to plans_path, alert: "Subscription confirmation is missing or invalid."
+      return
     end
+
+    session[:oauth_new_purchase] = true if session[:checkout_started_from_free] == true
   end
 
   def checkout
     plan = resolve_checkout_plan
     return if performed?
 
+    session[:checkout_started_from_free] = current_user.free?
     profile = current_user.stripe_profile || current_user.create_stripe_profile!
     ensure_customer_id!(profile)
 
