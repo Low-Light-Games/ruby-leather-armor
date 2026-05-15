@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+cd "$APP_ROOT"
+
+COMPOSE_FILE="docker-compose.prod.yml"
+
+if [[ ! -f "$COMPOSE_FILE" ]]; then
+  echo "[prod-sync-game-catalogs] Missing $COMPOSE_FILE in $APP_ROOT" >&2
+  exit 1
+fi
+
+echo "[prod-sync-game-catalogs] Running ops:sync_game_catalogs in app container..."
+docker compose -f "$COMPOSE_FILE" exec -T app \
+  bundle exec rake ops:sync_game_catalogs RAILS_ENV=production

@@ -72,6 +72,9 @@ jobs:
             docker compose -f docker-compose.prod.yml exec -T app \
               bundle exec rails db:prepare RAILS_ENV=production
 
+            echo "--- Syncing game catalogs (feats, spells, items, class abilities, feature flags) ---"
+            ./bin/prod-sync-game-catalogs
+
             echo "--- Embedding rules into rule_embeddings (idempotent) ---"
             docker compose -f docker-compose.prod.yml exec -T app \
               bundle exec rake dungeon_master:rules:embed RAILS_ENV=production
