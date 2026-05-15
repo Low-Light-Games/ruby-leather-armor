@@ -35,6 +35,11 @@ These fields must come from the chosen rule:
 - `ability_use_claimed`: a spell/feat/item the player declared intention to use explicitly.
 - `situational_modifiers`: each entry is `{ "source": "<short phrase>", "modifier": <integer> }`.
   Take the overall context into account in order to adjudicate bonus or penalties.
+- `confidence`: confidence in the roll decision itself only:
+  - whether a roll is needed at all, and
+  - whether the selected roll kind (`attack_roll` vs check/save) and `skill`/`save` are correct.
+  Do not lower confidence due to uncertainty in side fields like `target_actor_sheet_id`,
+  `transition`, `ability_use_claimed`, or `consequences`.
   
 
 Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
