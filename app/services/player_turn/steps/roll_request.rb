@@ -100,6 +100,7 @@ module PlayerTurn
           skill: skill,
           save: save,
           dc: raw[:dc],
+          failure_result: raw[:failure_result].to_s.presence,
           description: raw[:description].presence || mechanical_summary.to_s.presence || '(no description)',
           rule_slug: rule_slug_from_roll(type: type, skill: skill, save: save),
           take_10_eligible: raw[:take_10_eligible] == true,

@@ -65,6 +65,7 @@ module PlayerTurn
 
       roll_results, submitted_rolls = merge_roll_chain_results(merged, roll_results, submitted_rolls)
       verdict_roll_requests = merge_roll_chain_requests(merged, current_roll_requests)
+      apply_failed_roll_consequences!(merged, verdict_roll_requests, submitted_rolls)
 
       verdict_result = if combat_active?
                          run_combat_gm(intent, merged,
@@ -180,6 +181,38 @@ module PlayerTurn
 
       Array(chain[:prior_roll_requests]).map { |r| r.is_a?(Hash) ? r.deep_symbolize_keys : r } +
         Array(current_roll_requests).map { |r| r.is_a?(Hash) ? r.deep_symbolize_keys : r }
+    end
+
+    def apply_failed_roll_consequences!(merged, roll_requests, submitted_rolls)
+      return if Array(roll_requests).empty? || Array(submitted_rolls).empty?
+
+      submitted_by_id, submitted_by_label = submitted_roll_indexes(submitted_rolls)
+      failed_consequences = Array(roll_requests).filter_map do |roll|
+        next unless roll.is_a?(Hash)
+
+        normalized = roll.deep_symbolize_keys
+        next unless trackable_failure_roll?(normalized)
+
+        failure_result = normalized[:failure_result].to_s.strip
+        next if failure_result.empty?
+
+        total = submitted_roll_total_for(normalized, submitted_by_id, submitted_by_label)
+        next if total.nil?
+
+        dc = Integer(normalized[:dc], exception: false)
+        next if dc.nil?
+        next unless total < dc
+
+        { description: failure_result }
+      end
+      return if failed_consequences.empty?
+
+      existing = PlayerTurn::Rolls::Consequences.normalize(merged[:consequences])
+      merged[:consequences] = (existing + failed_consequences).uniq { |entry| entry[:description].to_s.downcase.strip }
+    end
+
+    def trackable_failure_roll?(roll)
+      %w[skill_check saving_throw].include?(roll[:type].to_s)
     end
 
     def normalize_roll_label(label)
