@@ -7,10 +7,21 @@ module PlayerTurn
 
       def run_narrative_phase(intent, narration_context:, mutations:, extra: {})
         warmaster_result = maybe_initialize_combat(intent)
+        deterministic_opener = deterministic_combat_opener(extra)
+
+        if warmaster_result && warmaster_result[:status] == :awaiting_initiative && deterministic_opener.present?
+          return Narration::PhaseResults.awaiting_initiative(
+            intent: intent,
+            creature_data: warmaster_result[:creature_data],
+            mutations: mutations,
+            extras: extra.merge(opener_outcome: deterministic_opener),
+          ).to_h
+        end
+
         narration = run_parallel_narrative(intent, narration_context: narration_context, mutations: mutations)
 
         if warmaster_result && warmaster_result[:status] == :awaiting_initiative
-          opener_outcome = narration[:narrative].to_s.presence
+          opener_outcome = narration[:narrative].to_s.presence || deterministic_opener
           extras_with_opener = opener_outcome ? extra.merge(opener_outcome: opener_outcome) : extra
           return Narration::PhaseResults.awaiting_initiative(
             intent: intent,
@@ -162,6 +173,10 @@ module PlayerTurn
       def stagehand_combat_active?
         state = Adventures::CombatState.from_adventure(@adventure)
         state.active? && state.has_participants?
+      end
+
+      def deterministic_combat_opener(extra)
+        Array(extra[:action_outcomes]).find(&:present?)
       end
     end
   end
