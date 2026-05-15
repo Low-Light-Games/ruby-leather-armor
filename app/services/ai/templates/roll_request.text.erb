@@ -5,48 +5,37 @@ The player just declared an intention and we need you to decide what roll they n
 === PLAYER INTENT ===
 <%= @roll_request_context.intent %>
 
-=== PLAYER POSITION ===
-<%= @roll_request_context.current_location_name.presence || "(unknown — no current location set)" %>
-
 <%= PromptRenderer.render_partial("partials/cast_roster", cast_roster: @roll_request_context.cast_roster) %>
 
 <%= PromptRenderer.render_partial("partials/scene_retrieval", scene_retrieval: @roll_request_context.scene_retrieval) %>
 
+You need to make sequential decisions for this.
+- Is it an attack roll? If so, that is all you need to tell us, no other decisions are needed.
 
 <% if @roll_request_context.relevant_rules.any? -%>
-  === IF A ROLL IS NEEDED, YOU NEED TO PICK FROM THE RULES BELOW, EXCEPT IF IT'S AN ATTACK ROLL ===
+- Is it a skill check or saving roll? If so, you need to take the rules below into account.
+
   <% @roll_request_context.relevant_rules.each_with_index do |rule, idx| -%>
     <%= idx + 1 %>. **<%= rule[:name] %>** (slug: `<%= rule[:slug] %>`)
     <%= rule[:body].to_s.strip.gsub("\n", "\n   ") %>
   <% end -%>
-
-  === HOW TO USE THESE RULES ===
- Three fields must come from the chosen rule:
-  - `skill`: the name in the rule heading (e.g. "**Swim (Str)**" → "Swim")
-  - `rule_slug`: copy the slug verbatim
-  - `dc`: the DC appropriate for the player intent.
-
-  If you think all the rules are a bad fit, set `needs_roll: false` with
-  `no_roll_reason` naming the closest rule and why it does not fit.
+<% else -%>
+- Is it a skill check or saving roll? Pick the appropriate rule from your Pathfinder 1e knowledge.
 <% end -%>
 
+These fields must come from the chosen rule:
+  - `skill`: the name
+  - `dc`: the DC appropriate for the player intent.
+
 === OTHER FIELDS ===
-- `destination`: when the player heads to a known place, copy the
-  exact location name from NEARBY LOCATIONS verbatim.
 - `target_actor_sheet_id`: when the action will interact directly with a
   creature in CAST ROSTER, copy that entry's `id` (an integer).
 - `transition`: "combat_started" only when the action should initiate combat (e.g. player takes an hostile action in a tense room).
-- For generic long-travel / wandering / time-passing intents with no
-  explicit obstacle, set `needs_roll: false`. Do not invent awareness
-  checks (Perception, Knowledge, etc.) unless the player explicitly says
-  they are searching, scouting, watching for danger, or inspecting details.
-- For opposed rolls (Stealth, Bluff, Diplomacy, Disguise, Sleight of
-  Hand, Intimidate, attack rolls), prefer to omit `dc` — the engine
-  resolves the DC from the target's defending stat. Emit `dc` only
-  for environmental/static checks (climb a wall, jump a chasm).
-- `ability_use_claimed`: a spell/feat/item the player named explicitly.
-- `situational_modifiers`: each entry is `{ "source": "<short
-  phrase>", "modifier": <integer> }`. Empty array if none apply.
+- Emit `dc` only for environmental/static checks (climb a wall, jump a chasm) not for opposed rolls.
+- `ability_use_claimed`: a spell/feat/item the player declared intention to use explicitly.
+- `situational_modifiers`: each entry is `{ "source": "<short phrase>", "modifier": <integer> }`.
+  Take the overall context into account in order to adjudicate bonus or penalties.
+  
 
 Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
 {
@@ -61,7 +50,6 @@ Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
     "take_10_eligible": true,
     "take_20_eligible": false,
     "situational_modifiers": [{ "source": "rough water", "modifier": -2 }],
-    "rule_slug": "swim"
   },
   "transition": null,
   "target_actor_sheet_id": 273,
@@ -69,7 +57,8 @@ Respond ONLY with valid JSON in this exact FLAT shape (no wrapper keys):
   "consequences": [],
   "ability_use_claimed": null,
   "mechanical_summary": "One-sentence factual summary.",
-  "reasoning": "One short sentence explaining the call."
+  "reasoning": "One short sentence explaining the call.",
+  "confidence": "0-100 of how confident you are in the roll request"
 }
 
 `consequences` are rare — leave the array empty unless the action has
