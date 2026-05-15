@@ -5,6 +5,7 @@ module PlayerTurn
     module RollRequest
       RULES_TOP_K = 4
       BEATS_TOP_K = 6
+      DEFAULT_MIN_CONFIDENCE = 60
 
       private
 
@@ -38,13 +39,14 @@ module PlayerTurn
           [raw, @ai.parse_json(raw)]
         end
 
+        parsed = sanitize_low_confidence_roll_request(parsed)
         result = build_roll_request_evaluation_result(parsed: parsed, intention: intention,
                                                       cast_roster: cast_roster)
-        apply_opposed_dc_resolution!(result)
-
-        warn_on_invented_rule_slug!(parsed, rules)
         log_roll_request_to_loop(result)
 
+        return result if attack_roll_only?(result)
+
+        apply_opposed_dc_resolution!(result)
         Rolls::PlayerRolls.compute_take_values!(result.player_rolls, sheet: @sheet)
         result
       end
@@ -90,13 +92,16 @@ module PlayerTurn
 
       def normalize_roll(raw, mechanical_summary:)
         raw = raw.deep_symbolize_keys
+        type = raw[:type].presence || 'skill_check'
+        skill = raw[:skill]
+        save = raw[:save]
         {
-          type: raw[:type].presence || 'skill_check',
-          skill: raw[:skill],
-          save: raw[:save],
+          type: type,
+          skill: skill,
+          save: save,
           dc: raw[:dc],
           description: raw[:description].presence || mechanical_summary.to_s.presence || '(no description)',
-          rule_slug: raw[:rule_slug],
+          rule_slug: rule_slug_from_roll(type: type, skill: skill, save: save),
           take_10_eligible: raw[:take_10_eligible] == true,
           take_20_eligible: raw[:take_20_eligible] == true,
           situational_modifiers: PlayerTurn::Rolls::SituationalModifiers.normalize(raw[:situational_modifiers])
@@ -125,28 +130,68 @@ module PlayerTurn
         nil
       end
 
-      def warn_on_invented_rule_slug!(parsed, retrieved_rules)
-        return unless parsed.is_a?(Hash) && parsed['needs_roll'] == true
+      def attack_roll_only?(result)
+        rolls = Array(result.player_rolls)
+        rolls.length == 1 && rolls.first.is_a?(Hash) && rolls.first[:type].to_s == 'attack_roll'
+      end
 
-        roll = parsed['roll']
-        return unless roll.is_a?(Hash)
+      def sanitize_low_confidence_roll_request(parsed)
+        payload = (parsed || {}).deep_symbolize_keys
+        return payload unless low_confidence_roll_request?(payload)
 
-        emitted_slug = roll['rule_slug'].to_s
-        return if emitted_slug.empty?
-
-        retrieved_slugs = retrieved_rules.map { |r| r[:slug].to_s }
-        return if retrieved_slugs.include?(emitted_slug)
-
+        confidence = roll_request_confidence(payload)
         @log.play_log!(
-          'roll_request_invented_slug',
-          "RollRequest: AI emitted rule_slug '#{emitted_slug}' not in retrieved set #{retrieved_slugs.inspect}",
+          'roll_request_low_confidence',
+          "RollRequest confidence #{confidence} below threshold #{minimum_roll_request_confidence}; forcing no-roll.",
           parsed_response: {
-            emitted_skill: roll['skill'],
-            emitted_dc: roll['dc'],
-            emitted_slug: emitted_slug,
-            retrieved_slugs: retrieved_slugs
+            confidence: confidence,
+            threshold: minimum_roll_request_confidence,
+            roll_type: payload.dig(:roll, :type),
+            skill: payload.dig(:roll, :skill),
+            reasoning: payload[:reasoning]
           }
         )
+        payload.merge(
+          needs_roll: false,
+          no_roll_reason: "Low confidence roll request (#{confidence}/100 < #{minimum_roll_request_confidence}/100)",
+          roll: nil
+        )
+      end
+
+      def low_confidence_roll_request?(payload)
+        return false unless needs_roll?(payload)
+        return false if payload.dig(:roll, :type).to_s == 'attack_roll'
+
+        roll_request_confidence(payload) < minimum_roll_request_confidence
+      end
+
+      def roll_request_confidence(payload)
+        value = payload[:confidence]
+        parsed = Integer(value, exception: false)
+        return 100 if parsed.nil?
+
+        parsed.clamp(0, 100)
+      end
+
+      def minimum_roll_request_confidence
+        raw = @config.get('roll_request_min_confidence')
+        parsed = Integer(raw, exception: false)
+        return DEFAULT_MIN_CONFIDENCE if parsed.nil?
+
+        parsed.clamp(0, 100)
+      end
+
+      def rule_slug_from_roll(type:, skill:, save:)
+        return 'attack_roll' if type.to_s == 'attack_roll'
+
+        source = skill.presence || save.presence
+        return nil if source.blank?
+
+        source.to_s
+          .downcase
+          .gsub(/\([^)]*\)/, '')
+          .gsub(/[^a-z0-9]+/, '_')
+          .gsub(/\A_+|_+\z/, '')
       end
 
       def run_roll_request_as_ai_called_tool(intention)
