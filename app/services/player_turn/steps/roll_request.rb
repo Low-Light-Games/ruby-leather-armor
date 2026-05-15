@@ -160,6 +160,7 @@ module PlayerTurn
 
       def low_confidence_roll_request?(payload)
         return false unless needs_roll?(payload)
+
         return false if payload.dig(:roll, :type).to_s == 'attack_roll'
 
         roll_request_confidence(payload) < minimum_roll_request_confidence
