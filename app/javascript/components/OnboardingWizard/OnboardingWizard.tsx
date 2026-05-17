@@ -155,6 +155,11 @@ const OnboardingWizard = () => {
         throw new Error(data.error || 'Something went wrong. Please try again.')
       }
 
+      const redditTracker = (window as Window & { rdt?: (...args: string[]) => void }).rdt
+      if (typeof redditTracker === 'function') {
+        redditTracker('track', 'Lead')
+      }
+
       // Navigate directly — AdventurePlay will re-fetch user state on mount,
       // picking up the updated onboarding_state without a flicker here.
       window.location.href = `/adventures/${data.adventure_id}`

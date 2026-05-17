@@ -9,8 +9,13 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
   })
 
   const redditTracker = (window as Window & { rdt?: (...args: string[]) => void }).rdt
-  if (payload.oauth_new_signup && typeof redditTracker === 'function') {
-    redditTracker('track', 'SignUp')
+  if (typeof redditTracker === 'function') {
+    if (payload.oauth_new_signup) {
+      redditTracker('track', 'SignUp')
+    }
+    if (payload.oauth_new_purchase) {
+      redditTracker('track', 'Purchase')
+    }
   }
 
   return payload.user
