@@ -7,15 +7,10 @@ const RedditLanding: React.FC = () => (
     <header className="fp-header">
       <div className="fp-header__inner">
         <p className="fp-typewriter rl-notice">
-          A Notice to Travelers from Reddit
+          Ho there, Redditor. Stay thy course a moment and indulge an old man.
         </p>
         <h1 className="fp-header__title">Leatherarmor</h1>
         <hr className="fp-header__rule" />
-        <p className="fp-typewriter fp-header__subtitle">
-          A Work in Progress —
-          <br />
-          An AI Referee for Solo Pathfinder, in the Old Style
-        </p>
       </div>
     </header>
 
@@ -38,43 +33,34 @@ const RedditLanding: React.FC = () => (
     <main className="fp-main">
 
       <section className="fp-section">
-        <h2 className="fp-section__heading">We Should Say This Plainly First</h2>
         <p>
-          Leatherarmor is not finished. If you have arrived here from an
-          advertisement on Reddit, you should know that what we have is a working
-          sketch — enough to play, enough to die in, enough to suggest what the
-          thing wants to become — but not the polished product we hope it will one
-          day be. We are showing it to you early because we would rather have honest
-          company on the road than pretend we are further along than we are.
+          Elminster reference aside, thanks for taking the time to check us out.
         </p>
         <p>
-          What follows is what we are building, why, and what we know is still
-          broken. Nothing more flattering than that.
+          Leatherarmor is supposed to be a solo RPG love letter to the likes of{" "}
+          <em>Chainmail</em> and early Gygaxian dungeons. We want that unforgiving,
+          ruthless edge that makes it all the more fun, and we want the main
+          characters to be simple adventurers with low success odds at first.
         </p>
       </section>
 
       <hr className="fp-divider" />
 
       <section className="fp-section">
-        <h2 className="fp-section__heading">What We Borrow From <em>Chainmail</em></h2>
+        <h2 className="fp-section__heading">Why wouldn't you just play some Pathfinder CRPG or BG3?</h2>
         <p>
-          The instinct behind Leatherarmor is older than most of the games on the
-          shelf today. We take our cue from <em>Chainmail</em> and the earliest
-          dungeon-crawls — rule-heavy, unforgiving, a little baroque. The kind of
-          game where the rulebook does not exist to keep you safe; it exists so
-          that, when the thing in the pit kills you, both sides agree about how it
-          happened.
-        </p>
-        <p>
-          We are not interested in streamlined power fantasy. We are interested in
-          torch counts and reaction rolls, in morale, in the cold arithmetic of a
-          first-level character standing in front of a door they have no business
-          opening. The Pathfinder rules give us the substance; the older tradition
-          gives us the disposition.
-        </p>
-        <p>
-          You are not a hero. You are an adventurer. The dungeon will treat you
-          accordingly.
+          While those are great games, we very much want somewhere where you can be
+          truly free and not railroaded at all. We want a world where you can just
+          decide to call the city watch on someone because that is sensible, or
+          decide you'll actually live by the dungeon entrance for a couple of weeks
+          to study access patterns. You know when you are, out of nowhere, forced to
+          choose between 2 convoluted bad plans? We want that to never happen here.
+          It's the whole point, so the first principle is "freedom", and with that
+          freedom, you can undertake dangerous adventures and, because you were truly
+          free, it feels fairer when you do fail. You got to try what you wanted, and
+          it didn't pan out, as opposed to "I was railroaded into this and, to the
+          surprise of no one, it failed". Never win the fight and lose in the
+          cutscene, never be fooled by an obviously duplicitous NPC.
         </p>
       </section>
 
@@ -99,75 +85,43 @@ const RedditLanding: React.FC = () => (
       <hr className="fp-divider" />
 
       <section className="fp-section">
-        <h2 className="fp-section__heading">The Rule Problem, and Why We Are Spending Our Time On It</h2>
+        <h2 className="fp-section__heading">On the state of Leatherarmor.</h2>
         <p>
-          Anyone who has sat a language model down and asked it to run a serious
-          tabletop game knows the failure mode. The prose is good. The atmosphere
-          is good. The rules are, charitably, suggestions. Hit points drift. Saves
-          are forgotten. The model invents a feat you do not have and lets you use
-          it. After an hour you are no longer playing Pathfinder — you are playing
-          a courteous improv partner who has heard of Pathfinder.
+          We can tell you this: it's not where we want it to be. We want to write
+          more stories. We want to empower users to create their own stories that
+          others can play. We eventually want to allow 2–3 players to tackle an
+          adventure together. We want NPC companions to be exportable from one
+          adventure to another.
         </p>
         <p>
-          For a casual session, that is fine. For a serious solo campaign — the
-          kind you want to come back to, the kind whose stakes you actually
-          believe — it is not. The whole point of an unforgiving system is that
-          the rules are the contract. If the referee will not hold the line, the
-          danger is theatrical.
-        </p>
-        <p>
-          So most of our work is not on prose. It is on the unglamorous
-          scaffolding: a deterministic rules engine that resolves dice, tracks
-          state, enforces conditions, and refuses to let the language model
-          quietly forgive a failed save. The AI narrates. The code adjudicates.
-          That division of labor is the thing we are trying to get right.
-        </p>
-      </section>
-
-      <hr className="fp-divider" />
-
-      <section className="fp-section">
-        <h2 className="fp-section__heading">The End We Are Working Toward</h2>
-        <p>
-          The honest dream — and we will call it a dream because we are not there
-          yet — is a referee that you can sit down with at any hour and trust.
-          One that generates dungeons whose layouts make spatial sense, whose
-          inhabitants have reasons, whose treasure was not invented to please you.
-          One that runs a six-hour session and, at the end of it, the numbers on
-          your character sheet still add up.
-        </p>
-        <p>
-          When the AI side and the code side are both tight — when the model is
-          doing only what it is genuinely good at, and the engine is doing the
-          rest — we believe what falls out is the thing solo players have wanted
-          for forty years. Interesting stories, generated freely. Real dungeons,
-          built to be survived rather than enjoyed. Sessions that matter because
-          the rules said they did.
-        </p>
-        <p>
-          We are some distance from that. We are closer than we were last month.
+          But those are grandiose ideas. First, we need your help in improving the
+          basics. We need to ensure combat can start seamlessly with an NPC who was
+          never meant to be a combatant. We need to make sure the pack of wolves can
+          be reliably animal-handled mid-combat, with a reasonable (very hard) DC. We
+          need to make sure the enemies don't get stuck on each other trying to find
+          you and attack you on the combat grid. Some of those are easy — just
+          superior coding necessary — some will probably require further fine-tuning
+          of AI models.
         </p>
       </section>
 
       <hr className="fp-divider" />
 
       <section className="fp-section fp-section--closing">
+        <h2 className="fp-section__heading">What is the help we want?</h2>
         <p>
-          If an unfinished, opinionated, occasionally broken tool — built by people
-          who would rather show you the seams than hide them — sounds like
-          something you would like to walk a few corridors with, we would be glad
-          of the company.
+          We just want you to play the game and let us know what sucks, what works,
+          and what's meh. We just need the exposure right now, and although there are
+          paid plans, the money is not the most important part (it does pay for the
+          servers, though). The most important thing is your feedback. We get to code
+          and handle the AI hallucinations, you get to play and complain to us.
+          Sounds good? If so, please try out by clicking the button below.
         </p>
         <div className="fp-cta-wrap">
           <a href="/adventures/new" className="fp-cta-btn">
             Roll a Character
           </a>
         </div>
-        <p className="fp-typewriter fp-closing-note">
-          Expect rough edges. Expect to die.
-          <br />
-          Tell us where it broke; we will fix what we can.
-        </p>
       </section>
 
     </main>
