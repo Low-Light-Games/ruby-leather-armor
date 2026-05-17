@@ -18,9 +18,12 @@ const FrontPage: React.FC = () => (
 
     <div className="fp-illustration">
       <div className="fp-illustration__frame">
-        <img
-          src="/images/frontpage/hero-dungeon.jpg"
-          alt="A dark dungeon corridor lit by flickering torches"
+        <video
+          src="/videos/hero-dungeon-video.mp4"
+          autoPlay
+          loop
+          muted
+          playsInline
           className="fp-illustration__img"
         />
       </div>

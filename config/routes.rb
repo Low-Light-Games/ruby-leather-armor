@@ -8,6 +8,7 @@ Rails.application.routes.draw do
   # Public pages (no authentication required)
   get "legal"   => "legal#index"
   get "privacy" => "privacy#index"
+  get "r"       => "home#reddit", as: :reddit_landing
 
   root "home#index"
 
