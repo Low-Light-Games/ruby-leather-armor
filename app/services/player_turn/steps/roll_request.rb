@@ -5,7 +5,7 @@ module PlayerTurn
     module RollRequest
       RULES_TOP_K = 4
       BEATS_TOP_K = 6
-      DEFAULT_MIN_CONFIDENCE = 60
+      DEFAULT_MIN_CONFIDENCE = 90
 
       private
 

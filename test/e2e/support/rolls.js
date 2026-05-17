@@ -20,7 +20,7 @@ async function submitActiveRollPanel(page, { typeMatch } = {}) {
         has: page.locator('.roll-prompt-type', { hasText: typeMatch }),
       })
     : page.locator('.roll-submit-area').first();
-  await expect(panel).toBeVisible({ timeout: 120_000 });
+  await expect(panel).toBeVisible({ timeout: 180_000 });
 
   const d20Button = panel.locator('.roll-btn.roll-d20');
   if (await d20Button.count() > 0) {

@@ -10,6 +10,8 @@ const { submitActiveRollPanel } = require('../support/rolls');
 
 test.describe('Walk-into-combat — live OpenAI', () => {
   test('walking 8 hours triggers initiative; rolling 20 starts combat with grid', async ({ page }) => {
+    test.setTimeout(300_000);
+
     await forceMaxRoll(page);
     await login(page, 'paid');
     await beginAdventure(page);
@@ -17,7 +19,7 @@ test.describe('Walk-into-combat — live OpenAI', () => {
     await sendChatMessage(page, 'I walk around aimlessly for 8 hours');
     await submitActiveRollPanel(page);
 
-    await expect(page.locator('.combat-hud')).toBeVisible({ timeout: 90_000 });
+    await expect(page.locator('.combat-hud')).toBeVisible({ timeout: 180_000 });
     await expect(page.locator('.combat-grid')).toBeVisible({ timeout: 30_000 });
   });
 });
