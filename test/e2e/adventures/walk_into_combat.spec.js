@@ -16,7 +16,7 @@ test.describe('Walk-into-combat — live OpenAI', () => {
     await login(page, 'paid');
     await beginAdventure(page);
 
-    await sendChatMessage(page, 'I walk around aimlessly for 8 hours');
+    await sendChatMessage(page, 'I walk towards the keep for 8 hours');
     await submitActiveRollPanel(page);
 
     await expect(page.locator('.combat-hud')).toBeVisible({ timeout: 180_000 });
