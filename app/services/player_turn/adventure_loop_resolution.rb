@@ -200,8 +200,7 @@ module PlayerTurn
         next if total.nil?
 
         dc = Integer(normalized[:dc], exception: false)
-        next if dc.nil?
-        next unless total < dc
+        next if dc.nil? || total >= dc
 
         { description: failure_result }
       end
