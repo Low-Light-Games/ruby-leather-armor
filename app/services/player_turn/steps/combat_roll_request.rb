@@ -5,7 +5,7 @@ module PlayerTurn
     module CombatRollRequest
       RULES_TOP_K = 4
       BEATS_TOP_K = 6
-      DEFAULT_PROMPT_PROGRESS = 'Adjudicating your move...'
+      DEFAULT_PROMPT_PROGRESS = 'The battle dice are reading your move...'
 
       private
 

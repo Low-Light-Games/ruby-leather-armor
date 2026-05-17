@@ -10,7 +10,7 @@ module PlayerTurn
       private
 
       def run_roll_request(intention, cast_roster: nil)
-        broadcast_progress('Reading the situation...')
+        broadcast_progress('The dice oracle is weighing the request...')
 
         scene_retrieval = retrieve_scene_for_roll_request(intention)
         rules           = retrieve_rules_for_roll_request(intention)

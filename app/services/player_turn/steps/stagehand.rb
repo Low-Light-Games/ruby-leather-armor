@@ -6,6 +6,8 @@ module PlayerTurn
       private
 
       def run_narrative_phase(intent, narration_context:, mutations:, extra: {})
+        broadcast_progress("Setting the stage...")
+
         warmaster_result = maybe_initialize_combat(intent)
         deterministic_opener = deterministic_combat_opener(extra)
 
@@ -43,6 +45,7 @@ module PlayerTurn
 
         loremaster_inputs = build_loremaster_inputs(seed, mutations)
 
+        broadcast_progress("Gathering the story's memory...")
         scene_facts   = retrieve_scene_facts_for_narrate(intent)
         outcome_facts = retrieve_outcome_facts_for_narrate(seed)
 
@@ -56,12 +59,12 @@ module PlayerTurn
           prompts << combat_context_evaluator_prompt(seed, mutations)
         end
 
-        broadcast_progress("Writing the story...")
+        broadcast_progress("The chronicler is writing the story...")
         by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
 
         update_or_snapshot_combat_context(by_step, mutations, required: combat_context_required, phase: "narrative_phase")
 
-        broadcast_progress("Remembering the world...")
+        broadcast_progress("The loremaster is filing the outcome...")
         apply_loremaster_from_fan_out!(by_step)
 
         narrative_from_evaluator_result(evaluator_fan_out_result!(by_step, "narrate", "narrative_phase"))

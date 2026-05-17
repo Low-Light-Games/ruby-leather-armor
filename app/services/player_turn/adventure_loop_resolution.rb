@@ -5,6 +5,8 @@ module PlayerTurn
     private
 
     def resolve(intention)
+      broadcast_progress("The pipeline is waking up...")
+
       result = run_evaluation_phase(intention)
       resolve_with_mechanics(result)
     end
@@ -58,6 +60,8 @@ module PlayerTurn
     end
 
     def finish_resolution(intent, merged, roll_results, requested_rolls: nil, submitted_rolls: nil)
+      broadcast_progress("Resolving the roll results...")
+
       current_roll_requests = Array(requested_rolls.presence || merged[:player_rolls]).map { |r| r.is_a?(Hash) ? r.deep_symbolize_keys : r }
       if (damage_pause = maybe_pause_for_damage_roll(intent, merged, current_roll_requests, roll_results, submitted_rolls))
         return damage_pause
@@ -249,6 +253,8 @@ module PlayerTurn
     end
 
     def dispatch_encounter_warmaster(intent, time_result, mutations:)
+      broadcast_progress("The encounter table is waking up...")
+
       result = Encounters::WarmasterBridge.call(
         loop: @loop, adventure: @adventure, sheet: @sheet, log: @log, config: @config, ai: @ai,
         intent: intent, time_result: time_result, mutations: mutations)

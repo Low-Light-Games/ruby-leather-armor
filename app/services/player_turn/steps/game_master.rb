@@ -12,7 +12,7 @@ module PlayerTurn
       private
 
       def run_game_master(intent_text)
-        broadcast_progress("Reading the situation...")
+        broadcast_progress("The Game Master is reading the table...")
 
         ctx = build_game_master_context(intent_text)
         prompt_summary = "GameMaster: \"#{@log.truncate(intent_text)}\""

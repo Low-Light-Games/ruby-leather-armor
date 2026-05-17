@@ -6,6 +6,7 @@
 # Errors are not rescued: Sidekiq retries on failure and sentry-rails captures
 # persistent failures via its Sidekiq error handler.
 class ShipPipelineRegistryEntryEventJob < ApplicationJob
+  self.queue_adapter = :async if Rails.env.playwright?
   queue_as :logging
 
   def perform(registry_entry_uuid)

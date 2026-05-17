@@ -11,10 +11,11 @@ module PlayerTurn
         )
 
         {
-          system_prompt: prompt_payload[:system_prompt],
-          user_message:  prompt_payload[:user_message],
-          model:         @config.model_for("narrate"),
-          meta:          { step: "narrate", parse_fallback: "dm_response" }
+          system_prompt:    prompt_payload[:system_prompt],
+          user_message:     prompt_payload[:user_message],
+          model:            @config.model_for("narrate"),
+          reasoning_effort: @config.reasoning_effort_for("narrate"),
+          meta:             { step: "narrate", parse_fallback: "dm_response" }
         }
       end
 

@@ -6,13 +6,16 @@ module PlayerTurn
       private
 
       def run_intake(player_input)
+        broadcast_progress("The gatekeeper is reading your words...")
+
         prompt_summary = "Intake: \"#{@log.truncate(player_input)}\""
         system_prompt = Ai::PromptRenderer.render("intake")
         request_body = { system_prompt: system_prompt, user_message: player_input }
 
         parsed = timed_ai_call("intake", prompt_summary, request_body) do
           raw = @ai.chat(system_prompt: system_prompt, user_message: player_input,
-                          step_name: "intake", model: @config.model_for("intake"))
+                          step_name: "intake", model: @config.model_for("intake"),
+                          reasoning_effort: @config.reasoning_effort_for("intake"))
           [raw, @ai.parse_json(raw)]
         end
 

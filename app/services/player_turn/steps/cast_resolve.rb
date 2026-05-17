@@ -6,7 +6,7 @@ module PlayerTurn
       private
 
       def run_cast_resolve(intention)
-        broadcast_progress("Reading the scene...")
+        broadcast_progress("The stage manager is finding the cast...")
 
         members = Encounters::CastResolver.call(
           adventure:   @adventure,

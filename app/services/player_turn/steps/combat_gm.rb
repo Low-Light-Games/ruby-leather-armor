@@ -6,6 +6,8 @@ module PlayerTurn
       private
 
       def run_combat_gm(intent, merged, roll_results:, npc_results:, roll_requests:, submitted_rolls:)
+        broadcast_progress("The war council is adjudicating...")
+
         prompt_summary = "Combat GM: \"#{@log.truncate(intent[:intention])}\""
 
         raise Ai::Error, "Combat GM reached without a character sheet — cannot resolve combat" unless @sheet
@@ -40,7 +42,8 @@ module PlayerTurn
 
         parsed = timed_ai_call("combat_gm", prompt_summary, request_body) do
           raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
-                          step_name: "combat_gm", model: @config.model_for("combat_gm"))
+                          step_name: "combat_gm", model: @config.model_for("combat_gm"),
+                          reasoning_effort: @config.reasoning_effort_for("combat_gm"))
           [raw, @ai.parse_json(raw)]
         end
 

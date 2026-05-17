@@ -13,6 +13,7 @@
 # Errors are not rescued: Sidekiq retries on failure and sentry-rails captures
 # persistent failures via its Sidekiq error handler.
 class ShipPlayLogJob < ApplicationJob
+  self.queue_adapter = :async if Rails.env.playwright?
   queue_as :logging
 
   BLOB_FIELDS = %w[request_body raw_response parsed_response].freeze

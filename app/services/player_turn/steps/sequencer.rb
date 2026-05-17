@@ -18,7 +18,8 @@ module PlayerTurn
 
         parsed = timed_ai_call("sequencer", prompt_summary, request_body) do
           raw = @ai.chat(system_prompt: system_prompt, user_message: sanitized_input,
-                          step_name: "sequencer", model: @config.model_for("sequencer"))
+                          step_name: "sequencer", model: @config.model_for("sequencer"),
+                          reasoning_effort: @config.reasoning_effort_for("sequencer"))
           [raw, @ai.parse_json(raw)]
         end
 

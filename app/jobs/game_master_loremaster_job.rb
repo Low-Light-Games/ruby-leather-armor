@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class GameMasterLoremasterJob < ApplicationJob
+  self.queue_adapter = :async if Rails.env.playwright?
   queue_as :dm_pipeline
   discard_on ActiveRecord::RecordNotFound
 

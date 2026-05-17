@@ -6,6 +6,8 @@ module PlayerTurn
       private
 
       def run_mechanic(intent, merged, roll_results:, npc_results:)
+        broadcast_progress("The gods are adjudicating...")
+
         prompt_summary = "Mechanic: \"#{@log.truncate(intent[:intention])}\""
 
         raise Ai::Error, "Mechanic step reached without a character sheet — cannot resolve mechanics" unless @sheet
@@ -27,7 +29,8 @@ module PlayerTurn
 
         parsed = timed_ai_call("mechanic", prompt_summary, request_body) do
           raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
-                          step_name: "mechanic", model: @config.model_for("mechanic"))
+                         step_name: "mechanic", model: @config.model_for("mechanic"),
+                         reasoning_effort: @config.reasoning_effort_for("mechanic"))
           [raw, @ai.parse_json(raw)]
         end
 

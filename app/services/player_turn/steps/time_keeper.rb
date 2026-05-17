@@ -8,6 +8,8 @@ module PlayerTurn
       private
 
       def run_time_keeper(intent, verdict_result)
+        broadcast_progress("Father Time is talking...")
+
         estimated = estimate_time(intent, verdict_result)
         @log.log!(:info, "TimeKeeper: estimated=#{estimated[:hours].round(4)}h, source=#{estimated[:source]}")
 
@@ -30,6 +32,7 @@ module PlayerTurn
           new_data: time_loop_data,
           timeline_entry: { "step" => "time_keeper", "summary" => "#{estimated[:hours].round(4)}h (#{estimated[:source]})", "at" => Time.current.iso8601 })
 
+        broadcast_progress("The road is checking for trouble...")
         harbinger_result = consult_harbinger_if_needed(estimated, intent)
 
         actual_hours = if harbinger_result[:interrupted]
@@ -206,7 +209,8 @@ module PlayerTurn
         parsed = timed_ai_call("time_keeper", prompt_summary, request_body) do
           raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
                          step_name: "time_keeper",
-                         model: @config.model_for("time_keeper"))
+                         model: @config.model_for("time_keeper"),
+                         reasoning_effort: @config.reasoning_effort_for("time_keeper"))
           [raw, @ai.parse_json(raw)]
         end
 

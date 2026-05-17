@@ -17,6 +17,8 @@ module PlayerTurn
 
       def run_sanity_gate_fan_out(result)
         text = result.intention
+        broadcast_progress('Reality is checking the premise...')
+
         prompts = [sanity_checker_world_evaluator_prompt(result)]
         prompts << sanity_checker_capability_evaluator_prompt(result) if @sheet
 
@@ -42,10 +44,11 @@ module PlayerTurn
                                               sanity_context: prompt_context)
 
         EvaluatorPromptPayload.new(
-          system_prompt: system_prompt,
-          user_message: result.intention,
-          model: @config.model_for('sanity_checker_world'),
-          step: 'sanity_checker_world'
+          system_prompt:    system_prompt,
+          user_message:     result.intention,
+          model:            @config.model_for('sanity_checker_world'),
+          step:             'sanity_checker_world',
+          reasoning_effort: @config.reasoning_effort_for('sanity_checker_world')
         ).to_h
       end
 
@@ -56,10 +59,11 @@ module PlayerTurn
                                               sanity_context: prompt_context)
 
         EvaluatorPromptPayload.new(
-          system_prompt: system_prompt,
-          user_message: result.intention,
-          model: @config.model_for('sanity_checker'),
-          step: 'sanity_checker'
+          system_prompt:    system_prompt,
+          user_message:     result.intention,
+          model:            @config.model_for('sanity_checker'),
+          step:             'sanity_checker',
+          reasoning_effort: @config.reasoning_effort_for('sanity_checker')
         ).to_h
       end
 
@@ -94,6 +98,8 @@ module PlayerTurn
 
       def run_capability_check(result)
         return CapabilityCheckResult.new(allowed: true, reason: nil).to_h unless @sheet
+
+        broadcast_progress('Reality is checking the character sheet...')
 
         intention = result.intention
         prompt_summary = "SanityChecker/capability: \"#{@log.truncate(intention)}\""

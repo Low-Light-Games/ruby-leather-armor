@@ -66,7 +66,7 @@ module PlayerTurn
           return
         end
 
-        broadcast_progress("Remembering the world...")
+        broadcast_progress("The battlefield scribe is updating the ledger...")
         prompts = [combat_context_evaluator_prompt(what_happened, mutations)]
         by_step = evaluator_fan_out!(prompts, what_happened, phase: "context_update")
         persist_combat_context(combat_context_delta(by_step, phase: "context_update"), mutations)
@@ -212,10 +212,11 @@ module PlayerTurn
           canonical_participants: canonical_combat_participants)
 
         {
-          system_prompt: system_prompt,
-          user_message: what_happened,
-          model: @config.model_for(STEP_NAME),
-          meta: { step: STEP_NAME }
+          system_prompt:    system_prompt,
+          user_message:     what_happened,
+          model:            @config.model_for(STEP_NAME),
+          reasoning_effort: @config.reasoning_effort_for(STEP_NAME),
+          meta:             { step: STEP_NAME }
         }
       end
 
