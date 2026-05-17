@@ -4,4 +4,7 @@ class HomeController < ApplicationController
 
   def index
   end
+
+  def reddit
+  end
 end
