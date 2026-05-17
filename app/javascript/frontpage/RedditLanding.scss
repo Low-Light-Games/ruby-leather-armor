@@ -1,6 +1,5 @@
-/* Reddit landing — notice line above the title */
-.rl-notice {
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  margin-bottom: 24px;
+/* Reddit landing — italic centred sign-off line before the CTA */
+.rl-cta-intro {
+  text-align: center;
+  font-style: italic;
 }

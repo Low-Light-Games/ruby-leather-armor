@@ -6,9 +6,6 @@ const RedditLanding: React.FC = () => (
   <div className="fp">
     <header className="fp-header">
       <div className="fp-header__inner">
-        <p className="fp-typewriter rl-notice">
-          Ho there, Redditor. Stay thy course a moment and indulge an old man.
-        </p>
         <h1 className="fp-header__title">Leatherarmor</h1>
         <hr className="fp-header__rule" />
       </div>
@@ -33,6 +30,7 @@ const RedditLanding: React.FC = () => (
     <main className="fp-main">
 
       <section className="fp-section">
+        <h2 className="fp-section__heading">Ho there, Redditor. Stay thy course a moment and indulge an old man.</h2>
         <p>
           Elminster reference aside, thanks for taking the time to check us out.
         </p>
@@ -107,7 +105,7 @@ const RedditLanding: React.FC = () => (
 
       <hr className="fp-divider" />
 
-      <section className="fp-section fp-section--closing">
+      <section className="fp-section">
         <h2 className="fp-section__heading">What is the help we want?</h2>
         <p>
           We just want you to play the game and let us know what sucks, what works,
@@ -115,6 +113,8 @@ const RedditLanding: React.FC = () => (
           paid plans, the money is not the most important part (it does pay for the
           servers, though). The most important thing is your feedback. We get to code
           and handle the AI hallucinations, you get to play and complain to us.
+        </p>
+        <p className="rl-cta-intro">
           Sounds good? If so, please try out by clicking the button below.
         </p>
         <div className="fp-cta-wrap">
