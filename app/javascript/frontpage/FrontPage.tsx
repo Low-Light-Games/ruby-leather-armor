@@ -9,9 +9,9 @@ const FrontPage: React.FC = () => (
         <p className="fp-header__tagline">The Dungeon Does Not Care</p>
         <hr className="fp-header__rule" />
         <p className="fp-typewriter fp-header__subtitle">
-          An AI-Refereed Solo Adventure System
+          An AI-Refereed Text-Based Solo Adventure System
           <br />
-          for the Pathfinder<sup><a href="#paizo-note" className="fp-header__footnote-ref">*</a></sup> Roleplaying Game
+          based on the Pathfinder<sup><a href="#paizo-note" className="fp-header__footnote-ref">*</a></sup> Roleplaying Game
         </p>
       </div>
     </header>
