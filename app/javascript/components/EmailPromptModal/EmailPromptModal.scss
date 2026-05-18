@@ -1,0 +1,103 @@
+@use '../tokens' as *;
+
+.email-prompt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.email-prompt-modal {
+  background: $parchment-dk;
+  border: 1px solid $border;
+  padding: 32px;
+  max-width: 400px;
+  width: 90%;
+
+  h2 {
+    margin: 0 0 12px;
+    font-family: $font-display;
+    color: $ink;
+    font-weight: normal;
+    font-size: 1.1rem;
+    letter-spacing: 0.03em;
+  }
+
+  p {
+    margin: 0 0 18px;
+    font-family: $font-body;
+    color: $ink-mid;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  input[type="email"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid $border;
+    border-radius: 0;
+    font-size: 15px;
+    font-family: $font-body;
+    background: $parchment;
+    color: $ink;
+    box-sizing: border-box;
+    margin-bottom: 18px;
+
+    &:focus {
+      outline: none;
+      border-color: $red-ink;
+      box-shadow: 0 0 0 2px rgba(114, 38, 38, 0.15);
+    }
+  }
+}
+
+.email-prompt-error {
+  color: $red-ink;
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
+.email-prompt-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.email-prompt-skip {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid $border-light;
+  font-family: $font-display;
+  font-size: 14px;
+  color: $ink-mid;
+  cursor: pointer;
+  letter-spacing: 0.03em;
+
+  &:hover {
+    background: $parchment-mid;
+  }
+}
+
+.email-prompt-save {
+  padding: 8px 16px;
+  background: $red-ink;
+  border: none;
+  color: $parchment;
+  font-family: $font-display;
+  font-size: 14px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+
+  &:hover:not(:disabled) {
+    background: $red-ink-dk;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
