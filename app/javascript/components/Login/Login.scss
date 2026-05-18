@@ -56,29 +56,42 @@
     }
   }
 
-  .google-signin {
+  .oauth-heading {
+    text-align: center;
+    margin: 0 0 14px;
+    color: $ink-mid;
+    font-family: $font-display;
+    font-size: 14px;
+    letter-spacing: 0.03em;
+  }
+
+  .oauth-row {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
     margin-bottom: 0;
   }
 
-  .google-btn {
-    width: 100%;
+  .oauth-form {
+    margin: 0;
+  }
+
+  .oauth-icon-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    padding: 12px;
-    background-color: $parchment;
-    color: $ink;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    background: $parchment;
     border: 1px solid $border;
     border-radius: 0;
-    font-size: 15px;
-    font-family: $font-display;
-    letter-spacing: 0.03em;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s;
 
     &:hover {
-      background-color: $parchment-mid;
+      background: $parchment-mid;
+      border-color: $ink-faint;
     }
 
     &:focus-visible {
