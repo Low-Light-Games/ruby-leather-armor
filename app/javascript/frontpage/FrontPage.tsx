@@ -1,10 +1,20 @@
 import React from "react";
 import "./FrontPage.scss";
 
-function trackCtaClick() {
+function trackCtaClick(event: React.MouseEvent<HTMLAnchorElement>) {
+  event.preventDefault();
+  
   const rdt = (window as Window & { rdt?: (...args: unknown[]) => void }).rdt;
   if (typeof rdt === "function") {
     rdt("track", "Custom", { customEventName: "CtaClick" });
+    
+    // Small delay to ensure tracking request initiates
+    setTimeout(() => {
+      window.location.href = "/adventures/new";
+    }, 100);
+  } else {
+    // Fallback if Reddit pixel not available
+    window.location.href = "/adventures/new";
   }
 }
 
