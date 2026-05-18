@@ -124,7 +124,7 @@
     }
   }
 
-  button[type="submit"]:not(.google-btn) {
+  button[type="submit"]:not(.oauth-icon-btn) {
     width: 100%;
     padding: 12px;
     background-color: $red-ink;
