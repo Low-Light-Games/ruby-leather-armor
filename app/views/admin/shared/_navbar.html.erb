@@ -15,6 +15,7 @@
     <a href="<%= admin_bestiary_entries_path %>" class="nav-link<%= ' active-link' if _active == :bestiary %>">Bestiary</a>
     <a href="<%= admin_feature_flags_path %>" class="nav-link<%= ' active-link' if _active == :feature_flags %>">Feature Flags</a>
     <a href="<%= admin_users_path %>" class="nav-link<%= ' active-link' if _active == :users %>">Users</a>
+    <a href="<%= admin_feedbacks_path %>" class="nav-link<%= ' active-link' if _active == :feedbacks %>">Feedback</a>
     <%= button_to "Logout", logout_path, method: :delete, class: "logout-link" %>
   </div>
 </nav>

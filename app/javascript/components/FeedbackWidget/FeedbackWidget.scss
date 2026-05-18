@@ -1,0 +1,157 @@
+@use '../tokens' as *;
+
+.feedback-widget__trigger,
+.feedback-widget__card {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 9999;
+}
+
+.feedback-widget__trigger {
+  font-family: $font-mono;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  padding: 8px 16px;
+  background: $ink;
+  color: $parchment;
+  border: 1px solid $border;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transition: background 0.15s, transform 0.15s;
+
+  &:hover {
+    background: $ink-mid;
+    transform: translateY(-1px);
+  }
+
+  &--cooldown {
+    opacity: 0.5;
+    cursor: not-allowed;
+
+    &:hover {
+      background: $ink;
+      transform: none;
+    }
+  }
+}
+
+.feedback-widget__card {
+  width: 320px;
+  background: $parchment-dk;
+  border: 1px solid $border;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.feedback-widget__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid $border-light;
+}
+
+.feedback-widget__title {
+  font-family: $font-display;
+  font-size: 14px;
+  color: $ink;
+}
+
+.feedback-widget__close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  color: $ink-light;
+  cursor: pointer;
+  padding: 0 4px;
+
+  &:hover {
+    color: $ink;
+  }
+}
+
+.feedback-widget__textarea {
+  font-family: $font-body;
+  font-size: 14px;
+  color: $ink;
+  background: $parchment;
+  border: none;
+  border-bottom: 1px solid $border-light;
+  padding: 12px 14px;
+  resize: vertical;
+  min-height: 80px;
+  outline: none;
+
+  &::placeholder {
+    color: $ink-faint;
+    font-style: italic;
+  }
+
+  &:focus {
+    background: lighten($parchment, 2%);
+  }
+}
+
+.feedback-widget__footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+}
+
+.feedback-widget__counter {
+  font-family: $font-mono;
+  font-size: 11px;
+  color: $ink-faint;
+
+  &--warn {
+    color: $red-ink;
+  }
+}
+
+.feedback-widget__error {
+  font-family: $font-mono;
+  font-size: 11px;
+  color: $red-ink;
+  flex: 1;
+  text-align: right;
+}
+
+.feedback-widget__submit {
+  margin-left: auto;
+  font-family: $font-mono;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  padding: 6px 16px;
+  background: $ink;
+  color: $parchment;
+  border: 1px solid $border;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+
+  &:hover:not(:disabled) {
+    background: $ink-mid;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.feedback-widget__thanks {
+  font-family: $font-body;
+  font-size: 14px;
+  font-style: italic;
+  color: $green-ink;
+  text-align: center;
+  padding: 20px 14px;
+  margin: 0;
+}

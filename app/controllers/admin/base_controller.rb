@@ -17,7 +17,8 @@ module Admin
       'billing'          => :billing,
       'bestiary_entries' => :bestiary,
       'feature_flags'    => :feature_flags,
-      'users'            => :users
+      'users'            => :users,
+      'feedbacks'        => :feedbacks
     }.freeze
 
     def set_active_nav

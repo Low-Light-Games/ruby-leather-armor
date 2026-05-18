@@ -1,0 +1,66 @@
+<div class="admin-feedback-show">
+  <h1>Feedback #<%= @feedback.id %></h1>
+
+  <dl class="feedback-details">
+    <dt>User</dt>
+    <dd><%= @feedback.user&.email || "anonymous" %></dd>
+
+    <dt>Submitted</dt>
+    <dd><%= @feedback.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') %></dd>
+
+    <dt>Page</dt>
+    <dd><%= @feedback.page_url || "(not recorded)" %></dd>
+
+    <dt>User Agent</dt>
+    <dd class="ua"><%= @feedback.user_agent || "(not recorded)" %></dd>
+  </dl>
+
+  <div class="feedback-body-card">
+    <p><%= simple_format(@feedback.body) %></p>
+  </div>
+
+  <a href="<%= admin_feedbacks_path %>" class="back-link">&larr; Back to all feedback</a>
+</div>
+
+<style>
+  .admin-feedback-show {
+    padding: 20px 30px;
+    font-family: 'Arial', sans-serif;
+    max-width: 800px;
+    margin: 0 auto;
+
+    h1 { font-size: 22px; color: #333; margin-bottom: 20px; }
+  }
+
+  .feedback-details {
+    display: grid;
+    grid-template-columns: 100px 1fr;
+    gap: 6px 16px;
+    font-size: 14px;
+    margin-bottom: 20px;
+
+    dt { font-weight: 600; color: #555; }
+    dd { margin: 0; color: #333; }
+    .ua { font-family: monospace; font-size: 12px; color: #666; word-break: break-all; }
+  }
+
+  .feedback-body-card {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 16px 20px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #333;
+    margin-bottom: 20px;
+
+    p { margin: 0; }
+  }
+
+  .back-link {
+    font-size: 13px;
+    color: #1565c0;
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
+</style>

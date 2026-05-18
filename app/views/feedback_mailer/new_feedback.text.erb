@@ -1,0 +1,9 @@
+New player feedback submitted.
+
+From: <%= @feedback.user&.email || "anonymous" %>
+Page: <%= @feedback.page_url || "(not recorded)" %>
+Time: <%= @feedback.created_at&.iso8601 || Time.current.iso8601 %>
+
+---
+<%= @feedback.body %>
+---
