@@ -44,13 +44,13 @@ jobs:
               '${{ secrets.GOOGLE_CLIENT_ID }}' \
               '${{ secrets.GOOGLE_CLIENT_SECRET }}' \
               '${{ vars.GOOGLE_OAUTH_REDIRECT_URI }}' \
-              '${{ secrets.REDDIT_CLIENT_ID }}' \
+              '${{ vars.REDDIT_CLIENT_ID }}' \
               '${{ secrets.REDDIT_CLIENT_SECRET }}' \
               '${{ vars.REDDIT_OAUTH_REDIRECT_URI }}' \
-              '${{ secrets.DISCORD_CLIENT_ID }}' \
+              '${{ vars.DISCORD_CLIENT_ID }}' \
               '${{ secrets.DISCORD_CLIENT_SECRET }}' \
               '${{ vars.DISCORD_OAUTH_REDIRECT_URI }}' \
-              '${{ secrets.TWITCH_CLIENT_ID }}' \
+              '${{ vars.TWITCH_CLIENT_ID }}' \
               '${{ secrets.TWITCH_CLIENT_SECRET }}' \
               '${{ vars.TWITCH_OAUTH_REDIRECT_URI }}' \
               '${{ secrets.AXIOM_API_KEY }}' \
