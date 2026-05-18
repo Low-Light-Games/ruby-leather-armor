@@ -69,6 +69,7 @@ Rails.application.routes.draw do
         post :import
       end
     end
+    resources :feedbacks, only: [:index, :show]
   end
 
   resources :feature_flags, only: [:index]
@@ -100,4 +101,6 @@ Rails.application.routes.draw do
   end
 
   resource :user_preferences, only: [:update]
+
+  resources :feedbacks, only: [:create]
 end

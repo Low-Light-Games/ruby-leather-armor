@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_11_180000) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_18_060000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -431,6 +431,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_11_180000) do
     t.index ["key"], name: "index_feature_flags_on_key", unique: true
   end
 
+  create_table "feedbacks", force: :cascade do |t|
+    t.bigint "user_id"
+    t.text "body", null: false
+    t.string "page_url"
+    t.string "user_agent"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_feedbacks_on_user_id"
+  end
+
   create_table "item_definitions", id: :string, force: :cascade do |t|
     t.string "name", null: false
     t.string "item_type", null: false
@@ -762,6 +772,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_11_180000) do
   add_foreign_key "encounter_table_entries", "encounter_tables"
   add_foreign_key "encounter_tables", "stories"
   add_foreign_key "experience_suggestions", "adventures"
+  add_foreign_key "feedbacks", "users"
   add_foreign_key "moderation_events", "users"
   add_foreign_key "pipelines", "adventure_messages", column: "player_message_id", on_delete: :nullify
   add_foreign_key "pipelines", "adventures"
