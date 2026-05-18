@@ -1,6 +1,13 @@
 import React from "react";
 import "./FrontPage.scss";
 
+function trackCtaClick() {
+  const rdt = (window as Window & { rdt?: (...args: unknown[]) => void }).rdt;
+  if (typeof rdt === "function") {
+    rdt("track", "Custom", { customEventName: "CtaClick" });
+  }
+}
+
 const FrontPage: React.FC = () => (
   <div className="fp">
     <header className="fp-header">
@@ -160,7 +167,7 @@ const FrontPage: React.FC = () => (
           surprising thing — then you are welcome at the table.
         </p>
         <div className="fp-cta-wrap">
-          <a href="/adventures/new" className="fp-cta-btn">
+          <a href="/adventures/new" className="fp-cta-btn" onClick={trackCtaClick}>
             Begin
           </a>
         </div>
