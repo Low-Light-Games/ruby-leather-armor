@@ -2,6 +2,23 @@ import React from "react";
 import "./FrontPage.scss";
 import "./RedditLanding.scss";
 
+function trackCtaClick(event: React.MouseEvent<HTMLAnchorElement>) {
+  event.preventDefault();
+  
+  const rdt = (window as Window & { rdt?: (...args: unknown[]) => void }).rdt;
+  if (typeof rdt === "function") {
+    rdt("track", "Custom", { customEventName: "CtaClick" });
+    
+    // Small delay to ensure tracking request initiates
+    setTimeout(() => {
+      window.location.href = "/adventures/new";
+    }, 100);
+  } else {
+    // Fallback if Reddit pixel not available
+    window.location.href = "/adventures/new";
+  }
+}
+
 const RedditLanding: React.FC = () => (
   <div className="fp">
     <header className="fp-header">
@@ -124,7 +141,7 @@ const RedditLanding: React.FC = () => (
           Sounds good? If so, please try out by clicking the button below.
         </p>
         <div className="fp-cta-wrap">
-          <a href="/adventures/new" className="fp-cta-btn">
+          <a href="/adventures/new" className="fp-cta-btn" onClick={trackCtaClick}>
             Roll a Character
           </a>
         </div>

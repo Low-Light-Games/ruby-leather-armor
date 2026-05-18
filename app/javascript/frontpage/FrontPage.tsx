@@ -1,6 +1,23 @@
 import React from "react";
 import "./FrontPage.scss";
 
+function trackCtaClick(event: React.MouseEvent<HTMLAnchorElement>) {
+  event.preventDefault();
+  
+  const rdt = (window as Window & { rdt?: (...args: unknown[]) => void }).rdt;
+  if (typeof rdt === "function") {
+    rdt("track", "Custom", { customEventName: "CtaClick" });
+    
+    // Small delay to ensure tracking request initiates
+    setTimeout(() => {
+      window.location.href = "/adventures/new";
+    }, 100);
+  } else {
+    // Fallback if Reddit pixel not available
+    window.location.href = "/adventures/new";
+  }
+}
+
 const FrontPage: React.FC = () => (
   <div className="fp">
     <header className="fp-header">
@@ -160,7 +177,7 @@ const FrontPage: React.FC = () => (
           surprising thing — then you are welcome at the table.
         </p>
         <div className="fp-cta-wrap">
-          <a href="/adventures/new" className="fp-cta-btn">
+          <a href="/adventures/new" className="fp-cta-btn" onClick={trackCtaClick}>
             Begin
           </a>
         </div>
