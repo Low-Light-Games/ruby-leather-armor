@@ -15,6 +15,7 @@ import AdventurePlay from "./components/AdventurePlay";
 import AdminStoryEditor from "./components/AdminStoryEditor";
 import SubscriptionPlans from "./components/SubscriptionPlans";
 import SubscriptionSuccess from "./components/SubscriptionSuccess";
+import FeedbackWidget from "./components/FeedbackWidget/FeedbackWidget";
 import { AuthProvider } from "./contexts/AuthContext";
 import { GameDataProvider } from "./contexts/GameDataContext";
 import type { SubscriptionPlan } from "./types/subscriptions";
@@ -112,6 +113,16 @@ document.addEventListener("DOMContentLoaded", () => {
         <AuthProvider>
           <SubscriptionSuccess />
         </AuthProvider>
+      </React.StrictMode>
+    );
+  }
+
+  // Feedback widget (appears on every page using the application layout)
+  const feedbackWidgetRoot = document.getElementById("feedback-widget-root");
+  if (feedbackWidgetRoot) {
+    createRoot(feedbackWidgetRoot).render(
+      <React.StrictMode>
+        <FeedbackWidget />
       </React.StrictMode>
     );
   }
