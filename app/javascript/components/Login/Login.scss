@@ -83,14 +83,14 @@
     width: 44px;
     height: 44px;
     padding: 0;
-    background: $parchment;
+    background: transparent;
     border: 1px solid $border;
     border-radius: 0;
     cursor: pointer;
     transition: background-color 0.2s, border-color 0.2s;
 
     &:hover {
-      background: $parchment-mid;
+      background: rgba(0, 0, 0, 0.04);
       border-color: $ink-faint;
     }
 
