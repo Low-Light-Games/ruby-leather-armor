@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../../../lib/omniauth/strategies/reddit"
+require_relative "../../lib/omniauth/strategies/reddit"
 
 Rails.application.config.middleware.use OmniAuth::Builder do
   provider :google_oauth2,
