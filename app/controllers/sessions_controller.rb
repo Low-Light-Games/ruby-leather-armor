@@ -25,10 +25,13 @@ class SessionsController < ApplicationController
 
   def show
     if current_user
+      should_prompt_email = session[:email_prompt] == true && current_user.placeholder_email?
       render json: {
         user: user_json(current_user),
-        oauth_new_signup: session.delete(:oauth_new_signup) == true
+        oauth_new_signup: session.delete(:oauth_new_signup) == true,
+        email_prompt: should_prompt_email
       }
+      session.delete(:email_prompt) if should_prompt_email
     else
       render json: { user: nil }
     end

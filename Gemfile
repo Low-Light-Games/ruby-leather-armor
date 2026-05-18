@@ -59,6 +59,10 @@ gem "dotenv-rails"
 gem "omniauth-google-oauth2"
 gem "omniauth-rails_csrf_protection"
 
+# Discord and Twitch OAuth
+gem "omniauth-discord"
+gem "omniauth-twitchtv2"
+
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
 

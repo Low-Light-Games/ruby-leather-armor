@@ -22,20 +22,26 @@ class User < ApplicationRecord
   validates :onboarding_state, inclusion: { in: ONBOARDING_STATES }
   validates :combat_dice_strategy, inclusion: { in: COMBAT_DICE_STRATEGIES }
 
+  PLACEHOLDER_EMAIL_DOMAIN = "@noreply.fake"
+
   def self.from_omniauth(auth)
     user = find_by(provider: auth.provider, uid: auth.uid)
-    user ||= find_by(email: auth.info.email)
+    user ||= find_by(email: auth.info.email) if auth.info.email.present?
     user ||= new
 
     user.provider = auth.provider
     user.uid = auth.uid
-    user.email = auth.info.email
+    user.email = auth.info.email.presence || "#{SecureRandom.uuid}#{PLACEHOLDER_EMAIL_DOMAIN}"
     user.save! if user.new_record? || user.changed?
     user
   end
 
   def oauth_user?
     provider.present?
+  end
+
+  def placeholder_email?
+    email.end_with?(PLACEHOLDER_EMAIL_DOMAIN)
   end
 
   def free?
