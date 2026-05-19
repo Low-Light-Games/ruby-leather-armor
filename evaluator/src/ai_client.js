@@ -137,10 +137,11 @@ async function withOpenAIRetries(callType, model, fn) {
  * @param {string} opts.userMessage
  * @param {string} opts.model
  * @param {number} opts.maxTokens
+ * @param {string} [opts.reasoningEffort] - "minimal"|"low"|"medium"|"high"
  * @param {Object} opts.meta  - passthrough metadata (step, domain, etc.)
  * @returns {Promise<Object>}
  */
-async function chat({ systemPrompt, userMessage, model, maxTokens, meta = {} }) {
+async function chat({ systemPrompt, userMessage, model, maxTokens, reasoningEffort, meta = {} }) {
   const t0 = Date.now();
 
   const requestBody = {
@@ -151,6 +152,10 @@ async function chat({ systemPrompt, userMessage, model, maxTokens, meta = {} }) 
       { role: "user", content: userMessage },
     ],
   };
+
+  if (reasoningEffort) {
+    requestBody.reasoning_effort = reasoningEffort;
+  }
 
   const response = await withOpenAIRetries("chat", model, () =>
     client.chat.completions.create(requestBody)

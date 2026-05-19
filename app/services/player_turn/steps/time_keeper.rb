@@ -207,7 +207,8 @@ module PlayerTurn
         parsed = timed_ai_call("time_keeper", prompt_summary, request_body) do
           raw = @ai.chat(system_prompt: system_prompt, user_message: intent[:intention],
                          step_name: "time_keeper",
-                         model: @config.model_for("time_keeper"))
+                         model: @config.model_for("time_keeper"),
+                         reasoning_effort: @config.reasoning_effort_for("time_keeper"))
           [raw, @ai.parse_json(raw)]
         end
 

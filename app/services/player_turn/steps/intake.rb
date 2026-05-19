@@ -12,7 +12,8 @@ module PlayerTurn
 
         parsed = timed_ai_call("intake", prompt_summary, request_body) do
           raw = @ai.chat(system_prompt: system_prompt, user_message: player_input,
-                          step_name: "intake", model: @config.model_for("intake"))
+                          step_name: "intake", model: @config.model_for("intake"),
+                          reasoning_effort: @config.reasoning_effort_for("intake"))
           [raw, @ai.parse_json(raw)]
         end
 

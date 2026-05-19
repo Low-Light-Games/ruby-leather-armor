@@ -220,10 +220,11 @@ module PlayerTurn
           canonical_participants: canonical_combat_participants)
 
         {
-          system_prompt: system_prompt,
-          user_message: what_happened,
-          model: @config.model_for(STEP_NAME),
-          meta: { step: STEP_NAME }
+          system_prompt:    system_prompt,
+          user_message:     what_happened,
+          model:            @config.model_for(STEP_NAME),
+          reasoning_effort: @config.reasoning_effort_for(STEP_NAME),
+          meta:             { step: STEP_NAME }
         }
       end
 

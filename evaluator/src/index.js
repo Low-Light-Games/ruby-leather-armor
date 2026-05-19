@@ -138,11 +138,12 @@ app.post("/fan_out", async (req, res) => {
 
   const settled = await mapWithConcurrency(prompts, MAX_PARALLEL_FAN_OUT, (p) =>
     chat({
-      systemPrompt: p.system_prompt,
-      userMessage:  p.user_message,
-      model:        p.model,
-      maxTokens:    p.max_tokens,
-      meta:         p.meta ?? {},
+      systemPrompt:    p.system_prompt,
+      userMessage:     p.user_message,
+      model:           p.model,
+      maxTokens:       p.max_tokens,
+      reasoningEffort: p.reasoning_effort,
+      meta:            p.meta ?? {},
     })
   );
 
@@ -227,10 +228,11 @@ app.post("/sequential", async (req, res) => {
     try {
       result = await chat({
         systemPrompt,
-        userMessage: p.user_message,
-        model:       p.model,
-        maxTokens:   p.max_tokens,
-        meta:        p.meta ?? {},
+        userMessage:     p.user_message,
+        model:           p.model,
+        maxTokens:       p.max_tokens,
+        reasoningEffort: p.reasoning_effort,
+        meta:            p.meta ?? {},
       });
     } catch (err) {
       const domain = p.meta?.domain ?? `index ${i}`;
