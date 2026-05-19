@@ -6,7 +6,13 @@ import './Login.scss';
 function firePixelAndSubmit(form: HTMLFormElement, provider: string) {
   const rdt = (window as Window & { rdt?: (...args: unknown[]) => void }).rdt;
   if (typeof rdt === 'function') {
-    rdt('track', 'Custom', { customEventName: 'OAuthClick', provider });
+    const normalizedProvider = provider.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
+    rdt('track', 'Custom', {
+      customEventName: `OAuthClick_${normalizedProvider}`,
+      oauthProvider: normalizedProvider,
+      oauthProviderRaw: provider,
+      pagePath: window.location.pathname,
+    });
     setTimeout(() => form.submit(), 100);
   } else {
     form.submit();
