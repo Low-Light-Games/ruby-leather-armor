@@ -8,6 +8,17 @@ class OmniauthCallbacksController < ApplicationController
     auth = request.env["omniauth.auth"]
 
     unless auth
+      ApplicationErrorReporter.notify(
+        NoMethodError.new("omniauth.auth missing in callback"),
+        context: {
+          provider: params[:provider],
+          request_path: request.path,
+          request_query_parameters: request.query_parameters,
+          omniauth_error: params[:error],
+          omniauth_error_description: params[:error_description],
+          request_id: request.request_id
+        }
+      )
       redirect_to root_path, alert: "Sign-in failed. Please try again."
       return
     end

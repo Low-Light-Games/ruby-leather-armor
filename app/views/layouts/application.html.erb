@@ -15,7 +15,9 @@
 
   <body style="margin:0; background:hsl(40,30%,88%); font-family:'IM Fell English','Georgia',serif;">
     <%= yield %>
-    <div id="feedback-widget-root"></div>
+    <% if current_user %>
+      <div id="feedback-widget-root"></div>
+    <% end %>
     <footer style="text-align:center;padding:16px;font-size:12px;color:hsl(20,10%,40%);border-top:1px solid hsl(20,12%,55%);margin-top:40px;font-family:'Courier Prime','Courier New',monospace;letter-spacing:0.06em;">
       <a href="/legal" style="color:hsl(20,10%,40%);text-decoration:underline;">Open Game License</a>
       &nbsp;&nbsp;·&nbsp;&nbsp;
