@@ -104,18 +104,20 @@ module PlayerTurn
           next if npc_sheet_unavailable_or_eliminated?(live_sheet)
 
           plan = plans_by_id[npc.actor_sheet_id.to_i]
-          unless plan
-            log_missing_plan(npc)
-            next
-          end
 
           reload_player_sheet!
 
-          npc_action_result = Combat::WorldTurn::NpcActionResolver.resolve(
-            npc: npc, parsed: plan, combat_ctx: working_ctx,
-            player_sheet: @sheet, adventure: @adventure)
-          lines.concat(npc_action_result[:lines])
-          log_world_turn_resolution(npc, plan, npc_action_result)
+          if plan
+            npc_action_result = Combat::WorldTurn::NpcActionResolver.resolve(
+              npc: npc, parsed: plan, combat_ctx: working_ctx,
+              player_sheet: @sheet, adventure: @adventure)
+            lines.concat(npc_action_result[:lines])
+            log_world_turn_resolution(npc, plan, npc_action_result)
+          else
+            npc_action_result = resolve_npc_via_deterministic_turn(live_sheet, npc)
+            lines.concat(npc_action_result[:lines])
+            log_missing_plan_fallback(npc, npc_action_result)
+          end
 
           apply_world_turn_step_mutations!(npc_action_result[:player_hp_delta].to_i, npc_action_result[:npc_muts])
           apply_npc_battlefield_patches(npc_action_result[:battlefield_patches])
@@ -145,11 +147,36 @@ module PlayerTurn
         end
       end
 
-      def log_missing_plan(npc)
+      def resolve_npc_via_deterministic_turn(live_sheet, _npc)
+        events = Combat::NpcTurn.call(
+          creature: live_sheet, adventure: @adventure, target_sheet: @sheet
+        )
+
+        result_lines = events.filter_map do |e|
+          e[:message] || e.dig(:outcome, "message")
+        end
+
+        player_hp_delta = events.sum do |e|
+          next 0 unless e[:kind] == Combat::NpcTurnEvent::KIND_ATTACK
+
+          outcome = e[:outcome]
+          next 0 unless outcome.is_a?(Hash)
+
+          before = (outcome["target_hp_before"] || outcome[:target_hp_before]).to_i
+          after  = (outcome["target_hp_after"]  || outcome[:target_hp_after]).to_i
+          -(before - after)
+        end
+
+        { lines: result_lines, player_hp_delta: player_hp_delta, npc_muts: [],
+          battlefield_patches: nil }
+      end
+
+      def log_missing_plan_fallback(npc, npc_action_result)
         @log.play_log!(
-          "world_turn_missing_plan",
-          "World turn: no plan emitted for #{npc.name} (actor_sheet_id=#{npc.actor_sheet_id}); skipping.",
-          parsed_response: { npc: npc.name, actor_sheet_id: npc.actor_sheet_id }
+          "world_turn_missing_plan_fallback",
+          "World turn: no AI plan for #{npc.name} (actor_sheet_id=#{npc.actor_sheet_id}); fell back to deterministic approach-and-attack.",
+          parsed_response: { npc: npc.name, actor_sheet_id: npc.actor_sheet_id,
+                             lines: npc_action_result[:lines] }
         )
       end
 
