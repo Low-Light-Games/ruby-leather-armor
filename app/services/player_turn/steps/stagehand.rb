@@ -144,7 +144,7 @@ module PlayerTurn
       end
 
       def persist_narrative_phase_combat_context(by_step, mutations, ai_delta_included:, phase:)
-        canonical = ContextUpdate::CombatMutationState.new(mutations).canonical_combat_context
+        canonical = CombatContextUpdate::CombatMutationState.new(mutations).canonical_combat_context
 
         if !ai_delta_included && canonical.blank?
           snapshot_contexts_to_loop
@@ -152,9 +152,9 @@ module PlayerTurn
         end
 
         delta = if ai_delta_included
-                  ContextUpdate::CombatContextChangeSet.from_parsed(evaluator_fan_out_result!(by_step, ContextUpdate::STEP_NAME, phase)["parsed_response"])
+                  CombatContextUpdate::CombatContextChangeSet.from_parsed(evaluator_fan_out_result!(by_step, CombatContextUpdate::STEP_NAME, phase)["parsed_response"])
                 else
-                  ContextUpdate::CombatContextChangeSet.empty
+                  CombatContextUpdate::CombatContextChangeSet.empty
                 end
         persist_combat_context(delta, mutations)
       end

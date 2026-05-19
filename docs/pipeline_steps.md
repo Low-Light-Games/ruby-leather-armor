@@ -486,7 +486,7 @@ that another step already owns.
 
 | Store | Sole writer | Surface area |
 |---|---|---|
-| `adventures.combat_context` | `Steps::ContextUpdate` | Live combat state. Warmaster emits a deterministic hash that ContextUpdate writes verbatim via a `combat_initialization` mutation. |
+| `adventures.combat_context` | `Steps::CombatContextUpdate` | Live combat state. Warmaster emits a deterministic hash that CombatContextUpdate writes verbatim via a `combat_initialization` mutation. |
 | `adventures.time_context` | `Adventures::GameClock` | Code-only clock advancement; no AI call. |
 | `adventure_narrative_facts` | `Steps::Loremaster` (via `Lore::ApplyResults`) | Durable facts, both seed (`Lore::ExtractFromPremise` at story save) and per-turn (Loremaster in the output fan-out). Both call `Lore::ApplyResults`, which is the actual single insert seam. |
 | `adventure_npcs` | `Lore::ApplyNpcs` | NPC creation and updates flow through Loremaster's NPC mutations only. |
@@ -1059,7 +1059,7 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | -- | **GameClock** (utility) | Code-only | `app/services/adventures/game_clock.rb` |
 | 6 | **Stagehand** | Code-only | `app/services/player_turn/steps/stagehand.rb` |
 | 7 | **Narrate** | AI | `app/services/player_turn/steps/narrate.rb` |
-| 8a | **ContextUpdate** (combat-only) | AI (parallel with 7/8b) | `app/services/player_turn/steps/context_update.rb` |
+| 8a | **CombatContextUpdate** (combat-only) | AI (parallel with 7/8b) | `app/services/player_turn/steps/combat_context_update.rb` |
 | 8b | **Loremaster** | AI (parallel with 7/8a in the output-phase fan-out) — sole writer of `adventure_narrative_facts` (see Decision 37) | `app/services/player_turn/steps/loremaster.rb`, `app/services/lore/apply_results.rb`, `app/services/lore/extract_from_premise.rb`, `app/services/lore/facts_lookup.rb` |
 | -- | **Mutations** | App-side | `app/services/player_turn/mutations.rb` |
 

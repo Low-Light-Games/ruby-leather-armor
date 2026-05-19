@@ -2,7 +2,7 @@
 
 module PlayerTurn
   module Steps
-    module ContextUpdate
+    module CombatContextUpdate
       STEP_NAME = "combat_context_update"
 
       class CombatMutationState

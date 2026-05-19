@@ -51,7 +51,7 @@ module PlayerTurn
           when :awaiting_rolls
             p.loop&.batch_update!(new_status: "paused",
               timeline_entry: p.send(:tl, "awaiting_rolls", "Paused for player rolls"))
-            ContextUpdatePause.run(pipeline_engine: p, intent: result[:intent], merged: result[:merged])
+            CombatContextUpdatePause.run(pipeline_engine: p, intent: result[:intent], merged: result[:merged])
             remaining = remaining_action_entries(action_entries, idx)
             qlog.log_pause(action_idx, total, remaining, reason: "awaiting rolls")
             qlog.clear_action_label
