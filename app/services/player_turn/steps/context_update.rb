@@ -70,15 +70,7 @@ module PlayerTurn
           return
         end
 
-        delta = if mode == MODE_AI_DELTA
-                  broadcast_progress("Remembering the world...")
-                  prompts = [combat_context_evaluator_prompt(what_happened, mutations)]
-                  by_step = evaluator_fan_out!(prompts, what_happened, phase: "context_update")
-                  combat_context_delta(by_step, phase: "context_update")
-                else
-                  CombatContextChangeSet.empty
-                end
-
+        delta = combat_context_delta_for_mode(mode: mode, what_happened: what_happened, mutations: mutations, phase: "context_update")
         persist_combat_context(delta, mutations)
       rescue => e
         pipeline_error!("context_updates", e)
@@ -97,6 +89,15 @@ module PlayerTurn
         CombatContextChangeSet.from_parsed(evaluator_fan_out_result!(by_step, STEP_NAME, phase)["parsed_response"])
       end
 
+      def combat_context_delta_for_mode(mode:, what_happened:, mutations:, phase:)
+        return CombatContextChangeSet.empty unless mode == MODE_AI_DELTA
+
+        broadcast_progress("Remembering the world...")
+        prompts = [combat_context_evaluator_prompt(what_happened, mutations)]
+        by_step = evaluator_fan_out!(prompts, what_happened, phase: phase)
+        combat_context_delta(by_step, phase: phase)
+      end
+
       def persist_combat_context(delta, mutations)
         prev_combat = @adventure.combat_context.is_a?(Hash) ? @adventure.combat_context.deep_stringify_keys : {}
         prev_active = prev_combat["active"]
@@ -110,17 +111,14 @@ module PlayerTurn
         validate_participant_identities!(base_context["participants"])
 
         participants = apply_participant_updates(base_context["participants"], delta.participant_updates)
-        canonical_present = canonical_combat.present?
-        round        = canonical_present ? base_context["round"] : (delta.round.presence || base_context["round"])
-        turn_order   = canonical_present ? Array(base_context["turn_order"]) : (delta.turn_order.presence || Array(base_context["turn_order"]))
-        current_turn = canonical_present ? base_context["current_turn"] : (delta.turn_order.presence ? turn_order.first : base_context["current_turn"])
+        projected_turn_state = projected_turn_state_for_context(canonical_combat: canonical_combat, base_context: base_context, delta: delta)
         active       = canonical_or_ai_active(canonical_combat: canonical_combat, base_context: base_context, ai_active: delta.active)
 
         updated = base_context.merge(
           "active"       => active,
-          "round"        => round,
-          "turn_order"   => turn_order,
-          "current_turn" => current_turn,
+          "round"        => projected_turn_state[:round],
+          "turn_order"   => projected_turn_state[:turn_order],
+          "current_turn" => projected_turn_state[:current_turn],
           "participants" => participants,
         )
 
@@ -144,6 +142,24 @@ module PlayerTurn
 
       def base_context_for_projection(canonical_combat:, prev_combat:)
         canonical_combat.present? ? canonical_combat.deep_stringify_keys : prev_combat
+      end
+
+      def projected_turn_state_for_context(canonical_combat:, base_context:, delta:)
+        if canonical_combat.present?
+          return {
+            round: base_context["round"],
+            turn_order: Array(base_context["turn_order"]),
+            current_turn: base_context["current_turn"]
+          }
+        end
+
+        turn_order = delta.turn_order.presence || Array(base_context["turn_order"])
+        current_turn = delta.turn_order.presence ? turn_order.first : base_context["current_turn"]
+        {
+          round: delta.round.presence || base_context["round"],
+          turn_order: turn_order,
+          current_turn: current_turn
+        }
       end
 
       def canonical_or_ai_active(canonical_combat:, base_context:, ai_active:)
