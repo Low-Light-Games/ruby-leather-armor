@@ -2,7 +2,12 @@ import { API_ROUTES } from '../constants/apiRoutes'
 import { apiFetch } from '../utils/api'
 import type { AuthUser, CurrentUserResponse } from '../types/auth'
 
-export async function fetchCurrentUser(): Promise<AuthUser | null> {
+export interface FetchCurrentUserResult {
+  user: AuthUser | null
+  emailPrompt: boolean
+}
+
+export async function fetchCurrentUser(): Promise<FetchCurrentUserResult> {
   const payload = await apiFetch<CurrentUserResponse>(API_ROUTES.currentUser, {
     method: 'GET',
     credentials: 'same-origin',
@@ -13,5 +18,5 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
     redditTracker('track', 'SignUp')
   }
 
-  return payload.user
+  return { user: payload.user, emailPrompt: payload.email_prompt === true }
 }

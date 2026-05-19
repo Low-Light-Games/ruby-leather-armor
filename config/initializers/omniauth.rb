@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 Rails.application.config.middleware.use OmniAuth::Builder do
   provider :google_oauth2,
            ENV["GOOGLE_CLIENT_ID"],
@@ -9,6 +11,18 @@ Rails.application.config.middleware.use OmniAuth::Builder do
              image_size: 50,
              redirect_uri: ENV["GOOGLE_OAUTH_REDIRECT_URI"]
            }
+
+  provider :discord,
+           ENV["DISCORD_CLIENT_ID"],
+           ENV["DISCORD_CLIENT_SECRET"],
+           scope: "identify email",
+           redirect_uri: ENV["DISCORD_OAUTH_REDIRECT_URI"]
+
+  provider :twitchtv,
+           ENV["TWITCH_CLIENT_ID"],
+           ENV["TWITCH_CLIENT_SECRET"],
+           scope: "user:read:email",
+           redirect_uri: ENV["TWITCH_OAUTH_REDIRECT_URI"]
 end
 
 OmniAuth.config.allowed_request_methods = [:post]

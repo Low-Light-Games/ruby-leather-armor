@@ -3,6 +3,7 @@ import SheetList from './SheetList'
 import SkillsColumn from './SkillsColumn'
 import Login from './Login'
 import Navbar from './Navbar'
+import EmailPromptModal from './EmailPromptModal/EmailPromptModal'
 import './App.scss'
 import { SheetsProvider } from '../contexts/SheetsContext'
 import { AuthProvider, useAuth } from '../contexts/AuthContext'
@@ -37,6 +38,7 @@ const AppContent = () => {
           </div>
         </div>
       </SheetsProvider>
+      <EmailPromptModal />
     </div>
   );
 };

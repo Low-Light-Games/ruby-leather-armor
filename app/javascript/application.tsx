@@ -16,6 +16,7 @@ import AdminStoryEditor from "./components/AdminStoryEditor";
 import SubscriptionPlans from "./components/SubscriptionPlans";
 import SubscriptionSuccess from "./components/SubscriptionSuccess";
 import FeedbackWidget from "./components/FeedbackWidget/FeedbackWidget";
+import EmailPromptModal from "./components/EmailPromptModal/EmailPromptModal";
 import { AuthProvider } from "./contexts/AuthContext";
 import { GameDataProvider } from "./contexts/GameDataContext";
 import type { SubscriptionPlan } from "./types/subscriptions";
@@ -50,6 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <React.StrictMode>
         <AuthProvider>
           <AdventureCreation />
+          <EmailPromptModal />
         </AuthProvider>
       </React.StrictMode>
     );
@@ -65,6 +67,7 @@ document.addEventListener("DOMContentLoaded", () => {
         <GameDataProvider>
           <AuthProvider>
             <AdventurePlay adventureId={adventureId} />
+            <EmailPromptModal />
           </AuthProvider>
         </GameDataProvider>
       </React.StrictMode>

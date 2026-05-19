@@ -26,4 +26,5 @@ export interface AuthUser {
 export interface CurrentUserResponse {
   user: AuthUser | null
   oauth_new_signup?: boolean
+  email_prompt?: boolean
 }

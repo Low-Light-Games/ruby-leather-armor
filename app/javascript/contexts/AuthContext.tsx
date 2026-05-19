@@ -15,6 +15,8 @@ interface AuthContextType {
   user: AuthUser | null;
   setUser: Dispatch<SetStateAction<AuthUser | null>>;
   loading: boolean;
+  emailPrompt: boolean;
+  dismissEmailPrompt: () => void;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -25,11 +27,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [emailPrompt, setEmailPrompt] = useState(false);
+
+  const dismissEmailPrompt = () => setEmailPrompt(false);
 
   const checkAuth = async () => {
     try {
-      const currentUser = await fetchCurrentUser();
-      setUser(currentUser);
+      const result = await fetchCurrentUser();
+      setUser(result.user);
+      if (result.emailPrompt) setEmailPrompt(true);
     } catch (error) {
       console.error('Auth check failed:', error);
       setUser(null);
@@ -51,7 +57,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
       throw new Error('Server returned an invalid response. Please try again.');
     }
 
@@ -87,6 +92,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     user,
     setUser,
     loading,
+    emailPrompt,
+    dismissEmailPrompt,
     login,
     logout,
     checkAuth,
