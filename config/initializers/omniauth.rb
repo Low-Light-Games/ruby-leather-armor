@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../../lib/omniauth/strategies/reddit"
-
 Rails.application.config.middleware.use OmniAuth::Builder do
   provider :google_oauth2,
            ENV["GOOGLE_CLIENT_ID"],
@@ -13,11 +11,6 @@ Rails.application.config.middleware.use OmniAuth::Builder do
              image_size: 50,
              redirect_uri: ENV["GOOGLE_OAUTH_REDIRECT_URI"]
            }
-
-  provider :reddit,
-           ENV["REDDIT_CLIENT_ID"],
-           ENV["REDDIT_CLIENT_SECRET"],
-           redirect_uri: ENV["REDDIT_OAUTH_REDIRECT_URI"]
 
   provider :discord,
            ENV["DISCORD_CLIENT_ID"],
