@@ -192,6 +192,12 @@ module PlayerTurn
         result[:mutations]            = Combat::WorldTurn::CombatAdvancement.merge_into_mutations(result[:mutations], advancement)
         result[:player_death]         = true if end_info.dig(:interaction, :player_death)
         result[:player_incapacitated] = true if end_info.dig(:interaction, :player_incapacitated)
+
+        unless end_info[:combat][:combat_active]
+          result[:combat_ended]     = true
+          result[:combat_end_reason] = end_info[:combat][:combat_end_reason].to_s
+        end
+
         result
       end
 

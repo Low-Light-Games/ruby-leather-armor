@@ -50,7 +50,9 @@ module Ai
       'embedding' => Entry.new(model_hint: nil,
                                pipeline: false),
       'encounter_expand' => Entry.new(model_hint: nil,
-                                      pipeline: false)
+                                      pipeline: false),
+      'combat_bookend' => Entry.new(model_hint: H::COMBAT_BOOKEND,
+                                    pipeline: false)
     }.freeze
 
     def self.all_call_types
