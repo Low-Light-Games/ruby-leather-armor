@@ -1,17 +1,34 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { csrfToken } from '../../utils/api';
 import './Login.scss';
 
-const OAuthButton = ({ provider, label, children }: { provider: string; label: string; children: React.ReactNode }) => (
-  <form action={`/auth/${provider}`} method="post" className="oauth-form">
-    <input type="hidden" name="authenticity_token" value={csrfToken()} />
-    <input type="hidden" name="origin" value={window.location.pathname} />
-    <button type="submit" className={`oauth-icon-btn oauth-icon-btn--${provider}`} aria-label={label} title={label}>
-      {children}
-    </button>
-  </form>
-);
+function firePixelAndSubmit(form: HTMLFormElement, provider: string) {
+  const rdt = (window as Window & { rdt?: (...args: unknown[]) => void }).rdt;
+  if (typeof rdt === 'function') {
+    rdt('track', 'Custom', { customEventName: 'OAuthClick', provider });
+    setTimeout(() => form.submit(), 100);
+  } else {
+    form.submit();
+  }
+}
+
+const OAuthButton = ({ provider, label, children }: { provider: string; label: string; children: React.ReactNode }) => {
+  const handleClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    firePixelAndSubmit(e.currentTarget.form!, provider);
+  }, [provider]);
+
+  return (
+    <form action={`/auth/${provider}`} method="post" className="oauth-form">
+      <input type="hidden" name="authenticity_token" value={csrfToken()} />
+      <input type="hidden" name="origin" value={window.location.pathname} />
+      <button type="submit" className={`oauth-icon-btn oauth-icon-btn--${provider}`} aria-label={label} title={label} onClick={handleClick}>
+        {children}
+      </button>
+    </form>
+  );
+};
 
 export const Login = () => {
   const { login } = useAuth();
