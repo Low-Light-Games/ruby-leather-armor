@@ -35,20 +35,27 @@ module PlayerTurn
         scene_facts   = retrieve_scene_facts_for_narrate(intent)
         outcome_facts = retrieve_outcome_facts_for_narrate(seed)
 
-        combat_context_required = combat_context_update_required?(mutations)
+        combat_context_projection_required = combat_context_projection_required?(mutations)
+        combat_context_ai_required = combat_context_ai_update_required?(mutations)
 
         prompts = [
           narrate_evaluator_prompt(narration_context, scene_facts: scene_facts, outcome_facts: outcome_facts),
           loremaster_evaluator_prompt(loremaster_inputs),
         ]
-        if combat_context_required
+        if combat_context_ai_required
           prompts << combat_context_evaluator_prompt(seed, mutations)
         end
 
         broadcast_progress("Writing the story...")
         by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
 
-        update_or_snapshot_combat_context(by_step, mutations, required: combat_context_required, phase: "narrative_phase")
+        update_or_snapshot_combat_context(
+          by_step,
+          mutations,
+          projection_required: combat_context_projection_required,
+          ai_required: combat_context_ai_required,
+          phase: "narrative_phase"
+        )
 
         broadcast_progress("Remembering the world...")
         apply_loremaster_from_fan_out!(by_step)
@@ -145,12 +152,14 @@ module PlayerTurn
         result
       end
 
-      def update_or_snapshot_combat_context(by_step, mutations, required:, phase:)
-        if required
-          persist_combat_context(combat_context_delta(by_step, phase: phase), mutations)
-        else
+      def update_or_snapshot_combat_context(by_step, mutations, projection_required:, ai_required:, phase:)
+        unless projection_required
           snapshot_contexts_to_loop
+          return
         end
+
+        delta = ai_required ? combat_context_delta(by_step, phase: phase) : CombatContextChangeSet.empty
+        persist_combat_context(delta, mutations)
       end
 
       def combat_transition?(transition)

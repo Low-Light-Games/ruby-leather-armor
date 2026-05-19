@@ -18,6 +18,10 @@ module PlayerTurn
       class CombatContextChangeSet
         attr_reader :round, :turn_order, :active, :participant_updates
 
+        def self.empty
+          new(round: nil, turn_order: [], active: nil, participant_updates: [])
+        end
+
         def self.from_parsed(parsed)
           hash = parsed.is_a?(Hash) ? parsed.deep_stringify_keys : {}
           new(
@@ -57,20 +61,33 @@ module PlayerTurn
       private
 
       def run_context_updates(what_happened, mutations)
-        unless combat_context_update_required?(mutations)
+        unless combat_context_projection_required?(mutations)
           snapshot_contexts_to_loop
           return
         end
 
-        broadcast_progress("Remembering the world...")
-        prompts = [combat_context_evaluator_prompt(what_happened, mutations)]
-        by_step = evaluator_fan_out!(prompts, what_happened, phase: "context_update")
-        persist_combat_context(combat_context_delta(by_step, phase: "context_update"), mutations)
+        delta = if combat_context_ai_update_required?(mutations)
+                  broadcast_progress("Remembering the world...")
+                  prompts = [combat_context_evaluator_prompt(what_happened, mutations)]
+                  by_step = evaluator_fan_out!(prompts, what_happened, phase: "context_update")
+                  combat_context_delta(by_step, phase: "context_update")
+                else
+                  CombatContextChangeSet.empty
+                end
+
+        persist_combat_context(delta, mutations)
       rescue => e
         pipeline_error!("context_updates", e)
       end
 
-      def combat_context_update_required?(mutations)
+      def combat_context_projection_required?(mutations)
+        mutation_state = CombatMutationState.new(mutations)
+        return true if mutation_state.canonical_combat_context.present?
+
+        combat_active?
+      end
+
+      def combat_context_ai_update_required?(mutations)
         mutation_state = CombatMutationState.new(mutations)
         return false if mutation_state.canonical_combat_context.present?
 
