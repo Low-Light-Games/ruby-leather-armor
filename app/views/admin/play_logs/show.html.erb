@@ -48,6 +48,12 @@
         <span class="meta-value"><%= @log.model_used %></span>
       </div>
     <% end %>
+    <% if @log.reasoning_effort.present? %>
+      <div class="meta-item">
+        <span class="meta-label">Reasoning Effort</span>
+        <span class="meta-value"><%= @log.reasoning_effort %></span>
+      </div>
+    <% end %>
   </div>
 
   <% if @log.error_message.present? %>

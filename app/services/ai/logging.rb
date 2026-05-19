@@ -105,7 +105,7 @@ module Ai
         "[DM adventure=#{@adventure&.id} registry=#{@registry_entry_uuid}] #{message}")
     end
 
-    def ai_log!(call_type, prompt_summary, raw_response, parsed_response, parse_status:, request_body: nil, model_used: nil, duration_ms: nil, usage: nil)
+    def ai_log!(call_type, prompt_summary, raw_response, parsed_response, parse_status:, request_body: nil, model_used: nil, duration_ms: nil, usage: nil, reasoning_effort: nil)
       summary = @action_label ? "#{@action_label} #{prompt_summary}" : prompt_summary
       log = PlayLog.create!(
         adventure: @adventure,
@@ -118,6 +118,7 @@ module Ai
         error_message: nil,
         dm_service: @dm_service,
         model_used: model_used,
+        reasoning_effort: reasoning_effort,
         player_message_id: @player_message_id,
         registry_entry_uuid: @registry_entry_uuid,
         player_message_content: @player_message_content,
@@ -133,7 +134,7 @@ module Ai
       try_fallback_log(call_type, e)
     end
 
-    def ai_log_error!(call_type, prompt_summary, error, raw_response: nil, request_body: nil, status: "api_error", model_used: nil, duration_ms: nil, usage: nil)
+    def ai_log_error!(call_type, prompt_summary, error, raw_response: nil, request_body: nil, status: "api_error", model_used: nil, duration_ms: nil, usage: nil, reasoning_effort: nil)
       summary = @action_label ? "#{@action_label} #{prompt_summary}" : prompt_summary
       log = PlayLog.create!(
         adventure: @adventure,
@@ -146,6 +147,7 @@ module Ai
         error_message: error.message,
         dm_service: @dm_service,
         model_used: model_used,
+        reasoning_effort: reasoning_effort,
         player_message_id: @player_message_id,
         registry_entry_uuid: @registry_entry_uuid,
         player_message_content: @player_message_content,
@@ -197,11 +199,12 @@ module Ai
         raw, parsed = yield
         ai_log!(
           call_type, prompt_summary, raw, parsed,
-          parse_status: ai.last_parse_status,
-          request_body: request_body,
-          model_used:   ai.last_model_used,
-          duration_ms:  elapsed_ms(t0),
-          usage:        ai.last_usage,
+          parse_status:     ai.last_parse_status,
+          request_body:     request_body,
+          model_used:       ai.last_model_used,
+          duration_ms:      elapsed_ms(t0),
+          usage:            ai.last_usage,
+          reasoning_effort: ai.last_reasoning_effort,
         )
         parsed
       rescue TokenBudgetExceededError, Error => e
@@ -216,12 +219,13 @@ module Ai
 
         ai_log_error!(
           call_type, prompt_summary, e,
-          raw_response: ai.last_failed_raw_response,
-          request_body: request_body,
-          status:       e.is_a?(TokenBudgetExceededError) ? "token_budget_exceeded" : "api_error",
-          model_used:   ai.last_model_used,
-          duration_ms:  elapsed_ms(t0),
-          usage:        ai.last_usage,
+          raw_response:     ai.last_failed_raw_response,
+          request_body:     request_body,
+          status:           e.is_a?(TokenBudgetExceededError) ? "token_budget_exceeded" : "api_error",
+          model_used:       ai.last_model_used,
+          duration_ms:      elapsed_ms(t0),
+          usage:            ai.last_usage,
+          reasoning_effort: ai.last_reasoning_effort,
         )
         raise
       end

@@ -110,7 +110,7 @@
             <span class="type-badge <%= ai_log_type_badge_class(log.event_type) %>"><%= log.event_type.humanize %></span>
             <span class="status-badge <%= log.status %>"><%= log.status.humanize %></span>
             <% if log.model_used.present? %>
-              <span class="card-model"><%= log.model_used %></span>
+              <span class="card-model"><%= log.model_used %><%= " (#{log.reasoning_effort})" if log.reasoning_effort.present? %></span>
             <% end %>
             <span class="card-duration"><%= format_duration_ms(log.duration_ms) %></span>
             <% if @show_usage && log.ai_usage_record %>
