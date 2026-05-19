@@ -4,9 +4,6 @@ module PlayerTurn
   module Steps
     module ContextUpdate
       STEP_NAME = "combat_context_update"
-      MODE_NONE = :none
-      MODE_CANONICAL_ONLY = :canonical_only
-      MODE_AI_DELTA = :ai_delta
 
       class CombatMutationState
         def initialize(mutations)
@@ -64,61 +61,48 @@ module PlayerTurn
       private
 
       def run_context_updates(what_happened, mutations)
-        mode = combat_context_update_mode(mutations)
-        if mode == MODE_NONE
-          snapshot_contexts_to_loop
-          return
-        end
+        canonical = CombatMutationState.new(mutations).canonical_combat_context
 
-        delta = combat_context_delta_for_mode(mode: mode, what_happened: what_happened, mutations: mutations, phase: "context_update")
-        persist_combat_context(delta, mutations)
+        if combat_active?
+          delta = fetch_ai_combat_context_delta(what_happened, mutations, phase: "context_update")
+          persist_combat_context(delta, mutations)
+        elsif canonical.present?
+          persist_combat_context(CombatContextChangeSet.empty, mutations)
+        else
+          snapshot_contexts_to_loop
+        end
       rescue => e
         pipeline_error!("context_updates", e)
       end
 
-      def combat_context_update_mode(mutations)
-        mutation_state = CombatMutationState.new(mutations)
-        return MODE_AI_DELTA if combat_active?
-
-        return MODE_CANONICAL_ONLY if mutation_state.canonical_combat_context.present?
-
-        MODE_NONE
-      end
-
-      def combat_context_delta(by_step, phase:)
-        CombatContextChangeSet.from_parsed(evaluator_fan_out_result!(by_step, STEP_NAME, phase)["parsed_response"])
-      end
-
-      def combat_context_delta_for_mode(mode:, what_happened:, mutations:, phase:)
-        return CombatContextChangeSet.empty unless mode == MODE_AI_DELTA
-
+      def fetch_ai_combat_context_delta(what_happened, mutations, phase:)
         broadcast_progress("Remembering the world...")
         prompts = [combat_context_evaluator_prompt(what_happened, mutations)]
         by_step = evaluator_fan_out!(prompts, what_happened, phase: phase)
-        combat_context_delta(by_step, phase: phase)
+        CombatContextChangeSet.from_parsed(evaluator_fan_out_result!(by_step, STEP_NAME, phase)["parsed_response"])
       end
 
       def persist_combat_context(delta, mutations)
         prev_combat = @adventure.combat_context.is_a?(Hash) ? @adventure.combat_context.deep_stringify_keys : {}
         prev_active = prev_combat["active"]
-        canonical_combat = CombatMutationState.new(mutations).canonical_combat_context
+        canonical = CombatMutationState.new(mutations).canonical_combat_context
 
-        return snapshot_contexts_to_loop if no_combat_projection_needed?(canonical_combat: canonical_combat, prev_combat: prev_combat, delta: delta)
+        return snapshot_contexts_to_loop if canonical.blank? && !combat_active_or_pending?(prev_combat) && delta.empty?
 
-        base_context = base_context_for_projection(canonical_combat: canonical_combat, prev_combat: prev_combat)
+        base_context = canonical.present? ? canonical.deep_stringify_keys : prev_combat
         return snapshot_contexts_to_loop if base_context.blank?
 
         validate_participant_identities!(base_context["participants"])
 
         participants = apply_participant_updates(base_context["participants"], delta.participant_updates)
-        projected_turn_state = projected_turn_state_for_context(canonical_combat: canonical_combat, base_context: base_context, delta: delta)
-        active       = canonical_or_ai_active(canonical_combat: canonical_combat, base_context: base_context, ai_active: delta.active)
+        turn_state   = project_turn_state(canonical: canonical, base_context: base_context, delta: delta)
+        active       = project_active_flag(canonical: canonical, base_context: base_context, ai_active: delta.active)
 
         updated = base_context.merge(
           "active"       => active,
-          "round"        => projected_turn_state[:round],
-          "turn_order"   => projected_turn_state[:turn_order],
-          "current_turn" => projected_turn_state[:current_turn],
+          "round"        => turn_state[:round],
+          "turn_order"   => turn_state[:turn_order],
+          "current_turn" => turn_state[:current_turn],
           "participants" => participants,
         )
 
@@ -132,20 +116,8 @@ module PlayerTurn
         snapshot_contexts_to_loop
       end
 
-      def combat_active_or_pending?(prev_combat)
-        prev_combat.is_a?(Hash) && (prev_combat["active"] == true || Array(prev_combat["participants"]).any?)
-      end
-
-      def no_combat_projection_needed?(canonical_combat:, prev_combat:, delta:)
-        canonical_combat.blank? && !combat_active_or_pending?(prev_combat) && delta.empty?
-      end
-
-      def base_context_for_projection(canonical_combat:, prev_combat:)
-        canonical_combat.present? ? canonical_combat.deep_stringify_keys : prev_combat
-      end
-
-      def projected_turn_state_for_context(canonical_combat:, base_context:, delta:)
-        if canonical_combat.present?
+      def project_turn_state(canonical:, base_context:, delta:)
+        if canonical.present?
           return {
             round: base_context["round"],
             turn_order: Array(base_context["turn_order"]),
@@ -162,12 +134,16 @@ module PlayerTurn
         }
       end
 
-      def canonical_or_ai_active(canonical_combat:, base_context:, ai_active:)
-        return canonical_combat["active"] if canonical_combat.present? && canonical_combat.key?("active")
+      def project_active_flag(canonical:, base_context:, ai_active:)
+        return canonical["active"] if canonical.present? && canonical.key?("active")
 
-        return ai_active if !ai_active.nil?
+        return ai_active unless ai_active.nil?
 
         base_context["active"]
+      end
+
+      def combat_active_or_pending?(prev_combat)
+        prev_combat.is_a?(Hash) && (prev_combat["active"] == true || Array(prev_combat["participants"]).any?)
       end
 
       # @raise [Ai::Error] when any NPC participant has no live `adventure_actor_sheets` row
