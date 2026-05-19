@@ -10,10 +10,6 @@ module PlayerTurn
           @mutations = mutations.is_a?(Hash) ? mutations.deep_stringify_keys : {}
         end
 
-        def has_combat_initialization?
-          @mutations["combat_initialization"].is_a?(Hash)
-        end
-
         def canonical_combat_context
           @mutations["combat_initialization"] || @mutations["combat_state_advancement"]
         end
@@ -75,7 +71,10 @@ module PlayerTurn
       end
 
       def combat_context_update_required?(mutations)
-        combat_active? || CombatMutationState.new(mutations).has_combat_initialization?
+        mutation_state = CombatMutationState.new(mutations)
+        return false if mutation_state.canonical_combat_context.present?
+
+        combat_active?
       end
 
       def combat_context_delta(by_step, phase:)
