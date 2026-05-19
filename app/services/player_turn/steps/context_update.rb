@@ -4,6 +4,9 @@ module PlayerTurn
   module Steps
     module ContextUpdate
       STEP_NAME = "combat_context_update"
+      MODE_NONE = :none
+      MODE_CANONICAL_ONLY = :canonical_only
+      MODE_AI_DELTA = :ai_delta
 
       class CombatMutationState
         def initialize(mutations)
@@ -61,12 +64,13 @@ module PlayerTurn
       private
 
       def run_context_updates(what_happened, mutations)
-        unless combat_context_projection_required?(mutations)
+        mode = combat_context_update_mode(mutations)
+        if mode == MODE_NONE
           snapshot_contexts_to_loop
           return
         end
 
-        delta = if combat_context_ai_update_required?(mutations)
+        delta = if mode == MODE_AI_DELTA
                   broadcast_progress("Remembering the world...")
                   prompts = [combat_context_evaluator_prompt(what_happened, mutations)]
                   by_step = evaluator_fan_out!(prompts, what_happened, phase: "context_update")
@@ -80,18 +84,13 @@ module PlayerTurn
         pipeline_error!("context_updates", e)
       end
 
-      def combat_context_projection_required?(mutations)
+      def combat_context_update_mode(mutations)
         mutation_state = CombatMutationState.new(mutations)
-        return true if mutation_state.canonical_combat_context.present?
+        return MODE_AI_DELTA if combat_active?
 
-        combat_active?
-      end
+        return MODE_CANONICAL_ONLY if mutation_state.canonical_combat_context.present?
 
-      def combat_context_ai_update_required?(mutations)
-        mutation_state = CombatMutationState.new(mutations)
-        return false if mutation_state.canonical_combat_context.present?
-
-        combat_active?
+        MODE_NONE
       end
 
       def combat_context_delta(by_step, phase:)
@@ -111,9 +110,10 @@ module PlayerTurn
         validate_participant_identities!(base_context["participants"])
 
         participants = apply_participant_updates(base_context["participants"], delta.participant_updates)
-        round        = delta.round.presence || base_context["round"]
-        turn_order   = delta.turn_order.presence || Array(base_context["turn_order"])
-        current_turn = delta.turn_order.presence ? turn_order.first : base_context["current_turn"]
+        canonical_present = canonical_combat.present?
+        round        = canonical_present ? base_context["round"] : (delta.round.presence || base_context["round"])
+        turn_order   = canonical_present ? Array(base_context["turn_order"]) : (delta.turn_order.presence || Array(base_context["turn_order"]))
+        current_turn = canonical_present ? base_context["current_turn"] : (delta.turn_order.presence ? turn_order.first : base_context["current_turn"])
         active       = canonical_or_ai_active(canonical_combat: canonical_combat, base_context: base_context, ai_active: delta.active)
 
         updated = base_context.merge(

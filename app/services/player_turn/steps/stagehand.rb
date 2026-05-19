@@ -35,8 +35,8 @@ module PlayerTurn
         scene_facts   = retrieve_scene_facts_for_narrate(intent)
         outcome_facts = retrieve_outcome_facts_for_narrate(seed)
 
-        combat_context_projection_required = combat_context_projection_required?(mutations)
-        combat_context_ai_required = combat_context_ai_update_required?(mutations)
+        combat_context_mode = combat_context_update_mode(mutations)
+        combat_context_ai_required = combat_context_mode == MODE_AI_DELTA
 
         prompts = [
           narrate_evaluator_prompt(narration_context, scene_facts: scene_facts, outcome_facts: outcome_facts),
@@ -52,7 +52,7 @@ module PlayerTurn
         update_or_snapshot_combat_context(
           by_step,
           mutations,
-          projection_required: combat_context_projection_required,
+          mode: combat_context_mode,
           ai_required: combat_context_ai_required,
           phase: "narrative_phase"
         )
@@ -152,13 +152,17 @@ module PlayerTurn
         result
       end
 
-      def update_or_snapshot_combat_context(by_step, mutations, projection_required:, ai_required:, phase:)
-        unless projection_required
+      def update_or_snapshot_combat_context(by_step, mutations, mode:, ai_required:, phase:)
+        if mode == MODE_NONE
           snapshot_contexts_to_loop
           return
         end
 
-        delta = ai_required ? combat_context_delta(by_step, phase: phase) : CombatContextChangeSet.empty
+        delta = if ai_required
+                  combat_context_delta(by_step, phase: phase)
+                else
+                  PlayerTurn::Steps::ContextUpdate::CombatContextChangeSet.empty
+                end
         persist_combat_context(delta, mutations)
       end
 
