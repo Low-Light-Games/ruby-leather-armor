@@ -35,20 +35,18 @@ module PlayerTurn
         scene_facts   = retrieve_scene_facts_for_narrate(intent)
         outcome_facts = retrieve_outcome_facts_for_narrate(seed)
 
-        combat_context_required = combat_context_update_required?(mutations)
+        include_ai_combat_context = combat_active?
 
         prompts = [
           narrate_evaluator_prompt(narration_context, scene_facts: scene_facts, outcome_facts: outcome_facts),
           loremaster_evaluator_prompt(loremaster_inputs),
         ]
-        if combat_context_required
-          prompts << combat_context_evaluator_prompt(seed, mutations)
-        end
+        prompts << combat_context_evaluator_prompt(seed, mutations) if include_ai_combat_context
 
         broadcast_progress("Writing the story...")
         by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
 
-        update_or_snapshot_combat_context(by_step, mutations, required: combat_context_required, phase: "narrative_phase")
+        persist_narrative_phase_combat_context(by_step, mutations, ai_delta_included: include_ai_combat_context, phase: "narrative_phase")
 
         broadcast_progress("Remembering the world...")
         apply_loremaster_from_fan_out!(by_step)
@@ -145,12 +143,20 @@ module PlayerTurn
         result
       end
 
-      def update_or_snapshot_combat_context(by_step, mutations, required:, phase:)
-        if required
-          persist_combat_context(combat_context_delta(by_step, phase: phase), mutations)
-        else
+      def persist_narrative_phase_combat_context(by_step, mutations, ai_delta_included:, phase:)
+        canonical = ContextUpdate::CombatMutationState.new(mutations).canonical_combat_context
+
+        if !ai_delta_included && canonical.blank?
           snapshot_contexts_to_loop
+          return
         end
+
+        delta = if ai_delta_included
+                  ContextUpdate::CombatContextChangeSet.from_parsed(evaluator_fan_out_result!(by_step, ContextUpdate::STEP_NAME, phase)["parsed_response"])
+                else
+                  ContextUpdate::CombatContextChangeSet.empty
+                end
+        persist_combat_context(delta, mutations)
       end
 
       def combat_transition?(transition)
