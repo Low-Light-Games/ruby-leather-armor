@@ -6,6 +6,12 @@ class OmniauthCallbacksController < ApplicationController
 
   def callback
     auth = request.env["omniauth.auth"]
+
+    unless auth
+      redirect_to root_path, alert: "Sign-in failed. Please try again."
+      return
+    end
+
     existing_user = User.find_by(provider: auth.provider, uid: auth.uid) ||
                     (auth.info.email.present? && User.find_by(email: auth.info.email))
     user = User.from_omniauth(auth)
