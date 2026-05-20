@@ -2,9 +2,14 @@
 
 const OpenAI = require("openai");
 
+const OPENAI_TIMEOUT_MS = Math.max(
+  10_000,
+  parseInt(process.env.DM_OPENAI_TIMEOUT_MS || "60000", 10)
+);
+
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  timeout: 30_000,
+  timeout: OPENAI_TIMEOUT_MS,
   maxRetries: 0,
 });
 
