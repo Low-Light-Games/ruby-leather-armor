@@ -227,24 +227,25 @@ export const SheetEditor = () => {
         />
       ))}
 
-      {/* Level selector */}
-      <div className="form-field">
-        <label htmlFor="level-select">Level:</label>
-        <input
-          id="level-select"
-          type="number"
-          min={1}
-          max={20}
-          value={currentLevel}
-          onChange={e => {
-            const val = parseInt(e.target.value, 10);
-            if (!isNaN(val) && val >= 1 && val <= 20) {
-              markSheetDirty();
-              setCurrentLevel(val);
-            }
-          }}
-        />
-      </div>
+      {user?.admin && (
+        <div className="form-field">
+          <label htmlFor="level-select">Level:</label>
+          <input
+            id="level-select"
+            type="number"
+            min={1}
+            max={20}
+            value={currentLevel}
+            onChange={e => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val) && val >= 1 && val <= 20) {
+                markSheetDirty();
+                setCurrentLevel(val);
+              }
+            }}
+          />
+        </div>
+      )}
 
       <div className="sheet-editor-actions">
         <button onClick={saveSheet} disabled={!name.trim()} type="button">
