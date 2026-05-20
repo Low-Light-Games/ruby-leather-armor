@@ -46,13 +46,17 @@ app.use((req, _res, next) => {
   next();
 });
 
-// 120s covers the worst case: 6 parallel 30s OpenAI calls with buffer.
-// Rails HTTP client waits 150s — always above this so Rails gets a well-formed error.
-const REQUEST_TIMEOUT_MS = 120_000;
+// Worst case: 3 sequential retries × OPENAI_TIMEOUT_MS per call (all in
+// one parallel slot) + backoff. Must stay below the Rails HTTP read_timeout
+// so Rails always gets a well-formed error body instead of a socket hang-up.
+const REQUEST_TIMEOUT_MS = Math.max(
+  60_000,
+  parseInt(process.env.EVALUATOR_REQUEST_TIMEOUT_MS || "210000", 10)
+);
 app.use((req, res, next) => {
   const timer = setTimeout(() => {
     if (!res.headersSent) {
-      res.status(503).json({ error: "Request timed out after 120s", partial_results: [] });
+      res.status(503).json({ error: `Request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`, partial_results: [] });
     }
   }, REQUEST_TIMEOUT_MS);
   res.on("finish", () => clearTimeout(timer));

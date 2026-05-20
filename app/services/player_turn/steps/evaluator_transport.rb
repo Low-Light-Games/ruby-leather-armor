@@ -94,7 +94,7 @@ module PlayerTurn
       def send_evaluator_request!(url, prompts, intention, phase:, attempt:)
         uri  = URI(url)
         http = Net::HTTP.new(uri.host, uri.port)
-        http.read_timeout = 150
+        http.read_timeout = 240
         http.open_timeout = 5
 
         request = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json")
