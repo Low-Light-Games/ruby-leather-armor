@@ -54,7 +54,7 @@ module PlayerTurn
             if opening_merged[:player_rolls].any?
               @loop&.batch_update!(new_status: 'paused',
                                    timeline_entry: tl('awaiting_rolls', 'Paused for player rolls'))
-              ContextUpdatePause.run(pipeline_engine: self, intent: intent, merged: opening_merged)
+              CombatContextUpdatePause.run(pipeline_engine: self, intent: intent, merged: opening_merged)
               return AwaitingRollsResumePayload.new(
                 intent: intent,
                 merged: opening_merged,
@@ -117,7 +117,7 @@ module PlayerTurn
           if result[:status] == :awaiting_rolls
             @loop&.batch_update!(new_status: 'paused',
                                  timeline_entry: tl('awaiting_rolls', 'Paused for player rolls'))
-            ContextUpdatePause.run(pipeline_engine: self, intent: result[:intent], merged: result[:merged])
+            CombatContextUpdatePause.run(pipeline_engine: self, intent: result[:intent], merged: result[:merged])
             return {
               action: :awaiting_rolls,
               intent: result[:intent],

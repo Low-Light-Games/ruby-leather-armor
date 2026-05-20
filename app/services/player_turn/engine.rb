@@ -16,7 +16,7 @@ module PlayerTurn
     include Steps::TimeKeeper
     include Steps::Stagehand
     include Steps::Narrate
-    include Steps::ContextUpdate
+    include Steps::CombatContextUpdate
     include AdventureLoopResolution
     include Mutations
     include Steps::WorldTurn

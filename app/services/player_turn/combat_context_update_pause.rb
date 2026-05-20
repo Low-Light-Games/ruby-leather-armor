@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module PlayerTurn
-  class ContextUpdatePause
+  class CombatContextUpdatePause
     def self.run(pipeline_engine:, intent:, merged:)
       rolls_desc = Array(merged[:player_rolls])
         .map { |r| "#{r[:skill] || r[:type]} DC #{r[:dc]}" }.join(", ")

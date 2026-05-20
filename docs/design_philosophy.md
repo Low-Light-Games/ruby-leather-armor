@@ -840,7 +840,7 @@ less reliable to reason about.
   `Lore::ApplyLocations`, invoked at seed time from
   `Lore::SeedFromAdventure` after `Maps::PlaceLocations` produces
   deterministic Vogel-spiral coordinates per `story_id`.
-- **`combat_context`** (JSONB) — primary writer is `Steps::ContextUpdate`
+- **`combat_context`** (JSONB) — primary writer is `Steps::CombatContextUpdate`
   (combat-state advancement during free-text combat). Documented
   co-writers: `Battlefield::PersistCombatStart` (combat start in one
   transaction with `adventure_battlefields`),

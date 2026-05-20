@@ -2,7 +2,7 @@
 
 module PlayerTurn
   module Steps
-    module ContextUpdate
+    module CombatContextUpdate
       class ParticipantUpdate
         attr_reader :actor_sheet_id, :hp_delta, :conditions_added, :conditions_removed
 

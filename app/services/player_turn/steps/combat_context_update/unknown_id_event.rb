@@ -2,7 +2,7 @@
 
 module PlayerTurn
   module Steps
-    module ContextUpdate
+    module CombatContextUpdate
       class UnknownIdEvent
         attr_reader :requested_id, :roster_ids, :hp_delta, :added, :removed
 
