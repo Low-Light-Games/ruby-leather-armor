@@ -20,7 +20,7 @@ jobs:
         env:
           BRANCH: ${{ github.head_ref }}
         run: |
-          SAFE_BRANCH=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | cut -c1-40)
+          SAFE_BRANCH=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | cut -c1-30)
           echo "safe_branch=$SAFE_BRANCH" >> $GITHUB_OUTPUT
 
       - name: Teardown preview environment
@@ -35,7 +35,7 @@ jobs:
           script: |
             set -e
 
-            SAFE_BRANCH=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | cut -c1-40)
+            SAFE_BRANCH=$(echo "$BRANCH" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9]/-/g' | cut -c1-30)
             PREVIEW_DIR=/home/ubuntu/previews/$SAFE_BRANCH
 
             # Stop and remove containers (only if directory exists)
