@@ -47,8 +47,8 @@ module Combat
 
     def recent_combat_messages
       @adventure.adventure_messages
-        .where(message_type: %w[combat_log action_result narrative])
-        .order(created_at: :desc)
+        .combat_activity
+        .newest_first
         .limit(20)
         .pluck(:content)
         .reverse
