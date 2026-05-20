@@ -8,7 +8,7 @@ module Ai
     DEFAULT_RETRY_BASE_DELAY_SECONDS = 0.5
     DEFAULT_RETRY_MAX_DELAY_SECONDS = 8.0
 
-    attr_reader :last_failed_raw_response, :last_parse_status, :last_model_used, :last_usage
+    attr_reader :last_failed_raw_response, :last_parse_status, :last_model_used, :last_usage, :last_reasoning_effort
 
     def initialize(config)
       @client = OpenAI::Client.new
@@ -32,6 +32,7 @@ module Ai
       @last_usage = nil
       effective_model = model || @default_model
       @last_model_used = effective_model
+      @last_reasoning_effort = reasoning_effort
       supports_temp = OpenaiModelCatalog.supports_temperature?(effective_model)
       is_reasoning  = OpenaiModelCatalog.reasoning_model?(effective_model)
 

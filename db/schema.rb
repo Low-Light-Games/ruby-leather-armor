@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_18_060000) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_19_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -531,6 +531,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_18_060000) do
     t.string "app_version"
     t.bigint "adventure_loop_id"
     t.integer "loop_sequence_index"
+    t.string "reasoning_effort"
     t.index ["adventure_id"], name: "index_play_logs_on_adventure_id"
     t.index ["adventure_loop_id"], name: "index_play_logs_on_adventure_loop_id"
     t.index ["ai_usage_record_id"], name: "index_play_logs_on_ai_usage_record_id"
