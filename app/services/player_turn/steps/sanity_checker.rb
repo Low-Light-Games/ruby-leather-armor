@@ -107,7 +107,8 @@ module PlayerTurn
         parsed = timed_ai_call('sanity_checker', prompt_summary, request_body) do
           raw_response = @ai.chat(system_prompt: system_prompt, user_message: intention,
                                   step_name: 'sanity_checker',
-                                  model: @config.model_for('sanity_checker'))
+                                  model: @config.model_for('sanity_checker'),
+                                  reasoning_effort: @config.reasoning_effort_for('sanity_checker'))
           [raw_response, @ai.parse_json(raw_response)]
         end
 
@@ -181,7 +182,8 @@ module PlayerTurn
         parsed = timed_ai_call('sanity_checker_world', prompt_summary, request_body) do
           raw_response = @ai.chat(system_prompt: system_prompt, user_message: intention,
                                   step_name: 'sanity_checker_world',
-                                  model: @config.model_for('sanity_checker_world'))
+                                  model: @config.model_for('sanity_checker_world'),
+                                  reasoning_effort: @config.reasoning_effort_for('sanity_checker_world'))
           [raw_response, @ai.parse_json(raw_response)]
         end
 

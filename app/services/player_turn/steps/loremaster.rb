@@ -7,10 +7,11 @@ module PlayerTurn
 
       def turn_evaluator_prompt(inputs:, config:)
         {
-          system_prompt: render_turn_prompt(inputs: inputs),
-          user_message:  inputs.what_happened.to_s,
-          model:         config.model_for("loremaster"),
-          meta:          { step: "loremaster" },
+          system_prompt:    render_turn_prompt(inputs: inputs),
+          user_message:     inputs.what_happened.to_s,
+          model:            config.model_for("loremaster"),
+          reasoning_effort: config.reasoning_effort_for("loremaster"),
+          meta:             { step: "loremaster" },
         }
       end
 
