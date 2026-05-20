@@ -161,6 +161,7 @@ module PlayerTurn
           message_type: "adventure_complete")
       end
       if entry[:player_death]
+        msgs.concat(combat_bookend_messages("player_death"))
         @adventure.mark_ended!(reason: "player_death")
         msgs << persist_message(
           role: "system",
@@ -173,7 +174,23 @@ module PlayerTurn
           content: "Your character is unconscious and dying. Without aid, death follows.",
           message_type: "player_incapacitated")
       end
+      if !entry[:player_death] && !entry[:player_incapacitated] && combat_just_ended?(entry)
+        msgs.concat(combat_bookend_messages("all_npcs_defeated"))
+      end
       msgs
+    end
+
+    def combat_just_ended?(entry)
+      entry[:combat_ended] || entry["combat_ended"]
+    end
+
+    def combat_bookend_messages(reason)
+      narration = Combat::BookendNarration.new(
+        adventure: @adventure, config: DmConfig.instance, log: @log
+      ).narrate_combat_end(reason: reason)
+      return [] if narration.blank?
+
+      [persist_message(role: "dm", content: narration, message_type: "combat_end")]
     end
 
     def signal_done_to_the_frontend

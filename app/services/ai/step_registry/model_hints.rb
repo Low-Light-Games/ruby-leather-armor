@@ -71,6 +71,10 @@ module Ai
       LOREMASTER = 'Mid-tier model. Structured fact extraction from factual outcomes — ' \
                    'e.g. gpt-4o-mini, gpt-4.1-mini, gpt-5-nano. Runs in parallel with ' \
                    'Narrate/ContextUpdate, so latency is Narrate-bounded.'
+
+      COMBAT_BOOKEND = 'Creative model. Short epilogue (2-4 sentences) summarising a combat ' \
+                       'conclusion (victory or death). Called once at combat end, not part of ' \
+                       'the turn pipeline — e.g. gpt-4.1, gpt-5-nano, gpt-5.'
     end
   end
 end

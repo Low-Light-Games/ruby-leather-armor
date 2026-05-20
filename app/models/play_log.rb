@@ -25,7 +25,7 @@ class PlayLog < ApplicationRecord
 
   EVENT_TYPES = (Ai::StepRegistry.all_call_types + PIPELINE_EVENT_TYPES).freeze
 
-  DM_SERVICES = %w[standard].freeze
+  DM_SERVICES = %w[standard combat_hud].freeze
 
   STATUSES = %w[success parse_fallback parse_error api_error token_budget_exceeded logging_error pipeline_event].freeze
 
