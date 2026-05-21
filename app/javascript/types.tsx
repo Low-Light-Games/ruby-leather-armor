@@ -194,7 +194,7 @@ export interface EncounterTableData {
 
 export type NpcSource = 'manual'
 export type NpcRole = 'quest_giver' | 'informant' | 'antagonist' | 'bystander' | 'merchant'
-export type NpcAttitude = 'friendly' | 'indifferent' | 'unfriendly'
+export type NpcAttitude = 'helpful' | 'friendly' | 'indifferent' | 'unfriendly' | 'hostile'
 
 export interface StoryNpcData {
   id?: number
