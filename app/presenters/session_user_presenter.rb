@@ -9,7 +9,12 @@ class SessionUserPresenter
     {
       id: user.id,
       email: user.email,
+      placeholder_email: user.placeholder_email?,
+      handle: user.handle,
       admin: user.admin,
+      guest: user.guest?,
+      email_verified: user.email_verified?,
+      email_verification_required: user.email_verification_required?,
       plan_key: user.plan_key,
       has_billing_profile: user.stripe_profile.present?,
       onboarding_state: user.onboarding_state,
@@ -17,7 +22,28 @@ class SessionUserPresenter
       trusted: user.trusted?,
       moderation_strikes: user.moderation_strikes,
       combat_dice_strategy: user.combat_dice_strategy,
-      usage: {
+      usage: usage_payload
+    }
+  end
+
+  private
+
+  attr_reader :user
+
+  def usage_payload
+    if user.guest?
+      {
+        kind: "guest_lifetime",
+        current_tokens: user.lifetime_usage_tokens,
+        limit_tokens: User::GUEST_LIFETIME_TOKEN_CAP,
+        percentage: user.usage_percentage,
+        limit_reached: user.usage_limit_reached?,
+        delinquent: false,
+        grace_period_ends_at: nil
+      }
+    else
+      {
+        kind: "monthly",
         current_tokens: user.monthly_usage_tokens,
         limit_tokens: user.monthly_usage_limit,
         percentage: user.usage_percentage,
@@ -25,10 +51,6 @@ class SessionUserPresenter
         delinquent: user.stripe_profile&.delinquent? || false,
         grace_period_ends_at: user.stripe_profile&.grace_period_ends_at
       }
-    }
+    end
   end
-
-  private
-
-  attr_reader :user
 end

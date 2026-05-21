@@ -1,8 +1,15 @@
 class User < ApplicationRecord
+  include PasswordResetable
+
   has_secure_password validations: false
 
   ONBOARDING_STATES = %w[new in_progress completed].freeze
   COMBAT_DICE_STRATEGIES = %w[client server].freeze
+  PLACEHOLDER_EMAIL_DOMAIN = "@noreply.fake"
+
+  GUEST_LIFETIME_TOKEN_CAP = 50_000
+  EMAIL_VERIFICATION_GRACE_PERIOD = 7.days
+  HANDLE_FORMAT = /\A[a-zA-Z0-9_]{3,32}\z/
 
   has_many :sheets, dependent: :destroy
   has_many :adventures, dependent: :destroy
@@ -17,12 +24,12 @@ class User < ApplicationRecord
   }
 
   validates :email, presence: true, uniqueness: { case_sensitive: false }
-  validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
-  validates :password, presence: true, on: :create, unless: :oauth_user?
+  validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }, unless: :guest?
+  validates :password, presence: true, on: :create, unless: :oauth_or_guest?
+  validates :password, length: { minimum: 8 }, if: -> { password.present? }
+  validates :handle, format: { with: HANDLE_FORMAT }, allow_nil: true
   validates :onboarding_state, inclusion: { in: ONBOARDING_STATES }
   validates :combat_dice_strategy, inclusion: { in: COMBAT_DICE_STRATEGIES }
-
-  PLACEHOLDER_EMAIL_DOMAIN = "@noreply.fake"
 
   def self.from_omniauth(auth)
     user = find_by(provider: auth.provider, uid: auth.uid)
@@ -32,6 +39,7 @@ class User < ApplicationRecord
     user.provider = auth.provider
     user.uid = auth.uid
     user.email = auth.info.email.presence || "#{SecureRandom.uuid}#{PLACEHOLDER_EMAIL_DOMAIN}"
+    user.email_verified_at ||= Time.current if auth.info.email.present?
     user.save! if user.new_record? || user.changed?
     user
   end
@@ -40,8 +48,30 @@ class User < ApplicationRecord
     provider.present?
   end
 
+  def guest?
+    guest_ip_hash.present?
+  end
+
+  def password_user?
+    !guest? && !oauth_user? && password_digest.present?
+  end
+
+  def oauth_or_guest?
+    oauth_user? || guest?
+  end
+
   def placeholder_email?
-    email.end_with?(PLACEHOLDER_EMAIL_DOMAIN)
+    email.to_s.end_with?(PLACEHOLDER_EMAIL_DOMAIN)
+  end
+
+  def email_verified?
+    email_verified_at.present?
+  end
+
+  def email_verification_required?
+    return false if guest? || oauth_user? || email_verified?
+
+    Time.current >= created_at + EMAIL_VERIFICATION_GRACE_PERIOD
   end
 
   def free?
@@ -70,20 +100,32 @@ class User < ApplicationRecord
       .sum(:total_tokens)
   end
 
+  def lifetime_usage_tokens
+    ai_usage_records.sum(:total_tokens)
+  end
+
+  def current_usage_tokens
+    guest? ? lifetime_usage_tokens : monthly_usage_tokens
+  end
+
+  def current_usage_limit
+    guest? ? GUEST_LIFETIME_TOKEN_CAP : monthly_usage_limit
+  end
+
   def usage_limit_reached?
     return false if admin?
 
-    limit = monthly_usage_limit
+    limit = current_usage_limit
     return false if limit.nil?
 
-    monthly_usage_tokens >= limit
+    current_usage_tokens >= limit
   end
 
   def usage_percentage
-    limit = monthly_usage_limit
+    limit = current_usage_limit
     return 0.0 if limit.nil? || limit.zero?
 
-    [(monthly_usage_tokens.to_f / limit * 100).round(1), 100.0].min
+    [(current_usage_tokens.to_f / limit * 100).round(1), 100.0].min
   end
 
   def banned?

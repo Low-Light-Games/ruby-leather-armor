@@ -732,8 +732,17 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_21_170000) do
     t.datetime "banned_at"
     t.boolean "trusted", default: false, null: false
     t.string "combat_dice_strategy", default: "client", null: false
+    t.string "handle"
+    t.string "guest_ip_hash"
+    t.datetime "guest_created_at"
+    t.string "password_reset_token"
+    t.datetime "password_reset_sent_at"
+    t.datetime "email_verified_at"
+    t.index "lower((handle)::text)", name: "index_users_on_lower_handle", unique: true, where: "(handle IS NOT NULL)"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["guest_ip_hash"], name: "index_users_on_guest_ip_hash", unique: true, where: "(guest_ip_hash IS NOT NULL)"
     t.index ["onboarding_state"], name: "index_users_on_onboarding_state"
+    t.index ["password_reset_token"], name: "index_users_on_password_reset_token", unique: true, where: "(password_reset_token IS NOT NULL)"
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid", unique: true, where: "(provider IS NOT NULL)"
   end
 
