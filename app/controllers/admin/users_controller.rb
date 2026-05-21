@@ -10,6 +10,11 @@ module Admin
 
     def show
       @moderation_events = @user.moderation_events.recent.limit(20)
+      @recent_messages = AdventureMessage.where(adventure_id: @user.adventure_ids)
+                                         .from_players
+                                         .newest_first
+                                         .includes(:adventure)
+                                         .limit(30)
     end
 
     def update_plan
