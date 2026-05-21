@@ -19,7 +19,7 @@
   <% end %>
 
   <%# ═══════ ADVENTURER SHEET ═══════ %>
-  <details class="dash-section" open>
+  <details class="dash-section">
     <summary class="section-title">Adventurer — <%= @sheet&.name || 'No sheet' %></summary>
     <% if @sheet %>
       <div class="sheet-grid">
@@ -120,7 +120,7 @@
   </details>
 
   <%# ═══════ LOCATION ═══════ %>
-  <details class="dash-section" open>
+  <details class="dash-section">
     <summary class="section-title">Location</summary>
     <div class="meta-grid">
       <div class="meta-card">
@@ -147,7 +147,7 @@
   </details>
 
   <%# ═══════ TIME CONTEXT ═══════ %>
-  <details class="dash-section" open>
+  <details class="dash-section">
     <summary class="section-title">Time Context</summary>
     <% tc = @adventure.time_context || {} %>
     <div class="meta-grid">
@@ -179,7 +179,7 @@
   </details>
 
   <%# ═══════ COMBAT CONTEXT ═══════ %>
-  <details class="dash-section" open>
+  <details class="dash-section">
     <summary class="section-title">Combat Context</summary>
     <div class="contexts-grid">
       <% ctx = @adventure.combat_context %>
@@ -206,7 +206,7 @@
   </details>
 
   <%# ═══════ STORY STATE ═══════ %>
-  <details class="dash-section" open>
+  <details class="dash-section">
     <summary class="section-title">Story State</summary>
     <div class="story-state-grid">
       <div class="story-card full-width">
