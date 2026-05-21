@@ -16,6 +16,7 @@ Rails.application.routes.draw do
   post "login" => "sessions#create"
   delete "logout" => "sessions#destroy"
   get "current_user" => "sessions#show"
+  post "guest_sessions" => "guest_sessions#create"
 
   # OmniAuth callbacks
   get  "auth/:provider/callback", to: "omniauth_callbacks#callback", as: :omniauth_callback

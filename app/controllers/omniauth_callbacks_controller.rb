@@ -28,6 +28,7 @@ class OmniauthCallbacksController < ApplicationController
     user = User.from_omniauth(auth)
 
     if user&.persisted?
+      absorb_pending_guest_into(user)
       session[:user_id] = user.id
       session[:oauth_new_signup] = existing_user.nil?
       session[:email_prompt] = true if user.placeholder_email?

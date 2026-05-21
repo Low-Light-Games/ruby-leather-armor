@@ -9,9 +9,10 @@ class SessionsController < ApplicationController
     user = User.find_by(email: params[:email]&.downcase)
     
     if user && user.authenticate(params[:password])
+      absorb_pending_guest_into(user)
       session[:user_id] = user.id
       session.delete(:oauth_new_signup)
-      render json: { user: user_json(user) }
+      render json: { user: user_json(user.reload) }
     else
       render json: { error: 'Invalid email or password' }, status: :unauthorized
     end
