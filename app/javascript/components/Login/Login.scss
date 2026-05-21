@@ -154,4 +154,101 @@
       outline-offset: 2px;
     }
   }
+
+  .guest-cta {
+    margin-bottom: 8px;
+    text-align: center;
+  }
+
+  .guest-cta__button {
+    width: 100%;
+    padding: 16px;
+    background-color: $red-ink;
+    color: $parchment;
+    border: none;
+    border-radius: 0;
+    font-size: 18px;
+    font-family: $font-display;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.05s;
+
+    &:hover:not(:disabled) {
+      background-color: $red-ink-dk;
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    &:disabled {
+      background-color: $parchment-mid;
+      color: $ink-faint;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $red-ink;
+      outline-offset: 2px;
+    }
+  }
+
+  .guest-cta__subtitle {
+    margin: 10px 0 0;
+    color: $ink-mid;
+    font-family: $font-body;
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  .auth-toggle {
+    margin: 18px 0 0;
+    text-align: center;
+    color: $ink-mid;
+    font-family: $font-body;
+    font-size: 14px;
+  }
+
+  .auth-secondary-link {
+    margin: 14px 0 0;
+    text-align: center;
+    font-size: 13px;
+  }
+
+  .link-button {
+    background: none;
+    border: none;
+    padding: 0;
+    color: $red-ink;
+    font-family: $font-body;
+    font-size: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+
+    &:hover {
+      color: $red-ink-dk;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $red-ink;
+      outline-offset: 2px;
+    }
+  }
+
+  .feedback-error--list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 16px;
+  }
+
+  .feedback-success {
+    color: $ink;
+    background: $parchment;
+    border: 1px solid $border-light;
+    padding: 10px;
+    margin-bottom: 16px;
+    font-size: 14px;
+  }
 }

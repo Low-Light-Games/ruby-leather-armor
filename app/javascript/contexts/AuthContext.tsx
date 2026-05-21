@@ -6,10 +6,10 @@ import {
   useContext,
 } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
-import { csrfToken } from '../utils/api';
+import { apiFetch } from '../utils/api';
 import { API_ROUTES } from '../constants/apiRoutes';
 import { fetchCurrentUser } from '../services/authService';
-import type { AuthUser } from '../types/auth';
+import type { AuthUser, SignupPayload } from '../types/auth';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -18,8 +18,15 @@ interface AuthContextType {
   emailPrompt: boolean;
   dismissEmailPrompt: () => void;
   login: (email: string, password: string) => Promise<void>;
+  signup: (payload: SignupPayload) => Promise<void>;
+  startGuest: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+}
+
+interface UserEnvelope {
+  user: AuthUser;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,37 +52,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const login = async (email: string, password: string) => {
-    const response = await fetch(API_ROUTES.login, {
+    const data = await apiFetch<UserEnvelope>(API_ROUTES.login, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': csrfToken(),
-      },
       body: JSON.stringify({ email, password }),
       credentials: 'same-origin',
     });
-
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      throw new Error('Server returned an invalid response. Please try again.');
-    }
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Login failed' }));
-      throw new Error(error.error || 'Login failed');
-    }
-
-    const data = await response.json();
     setUser(data.user);
+  };
+
+  const signup = async (payload: SignupPayload) => {
+    const data = await apiFetch<UserEnvelope>(API_ROUTES.signup, {
+      method: 'POST',
+      body: JSON.stringify({
+        email: payload.email,
+        handle: payload.handle,
+        password: payload.password,
+        password_confirmation: payload.passwordConfirmation,
+      }),
+      credentials: 'same-origin',
+    });
+    setUser(data.user);
+  };
+
+  const startGuest = async () => {
+    const data = await apiFetch<UserEnvelope>(API_ROUTES.guestSessions, {
+      method: 'POST',
+      credentials: 'same-origin',
+    });
+    setUser(data.user);
+  };
+
+  const requestPasswordReset = async (email: string) => {
+    await apiFetch(API_ROUTES.passwordResets, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+      credentials: 'same-origin',
+    });
   };
 
   const logout = async () => {
     try {
-      await fetch(API_ROUTES.logout, {
+      await apiFetch(API_ROUTES.logout, {
         method: 'DELETE',
-        headers: {
-          'X-CSRF-Token': csrfToken(),
-        },
+        credentials: 'same-origin',
       });
     } catch (error) {
       console.error('Logout failed:', error);
@@ -95,6 +114,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     emailPrompt,
     dismissEmailPrompt,
     login,
+    signup,
+    startGuest,
+    requestPasswordReset,
     logout,
     checkAuth,
   };

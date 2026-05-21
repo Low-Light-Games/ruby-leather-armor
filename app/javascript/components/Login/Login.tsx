@@ -3,15 +3,25 @@ import { useAuth } from '../../contexts/AuthContext';
 import { csrfToken } from '../../utils/api';
 import './Login.scss';
 
-function firePixelAndSubmit(form: HTMLFormElement, provider: string) {
+type AuthMode = 'signin' | 'signup' | 'forgot';
+
+function fireRedditPixel(customEventName: string, extra: Record<string, unknown> = {}) {
+  const rdt = (window as Window & { rdt?: (...args: unknown[]) => void }).rdt;
+  if (typeof rdt !== 'function') return;
+  rdt('track', 'Custom', {
+    customEventName,
+    pagePath: window.location.pathname,
+    ...extra,
+  });
+}
+
+function fireOAuthPixelAndSubmit(form: HTMLFormElement, provider: string) {
   const rdt = (window as Window & { rdt?: (...args: unknown[]) => void }).rdt;
   if (typeof rdt === 'function') {
-    const normalizedProvider = provider.replace(/[^a-z0-9]+/gi, "_").toLowerCase();
-    rdt('track', 'Custom', {
-      customEventName: `OAuthClick_${normalizedProvider}`,
+    const normalizedProvider = provider.replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+    fireRedditPixel(`OAuthClick_${normalizedProvider}`, {
       oauthProvider: normalizedProvider,
       oauthProviderRaw: provider,
-      pagePath: window.location.pathname,
     });
     setTimeout(() => form.submit(), 100);
   } else {
@@ -22,7 +32,7 @@ function firePixelAndSubmit(form: HTMLFormElement, provider: string) {
 const OAuthButton = ({ provider, label, children }: { provider: string; label: string; children: React.ReactNode }) => {
   const handleClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    firePixelAndSubmit(e.currentTarget.form!, provider);
+    fireOAuthPixelAndSubmit(e.currentTarget.form!, provider);
   }, [provider]);
 
   return (
@@ -36,7 +46,36 @@ const OAuthButton = ({ provider, label, children }: { provider: string; label: s
   );
 };
 
-export const Login = () => {
+const GuestConversionButton = () => {
+  const { startGuest } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleClick = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+    fireRedditPixel('GuestConversion');
+    try {
+      await startGuest();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not start guest session');
+    } finally {
+      setLoading(false);
+    }
+  }, [startGuest]);
+
+  return (
+    <div className="guest-cta">
+      <button type="button" className="guest-cta__button" onClick={handleClick} disabled={loading}>
+        {loading ? 'Starting…' : 'Continue without an account'}
+      </button>
+      <p className="guest-cta__subtitle">Free trial — no email needed. Sign up later to keep your adventures.</p>
+      {error && <p className="feedback-error">{error}</p>}
+    </div>
+  );
+};
+
+const SignInForm = ({ onForgotPassword }: { onForgotPassword: () => void }) => {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -47,7 +86,6 @@ export const Login = () => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
     try {
       await login(email, password);
     } catch (err) {
@@ -58,12 +96,196 @@ export const Login = () => {
   };
 
   return (
+    <form onSubmit={handleSubmit}>
+      {error && <p className="feedback-error">{error}</p>}
+      <div className="form-group">
+        <label htmlFor="signin-email">Email:</label>
+        <input
+          type="email"
+          id="signin-email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          placeholder="Enter your email"
+          aria-label="Email"
+          autoComplete="email"
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="signin-password">Password:</label>
+        <input
+          type="password"
+          id="signin-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          placeholder="Enter your password"
+          aria-label="Password"
+          autoComplete="current-password"
+        />
+      </div>
+      <button type="submit" disabled={loading}>
+        {loading ? 'Logging in…' : 'Login'}
+      </button>
+      <p className="auth-secondary-link">
+        <button type="button" className="link-button" onClick={onForgotPassword}>
+          Forgot password?
+        </button>
+      </p>
+    </form>
+  );
+};
+
+const SignUpForm = () => {
+  const { signup } = useAuth();
+  const [email, setEmail] = useState('');
+  const [handle, setHandle] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
+  const [errors, setErrors] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors([]);
+    setLoading(true);
+    try {
+      await signup({ email, handle: handle || undefined, password, passwordConfirmation });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Signup failed';
+      setErrors(message.split('\n'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      {errors.length > 0 && (
+        <ul className="feedback-error feedback-error--list">
+          {errors.map((message) => <li key={message}>{message}</li>)}
+        </ul>
+      )}
+      <div className="form-group">
+        <label htmlFor="signup-email">Email:</label>
+        <input
+          type="email"
+          id="signup-email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          placeholder="you@example.com"
+          autoComplete="email"
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="signup-handle">Handle (optional):</label>
+        <input
+          type="text"
+          id="signup-handle"
+          value={handle}
+          onChange={(e) => setHandle(e.target.value)}
+          placeholder="A nickname (letters, numbers, underscores)"
+          minLength={3}
+          maxLength={32}
+          pattern="[A-Za-z0-9_]{3,32}"
+          autoComplete="username"
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="signup-password">Password:</label>
+        <input
+          type="password"
+          id="signup-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={8}
+          placeholder="At least 8 characters"
+          autoComplete="new-password"
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor="signup-password-confirmation">Confirm password:</label>
+        <input
+          type="password"
+          id="signup-password-confirmation"
+          value={passwordConfirmation}
+          onChange={(e) => setPasswordConfirmation(e.target.value)}
+          required
+          minLength={8}
+          placeholder="Repeat your password"
+          autoComplete="new-password"
+        />
+      </div>
+      <button type="submit" disabled={loading}>
+        {loading ? 'Creating account…' : 'Create account'}
+      </button>
+    </form>
+  );
+};
+
+const ForgotPasswordForm = ({ onCancel }: { onCancel: () => void }) => {
+  const { requestPasswordReset } = useAuth();
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage(null);
+    try {
+      await requestPasswordReset(email);
+      setMessage("If that email is in our system, a reset link is on its way.");
+    } catch {
+      setMessage("If that email is in our system, a reset link is on its way.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <p>Enter your email and we'll send you a reset link.</p>
+      {message && <p className="feedback-success">{message}</p>}
+      <div className="form-group">
+        <label htmlFor="forgot-email">Email:</label>
+        <input
+          type="email"
+          id="forgot-email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+        />
+      </div>
+      <button type="submit" disabled={loading}>
+        {loading ? 'Sending…' : 'Send reset link'}
+      </button>
+      <p className="auth-secondary-link">
+        <button type="button" className="link-button" onClick={onCancel}>
+          Back to sign in
+        </button>
+      </p>
+    </form>
+  );
+};
+
+export const Login = () => {
+  const [mode, setMode] = useState<AuthMode>('signin');
+
+  return (
     <div className="login-container">
       <div className="login-box">
-        <h1>Character Sheet Login</h1>
-        {error && <p className="feedback-error">{error}</p>}
+        <h1>Leather Armor</h1>
 
-        <p className="oauth-heading">Sign in with a few clicks</p>
+        <GuestConversionButton />
+
+        <div className="login-divider">
+          <span>or sign in with</span>
+        </div>
+
         <div className="oauth-row">
           <OAuthButton provider="google_oauth2" label="Sign in with Google">
             <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
@@ -88,38 +310,32 @@ export const Login = () => {
         </div>
 
         <div className="login-divider">
-          <span>or</span>
+          <span>{mode === 'signup' ? 'or create an account with email' : 'or sign in with email'}</span>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="email">Email:</label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="Enter your email"
-              aria-label="Email"
-            />
-          </div>
-          <div className="form-group">
-            <label htmlFor="password">Password:</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="Enter your password"
-              aria-label="Password"
-            />
-          </div>
-          <button type="submit" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
-          </button>
-        </form>
+        {mode === 'signin' && <SignInForm onForgotPassword={() => setMode('forgot')} />}
+        {mode === 'signup' && <SignUpForm />}
+        {mode === 'forgot' && <ForgotPasswordForm onCancel={() => setMode('signin')} />}
+
+        {mode !== 'forgot' && (
+          <p className="auth-toggle">
+            {mode === 'signin' ? (
+              <>
+                New here?{' '}
+                <button type="button" className="link-button" onClick={() => setMode('signup')}>
+                  Create an account
+                </button>
+              </>
+            ) : (
+              <>
+                Already have an account?{' '}
+                <button type="button" className="link-button" onClick={() => setMode('signin')}>
+                  Sign in
+                </button>
+              </>
+            )}
+          </p>
+        )}
       </div>
     </div>
   );
