@@ -41,7 +41,9 @@ module Admin
                             .order(:created_at)
                             .group_by(&:registry_entry_uuid)
 
-      registry_entries = PipelineRegistryEntry.for_registry_entry_uuids(uuids).index_by(&:registry_entry_uuid)
+      registry_entries = PipelineRegistryEntry.for_registry_entry_uuids(uuids)
+                                               .includes(adventure: :user)
+                                               .index_by(&:registry_entry_uuid)
 
       msg_ids = logs_by_uuid.values.flatten.filter_map(&:player_message_id).uniq
       messages = AdventureMessage.where(id: msg_ids).index_by(&:id)

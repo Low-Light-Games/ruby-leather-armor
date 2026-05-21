@@ -68,6 +68,33 @@
       </tbody>
     </table>
   <% end %>
+
+  <h2>Latest Messages</h2>
+
+  <% if @recent_messages.empty? %>
+    <p class="empty-msg">No player messages found.</p>
+  <% else %>
+    <table class="events-table messages-table">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Adventure</th>
+          <th>Message</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @recent_messages.each do |msg| %>
+          <tr>
+            <td class="col-time"><%= msg.created_at.strftime('%b %d %H:%M') %></td>
+            <td>
+              <a href="<%= admin_adventure_path(msg.adventure) %>" class="filter-link">#<%= msg.adventure_id %></a>
+            </td>
+            <td class="msg-excerpt"><%= truncate(msg.content, length: 200) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
 </div>
 
 <style>
@@ -118,5 +145,10 @@
     td { padding: 10px; border-bottom: 1px solid #e9ecef; vertical-align: top; }
     tr:hover { background-color: #f5f5f5; }
     .excerpt { color: #555; font-style: italic; max-width: 400px; }
+  }
+  .messages-table {
+    .col-time { white-space: nowrap; font-family: monospace; font-size: 12px; width: 100px; }
+    .filter-link { color: #1565c0; text-decoration: none; &:hover { text-decoration: underline; } }
+    .msg-excerpt { color: #333; font-style: italic; max-width: 500px; }
   }
 </style>

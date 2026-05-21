@@ -13,6 +13,7 @@
         <tr>
           <th class="col-time">Time</th>
           <th class="col-adv">Adv</th>
+          <th class="col-user">User</th>
           <th class="col-message">Player Message</th>
           <th class="col-steps">Steps</th>
           <th class="col-status">Status</th>
@@ -36,6 +37,14 @@
             <td class="col-adv">
               <% if summary[:adventure_id] %>
                 <a href="<%= admin_play_logs_path(adventure_id: summary[:adventure_id]) %>" class="filter-link">#<%= summary[:adventure_id] %></a>
+              <% else %>
+                <span class="empty-cell">—</span>
+              <% end %>
+            </td>
+            <td class="col-user">
+              <% user = summary[:registry_entry]&.adventure&.user %>
+              <% if user %>
+                <a href="<%= admin_user_path(user) %>" class="user-link"><%= user.email %></a>
               <% else %>
                 <span class="empty-cell">—</span>
               <% end %>
@@ -117,6 +126,7 @@
     td { padding: 10px 10px; border-bottom: 1px solid #e9ecef; vertical-align: middle; }
     .col-time { width: 110px; white-space: nowrap; font-family: monospace; font-size: 12px; }
     .col-adv { width: 50px; }
+    .col-user { max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .col-message { max-width: 250px; }
     .col-steps { max-width: 300px; }
     .col-status { width: 80px; }
@@ -131,6 +141,7 @@
     tr.pipeline-retry { opacity: 0.65; }
   }
 
+  .user-link { color: #1565c0; text-decoration: none; font-size: 12px; &:hover { text-decoration: underline; } }
   .player-msg-text { font-size: 13px; color: #333; font-style: italic; }
 
   .step-badges { display: flex; flex-wrap: wrap; gap: 3px; }
