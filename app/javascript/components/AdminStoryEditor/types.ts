@@ -50,7 +50,7 @@ export interface StoryData {
 // ---- Constants ----
 
 export const NPC_ROLES: NpcRole[] = ['quest_giver', 'informant', 'antagonist', 'bystander', 'merchant']
-export const NPC_ATTITUDES: NpcAttitude[] = ['friendly', 'indifferent', 'unfriendly']
+export const NPC_ATTITUDES: NpcAttitude[] = ['helpful', 'friendly', 'indifferent', 'unfriendly', 'hostile']
 
 // ---- Empty constructors ----
 

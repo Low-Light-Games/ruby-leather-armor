@@ -13,7 +13,7 @@ module PlayerTurn
     end
 
     def hostile?
-      attitude.to_s == "unfriendly"
+      %w[unfriendly hostile].include?(attitude.to_s)
     end
 
     def to_h

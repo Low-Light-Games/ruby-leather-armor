@@ -10,7 +10,7 @@ class StoryNpc < ApplicationRecord
 
   SOURCES   = %w[manual].freeze
   ROLES     = %w[quest_giver informant antagonist bystander merchant].freeze
-  ATTITUDES = %w[friendly indifferent unfriendly].freeze
+  ATTITUDES = %w[helpful friendly indifferent unfriendly hostile].freeze
 
   validates :name, presence: true
   validates :source, inclusion: { in: SOURCES }
