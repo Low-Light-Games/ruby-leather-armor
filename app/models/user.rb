@@ -27,6 +27,7 @@ class User < ApplicationRecord
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }, unless: :guest?
   validates :password, presence: true, on: :create, unless: :oauth_or_guest?
   validates :password, length: { minimum: 8 }, if: -> { password.present? }
+  validates :password, confirmation: true, if: -> { password.present? }
   validates :handle, format: { with: HANDLE_FORMAT }, allow_nil: true
   validates :onboarding_state, inclusion: { in: ONBOARDING_STATES }
   validates :combat_dice_strategy, inclusion: { in: COMBAT_DICE_STRATEGIES }

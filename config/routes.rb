@@ -17,6 +17,8 @@ Rails.application.routes.draw do
   delete "logout" => "sessions#destroy"
   get "current_user" => "sessions#show"
   post "guest_sessions" => "guest_sessions#create"
+  post "signup" => "registrations#create"
+  get "email_verifications/:token" => "email_verifications#show", as: :email_verification
 
   # OmniAuth callbacks
   get  "auth/:provider/callback", to: "omniauth_callbacks#callback", as: :omniauth_callback

@@ -15,6 +15,8 @@ class AdventurePolicy < ApplicationPolicy
   def pipeline?
     return false unless show?
 
+    return false if user.email_verification_required?
+
     !user.usage_limit_reached?
   end
 

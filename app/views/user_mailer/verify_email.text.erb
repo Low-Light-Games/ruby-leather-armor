@@ -1,0 +1,7 @@
+Welcome to Leather Armor<%= ", #{@user.handle}" if @user.handle.present? %>!
+
+Please verify your email address by visiting the link below:
+
+<%= @verification_url %>
+
+This link expires in 14 days. If you didn't create this account, you can safely ignore this email.
