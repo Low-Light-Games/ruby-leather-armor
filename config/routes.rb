@@ -19,6 +19,7 @@ Rails.application.routes.draw do
   post "guest_sessions" => "guest_sessions#create"
   post "signup" => "registrations#create"
   get "email_verifications/:token" => "email_verifications#show", as: :email_verification
+  resources :password_resets, only: %i[create edit update], param: :token
 
   # OmniAuth callbacks
   get  "auth/:provider/callback", to: "omniauth_callbacks#callback", as: :omniauth_callback

@@ -1,0 +1,25 @@
+<div class="legal-page">
+  <h1>Reset your password</h1>
+
+  <% if @user.errors.any? %>
+    <ul style="color: #b00020; list-style: none; padding: 0;">
+      <% @user.errors.full_messages.each do |message| %>
+        <li><%= message %></li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <%= form_with url: password_reset_path(token: params[:token]), method: :patch, scope: :user, local: true do |f| %>
+    <div style="margin: 16px 0;">
+      <%= f.label :password, "New password" %><br>
+      <%= f.password_field :password, required: true, minlength: 8, autocomplete: "new-password", style: "width: 100%; padding: 8px;" %>
+    </div>
+
+    <div style="margin: 16px 0;">
+      <%= f.label :password_confirmation, "Confirm new password" %><br>
+      <%= f.password_field :password_confirmation, required: true, minlength: 8, autocomplete: "new-password", style: "width: 100%; padding: 8px;" %>
+    </div>
+
+    <%= f.submit "Update password", style: "padding: 10px 20px; cursor: pointer;" %>
+  <% end %>
+</div>
