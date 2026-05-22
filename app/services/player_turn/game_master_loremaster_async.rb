@@ -5,24 +5,26 @@ module PlayerTurn
     include Steps::EvaluatorTransport
     include Steps::Stagehand
 
-    def self.call(adventure:, config:, ai:, log:, narrative:, loop: nil)
+    def self.call(adventure:, config:, ai:, log:, narrative:, loop: nil, mutations: {})
       new(
         adventure: adventure,
         config: config,
         ai: ai,
         log: log,
         narrative: narrative,
-        loop: loop
+        loop: loop,
+        mutations: mutations
       ).call
     end
 
-    def initialize(adventure:, config:, ai:, log:, narrative:, loop:)
+    def initialize(adventure:, config:, ai:, log:, narrative:, loop:, mutations: {})
       @adventure = adventure
       @config = config
       @ai = ai
       @log = log
       @narrative = narrative
       @loop = loop
+      @mutations = mutations
     end
 
     def call
@@ -30,7 +32,7 @@ module PlayerTurn
 
       loremaster_inputs    = Steps::Loremaster::Inputs.new(
         what_happened: @narrative.to_s,
-        mutations: {},
+        mutations: (@mutations || {}).deep_stringify_keys,
         active_facts: active_facts_window,
       )
       social_master_inputs = build_social_master_inputs(@narrative)

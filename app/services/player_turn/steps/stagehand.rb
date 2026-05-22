@@ -46,30 +46,21 @@ module PlayerTurn
         persist_narrative_phase_combat_context(narrate_by_step, mutations, ai_delta_included: include_ai_combat_context, phase: "narrative_phase")
 
         narration = narrative_from_evaluator_result(evaluator_fan_out_result!(narrate_by_step, "narrate", "narrative_phase"))
-        narrative_text = narration[:narrative].to_s
 
-        broadcast_progress("Remembering the world...")
-        run_masters_fan_out!(narrative_text, mutations)
+        enqueue_masters_async(narration[:narrative].to_s, mutations)
 
         narration
       end
 
-      def run_masters_fan_out!(narrative_text, mutations)
-        loremaster_inputs    = build_loremaster_inputs(narrative_text, mutations)
-        social_master_inputs = build_social_master_inputs(narrative_text)
-        geomaster_inputs     = build_geomaster_inputs(narrative_text)
-
-        masters_prompts = [
-          loremaster_evaluator_prompt(loremaster_inputs),
-          social_master_evaluator_prompt(social_master_inputs),
-          geomaster_evaluator_prompt(geomaster_inputs),
-        ]
-
-        by_step = evaluator_fan_out!(masters_prompts, narrative_text, phase: "masters_phase")
-
-        apply_loremaster_from_fan_out!(by_step)
-        apply_social_master_from_fan_out!(by_step)
-        apply_geomaster_from_fan_out!(by_step)
+      def enqueue_masters_async(narrative_text, mutations)
+        GameMasterLoremasterJob.perform_later(
+          @adventure.id,
+          narrative_text,
+          registry_entry_uuid: @log.registry_entry_uuid,
+          adventure_loop_id:   @loop&.id,
+          user_id:             @user&.id,
+          mutations:           (mutations || {}).deep_stringify_keys,
+        )
       end
 
       def build_loremaster_inputs(what_happened, mutations)
