@@ -22,14 +22,10 @@
 default_model: gpt-5-nano
 default_reasoning_effort: minimal
 
-# Per-step model overrides. Omitted steps use default_model.
-step_models:
-  social_master: gpt-5-nano
-  geomaster: gpt-5-nano
+# Per-step model overrides. Empty hash = every step uses default_model.
+step_models: {}
 
-# Per-step reasoning_effort overrides. Omitted steps use
+# Per-step reasoning_effort overrides. Empty hash = every step uses
 # default_reasoning_effort. Only meaningful when the resolved model is a
 # reasoning model.
-step_reasoning_efforts:
-  social_master: minimal
-  geomaster: minimal
+step_reasoning_efforts: {}
