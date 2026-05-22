@@ -30,34 +30,46 @@ module PlayerTurn
       def run_parallel_narrative(intent, narration_context:, mutations:)
         seed = narration_context.combined_seed
 
-        loremaster_inputs     = build_loremaster_inputs(seed, mutations)
-        social_master_inputs  = build_social_master_inputs(seed)
-        geomaster_inputs      = build_geomaster_inputs(seed)
-
         scene_facts   = retrieve_scene_facts_for_narrate(intent)
         outcome_facts = retrieve_outcome_facts_for_narrate(seed)
 
         include_ai_combat_context = combat_active?
 
-        prompts = [
+        narrate_prompts = [
           narrate_evaluator_prompt(narration_context, scene_facts: scene_facts, outcome_facts: outcome_facts),
+        ]
+        narrate_prompts << combat_context_evaluator_prompt(seed, mutations) if include_ai_combat_context
+
+        broadcast_progress("Writing the story...")
+        narrate_by_step = evaluator_fan_out!(narrate_prompts, seed, phase: "narrative_phase")
+
+        persist_narrative_phase_combat_context(narrate_by_step, mutations, ai_delta_included: include_ai_combat_context, phase: "narrative_phase")
+
+        narration = narrative_from_evaluator_result(evaluator_fan_out_result!(narrate_by_step, "narrate", "narrative_phase"))
+        narrative_text = narration[:narrative].to_s
+
+        broadcast_progress("Remembering the world...")
+        run_masters_fan_out!(narrative_text, mutations)
+
+        narration
+      end
+
+      def run_masters_fan_out!(narrative_text, mutations)
+        loremaster_inputs    = build_loremaster_inputs(narrative_text, mutations)
+        social_master_inputs = build_social_master_inputs(narrative_text)
+        geomaster_inputs     = build_geomaster_inputs(narrative_text)
+
+        masters_prompts = [
           loremaster_evaluator_prompt(loremaster_inputs),
           social_master_evaluator_prompt(social_master_inputs),
           geomaster_evaluator_prompt(geomaster_inputs),
         ]
-        prompts << combat_context_evaluator_prompt(seed, mutations) if include_ai_combat_context
 
-        broadcast_progress("Writing the story...")
-        by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
+        by_step = evaluator_fan_out!(masters_prompts, narrative_text, phase: "masters_phase")
 
-        persist_narrative_phase_combat_context(by_step, mutations, ai_delta_included: include_ai_combat_context, phase: "narrative_phase")
-
-        broadcast_progress("Remembering the world...")
         apply_loremaster_from_fan_out!(by_step)
         apply_social_master_from_fan_out!(by_step)
         apply_geomaster_from_fan_out!(by_step)
-
-        narrative_from_evaluator_result(evaluator_fan_out_result!(by_step, "narrate", "narrative_phase"))
       end
 
       def build_loremaster_inputs(what_happened, mutations)
@@ -98,16 +110,16 @@ module PlayerTurn
         Steps::Geomaster.turn_evaluator_prompt(inputs: inputs, config: @config)
       end
 
-      def build_social_master_inputs(seed)
+      def build_social_master_inputs(narrative_text)
         Steps::SocialMaster::Inputs.new(
-          narrative:      seed.to_s,
+          narrative:       narrative_text,
           known_npc_names: AdventureNpc.for_adventure(@adventure).pluck(:name),
         )
       end
 
-      def build_geomaster_inputs(seed)
+      def build_geomaster_inputs(narrative_text)
         Steps::Geomaster::Inputs.new(
-          narrative:           seed.to_s,
+          narrative:            narrative_text,
           known_location_names: AdventureLocation.for_adventure(@adventure).pluck(:name),
         )
       end
