@@ -28,15 +28,24 @@ module PlayerTurn
     def call
       return if @narrative.blank?
 
-      inputs = Steps::LoremasterInputs.new(
+      loremaster_inputs    = Steps::Loremaster::Inputs.new(
         what_happened: @narrative.to_s,
         mutations: {},
-        active_facts: active_facts_window
+        active_facts: active_facts_window,
       )
+      social_master_inputs = build_social_master_inputs(@narrative)
+      geomaster_inputs     = build_geomaster_inputs(@narrative)
 
-      prompts = [Steps::Loremaster.turn_evaluator_prompt(inputs: inputs, config: @config)]
+      prompts = [
+        Steps::Loremaster.turn_evaluator_prompt(inputs: loremaster_inputs, config: @config),
+        social_master_evaluator_prompt(social_master_inputs),
+        geomaster_evaluator_prompt(geomaster_inputs),
+      ]
       by_step = evaluator_fan_out!(prompts, @narrative, phase: "game_master_loremaster")
+
       apply_loremaster_from_fan_out!(by_step)
+      apply_social_master_from_fan_out!(by_step)
+      apply_geomaster_from_fan_out!(by_step)
     end
   end
 end

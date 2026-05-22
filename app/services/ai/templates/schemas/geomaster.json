@@ -1,0 +1,13 @@
+{
+  "description": "Structured location records extracted from a narrative turn. Creates catalog entries in the adventure's location registry for future retrieval.",
+  "fields": {
+    "locations": "array of new locations introduced this turn. Each entry: { name (string — canonical place name), description (string — one sentence) }. Only genuinely new named locations — not locations listed in Known Locations.",
+    "reasoning": "string — one short sentence explaining the extraction choice, for audit."
+  },
+  "notes": [
+    "Only emit locations that are genuinely new named places introduced in this narrative turn.",
+    "Do NOT re-emit locations listed in the Known Locations section — they already exist in the registry.",
+    "Generic references ('a hallway', 'the road') are not locations — skip them.",
+    "If no new locations were introduced, return { locations: [], reasoning: '...' }."
+  ]
+}
