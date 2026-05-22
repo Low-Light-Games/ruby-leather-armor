@@ -25,8 +25,10 @@ module Lore
 
     private_class_method :dedup_by_name
 
+    LEADING_ARTICLES = /\A(the|a|an)\s+/i
+
     def self.normalize(name)
-      name.to_s.strip.squish.downcase
+      name.to_s.strip.squish.downcase.sub(LEADING_ARTICLES, "")
     end
 
     private_class_method :normalize
