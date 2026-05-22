@@ -19,7 +19,6 @@ module PlayerTurn
         Ai::PromptRenderer.render(
           "loremaster",
           what_happened:  inputs.what_happened,
-          mutations_json: inputs.mutations.present? ? inputs.mutations.to_json : "(no mutations)",
           active_facts:   inputs.active_facts,
           schema_json:    Ai::PromptRenderer.load_schema("loremaster"),
         )

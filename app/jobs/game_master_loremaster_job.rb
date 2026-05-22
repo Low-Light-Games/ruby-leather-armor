@@ -4,7 +4,7 @@ class GameMasterLoremasterJob < ApplicationJob
   queue_as :dm_pipeline
   discard_on ActiveRecord::RecordNotFound
 
-  def perform(adventure_id, narrative, registry_entry_uuid: nil, adventure_loop_id: nil, user_id: nil, mutations: {})
+  def perform(adventure_id, narrative, registry_entry_uuid: nil, adventure_loop_id: nil, user_id: nil)
     adventure = Adventure.find(adventure_id)
     user = resolve_user(adventure, user_id)
     loop = resolve_loop(adventure, adventure_loop_id)
@@ -20,8 +20,7 @@ class GameMasterLoremasterJob < ApplicationJob
       ai: ai,
       log: log,
       narrative: narrative,
-      loop: loop,
-      mutations: mutations
+      loop: loop
     )
   rescue StandardError => e
     ApplicationErrorReporter.notify(e, context: {

@@ -47,27 +47,18 @@ module PlayerTurn
 
         narration = narrative_from_evaluator_result(evaluator_fan_out_result!(narrate_by_step, "narrate", "narrative_phase"))
 
-        enqueue_masters_async(narration[:narrative].to_s, mutations)
+        enqueue_masters_async(narration[:narrative].to_s)
 
         narration
       end
 
-      def enqueue_masters_async(narrative_text, mutations)
+      def enqueue_masters_async(narrative_text)
         GameMasterLoremasterJob.perform_later(
           @adventure.id,
           narrative_text,
           registry_entry_uuid: @log.registry_entry_uuid,
           adventure_loop_id:   @loop&.id,
           user_id:             @user&.id,
-          mutations:           (mutations || {}).deep_stringify_keys,
-        )
-      end
-
-      def build_loremaster_inputs(what_happened, mutations)
-        Steps::Loremaster::Inputs.new(
-          what_happened: what_happened.to_s,
-          mutations: (mutations || {}).deep_stringify_keys,
-          active_facts: active_facts_window,
         )
       end
 
