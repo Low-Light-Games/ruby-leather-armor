@@ -11,6 +11,27 @@ Versions **0.2.0–0.4.0** are documented retroactively from merged PR dates (th
 
 ### Added
 
+## [0.6.0] - 2026-05-21
+
+Runtime entity extraction, two-phase output, and async masters (#170, #171).
+
+### Added
+
+- **`Steps::SocialMaster`** — new pipeline AI step for runtime NPC extraction from Narrate output. Runs in the async masters fan-out (Sidekiq) alongside Loremaster and Geomaster. Emits structured NPC records that are deduplicated by `Lore::RuntimeEntityFilter` and normalized by `Lore::RuntimeEntityCoercer` before persisting via `Lore::ApplyNpcs` with `source: "runtime"`. Registered in `Ai::StepRegistry` with model hint (cheapest model tier).
+- **`Steps::Geomaster`** — new pipeline AI step for runtime location extraction from Narrate output. Same async fan-out and dedup/normalize pipeline as SocialMaster, persisting via `Lore::ApplyLocations` with `source: "runtime"`.
+- **`Lore::RuntimeEntityFilter`** — deduplicates AI-produced NPCs/locations against existing `AdventureNpc`/`AdventureLocation` rows by normalized name, and deduplicates within a single AI response (intra-batch dedup).
+- **`Lore::RuntimeEntityCoercer`** — validates and normalizes raw AI hashes into `Lore::NpcRecord`/`Lore::LocationRecord` DTOs at the receiving seam. Handles name normalization, attitude validation against `AdventureNpc::ATTITUDES`, and type coercion.
+- **Unified PF1e attitude track** — `AdventureNpc`, `StoryNpc`, `CastMember#hostile?`, and frontend types all use the full Pathfinder 1e attitude track: `helpful`, `friendly`, `indifferent`, `unfriendly`, `hostile`. Eliminates the need for `hostile → unfriendly` coercion at the receiving seam (#170).
+
+### Changed
+
+- **Two-phase output architecture** — the output phase is now two stages: (1) synchronous narrative fan-out (Narrate + CombatContextUpdate — player waits), then (2) async masters fan-out (Loremaster + SocialMaster + Geomaster — enqueued as `GameMasterLoremasterJob`). Player gets the textbox back immediately after Narrate finishes. Both the legacy Stagehand path and the GM-flag path now converge on the same `GameMasterLoremasterJob`.
+- **Masters extract from Narrate output** — Loremaster, SocialMaster, and Geomaster now receive the finished narrative text (what Narrate wrote) instead of the pre-Narrate seed. Ensures extracted facts, NPCs, and locations match the authoritative narrative.
+- **`GameMasterLoremasterJob`** — now accepts optional `mutations:` kwarg so the legacy path can forward mechanical context to Loremaster.
+- **Step value objects** — `SocialMaster::Inputs`/`Result`, `Geomaster::Inputs`/`Result`, and `Loremaster::Inputs` follow Zeitwerk-friendly nested folder conventions (e.g. `steps/social_master/inputs.rb` → `SocialMaster::Inputs`).
+
+### Added
+
 - **`Steps::CastResolve` (CastResolver)** — new top-of-action AI step in the out-of-combat pipeline. Names every creature the player could plausibly target / address / evade / observe as `[{name, type, count}]` against a closed five-entry type enum (`beast`, `fighter`, `goblinoid`, `spellcaster`, `commoner`). Code resolves each entry deterministically through a four-tier lookup: existing `AdventureNpc` → existing `AdventureActorSheet` → `BestiaryEntry` by name (story-scoped first, then public) → `BestiaryEntry.default_for(type)`. The resulting `PlayerTurn::CastRoster` is persisted on the `AdventureLoop` (so `RollPipelineJob`'s pause/resume cycle keeps it) and rendered into the RollRequest prompt as `[id=N] Name (attitude) — at <loc>`. Replaces the entire "AI invents a creature, code tries to back-fill identity" failure surface with code-owned `actor_sheet_id` integers from the very top of the turn.
 - **`Encounters::ActorSheetCreation.from_bestiary`** — single deterministic minting path that turns a `BestiaryEntry` (story-scoped, public, or `default_for_type`) into N `AdventureActorSheet` rows on an Adventure. Used by the cast resolver, the encounter bridge, and the authoring tools — every creature on every adventure flows through this one method.
 - **`BestiaryEntry` flavors** — three named flavors enforced by scope: public (`story_id` null, `default_for_type` null — the SRD-style shared catalog), story-scoped (`story_id` present — named NPCs hand-statted or AI-drafted-and-human-reviewed for one story; `StoryNpc#bestiary_entry_id` always points here), and default-by-type (`default_for_type` present — the five seeded fallbacks used by `CastResolver` when the AI's `name` doesn't resolve to anything more specific). Single table, branchless minting; new flavors are a new column + scope, not a new table.
