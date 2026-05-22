@@ -73,12 +73,12 @@ module Ai
                    'Narrate/ContextUpdate, so latency is Narrate-bounded.'
 
       SOCIAL_MASTER = 'Cheapest model. Runtime NPC extraction from the narrative seed — ' \
-                      'e.g. gpt-5-nano, gpt-4o-mini. Parallel with Narrate, latency is ' \
-                      'Narrate-bounded.'
+                      'e.g. gpt-5-nano, gpt-4o-mini. Runs in parallel with ' \
+                      'Narrate/Loremaster/Geomaster, so latency is Narrate-bounded.'
 
       GEOMASTER = 'Cheapest model. Runtime location extraction from the narrative seed — ' \
-                  'e.g. gpt-5-nano, gpt-4o-mini. Parallel with Narrate, latency is ' \
-                  'Narrate-bounded.'
+                  'e.g. gpt-5-nano, gpt-4o-mini. Runs in parallel with ' \
+                  'Narrate/Loremaster/SocialMaster, so latency is Narrate-bounded.'
 
       COMBAT_BOOKEND = 'Creative model. Short epilogue (2-4 sentences) summarising a combat ' \
                        'conclusion (victory or death). Called once at combat end, not part of ' \
