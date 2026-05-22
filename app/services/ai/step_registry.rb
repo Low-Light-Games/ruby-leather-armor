@@ -38,6 +38,10 @@ module Ai
                                          pipeline: true),
       'loremaster' => Entry.new(model_hint: H::LOREMASTER,
                                 pipeline: true),
+      'social_master' => Entry.new(model_hint: H::SOCIAL_MASTER,
+                                   pipeline: true),
+      'geomaster' => Entry.new(model_hint: H::GEOMASTER,
+                               pipeline: true),
       # Authoring/non-pipeline AI calls (story save-time, admin editor,
       # background data ops). Cluster together so the registry shows
       # the boundary at a glance.
