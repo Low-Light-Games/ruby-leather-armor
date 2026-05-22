@@ -40,8 +40,8 @@ module PlayerTurn
 
       prompts = [
         Steps::Loremaster.turn_evaluator_prompt(inputs: loremaster_inputs, config: @config),
-        social_master_evaluator_prompt(social_master_inputs),
-        geomaster_evaluator_prompt(geomaster_inputs),
+        Steps::SocialMaster.turn_evaluator_prompt(inputs: social_master_inputs, config: @config),
+        Steps::Geomaster.turn_evaluator_prompt(inputs: geomaster_inputs, config: @config),
       ]
       by_step = evaluator_fan_out!(prompts, @narrative, phase: "game_master_loremaster")
 

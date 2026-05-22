@@ -3,7 +3,7 @@
 module PlayerTurn
   module Steps
     module Geomaster
-      class Result
+      class Extraction
         attr_reader :locations, :reasoning
 
         def initialize(locations:, reasoning:)

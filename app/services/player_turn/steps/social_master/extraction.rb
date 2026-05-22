@@ -3,7 +3,7 @@
 module PlayerTurn
   module Steps
     module SocialMaster
-      class Result
+      class Extraction
         attr_reader :npcs, :reasoning
 
         def initialize(npcs:, reasoning:)

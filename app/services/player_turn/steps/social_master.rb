@@ -24,9 +24,9 @@ module PlayerTurn
       end
 
       def parse_output(parsed)
-        return Result.empty unless parsed.is_a?(Hash)
+        return Extraction.empty unless parsed.is_a?(Hash)
 
-        Result.new(
+        Extraction.new(
           npcs: Array(parsed["npcs"]).select { |n| n.is_a?(Hash) && n["name"].to_s.strip.present? },
           reasoning: parsed["reasoning"].is_a?(String) ? parsed["reasoning"] : nil,
         )

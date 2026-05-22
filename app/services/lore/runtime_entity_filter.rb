@@ -5,17 +5,17 @@ module Lore
     def self.filter_npcs(adventure:, raw_npcs:)
       return [] if raw_npcs.empty?
 
-      existing = AdventureNpc.for_adventure(adventure)
-                   .pluck(:name).map { |n| normalize(n) }.to_set
-      dedup_by_name(raw_npcs.reject { |n| existing.include?(normalize(n["name"])) })
+      names_of_all_existing_adventure_npcs = AdventureNpc.for_adventure(adventure)
+                                             .pluck(:name).map { |n| normalize(n) }.to_set
+      dedup_by_name(raw_npcs.reject { |n| names_of_all_existing_adventure_npcs.include?(normalize(n["name"])) })
     end
 
     def self.filter_locations(adventure:, raw_locations:)
       return [] if raw_locations.empty?
 
-      existing = AdventureLocation.for_adventure(adventure)
-                   .pluck(:name).map { |n| normalize(n) }.to_set
-      dedup_by_name(raw_locations.reject { |l| existing.include?(normalize(l["name"])) })
+      names_of_all_existing_adventure_locations = AdventureLocation.for_adventure(adventure)
+                                                    .pluck(:name).map { |n| normalize(n) }.to_set
+      dedup_by_name(raw_locations.reject { |l| names_of_all_existing_adventure_locations.include?(normalize(l["name"])) })
     end
 
     def self.dedup_by_name(entries)
