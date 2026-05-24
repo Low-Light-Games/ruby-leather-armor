@@ -18,13 +18,13 @@ module PlayerTurn
         prompt_summary = "OocResponder: \"#{@log.truncate(clean_input)}\""
         request_body = { system_prompt: system_prompt, user_message: clean_input }
 
-        raw, _parsed = timed_ai_call("ooc_responder", prompt_summary, request_body) do
+        parsed = timed_ai_call("ooc_responder", prompt_summary, request_body) do
           raw = @ai.chat(system_prompt: system_prompt, user_message: clean_input,
                           step_name: "ooc_responder", model: @config.model_for("ooc_responder"),
                           reasoning_effort: @config.reasoning_effort_for("ooc_responder"))
           [raw, { "response" => raw }]
         end
-        raw
+        parsed["response"]
       end
 
       def render_ooc_context
