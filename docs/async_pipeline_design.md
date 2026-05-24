@@ -40,7 +40,7 @@ sequenceDiagram
 
 - **Puma** returns **quickly** (`202`); it does **not** run the full pipeline.
 - **Sidekiq** runs [`PipelineJob`](app/jobs/pipeline_job.rb) and executes [`PlayerTurn::Service#execute_*`](app/services/player_turn/service.rb), which now delegates execution to `PlayerTurn::EntryServices`.
-- **Parallel LLM calls** for the sanity gate, the output phase (Narrate + ContextUpdate + Loremaster), and World Turn NPC actions go through the **Node evaluator** ([`evaluator/`](evaluator/)) via **`POST /fan_out`**, not Ruby threads. The evaluation step itself (RollRequest / CombatRollRequest) is a single AI call hit directly by Rails — no fan-out involved.
+- **Parallel LLM calls** for the sanity gate, the narrative fan-out (Narrate + CombatContextUpdate), the async masters fan-out (Loremaster + SocialMaster + Geomaster), and World Turn NPC actions go through the **Node evaluator** ([`evaluator/`](evaluator/)) via **`POST /fan_out`**, not Ruby threads. The masters fan-out runs in a separate Sidekiq job (`GameMasterLoremasterJob`) after Narrate finishes, so the player gets the textbox back immediately. The evaluation step itself (RollRequest / CombatRollRequest) is a single AI call hit directly by Rails — no fan-out involved.
 - **Application policy:** no manual **`Thread.new`** (or ad-hoc thread pools) under [`app/`](app/) for concurrency — use Sidekiq, Node fan-out, or sequential calls. CI enforces this.
 
 ---
@@ -108,8 +108,6 @@ The frontend patches the thinking sentinel when it receives `pipeline_progress`.
 |--------------------|----------------------------|
 | RollRequest / CombatRollRequest | "Reading the situation..." |
 | Narrate            | "Writing the story..."     |
-| ContextUpdate      | "Remembering the world..." |
-| Loremaster         | "Cataloguing what just happened..." |
 
 Steps that do not call `broadcast_progress` are silent for progress purposes.
 

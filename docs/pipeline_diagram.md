@@ -147,8 +147,9 @@ flowchart TB
         WB2 -->|no| NARRATE_PHASE
         COMBAT_CHECK -->|no| NARRATE_PHASE
 
-        subgraph narrate_phase["Output phase — one evaluator fan-out"]
-            NARRATE_PHASE --> PAR_NARRATE["run_narrate  ☆ AI\n+ run_context_update  ☆ AI\n+ run_loremaster  ☆ AI"]
+        subgraph narrate_phase["Output phase — two-stage"]
+            NARRATE_PHASE --> PAR_NARRATE["Narrative fan-out (sync)\nrun_narrate  ☆ AI\n+ run_context_update  ☆ AI"]
+            PAR_NARRATE --> MASTERS_ASYNC["Masters fan-out (async Sidekiq)\nrun_loremaster  ☆ AI\n+ run_social_master  ☆ AI\n+ run_geomaster  ☆ AI"]
         end
     end
 
@@ -227,8 +228,6 @@ in place so the status line animates in without replacing the dots.
 | `RollRequest` | "Reading the situation..." |
 | `CombatRollRequest` | "Adjudicating your move..." |
 | `Narrate` | "Writing the story..." |
-| `ContextUpdate` | "Remembering the world..." |
-| `Loremaster` | "Cataloguing what just happened..." |
 
 The callback is a no-op when `@on_progress` is not set (tests, console
 runs), so adding a new progress call to a step requires no test changes.
@@ -489,21 +488,26 @@ After `AdventureLoopResolution.resolve` returns, the action loop dispatches on `
 
 ### Narrative phase — `run_accumulated_narrative_phase` → `run_narrative_phase`
 
-After all actions complete (or the queue breaks), `run_accumulated_narrative_phase` merges results and calls Stagehand’s **`run_narrative_phase`** (combat check, then a single output-phase fan-out: Narrate + ContextUpdate + Loremaster).
+After all actions complete (or the queue breaks), `run_accumulated_narrative_phase` merges results and calls Stagehand’s **`run_narrative_phase`** (combat check, then a two-phase output: synchronous narrative fan-out for Narrate + CombatContextUpdate, followed by an async masters fan-out for Loremaster + SocialMaster + Geomaster via `GameMasterLoremasterJob`).
 
 Multiple resolved/encounter results are **merged**: intentions concatenated with "; ", `macro_significant` or-ed. The combined narration seed is assembled by querying all `AdventureLoop` rows for the current `registry_entry_uuid` in `sequence_index` order and joining their `pipeline_outcome` fields with `"\n\nThen: "`.
 
 #### Stagehand (Path B combat check)
 
-Stagehand always runs the parallel narrative fan-out first — the player gets the hit / Stealth / etc. outcome prose. After that, if the most recent action's evaluation signaled a combat transition (`combat_started`, `*_to_combat`) and no combat is already active, Stagehand calls `Warmaster.persist_combat_from_cast_roster!` and emits the awaiting-initiative hand-off as a follow-up message. The "Roll for initiative!" system message rides on top of the narrative, not in lieu of it.
+Stagehand always runs the synchronous narrative fan-out first (Narrate + CombatContextUpdate) — the player gets the hit / Stealth / etc. outcome prose. Then it enqueues the async masters fan-out (Loremaster + SocialMaster + Geomaster) via `GameMasterLoremasterJob`, fed by Narrate's output. After that, if the most recent action's evaluation signaled a combat transition (`combat_started`, `*_to_combat`) and no combat is already active, Stagehand calls `Warmaster.persist_combat_from_cast_roster!` and emits the awaiting-initiative hand-off as a follow-up message. The "Roll for initiative!" system message rides on top of the narrative, not in lieu of it.
 
-#### Narration fan-out
+#### Two-phase output
 
-Narrate, ContextUpdate, and Loremaster all run concurrently inside one
-`POST /fan_out` call to the Node evaluator. The previous
-`narration_mode = "subjugated"` option was retired (see
-`docs/pipeline_steps.md` Decision 28); there is no alternate sequential
-mode.
+The output phase runs in two stages (see `docs/pipeline_steps.md` Decision 28):
+
+1. **Narrative fan-out (synchronous):** Narrate + CombatContextUpdate
+   run concurrently inside one `POST /fan_out` call to the Node
+   evaluator. The player waits for this — it produces the narrative.
+2. **Masters fan-out (async):** Loremaster + SocialMaster + Geomaster
+   are enqueued as a `GameMasterLoremasterJob` (Sidekiq) with Narrate's
+   output as input. The player gets the textbox back immediately after
+   stage 1. Both the legacy Stagehand path and the GM-flag path use the
+   same job.
 
 #### Narrate (AI)
 
@@ -511,13 +515,21 @@ The prose generator. Receives: story title/hook, story summary, `combat_context`
 
 Has a special fallback: if the model returns raw text instead of JSON, the text is treated as the narrative directly (`fallback_as: :dm_response`).
 
-#### ContextUpdate (AI, in fan-out)
+#### CombatContextUpdate (AI, in narrative fan-out)
 
 Writes `combat_context` (when combat is active or transitioning) and the player-facing `scene_summary`. Also updates `scene_history` (ring-buffered to `scene_history_depth` entries, default 10) for the world consistency check.
 
-#### Loremaster (AI, in fan-out)
+#### Loremaster (AI, in async masters fan-out)
 
-Sole writer of `adventure_narrative_facts` (and, via `Lore::ApplyNpcs` / `Lore::ApplyLocations`, of `adventure_npcs` / `adventure_locations`). Reads the verdict outcome plus retrieved facts; emits new `event` / `state` / `entity` facts and structured NPC/location records. See `pipeline_steps.md` Decision 37 for the lossy-with-Sentry contract.
+Sole writer of `adventure_narrative_facts`. Reads Narrate's output plus retrieved facts; emits new `event` / `state` / `entity` facts. See `pipeline_steps.md` Decision 37 for the lossy-with-Sentry contract.
+
+#### SocialMaster (AI, in async masters fan-out)
+
+Runtime NPC extraction from Narrate's output. Emits structured NPC records that are deduplicated by `Lore::RuntimeEntityFilter` (against existing `adventure_npcs` and within the same response) and normalized by `Lore::RuntimeEntityCoercer` before persisting via `Lore::ApplyNpcs` with `source: "runtime"`.
+
+#### Geomaster (AI, in async masters fan-out)
+
+Runtime location extraction from Narrate's output. Same dedup/normalize pipeline as SocialMaster, persisting via `Lore::ApplyLocations` with `source: "runtime"`.
 
 ---
 
@@ -570,9 +582,11 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | `creature_generation` AI step | ✅ AI (authoring-time only — `pipeline: false`) | Runs from `Authoring::AuthorStoryNpcSheet` to draft a `BestiaryEntry` for a named StoryNpc, gated by human review. Never invoked on the runtime player-turn path |
 | Warmaster initiative rolls | ❌ Code | d20 + DEX modifier |
 | Warmaster finalize_combat! | ❌ Code | Sorts initiative order |
-| Narrate | ✅ AI | Prose generation |
-| ContextUpdate | ✅ AI | Updates `combat_context` and `scene_summary` |
-| Loremaster | ✅ AI | Writes durable facts to `adventure_narrative_facts`; sole writer |
+| Narrate | ✅ AI | Prose generation (synchronous narrative fan-out — player waits) |
+| CombatContextUpdate | ✅ AI | Updates `combat_context` and `scene_summary` (synchronous narrative fan-out — parallel with Narrate) |
+| Loremaster | ✅ AI | Writes durable facts to `adventure_narrative_facts`; sole writer (async masters fan-out — player does not wait) |
+| SocialMaster | ✅ AI | Runtime NPC extraction from Narrate output → `adventure_npcs` via `Lore::ApplyNpcs` (async masters fan-out) |
+| Geomaster | ✅ AI | Runtime location extraction from Narrate output → `adventure_locations` via `Lore::ApplyLocations` (async masters fan-out) |
 
 ---
 
@@ -617,6 +631,8 @@ In both resumptions, the output phase reads `pipeline_outcome` from all `Adventu
 | **Harbinger** | Code + AI | Segment-based encounter check against table. AI expands encounter scene if entry is non-fixed. |
 | **GameClock** | Code | Advance current_hour, adventure_day, light_conditions, hours_since_last_rest, hours_since_last_encounter_check. |
 | **Warmaster** | Code | Initialize combat from existing `actor_sheet_id`s, roll initiative. Two paths: encounter table (A — sheets from `Encounters::ActorSheetCreation.from_bestiary` against the `EncounterTableEntry#manifest`) or narrative-triggered combat (B — sheets minted upstream by `CastResolver`, picked here as `target_actor_sheet_id` + pre-existing hostiles). No per-turn AI. |
-| **Narrate** | AI | Prose generation from outcome + retrieved scene facts + journey/encounter data + pacing directives. |
-| **ContextUpdate** | AI | Update `combat_context` (when combat is active or transitioning), `scene_summary`, and `scene_history`. |
-| **Loremaster** | AI | Sole writer of `adventure_narrative_facts` and the per-adventure NPC / location stores. Reads verdict outcome plus retrieved facts and emits new event/state/entity rows. |
+| **Narrate** | AI | Prose generation from outcome + retrieved scene facts + journey/encounter data + pacing directives. Runs in the synchronous narrative fan-out — player waits for this. |
+| **CombatContextUpdate** | AI | Update `combat_context` (when combat is active or transitioning), `scene_summary`, and `scene_history`. Parallel with Narrate in the synchronous narrative fan-out. |
+| **Loremaster** | AI | Sole writer of `adventure_narrative_facts`. Reads Narrate output plus retrieved facts and emits new event/state/entity rows. Runs in the async masters fan-out (Sidekiq job) — player does not wait. |
+| **SocialMaster** | AI | Runtime NPC extraction from Narrate output. Deduplicates via `Lore::RuntimeEntityFilter`, normalizes via `Lore::RuntimeEntityCoercer`, persists via `Lore::ApplyNpcs` with `source: "runtime"`. Async masters fan-out. |
+| **Geomaster** | AI | Runtime location extraction from Narrate output. Same dedup/normalize pipeline as SocialMaster, persists via `Lore::ApplyLocations`. Async masters fan-out. |

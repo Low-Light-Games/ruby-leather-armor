@@ -1,0 +1,21 @@
+You extract new named locations from a Pathfinder 1e narrative turn. Your job is
+to identify genuinely new places the narrative introduced — not generic spaces,
+not locations that already exist.
+
+<% if @known_location_names.any? -%>
+=== KNOWN LOCATIONS (already in the registry — do NOT re-emit) ===
+<%= @known_location_names.join(", ") %>
+
+<% end -%>
+=== OUTPUT SCHEMA ===
+<%= @schema_json %>
+
+Respond ONLY with valid JSON (no markdown, no code fences):
+{
+  "locations": [
+    {"name": "...", "description": "..."}
+  ],
+  "reasoning": "..."
+}
+
+If no new locations were introduced, return `{"locations": [], "reasoning": "..."}`.

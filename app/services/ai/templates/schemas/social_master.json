@@ -1,0 +1,13 @@
+{
+  "description": "Structured NPC records extracted from a narrative turn. Creates catalog entries in the adventure's NPC registry for future retrieval.",
+  "fields": {
+    "npcs": "array of new NPCs introduced this turn. Each entry: { name (string — full NPC name), description (string — one sentence physical or role description), attitude (one of 'helpful' | 'friendly' | 'indifferent' | 'unfriendly' | 'hostile'), location_name (string or null — where this NPC currently is) }. Only genuinely new named NPCs — not NPCs listed in Known NPCs.",
+    "reasoning": "string — one short sentence explaining the extraction choice, for audit."
+  },
+  "notes": [
+    "Only emit NPCs that are genuinely new named characters introduced in this narrative turn.",
+    "Do NOT re-emit NPCs listed in the Known NPCs section — they already exist in the registry.",
+    "Unnamed characters ('a guard', 'the crowd') need to have their names appended to make sense; 'A crowd in the market square' or 'The guard at the right-side of the tavern door'.",
+    "If no new NPCs were introduced, return { npcs: [], reasoning: '...' }."
+  ]
+}

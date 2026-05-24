@@ -119,10 +119,13 @@ receive a precomputed snapshot — they retrieve relevant rows on demand:
 - **`adventure_npcs`** — per-adventure NPCs (`name`, `role`, `attitude`,
   `description`, `location_id`, embedding). Retrieved by similarity
   against the current intent. Sole writer: `Lore::ApplyNpcs` (called
-  from Loremaster).
+  from SocialMaster at runtime, and from `Lore::ExtractFromPremise` at
+  seed time).
 - **`adventure_locations`** — per-adventure locations (`name`,
   `description`, deterministic `(x, y)` placement, embedding). Retrieved
-  by similarity. Sole writer: `Lore::ApplyLocations`.
+  by similarity. Sole writer: `Lore::ApplyLocations` (called from
+  Geomaster at runtime, and from `Lore::ExtractFromPremise` at seed
+  time).
 - **`adventure_narrative_facts`** — durable facts (events, states,
   entities), each with `source` (`seed`, `loremaster`, …),
   `introduced_at_loop_id`, and `invalidated_by_fact_id` for state
@@ -442,28 +445,28 @@ Admins have full visibility through `AiLog` records and the admin UI.
 
 ### 16. Context update resilience (errors swallowed)
 
-**Decision:** ContextUpdate (combat-only) and Loremaster's apply phase
-rescue all errors and return empty hashes instead of failing the pipeline.
+**Decision:** CombatContextUpdate (in the synchronous narrative fan-out)
+and the async masters (Loremaster, SocialMaster, Geomaster) rescue all
+errors and report them without failing the pipeline or the background
+job.
 
 **Why:** these writes are important but not critical to the current
-turn. If ContextUpdate fails:
-- The player still sees their narrative (Narrate runs in parallel)
-- The next turn reads a slightly stale combat snapshot, which is
-  recoverable on the next successful update
+turn. If CombatContextUpdate fails, the player still sees their
+narrative; the next turn reads a slightly stale combat snapshot. The
+masters run in a background Sidekiq job after the narrative is already
+delivered, so failures there are invisible to the player by design.
 
-Failing the entire turn because a write errored would be disproportionate
-— the player would see an error message for a turn that was otherwise
-fully resolved and narrated. Errors are reported through
-`@log.report_error` (Sentry) so they remain visible even though the
-turn succeeds; see §37 for the lossy-with-Sentry contract Loremaster
-follows.
+Errors are reported through `@log.report_error` (Sentry) so they
+remain visible; see §37 for the lossy-with-Sentry contract Loremaster
+follows. SocialMaster and Geomaster follow the same contract via
+`handle_runtime_entity_failure`.
 
 ### 17. Parallel execution of independent steps
 
-**Decision:** several step pairs run concurrently in Ruby threads:
+**Decision:** several step groups run concurrently:
 - SanityChecker (capability check + world consistency check) — 2 parallel threads on the mechanics path
-- Narrate + ContextUpdate (the output phase, in parallel mode)
-- Micro Context Update + Macro Narrative Update (within context updates)
+- Narrate + CombatContextUpdate — the narrative fan-out (Node `/fan_out`)
+- Loremaster + SocialMaster + Geomaster — the masters fan-out (async Sidekiq job, runs after Narrate)
 
 **Why:** these pairs write to different data and have no dependencies on
 each other's outputs. Running them in parallel saves one or more full AI
@@ -488,9 +491,9 @@ that another step already owns.
 |---|---|---|
 | `adventures.combat_context` | `Steps::CombatContextUpdate` | Live combat state. Warmaster emits a deterministic hash that CombatContextUpdate writes verbatim via a `combat_initialization` mutation. |
 | `adventures.time_context` | `Adventures::GameClock` | Code-only clock advancement; no AI call. |
-| `adventure_narrative_facts` | `Steps::Loremaster` (via `Lore::ApplyResults`) | Durable facts, both seed (`Lore::ExtractFromPremise` at story save) and per-turn (Loremaster in the output fan-out). Both call `Lore::ApplyResults`, which is the actual single insert seam. |
-| `adventure_npcs` | `Lore::ApplyNpcs` | NPC creation and updates flow through Loremaster's NPC mutations only. |
-| `adventure_locations` | `Lore::ApplyLocations` | Location creation and `(x, y)` placement via deterministic Vogel-spiral seeding (`Maps::PlaceLocations`). |
+| `adventure_narrative_facts` | `Steps::Loremaster` (via `Lore::ApplyResults`) | Durable facts, both seed (`Lore::ExtractFromPremise` at story save) and per-turn (Loremaster in the async masters fan-out). Both call `Lore::ApplyResults`, which is the actual single insert seam. |
+| `adventure_npcs` | `Lore::ApplyNpcs` | Runtime NPC creation from SocialMaster (async masters fan-out); seed-time creation from `Lore::ExtractFromPremise`. Runtime entries deduplicated by `Lore::RuntimeEntityFilter` and normalized by `Lore::RuntimeEntityCoercer`. |
+| `adventure_locations` | `Lore::ApplyLocations` | Runtime location creation from Geomaster (async masters fan-out); seed-time creation from `Lore::ExtractFromPremise`. `(x, y)` placement via `Maps::PlaceLocations`. Runtime entries deduplicated and normalized same as NPCs. |
 
 **Why the principle exists:** before the principle was enforced, multiple
 steps wrote to the same JSONB blob with different assumptions about what
@@ -766,8 +769,11 @@ effectively decomposed for budget models.
 ### 27. Stagehand as code-only synthesis step
 
 **Decision:** make the Stagehand step a pure code step with no AI call.
-It sits between Mechanic and the output phase (Narrate + ContextUpdate
-+ Loremaster), packaging the verdict and dispatching the output fan-out.
+It sits between Mechanic and the output phase, packaging the verdict and
+dispatching two fan-outs: (1) Narrate + CombatContextUpdate
+(synchronous — player waits for the narrative), then (2) the masters
+fan-out (Loremaster + SocialMaster + Geomaster) enqueued as an async
+Sidekiq job so the player gets the textbox back immediately.
 
 **Why:** the original step was an AI call that duplicated work already
 done by the Mechanic step. Both received roll results and produced
@@ -776,20 +782,25 @@ outcomes — the only difference was one was "factual" and one was
 making Stagehand a code-only routing layer, we eliminate the redundancy
 and guarantee consistency.
 
-### 28. Narration runs the output phase in parallel
+### 28. Two-phase output: narrative fan-out then async masters
 
-**Decision:** Narrate, ContextUpdate (combat-only), and Loremaster all
-run concurrently inside one evaluator fan-out (Node `Promise.all`). The
-fan-out shape is fixed; there is no serial alternative.
+**Decision:** the output phase runs in two stages:
 
-**Why:** the three writers are independent — Narrate consumes the
-verdict outcome, ContextUpdate consumes the combat mutations, and
-Loremaster consumes the verdict outcome plus retrieved facts. Running
-them in parallel saves two full LLM round-trips of latency on the
-critical path. The single-mode approach also removes a historical
-"subjugated" toggle that no user flipped, and it lets Loremaster's
-zero-latency placement (Decision 37) rely on the fan-out
-unconditionally.
+1. **Narrative fan-out (synchronous):** Narrate + CombatContextUpdate
+   (combat-only) run concurrently via one Node `/fan_out` call. The
+   player waits for this to finish — it produces the narrative prose.
+2. **Masters fan-out (async):** Loremaster + SocialMaster + Geomaster
+   are enqueued as a background Sidekiq job
+   (`GameMasterLoremasterJob`) with Narrate's output as input. The
+   player gets the textbox back immediately after stage 1; the masters
+   extract facts, NPCs, and locations in the background.
+
+**Why:** the masters extract from what Narrate *wrote* — they need the
+authoritative narrative, not the pre-Narrate seed. Running them after
+Narrate ensures consistency. Making them async means the player doesn't
+wait for extraction work that has no visible effect on the current turn.
+Both the legacy Stagehand path and the GM-flag path now converge on the
+same `GameMasterLoremasterJob`, eliminating the previous asymmetry.
 
 ### 29. Context updates receive factual outcomes, not narrative
 
@@ -970,9 +981,12 @@ retrieval that feeds Narrate) query this table by cosine similarity
 against the player's intent or the verdict outcome. The sole writer is
 the **Loremaster** AI step.
 
-**Placement.** Loremaster runs in the output-phase fan-out alongside
-Narrate and ContextUpdate. The LLM call fits inside the Narrate latency
-window — it does not add a sequential step to the critical path.
+**Placement.** Loremaster runs in the async masters fan-out alongside
+SocialMaster and Geomaster, after Narrate has finished (see Decision 28).
+The masters fan-out is enqueued as a background Sidekiq job
+(`GameMasterLoremasterJob`) so it does not add latency to the player's
+critical path. Both the legacy Stagehand path and the GM-flag path use
+the same job.
 
 **Seed path — story authoring.** Seed facts are produced once at story
 save time, not at adventure creation. `Lore::ExtractFromPremise` reads
@@ -1027,10 +1041,10 @@ as triple-the-call-volume for negligible gain.
   `replacement_source_idx`. Rails dereferences that into
   `invalidated_by_fact_id` at apply time.
 - `entity` — an NPC, object, or location the narrative introduced ("the
-  innkeeper is named Gerta"). Entity facts are paired with
-  `Lore::ApplyNpcs` / `Lore::ApplyLocations` writes when the AI also
-  emits structured NPC or location records (see §2 for the per-store
-  ownership table).
+  innkeeper is named Gerta"). Structured NPC and location records are
+  extracted by dedicated specialist steps — SocialMaster for NPCs and
+  Geomaster for locations — running in parallel with Loremaster in the
+  async masters fan-out (see §2 for the per-store ownership table).
 
 ---
 
@@ -1059,8 +1073,10 @@ For flow and behavioral detail see [pipeline_diagram.md](pipeline_diagram.md). S
 | -- | **GameClock** (utility) | Code-only | `app/services/adventures/game_clock.rb` |
 | 6 | **Stagehand** | Code-only | `app/services/player_turn/steps/stagehand.rb` |
 | 7 | **Narrate** | AI | `app/services/player_turn/steps/narrate.rb` |
-| 8a | **CombatContextUpdate** (combat-only) | AI (parallel with 7/8b) | `app/services/player_turn/steps/combat_context_update.rb` |
-| 8b | **Loremaster** | AI (parallel with 7/8a in the output-phase fan-out) — sole writer of `adventure_narrative_facts` (see Decision 37) | `app/services/player_turn/steps/loremaster.rb`, `app/services/lore/apply_results.rb`, `app/services/lore/extract_from_premise.rb`, `app/services/lore/facts_lookup.rb` |
+| 7a | **CombatContextUpdate** (combat-only) | AI (parallel with 7 in the narrative fan-out) | `app/services/player_turn/steps/combat_context_update.rb` |
+| 8a | **Loremaster** | AI (async masters fan-out — parallel with 8b/8c, after Narrate) — sole writer of `adventure_narrative_facts` (see Decision 37) | `app/services/player_turn/steps/loremaster.rb`, `app/services/lore/apply_results.rb`, `app/services/lore/extract_from_premise.rb`, `app/services/lore/facts_lookup.rb` |
+| 8b | **SocialMaster** | AI (async masters fan-out — parallel with 8a/8c, after Narrate) — runtime NPC extraction from Narrate output | `app/services/player_turn/steps/social_master.rb`, `app/services/lore/apply_npcs.rb`, `app/services/lore/runtime_entity_filter.rb`, `app/services/lore/runtime_entity_coercer.rb` |
+| 8c | **Geomaster** | AI (async masters fan-out — parallel with 8a/8b, after Narrate) — runtime location extraction from Narrate output | `app/services/player_turn/steps/geomaster.rb`, `app/services/lore/apply_locations.rb`, `app/services/lore/runtime_entity_filter.rb`, `app/services/lore/runtime_entity_coercer.rb` |
 | -- | **Mutations** | App-side | `app/services/player_turn/mutations.rb` |
 
 **Action queue narrative delivery modes:** when `action_queue` is not `false`, the Sequencer splits input into multiple actions. There are two progressive modes:
@@ -1084,7 +1100,8 @@ Interrupted queues (encounter, social scene, roll request) fall back to the accu
 | TimeKeeper (journey / combat / rest / take_20) | ❌ Code | Deterministic formulas |
 | TimeKeeper (fallback freeform estimate) | ✅ AI | Used only when no code rule applies |
 | Harbinger / GameClock / Warmaster turn ordering | ❌ Code | Encounter math, clock math, and deterministic combat state transitions |
-| Narrate / ContextUpdate / Loremaster | ✅ AI | Prose, combat-context writing, and durable-fact extraction; all run in one output-phase fan-out |
+| Narrate + CombatContextUpdate | ✅ AI | Prose + combat-context writing; run in the synchronous narrative fan-out. Player waits for this. |
+| Loremaster + SocialMaster + Geomaster | ✅ AI | Durable-fact extraction, runtime NPC extraction, runtime location extraction; run in the async masters fan-out (Sidekiq job) after Narrate finishes. Player does not wait. |
 
 ### 5. World Turn after player resolution in active combat
 
@@ -1136,9 +1153,10 @@ All AI steps follow the same error handling pattern:
 
 3. **Node `/fan_out` resilience**: Node returns 5xx with `{ error, partial_results }` on any fan-out failure (used by Stagehand, the sanity gate, ContextUpdate). Rails persists logs for completed calls from `partial_results` before raising `AiError`. All-or-nothing per phase — partial data is never used to proceed.
 
-4. **Context update resilience**: Steps 8a and 8b rescue all errors and
-   return empty hashes rather than failing the pipeline. A failed context
-   update degrades future prompts but doesn't break the current turn.
+4. **Context update resilience**: CombatContextUpdate (step 7a) rescues
+   all errors and returns an empty hash. The async masters (steps 8a–8c)
+   run in a background Sidekiq job; failures are reported via Sentry but
+   do not affect the player's current turn.
 
 5. **SanityChecker resilience**: both capability check and world consistency
    check fail open on errors, preventing validation system failures
@@ -1156,7 +1174,7 @@ Every AI call produces an `AiLog` record containing:
 
 | Field | Description |
 |---|---|
-| `step` | Pipeline step name (intake, sequencer, roll_request, combat_roll_request, sanity_checker, sanity_checker_world, mechanic, combat_gm, time_keeper, narrate, context_update, loremaster, npc_action). Historical step names (momentum, social_expansion, chronicler, micro_context_update, macro_narrative_update, enricher, embellisher, combat_narrator) still appear in older `AiLog` rows. |
+| `step` | Pipeline step name (intake, sequencer, roll_request, combat_roll_request, sanity_checker, sanity_checker_world, mechanic, combat_gm, time_keeper, narrate, context_update, loremaster, social_master, geomaster, npc_action). Historical step names (momentum, social_expansion, chronicler, micro_context_update, macro_narrative_update, enricher, embellisher, combat_narrator) still appear in older `AiLog` rows. |
 | `prompt_summary` | Truncated description of what was asked |
 | `raw_response` | The complete API response |
 | `parsed_response` | The parsed JSON |
@@ -1233,7 +1251,7 @@ See `app/services/encounters/cast_resolver.rb`, `app/services/encounters/actor_s
 
 AI steps are split into two strict tiers, marked by `Ai::StepRegistry`'s `pipeline:` flag and mirrored in the folder structure:
 
-- **`pipeline: true`** — runs during a player turn, on every adventure, against the `AdventureLoop`. Lives under `app/services/player_turn/steps/` (and `app/services/encounters/cast_resolver.rb` for the new top-of-turn step). Examples: `intake`, `sequencer`, `cast_resolver`, `roll_request`, `mechanic`, `combat_gm`, `narrate`, `loremaster`, `time_keeper`, `context_update`.
+- **`pipeline: true`** — runs during a player turn, on every adventure, against the `AdventureLoop`. Lives under `app/services/player_turn/steps/` (and `app/services/encounters/cast_resolver.rb` for the new top-of-turn step). Examples: `intake`, `sequencer`, `cast_resolver`, `roll_request`, `mechanic`, `combat_gm`, `narrate`, `loremaster`, `social_master`, `geomaster`, `time_keeper`, `context_update`.
 - **`pipeline: false`** — runs at story-save / authoring time, never during a player turn. Lives under `app/services/authoring/`. Examples: `creature_generation` (mints a `BestiaryEntry`'s stat block for a named StoryNpc, behind `Authoring::AuthorStoryNpcSheet`), `extract_from_premise`, `generate_opening_message`, `embedding`, `encounter_expand`.
 
 Why two tiers? Authoring AI is run by humans on-demand and reviewed before a story ships. Runtime AI runs automatically on every player turn and pays a real per-turn cost. The split keeps them from leaking into each other: a runtime caller can't accidentally trigger `creature_generation` (which would add a per-turn AI bill plus an unsigned stat block), and an authoring tool can't accidentally piggyback on the runtime registry's per-step model defaults. The folder name and the registry flag are redundant on purpose — they catch each other in code review.

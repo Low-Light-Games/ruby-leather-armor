@@ -68,9 +68,17 @@ module Ai
                             'for combat rolls. Combat math resolves post-call from the sheet ' \
                             'via CombatMechanicResolution.'
 
-      LOREMASTER = 'Mid-tier model. Structured fact extraction from factual outcomes — ' \
-                   'e.g. gpt-4o-mini, gpt-4.1-mini, gpt-5-nano. Runs in parallel with ' \
-                   'Narrate/ContextUpdate, so latency is Narrate-bounded.'
+      LOREMASTER = 'Mid-tier model. Structured fact extraction from Narrate output — ' \
+                   'e.g. gpt-4o-mini, gpt-4.1-mini, gpt-5-nano. Runs after Narrate, ' \
+                   'in parallel with SocialMaster/Geomaster (masters fan-out).'
+
+      SOCIAL_MASTER = 'Cheapest model. Runtime NPC extraction from Narrate output — ' \
+                      'e.g. gpt-5-nano, gpt-4o-mini. Runs after Narrate, in parallel ' \
+                      'with Loremaster/Geomaster (masters fan-out).'
+
+      GEOMASTER = 'Cheapest model. Runtime location extraction from Narrate output — ' \
+                  'e.g. gpt-5-nano, gpt-4o-mini. Runs after Narrate, in parallel ' \
+                  'with Loremaster/SocialMaster (masters fan-out).'
 
       COMBAT_BOOKEND = 'Creative model. Short epilogue (2-4 sentences) summarising a combat ' \
                        'conclusion (victory or death). Called once at combat end, not part of ' \

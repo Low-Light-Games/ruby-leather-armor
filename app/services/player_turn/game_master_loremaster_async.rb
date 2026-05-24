@@ -5,38 +5,49 @@ module PlayerTurn
     include Steps::EvaluatorTransport
     include Steps::Stagehand
 
-    def self.call(adventure:, config:, ai:, log:, narrative:, loop: nil)
+    def self.call(adventure:, config:, ai:, log:, narrative:, loop: nil, mutations: {})
       new(
         adventure: adventure,
         config: config,
         ai: ai,
         log: log,
         narrative: narrative,
-        loop: loop
+        loop: loop,
+        mutations: mutations
       ).call
     end
 
-    def initialize(adventure:, config:, ai:, log:, narrative:, loop:)
+    def initialize(adventure:, config:, ai:, log:, narrative:, loop:, mutations: {})
       @adventure = adventure
       @config = config
       @ai = ai
       @log = log
       @narrative = narrative
       @loop = loop
+      @mutations = mutations
     end
 
     def call
       return if @narrative.blank?
 
-      inputs = Steps::LoremasterInputs.new(
+      loremaster_inputs    = Steps::Loremaster::Inputs.new(
         what_happened: @narrative.to_s,
-        mutations: {},
-        active_facts: active_facts_window
+        mutations: (@mutations || {}).deep_stringify_keys,
+        active_facts: active_facts_window,
       )
+      social_master_inputs = build_social_master_inputs(@narrative)
+      geomaster_inputs     = build_geomaster_inputs(@narrative)
 
-      prompts = [Steps::Loremaster.turn_evaluator_prompt(inputs: inputs, config: @config)]
+      prompts = [
+        Steps::Loremaster.turn_evaluator_prompt(inputs: loremaster_inputs, config: @config),
+        Steps::SocialMaster.turn_evaluator_prompt(inputs: social_master_inputs, config: @config),
+        Steps::Geomaster.turn_evaluator_prompt(inputs: geomaster_inputs, config: @config),
+      ]
       by_step = evaluator_fan_out!(prompts, @narrative, phase: "game_master_loremaster")
+
       apply_loremaster_from_fan_out!(by_step)
+      apply_social_master_from_fan_out!(by_step)
+      apply_geomaster_from_fan_out!(by_step)
     end
   end
 end

@@ -30,32 +30,41 @@ module PlayerTurn
       def run_parallel_narrative(intent, narration_context:, mutations:)
         seed = narration_context.combined_seed
 
-        loremaster_inputs = build_loremaster_inputs(seed, mutations)
-
         scene_facts   = retrieve_scene_facts_for_narrate(intent)
         outcome_facts = retrieve_outcome_facts_for_narrate(seed)
 
         include_ai_combat_context = combat_active?
 
-        prompts = [
+        narrate_prompts = [
           narrate_evaluator_prompt(narration_context, scene_facts: scene_facts, outcome_facts: outcome_facts),
-          loremaster_evaluator_prompt(loremaster_inputs),
         ]
-        prompts << combat_context_evaluator_prompt(seed, mutations) if include_ai_combat_context
+        narrate_prompts << combat_context_evaluator_prompt(seed, mutations) if include_ai_combat_context
 
         broadcast_progress("Writing the story...")
-        by_step = evaluator_fan_out!(prompts, seed, phase: "narrative_phase")
+        narrate_by_step = evaluator_fan_out!(narrate_prompts, seed, phase: "narrative_phase")
 
-        persist_narrative_phase_combat_context(by_step, mutations, ai_delta_included: include_ai_combat_context, phase: "narrative_phase")
+        persist_narrative_phase_combat_context(narrate_by_step, mutations, ai_delta_included: include_ai_combat_context, phase: "narrative_phase")
 
-        broadcast_progress("Remembering the world...")
-        apply_loremaster_from_fan_out!(by_step)
+        narration = narrative_from_evaluator_result(evaluator_fan_out_result!(narrate_by_step, "narrate", "narrative_phase"))
 
-        narrative_from_evaluator_result(evaluator_fan_out_result!(by_step, "narrate", "narrative_phase"))
+        enqueue_masters_async(narration[:narrative].to_s, mutations)
+
+        narration
+      end
+
+      def enqueue_masters_async(narrative_text, mutations)
+        GameMasterLoremasterJob.perform_later(
+          @adventure.id,
+          narrative_text,
+          registry_entry_uuid: @log.registry_entry_uuid,
+          adventure_loop_id:   @loop&.id,
+          user_id:             @user&.id,
+          mutations:           (mutations || {}).deep_stringify_keys,
+        )
       end
 
       def build_loremaster_inputs(what_happened, mutations)
-        Steps::LoremasterInputs.new(
+        Steps::Loremaster::Inputs.new(
           what_happened: what_happened.to_s,
           mutations: (mutations || {}).deep_stringify_keys,
           active_facts: active_facts_window,
@@ -84,6 +93,28 @@ module PlayerTurn
         Steps::Loremaster.turn_evaluator_prompt(inputs: inputs, config: @config)
       end
 
+      def social_master_evaluator_prompt(inputs)
+        Steps::SocialMaster.turn_evaluator_prompt(inputs: inputs, config: @config)
+      end
+
+      def geomaster_evaluator_prompt(inputs)
+        Steps::Geomaster.turn_evaluator_prompt(inputs: inputs, config: @config)
+      end
+
+      def build_social_master_inputs(narrative_text)
+        Steps::SocialMaster::Inputs.new(
+          narrative:       narrative_text,
+          known_npc_names: AdventureNpc.for_adventure(@adventure).pluck(:name),
+        )
+      end
+
+      def build_geomaster_inputs(narrative_text)
+        Steps::Geomaster::Inputs.new(
+          narrative:            narrative_text,
+          known_location_names: AdventureLocation.for_adventure(@adventure).pluck(:name),
+        )
+      end
+
       def apply_loremaster_from_fan_out!(by_step)
         result = by_step["loremaster"]
         return if result.nil?
@@ -110,6 +141,54 @@ module PlayerTurn
         @log.play_log!(
           "loremaster_failure",
           "Loremaster apply_results failed: #{exception.class}",
+          parsed_response: { error: exception.message.to_s.truncate(500) },
+        )
+      end
+
+      def apply_social_master_from_fan_out!(by_step)
+        result = by_step["social_master"]
+        return if result.nil?
+
+        social   = Steps::SocialMaster.parse_output(result["parsed_response"])
+        filtered = Lore::RuntimeEntityFilter.filter_npcs(adventure: @adventure, raw_npcs: social.npcs)
+        records  = Lore::RuntimeEntityCoercer.build_npc_records(filtered)
+        return if records.empty?
+
+        Lore::ApplyNpcs.call(
+          adventure: @adventure, log: @log, ai: @ai,
+          npc_records: records, source: "runtime",
+        )
+      rescue StandardError => e
+        handle_runtime_entity_failure(e, entity_type: "npcs")
+      end
+
+      def apply_geomaster_from_fan_out!(by_step)
+        result = by_step["geomaster"]
+        return if result.nil?
+
+        geo      = Steps::Geomaster.parse_output(result["parsed_response"])
+        filtered = Lore::RuntimeEntityFilter.filter_locations(adventure: @adventure, raw_locations: geo.locations)
+        records  = Lore::RuntimeEntityCoercer.build_location_records(filtered)
+        return if records.empty?
+
+        Lore::ApplyLocations.call(
+          adventure: @adventure, log: @log, ai: @ai,
+          location_records: records, source: "runtime",
+        )
+      rescue StandardError => e
+        handle_runtime_entity_failure(e, entity_type: "locations")
+      end
+
+      def handle_runtime_entity_failure(exception, entity_type:)
+        @log.report_error(exception, context: {
+          step: "loremaster",
+          adventure_id: @adventure&.id,
+          loop_id: @loop&.id,
+          source: "apply_#{entity_type}_runtime",
+        })
+        @log.play_log!(
+          "loremaster_#{entity_type}_failure",
+          "Loremaster apply #{entity_type} failed: #{exception.class}",
           parsed_response: { error: exception.message.to_s.truncate(500) },
         )
       end
