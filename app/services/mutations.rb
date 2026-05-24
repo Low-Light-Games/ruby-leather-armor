@@ -7,26 +7,53 @@ module Mutations
     return [] unless mutations.is_a?(Hash)
 
     mutations = mutations.deep_symbolize_keys
-    lines = []
+    mutation_summaries = []
     ActionEconomySync.apply!(mutations, adventure: @adventure, log: @log)
     BattlefieldSync.apply!(mutations, adventure: @adventure, log: @log)
-    lines.concat(Array(PlayerMutations.new(sheet: @sheet, adventure: @adventure, config: @config, log: @log).call(mutations[:player])))
-    lines.concat(Array(NpcMutations.new(adventure: @adventure, log: @log).call(mutations[:npcs])))
-    lines.concat(Array(InventoryMutations.new(
+    mutation_summaries.concat(Array(PlayerMutations.new(sheet: @sheet, adventure: @adventure, config: @config, log: @log).call(mutations[:player])))
+    mutation_summaries.concat(Array(NpcMutations.new(adventure: @adventure, log: @log).call(mutations[:npcs])))
+    mutation_summaries.concat(Array(InventoryMutations.new(
       adventure: @adventure,
       sheet: @sheet,
       log: @log,
       on_error: ->(step, err) { pipeline_error!(step, err) }
     ).call(mutations[:inventory])))
     @on_sheet_update&.call
-    lines
+    persist_mutation_summaries!(mutation_summaries)
+    mutation_summaries
   end
 
   def apply_player_mutations(player_muts)
-    PlayerMutations.new(sheet: @sheet, adventure: @adventure, config: @config, log: @log).call(player_muts)
+    mutation_summaries = Array(PlayerMutations.new(sheet: @sheet, adventure: @adventure, config: @config, log: @log).call(player_muts))
+    persist_mutation_summaries!(mutation_summaries)
+    mutation_summaries
   end
 
   def apply_npc_mutations(npc_muts)
-    NpcMutations.new(adventure: @adventure, log: @log).call(npc_muts)
+    mutation_summaries = Array(NpcMutations.new(adventure: @adventure, log: @log).call(npc_muts))
+    persist_mutation_summaries!(mutation_summaries)
+    mutation_summaries
+  end
+
+  def persist_mutation_summaries!(summaries)
+    return if summaries.empty?
+
+    return unless @log&.registry_entry_uuid.present?
+
+    summaries.each do |summary|
+      begin
+        action_result_msg = @adventure.adventure_messages.create!(
+          role: "dm", content: summary, message_type: "action_result",
+          metadata: { "registry_entry_uuid" => @log.registry_entry_uuid }
+        )
+        AdventureChannel.broadcast_to(
+          @adventure,
+          type: "pipeline_action_result",
+          messages: [Adventures::MessageSerializer.as_json(action_result_msg, admin: @user&.admin?)]
+        )
+      rescue StandardError => e
+        @log&.log!(:warn, "[Mutations] Failed to persist mutation summary: #{e.message}")
+      end
+    end
   end
 end
