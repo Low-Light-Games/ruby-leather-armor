@@ -7,32 +7,32 @@ module Mutations
     return [] unless mutations.is_a?(Hash)
 
     mutations = mutations.deep_symbolize_keys
-    summaries = []
+    mutation_summaries = []
     ActionEconomySync.apply!(mutations, adventure: @adventure, log: @log)
     BattlefieldSync.apply!(mutations, adventure: @adventure, log: @log)
-    summaries.concat(Array(PlayerMutations.new(sheet: @sheet, adventure: @adventure, config: @config, log: @log).call(mutations[:player])))
-    summaries.concat(Array(NpcMutations.new(adventure: @adventure, log: @log).call(mutations[:npcs])))
-    summaries.concat(Array(InventoryMutations.new(
+    mutation_summaries.concat(Array(PlayerMutations.new(sheet: @sheet, adventure: @adventure, config: @config, log: @log).call(mutations[:player])))
+    mutation_summaries.concat(Array(NpcMutations.new(adventure: @adventure, log: @log).call(mutations[:npcs])))
+    mutation_summaries.concat(Array(InventoryMutations.new(
       adventure: @adventure,
       sheet: @sheet,
       log: @log,
       on_error: ->(step, err) { pipeline_error!(step, err) }
     ).call(mutations[:inventory])))
     @on_sheet_update&.call
-    persist_mutation_summaries!(summaries)
-    summaries
+    persist_mutation_summaries!(mutation_summaries)
+    mutation_summaries
   end
 
   def apply_player_mutations(player_muts)
-    summaries = Array(PlayerMutations.new(sheet: @sheet, adventure: @adventure, config: @config, log: @log).call(player_muts))
-    persist_mutation_summaries!(summaries)
-    summaries
+    mutation_summaries = Array(PlayerMutations.new(sheet: @sheet, adventure: @adventure, config: @config, log: @log).call(player_muts))
+    persist_mutation_summaries!(mutation_summaries)
+    mutation_summaries
   end
 
   def apply_npc_mutations(npc_muts)
-    summaries = Array(NpcMutations.new(adventure: @adventure, log: @log).call(npc_muts))
-    persist_mutation_summaries!(summaries)
-    summaries
+    mutation_summaries = Array(NpcMutations.new(adventure: @adventure, log: @log).call(npc_muts))
+    persist_mutation_summaries!(mutation_summaries)
+    mutation_summaries
   end
 
   def persist_mutation_summaries!(summaries)
