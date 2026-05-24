@@ -10,16 +10,19 @@ module Mutations
     end
 
     def call(inventory_muts)
-      return unless inventory_muts.present? && @sheet
+      return [] unless inventory_muts.present? && @sheet
 
       adventure_sheet = @adventure.adventure_sheets.first
-      return unless adventure_sheet
+      return [] unless adventure_sheet
 
+      lines = []
       inventory_muts.each do |item_name, quantity|
         next unless item_name.present? && quantity.is_a?(Numeric) && quantity.to_i > 0
 
-        add_item(adventure_sheet, item_name.to_s, quantity.to_i)
+        line = add_item(adventure_sheet, item_name.to_s, quantity.to_i)
+        lines << line if line
       end
+      lines
     rescue StandardError => e
       @on_error.call("inventory_mutations", e)
     end
@@ -30,11 +33,14 @@ module Mutations
       item_def = find_or_create_item_definition(item_name)
       return unless item_def
 
+      display_name = item_def.name
       existing = adventure_sheet.adventure_sheet_items.find_by(item_definition_id: item_def.id)
       if existing
-        new_quantity = existing.quantity + quantity
+        old_quantity = existing.quantity
+        new_quantity = old_quantity + quantity
         existing.update!(quantity: new_quantity)
-        @log.log!(:info, "Updated inventory: #{item_name} quantity #{existing.quantity - quantity} -> #{new_quantity}")
+        @log.log!(:info, "Updated inventory: #{item_name} quantity #{old_quantity} -> #{new_quantity}")
+        "Updated: #{display_name} — quantity #{old_quantity} → #{new_quantity}"
       else
         adventure_sheet.adventure_sheet_items.create!(
           item_definition_id: item_def.id,
@@ -42,6 +48,7 @@ module Mutations
           equipped: false
         )
         @log.log!(:info, "Added to inventory: #{item_name} (quantity: #{quantity})")
+        "Received: #{display_name} ×#{quantity}"
       end
     end
 

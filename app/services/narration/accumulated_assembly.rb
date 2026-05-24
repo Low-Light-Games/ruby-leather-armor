@@ -10,6 +10,7 @@ module Narration
       encounter_triggered = results.any? { |r| r[:status] == :encounter }
 
       action_outcomes = results.filter_map { |r| r[:action_outcome] }
+      mutation_lines  = results.flat_map { |r| Array(r[:mutation_lines]) }
       combined_seed = all_outcomes.join("\n\nThen: ").presence || action_outcomes.join("\n\nThen: ").presence
       combined_mutations = all_mutations.compact.reduce({}) do |acc, m|
         Transformers::HashMerge.deep_merge_presence(acc, m)
@@ -34,7 +35,8 @@ module Narration
       extra[:player_death]           = true if player_death
       extra[:player_incapacitated]   = true if player_incapacitated
 
-      extra[:action_outcomes] = action_outcomes if action_outcomes.any?
+      all_action_outcomes = action_outcomes + mutation_lines
+      extra[:action_outcomes] = all_action_outcomes if all_action_outcomes.any?
 
       all_world_turn_lines = results.flat_map { |r| Array(r[:world_turn_lines]) }
       extra[:world_turn_lines] = all_world_turn_lines if all_world_turn_lines.any?
