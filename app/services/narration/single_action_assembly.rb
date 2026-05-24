@@ -33,6 +33,9 @@ module Narration
       extra[:player_death]         = true if player_death
       extra[:player_incapacitated] = true if player_incapacitated
 
+      action_outcomes = [result[:action_outcome]].compact + Array(result[:mutation_lines])
+      extra[:action_outcomes] = action_outcomes if action_outcomes.any?
+
       NarrationPhaseInputs.new(
         intent: result[:intent],
         pipeline_context: ctx,
