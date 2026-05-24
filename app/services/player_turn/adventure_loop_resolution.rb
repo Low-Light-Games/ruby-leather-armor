@@ -79,7 +79,7 @@ module PlayerTurn
       @loop&.batch_update!(
         new_data: { "verdict_outcome" => verdict_result[:outcome].to_s.truncate(500) },
         timeline_entry: { "step" => verdict_step, "summary" => verdict_result[:outcome].to_s.truncate(120), "at" => Time.current.iso8601 })
-      mutation_lines = apply_mutations(verdict_result[:mutations])
+      apply_mutations(verdict_result[:mutations])
 
       time_result = run_time_keeper(intent, verdict_result)
 
@@ -92,7 +92,6 @@ module PlayerTurn
       maybe_run_world_turn(
         status: :resolved, intent: intent,
         mutations: verdict_result[:mutations],
-        mutation_lines: mutation_lines,
         npc_actions: verdict_result[:npc_actions] || [],
         time_result: time_result,
         action_outcome: verdict_result[:outcome].to_s.presence,
