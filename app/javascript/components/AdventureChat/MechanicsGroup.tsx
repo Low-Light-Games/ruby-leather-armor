@@ -15,10 +15,12 @@ const MechanicsGroup = ({ messages }: MechanicsGroupProps) => {
   const [isOpen, setIsOpen] = useState(false)
   const count = messages.length
   const label = count === 1 ? '1 action' : `${count} actions`
+  const hasCombat = messages.some(m => m.message_type === 'combat_log')
+  const groupLabel = hasCombat ? 'Combat round' : 'World update'
 
   return (
     <div className="mechanics-group">
-      <span className="sr-only">Combat log</span>
+      <span className="sr-only">{groupLabel}</span>
       <button
         type="button"
         className="mechanics-group-header"
@@ -26,7 +28,7 @@ const MechanicsGroup = ({ messages }: MechanicsGroupProps) => {
         aria-expanded={isOpen}
       >
         <span className="mechanics-toggle" aria-hidden="true">{isOpen ? '▼' : '▶'}</span>
-        <span className="mechanics-summary">Combat round ({label})</span>
+        <span className="mechanics-summary">{groupLabel} ({label})</span>
       </button>
       {isOpen && (
         <div className="mechanics-group-body">
