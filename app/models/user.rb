@@ -26,7 +26,7 @@ class User < ApplicationRecord
   validates :email, presence: true, uniqueness: { case_sensitive: false }
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }, unless: :guest?
   validates :password, presence: true, on: :create, unless: :oauth_or_guest?
-  validates :password, length: { minimum: 8 }, if: -> { password.present? }
+  validates :password, length: { minimum: 8 }, if: :password_length_validation_required?
   validates :password, confirmation: true, if: -> { password.present? }
   validates :handle, format: { with: HANDLE_FORMAT }, allow_nil: true
   validates :onboarding_state, inclusion: { in: ONBOARDING_STATES }
@@ -131,6 +131,12 @@ class User < ApplicationRecord
 
   def banned?
     banned
+  end
+
+  def password_length_validation_required?
+    return false if Thread.current[:skip_user_password_length_validation]
+
+    password.present?
   end
 
   def trusted?
