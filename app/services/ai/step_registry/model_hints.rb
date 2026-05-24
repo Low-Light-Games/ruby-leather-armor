@@ -80,6 +80,9 @@ module Ai
                   'e.g. gpt-5-nano, gpt-4o-mini. Runs after Narrate, in parallel ' \
                   'with Loremaster/SocialMaster (masters fan-out).'
 
+      OOC_RESPONDER = 'Cheapest model. Answers out-of-character player questions about the ' \
+                      'game, rules, and app. Short-circuits the pipeline — e.g. gpt-5-nano.'
+
       COMBAT_BOOKEND = 'Creative model. Short epilogue (2-4 sentences) summarising a combat ' \
                        'conclusion (victory or death). Called once at combat end, not part of ' \
                        'the turn pipeline — e.g. gpt-4.1, gpt-5-nano, gpt-5.'

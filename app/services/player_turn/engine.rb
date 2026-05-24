@@ -5,6 +5,7 @@ module PlayerTurn
     include Steps::Helpers
     include Steps::EvaluatorTransport
     include Steps::Intake
+    include Steps::OocResponder
     include Steps::GameMaster
     include Steps::Sequencer
     include Steps::SanityChecker

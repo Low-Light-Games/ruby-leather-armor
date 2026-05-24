@@ -379,7 +379,7 @@ export interface AdventureMessage {
     | 'combat_log' | 'combat_end' | 'action_result'
     | 'roll_request' | 'roll_result'
     | 'initiative_request' | 'initiative_result'
-    | 'usage_limit' | 'system_notice' | 'moderation_flagged'
+    | 'usage_limit' | 'system_notice' | 'moderation_flagged' | 'ooc_response'
   metadata: {
     roll_request?: RollRequest
     roll_requests?: RollRequest[]

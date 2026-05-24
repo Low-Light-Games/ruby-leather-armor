@@ -42,6 +42,8 @@ module Ai
                                    pipeline: true),
       'geomaster' => Entry.new(model_hint: H::GEOMASTER,
                                pipeline: true),
+      'ooc_responder' => Entry.new(model_hint: H::OOC_RESPONDER,
+                                   pipeline: true),
       # Authoring/non-pipeline AI calls (story save-time, admin editor,
       # background data ops). Cluster together so the registry shows
       # the boundary at a glance.

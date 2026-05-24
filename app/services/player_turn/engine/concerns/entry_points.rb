@@ -11,6 +11,9 @@ module PlayerTurn
           result = apply_prompt_phase(Phases::IntakeDangerGate, pipeline_phase_state)
           return result if result
 
+          result = apply_prompt_phase(Phases::OocGate, pipeline_phase_state)
+          return result if result
+
           result = apply_prompt_phase(Phases::GameMaster, pipeline_phase_state)
           return result if result
 
