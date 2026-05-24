@@ -37,6 +37,7 @@ module Mutations
 
   def persist_mutation_lines!(lines)
     return if lines.empty?
+
     return unless @log&.registry_entry_uuid.present?
 
     metadata = { "registry_entry_uuid" => @log.registry_entry_uuid }
