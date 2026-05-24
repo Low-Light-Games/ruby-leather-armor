@@ -3,7 +3,7 @@
 module PlayerTurn
   module Steps
     module Intake
-      VALID_INTENT_TYPES = %w[action dialogue question examine ooc].freeze
+      VALID_INTENT_TYPES = %w[action dialogue examine ooc].freeze
 
       private
 
