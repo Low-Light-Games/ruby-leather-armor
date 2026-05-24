@@ -37,21 +37,22 @@ module Mutations
 
   def persist_mutation_lines!(lines)
     return if lines.empty?
-
     return unless @log&.registry_entry_uuid.present?
 
     metadata = { "registry_entry_uuid" => @log.registry_entry_uuid }
     lines.each do |line|
-      msg = @adventure.adventure_messages.create!(
-        role: "dm", content: line, message_type: "action_result", metadata: metadata
-      )
-      AdventureChannel.broadcast_to(
-        @adventure,
-        type: "pipeline_action_result",
-        messages: [Adventures::MessageSerializer.as_json(msg, admin: @user&.admin?)]
-      )
+      begin
+        msg = @adventure.adventure_messages.create!(
+          role: "dm", content: line, message_type: "action_result", metadata: metadata
+        )
+        AdventureChannel.broadcast_to(
+          @adventure,
+          type: "pipeline_action_result",
+          messages: [Adventures::MessageSerializer.as_json(msg, admin: @user&.admin?)]
+        )
+      rescue StandardError => e
+        @log&.log!(:warn, "[Mutations] Failed to persist mutation line: #{e.message}")
+      end
     end
-  rescue StandardError => e
-    @log&.log!(:warn, "[Mutations] Failed to persist mutation lines: #{e.message}")
   end
 end
