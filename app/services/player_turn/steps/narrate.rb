@@ -23,7 +23,10 @@ module PlayerTurn
         parsed = result["parsed_response"] || {}
         raise Ai::Error, "Narrate step returned no narrative — model produced: #{parsed.inspect.truncate(200)}" unless parsed["narrative"].present?
 
-        { narrative: parsed["narrative"] }
+        Output.new(
+          narrative: parsed["narrative"],
+          narrate_mutations: parsed["mutations"] || {},
+        )
       end
 
       def assert_narration_combined_seed!(pipeline_context)
