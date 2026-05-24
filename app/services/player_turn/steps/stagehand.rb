@@ -7,10 +7,10 @@ module PlayerTurn
 
       def run_narrative_phase(intent, narration_context:, mutations:, extra: {})
         warmaster_result = maybe_initialize_combat(intent)
-        narration = run_parallel_narrative(intent, narration_context: narration_context, mutations: mutations)
+        narrate_output = run_parallel_narrative(intent, narration_context: narration_context, mutations: mutations)
 
         if warmaster_result && warmaster_result[:status] == :awaiting_initiative
-          opener_outcome = narration[:narrative].to_s.presence
+          opener_outcome = narrate_output.narrative.to_s.presence
           extras_with_opener = opener_outcome ? extra.merge(opener_outcome: opener_outcome) : extra
           return Narration::PhaseResults.awaiting_initiative(
             intent: intent,
@@ -21,7 +21,7 @@ module PlayerTurn
         end
 
         Narration::PhaseResults.narrated(
-          narrative: narration[:narrative],
+          narrative: narrate_output.narrative,
           adventure_complete: @loop&.get("adventure_complete") == true,
           extras: extra,
         ).to_h
@@ -45,11 +45,12 @@ module PlayerTurn
 
         persist_narrative_phase_combat_context(narrate_by_step, mutations, ai_delta_included: include_ai_combat_context, phase: "narrative_phase")
 
-        narration = narrative_from_evaluator_result(evaluator_fan_out_result!(narrate_by_step, "narrate", "narrative_phase"))
+        narrate_output = narrative_from_evaluator_result(evaluator_fan_out_result!(narrate_by_step, "narrate", "narrative_phase"))
+        apply_narrate_mutations!(narrate_output.narrate_mutations)
 
-        enqueue_masters_async(narration[:narrative].to_s)
+        enqueue_masters_async(narrate_output.narrative.to_s)
 
-        narration
+        narrate_output
       end
 
       def enqueue_masters_async(narrative_text)
@@ -59,6 +60,31 @@ module PlayerTurn
           registry_entry_uuid: @log.registry_entry_uuid,
           adventure_loop_id:   @loop&.id,
           user_id:             @user&.id,
+        )
+      end
+
+      def apply_narrate_mutations!(narrate_mutations)
+        return if narrate_mutations.blank?
+
+        apply_mutations(narrate_mutations)
+        snapshot_contexts_to_loop if combat_active?
+
+        @log&.play_log!(
+          "narrate_mutations_applied",
+          "Narrate-issued mutations applied",
+          parsed_response: narrate_mutations,
+        )
+      rescue StandardError => e
+        @log.report_error(e, context: {
+          step: "narrate",
+          adventure_id: @adventure&.id,
+          loop_id: @loop&.id,
+          source: "apply_narrate_mutations",
+        })
+        @log&.play_log!(
+          "narrate_mutations_failed",
+          "Narrate mutations failed: #{e.class}",
+          parsed_response: { error: e.message.to_s.truncate(500) },
         )
       end
 
