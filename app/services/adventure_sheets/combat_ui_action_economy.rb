@@ -26,7 +26,12 @@ module AdventureSheets
           raise Error, "Combat action pool missing — wait for turn sync" if econ.blank?
 
           delta = Battlefield::ActionEconomy.equip_toggle_cost_delta
-          new_econ = Battlefield::ActionEconomy.apply_delta!(econ, delta)
+          new_econ =
+            begin
+              Battlefield::ActionEconomy.apply_delta!(econ, delta)
+            rescue ArgumentError
+              raise Error, "Equipping takes a move action — you've already used yours this round."
+            end
           ctx["action_economy"] = new_econ
           adventure.update!(combat_context: ctx)
         end

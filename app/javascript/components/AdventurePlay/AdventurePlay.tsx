@@ -5,6 +5,7 @@ import type { CombatDiceStrategy } from '../../types/auth';
 import Navbar from '../Navbar';
 import Login from '../Login';
 import AdventureChat from '../AdventureChat';
+import FlashMessage from '../FlashMessage';
 import RollResultModal from '../RollResultModal';
 import { CharacterSidebar } from './CharacterSidebar';
 import { CombatHud } from './CombatHud';
@@ -91,6 +92,13 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   return (
     <div className="app">
       <Navbar />
+      {inventory.equipError && (
+        <FlashMessage
+          type="error"
+          message={inventory.equipError}
+          onDismiss={inventory.dismissEquipError}
+        />
+      )}
       <div className="adventure-play" data-mobile-tab={mobileTab}>
         {/* Mobile tab navigation — hidden on desktop */}
         <nav className="mobile-tab-nav" aria-label="Panel navigation">
@@ -138,7 +146,6 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
           addSpellToSpellbook={spellbook.addSpellToSpellbook}
           toggleEquip={inventory.toggleEquip}
           equipSaving={inventory.equipSaving}
-          equipError={inventory.equipError}
           patchSkillRanks={skillRanks.patchSkillRanks}
           rankSaving={skillRanks.rankSaving}
           rankErrors={skillRanks.rankErrors}
