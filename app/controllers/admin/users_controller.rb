@@ -6,14 +6,7 @@ module Admin
 
     def index
       @users = User.for_admin_index
-      @player_message_stats = AdventureMessage
-                              .from_players
-                              .where.not(user_id: nil)
-                              .group(:user_id)
-                              .pluck(:user_id, Arel.sql("MAX(created_at)"), Arel.sql("COUNT(*)"))
-                              .each_with_object({}) do |(user_id, last_at, count), memo|
-        memo[user_id] = { last_at: last_at, count: count }
-      end
+      @player_message_stats = AdventureMessage.player_stats_by_user_id
     end
 
     def show
