@@ -45,13 +45,15 @@ class AdventuresController < ApplicationController
     # and would violate NOT NULL on adventures.skip_world_sanity_check.
     can_opt_out_world_sanity = current_user.paid? || current_user.admin == true
     skip_world_sanity_check  = !!(can_opt_out_world_sanity && ActiveModel::Type::Boolean.new.cast(params.fetch(:skip_world_sanity_check, true)))
+    use_gamemaster_orchestrator = ActiveModel::Type::Boolean.new.cast(params.fetch(:use_gamemaster_orchestrator, false))
 
     @adventure = Adventures::Bootstrap.new(
-      story:                   story,
-      sheet:                   sheet,
-      user:                    current_user,
-      directed_dm:             directed_dm,
-      skip_world_sanity_check: skip_world_sanity_check
+      story:                       story,
+      sheet:                       sheet,
+      user:                        current_user,
+      directed_dm:                 directed_dm,
+      skip_world_sanity_check:     skip_world_sanity_check,
+      use_gamemaster_orchestrator: use_gamemaster_orchestrator
     ).call
 
     render json: adventure_json(@adventure), status: :created
@@ -101,7 +103,8 @@ class AdventuresController < ApplicationController
       ended_at: adventure.ended_at,
       end_reason: adventure.end_reason,
       directed_dm: adventure.directed_dm?,
-      skip_world_sanity_check: adventure.skip_world_sanity_check?
+      skip_world_sanity_check: adventure.skip_world_sanity_check?,
+      use_gamemaster_orchestrator: adventure.use_gamemaster_orchestrator?
     }
   end
 

@@ -10,8 +10,9 @@ module Adventures
       @story    = story
       @sheet    = sheet
       @user     = user
-      @directed_dm             = options.fetch(:directed_dm, false)
-      @skip_world_sanity_check = options.fetch(:skip_world_sanity_check, false)
+      @directed_dm                 = options.fetch(:directed_dm, false)
+      @skip_world_sanity_check     = options.fetch(:skip_world_sanity_check, false)
+      @use_gamemaster_orchestrator = options.fetch(:use_gamemaster_orchestrator, false)
     end
 
     # @return [Adventure]
@@ -29,11 +30,12 @@ module Adventures
       stats = StartingStats.new(@sheet)
 
       adventure = Adventure.create!(
-        user:                    @user,
-        story:                   @story,
-        dm_mode:                 "standard",
-        directed_dm:             @directed_dm,
-        skip_world_sanity_check: @skip_world_sanity_check,
+        user:                        @user,
+        story:                       @story,
+        dm_mode:                     "standard",
+        directed_dm:                 @directed_dm,
+        skip_world_sanity_check:     @skip_world_sanity_check,
+        use_gamemaster_orchestrator: @use_gamemaster_orchestrator,
       )
 
       SheetCopier.new(adventure, @sheet,

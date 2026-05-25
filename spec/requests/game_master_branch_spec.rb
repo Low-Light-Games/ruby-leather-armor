@@ -9,13 +9,11 @@ RSpec.describe "GameMaster pipeline branch" do
 
   before do
     create(:adventure_sheet, adventure: adventure)
-    create(:feature_flag, key: "gamemaster_orchestrator", mode: "off")
     sign_in(user)
   end
 
-  it "branches to GameMaster when the flag is on for the user, persists the narrative" do
-    flag = FeatureFlag.find_by!(key: "gamemaster_orchestrator")
-    flag.update!(mode: "bucketed", bucketing_strategy: "granular", granular_user_ids: [user.id])
+  it "branches to GameMaster when the adventure opts in, persists the narrative" do
+    adventure.update!(use_gamemaster_orchestrator: true)
 
     stub_openai_chat_with(branch_for: ->(system_prompt) {
       if system_prompt.start_with?("You are the intake filter")
@@ -51,8 +49,8 @@ RSpec.describe "GameMaster pipeline branch" do
     expect(parsed["adventure_ended"]).to be(false)
   end
 
-  it "stays on the legacy phase chain when the flag is off" do
-    # Flag is OFF for everyone (default). The GameMaster step must not run.
+  it "stays on the legacy phase chain when the adventure has not opted in" do
+    # Toggle is OFF by default. The GameMaster step must not run.
     expect(PlayerTurn::Steps::GameMaster).not_to receive(:instance_method).with(:run_game_master) # smoke-only
     # Real assertion: no game_master_plan PlayLog row gets written.
     stub_openai_chat_with(branch_for: ->(_sys) { { sanitized_input: "noop", danger_score: 0, reason: nil } })
@@ -67,10 +65,8 @@ RSpec.describe "GameMaster pipeline branch" do
     expect(PlayLog.where(adventure_id: adventure.id, event_type: "game_master_plan")).to be_empty
   end
 
-  it "stays on the legacy phase chain when combat is active even with the flag on" do
-    flag = FeatureFlag.find_by!(key: "gamemaster_orchestrator")
-    flag.update!(mode: "on")
-    adventure.update!(combat_context: { "active" => true })
+  it "stays on the legacy phase chain when combat is active even with the toggle on" do
+    adventure.update!(use_gamemaster_orchestrator: true, combat_context: { "active" => true })
 
     stub_openai_chat_with(branch_for: ->(_sys) { { sanitized_input: "noop", danger_score: 0, reason: nil } })
     stub_openai_embeddings
