@@ -3,11 +3,14 @@
 module PlayerTurn
   module Steps
     module Intake
+      VALID_INTENT_TYPES = %w[action dialogue examine ooc].freeze
+
       private
 
       def run_intake(player_input)
         prompt_summary = "Intake: \"#{@log.truncate(player_input)}\""
-        system_prompt = Ai::PromptRenderer.render("intake")
+        recent_conversation = render_recent_conversation
+        system_prompt = Ai::PromptRenderer.render("intake", recent_conversation: recent_conversation)
         request_body = { system_prompt: system_prompt, user_message: player_input }
 
         parsed = timed_ai_call("intake", prompt_summary, request_body) do
@@ -24,7 +27,9 @@ module PlayerTurn
         {
           danger_score: parsed["danger_score"].to_i,
           sanitized_input: parsed["sanitized_input"],
-          reason: parsed["reason"]
+          reason: parsed["reason"],
+          intent_type: normalize_intent_type(parsed["intent_type"]),
+          target_npc: parsed["target_npc"],
         }
       end
 
@@ -44,6 +49,18 @@ module PlayerTurn
         )
       rescue => e
         pipeline_error!("experience_suggestion", e)
+      end
+
+      def normalize_intent_type(raw)
+        normalized = raw.to_s.downcase.strip
+        VALID_INTENT_TYPES.include?(normalized) ? normalized : "action"
+      end
+
+      def render_recent_conversation
+        rows = Adventures::RecentMessages.conversation(@adventure)
+        return nil if rows.empty?
+
+        rows.map { |role, content| "#{role == 'player' ? 'Player' : 'DM'}: #{content.to_s.truncate(280)}" }.join("\n")
       end
     end
   end

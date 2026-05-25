@@ -29,6 +29,9 @@ module PlayerTurn
             message_type: "sanitization_fail")]
         end
 
+      when :ooc_response
+        [persist_message(role: "dm", content: result[:response], message_type: "ooc_response")]
+
       when :battlefield_version_mismatch
         [persist_message(
           role: "system",

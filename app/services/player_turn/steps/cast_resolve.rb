@@ -20,6 +20,30 @@ module PlayerTurn
         roster
       end
 
+      def cast_resolver_evaluator_prompt(intention)
+        Encounters::CastResolver.evaluator_prompt(
+          adventure:   @adventure,
+          intent_text: intention,
+          ai:          @ai,
+          log:         @log,
+          config:      @config,
+        )
+      end
+
+      def parse_cast_resolver_from_evaluator_result(result, intention)
+        members = Encounters::CastResolver.resolve_from_parsed(
+          adventure:       @adventure,
+          parsed_response: result["parsed_response"] || {},
+          intent_text:     intention,
+          ai:              @ai,
+          log:             @log,
+          config:          @config,
+        )
+        roster = PlayerTurn::CastRoster.from_adventure_npcs(members)
+        log_cast_roster_to_loop(roster, intention)
+        roster
+      end
+
       def log_cast_roster_to_loop(roster, intention)
         return unless @loop
 

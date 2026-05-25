@@ -5,10 +5,12 @@ module PlayerTurn
     include Steps::Helpers
     include Steps::EvaluatorTransport
     include Steps::Intake
+    include Steps::OocResponder
     include Steps::GameMaster
     include Steps::Sequencer
     include Steps::SanityChecker
     include Steps::CastResolve
+    include Steps::Interpreter
     include Steps::RollRequest
     include Steps::CombatRollRequest
     include Steps::Mechanic

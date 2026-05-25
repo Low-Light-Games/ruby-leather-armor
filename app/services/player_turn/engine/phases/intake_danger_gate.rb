@@ -18,7 +18,11 @@ module PlayerTurn
             }
           end
 
-          { halt: false, clean_input: intake_result[:sanitized_input], intake_result: intake_result }
+          { halt: false,
+            clean_input: intake_result[:sanitized_input],
+            intake_result: intake_result,
+            intent_type: intake_result[:intent_type],
+            target_npc: intake_result[:target_npc] }
         end
       end
     end

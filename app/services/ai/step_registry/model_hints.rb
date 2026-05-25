@@ -57,6 +57,13 @@ module Ai
                       'Stats and identifiers come from the deterministic 4-tier lookup in ' \
                       'Encounters::CastResolver, not from this prompt.'
 
+      INTERPRETER = 'Capable model recommended (e.g. gpt-5-mini at low effort). Per-action ' \
+                    'reference resolver — rewrites one atomic Sequencer action into a fully ' \
+                    'self-contained sanitized intent statement so downstream steps need no ' \
+                    'conversation context. Runs in parallel with CastResolver inside the ' \
+                    'per-action loop. Cheap nano models pattern-match on examples but cannot ' \
+                    'reliably carry the expansion move (see §3 pivot).'
+
       REQUEST_ROLL_TOOL = "#{FAST_CHEAP} Tool-flavored RollRequest invoked by the " \
                           "GameMaster. Slim schema (no needs_roll, no transition signals); " \
                           'GM has already decided a roll is required.'.freeze
@@ -79,6 +86,9 @@ module Ai
       GEOMASTER = 'Cheapest model. Runtime location extraction from Narrate output — ' \
                   'e.g. gpt-5-nano, gpt-4o-mini. Runs after Narrate, in parallel ' \
                   'with Loremaster/SocialMaster (masters fan-out).'
+
+      OOC_RESPONDER = 'Cheapest model. Answers out-of-character player questions about the ' \
+                      'game, rules, and app. Short-circuits the pipeline — e.g. gpt-5-nano.'
 
       COMBAT_BOOKEND = 'Creative model. Short epilogue (2-4 sentences) summarising a combat ' \
                        'conclusion (victory or death). Called once at combat end, not part of ' \

@@ -14,9 +14,50 @@ module PlayerTurn
         @current_cast_roster = PlayerTurn::CastRoster.empty
         run_combat_roll_request(intention)
       else
-        @current_cast_roster = run_cast_resolve(intention)
-        run_roll_request(intention, cast_roster: @current_cast_roster)
+        roster, resolved_intention = run_pre_resolution_fan_out(intention)
+        @current_cast_roster = roster
+        run_roll_request(resolved_intention, cast_roster: @current_cast_roster)
       end
+    end
+
+    # Fans out CastResolver and Interpreter in a single evaluator call.
+    # CastResolver sees the raw Sequencer action text (it already has the
+    # location's NPC recall list). Interpreter resolves pronouns / quoted
+    # echoes / cross-action references and produces the text every step
+    # after this point reads.
+    def run_pre_resolution_fan_out(intention)
+      broadcast_progress("Reading the scene...")
+
+      prompts = [
+        cast_resolver_evaluator_prompt(intention),
+        interpreter_evaluator_prompt(intention),
+      ]
+      by_step = evaluator_fan_out!(prompts, intention, phase: "pre_resolution")
+
+      cast_result   = evaluator_fan_out_result!(by_step, "cast_resolver", "pre_resolution")
+      interp_result = evaluator_fan_out_result!(by_step, "interpreter", "pre_resolution")
+
+      roster        = parse_cast_resolver_from_evaluator_result(cast_result, intention)
+      resolved_text = parse_interpreter_from_evaluator_result(interp_result) || intention
+
+      persist_resolved_action_text!(intention, resolved_text)
+
+      [roster, resolved_text]
+    end
+
+    def persist_resolved_action_text!(intention, resolved_text)
+      return unless @loop
+
+      summary = if resolved_text == intention
+                  "Interpreter: already self-contained"
+                else
+                  "Interpreter: \"#{resolved_text.to_s.truncate(160)}\""
+                end
+
+      @loop.batch_update!(
+        new_data: { "resolved_action_text" => resolved_text.to_s.truncate(500) },
+        timeline_entry: { "step" => "interpreter", "summary" => summary, "at" => Time.current.iso8601 },
+      )
     end
 
     def resolve_with_mechanics(result)

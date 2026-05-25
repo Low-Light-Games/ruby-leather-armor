@@ -46,13 +46,7 @@ module Combat
     private
 
     def recent_combat_messages
-      @adventure.adventure_messages
-        .combat_activity
-        .newest_first
-        .limit(20)
-        .pluck(:content)
-        .reverse
-        .join("\n")
+      Adventures::RecentMessages.combat_activity(@adventure).join("\n")
     end
   end
 end

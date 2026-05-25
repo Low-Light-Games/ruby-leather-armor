@@ -229,13 +229,7 @@ module PlayerTurn
       end
 
       def render_recent_dm_messages
-        rows = @adventure.adventure_messages
-                         .where(role: "dm", message_type: %w[narrative action_result])
-                         .order(created_at: :desc)
-                         .limit(RECENT_MESSAGE_LIMIT)
-                         .pluck(:content)
-                         .reverse
-
+        rows = Adventures::RecentMessages.dm_narration(@adventure, limit: RECENT_MESSAGE_LIMIT)
         return "(no prior DM messages)" if rows.empty?
 
         rows.map.with_index(1) { |c, i| "#{i}. #{c.to_s.truncate(280)}" }.join("\n\n")
