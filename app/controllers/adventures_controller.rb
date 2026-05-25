@@ -34,7 +34,7 @@ class AdventuresController < ApplicationController
 
   # POST /adventures - API endpoint to create an adventure
   def create
-    story = Story.kept.find(params[:story_id])
+    story = Story.kept.visible_to_players.find(params[:story_id])
     sheet = policy_scope(Sheet).find(params[:sheet_id])
     unless sheet_allowed_for_current_user?(sheet)
       return render json: { error: ineligible_sheet_error(sheet) }, status: :forbidden

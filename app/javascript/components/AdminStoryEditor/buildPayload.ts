@@ -9,6 +9,7 @@ export interface PayloadArgs {
   preview: string
   premise: string
   openingMessage: string
+  hiddenFromPlayers: boolean
   seedFacts: SeedFact[]
   currentStoryId: number | undefined
   locations: ClientLocation[]
@@ -28,13 +29,14 @@ export const buildLocationPayload = (locations: ClientLocation[]) =>
 
 export const buildPayload = (args: PayloadArgs) => {
   const {
-    title, preview, premise, openingMessage, seedFacts,
+    title, preview, premise, openingMessage, hiddenFromPlayers, seedFacts,
     currentStoryId, locations, encounterTables, npcs,
   } = args
 
   const story: Record<string, unknown> = {
     title, preview, premise,
     opening_message: openingMessage,
+    hidden_from_players: hiddenFromPlayers,
     seed_facts: seedFacts,
   }
 

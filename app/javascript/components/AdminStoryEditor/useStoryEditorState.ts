@@ -20,6 +20,7 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
   const [preview, setPreview] = useState('')
   const [premise, setPremise] = useState('')
   const [openingMessage, setOpeningMessage] = useState('')
+  const [hiddenFromPlayers, setHiddenFromPlayers] = useState(false)
   const [seedFacts, setSeedFacts] = useState<SeedFact[]>([])
   const [currentStoryId, setCurrentStoryId] = useState<number | undefined>(storyId)
 
@@ -47,6 +48,7 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
     setPreview(data.preview)
     setPremise(data.premise)
     setOpeningMessage(data.opening_message || '')
+    setHiddenFromPlayers(!!data.hidden_from_players)
     setSeedFacts(Array.isArray(data.seed_facts) ? data.seed_facts : [])
     setLocations(fresh
       ? hydrateLocations(data.story_locations || [])
@@ -95,7 +97,7 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
 
   const getPayloadArgs = () => ({
     title, preview, premise,
-    openingMessage, seedFacts,
+    openingMessage, hiddenFromPlayers, seedFacts,
     currentStoryId, locations, encounterTables, npcs,
   })
 
@@ -136,6 +138,7 @@ export const useStoryEditorState = (mode: 'create' | 'edit', storyId?: number) =
     user, authLoading, loading, saving, feedback, dismissFeedback,
     title, setTitle, preview, setPreview, premise, setPremise,
     openingMessage, setOpeningMessage,
+    hiddenFromPlayers, setHiddenFromPlayers,
     seedFacts, setSeedFacts,
     currentStoryId,
     locations, setLocations,

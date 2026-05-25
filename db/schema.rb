@@ -658,6 +658,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_25_120000) do
     t.string "world_terrain", default: "plains", null: false
     t.jsonb "seed_facts", default: [], null: false
     t.text "opening_message", default: "", null: false
+    t.boolean "hidden_from_players", default: false, null: false
     t.index ["discarded_at"], name: "index_stories_on_discarded_at"
   end
 

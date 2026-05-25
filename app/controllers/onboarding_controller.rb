@@ -7,7 +7,7 @@ class OnboardingController < ApplicationController
       return render json: { error: "Invalid character type" }, status: :unprocessable_entity
     end
 
-    story = Story.kept.order("RANDOM()").first
+    story = Story.kept.visible_to_players.order("RANDOM()").first
     unless story
       return render json: { error: "No adventures are available yet. Build your own character to get started." }, status: :unprocessable_entity
     end

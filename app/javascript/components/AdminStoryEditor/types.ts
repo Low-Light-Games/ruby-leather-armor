@@ -41,6 +41,7 @@ export interface StoryData {
   premise: string
   opening_message?: string
   world_terrain?: string
+  hidden_from_players?: boolean
   seed_facts?: SeedFact[]
   story_locations?: StoryLocationData[]
   encounter_tables?: EncounterTableData[]
