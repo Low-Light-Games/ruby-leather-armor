@@ -16,6 +16,8 @@
           <th class="col-strikes">Strikes</th>
           <th class="col-trusted">Trusted</th>
           <th class="col-banned">Banned</th>
+          <th class="col-msg-count">Messages</th>
+          <th class="col-last-msg">Last Message</th>
           <th class="col-joined">Joined</th>
           <th class="col-actions"></th>
         </tr>
@@ -57,6 +59,21 @@
                 <span class="banned-at"><%= user.banned_at&.strftime('%b %d %H:%M') %></span>
               <% else %>
                 <span class="empty-cell">—</span>
+              <% end %>
+            </td>
+            <% stats = @player_message_stats[user.id] %>
+            <td class="col-msg-count">
+              <% if stats %>
+                <%= stats[:count] %>
+              <% else %>
+                <span class="empty-cell">—</span>
+              <% end %>
+            </td>
+            <td class="col-last-msg">
+              <% if stats %>
+                <%= stats[:last_at].strftime('%b %d %Y %H:%M') %>
+              <% else %>
+                <span class="empty-cell">never</span>
               <% end %>
             </td>
             <td class="col-joined"><%= user.created_at.strftime('%b %d %Y') %></td>
@@ -129,6 +146,8 @@
   .col-strikes { width: 70px; text-align: center; }
   .col-trusted { width: 90px; }
   .col-banned  { width: 150px; }
+  .col-msg-count { width: 80px; text-align: center; font-family: monospace; font-size: 12px; }
+  .col-last-msg  { width: 140px; white-space: nowrap; font-family: monospace; font-size: 12px; color: #666; }
   .col-joined  { width: 110px; white-space: nowrap; font-family: monospace; font-size: 12px; color: #666; }
   .col-actions { width: 220px; text-align: right; }
 
