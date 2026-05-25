@@ -42,63 +42,13 @@ general commentary field.
 <%= @recent_conversation %>
 
 <% end -%>
-=== SANITIZED INPUT — THE CRITICAL CONTRACT ===
+=== SANITIZED INPUT ===
 
-Every downstream step (action sequencer, roll evaluator, cast resolver,
-narrator, fact extractor) receives ONLY the sanitized_input. They do NOT
-see the recent conversation, the DM's last line, an NPC's words, or any
-prior turn. If a downstream step has to guess what the player meant,
-your sanitized_input has failed.
-
-Treat sanitized_input as a brief, full explanation of the player's
-intent — not a sanitized copy of their words. A reader who never saw
-the recent conversation must be able to act on it without ambiguity.
-A longer sanitized_input that is unambiguous is always better than a
-short one that loses meaning.
-
-Rules:
-- Replace every pronoun and demonstrative ("him", "her", "it", "that",
-  "those things", "the second one") with the referent, by name or clear
-  description.
-- When the player echoes a word, phrase, or value from the DM's or an
-  NPC's recent line, include what it REFERRED TO in context. Do not
-  just restate the token in quotes.
-- Resolve elliptical responses ("yes", "no", "agree", "okay", "the
-  first one") into the full statement they answer.
-- If the player is addressing or asking about a specific creature,
-  name them in the sanitized_input.
-- Carry forward any context the player implicitly assumes the DM
-  remembers (offers on the table, prior beats, named items, agreed
-  prices).
-- Fix typos and unclear phrasing along the way.
-- If the original input is already self-contained, copy it through
-  with only minor cleanup.
-
-Examples (study these — they ARE the standard, not optional):
-
-  Recent DM: 'Seraphine: "I can pay. Well."'
-  Player: "What is 'Well'?"
-  sanitized_input: "Asks Seraphine to clarify what she meant by saying she could pay 'well' — how generous is the offered pay?"
-
-  Recent DM: 'You see two doors: an oak one on the left, an iron one on the right.'
-  Player: "I take the second one."
-  sanitized_input: "Walks through the iron door on the right."
-
-  Recent DM: 'The merchant offers 50 gold for the ring or a healing potion in trade.'
-  Player: "The potion."
-  sanitized_input: "Accepts the merchant's offer to trade the ring for a healing potion."
-
-  Recent DM: 'A goblin sneers at you from across the room.'
-  Player: "I shoot it."
-  sanitized_input: "Shoots the goblin across the room with a ranged weapon."
-
-  Recent DM: 'Captain Mira asks if you'll take the contract for the abbey job.'
-  Player: "Yes."
-  sanitized_input: "Agrees to take Captain Mira's contract for the abbey job."
-
-  Recent DM: 'The innkeeper Gerta sets a bowl of stew in front of you.'
-  Player: "Thanks, how much?"
-  sanitized_input: "Thanks Gerta the innkeeper and asks how much the bowl of stew costs."
+Fix typos and obviously broken phrasing in the player's input. Do NOT
+attempt to resolve pronouns, quoted echoes, or elliptical references —
+a downstream Interpreter step handles all reference resolution with
+fuller per-action context. If the input is already clean, copy it
+through unchanged.
 
 === INTENT TYPE ===
 
@@ -129,7 +79,7 @@ Set suggested_context and context_suggestion_reason to null when no suggestion.
 Respond ONLY with valid JSON (no markdown, no code fences):
 {
   "danger_score": 0,
-  "sanitized_input": "self-contained explanation of the player's intent, written so downstream steps need no other context",
+  "sanitized_input": "the player's input with typos fixed; reference resolution happens downstream",
   "reason": null,
   "intent_type": "action",
   "target_npc": null,
