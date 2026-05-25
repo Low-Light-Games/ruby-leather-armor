@@ -69,7 +69,13 @@ export function useAdventureCreationData(user: any) {
       })
   }, [user])
 
-  const submitAdventure = async (storyId: number, sheetId: number, directedDm: boolean, skipWorldSanityCheck: boolean) => {
+  const submitAdventure = async (
+    storyId: number,
+    sheetId: number,
+    directedDm: boolean,
+    skipWorldSanityCheck: boolean,
+    useGamemasterOrchestrator: boolean,
+  ) => {
     setSubmitting(true)
     setError(null)
     startWaitMessages()
@@ -86,6 +92,7 @@ export function useAdventureCreationData(user: any) {
           sheet_id: sheetId,
           directed_dm: directedDm,
           skip_world_sanity_check: skipWorldSanityCheck,
+          use_gamemaster_orchestrator: useGamemasterOrchestrator,
         }),
       })
 

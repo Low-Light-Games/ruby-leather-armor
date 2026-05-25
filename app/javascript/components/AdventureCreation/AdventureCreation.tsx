@@ -21,6 +21,7 @@ export const AdventureCreation = () => {
   const [selectedSheetId, setSelectedSheetId] = useState<number | ''>('')
   const [directedDm, setDirectedDm] = useState(false)
   const [skipWorldSanityCheck, setSkipWorldSanityCheck] = useState(true)
+  const [useGamemasterOrchestrator, setUseGamemasterOrchestrator] = useState(false)
 
   const selectedStory = stories.find(s => s.id === selectedStoryId) || null
   const selectedSheet = sheets.find(s => s.id === selectedSheetId) || null
@@ -28,7 +29,13 @@ export const AdventureCreation = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedStoryId || !selectedSheetId) return
-    submitAdventure(selectedStoryId as number, selectedSheetId as number, directedDm, skipWorldSanityCheck)
+    submitAdventure(
+      selectedStoryId as number,
+      selectedSheetId as number,
+      directedDm,
+      skipWorldSanityCheck,
+      useGamemasterOrchestrator,
+    )
   }
 
   if (authLoading) return <div className="app">Loading...</div>
@@ -132,6 +139,26 @@ export const AdventureCreation = () => {
                   </label>
                 </div>
               )}
+
+              <div className="form-group">
+                <label className="toggle-row" htmlFor="use-gamemaster-orchestrator-toggle">
+                  <span className="toggle-text">
+                    <span className="toggle-label">GameMaster Orchestrator (Experimental)</span>
+                    <span className="toggle-desc">Use the experimental GameMaster orchestrator path for this adventure.</span>
+                  </span>
+                  <span className={`toggle-switch ${useGamemasterOrchestrator ? 'active' : ''}`} role="switch" aria-checked={useGamemasterOrchestrator}>
+                    <input
+                      id="use-gamemaster-orchestrator-toggle"
+                      type="checkbox"
+                      checked={useGamemasterOrchestrator}
+                      onChange={e => setUseGamemasterOrchestrator(e.target.checked)}
+                    />
+                    <span className="toggle-track">
+                      <span className="toggle-knob" />
+                    </span>
+                  </span>
+                </label>
+              </div>
 
               {selectedSheet && (
                 <div className="character-preview">
