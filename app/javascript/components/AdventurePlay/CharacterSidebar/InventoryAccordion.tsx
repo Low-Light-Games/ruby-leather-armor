@@ -6,7 +6,6 @@ export interface InventoryAccordionProps {
   isOpen: boolean
   onToggle: () => void
   allItems: { item: ItemDefinition; id: string; quantity: number; equipped: boolean }[]
-  equipError: string | null
   toggleEquip: (itemId: string) => void
   equipSaving: boolean
 }
@@ -15,13 +14,11 @@ const InventoryAccordion: React.FC<InventoryAccordionProps> = ({
   isOpen,
   onToggle,
   allItems,
-  equipError,
   toggleEquip,
   equipSaving,
 }) => (
   <Accordion title={`Inventory (${allItems.length})`} isOpen={isOpen} onToggle={onToggle}>
     <div className="inventory-list">
-      {equipError && <p className="equip-error">{equipError}</p>}
       {allItems.length === 0 ? (
         <p className="empty-hint">No items.</p>
       ) : (

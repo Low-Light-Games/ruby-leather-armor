@@ -6,6 +6,7 @@ interface UseInventoryResult {
   toggleEquip: (itemId: string) => void;
   equipSaving: boolean;
   equipError: string | null;
+  dismissEquipError: () => void;
 }
 
 export function useInventory(
@@ -14,6 +15,8 @@ export function useInventory(
 ): UseInventoryResult {
   const [equipSaving, setEquipSaving] = useState(false);
   const [equipError, setEquipError] = useState<string | null>(null);
+
+  const dismissEquipError = useCallback(() => setEquipError(null), []);
 
   const toggleEquip = useCallback(async (itemId: string) => {
     if (!adventure || equipSaving) return;
@@ -47,5 +50,5 @@ export function useInventory(
     }
   }, [adventure, equipSaving, setAdventure]);
 
-  return { toggleEquip, equipSaving, equipError };
+  return { toggleEquip, equipSaving, equipError, dismissEquipError };
 }

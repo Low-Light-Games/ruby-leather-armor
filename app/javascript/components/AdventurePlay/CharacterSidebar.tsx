@@ -49,7 +49,6 @@ interface CharacterSidebarProps {
   addSpellToSpellbook: (spell: SpellDefinition) => void
   toggleEquip: (itemId: string) => void
   equipSaving: boolean
-  equipError: string | null
   patchSkillRanks: (next: SkillRanksMap) => Promise<void>
   rankSaving: boolean
   rankErrors: string[]
@@ -64,7 +63,7 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
   rollUnarmedDamage, rollConcentration, concentrationMod,
   spellbookSearch, setSpellbookSearch, spellbookSaving,
   spellbookSearchResults, addSpellToSpellbook,
-  toggleEquip, equipSaving, equipError,
+  toggleEquip, equipSaving,
   patchSkillRanks, rankSaving, rankErrors, dismissRankErrors,
 }) => {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -204,7 +203,6 @@ export const CharacterSidebar: React.FC<CharacterSidebarProps> = ({
           isOpen={openSections.inventory}
           onToggle={() => toggleSection('inventory')}
           allItems={allItems}
-          equipError={equipError}
           toggleEquip={toggleEquip}
           equipSaving={equipSaving}
         />
