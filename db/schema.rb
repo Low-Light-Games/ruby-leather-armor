@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_21_170000) do
+ActiveRecord::Schema[7.1].define(version: 2026_05_25_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -142,8 +142,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_21_170000) do
     t.json "metadata", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id"
     t.index ["adventure_id", "created_at"], name: "index_adventure_messages_on_adventure_id_and_created_at"
     t.index ["adventure_id"], name: "index_adventure_messages_on_adventure_id"
+    t.index ["user_id", "created_at"], name: "index_adventure_messages_on_user_id_and_created_at"
   end
 
   create_table "adventure_narrative_facts", force: :cascade do |t|
@@ -750,6 +752,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_21_170000) do
   add_foreign_key "adventure_loops", "adventures", on_delete: :nullify
   add_foreign_key "adventure_loops", "pipelines"
   add_foreign_key "adventure_messages", "adventures"
+  add_foreign_key "adventure_messages", "users"
   add_foreign_key "adventure_narrative_facts", "adventure_loops", column: "introduced_at_loop_id"
   add_foreign_key "adventure_narrative_facts", "adventure_loops", column: "invalidated_at_loop_id"
   add_foreign_key "adventure_narrative_facts", "adventure_narrative_facts", column: "invalidated_by_fact_id"

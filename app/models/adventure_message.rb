@@ -6,6 +6,7 @@
 # entries by message_type; new types must be allow-listed here.
 class AdventureMessage < ApplicationRecord
   belongs_to :adventure
+  belongs_to :user, optional: true
 
   validates :role, presence: true, inclusion: { in: %w[player dm system] }
   validates :content, presence: true
@@ -21,4 +22,14 @@ class AdventureMessage < ApplicationRecord
   scope :for_message_types, ->(types) { where(message_type: types) }
   scope :dm_narration, -> { where(message_type: %w[narrative action_result]) }
   scope :combat_activity, -> { where(message_type: %w[combat_log action_result narrative]) }
+
+  def self.player_stats_by_user_id
+    from_players
+      .where.not(user_id: nil)
+      .group(:user_id)
+      .pluck(:user_id, Arel.sql('MAX(created_at)'), Arel.sql('COUNT(*)'))
+      .each_with_object({}) do |(user_id, last_at, count), memo|
+        memo[user_id] = { last_at: last_at, count: count }
+      end
+  end
 end

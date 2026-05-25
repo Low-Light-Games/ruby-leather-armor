@@ -6,6 +6,7 @@ module Admin
 
     def index
       @users = User.for_admin_index
+      @player_message_stats = AdventureMessage.player_stats_by_user_id
     end
 
     def show
