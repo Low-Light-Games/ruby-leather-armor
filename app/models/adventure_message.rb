@@ -6,6 +6,7 @@
 # entries by message_type; new types must be allow-listed here.
 class AdventureMessage < ApplicationRecord
   belongs_to :adventure
+  belongs_to :user, optional: true
 
   validates :role, presence: true, inclusion: { in: %w[player dm system] }
   validates :content, presence: true

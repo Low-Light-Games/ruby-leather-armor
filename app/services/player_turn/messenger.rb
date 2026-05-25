@@ -14,7 +14,8 @@ module PlayerTurn
       end
       @adventure.adventure_messages.create!(
         role: role, content: content,
-        message_type: message_type, metadata: metadata)
+        message_type: message_type, metadata: metadata,
+        user: role == "player" ? @user : nil)
     end
 
     def messages_for(result)

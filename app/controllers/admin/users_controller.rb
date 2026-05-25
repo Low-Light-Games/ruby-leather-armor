@@ -6,12 +6,11 @@ module Admin
 
     def index
       @users = User.for_admin_index
-      # Single grouped query keyed by user_id to avoid N+1 on the user list.
       @player_message_stats = AdventureMessage
                               .from_players
-                              .joins(:adventure)
-                              .group("adventures.user_id")
-                              .pluck("adventures.user_id", Arel.sql("MAX(adventure_messages.created_at)"), Arel.sql("COUNT(*)"))
+                              .where.not(user_id: nil)
+                              .group(:user_id)
+                              .pluck(:user_id, Arel.sql("MAX(created_at)"), Arel.sql("COUNT(*)"))
                               .each_with_object({}) do |(user_id, last_at, count), memo|
         memo[user_id] = { last_at: last_at, count: count }
       end
