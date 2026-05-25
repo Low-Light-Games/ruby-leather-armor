@@ -32,6 +32,8 @@ module Ai
                                   pipeline: true),
       'cast_resolver' => Entry.new(model_hint: H::CAST_RESOLVER,
                                    pipeline: true),
+      'interpreter' => Entry.new(model_hint: H::INTERPRETER,
+                                 pipeline: true),
       'request_roll_tool' => Entry.new(model_hint: H::REQUEST_ROLL_TOOL,
                                        pipeline: true),
       'combat_roll_request' => Entry.new(model_hint: H::COMBAT_ROLL_REQUEST,

@@ -10,6 +10,7 @@ module PlayerTurn
     include Steps::Sequencer
     include Steps::SanityChecker
     include Steps::CastResolve
+    include Steps::Interpreter
     include Steps::RollRequest
     include Steps::CombatRollRequest
     include Steps::Mechanic

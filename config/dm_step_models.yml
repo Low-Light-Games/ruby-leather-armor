@@ -25,9 +25,11 @@ default_reasoning_effort: minimal
 # Per-step model overrides. Empty hash = every step uses default_model.
 step_models:
   narrate: gpt-5-mini
+  interpreter: gpt-5-mini
 
 # Per-step reasoning_effort overrides. Empty hash = every step uses
 # default_reasoning_effort. Only meaningful when the resolved model is a
 # reasoning model.
 step_reasoning_efforts:
   narrate: low
+  interpreter: low
