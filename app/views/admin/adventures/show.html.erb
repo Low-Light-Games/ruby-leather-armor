@@ -3,6 +3,9 @@
   <div class="dash-header">
     <a href="<%= admin_adventures_path %>" class="back-link">← All Adventures</a>
     <h1>Adventure #<%= @adventure.id %></h1>
+    <div class="header-actions">
+      <%= link_to "Open as player", adventure_path(@adventure), class: "btn btn-primary", target: "_blank", rel: "noopener" %>
+    </div>
     <div class="header-meta">
       <span class="meta-pill">User: <strong><%= @adventure.user&.email&.split('@')&.first %></strong></span>
       <span class="meta-pill">Story: <a href="<%= admin_story_path(@adventure.story) %>"><%= @adventure.story&.title %></a></span>
@@ -393,6 +396,7 @@
   .dash-header { margin-bottom: 24px; }
   .back-link { color: #1565c0; text-decoration: none; font-size: 13px; &:hover { text-decoration: underline; } }
   .dash-header h1 { margin: 6px 0 10px; font-size: 26px; color: #333; }
+  .header-actions { margin: 0 0 12px; display: flex; gap: 8px; }
   .header-meta { display: flex; flex-wrap: wrap; gap: 12px; }
   .meta-pill {
     font-size: 13px; color: #555; background: #f0f0f0; padding: 4px 12px; border-radius: 12px;
