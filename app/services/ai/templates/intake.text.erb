@@ -44,9 +44,17 @@ general commentary field.
 <% end -%>
 === INTENT INTERPRETATION ===
 
-Classify the player's intent and make the sanitized_input as clear as possible
-for downstream game systems. Use the recent conversation to resolve ambiguous
-references (pronouns, "that thing", "the guy").
+Classify the player's intent and rewrite the input as a self-contained
+sanitized_input that downstream game systems can act on WITHOUT seeing
+the recent conversation. Resolve pronouns ("him", "that thing"), quoted
+words, elliptical follow-ups ("yes", "the second one"), and any reference
+that depends on what the DM or another character just said. Fix typos
+and unclear phrasing along the way. If the original wording is already
+self-contained, copy it through with only minor cleanup.
+
+Example — recent DM line: 'Seraphine says, "I can pay. Well."'
+  Player input: "What does 'Well' mean?"
+  sanitized_input: "Asks Seraphine what she meant by 'well' — how generous is the pay?"
 
 Intent types:
 - "action" — the player does something in the world (move, search, attack, cast)
@@ -58,7 +66,6 @@ Intent types:
   questions ("why did my HP change?"), and other table talk. If the player
   is not *doing* something in-fiction, it is ooc.
 
-Fix typos and unclear phrasing with your best guess at what the player meant.
 If the player is addressing an NPC, identify the NPC by name in target_npc.
 If the input references a specific NPC but isn't dialogue, still set target_npc.
 Set target_npc to null when no specific NPC is involved.
