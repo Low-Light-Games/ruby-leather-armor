@@ -105,4 +105,22 @@ Rails.application.routes.draw do
   patch "profile/email", to: "profiles#update_email"
 
   resources :feedbacks, only: [:create]
+
+  # Service-token-authenticated JSON surface for the MCP sidecar (see mcp/).
+  # Read-only; do not graft browser-session controllers under here.
+  namespace :api do
+    namespace :mcp do
+      get  "users/find",  to: "users#find"
+      get  "users/:id",   to: "users#show"
+      resources :stories, only: [:index, :show]
+      resources :adventures, only: [:index, :show] do
+        resources :messages, only: [:index], controller: "adventure_messages"
+      end
+      get "adventure_messages/:id", to: "adventure_messages#show"
+      resources :feedbacks, only: [:index]
+      resources :play_logs, only: [:index] do
+        collection { get :pipelines }
+      end
+    end
+  end
 end

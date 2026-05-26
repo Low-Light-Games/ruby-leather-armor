@@ -70,6 +70,20 @@ services:
     command: node evaluator/src/index.js
     restart: unless-stopped
 
+  mcp:
+    build:
+      context: ./mcp
+    depends_on:
+      - app
+    env_file:
+      - .env
+    environment:
+      APP_INTERNAL_URL: http://app:3000
+    # Bound to loopback only — host nginx (managed by ec2-infrastructure/ansible) terminates TLS for mcp.leatherarmor.io.
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+
   postgres:
     image: pgvector/pgvector:pg16
     environment:
