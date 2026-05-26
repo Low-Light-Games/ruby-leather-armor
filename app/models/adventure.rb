@@ -54,6 +54,10 @@ class Adventure < ApplicationRecord
     skip_world_sanity_check == true
   end
 
+  def use_gamemaster_orchestrator?
+    use_gamemaster_orchestrator == true
+  end
+
   def combat_active?
     ctx = combat_context
     ctx.is_a?(Hash) && ctx["active"] == true && Array(ctx["participants"]).any?

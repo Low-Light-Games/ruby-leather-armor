@@ -280,6 +280,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_25_120000) do
     t.datetime "ended_at"
     t.string "end_reason"
     t.float "coordinate_scale", default: 7.0, null: false
+    t.boolean "use_gamemaster_orchestrator", default: false, null: false
     t.index ["current_location_id"], name: "index_adventures_on_current_location_id"
     t.index ["discarded_at"], name: "index_adventures_on_discarded_at"
     t.index ["ended_at"], name: "index_adventures_on_ended_at"

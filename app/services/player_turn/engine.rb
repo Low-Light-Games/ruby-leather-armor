@@ -48,7 +48,7 @@ module PlayerTurn
     def use_game_master?
       return false if @adventure.combat_context&.dig("active")
 
-      FeatureFlag.enabled_for?(:gamemaster_orchestrator, @user)
+      @adventure.use_gamemaster_orchestrator?
     end
 
     def attach_run_pipeline!(record)

@@ -295,6 +295,7 @@ export interface Adventure {
   end_reason: 'player_death' | 'adventure_complete' | null
   directed_dm: boolean
   skip_world_sanity_check: boolean
+  use_gamemaster_orchestrator: boolean
 }
 
 export interface AdventureSummary {
