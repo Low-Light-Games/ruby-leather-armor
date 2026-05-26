@@ -9,12 +9,20 @@ module Api
     private
 
     def require_service_token
-      header = request.headers["Authorization"].to_s
-      presented = header.start_with?("Bearer ") ? header.sub("Bearer ", "") : nil
-      expected = ENV["MCP_BEARER_TOKEN"]
+      render json: { error: "unauthorized" }, status: :unauthorized unless valid_service_token?
+    end
 
-      if expected.blank? || presented.blank? || !ActiveSupport::SecurityUtils.secure_compare(presented, expected)
-        render json: { error: "unauthorized" }, status: :unauthorized
+    def valid_service_token?
+      expected = ENV["MCP_BEARER_TOKEN"]
+      return false if expected.blank? || presented_bearer_token.blank?
+
+      ActiveSupport::SecurityUtils.secure_compare(presented_bearer_token, expected)
+    end
+
+    def presented_bearer_token
+      @presented_bearer_token ||= begin
+        header = request.headers["Authorization"].to_s
+        header.start_with?("Bearer ") ? header.sub("Bearer ", "") : nil
       end
     end
 

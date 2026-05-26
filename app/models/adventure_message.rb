@@ -23,6 +23,12 @@ class AdventureMessage < ApplicationRecord
   scope :dm_narration, -> { where(message_type: %w[narrative action_result]) }
   scope :combat_activity, -> { where(message_type: %w[combat_log action_result narrative]) }
 
+  # Accepts a Time, DateTime, or ISO8601 string; returns the full scope when given nil/blank.
+  scope :created_since, ->(time) {
+    parsed = time.is_a?(String) ? Time.zone.parse(time) : time
+    parsed ? where("created_at >= ?", parsed) : all
+  }
+
   def self.player_stats_by_user_id
     from_players
       .where.not(user_id: nil)

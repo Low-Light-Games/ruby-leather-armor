@@ -3,42 +3,20 @@
 module Api
   module Mcp
     class AdventureMessagesController < Api::BaseController
-      MAX_LIMIT = 200
-      DEFAULT_LIMIT = 50
+      include ListParams
 
       def index
-        scope = AdventureMessage.where(adventure_id: params[:adventure_id]).chronological
-        scope = scope.where("created_at >= ?", Time.zone.parse(params[:since])) if params[:since].present?
-        scope = scope.limit(clamped_limit)
+        scope = AdventureMessage
+                  .where(adventure_id: params[:adventure_id])
+                  .chronological
+                  .created_since(params[:since])
+                  .limit(clamped_limit(default: 50, max: 200))
 
-        render json: scope.map { |m| serialize(m) }
+        render json: scope.map { |m| AdventureMessageSerializer.call(m) }
       end
 
       def show
-        message = AdventureMessage.find(params[:id])
-        render json: serialize(message, verbose: true)
-      end
-
-      private
-
-      def clamped_limit
-        n = params[:limit].to_i
-        return DEFAULT_LIMIT if n <= 0
-
-        [n, MAX_LIMIT].min
-      end
-
-      def serialize(message, verbose: false)
-        {
-          id: message.id,
-          adventure_id: message.adventure_id,
-          user_id: message.user_id,
-          role: message.role,
-          message_type: message.message_type,
-          content: message.content,
-          created_at: message.created_at,
-          updated_at: verbose ? message.updated_at : nil
-        }.compact
+        render json: AdventureMessageSerializer.call(AdventureMessage.find(params[:id]), verbose: true)
       end
     end
   end
