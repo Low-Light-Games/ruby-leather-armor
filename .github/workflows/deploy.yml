@@ -59,7 +59,7 @@ jobs:
               '${{ secrets.STRIPE_SECRET_KEY }}' \
               '${{ secrets.STRIPE_WEBHOOK_SECRET }}' \
               '${{ secrets.MCP_BEARER_TOKEN }}' \
-              'mcp.leatherarmor.io,127.0.0.1,localhost' \
+              '${{ vars.MCP_ALLOWED_HOSTS }}' \
               > .env
 
             echo "--- Building images ---"
