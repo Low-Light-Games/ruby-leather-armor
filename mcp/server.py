@@ -180,13 +180,31 @@ async def list_play_log_pipelines(limit: int = 50) -> Any:
 
 # --- ASGI app + bearer middleware -----------------------------------------
 
+# Paths that must be reachable without bearer auth:
+#   /healthz                  — uptime probes
+#   /.well-known/oauth-*      — OAuth discovery (RFC 8414 / RFC 9728). We don't
+#                               serve OAuth, so the inner FastMCP app will 404
+#                               these naturally. That 404 tells MCP clients
+#                               "no OAuth offered, fall back to static Bearer".
+#                               If we 401 these instead, Claude Code (and others)
+#                               get stuck in an OAuth discovery loop and fail.
+_PUBLIC_PREFIXES = ("/.well-known/",)
+
+
 class BearerAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        if request.url.path == "/healthz":
+        path = request.url.path
+        if path == "/healthz" or path.startswith(_PUBLIC_PREFIXES):
             return await call_next(request)
         header = request.headers.get("authorization", "")
         if header != f"Bearer {BEARER_TOKEN}":
-            return JSONResponse({"error": "unauthorized"}, status_code=401)
+            # WWW-Authenticate signals plain Bearer (no `resource_metadata=` →
+            # clients shouldn't attempt OAuth discovery against this realm).
+            return JSONResponse(
+                {"error": "unauthorized"},
+                status_code=401,
+                headers={"WWW-Authenticate": 'Bearer realm="gm-prod"'},
+            )
         return await call_next(request)
 
 
