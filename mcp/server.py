@@ -12,6 +12,7 @@ from typing import Any
 
 import httpx
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -21,6 +22,19 @@ from starlette.routing import Mount, Route
 
 BEARER_TOKEN = os.environ["MCP_BEARER_TOKEN"]
 RAILS_URL = os.environ.get("APP_INTERNAL_URL", "http://app:3000")
+
+# DNS-rebinding allowlist for the FastMCP Streamable HTTP transport. Bearer
+# auth is the real gate; this is belt-and-suspenders. Defaults cover dev
+# (localhost) — prod sets MCP_ALLOWED_HOSTS via .env to include the public host.
+_ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get("MCP_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+    if h.strip()
+]
+_TRANSPORT_SECURITY = TransportSecuritySettings(
+    enable_dns_rebinding_protection=True,
+    allowed_hosts=_ALLOWED_HOSTS,
+)
 
 mcp = FastMCP("gm-prod", instructions="Read-only access to GM AI production data.")
 
@@ -198,7 +212,7 @@ async def lifespan(_app: Starlette):
 app = Starlette(
     routes=[
         Route("/healthz", healthz),
-        Mount("/", app=mcp.streamable_http_app()),
+        Mount("/", app=mcp.streamable_http_app(transport_security=_TRANSPORT_SECURITY)),
     ],
     middleware=[Middleware(BearerAuthMiddleware)],
     lifespan=lifespan,
