@@ -22,6 +22,7 @@ class Story < ApplicationRecord
 
   scope :kept, -> { where(discarded_at: nil) }
   scope :discarded, -> { where.not(discarded_at: nil) }
+  scope :visible_to_players, -> { where(hidden_from_players: false) }
 
   def discard!
     update!(discarded_at: Time.current)

@@ -14,6 +14,7 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
     user, authLoading, loading, saving, feedback, dismissFeedback,
     title, setTitle, preview, setPreview, premise, setPremise,
     openingMessage, setOpeningMessage,
+    hiddenFromPlayers, setHiddenFromPlayers,
     seedFacts, setSeedFacts,
     currentStoryId,
     locations, setLocations,
@@ -100,6 +101,18 @@ export const AdminStoryEditor = ({ mode, storyId }: AdminStoryEditorProps) => {
           <textarea id="story-opening-message" value={openingMessage}
             onChange={e => setOpeningMessage(e.target.value)} rows={5}
             placeholder="The first prose the player reads when they start the adventure. E.g. 'You wake at dawn in the inn at the crossroads, the rain still falling. The innkeeper Helena meets your eye across the common room — she has been waiting for you.'" />
+        </div>
+
+        <div className="form-field">
+          <label htmlFor="story-hidden-from-players">
+            <input
+              type="checkbox"
+              id="story-hidden-from-players"
+              checked={hiddenFromPlayers}
+              onChange={e => setHiddenFromPlayers(e.target.checked)}
+            />
+            &nbsp;Hidden from players
+          </label>
         </div>
 
         {isEditMode && (

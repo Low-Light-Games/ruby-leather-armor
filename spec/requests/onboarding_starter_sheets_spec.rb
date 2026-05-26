@@ -6,7 +6,7 @@ RSpec.describe "Onboarding starter sheets", type: :request do
 
   before do
     sign_in(user)
-    allow(Story).to receive_message_chain(:kept, :order, :first).and_return(story)
+    allow(Story).to receive_message_chain(:kept, :visible_to_players, :order, :first).and_return(story)
   end
 
   it "creates a starter sheet instead of a visible custom sheet" do
