@@ -52,6 +52,27 @@ class PlayLog < ApplicationRecord
       .first(limit)
   end
 
+  HAPPY_STATUSES = %w[success parse_fallback pipeline_event].freeze
+
+  # One aggregate row per registry_entry_uuid: hash with uuid, log_count, started_at, ended_at, had_error.
+  def self.pipeline_aggregates(limit:)
+    happy = HAPPY_STATUSES.map { |s| connection.quote(s) }.join(",")
+    with_registry_entry_uuid_present
+      .group(:registry_entry_uuid)
+      .order(Arel.sql("MAX(created_at) DESC"))
+      .limit(limit)
+      .pluck(
+        :registry_entry_uuid,
+        Arel.sql("COUNT(*)"),
+        Arel.sql("MIN(created_at)"),
+        Arel.sql("MAX(created_at)"),
+        Arel.sql("BOOL_OR(status NOT IN (#{happy}))")
+      )
+      .map do |uuid, log_count, started_at, ended_at, had_error|
+        { uuid: uuid, log_count: log_count, started_at: started_at, ended_at: ended_at, had_error: had_error }
+      end
+  end
+
   private
 
   def warn_unknown_event_type

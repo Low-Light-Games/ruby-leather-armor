@@ -16,6 +16,8 @@ class User < ApplicationRecord
       .select(:id, :email, :admin, :banned, :banned_at, :trusted, :moderation_strikes, :created_at)
   }
 
+  scope :for_email, ->(email) { where("LOWER(email) = ?", email.to_s.downcase) }
+
   validates :email, presence: true, uniqueness: { case_sensitive: false }
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :password, presence: true, on: :create, unless: :oauth_user?

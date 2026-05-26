@@ -77,6 +77,19 @@ services:
     environment:
       EVALUATOR_MAX_PARALLEL: "7"
 
+  mcp:
+    build:
+      context: ./mcp
+    depends_on:
+      - app
+    env_file:
+      - .env
+    environment:
+      APP_INTERNAL_URL: http://app:3000
+    # Host 8081 because Traefik already binds 8080 for its dashboard.
+    ports:
+      - "8081:8080"
+
   proxy:
     image: traefik:v3.4
     command:
