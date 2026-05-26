@@ -8,6 +8,10 @@ module Api
       end
 
       def find
+        if params[:email].blank? && params[:id].blank?
+          return render json: { error: "invalid_arguments", detail: "Provide email or id." }, status: :bad_request
+        end
+
         scope = User.all
         scope = scope.where("LOWER(email) = ?", params[:email].downcase) if params[:email].present?
         scope = scope.where(id: params[:id]) if params[:id].present?

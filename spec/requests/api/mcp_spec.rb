@@ -48,6 +48,13 @@ RSpec.describe "Api::Mcp" do
       get "/api/mcp/users/find", params: { email: "nobody@example.com" }, headers: headers
       expect(response).to have_http_status(:not_found)
     end
+
+    it "rejects calls with no filters so it can't leak an arbitrary first user" do
+      create(:user)
+      get "/api/mcp/users/find", headers: headers
+      expect(response).to have_http_status(:bad_request)
+      expect(JSON.parse(response.body)).to include("error" => "invalid_arguments")
+    end
   end
 
   describe "GET /api/mcp/stories" do

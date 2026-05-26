@@ -41,6 +41,10 @@
 /node_modules
 evaluator/node_modules/
 
+# Python (mcp sidecar)
+mcp/__pycache__/
+*.pyc
+
 # Playwright
 /test-results/
 /playwright-report/
