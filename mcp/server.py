@@ -36,7 +36,11 @@ _TRANSPORT_SECURITY = TransportSecuritySettings(
     allowed_hosts=_ALLOWED_HOSTS,
 )
 
-mcp = FastMCP("gm-prod", instructions="Read-only access to GM AI production data.")
+mcp = FastMCP(
+    "gm-prod",
+    instructions="Read-only access to GM AI production data.",
+    transport_security=_TRANSPORT_SECURITY,
+)
 
 _rails: httpx.AsyncClient | None = None
 
@@ -212,7 +216,7 @@ async def lifespan(_app: Starlette):
 app = Starlette(
     routes=[
         Route("/healthz", healthz),
-        Mount("/", app=mcp.streamable_http_app(transport_security=_TRANSPORT_SECURITY)),
+        Mount("/", app=mcp.streamable_http_app()),
     ],
     middleware=[Middleware(BearerAuthMiddleware)],
     lifespan=lifespan,
