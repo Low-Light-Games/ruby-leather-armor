@@ -94,7 +94,8 @@ Rails.application.configure do
   config.hosts = [
     "leatherarmor.io",
     "www.leatherarmor.io",
-    "44.220.128.51"
+    "44.220.128.51",
+    "app" # docker service name — used by the mcp sidecar to reach Rails on http://app:3000
   ]
   config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 end
