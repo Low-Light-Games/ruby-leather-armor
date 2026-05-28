@@ -71,7 +71,8 @@ class AdventuresController < ApplicationController
   private
 
   def set_adventure
-    @adventure = Adventure.kept.find(params[:id])
+    scope = current_user&.admin? ? Adventure.all : Adventure.kept
+    @adventure = scope.find(params[:id])
   end
 
   def adventure_summary(adventure)
