@@ -3,6 +3,7 @@
 # Combat HUD endpoints — deterministic per-action resolution that
 # bypasses the AI pipeline. See docs/combat_redesign.md.
 class CombatActionsController < ApplicationController
+  include AdventureScoping
   before_action :set_adventure
   before_action -> { authorize(@adventure, :show?) }
   before_action -> { authorize(@adventure, :pipeline?) }, only: %i[create]
@@ -44,7 +45,7 @@ class CombatActionsController < ApplicationController
   private
 
   def set_adventure
-    @adventure = Adventure.kept.find(params[:adventure_id])
+    @adventure = adventure_scope.find(params[:adventure_id])
   end
 
   def set_adventure_sheet

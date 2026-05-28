@@ -4,6 +4,7 @@
 # free-text prompt; POST messages/initiative + messages/roll resume the
 # pipeline from an :awaiting_initiative or :awaiting_rolls pause.
 class AdventureMessagesController < ApplicationController
+  include AdventureScoping
   before_action :set_adventure
   before_action -> { authorize(@adventure, :show?) }
   before_action -> { authorize(@adventure, :pipeline?) }, only: %i[create initiative roll]
@@ -115,7 +116,7 @@ class AdventureMessagesController < ApplicationController
   end
 
   def set_adventure
-    @adventure = Adventure.kept.find(params[:adventure_id])
+    @adventure = adventure_scope.find(params[:adventure_id])
   end
 
   def dm_service

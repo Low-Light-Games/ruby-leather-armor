@@ -4,6 +4,7 @@
 class AdventureSheetsController < ApplicationController
   include SheetJsonSerialization
   include PivotSync
+  include AdventureScoping
 
   before_action :set_adventure
   before_action :set_adventure_sheet
@@ -47,7 +48,7 @@ class AdventureSheetsController < ApplicationController
   private
 
   def set_adventure
-    @adventure = Adventure.kept.find(params[:adventure_id])
+    @adventure = adventure_scope.find(params[:adventure_id])
   end
 
   def set_adventure_sheet
