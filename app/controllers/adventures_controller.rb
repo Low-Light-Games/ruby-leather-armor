@@ -2,6 +2,7 @@
 
 class AdventuresController < ApplicationController
   include SheetJsonSerialization
+  include AdventureScoping
 
   skip_before_action :require_login, only: [:new]
   before_action :set_adventure, only: [:show, :destroy]
@@ -71,8 +72,7 @@ class AdventuresController < ApplicationController
   private
 
   def set_adventure
-    scope = current_user&.admin? ? Adventure.all : Adventure.kept
-    @adventure = scope.find(params[:id])
+    @adventure = adventure_scope.find(params[:id])
   end
 
   def adventure_summary(adventure)
