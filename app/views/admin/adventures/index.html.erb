@@ -23,9 +23,7 @@
           <th class="col-char">Character</th>
           <th class="col-location">Location</th>
           <th class="col-time"><%= @show_discarded ? "Deleted At" : "Last Active" %></th>
-          <% if @show_discarded %>
-            <th class="col-actions"></th>
-          <% end %>
+          <th class="col-actions"></th>
         </tr>
       </thead>
       <tbody>
@@ -52,13 +50,15 @@
               <% ts = @show_discarded ? adventure.discarded_at : adventure.updated_at %>
               <%= ts&.strftime('%b %d %H:%M') || '—' %>
             </td>
-            <% if @show_discarded %>
-              <td class="col-actions">
+            <td class="col-actions">
+              <% if @show_discarded %>
                 <%= button_to "Delete forever", admin_adventure_path(adventure), method: :delete,
                       data: { confirm: "Permanently delete adventure ##{adventure.id}? This cannot be undone." },
                       class: "btn-danger" %>
-              </td>
-            <% end %>
+              <% else %>
+                <%= link_to "Play", adventure_path(adventure), class: "btn-play", target: "_blank" %>
+              <% end %>
+            </td>
           </tr>
         <% end %>
       </tbody>
@@ -115,5 +115,11 @@
     background: #c62828; color: white; border: none; padding: 5px 10px;
     border-radius: 4px; font-size: 12px; cursor: pointer; white-space: nowrap;
     &:hover { background: #b71c1c; }
+  }
+  .btn-play {
+    display: inline-block; padding: 5px 10px; border-radius: 4px; font-size: 12px;
+    font-weight: 600; text-decoration: none; white-space: nowrap;
+    background: #1565c0; color: white;
+    &:hover { background: #0d47a1; }
   }
 </style>
