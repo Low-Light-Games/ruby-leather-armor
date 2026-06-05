@@ -9,6 +9,10 @@
   background: $parchment;
   color: $ink;
 
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
+
   .app-content {
     align-items: flex-start;
     display: flex;
