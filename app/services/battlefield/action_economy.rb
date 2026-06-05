@@ -33,6 +33,15 @@ module Battlefield
 
         out["swift_available"] = false
       end
+      if (n = d["set_remaining_movement"])
+        out["remaining_movement_squares"] = n.to_i
+      end
+      if (n = d["spend_remaining_movement"])
+        remaining = out["remaining_movement_squares"].to_i
+        raise ArgumentError, "insufficient remaining movement (need #{n.to_i}, have #{remaining})" if n.to_i > remaining
+
+        out["remaining_movement_squares"] = remaining - n.to_i
+      end
       if truthy?(d["spend_full_round"])
         raise ArgumentError, "full-round already claimed" if truthy?(out["full_round_claimed"])
 

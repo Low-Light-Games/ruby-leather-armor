@@ -67,11 +67,27 @@ module Combat
       end
 
       def ensure_within_speed!(distance)
-        speed_squares = Combat::Positions.speed_squares_for(@sheet)
-        return if distance <= speed_squares
+        econ = (@adventure.combat_context || {})['action_economy'] || {}
 
-        raise Combat::ResolverError.new("target is #{distance} squares away — speed allows up to #{speed_squares}",
-                                        code: :out_of_reach)
+        if econ['move_available'] == true
+          speed_squares = Combat::Positions.speed_squares_for(@sheet)
+          return if distance <= speed_squares
+
+          raise Combat::ResolverError.new("target is #{distance} squares away — speed allows up to #{speed_squares}",
+                                          code: :out_of_reach)
+        end
+
+        remaining = econ['remaining_movement_squares'].to_i
+        if remaining > 0
+          return if distance <= remaining
+
+          raise Combat::ResolverError.new(
+            "target is #{distance} sq away — #{remaining} sq of movement remaining",
+            code: :out_of_reach
+          )
+        end
+
+        raise Combat::ResolverError.new('no move action available this turn', code: :no_move_available)
       end
 
       def aoo_outcomes_for(mode, origin)
@@ -133,7 +149,13 @@ module Combat
 
         return [{ 'spend_move' => true }, '5-foot step'] if can_5ft_step?(distance, econ)
 
-        return [{ 'spend_move' => true }, 'move'] if econ['move_available'] == true
+        if econ['move_available'] == true
+          speed = Combat::Positions.speed_squares_for(@sheet)
+          return [{ 'spend_move' => true, 'set_remaining_movement' => speed - distance }, 'move']
+        end
+
+        remaining = econ['remaining_movement_squares'].to_i
+        return [{ 'spend_remaining_movement' => distance }, 'move'] if remaining > 0
 
         raise Combat::ResolverError.new('no move action available this turn', code: :no_move_available)
       end
