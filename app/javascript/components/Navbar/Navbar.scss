@@ -179,20 +179,101 @@
 
   @media (max-width: 768px) {
     margin-bottom: 0;
-    padding: 8px 12px 8px;
+    padding: 8px 12px;
+    justify-content: flex-end;
 
-    /* Hide nav links that aren't critical on mobile */
-    .nav-link:not(.adventure-cta) {
-      display: none;
+    .user-info,
+    .header-actions { display: none; }
+  }
+}
+
+.hamburger-btn {
+  display: none;
+
+  @media (max-width: 768px) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: none;
+    border: 1px solid $border-light;
+    color: $ink-mid;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover {
+      background: $parchment-dk;
+      color: $ink;
+      border-color: $border;
+    }
+  }
+}
+
+.mobile-nav-drawer {
+  display: none;
+
+  @media (max-width: 768px) {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: $parchment-dk;
+    border-bottom: 2px solid $border;
+    padding: 12px 16px 16px;
+
+    .drawer-user {
+      font-size: 11px;
+      font-family: $font-mono;
+      color: $ink-faint;
+      padding-bottom: 10px;
+      margin-bottom: 6px;
+      border-bottom: 1px solid $border-light;
     }
 
-    .admin-badge {
-      display: none;
+    .nav-link,
+    .adventure-cta,
+    .plans-cta,
+    .logout-button {
+      display: block;
+      width: 100%;
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 14px;
+      box-sizing: border-box;
     }
 
-    .user-info {
-      font-size: 13px;
-      gap: 8px;
+    .adventure-cta {
+      background-color: $green-ink;
+      color: $parchment;
+      border: none;
+      text-decoration: none;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-family: $font-display;
+      margin-top: 4px;
+    }
+
+    .plans-cta {
+      background-color: $golden-ink;
+      color: $parchment;
+      border: none;
+      text-decoration: none;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-family: $font-display;
+    }
+
+    .logout-button {
+      background: none;
+      border: none;
+      color: $ink-light;
+      cursor: pointer;
+      font-family: $font-body;
+      text-align: left;
+      padding-left: 12px;
+
+      &:hover { color: $red-ink; }
     }
   }
 }
