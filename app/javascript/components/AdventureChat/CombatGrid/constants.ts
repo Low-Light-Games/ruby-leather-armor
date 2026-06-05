@@ -1,7 +1,7 @@
 // Pixel size of one square at full zoom; the grid auto-scales down to
 // fit MAX_GRID_PX so wide battlefields don't blow out the layout.
 export const COMBAT_GRID_DEFAULT_CELL_PX = 24
-export const COMBAT_GRID_MIN_CELL_PX = 12
+export const COMBAT_GRID_MIN_CELL_PX = 18
 export const COMBAT_GRID_MAX_TOTAL_PX = 360
 
 // How many extra squares of empty grid to render around the outermost

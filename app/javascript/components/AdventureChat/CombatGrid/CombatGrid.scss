@@ -11,6 +11,8 @@
     background: $parchment;
     border: 1px solid $border-light;
     display: block;
+    max-width: 100%;
+    height: auto;
 
     .combat-grid-cell {
       fill: transparent;

@@ -177,6 +177,7 @@ export const CombatGrid = ({
     <div className="combat-grid-wrapper">
       <svg
         className="combat-grid"
+        viewBox={`0 0 ${tightView.width * cellPx} ${tightView.height * cellPx}`}
         width={tightView.width * cellPx}
         height={tightView.height * cellPx}
         role="img"
