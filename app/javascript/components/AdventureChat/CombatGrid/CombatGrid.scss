@@ -109,4 +109,12 @@
     color: $ink-faint;
     text-align: center;
   }
+
+  @media (max-width: 768px) {
+    width: 100%;
+
+    .combat-grid {
+      width: 100%; // expand (not just cap) to fill the column; viewBox handles aspect ratio
+    }
+  }
 }
