@@ -35,6 +35,11 @@
   display: none;
 }
 
+/* Hide the early-access banner on the play screen — no room, not actionable mid-session */
+@media (max-width: 768px) {
+  .app--play .early-access-banner { display: none; }
+}
+
 /* StatTooltip renders via portal on document.body — must not live under .character-column overflow */
 .stat-tooltip-popup {
   /* Shrink to content while still static in body — avoids full-viewport width before fixed + clamp run */

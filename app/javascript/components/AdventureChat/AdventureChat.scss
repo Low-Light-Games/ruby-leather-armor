@@ -630,6 +630,9 @@
   text-transform: uppercase;
   user-select: none;
   animation: combatBannerIn 1s ease both;
+
+  /* Redundant on mobile — the tab label already says "⚔ Combat" */
+  @media (max-width: 768px) { display: none; }
 }
 
 

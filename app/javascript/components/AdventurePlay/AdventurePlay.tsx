@@ -98,7 +98,7 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const { adventure_sheet: sheet, story } = adventure;
 
   return (
-    <div className="app">
+    <div className="app app--play">
       <Navbar />
       {inventory.equipError && (
         <FlashMessage
