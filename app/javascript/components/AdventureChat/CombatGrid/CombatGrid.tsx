@@ -7,6 +7,7 @@ import {
   COMBAT_GRID_DEFAULT_VIEWPORT_WIDTH,
   COMBAT_GRID_MAX_TOTAL_PX,
   COMBAT_GRID_MIN_CELL_PX,
+  COMBAT_GRID_MOBILE_VIEW_SQUARES,
   COMBAT_GRID_VIEWPORT_PADDING_FLOOR,
 } from './constants'
 import type { CombatGridProps, ResolvedToken, ViewportRect } from './types'
@@ -88,6 +89,30 @@ function cellPxFor(view: ViewportRect): number {
   return Math.max(COMBAT_GRID_MIN_CELL_PX, Math.min(COMBAT_GRID_DEFAULT_CELL_PX, Math.floor(COMBAT_GRID_MAX_TOTAL_PX / widest)))
 }
 
+// Returns the SVG viewBox string for mobile: a MOBILE_VIEW_SQUARES×MOBILE_VIEW_SQUARES
+// window centred on the player. The SVG is scaled to fill its container via CSS
+// width:100%, so fewer squares = larger tiles (~46px on a standard phone).
+function mobileViewBox(
+  playerPosition: { x: number; y: number } | null,
+  tightView: ViewportRect,
+  cellPx: number,
+): string {
+  const size = Math.min(COMBAT_GRID_MOBILE_VIEW_SQUARES, tightView.width, tightView.height)
+  const half = Math.floor(size / 2)
+
+  const centerCol = playerPosition != null
+    ? playerPosition.x - tightView.minX
+    : Math.floor(tightView.width / 2)
+  const centerRow = playerPosition != null
+    ? playerPosition.y - tightView.minY
+    : Math.floor(tightView.height / 2)
+
+  const startCol = Math.max(0, Math.min(centerCol - half, tightView.width - size))
+  const startRow = Math.max(0, Math.min(centerRow - half, tightView.height - size))
+
+  return `${startCol * cellPx} ${startRow * cellPx} ${size * cellPx} ${size * cellPx}`
+}
+
 function reachableSquaresFrom(
   playerPosition: { x: number; y: number } | null, canMove: boolean, speedSquares: number,
   occupied: Set<string>, view: ViewportRect,
@@ -109,6 +134,8 @@ function reachableSquaresFrom(
   return set
 }
 
+const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 768px)').matches
+
 export const CombatGrid = ({
   battlefield, playerPosition, speedSquares, canMove, canWithdraw, withdrawMode,
   onWithdrawToggle, onSquareClick, busy, targets,
@@ -118,6 +145,12 @@ export const CombatGrid = ({
 
   const tightView = useMemo(() => tightViewportFor(tokens, viewport, speedSquares), [tokens, speedSquares, viewport])
   const cellPx = useMemo(() => cellPxFor(tightView), [tightView])
+  const svgViewBox = useMemo(
+    () => isMobile
+      ? mobileViewBox(playerPosition, tightView, cellPx)
+      : `0 0 ${tightView.width * cellPx} ${tightView.height * cellPx}`,
+    [playerPosition, tightView, cellPx],
+  )
   const occupied = useMemo(() => {
     const set = new Set<string>()
     tokens.forEach(t => set.add(`${t.x},${t.y}`))
@@ -177,7 +210,7 @@ export const CombatGrid = ({
     <div className="combat-grid-wrapper">
       <svg
         className="combat-grid"
-        viewBox={`0 0 ${tightView.width * cellPx} ${tightView.height * cellPx}`}
+        viewBox={svgViewBox}
         width={tightView.width * cellPx}
         height={tightView.height * cellPx}
         role="img"

@@ -12,3 +12,7 @@ export const COMBAT_GRID_VIEWPORT_PADDING_FLOOR = 3
 // Default viewport bounds when the battlefield doesn't ship explicit ones.
 export const COMBAT_GRID_DEFAULT_VIEWPORT_WIDTH = 20
 export const COMBAT_GRID_DEFAULT_VIEWPORT_HEIGHT = 20
+
+// On mobile, show this many squares across each axis (centred on the player).
+// At ~319px column width this gives ≈46px tiles — within Apple's 44px touch guideline.
+export const COMBAT_GRID_MOBILE_VIEW_SQUARES = 7
