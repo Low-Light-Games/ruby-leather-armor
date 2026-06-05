@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { setCombatDiceStrategy as persistDiceStrategy } from '../../services/combatActionService';
 import type { CombatDiceStrategy } from '../../types/auth';
@@ -33,6 +33,14 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
   const inventory = useInventory(adventure, setAdventure);
   const skillRanks = useAdventureSkillRanks(adventure, setAdventure);
   const [mobileTab, setMobileTab] = useState<MobileTab>('play');
+
+  const isCombatActive =
+    adventure?.combat_context?.active === true &&
+    adventure?.combat_context?.current_turn === 'Player';
+
+  useEffect(() => {
+    if (isCombatActive) setMobileTab('play');
+  }, [isCombatActive]);
 
   const handleDiceStrategyChange = async (next: CombatDiceStrategy) => {
     try {
@@ -112,13 +120,13 @@ export const AdventurePlay = ({ adventureId }: AdventurePlayProps) => {
             className={`mobile-tab-btn${mobileTab === 'play' ? ' active' : ''}`}
             onClick={() => setMobileTab('play')}
           >
-            Play
+            {isCombatActive ? '⚔ Combat' : 'Play'}
           </button>
           <button
             className={`mobile-tab-btn${mobileTab === 'story' ? ' active' : ''}`}
             onClick={() => setMobileTab('story')}
           >
-            Story
+            {isCombatActive ? 'Log' : 'Story'}
           </button>
         </nav>
 
