@@ -246,8 +246,12 @@ export const CombatActionPanel = ({
         <CombatGrid
           battlefield={options.battlefield}
           playerPosition={options.player_position}
-          speedSquares={options.player_speed_squares}
-          canMove={options.action_economy?.move_available !== false && pending === null}
+          speedSquares={options.action_economy?.remaining_movement_squares ?? options.player_speed_squares}
+          canMove={
+            (options.action_economy?.move_available !== false ||
+              (options.action_economy?.remaining_movement_squares ?? 0) > 0) &&
+            pending === null
+          }
           canWithdraw={
             options.action_economy?.standard_available !== false &&
             options.action_economy?.move_available !== false &&

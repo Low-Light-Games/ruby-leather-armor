@@ -1,4 +1,4 @@
-import { useCallback, type MouseEvent } from 'react'
+import { useState, useCallback, type MouseEvent } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useSheetsContextOptional } from '../../contexts/SheetsContext'
 import { UNSAVED_SHEET_CHANGES_CONFIRM_MESSAGE } from '../SheetEditor/hooks/useSheetPersistence'
@@ -11,6 +11,7 @@ export const Navbar = () => {
   const graceEndsAt = user?.usage.grace_period_ends_at
     ? new Date(user.usage.grace_period_ends_at).toLocaleString()
     : null
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const onAdventureClick = useCallback(
     (e: MouseEvent<HTMLAnchorElement>) => {
@@ -52,7 +53,47 @@ export const Navbar = () => {
           {user.admin && <a href="/admin/stories" className="nav-link admin-panel-link">Admin Panel</a>}
           <button onClick={logout} className="logout-button">Logout</button>
         </div>
+
+        {/* Mobile-only hamburger button */}
+        <button
+          className="hamburger-btn"
+          onClick={() => setMenuOpen(prev => !prev)}
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={menuOpen}
+        >
+          {menuOpen ? '✕' : '☰'}
+        </button>
       </div>
+
+      {/* Mobile nav drawer — rendered only when open */}
+      {menuOpen && (
+        <div className="mobile-nav-drawer" role="navigation" aria-label="Mobile menu">
+          <span className="drawer-user">{user.email}</span>
+          <a href="/sheets" className="nav-link" onClick={() => setMenuOpen(false)}>Sheets</a>
+          <a
+            href="/adventures/new"
+            className="adventure-cta"
+            onClick={e => { onAdventureClick(e); setMenuOpen(false) }}
+          >
+            Adventure!
+          </a>
+          <a href="/plans" className="plans-cta" onClick={() => setMenuOpen(false)}>
+            {plansCtaLabel}
+          </a>
+          {user.admin && (
+            <a
+              href="/admin/stories"
+              className="nav-link admin-panel-link"
+              onClick={() => setMenuOpen(false)}
+            >
+              Admin Panel
+            </a>
+          )}
+          <button onClick={() => { logout(); setMenuOpen(false) }} className="logout-button">
+            Logout
+          </button>
+        </div>
+      )}
     </>
   )
 }

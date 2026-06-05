@@ -29,8 +29,10 @@ export const CombatActionEconomyChips = ({ combatContext }: CombatActionEconomyC
       },
       {
         key: 'move',
-        label: 'Move',
-        available: economy.move_available !== false,
+        label: (economy.remaining_movement_squares ?? 0) > 0
+          ? `Move (${economy.remaining_movement_squares}sq left)`
+          : 'Move',
+        available: economy.move_available !== false || (economy.remaining_movement_squares ?? 0) > 0,
         tooltip: ACTION_ECONOMY_MOVE_TOOLTIP,
       },
       {

@@ -349,6 +349,7 @@ export interface ActionEconomyShape {
   move_available?: boolean
   swift_available?: boolean
   full_round_claimed?: boolean
+  remaining_movement_squares?: number | null
 }
 
 export interface CombatActionEconomyChipsProps {

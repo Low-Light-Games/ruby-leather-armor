@@ -35,6 +35,11 @@
   display: none;
 }
 
+/* Hide the early-access banner on the play screen — no room, not actionable mid-session */
+@media (max-width: 768px) {
+  .app--play .early-access-banner { display: none; }
+}
+
 /* StatTooltip renders via portal on document.body — must not live under .character-column overflow */
 .stat-tooltip-popup {
   /* Shrink to content while still static in body — avoids full-viewport width before fixed + clamp run */
@@ -1388,7 +1393,7 @@
 
   .mobile-tab-btn {
     flex: 1;
-    padding: 11px 4px;
+    padding: 11px 8px;
     border: none;
     border-bottom: 3px solid transparent;
     margin-bottom: -2px;
@@ -1442,23 +1447,51 @@
       overflow-y: auto;
     }
 
+    /* Combat columns hidden by default — tab rules opt them in */
+    .combat-hud-column,
+    .combat-chat-column { display: none; }
+
     /* ── Show/hide panels based on active tab ── */
     &[data-mobile-tab="character"] {
       .character-column { display: flex; }
       .middle-column,
-      .story-column     { display: none; }
+      .story-column,
+      .combat-hud-column,
+      .combat-chat-column { display: none; }
     }
 
     &[data-mobile-tab="play"] {
       .middle-column    { display: flex; }
       .character-column,
       .story-column     { display: none; }
+
+      /* Combat: HUD takes ~65%, chat log strip takes ~35% */
+      .combat-hud-column {
+        display: flex;
+        height: calc((100dvh - 116px) * 0.65);
+        max-height: calc((100dvh - 116px) * 0.65);
+        overflow-y: auto;
+      }
+      .combat-chat-column {
+        display: flex;
+        height: calc((100dvh - 116px) * 0.35);
+        max-height: calc((100dvh - 116px) * 0.35);
+        min-height: 0;
+      }
     }
 
     &[data-mobile-tab="story"] {
-      .story-column     { display: block; }
+      .story-column       { display: block; }
       .character-column,
-      .middle-column    { display: none; }
+      .middle-column,
+      .combat-hud-column  { display: none; }
+
+      /* During combat "Log" tab shows the full chat history */
+      .combat-chat-column {
+        display: flex;
+        height: calc(100dvh - 116px);
+        max-height: calc(100dvh - 116px);
+      }
     }
   }
 }
