@@ -4,5 +4,7 @@ A full-stack web application that pairs D&D-style character sheet management wit
 
 Built with Rails 7, React/TypeScript, PostgreSQL, and the OpenAI API.
 
+New version, being built with python, live at [leatherarmor.io](https://leatherarmor.io/).
+
 ## Project status
 This is an open-source legacy version. The current iteration runs on Python, LangChain, and a slightly different stack. This is here for historical and portfolio purposes.
