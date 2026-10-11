@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_05_27_010000) do
+ActiveRecord::Schema[7.1].define(version: 2026_10_11_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
   enable_extension "vector"
@@ -555,8 +555,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_27_010000) do
     t.vector "embedding", limit: 1536
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.virtual "search_vector", type: :tsvector, as: "((setweight(to_tsvector('english'::regconfig, (COALESCE(name, ''::character varying))::text), 'A'::\"char\") || setweight(to_tsvector('english'::regconfig, COALESCE(brief, ''::text)), 'B'::\"char\")) || setweight(to_tsvector('english'::regconfig, body), 'C'::\"char\"))", stored: true
     t.index ["domain"], name: "index_rule_embeddings_on_domain"
     t.index ["embedding"], name: "index_rule_embeddings_on_embedding_hnsw", opclass: :vector_cosine_ops, using: :hnsw
+    t.index ["search_vector"], name: "index_rule_embeddings_on_search_vector", using: :gin
     t.index ["slug"], name: "index_rule_embeddings_on_slug", unique: true
   end
 

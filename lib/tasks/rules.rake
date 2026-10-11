@@ -23,8 +23,7 @@ namespace :rules do
 
     entries.each do |slug, entry|
       body   = entry[:text].to_s
-      brief  = body.split(/\.(\s|\z)/).first&.strip
-      brief  = "#{brief}." if brief.present? && !brief.end_with?('.')
+      brief  = Rules.brief_for(entry)
       digest = Digest::SHA1.hexdigest("#{slug}|#{entry[:name]}|#{body}")
 
       existing = RuleEmbedding.find_by(slug: slug)
@@ -41,7 +40,7 @@ namespace :rules do
         body: body,
         text_digest: digest,
         existing: existing,
-        embed_text: embed_text_for(entry)
+        embed_text: Rules.embedding_text(entry)
       }
     end
 
@@ -83,10 +82,6 @@ namespace :rules do
     n = RuleEmbedding.count
     RuleEmbedding.delete_all
     puts "[rules:reset] cleared #{n} rule embedding row(s)."
-  end
-
-  def embed_text_for(entry)
-    ["#{entry[:name]} (#{entry[:domain]})", entry[:text].to_s.strip].join("\n").strip
   end
 end
 end
