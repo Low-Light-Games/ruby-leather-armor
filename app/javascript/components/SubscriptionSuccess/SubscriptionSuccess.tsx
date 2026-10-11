@@ -24,7 +24,6 @@ export const SubscriptionSuccess = () => {
         if (cancelled) return
 
         const { user } = await fetchCurrentUser()
-        // The component may have unmounted while the request was in flight.
         if (cancelled) return
 
         if (user?.plan_key && user.plan_key !== 'free') {
