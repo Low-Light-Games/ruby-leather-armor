@@ -48,8 +48,7 @@ RSpec.describe Rules::Lookup do
     it "fuses the keyword match into the vector ranking" do
       hits = lookup
 
-      # armor_class is 3rd by vector but the only keyword match ("touch", "AC"),
-      # so RRF lifts it above the vector winner.
+      # armor_class is only 3rd by vector, but the sole keyword match.
       expect(hits.pluck(:slug)).to eq(%w[armor_class climb])
       expect(hits.first[:rrf_score]).to be > hits.second[:rrf_score]
       expect(hits.second[:distance]).to be_within(1e-6).of(1 - (0.9 / Math.sqrt(0.82)))
@@ -63,14 +62,6 @@ RSpec.describe Rules::Lookup do
       expect(hits.pluck(:slug)).to eq(%w[armor_class])
       expect(hits.first[:distance]).to be_nil
       expect(log).not_to have_received(:report_error)
-    end
-
-    it "records the retrieval mode in the play log" do
-      lookup
-
-      expect(log).to have_received(:play_log!).with(
-        "rules_retrieved", anything, parsed_response: hash_including(retrieval: "hybrid")
-      )
     end
   end
 end

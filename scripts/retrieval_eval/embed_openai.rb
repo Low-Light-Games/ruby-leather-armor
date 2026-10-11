@@ -1,21 +1,7 @@
 # frozen_string_literal: true
 
-# Embeds the rules retrieval eval set with the production embedding model
-# (text-embedding-3-small, DmConfig's default) and writes
-# lib/retrieval_eval/rules_vectors.json, so the eval itself re-runs offline and
-# free. Only texts without a vector already in the file are sent, so a rerun
-# after editing a few queries costs a few hundred tokens.
-#
-#     ruby scripts/retrieval_eval/embed_openai.rb
-#
-# Plain Ruby (stdlib only, no Rails, no bundle). OPENAI_API_KEY is read from the
-# environment, or else from the repo's .env into this process only; it is never
-# printed or written anywhere. Error output shows the HTTP status and OpenAI's
-# error code, never the response message (it can echo part of the key).
-#
-# Vectors are keyed by SHA1 of the exact text embedded. Rule texts mirror
-# Rules.all_entries + Rules.embedding_text; if they ever disagree, the eval
-# raises StaleFixtures instead of scoring a different corpus.
+# Embeds the eval's rules and queries into lib/retrieval_eval/rules_vectors.json,
+# sending only texts it has no vector for. Run: ruby scripts/retrieval_eval/embed_openai.rb
 
 require "base64"
 require "digest"
@@ -49,8 +35,7 @@ def api_key
   key
 end
 
-# Mirrors Rules.all_entries (a slug defined in two domains keeps the later one)
-# and Rules.embedding_text.
+# Mirrors Rules.all_entries and Rules.embedding_text.
 def rule_texts
   entries = {}
   DOMAINS.each do |domain|

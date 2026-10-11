@@ -23,13 +23,11 @@ module Rules
       end
     end
 
-    # The text a rule is embedded from (rules:embed and the retrieval eval's
-    # fixtures must agree on it, or the eval measures a different corpus).
+    # Shared with the retrieval eval's fixtures.
     def embedding_text(entry)
       ["#{entry[:name]} (#{entry[:domain]})", entry[:text].to_s.strip].join("\n").strip
     end
 
-    # First sentence of the rule, stored as RuleEmbedding#brief.
     def brief_for(entry)
       brief = entry[:text].to_s.split(/\.(\s|\z)/).first&.strip
       brief.present? && !brief.end_with?(".") ? "#{brief}." : brief

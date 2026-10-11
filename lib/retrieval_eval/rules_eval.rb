@@ -4,21 +4,8 @@ require "base64"
 require "digest"
 
 module RetrievalEval
-  # Offline retrieval eval for Rules::Lookup: labelled player intents
-  # (rules_queries.yml) scored for every variant in RulesVariants at the
-  # production cut-off (Rules::Lookup::DEFAULT_LIMIT).
-  #
-  # Nothing here calls OpenAI. Vectors come from rules_vectors.json, written by
-  # scripts/retrieval_eval/embed_openai.rb with production's embedding model
-  # (text-embedding-3-small, 1536-d), keyed by SHA1 of the exact text embedded.
-  # The vector ranking is an exact cosine scan in Ruby (the order an HNSW scan
-  # returns at ~51 rows); the keyword ranking is the production
-  # RuleEmbedding.keyword_ranked query against Postgres, and plain RRF is the
-  # production Rules::Lookup.fuse, so the eval scores the code that ships.
-  #
-  # Queries are split once into dev and test halves (stratified by slice and
-  # source, fixed seed). Variants are compared on dev, at most one is picked,
-  # and only test numbers are used to judge it (see RulesReport).
+  # Offline eval of Rules::Lookup: committed vectors, plus production's keyword
+  # query and fusion, scored on labelled intents split into dev and test.
   class RulesEval
     DIR = Pathname(__dir__)
     QUERIES_PATH = DIR.join("rules_queries.yml")
@@ -34,7 +21,6 @@ module RetrievalEval
       new(cutoff: cutoff).run
     end
 
-    # Reads and validates the labelled queries: [{text:, relevant:, source:, slice:}].
     def self.load_queries(path = QUERIES_PATH, known_slugs: Rules.all_entries.keys)
       rows = YAML.safe_load_file(path)
       raise InvalidQueries, "#{path} must be a list of queries" unless rows.is_a?(Array)
@@ -66,10 +52,7 @@ module RetrievalEval
     end
     private_class_method :parse_query, :query_problem
 
-    # Assigns each query to :dev or :test, ~50/50 within every slice x source
-    # stratum. The order inside a stratum is by SHA1 of the query text, so
-    # relabelling never moves a query between halves; adding or editing query
-    # text can.
+    # Ordered by text hash, so relabelling never moves a query between halves.
     def self.split(queries, seed: SPLIT_SEED)
       rng = Random.new(seed)
       assignment = {}
@@ -85,9 +68,7 @@ module RetrievalEval
       @cutoff = cutoff
     end
 
-    # Loads the rule corpus into rule_embeddings inside a transaction that is
-    # always rolled back, so the eval never depends on (or disturbs) whatever
-    # rules:embed last wrote.
+    # Always rolled back: the eval neither depends on nor disturbs rule_embeddings.
     def run
       results = nil
       RuleEmbedding.transaction(requires_new: true) do
@@ -108,7 +89,6 @@ module RetrievalEval
       query.merge(rankings: rankings, jargon_detected: RulesVariants.jargon?(query[:text]))
     end
 
-    # [[slug, cosine], ...], best first.
     def vector_ranking(text)
       query_vector = vector_for(text)
       corpus.map { |doc| [doc[:slug], cosine(query_vector, doc[:vector])] }.sort_by { |slug, score| [-score, slug] }

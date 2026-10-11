@@ -1,16 +1,11 @@
 # frozen_string_literal: true
 
 module Retrieval
-  # Reciprocal Rank Fusion (Cormack et al., 2009): score(d) = sum over the
-  # rankings of 1 / (k + rank(d)). It only looks at ranks, so it can merge a
-  # cosine-distance list with a ts_rank list without calibrating either score.
-  # k = 60 is the value from the paper and the usual default.
+  # Reciprocal Rank Fusion (Cormack et al., 2009). Uses ranks only, so a cosine
+  # list and a ts_rank list merge without calibrating either score.
   module ReciprocalRankFusion
     DEFAULT_K = 60
 
-    # rankings: arrays of ids, best first. Returns [[id, score], ...], best
-    # first; ties keep the order in which ids were first seen. `weights`
-    # (one per ranking, default all 1) gives weighted RRF.
     def self.fuse(*rankings, k: DEFAULT_K, weights: nil)
       weights ||= Array.new(rankings.size, 1)
       raise ArgumentError, "one weight per ranking" unless weights.size == rankings.size

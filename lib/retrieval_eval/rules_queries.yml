@@ -1,23 +1,7 @@
-# Labelled player intents for Rules::Lookup. `relevant` lists every rule slug a
-# referee would want in context; the first one is the rule that should rank
-# highest. Labels follow the surviving slugs (`perception` and `encumbrance` are
-# each defined twice; the exploration and inventory versions win).
-#
-# LABELS ARE DRAFTS PENDING OWNER REVIEW. The playtest labels were drafted from
-# the rule texts, not checked by the owner yet.
-#
-# source:
-#   written  - hand-written: the original 48, plus one query each for rules that
-#              no query targeted first, or that had a single query overall.
-#   playtest - typed by the owner while playtesting (verbatim, typos included).
-#              Curated from 343 unique messages: out-of-character chatter, app
-#              feedback, scene questions, dialogue with no rules angle, actions no
-#              rule covers and near-duplicates were dropped.
-# slice:
-#   jargon     - names a game term verbatim: a word from the name of a labelled
-#                rule (charge, swim, cast, attack, travel, rest...) or a defined
-#                mechanic (AC, CMD, HP, take 20, flank, Stealth, cover, provoke).
-#   paraphrase - describes the action in everyday words.
+# Labelled intents for Rules::Lookup. `relevant`: the rules a referee would want, best first.
+# source: written | playtest (typed while playtesting, verbatim).
+# slice: jargon (names a game term) | paraphrase (everyday words).
+# Labels are drafts pending review.
 - query: "I drink my healing potion while the orc is next to me"
   relevant: [potion_use, attack_of_opportunity]
   source: written

@@ -6,14 +6,9 @@ module Rules
   class Lookup
     DEFAULT_LIMIT = 4
     HYBRID_FLAG = :hybrid_rules_retrieval
-    # How deep each ranking goes before fusion. Wide enough that a rule ranked
-    # mid-pack by both retrievers can still beat one that only a single
-    # retriever liked; the whole corpus is ~51 rules.
     CANDIDATE_POOL = 20
 
-    # Fuses the vector and keyword rankings (slugs, best first) into the order
-    # hybrid retrieval returns. Shared with RetrievalEval::RulesEval so the
-    # eval scores exactly what production serves.
+    # Shared with the eval, so it scores what production serves.
     def self.fuse(vector_slugs, keyword_slugs)
       Retrieval::ReciprocalRankFusion.fuse(vector_slugs, keyword_slugs)
     end
@@ -46,8 +41,6 @@ module Rules
 
     private
 
-    # Off by default; flip `hybrid_rules_retrieval` to "on" in
-    # /admin/feature_flags. Lookups have no user, so "bucketed" reads as off.
     def hybrid?
       return @hybrid if defined?(@hybrid)
 
@@ -61,9 +54,7 @@ module Rules
       nearest_neighbors(query_embedding)
     end
 
-    # Vector + full-text candidates fused with RRF. If embedding fails (e.g.
-    # OpenAI is down) the keyword ranking still answers on its own,
-    # instead of the roll request going out with no rules at all.
+    # If embedding fails, the keyword ranking still answers on its own.
     def hybrid_hits
       query_embedding = embed_query_or_nil
       vector_rows  = query_embedding ? scoped_rules.nearest_to(query_embedding, limit: CANDIDATE_POOL).to_a : []
@@ -80,7 +71,6 @@ module Rules
     def embed_query_or_nil
       embed_query
     rescue Ai::Error
-      # timed_embedding_call already wrote the failure to the AI log.
       nil
     end
 

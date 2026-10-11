@@ -1,21 +1,7 @@
 # frozen_string_literal: true
 
 module RetrievalEval
-  # Scores and reports a RulesEval run.
-  #
-  # Metrics per query, averaged per mode:
-  #   hit@1    - the top result is one of the labelled rules
-  #   recall@k - share of labelled rules inside the top k (what the prompt sees)
-  #   mrr      - 1 / rank of the first labelled rule (0 if absent)
-  #
-  # Protocol, fixed before looking at results:
-  #   1. On dev only, pick at most one variant: the one with the best
-  #      (recall@k, mrr, hit@1), and only if that beats vector's on dev.
-  #   2. On test, report every mode with 95% bootstrap CIs (paired resamples,
-  #      fixed seed), the paired-bootstrap CI of its difference from vector,
-  #      and McNemar's exact test on hit@1 (Holm-adjusted across modes).
-  #   3. The picked variant clearly wins only if its recall@k difference CI on
-  #      test is entirely above zero and hit@1 is not significantly worse.
+  # Picks at most one variant on dev, then judges every mode on test only.
   class RulesReport
     METRICS = %i[hit_at_1 recall_at_k mrr].freeze
     BASELINE = :vector
@@ -41,14 +27,12 @@ module RetrievalEval
       @test ||= results.select { |r| r[:split] == :test }
     end
 
-    # Point metrics per mode over a set of results (all queries by default).
     def metrics(subset = results)
       modes.index_with do |mode|
         METRICS.index_with { |metric| Stats.mean(values(subset, mode, metric)) }
       end
     end
 
-    # The variant picked on dev, or nil when none beats vector there.
     def chosen_variant
       return @chosen_variant if defined?(@chosen_variant)
 
@@ -58,8 +42,6 @@ module RetrievalEval
       @chosen_variant = (key.call(best) <=> key.call(BASELINE)).positive? ? best : nil
     end
 
-    # Test-set statistics per mode: mean and CI per metric, plus, for every
-    # mode other than vector, the difference from vector and McNemar on hit@1.
     def test_stats
       @test_stats ||= begin
         stats = modes.index_with { |mode| mode_stats(mode) }

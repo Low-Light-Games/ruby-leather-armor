@@ -1,24 +1,10 @@
 # frozen_string_literal: true
 
 module RetrievalEval
-  # The retrieval variants the rules eval compares. They were declared here
-  # before any of them was scored on the dev split; do not add or retune one
-  # after looking at test results.
-  #
-  # Each variant maps a query's two rankings to a final ranking (slugs, best
-  # first):
-  #   vector: [[slug, cosine], ...] over the whole corpus, best first
-  #   keyword: slugs from RuleEmbedding.keyword_ranked, best first (top POOL)
-  #
-  # "fallback" (keyword only when embedding the query fails, today's outage
-  # behaviour) is not listed: whenever the embedding succeeds it returns the
-  # vector ranking, so it scores exactly like `vector`; during an outage it
-  # serves the `keyword` ranking.
+  # Declared before any was scored; don't add or retune one after seeing test results.
   module RulesVariants
     POOL = Rules::Lookup::CANDIDATE_POOL
 
-    # Router: words of art that mark a query as rules jargon, on top of the
-    # words in rule names. Detected from the query text only, never the label.
     JARGON_TERMS = /\b(ac|cmd|cmb|hp|aoo|dc|bab|take (10|20)|flat-footed|flank\w*|stealth\w*|cover|provok\w*|
                      thieves'? tools|tumbl\w*|cantrip|overencumbered|5-foot|five-foot)\b/ix
     NAME_STOPWORDS = %w[and of for the use using skill rules during checks check scale shifts information
@@ -26,7 +12,6 @@ module RetrievalEval
 
     module_function
 
-    # name => lambda(vector, keyword, text) -> slugs. Order is the report order.
     def all
       {
         vector: ->(vector, _keyword, _text) { vector.map(&:first) },
@@ -42,7 +27,6 @@ module RetrievalEval
       }
     end
 
-    # Production RRF (k = 60) over the same candidate pools Rules::Lookup uses.
     def rrf(vector, keyword, weights: nil)
       vector_slugs = vector.first(POOL).map(&:first)
       fused = if weights
@@ -53,8 +37,7 @@ module RetrievalEval
       fused.map(&:first)
     end
 
-    # Vector order, except that rules whose cosine is within `epsilon` of the
-    # first rule of their run are re-ordered by keyword rank (unmatched last).
+    # Vector order, with near-ties (within epsilon) re-ordered by keyword rank.
     def tie_break(vector, keyword, epsilon:)
       keyword_rank = keyword.each_with_index.to_h
       remaining = vector

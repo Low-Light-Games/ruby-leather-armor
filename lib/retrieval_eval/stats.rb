@@ -1,11 +1,7 @@
 # frozen_string_literal: true
 
 module RetrievalEval
-  # Small, dependency-free statistics for the retrieval evals.
-  #
-  # Paired bootstrap: every call with the same `n`, `seed` and `resamples`
-  # draws the same resampled query indices, so CIs for two modes (and for their
-  # per-query difference) are computed on identical resamples.
+  # Same n, seed and resamples always draw the same indices, so CIs are paired.
   module Stats
     DEFAULT_RESAMPLES = 10_000
     DEFAULT_SEED = 2026
@@ -18,7 +14,6 @@ module RetrievalEval
       values.sum.to_f / values.size
     end
 
-    # Percentile bootstrap CI of the mean: [low, high].
     def bootstrap_ci(values, resamples: DEFAULT_RESAMPLES, seed: DEFAULT_SEED, confidence: 0.95)
       return [0.0, 0.0] if values.empty?
 
@@ -29,15 +24,13 @@ module RetrievalEval
       [percentile(means, tail), percentile(means, 1 - tail)]
     end
 
-    # Paired bootstrap CI of mean(a) - mean(b), resampling queries (pairs).
     def paired_difference_ci(a, b, **)
       raise ArgumentError, "paired samples must have the same length" unless a.size == b.size
 
       bootstrap_ci(a.zip(b).map { |x, y| x - y }, **)
     end
 
-    # Exact (binomial) two-sided McNemar test on paired binary outcomes.
-    # b = pairs where only the first system succeeds, c = only the second.
+    # b: only the first system right; c: only the second.
     def mcnemar_exact(b, c)
       n = b + c
       return 1.0 if n.zero?
@@ -46,7 +39,6 @@ module RetrievalEval
       [Rational(2 * tail, 2**n), 1].min.to_f
     end
 
-    # Discordant counts for McNemar from two arrays of 0/1 outcomes.
     def discordant(a, b)
       raise ArgumentError, "paired samples must have the same length" unless a.size == b.size
 
@@ -54,7 +46,6 @@ module RetrievalEval
       [pairs.count { |x, y| x.positive? && y.zero? }, pairs.count { |x, y| x.zero? && y.positive? }]
     end
 
-    # Holm-Bonferroni adjusted p-values, in the input order.
     def holm(p_values)
       m = p_values.size
       running = 0.0
@@ -66,7 +57,7 @@ module RetrievalEval
       adjusted
     end
 
-    # Linear interpolation between closest ranks (R type 7).
+    # R type 7.
     def percentile(sorted, q)
       position = q * (sorted.size - 1)
       lower = sorted[position.floor]
