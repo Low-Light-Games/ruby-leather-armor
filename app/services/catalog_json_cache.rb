@@ -1,16 +1,8 @@
 # frozen_string_literal: true
 
-# Cache-aside for the definition catalogs (feats, spells, items) that
-# GameDataContext fetches in full on every load of the sheet and play pages:
-# ~300 rows serialized to ~175KB of JSON that is identical for every user.
-#
-# Entries are versioned by the table's count + max(updated_at), so every write
-# path (seeds, ops:sync_game_catalogs, items minted mid-adventure by
-# Mutations::InventoryMutations) invalidates the entry with no callback to forget.
-#
-# A version bump makes every in-flight request miss at once. Only the request
-# that wins a short lock rebuilds; the others keep serving the previous JSON
-# (stale-while-revalidate) instead of stampeding the database.
+# Caches a whole catalog's JSON, versioned by row count + latest updated_at so
+# any write invalidates it. On a version change one request rebuilds while the
+# rest serve the previous JSON.
 class CatalogJsonCache
   TTL = 1.day
   REBUILD_LOCK_TTL = 10.seconds
@@ -30,28 +22,31 @@ class CatalogJsonCache
 
   private
 
-  # Rails' race_condition_ttl only covers TTL expiry, not a version mismatch,
-  # which is how this cache is invalidated; hence the explicit lock.
+  # race_condition_ttl only covers expiry, not a version change, hence the lock.
   def rebuild_or_serve_stale
     return rebuild! if acquire_rebuild_lock
 
-    # An unversioned read returns whichever version is stored. On a cold cache
-    # there is nothing stale to serve, so render inline without writing.
-    Rails.cache.read(@key) || serialize
+    stale_json || serialize
   end
 
   def rebuild!
     serialize.tap { |json| Rails.cache.write(@key, json, version: version, expires_in: TTL) }
   end
 
+  def stale_json
+    Rails.cache.read(@key)
+  end
+
   def serialize
     @model.all.to_json
   end
 
-  # Scoped to the version so a lock taken for an older version never delays
-  # the rebuild of a newer one. If the holder dies, the lock simply expires.
   def acquire_rebuild_lock
-    Rails.cache.write("#{@key}/rebuild_lock/#{version}", true, unless_exist: true, expires_in: REBUILD_LOCK_TTL)
+    Rails.cache.write(rebuild_lock_key, true, unless_exist: true, expires_in: REBUILD_LOCK_TTL)
+  end
+
+  def rebuild_lock_key
+    "#{@key}/rebuild_lock/#{version}"
   end
 
   def version

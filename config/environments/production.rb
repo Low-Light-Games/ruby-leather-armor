@@ -64,9 +64,6 @@ Rails.application.configure do
   # want to log everything, set the level to "debug".
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
 
-  # Shares the Redis that Sidekiq and Rack::Attack use. Every entry gets a TTL
-  # so a `volatile-*` maxmemory policy can only ever evict cache keys, never
-  # queued jobs; Redis errors degrade to cache misses instead of failed requests.
   config.cache_store = :redis_cache_store, {
     url: ENV.fetch("REDIS_URL", "redis://localhost:6379/1"),
     namespace: "cache",
