@@ -28,11 +28,7 @@ module App
     # config.eager_load_paths << Rails.root.join("extras")
     config.middleware.use Rack::Attack
 
-    # Directly after RequestId so the queue-time event and any 503 carry the
-    # request id, yet ahead of logging, sessions and Rack::Attack, so a shed
-    # request costs neither a Redis round-trip nor a rate-limit token.
-    # Rack::Runtime (above) starts its clock once Puma hands the request over,
-    # so X-Runtime can never see the backlog this measures.
+    # After RequestId so a shed request is traceable; before Rack::Attack so it costs no Redis call.
     config.middleware.insert_after ActionDispatch::RequestId, RequestQueueTime,
                                    shed_after_ms: ENV.fetch("REQUEST_QUEUE_SHED_AFTER_MS", "10000"),
                                    exempt_paths: ["/up"]

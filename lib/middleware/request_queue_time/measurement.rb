@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class RequestQueueTime
-  # Payload of the `RequestQueueTime::EVENT` notification: one per request that
-  # arrived with an `X-Request-Start` stamp.
   class Measurement
     attr_reader :queue_time_ms, :shed_after_ms, :request_id, :request_method, :path, :measured_at
 

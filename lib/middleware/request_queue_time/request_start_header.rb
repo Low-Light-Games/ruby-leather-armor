@@ -1,11 +1,7 @@
 # frozen_string_literal: true
 
 class RequestQueueTime
-  # Parses the `X-Request-Start` timestamp a reverse proxy stamps on the way in.
-  # Proxies disagree on units: nginx's `$msec` is seconds with a fraction
-  # (`t=1700000000.123`), Heroku/HAProxy send milliseconds, Apache `%t` sends
-  # microseconds. For any date between 1973 and 5138 the magnitude of an epoch
-  # timestamp tells the units apart, so we pick by size rather than by config.
+  # Proxies stamp X-Request-Start in seconds, ms, µs or ns; the magnitude tells which.
   class RequestStartHeader
     RACK_ENV_KEY = "HTTP_X_REQUEST_START"
     UNIT_DIVISORS_BY_MAGNITUDE = [
@@ -28,7 +24,6 @@ class RequestQueueTime
       !started_at.nil?
     end
 
-    # Epoch seconds as a Float, or nil when the header is absent or malformed.
     def started_at
       return @started_at if defined?(@started_at)
 

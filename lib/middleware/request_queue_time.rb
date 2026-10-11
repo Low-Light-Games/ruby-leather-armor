@@ -3,13 +3,8 @@
 require_relative "request_queue_time/request_start_header"
 require_relative "request_queue_time/measurement"
 
-# Measures how long a request sat in the socket backlog between nginx accepting
-# it and a Puma thread picking it up, the one latency that never shows in Rails
-# logs because it happens before Rails sees the request.
-#
-# A request that has already waited longer than `shed_after_ms` is answered
-# with a cheap 503 instead of being processed: the client has most likely
-# given up, and doing the work anyway only deepens the queue behind it.
+# Measures how long a request waited for a Puma thread, and sheds it with a 503
+# once the client has most likely given up.
 class RequestQueueTime
   EVENT = "dm.request_queue_time"
   SERVER_TIMING_HEADER = "server-timing"
@@ -31,15 +26,18 @@ class RequestQueueTime
     measurement = measure(env, request_start)
     ActiveSupport::Notifications.instrument(EVENT, measurement: measurement)
 
-    status, headers, body = measurement.shed? ? shed_response : @app.call(env)
-    # Only the headers are touched: the body is handed back as-is, so streamed
-    # responses (SSE, ActionController::Live) keep streaming.
-    headers[SERVER_TIMING_HEADER] = [headers[SERVER_TIMING_HEADER], "queue;dur=#{measurement.queue_time_ms}"]
-                                    .compact.join(", ")
-    [status, headers, body]
+    response = measurement.shed? ? shed_response : @app.call(env)
+    header_enriched_response(response, measurement)
   end
 
   private
+
+  # Only the headers change; the body passes through so streams keep streaming.
+  def header_enriched_response((status, headers, body), measurement)
+    queue_timing = "queue;dur=#{measurement.queue_time_ms}"
+    headers[SERVER_TIMING_HEADER] = [headers[SERVER_TIMING_HEADER], queue_timing].compact.join(", ")
+    [status, headers, body]
+  end
 
   def measure(env, request_start)
     now = Time.now
@@ -56,12 +54,13 @@ class RequestQueueTime
     )
   end
 
-  # Puma reports how long it waited for a slow client to finish uploading the
-  # body; that is the client's network, not our backlog, so it is subtracted.
-  # The floor at zero absorbs clock skew between the proxy and the app host.
   def queue_time_ms(env, request_start, now)
-    waited_ms = ((now.to_f - request_start.started_at) * 1000) - env[PUMA_BODY_WAIT_KEY].to_f
+    waited_ms = ((now.to_f - request_start.started_at) * 1000) - slow_client_upload_ms(env)
     waited_ms.clamp(0.0, nil).round(1)
+  end
+
+  def slow_client_upload_ms(env)
+    env[PUMA_BODY_WAIT_KEY].to_f
   end
 
   def shed?(env, queue_time_ms)
@@ -72,14 +71,9 @@ class RequestQueueTime
     queue_time_ms > @shed_after_ms
   end
 
-  # Mirrors the JSON shape of Rack::Attack's throttled responder so the client
-  # handles both refusals with the same code path.
+  # Same JSON shape as Rack::Attack's throttled response.
   def shed_response
-    body = {
-      error: "The server is busy. Please try again in a moment.",
-      error_code: SHED_ERROR_CODE
-    }.to_json
-
+    body = { error: "The server is busy. Please try again in a moment.", error_code: SHED_ERROR_CODE }.to_json
     headers = Rack::Headers.new
     headers["content-type"] = "application/json"
     headers["retry-after"] = @retry_after_seconds.to_s
