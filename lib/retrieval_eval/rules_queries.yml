@@ -1,101 +1,644 @@
-# Labelled player intents for Rules::Lookup, as the roll-request steps phrase
-# them. `relevant` lists every rule slug a referee would want in context; the
-# first one is the rule that should rank highest. Half the set is paraphrase
-# (no rule vocabulary), half names game terms verbatim, so the eval exposes
-# where pure vector search and keyword search each fall short.
+# Labelled player intents for Rules::Lookup. `relevant` lists every rule slug a
+# referee would want in context; the first one is the rule that should rank
+# highest. Labels follow the surviving slugs (`perception` and `encumbrance` are
+# each defined twice; the exploration and inventory versions win).
+#
+# LABELS ARE DRAFTS PENDING OWNER REVIEW. The playtest labels were drafted from
+# the rule texts, not checked by the owner yet.
+#
+# source:
+#   written  - hand-written: the original 48, plus one query each for rules that
+#              no query targeted first, or that had a single query overall.
+#   playtest - typed by the owner while playtesting (verbatim, typos included).
+#              Curated from 343 unique messages: out-of-character chatter, app
+#              feedback, scene questions, dialogue with no rules angle, actions no
+#              rule covers and near-duplicates were dropped.
+# slice:
+#   jargon     - names a game term verbatim: a word from the name of a labelled
+#                rule (charge, swim, cast, attack, travel, rest...) or a defined
+#                mechanic (AC, CMD, HP, take 20, flank, Stealth, cover, provoke).
+#   paraphrase - describes the action in everyday words.
 - query: "I drink my healing potion while the orc is next to me"
   relevant: [potion_use, attack_of_opportunity]
+  source: written
+  slice: jargon
 - query: "I try to wrestle the bandit to the ground and pin him"
   relevant: [grapple, combat_maneuvers]
+  source: written
+  slice: paraphrase
 - query: "I try to knock the sword out of his hand"
   relevant: [combat_maneuvers]
+  source: written
+  slice: paraphrase
 - query: "I back away from the troll carefully so it can't hit me"
   relevant: [five_foot_step, withdrawal, attack_of_opportunity]
+  source: written
+  slice: paraphrase
 - query: "I run at the goblin and slam into it with my axe"
   relevant: [charge]
+  source: written
+  slice: paraphrase
 - query: "I swing at the skeleton as many times as I can"
   relevant: [full_attack]
+  source: written
+  slice: paraphrase
 - query: "I shoot my bow at the wolf fighting next to my friend"
   relevant: [ranged_combat]
+  source: written
+  slice: paraphrase
 - query: "who acts first in this fight?"
   relevant: [initiative]
+  source: written
+  slice: paraphrase
 - query: "how many things can I do on my turn"
   relevant: [action_economy]
+  source: written
+  slice: paraphrase
 - query: "my character dropped below zero hit points, am I dead?"
   relevant: [hit_points]
+  source: written
+  slice: jargon
 - query: "the rogue flanks the ogre with me"
   relevant: [conditions]
+  source: written
+  slice: jargon
 - query: "does the flat-footed condition remove my Dex bonus to AC"
   relevant: [conditions, armor_class]
+  source: written
+  slice: jargon
 - query: "touch AC against the ray"
   relevant: [armor_class]
+  source: written
+  slice: jargon
 - query: "CMD of the giant"
   relevant: [combat_maneuvers]
+  source: written
+  slice: jargon
 - query: "I tumble past the guards without provoking"
   relevant: [acrobatics]
+  source: written
+  slice: jargon
 - query: "I climb the castle wall"
   relevant: [climb]
+  source: written
+  slice: jargon
 - query: "I dive into the river and swim across"
   relevant: [swim]
+  source: written
+  slice: jargon
 - query: "I jump off the ledge, how much damage does the fall do?"
   relevant: [environmental_hazards]
+  source: written
+  slice: paraphrase
 - query: "we keep walking through the night without stopping"
   relevant: [forced_march]
+  source: written
+  slice: paraphrase
 - query: "how far can we travel through the hills today"
   relevant: [overland_travel]
+  source: written
+  slice: jargon
 - query: "I follow the tracks of the beast through the mud"
   relevant: [survival]
+  source: written
+  slice: paraphrase
 - query: "we wade through the bog and rubble"
   relevant: [difficult_terrain]
+  source: written
+  slice: paraphrase
 - query: "my backpack is really heavy, does it slow me down?"
   relevant: [encumbrance]
+  source: written
+  slice: paraphrase
 - query: "I listen at the door for anything moving inside"
   relevant: [perception]
+  source: written
+  slice: paraphrase
 - query: "I check the chest for traps before opening it"
   relevant: [search_and_traps, disable_device]
+  source: written
+  slice: jargon
 - query: "I pick the lock with my thieves' tools"
   relevant: [disable_device]
+  source: written
+  slice: jargon
 - query: "what do I know about this creature? Knowledge (dungeoneering)"
   relevant: [knowledge_checks]
+  source: written
+  slice: jargon
 - query: "I sense whether the amulet is enchanted"
   relevant: [detect_magic, item_identification]
+  source: written
+  slice: paraphrase
 - query: "I try to figure out what this magic ring does"
   relevant: [item_identification]
+  source: written
+  slice: paraphrase
 - query: "I read the scroll even though it isn't a wizard spell"
   relevant: [wand_and_scroll_use]
+  source: written
+  slice: jargon
 - query: "I put on my full plate armor quickly"
   relevant: [equipping_gear]
+  source: written
+  slice: paraphrase
 - query: "I cast fireball while the guard is gagging me"
   relevant: [spell_components]
+  source: written
+  slice: paraphrase
 - query: "I cast defensively next to the ogre"
   relevant: [concentration]
+  source: written
+  slice: jargon
 - query: "I ready an action to stop the enemy wizard's spell"
   relevant: [counterspelling]
+  source: written
+  slice: jargon
 - query: "I cast Mount to get a horse"
   relevant: [mount_spell]
+  source: written
+  slice: jargon
 - query: "I summon a celestial dog to help"
   relevant: [summon_monster]
+  source: written
+  slice: jargon
 - query: "the wizard wants to get her spells back in the morning"
   relevant: [spell_preparation, casting_prepared_spells]
+  source: written
+  slice: paraphrase
 - query: "we make camp and sleep to heal our wounds"
   relevant: [rest_and_recovery]
+  source: written
+  slice: paraphrase
 - query: "we set up a watch rotation for the night"
   relevant: [random_encounters]
+  source: written
+  slice: paraphrase
 - query: "I recover from exhaustion"
   relevant: [healing_and_conditions]
+  source: written
+  slice: paraphrase
 - query: "I try to convince the merchant to like us"
   relevant: [diplomacy, diplomacy_attitude, npc_attitude]
+  source: written
+  slice: paraphrase
 - query: "I threaten the cultist until he talks"
   relevant: [intimidate]
+  source: written
+  slice: paraphrase
 - query: "I lie to the guard about being the duke's messenger"
   relevant: [bluff]
+  source: written
+  slice: paraphrase
 - query: "is the innkeeper telling the truth?"
   relevant: [sense_motive]
+  source: written
+  slice: paraphrase
 - query: "I ask around the tavern for rumours about the missing girl"
   relevant: [gather_information, diplomacy]
+  source: written
+  slice: paraphrase
 - query: "I help the fighter with his attack"
   relevant: [aid_another]
+  source: written
+  slice: paraphrase
 - query: "my base speed as a dwarf in heavy armor"
   relevant: [movement_speeds]
+  source: written
+  slice: paraphrase
 - query: "is the hostile village chief willing to talk?"
   relevant: [npc_attitude, diplomacy_attitude]
+  source: written
+  slice: paraphrase
+- query: "I attack Elda"
+  relevant: [attack_resolution]
+  source: playtest
+  slice: jargon
+- query: "I swim there"
+  relevant: [swim]
+  source: playtest
+  slice: jargon
+- query: "I check the nearby corpses for loot"
+  relevant: [perception]
+  source: playtest
+  slice: paraphrase
+- query: "I go fully submerged and try to strike a hole into the hull, discretely"
+  relevant: [swim, attack_resolution]
+  source: playtest
+  slice: paraphrase
+- query: "jump into the water"
+  relevant: [swim, acrobatics]
+  source: playtest
+  slice: paraphrase
+- query: "I loot the fallen enemies' corpses"
+  relevant: [perception]
+  source: playtest
+  slice: paraphrase
+- query: "I cast mage armor"
+  relevant: [casting_prepared_spells, spell_components]
+  source: playtest
+  slice: jargon
+- query: "I cast mount"
+  relevant: [mount_spell]
+  source: playtest
+  slice: jargon
+- query: "I mount my horse and make for the keep"
+  relevant: [overland_travel, movement_speeds]
+  source: playtest
+  slice: paraphrase
+- query: "I try to wrestle a weapon off one of them."
+  relevant: [combat_maneuvers, grapple]
+  source: playtest
+  slice: paraphrase
+- query: "I charge at the orc patrol"
+  relevant: [charge]
+  source: playtest
+  slice: jargon
+- query: "I walk around aimlessly for 8 hours"
+  relevant: [overland_travel, forced_march]
+  source: playtest
+  slice: paraphrase
+- query: "I walk for 8 hours straight towards the keep"
+  relevant: [overland_travel, forced_march]
+  source: playtest
+  slice: paraphrase
+- query: "Anyway... I go to sleep. I want to rest for 4 hours."
+  relevant: [rest_and_recovery, random_encounters]
+  source: playtest
+  slice: jargon
+- query: "I travel north until I find a tree"
+  relevant: [overland_travel]
+  source: playtest
+  slice: jargon
+- query: "Ain't I dead? With 0 HP?"
+  relevant: [hit_points]
+  source: playtest
+  slice: jargon
+- query: "I look around, what do I see?"
+  relevant: [perception]
+  source: playtest
+  slice: paraphrase
+- query: "I walk around aimlessly for 10 hours"
+  relevant: [forced_march, overland_travel]
+  source: playtest
+  slice: paraphrase
+- query: "I march south until I see something interesting or until I'm tired, whichever comes first."
+  relevant: [overland_travel, forced_march]
+  source: playtest
+  slice: paraphrase
+- query: "I approach the ledge and look down, and see if I can discern what kind of dragon that is"
+  relevant: [knowledge_checks, perception]
+  source: playtest
+  slice: paraphrase
+- query: "I try to guess at how far down he is and if I could survive a fall if I were to jump down there."
+  relevant: [environmental_hazards, perception]
+  source: playtest
+  slice: paraphrase
+- query: "I jump anyway and hope that the fall damage is not fatal."
+  relevant: [environmental_hazards, hit_points, acrobatics]
+  source: playtest
+  slice: jargon
+- query: "i approach the dragon and, now closer, try to discern his nature"
+  relevant: [knowledge_checks, perception]
+  source: playtest
+  slice: paraphrase
+- query: "I check the crate to see if it opens the easily."
+  relevant: [disable_device, perception]
+  source: playtest
+  slice: paraphrase
+- query: "I sit down, get comfortable, and take 20 attempting to unlock the crate."
+  relevant: [disable_device, perception]
+  source: playtest
+  slice: jargon
+- query: "I take a closer look at the crate"
+  relevant: [perception]
+  source: playtest
+  slice: paraphrase
+- query: "I run around aimlessly until I tire, then I try to cook something to eat."
+  relevant: [survival, movement_speeds]
+  source: playtest
+  slice: paraphrase
+- query: "I scout the corridor and pick the lock and push the door open"
+  relevant: [disable_device, perception]
+  source: playtest
+  slice: paraphrase
+- query: "I look around for any gear or anything useful"
+  relevant: [perception]
+  source: playtest
+  slice: paraphrase
+- query: "Finally overcome with curiosity I try to open the hidden compartment"
+  relevant: [disable_device, search_and_traps]
+  source: playtest
+  slice: paraphrase
+- query: "I stash the retrieved items and examine them"
+  relevant: [item_identification, perception]
+  source: playtest
+  slice: paraphrase
+- query: "I drop my 2 tower shields on the floor so I stop being overencumbered"
+  relevant: [encumbrance, action_economy]
+  source: playtest
+  slice: jargon
+- query: "I mount it and gallop to the village."
+  relevant: [overland_travel, movement_speeds]
+  source: playtest
+  slice: paraphrase
+- query: "I sit and wait around, enjoying my camp for another 8 hours."
+  relevant: [rest_and_recovery, random_encounters]
+  source: playtest
+  slice: paraphrase
+- query: "I stand up unsteadily and start limping towards the Garrison Keep"
+  relevant: [conditions, hit_points]
+  source: playtest
+  slice: paraphrase
+- query: "I forage into the woods, no specific purpose."
+  relevant: [survival]
+  source: playtest
+  slice: paraphrase
+- query: "I raise my longsword theateningly, warning them to stay back"
+  relevant: [intimidate]
+  source: playtest
+  slice: paraphrase
+- query: "I go to sleep"
+  relevant: [rest_and_recovery, random_encounters]
+  source: playtest
+  slice: paraphrase
+- query: "I try to steathly approach the Goblins, looking for a surprise attack opportunity."
+  relevant: [perception, conditions]
+  source: playtest
+  slice: paraphrase
+- query: "Surveil my surroundings while checking my gear and preparing to move, double check for survivors."
+  relevant: [perception]
+  source: playtest
+  slice: paraphrase
+- query: "I cast my trusty cantrip again at the same orc."
+  relevant: [casting_prepared_spells, armor_class, ranged_combat]
+  source: playtest
+  slice: jargon
+- query: "I try to stealth my way to the goblins so I can surprise-attack them"
+  relevant: [perception, conditions]
+  source: playtest
+  slice: jargon
+- query: "I would like to sneak up on the goblins to ambush them"
+  relevant: [perception, conditions]
+  source: playtest
+  slice: paraphrase
+- query: "If I flee, will it trigger attacks of opportunity?"
+  relevant: [attack_of_opportunity, withdrawal]
+  source: playtest
+  slice: jargon
+- query: "I cast ray of frost on the Warboss"
+  relevant: [casting_prepared_spells, armor_class, ranged_combat]
+  source: playtest
+  slice: jargon
+- query: "I look around for cover."
+  relevant: [ranged_combat, perception]
+  source: playtest
+  slice: jargon
+- query: "I'll head for the trench and try to hide."
+  relevant: [perception, ranged_combat]
+  source: playtest
+  slice: paraphrase
+- query: "From my hidden position, I look for any danger ."
+  relevant: [perception]
+  source: playtest
+  slice: paraphrase
+- query: "I'll move from cover to cover towards the Keep."
+  relevant: [ranged_combat, perception]
+  source: playtest
+  slice: jargon
+- query: "I make my way up to the goblins, stealthly, when I get there I cast Ray of Frost on one of them."
+  relevant: [perception, casting_prepared_spells, armor_class]
+  source: playtest
+  slice: jargon
+- query: "I pass my turn."
+  relevant: [action_economy, initiative]
+  source: playtest
+  slice: paraphrase
+- query: "I execute the Goblin with another Ray of Frost."
+  relevant: [casting_prepared_spells, armor_class, ranged_combat]
+  source: playtest
+  slice: paraphrase
+- query: "I sit around for 1 hour, to recollect myself."
+  relevant: [rest_and_recovery, healing_and_conditions]
+  source: playtest
+  slice: paraphrase
+- query: "I survey the goblins. How many are there?"
+  relevant: [perception]
+  source: playtest
+  slice: paraphrase
+- query: "I do a headcount, how many goblins?"
+  relevant: [perception]
+  source: playtest
+  slice: paraphrase
+- query: "I cast shield and charge at the goblins"
+  relevant: [action_economy, charge, casting_prepared_spells]
+  source: playtest
+  slice: jargon
+- query: "I cast shield then cast Ray of Frost at the goblins."
+  relevant: [action_economy, casting_prepared_spells]
+  source: playtest
+  slice: jargon
+- query: "I counter attack the one goblin who just missed me"
+  relevant: [attack_resolution, attack_of_opportunity]
+  source: playtest
+  slice: jargon
+- query: "I try to stab the closest goblin in eye"
+  relevant: [attack_resolution]
+  source: playtest
+  slice: paraphrase
+- query: "I aim my thrust at the attacking goblin. Center-mass."
+  relevant: [attack_resolution]
+  source: playtest
+  slice: paraphrase
+- query: "I cast mage armor, shield, and then go towards the guttural growls I heard."
+  relevant: [casting_prepared_spells, perception]
+  source: playtest
+  slice: jargon
+- query: "I charge-attack the goblin scouts."
+  relevant: [charge]
+  source: playtest
+  slice: jargon
+- query: "I clean up my rapier and look around the battlefield. What do I see?"
+  relevant: [perception]
+  source: playtest
+  slice: paraphrase
+- query: "I make haste towards the keep."
+  relevant: [movement_speeds, overland_travel]
+  source: playtest
+  slice: paraphrase
+- query: "I attack the closest Goblin with my rapier, aiming center-mass."
+  relevant: [attack_resolution]
+  source: playtest
+  slice: jargon
+- query: "I run to the keep"
+  relevant: [movement_speeds, overland_travel]
+  source: playtest
+  slice: paraphrase
+- query: "I jump on my mount and off I go to the keep"
+  relevant: [overland_travel, movement_speeds]
+  source: playtest
+  slice: paraphrase
+- query: "I cast mount, and with my horse I gallop to the kepe"
+  relevant: [mount_spell, overland_travel]
+  source: playtest
+  slice: jargon
+- query: "I gallop to the keep with my horse"
+  relevant: [overland_travel, movement_speeds]
+  source: playtest
+  slice: paraphrase
+- query: "I tell her such a job needs better pay. At least double."
+  relevant: [diplomacy, npc_attitude]
+  source: playtest
+  slice: paraphrase
+- query: "I try to intimidate the animals, make it clear to them I'm too dangerous for them."
+  relevant: [intimidate]
+  source: playtest
+  slice: jargon
+- query: "I look intently at the last Orc and tell it there is no need for it to die as well. I tell it to flee."
+  relevant: [intimidate, conditions]
+  source: playtest
+  slice: paraphrase
+- query: "How long till I reach the keep by walkiing?"
+  relevant: [overland_travel, movement_speeds]
+  source: playtest
+  slice: paraphrase
+- query: "I walk to the keep at a sustainable pace"
+  relevant: [overland_travel]
+  source: playtest
+  slice: paraphrase
+- query: "I walk at a sustainable pace to the keep, watching out for threats along the way."
+  relevant: [overland_travel, perception]
+  source: playtest
+  slice: paraphrase
+- query: "I make a Perception check to watch for threats along the way."
+  relevant: [perception]
+  source: playtest
+  slice: jargon
+- query: "I attack her out of nowhere."
+  relevant: [attack_resolution, conditions, initiative]
+  source: playtest
+  slice: jargon
+- query: "I run to the keep trying to avoid any enemies."
+  relevant: [movement_speeds, perception]
+  source: playtest
+  slice: paraphrase
+- query: "I enter the estate if I can, or ask guards to let me in, because I have important info to divulge"
+  relevant: [diplomacy, npc_attitude]
+  source: playtest
+  slice: paraphrase
+- query: "I look around for possible alterante entrances to the hall, service-only doors, low windows or other opportunities."
+  relevant: [perception]
+  source: playtest
+  slice: paraphrase
+- query: "I walk through like I'm supposed to be there, exercising confidence hoping I go unimpeded."
+  relevant: [bluff]
+  source: playtest
+  slice: paraphrase
+- query: "I lock pick the side-door"
+  relevant: [disable_device]
+  source: playtest
+  slice: paraphrase
+- query: "I haggle for double"
+  relevant: [diplomacy]
+  source: playtest
+  slice: paraphrase
+- query: "I seek a back entrance"
+  relevant: [perception]
+  source: playtest
+  slice: paraphrase
+- query: "I try to pick the lock to that door."
+  relevant: [disable_device]
+  source: playtest
+  slice: paraphrase
+- query: "I swim again, I want to swim out for 15 minutes then back again."
+  relevant: [swim]
+  source: playtest
+  slice: jargon
+- query: "I shout at them, challenge their leader to an honored duel."
+  relevant: [intimidate, diplomacy]
+  source: playtest
+  slice: paraphrase
+- query: "I wait for 8 hours"
+  relevant: [rest_and_recovery, random_encounters]
+  source: playtest
+  slice: paraphrase
+- query: "I'm sure we can solve this amicably. And I'm quite content to go with you warn the Coalition, actually."
+  relevant: [diplomacy, npc_attitude]
+  source: playtest
+  slice: paraphrase
+- query: "I suggest we make haste back to the Coalition, as as a gesture of good will, I'll go at the fore front of your envoy. What do you say?"
+  relevant: [diplomacy, npc_attitude]
+  source: playtest
+  slice: paraphrase
+- query: "I stay put for 8 hours"
+  relevant: [rest_and_recovery, random_encounters]
+  source: playtest
+  slice: paraphrase
+- query: "I disengage from the two hobgoblins and retreat back down the corridor"
+  relevant: [withdrawal, attack_of_opportunity]
+  source: written
+  slice: paraphrase
+- query: "how hard is it to make the unfriendly guard captain friendly with a Diplomacy check?"
+  relevant: [diplomacy_attitude, diplomacy, npc_attitude]
+  source: written
+  slice: jargon
+- query: "I take a 5-foot step back and then cast my spell"
+  relevant: [five_foot_step, attack_of_opportunity]
+  source: written
+  slice: jargon
+- query: "I stand my ground and hit the ogre with everything I've got, swing after swing"
+  relevant: [full_attack]
+  source: written
+  slice: paraphrase
+- query: "I cast detect magic on the altar"
+  relevant: [detect_magic]
+  source: written
+  slice: jargon
+- query: "I pour the little red vial down my unconscious friend's throat"
+  relevant: [potion_use]
+  source: written
+  slice: paraphrase
+- query: "I draw my sword as the bandits jump out"
+  relevant: [equipping_gear]
+  source: written
+  slice: paraphrase
+- query: "I point the wand of magic missile at the cultist"
+  relevant: [wand_and_scroll_use]
+  source: written
+  slice: jargon
+- query: "I keep casting while the horse gallops under me"
+  relevant: [concentration]
+  source: written
+  slice: paraphrase
+- query: "I wait for the necromancer to start chanting so I can cancel his spell"
+  relevant: [counterspelling]
+  source: written
+  slice: paraphrase
+- query: "I conjure an eagle to fight alongside me"
+  relevant: [summon_monster]
+  source: written
+  slice: paraphrase
+- query: "I spend the morning studying my spellbook"
+  relevant: [spell_preparation, casting_prepared_spells]
+  source: written
+  slice: paraphrase
+- query: "I watch the merchant's face to see if he's hiding something"
+  relevant: [sense_motive]
+  source: written
+  slice: paraphrase
+- query: "I spend the evening buying drinks and listening for gossip about the cult"
+  relevant: [gather_information, diplomacy]
+  source: written
+  slice: paraphrase
+- query: "I hold the door steady so the barbarian can force it"
+  relevant: [aid_another]
+  source: written
+  slice: paraphrase
+- query: "I push through the thick undergrowth toward the ruins"
+  relevant: [difficult_terrain]
+  source: written
+  slice: paraphrase
+- query: "I shimmy up the rope to the balcony"
+  relevant: [climb]
+  source: written
+  slice: paraphrase

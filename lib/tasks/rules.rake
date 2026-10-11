@@ -88,11 +88,16 @@ end
 
 namespace :dungeon_master do
   namespace :rules do
-    desc 'Score vector vs keyword vs hybrid (RRF) rules retrieval on the labelled eval set. No OpenAI calls.'
+    desc 'Score vector, keyword and fused rules retrieval variants on the labelled eval set ' \
+         '(dev/test split, bootstrap CIs, McNemar). No OpenAI calls. Also writes tmp/rules_eval.json.'
     task eval: :environment do
       abort '[rules:eval] Refusing to run in production (it reloads rule_embeddings inside a rolled-back transaction).' if Rails.env.production?
 
-      puts RetrievalEval::RulesEval.run
+      report = RetrievalEval::RulesEval.run
+      puts report
+      path = Rails.root.join('tmp/rules_eval.json')
+      path.write(JSON.pretty_generate(report.as_json))
+      puts "\n[rules:eval] wrote #{path.relative_path_from(Rails.root)}"
     end
   end
 end
