@@ -23,8 +23,8 @@ export const SubscriptionSuccess = () => {
       for (let attempt = 0; attempt < MAX_SUBSCRIPTION_SYNC_ATTEMPTS; attempt += 1) {
         if (cancelled) return
 
-        const currentUser = await fetchCurrentUser()
-        if (currentUser?.plan_key && currentUser.plan_key !== 'free') {
+        const { user } = await fetchCurrentUser()
+        if (user?.plan_key && user.plan_key !== 'free') {
           setStatus('confirmed')
           return
         }
