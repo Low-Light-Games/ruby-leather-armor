@@ -5,6 +5,18 @@ require 'digest'
 module Rules
   class Lookup
     DEFAULT_LIMIT = 4
+    HYBRID_FLAG = :hybrid_rules_retrieval
+    # How deep each ranking goes before fusion. Wide enough that a rule ranked
+    # mid-pack by both retrievers can still beat one that only a single
+    # retriever liked; the whole corpus is ~51 rules.
+    CANDIDATE_POOL = 20
+
+    # Fuses the vector and keyword rankings (slugs, best first) into the order
+    # hybrid retrieval returns. Shared with RetrievalEval::RulesEval so the
+    # eval scores exactly what production serves.
+    def self.fuse(vector_slugs, keyword_slugs)
+      Retrieval::ReciprocalRankFusion.fuse(vector_slugs, keyword_slugs)
+    end
 
     def self.call(ai:, log:, query_text:, limit: DEFAULT_LIMIT, domain: nil)
       new(ai: ai, log: log, query_text: query_text,
@@ -22,10 +34,9 @@ module Rules
     def call
       return [] if @query_text.strip.empty?
 
-      query_embedding = embed_query
-      return [] if query_embedding.nil?
+      hits = hybrid? ? hybrid_hits : vector_hits
+      return [] if hits.nil?
 
-      hits = nearest_neighbors(query_embedding)
       emit_retrieval_play_log(hits)
       hits
     rescue StandardError => e
@@ -34,6 +45,59 @@ module Rules
     end
 
     private
+
+    # Off by default; flip `hybrid_rules_retrieval` to "on" in
+    # /admin/feature_flags. Lookups have no user, so "bucketed" reads as off.
+    def hybrid?
+      return @hybrid if defined?(@hybrid)
+
+      @hybrid = FeatureFlag.enabled_for?(HYBRID_FLAG, nil)
+    end
+
+    def vector_hits
+      query_embedding = embed_query
+      return nil if query_embedding.nil?
+
+      nearest_neighbors(query_embedding)
+    end
+
+    # Vector + full-text candidates fused with RRF. If embedding fails (e.g.
+    # OpenAI is down) the keyword ranking still answers on its own,
+    # instead of the roll request going out with no rules at all.
+    def hybrid_hits
+      query_embedding = embed_query_or_nil
+      vector_rows  = query_embedding ? scoped_rules.nearest_to(query_embedding, limit: CANDIDATE_POOL).to_a : []
+      keyword_rows = scoped_rules.keyword_ranked(@query_text, limit: CANDIDATE_POOL).to_a
+
+      rows_by_slug = (keyword_rows + vector_rows).index_by(&:slug)
+      distances    = vector_rows.to_h { |row| [row.slug, row.neighbor_distance] }
+
+      self.class.fuse(vector_rows.map(&:slug), keyword_rows.map(&:slug)).first(@limit).map do |slug, score|
+        rule_hit(rows_by_slug.fetch(slug), distance: distances[slug]).merge(rrf_score: score.round(6))
+      end
+    end
+
+    def embed_query_or_nil
+      embed_query
+    rescue Ai::Error
+      # timed_embedding_call already wrote the failure to the AI log.
+      nil
+    end
+
+    def scoped_rules
+      @domain ? RuleEmbedding.for_domain(@domain) : RuleEmbedding.all
+    end
+
+    def rule_hit(row, distance:)
+      {
+        slug: row.slug,
+        domain: row.domain,
+        name: row.name,
+        brief: row.brief,
+        body: row.body,
+        distance: distance
+      }
+    end
 
     def sanitize_limit(limit)
       n = limit.to_i
@@ -82,17 +146,8 @@ module Rules
     end
 
     def nearest_neighbors(query_embedding)
-      scope = RuleEmbedding.all
-      scope = scope.for_domain(@domain) if @domain
-      scope.nearest_to(query_embedding, limit: @limit).map do |row|
-        {
-          slug: row.slug,
-          domain: row.domain,
-          name: row.name,
-          brief: row.brief,
-          body: row.body,
-          distance: row.try(:neighbor_distance)
-        }
+      scoped_rules.nearest_to(query_embedding, limit: @limit).map do |row|
+        rule_hit(row, distance: row.try(:neighbor_distance))
       end
     end
 
@@ -106,7 +161,8 @@ module Rules
           query_text: @query_text.truncate(160),
           limit: @limit,
           domain: @domain,
-          hits: hits.map { |h| h.slice(:slug, :domain, :distance) }
+          retrieval: hybrid? ? 'hybrid' : 'vector',
+          hits: hits.map { |h| h.slice(:slug, :domain, :distance, :rrf_score) }
         }
       )
     end
