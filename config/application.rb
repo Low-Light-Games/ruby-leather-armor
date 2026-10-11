@@ -26,6 +26,7 @@ module App
     #
     # config.time_zone = "Central Time (US & Canada)"
     # config.eager_load_paths << Rails.root.join("extras")
+
     # After RequestId so a shed request is traceable; before Rack::Attack so it costs no Redis call.
     config.middleware.insert_after ActionDispatch::RequestId, RequestQueueTime,
                                    shed_after_ms: ENV.fetch("REQUEST_QUEUE_SHED_AFTER_MS", "10000"),
