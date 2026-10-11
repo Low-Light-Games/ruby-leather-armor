@@ -85,3 +85,14 @@ namespace :rules do
   end
 end
 end
+
+namespace :dungeon_master do
+  namespace :rules do
+    desc 'Score vector vs keyword vs hybrid (RRF) rules retrieval on the labelled eval set. No OpenAI calls.'
+    task eval: :environment do
+      abort '[rules:eval] Refusing to run in production (it reloads rule_embeddings inside a rolled-back transaction).' if Rails.env.production?
+
+      puts RetrievalEval::RulesEval.run
+    end
+  end
+end

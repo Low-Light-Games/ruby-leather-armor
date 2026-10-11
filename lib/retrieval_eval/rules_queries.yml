@@ -1,0 +1,101 @@
+# Labelled player intents for Rules::Lookup, as the roll-request steps phrase
+# them. `relevant` lists every rule slug a referee would want in context; the
+# first one is the rule that should rank highest. Half the set is paraphrase
+# (no rule vocabulary), half names game terms verbatim, so the eval exposes
+# where pure vector search and keyword search each fall short.
+- query: "I drink my healing potion while the orc is next to me"
+  relevant: [potion_use, attack_of_opportunity]
+- query: "I try to wrestle the bandit to the ground and pin him"
+  relevant: [grapple, combat_maneuvers]
+- query: "I try to knock the sword out of his hand"
+  relevant: [combat_maneuvers]
+- query: "I back away from the troll carefully so it can't hit me"
+  relevant: [five_foot_step, withdrawal, attack_of_opportunity]
+- query: "I run at the goblin and slam into it with my axe"
+  relevant: [charge]
+- query: "I swing at the skeleton as many times as I can"
+  relevant: [full_attack]
+- query: "I shoot my bow at the wolf fighting next to my friend"
+  relevant: [ranged_combat]
+- query: "who acts first in this fight?"
+  relevant: [initiative]
+- query: "how many things can I do on my turn"
+  relevant: [action_economy]
+- query: "my character dropped below zero hit points, am I dead?"
+  relevant: [hit_points]
+- query: "the rogue flanks the ogre with me"
+  relevant: [conditions]
+- query: "does the flat-footed condition remove my Dex bonus to AC"
+  relevant: [conditions, armor_class]
+- query: "touch AC against the ray"
+  relevant: [armor_class]
+- query: "CMD of the giant"
+  relevant: [combat_maneuvers]
+- query: "I tumble past the guards without provoking"
+  relevant: [acrobatics]
+- query: "I climb the castle wall"
+  relevant: [climb]
+- query: "I dive into the river and swim across"
+  relevant: [swim]
+- query: "I jump off the ledge, how much damage does the fall do?"
+  relevant: [environmental_hazards]
+- query: "we keep walking through the night without stopping"
+  relevant: [forced_march]
+- query: "how far can we travel through the hills today"
+  relevant: [overland_travel]
+- query: "I follow the tracks of the beast through the mud"
+  relevant: [survival]
+- query: "we wade through the bog and rubble"
+  relevant: [difficult_terrain]
+- query: "my backpack is really heavy, does it slow me down?"
+  relevant: [encumbrance]
+- query: "I listen at the door for anything moving inside"
+  relevant: [perception]
+- query: "I check the chest for traps before opening it"
+  relevant: [search_and_traps, disable_device]
+- query: "I pick the lock with my thieves' tools"
+  relevant: [disable_device]
+- query: "what do I know about this creature? Knowledge (dungeoneering)"
+  relevant: [knowledge_checks]
+- query: "I sense whether the amulet is enchanted"
+  relevant: [detect_magic, item_identification]
+- query: "I try to figure out what this magic ring does"
+  relevant: [item_identification]
+- query: "I read the scroll even though it isn't a wizard spell"
+  relevant: [wand_and_scroll_use]
+- query: "I put on my full plate armor quickly"
+  relevant: [equipping_gear]
+- query: "I cast fireball while the guard is gagging me"
+  relevant: [spell_components]
+- query: "I cast defensively next to the ogre"
+  relevant: [concentration]
+- query: "I ready an action to stop the enemy wizard's spell"
+  relevant: [counterspelling]
+- query: "I cast Mount to get a horse"
+  relevant: [mount_spell]
+- query: "I summon a celestial dog to help"
+  relevant: [summon_monster]
+- query: "the wizard wants to get her spells back in the morning"
+  relevant: [spell_preparation, casting_prepared_spells]
+- query: "we make camp and sleep to heal our wounds"
+  relevant: [rest_and_recovery]
+- query: "we set up a watch rotation for the night"
+  relevant: [random_encounters]
+- query: "I recover from exhaustion"
+  relevant: [healing_and_conditions]
+- query: "I try to convince the merchant to like us"
+  relevant: [diplomacy, diplomacy_attitude, npc_attitude]
+- query: "I threaten the cultist until he talks"
+  relevant: [intimidate]
+- query: "I lie to the guard about being the duke's messenger"
+  relevant: [bluff]
+- query: "is the innkeeper telling the truth?"
+  relevant: [sense_motive]
+- query: "I ask around the tavern for rumours about the missing girl"
+  relevant: [gather_information, diplomacy]
+- query: "I help the fighter with his attack"
+  relevant: [aid_another]
+- query: "my base speed as a dwarf in heavy armor"
+  relevant: [movement_speeds]
+- query: "is the hostile village chief willing to talk?"
+  relevant: [npc_attitude, diplomacy_attitude]
