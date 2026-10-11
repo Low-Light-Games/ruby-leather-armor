@@ -9,11 +9,15 @@ module Retrieval
     DEFAULT_K = 60
 
     # rankings: arrays of ids, best first. Returns [[id, score], ...], best
-    # first; ties keep the order in which ids were first seen.
-    def self.fuse(*rankings, k: DEFAULT_K)
+    # first; ties keep the order in which ids were first seen. `weights`
+    # (one per ranking, default all 1) gives weighted RRF.
+    def self.fuse(*rankings, k: DEFAULT_K, weights: nil)
+      weights ||= Array.new(rankings.size, 1)
+      raise ArgumentError, "one weight per ranking" unless weights.size == rankings.size
+
       scores = Hash.new(0.0)
-      rankings.each do |ranking|
-        ranking.uniq.each_with_index { |id, index| scores[id] += 1.0 / (k + index + 1) }
+      rankings.zip(weights).each do |ranking, weight|
+        ranking.uniq.each_with_index { |id, index| scores[id] += weight.to_f / (k + index + 1) }
       end
 
       scores.sort_by.with_index { |(_id, score), seen| [-score, seen] }

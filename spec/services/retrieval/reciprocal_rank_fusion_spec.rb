@@ -18,6 +18,14 @@ RSpec.describe Retrieval::ReciprocalRankFusion do
     expect(described_class.fuse(%w[p], %w[q]).map(&:first)).to eq(%w[p q])
   end
 
+  it "weights each ranking's contribution" do
+    fused = described_class.fuse(%w[a b], %w[b a], k: 60, weights: [3, 1]).to_h
+
+    expect(fused["a"]).to be_within(1e-12).of((3.0 / 61) + (1.0 / 62))
+    expect(fused["b"]).to be_within(1e-12).of((3.0 / 62) + (1.0 / 61))
+    expect { described_class.fuse(%w[a], %w[b], weights: [1]) }.to raise_error(ArgumentError)
+  end
+
   it "returns an empty list when every ranking is empty" do
     expect(described_class.fuse([], [])).to eq([])
   end
