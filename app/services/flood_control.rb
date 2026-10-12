@@ -129,6 +129,13 @@ module FloodControl
     admission.is_a?(Hash) && admission['user_id'].present? && admission['owner_token'].present?
   end
 
+  def record_fail_open(event, exception:, context:)
+    payload = context.merge(event: event, error_class: exception.class.name, error_message: exception.message)
+    ActiveSupport::Notifications.instrument('dm.flood_control.fail_open', payload)
+    Rails.logger.error("[DM flood_control fail_open] #{payload}")
+    ApplicationErrorReporter.notify(exception, context: payload.merge(source: 'dm_flood_control_fail_open'))
+  end
+
   private
 
   def prompt_slot_key(user_id)
@@ -179,12 +186,5 @@ module FloodControl
   rescue ConnectionPool::TimeoutError, Redis::BaseError, IOError, SystemCallError, Timeout::Error => e
     record_fail_open(event, exception: e, context: { user_id: user_id })
     fallback
-  end
-
-  def record_fail_open(event, exception:, context:)
-    payload = context.merge(event: event, error_class: exception.class.name, error_message: exception.message)
-    ActiveSupport::Notifications.instrument('dm.flood_control.fail_open', payload)
-    Rails.logger.error("[DM flood_control fail_open] #{payload}")
-    ApplicationErrorReporter.notify(exception, context: payload.merge(source: 'dm_flood_control_fail_open'))
   end
 end
