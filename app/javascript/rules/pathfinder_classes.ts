@@ -10,30 +10,13 @@ export type CastingType = 'prepared' | 'spontaneous';
  */
 export type CastingStyle = 'none' | 'spontaneous' | 'spellbook' | 'prepared_list';
 
-/**
- * Spellcasting progression for a class.
- *
- * `progression` is indexed by **spell level** (0 = cantrips, 1 = 1st, …).
- * The value is the **minimum character level** required to access that spell
- * level, or `null` if the class never gains that spell level.
- *
- * Example — Wizard: [1, 1, 3, 5, 7, 9, 11, 13, 15, 17]
- *   → cantrips at level 1, 1st-level spells at level 1, 2nd at 3, …
- *
- * Example — Paladin: [null, 4, 7, 10, 13]
- *   → no cantrips; 1st-level spells at character level 4, 2nd at 7, …
- */
 export interface SpellcastingInfo {
   type: CastingType;
   ability: 'intelligence' | 'wisdom' | 'charisma';
+  // Minimum character level per spell level (index 0 = cantrips); null = never gained.
   progression: (number | null)[];
-  /** How this class acquires spells. */
   style: CastingStyle;
-  /**
-   * For spontaneous casters only.
-   * `spellsKnown[charLevel - 1][spellLevel]` → number of spells the
-   * character may know. Absent entries or 0 = not available at that level.
-   */
+  // Spontaneous casters only: spellsKnown[charLevel - 1][spellLevel].
   spellsKnown?: number[][];
 }
 
@@ -43,13 +26,10 @@ export interface ClassDefinition {
   hitDie: number;
   bab: BABProgression;
   goodSaves: ('fort' | 'ref' | 'will')[];
-  /** Skill points per level (Pathfinder class skill rank table, before Int mod). */
+  // Per level, before the Int modifier.
   skillPointsBase: number;
-  /** Omitted for non-casters (barbarian, fighter, monk, rogue). */
   spellcasting?: SpellcastingInfo;
 }
-
-// ─── Spells-Known Tables (OGC mechanical data) ──────────────
 
 /* prettier-ignore */
 const SORCERER_SPELLS_KNOWN: number[][] = [
@@ -100,8 +80,6 @@ const BARD_SPELLS_KNOWN: number[][] = [
   [6, 6, 5, 5, 5, 5, 4],     // Lv 19
   [6, 6, 5, 5, 5, 5, 5],     // Lv 20
 ];
-
-// ─── Class Data ──────────────────────────────────────────────
 
 export const PATHFINDER_CLASSES: ClassDefinition[] = [
   { id: 'barbarian', name: 'Barbarian', hitDie: 12, bab: 'full', goodSaves: ['fort'], skillPointsBase: 4 },
