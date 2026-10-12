@@ -1,15 +1,5 @@
 # frozen_string_literal: true
 
-# Serializes a Sheet or AdventureSheet into the JSON shape expected by the
-# frontend SPA. Feat, spell, and item pivots are passed explicitly; class
-# abilities are read live from {SheetClassAbilities} when the sheet supports it.
-#
-# Usage:
-#   SheetPresenter.new(adv_sheet,
-#     feat_rel:  adv_sheet.adventure_sheet_feats,
-#     spell_rel: adv_sheet.adventure_sheet_spells,
-#     item_rel:  adv_sheet.adventure_sheet_items
-#   ).as_json
 class SheetPresenter
   class SheetDetailsBuilder
     def initialize(base_details:, feats:, spell_rel:, items:)
@@ -41,10 +31,6 @@ class SheetPresenter
     end
   end
 
-  # @param sheet     [Sheet, AdventureSheet]
-  # @param feat_rel  [ActiveRecord::Relation]  feat pivot records
-  # @param spell_rel [ActiveRecord::Relation]  spell pivot records
-  # @param item_rel  [ActiveRecord::Relation]  item pivot records
   def initialize(sheet, feat_rel:, spell_rel:, item_rel:)
     @sheet     = sheet
     @feat_rel  = feat_rel
@@ -64,15 +50,17 @@ class SheetPresenter
     )
 
     serialized_sheet["details"] = details_payload.to_h
-    if @sheet.respond_to?(:class_ability_definitions)
-      serialized_sheet["class_abilities"] = @sheet.class_ability_definitions.map do |ca|
-        { id: ca.id, name: ca.name, summary: ca.summary }
-      end
-    end
+    serialized_sheet["class_abilities"] = serialized_class_abilities if @sheet.respond_to?(:class_ability_definitions)
     serialized_sheet
   end
 
   private
+
+  def serialized_class_abilities
+    @sheet.class_ability_definitions.map do |class_ability|
+      { id: class_ability.id, name: class_ability.name, summary: class_ability.summary }
+    end
+  end
 
   def serialized_feats
     @feat_rel.map do |sf|

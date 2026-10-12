@@ -1,22 +1,7 @@
 # frozen_string_literal: true
 
 class DmConfig < ApplicationRecord
-  # Single-row configuration for the AI Dungeon Master.
-  # Settings are stored as a JSON hash, making it easy to add new knobs
-  # without migrations.
-  #
-  # NOTE: per-step model + reasoning_effort live in
-  # `config/dm_step_models.yml` (read via `DmStepModelsConfig`), not in
-  # this DB row. `#model_for`, `#reasoning_effort_for`, and `#model`
-  # delegate there so call sites in the pipeline still read
-  # `config.model_for(:narrate)` etc.
-
-  # Closed whitelist for the narrative facts store's embedding model
-  # selector (see Decision 37). The `adventure_narrative_facts.embedding`
-  # column is fixed at `vector(1536)`, so models with native dim > 1536
-  # need `dimensions: 1536` passed to OpenAI to truncate to our column
-  # width — captured here as `dimensions_override` so the read/write
-  # call sites don't have to duplicate that mapping.
+  # The embedding column is vector(1536), so wider models are truncated via dimensions_override.
   EMBEDDING_MODELS = [
     {
       'id' => 'text-embedding-3-small',
@@ -118,22 +103,14 @@ class DmConfig < ApplicationRecord
     get('danger_threshold').to_i
   end
 
-  # Global default model — sourced from config/dm_step_models.yml.
   def model
     DmStepModelsConfig.default_model
   end
 
-  # Resolved model for a pipeline step — sourced from
-  # config/dm_step_models.yml (per-step override → default_model).
   def model_for(step)
     DmStepModelsConfig.model_for(step)
   end
 
-  # Returns "minimal" | "low" | "medium" | "high" for the given step.
-  # Sourced from config/dm_step_models.yml (per-step override →
-  # default_reasoning_effort). AiClient drops the param when the
-  # resolved model isn't a reasoning model, so non-reasoning overrides
-  # stay safe.
   def reasoning_effort_for(step)
     DmStepModelsConfig.reasoning_effort_for(step)
   end
@@ -159,10 +136,6 @@ class DmConfig < ApplicationRecord
     EMBEDDING_MODEL_IDS.include?(val) ? val : DEFAULTS['narrative_facts_embedding_model']
   end
 
-  # Returns the `dimensions:` parameter to pass to OpenAI for the
-  # currently-selected embedding model, or nil when the model's native
-  # dim already matches our `vector(1536)` column. Call sites pass this
-  # through to `AiClient#embeddings(dimensions:)`.
   def narrative_facts_embedding_dimensions
     entry = EMBEDDING_MODELS.find { |m| m['id'] == narrative_facts_embedding_model }
     entry && entry['dimensions_override']
