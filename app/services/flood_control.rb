@@ -121,6 +121,10 @@ module FloodControl
     nil
   end
 
+  def release_prompt_submission_for_job(job_hash)
+    release_prompt_submission(extract_prompt_admission(job_hash))
+  end
+
   def prompt_admission?(admission)
     admission.is_a?(Hash) && admission['user_id'].present? && admission['owner_token'].present?
   end

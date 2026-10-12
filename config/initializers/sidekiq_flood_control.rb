@@ -6,8 +6,8 @@ class DmFloodControlServerMiddleware
   def call(_worker, job, _queue)
     yield
 
-    admission = FloodControl.extract_prompt_admission(job)
-    FloodControl.release_prompt_submission(admission)
+    # Not in an ensure: a retrying job keeps its slot until it succeeds or dies.
+    FloodControl.release_prompt_submission_for_job(job)
   end
 end
 
@@ -16,8 +16,5 @@ Sidekiq.configure_server do |config|
     chain.add DmFloodControlServerMiddleware
   end
 
-  config.death_handlers << lambda do |job, _exception|
-    admission = FloodControl.extract_prompt_admission(job)
-    FloodControl.release_prompt_submission(admission)
-  end
+  config.death_handlers << ->(job, _exception) { FloodControl.release_prompt_submission_for_job(job) }
 end
