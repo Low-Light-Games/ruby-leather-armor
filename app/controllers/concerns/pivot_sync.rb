@@ -1,62 +1,49 @@
 # frozen_string_literal: true
 
-# Shared destroy-and-recreate logic for feat, spell, and item pivot tables.
-# Works with both Sheet and AdventureSheet associations — callers pass the
-# relevant relation directly (e.g. sheet.sheet_feats or adv_sheet.adventure_sheet_feats).
 module PivotSync
   extend ActiveSupport::Concern
 
   private
 
-  # Replace all feats on the given relation.
-  # Entries: "feat_id", "feat_id::choice", or "pool_id|feat_id" / "pool_id|feat_id::choice".
-  # Legacy entries without "|" use pool "general".
   def sync_feats!(feat_relation, feat_entries)
     return unless feat_entries
 
     feat_relation.destroy_all
     feat_entries.each do |entry|
-      entry = entry.to_s
-      pool = SheetFeat::DEFAULT_POOL
-      raw  = entry
-      if entry.include?("|")
-        pool_part, rest = entry.split("|", 2)
-        pool = pool_part.presence || SheetFeat::DEFAULT_POOL
-        raw = rest.to_s
-      end
-      parts   = raw.split("::", 2)
-      feat_id = parts[0]
-      choice  = parts[1]
+      pool, feat_id, choice = parse_feat_entry(entry.to_s)
       next unless FeatDefinition.exists?(feat_id)
 
       feat_relation.create!(feat_id: feat_id, choice: choice, pool: pool)
     end
   end
 
-  # Replace all spells on the given relation.
-  # spell_data is a hash with optional :known and :spellbook arrays.
+  # Entries look like "pool_id|feat_id::choice"; the pool prefix and the choice are optional.
+  def parse_feat_entry(entry)
+    pool = SheetFeat::DEFAULT_POOL
+    feat_with_choice = entry
+    if entry.include?("|")
+      pool_part, rest = entry.split("|", 2)
+      pool = pool_part.presence || SheetFeat::DEFAULT_POOL
+      feat_with_choice = rest.to_s
+    end
+    feat_id, choice = feat_with_choice.split("::", 2)
+    [pool, feat_id, choice]
+  end
+
   def sync_spells!(spell_relation, spell_data)
     return unless spell_data
 
     spell_relation.destroy_all
-
-    (spell_data[:known] || []).each do |spell_id|
-      next unless SpellDefinition.exists?(spell_id)
-
-      spell_relation.create!(spell_id: spell_id, storage_type: "known")
-    end
-
-    (spell_data[:spellbook] || []).each do |spell_id|
-      next unless SpellDefinition.exists?(spell_id)
-
-      spell_relation.create!(spell_id: spell_id, storage_type: "spellbook")
-    end
+    create_spells!(spell_relation, "known", spell_data[:known] || [])
+    create_spells!(spell_relation, "spellbook", spell_data[:spellbook] || [])
   end
 
-  # Replace spells of a single storage type (e.g. "spellbook" or "known").
-  # Useful for granular updates like AdventureSheetsController#update.
   def sync_spells_by_type!(spell_relation, storage_type, spell_ids)
     spell_relation.where(storage_type: storage_type).destroy_all
+    create_spells!(spell_relation, storage_type, spell_ids)
+  end
+
+  def create_spells!(spell_relation, storage_type, spell_ids)
     spell_ids.each do |spell_id|
       next unless SpellDefinition.exists?(spell_id)
 
@@ -64,8 +51,6 @@ module PivotSync
     end
   end
 
-  # Replace all items on the given relation.
-  # Each entry: { item_id: "chain_shirt", quantity: 1, equipped: true, slot_override: nil }
   def sync_items!(item_relation, item_entries)
     return unless item_entries
 

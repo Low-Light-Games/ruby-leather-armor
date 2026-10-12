@@ -1,24 +1,5 @@
 # frozen_string_literal: true
 
-# Executes all billing analytics aggregations for a given date range and
-# optional filters, returning a plain data object consumed by
-# Admin::BillingController.
-#
-# Usage:
-#   result = BillingAnalyticsQuery.new(
-#     start_date: Date.current.beginning_of_month,
-#     end_date:   Date.current,
-#     model:      params[:model],
-#     adventure_id: params[:adventure_id],
-#     user_id: params[:user_id]
-#   ).call
-#
-#   result.totals       # → [count, input_tokens, output_tokens, ...]
-#   result.by_model     # → AR relation
-#   result.by_user      # → AR relation
-#   result.by_adventure # → AR relation
-#   result.by_day       # → AR relation
-#   result.by_step      # → AR relation
 class BillingAnalyticsQuery
   class Result
     attr_reader :totals, :by_model, :by_user, :by_adventure, :by_day,

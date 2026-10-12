@@ -20,125 +20,35 @@ module Ai
       @last_usage = nil
     end
 
-    # @param system_prompt [String]
-    # @param user_message  [String, nil]  single user message (convenience)
-    # @param messages       [Array, nil]   full message list (takes precedence)
-    # @param step_name        [String, nil]  pipeline step name for error messages
-    # @param model            [String, nil]  per-step model override (falls back to default)
-    # @param reasoning_effort [String, nil]  one of "minimal" | "low" | "medium" | "high".
-    # @return [String] raw content from the AI
-    # @raise [Ai::Error]
     def chat(system_prompt:, user_message: nil, messages: nil, step_name: nil, model: nil, reasoning_effort: nil)
       @last_usage = nil
       effective_model = model || @default_model
       @last_model_used = effective_model
       @last_reasoning_effort = reasoning_effort
-      supports_temp = OpenaiModelCatalog.supports_temperature?(effective_model)
-      is_reasoning  = OpenaiModelCatalog.reasoning_model?(effective_model)
 
-      chat_messages = [{ role: "system", content: system_prompt }]
-
-      if messages
-        chat_messages.concat(messages)
-      elsif user_message
-        chat_messages << { role: "user", content: user_message }
-      end
-
-      params = {
+      params = chat_parameters(
         model: effective_model,
-        messages: chat_messages,
-        response_format: { type: "json_object" }
-      }
-      params[:temperature] = @config.temperature if supports_temp && custom_temperature?
-      params[:reasoning_effort] = reasoning_effort if reasoning_effort.present? && is_reasoning
-
-      response = begin
-        with_openai_retries(call_type: "chat", model: effective_model) do
-          @client.chat(parameters: params)
-        end
-      rescue Faraday::BadRequestError => e
-        body = begin; e.response&.dig(:body); rescue StandardError; nil; end
-        msg = body.is_a?(Hash) ? body.dig("error", "message") : e.message
-        Rails.logger.error("[Ai::Client] Bad request: #{msg}")
-        raise Error, "AI request rejected: #{msg}"
-      rescue Faraday::TooManyRequestsError => e
-        Rails.logger.error("[Ai::Client] Rate limited after #{openai_max_retries + 1} attempts: #{e.message}")
-        raise Error, "Rate limited by OpenAI after #{openai_max_retries + 1} attempts"
-      rescue Faraday::ClientError => e
-        Rails.logger.error("[Ai::Client] #{e.class}: #{e.message}")
-        raise Error, "AI request rejected: #{e.message}"
-      rescue Faraday::ServerError, Faraday::ConnectionFailed, Faraday::TimeoutError => e
-        Rails.logger.error("[Ai::Client] #{e.class} after #{openai_max_retries + 1} attempts: #{e.message}")
-        raise Error, "Could not reach the AI service after #{openai_max_retries + 1} attempts. Please try again shortly."
-      end
-
-      if response.dig("error")
-        raise Error, response.dig("error", "message") || "OpenAI API error"
-      end
+        messages: chat_messages(system_prompt, user_message, messages),
+        reasoning_effort: reasoning_effort
+      )
+      response = request_chat_completion(params, effective_model)
+      raise Error, response.dig("error", "message") || "OpenAI API error" if response.dig("error")
 
       content       = response.dig("choices", 0, "message", "content")
       finish_reason = response.dig("choices", 0, "finish_reason")
-
-      usage_hash = response["usage"]
-      if usage_hash
-        reasoning = usage_hash.dig("completion_tokens_details", "reasoning_tokens") || 0
-        @last_usage = {
-          input_tokens: usage_hash["prompt_tokens"] || 0,
-          output_tokens: usage_hash["completion_tokens"] || 0,
-          reasoning_tokens: reasoning,
-          total_tokens: usage_hash["total_tokens"] || 0
-        }
-      end
-
-      if finish_reason == "length"
-        label = step_name || "unknown"
-        @last_failed_raw_response = content
-        Rails.logger.error(
-          "[Ai::Client] Token limit hit on '#{label}' step " \
-          "(finish_reason: length, content_length: #{content&.length || 0})"
-        )
-        raise TokenBudgetExceededError.new(step_name: label, budget: nil)
-      end
-
-      if content.nil? || content.strip.empty?
-        @last_failed_raw_response = content
-        raise Error, "Empty response from AI (finish_reason: #{finish_reason || 'unknown'})"
-      end
+      @last_usage = chat_usage(response["usage"]) if response["usage"]
+      ensure_complete_content!(content, finish_reason, step_name)
 
       content
     end
 
-    # @param texts      [Array<String>]  non-empty array of texts to embed
-    # @param model      [String]         embedding model id — required; callers
-    # @param dimensions [Integer, nil]   optional output-dim truncation (only
-    # @return [Array<Array<Float>>]      parallel array of vectors (dim =
-    # @raise [Ai::Error]
     def embeddings(texts:, model:, dimensions: nil)
       raise Error, "embeddings called with no texts" if texts.nil? || texts.empty?
 
       params = { model: model, input: texts }
       params[:dimensions] = dimensions if dimensions
 
-      response = begin
-        with_openai_retries(call_type: "embeddings", model: model) do
-          @client.embeddings(parameters: params)
-        end
-      rescue Faraday::BadRequestError => e
-        body = begin; e.response&.dig(:body); rescue StandardError; nil; end
-        msg = body.is_a?(Hash) ? body.dig("error", "message") : e.message
-        Rails.logger.error("[Ai::Client] Embeddings bad request: #{msg}")
-        raise Error, "AI embeddings request rejected: #{msg}"
-      rescue Faraday::TooManyRequestsError => e
-        Rails.logger.error("[Ai::Client] Embeddings rate limited after #{openai_max_retries + 1} attempts: #{e.message}")
-        raise Error, "Embeddings rate limited by OpenAI after #{openai_max_retries + 1} attempts"
-      rescue Faraday::ClientError => e
-        Rails.logger.error("[Ai::Client] Embeddings #{e.class}: #{e.message}")
-        raise Error, "AI embeddings request rejected: #{e.message}"
-      rescue Faraday::ServerError, Faraday::ConnectionFailed, Faraday::TimeoutError => e
-        Rails.logger.error("[Ai::Client] Embeddings #{e.class} after #{openai_max_retries + 1} attempts: #{e.message}")
-        raise Error, "Could not reach the AI embeddings service after #{openai_max_retries + 1} attempts."
-      end
-
+      response = request_embeddings(params, model)
       if response.is_a?(Hash) && response.dig("error")
         raise Error, response.dig("error", "message") || "OpenAI embeddings API error"
       end
@@ -148,8 +58,7 @@ module Ai
         raise Error, "Unexpected embeddings response shape (got #{data&.length || 'nil'} vectors for #{texts.length} texts)"
       end
 
-      usage = response["usage"] || {}
-      prompt_tokens = usage["prompt_tokens"].to_i
+      prompt_tokens = (response["usage"] || {})["prompt_tokens"].to_i
       @last_usage = {
         input_tokens:     prompt_tokens,
         output_tokens:    0,
@@ -160,10 +69,6 @@ module Ai
       data.sort_by { |row| row["index"].to_i }.map { |row| row["embedding"] }
     end
 
-    # @param raw         [String]
-    # @param fallback_as [Symbol, nil]  :dm_response to treat raw text as narrative on parse failure
-    # @return [Hash]
-    # @raise [Ai::Error]
     def parse_json(raw, fallback_as: nil)
       @last_parse_status = "success"
 
@@ -190,6 +95,100 @@ module Ai
     end
 
     private
+
+    def chat_messages(system_prompt, user_message, messages)
+      chat_messages = [{ role: "system", content: system_prompt }]
+      if messages
+        chat_messages.concat(messages)
+      elsif user_message
+        chat_messages << { role: "user", content: user_message }
+      end
+      chat_messages
+    end
+
+    def chat_parameters(model:, messages:, reasoning_effort:)
+      params = { model: model, messages: messages, response_format: { type: "json_object" } }
+      if OpenaiModelCatalog.supports_temperature?(model) && custom_temperature?
+        params[:temperature] = @config.temperature
+      end
+      if reasoning_effort.present? && OpenaiModelCatalog.reasoning_model?(model)
+        params[:reasoning_effort] = reasoning_effort
+      end
+      params
+    end
+
+    def request_chat_completion(params, model)
+      with_openai_retries(call_type: "chat", model: model) do
+        @client.chat(parameters: params)
+      end
+    rescue Faraday::BadRequestError => e
+      message = bad_request_message(e)
+      Rails.logger.error("[Ai::Client] Bad request: #{message}")
+      raise Error, "AI request rejected: #{message}"
+    rescue Faraday::TooManyRequestsError => e
+      Rails.logger.error("[Ai::Client] Rate limited after #{openai_max_retries + 1} attempts: #{e.message}")
+      raise Error, "Rate limited by OpenAI after #{openai_max_retries + 1} attempts"
+    rescue Faraday::ClientError => e
+      Rails.logger.error("[Ai::Client] #{e.class}: #{e.message}")
+      raise Error, "AI request rejected: #{e.message}"
+    rescue Faraday::ServerError, Faraday::ConnectionFailed, Faraday::TimeoutError => e
+      Rails.logger.error("[Ai::Client] #{e.class} after #{openai_max_retries + 1} attempts: #{e.message}")
+      raise Error, "Could not reach the AI service after #{openai_max_retries + 1} attempts. Please try again shortly."
+    end
+
+    def request_embeddings(params, model)
+      with_openai_retries(call_type: "embeddings", model: model) do
+        @client.embeddings(parameters: params)
+      end
+    rescue Faraday::BadRequestError => e
+      message = bad_request_message(e)
+      Rails.logger.error("[Ai::Client] Embeddings bad request: #{message}")
+      raise Error, "AI embeddings request rejected: #{message}"
+    rescue Faraday::TooManyRequestsError => e
+      Rails.logger.error("[Ai::Client] Embeddings rate limited after #{openai_max_retries + 1} attempts: #{e.message}")
+      raise Error, "Embeddings rate limited by OpenAI after #{openai_max_retries + 1} attempts"
+    rescue Faraday::ClientError => e
+      Rails.logger.error("[Ai::Client] Embeddings #{e.class}: #{e.message}")
+      raise Error, "AI embeddings request rejected: #{e.message}"
+    rescue Faraday::ServerError, Faraday::ConnectionFailed, Faraday::TimeoutError => e
+      Rails.logger.error("[Ai::Client] Embeddings #{e.class} after #{openai_max_retries + 1} attempts: #{e.message}")
+      raise Error, "Could not reach the AI embeddings service after #{openai_max_retries + 1} attempts."
+    end
+
+    def bad_request_message(error)
+      body = begin
+        error.response&.dig(:body)
+      rescue StandardError
+        nil
+      end
+      body.is_a?(Hash) ? body.dig("error", "message") : error.message
+    end
+
+    def chat_usage(usage)
+      {
+        input_tokens: usage["prompt_tokens"] || 0,
+        output_tokens: usage["completion_tokens"] || 0,
+        reasoning_tokens: usage.dig("completion_tokens_details", "reasoning_tokens") || 0,
+        total_tokens: usage["total_tokens"] || 0
+      }
+    end
+
+    def ensure_complete_content!(content, finish_reason, step_name)
+      if finish_reason == "length"
+        label = step_name || "unknown"
+        @last_failed_raw_response = content
+        Rails.logger.error(
+          "[Ai::Client] Token limit hit on '#{label}' step " \
+          "(finish_reason: length, content_length: #{content&.length || 0})"
+        )
+        raise TokenBudgetExceededError.new(step_name: label, budget: nil)
+      end
+
+      return unless content.nil? || content.strip.empty?
+
+      @last_failed_raw_response = content
+      raise Error, "Empty response from AI (finish_reason: #{finish_reason || 'unknown'})"
+    end
 
     def with_openai_retries(call_type:, model:)
       attempt = 0

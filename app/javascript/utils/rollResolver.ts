@@ -23,18 +23,17 @@ export type ResolvedRoll =
       label: string
     }
 
-const SAVE_MAP: Record<string, { key: keyof Pick<DerivedStats, 'fort' | 'ref' | 'will'>; label: string }> = {
-  fortitude: { key: 'fort', label: 'Fortitude Save' },
-  fort: { key: 'fort', label: 'Fortitude Save' },
-  constitution: { key: 'fort', label: 'Fortitude Save' }, // AI sometimes uses "Constitution" for Fortitude saves
-  con: { key: 'fort', label: 'Fortitude Save' },
-  reflex: { key: 'ref', label: 'Reflex Save' },
-  ref: { key: 'ref', label: 'Reflex Save' },
-  dexterity: { key: 'ref', label: 'Reflex Save' }, // AI sometimes uses "Dexterity" for Reflex saves
-  dex: { key: 'ref', label: 'Reflex Save' },
-  will: { key: 'will', label: 'Will Save' },
-  wisdom: { key: 'will', label: 'Will Save' }, // AI sometimes uses "Wisdom" for Will saves
-  wis: { key: 'will', label: 'Will Save' },
+type SaveEntry = { key: keyof Pick<DerivedStats, 'fort' | 'ref' | 'will'>; label: string }
+
+const FORTITUDE_SAVE: SaveEntry = { key: 'fort', label: 'Fortitude Save' }
+const REFLEX_SAVE: SaveEntry = { key: 'ref', label: 'Reflex Save' }
+const WILL_SAVE: SaveEntry = { key: 'will', label: 'Will Save' }
+
+// The DM model sometimes names a save by its ability, e.g. "Constitution" for Fortitude.
+const SAVE_MAP: Record<string, SaveEntry> = {
+  fortitude: FORTITUDE_SAVE, fort: FORTITUDE_SAVE, constitution: FORTITUDE_SAVE, con: FORTITUDE_SAVE,
+  reflex: REFLEX_SAVE, ref: REFLEX_SAVE, dexterity: REFLEX_SAVE, dex: REFLEX_SAVE,
+  will: WILL_SAVE, wisdom: WILL_SAVE, wis: WILL_SAVE,
 }
 
 const ABILITY_MAP: Record<string, string> = {
@@ -46,11 +45,7 @@ const ABILITY_MAP: Record<string, string> = {
   charisma: 'charisma', cha: 'charisma',
 }
 
-/**
- * Maps an AI-generated roll request to a concrete character ability with
- * the correct modifier. Returns null if the roll doesn't match any known
- * ability on the character sheet (hallucination).
- */
+// null means the request names nothing on the character sheet, i.e. a hallucinated roll.
 export function resolveRollRequest(req: RollRequest, ds: DerivedStats): ResolvedRoll | null {
   const skillName = (req.skill ?? '').trim()
   const skillLower = skillName.toLowerCase()
@@ -65,7 +60,7 @@ export function resolveRollRequest(req: RollRequest, ds: DerivedStats): Resolved
   }
 
   if (rollType === 'attack_roll' || rollType === 'attack') {
-    return resolveAttack(skillLower, ds, req)
+    return resolveAttack(ds, req)
   }
 
   if (rollType === 'ability_check' || rollType === 'ability') {
@@ -80,7 +75,6 @@ export function resolveRollRequest(req: RollRequest, ds: DerivedStats): Resolved
     return resolveDamage(req)
   }
 
-  // Fallback: try skill match, then save, then ability
   return resolveSkillCheck(skillLower, skillName, ds)
     ?? resolveSave(skillLower, ds)
     ?? resolveAbilityCheck(skillLower, ds)
@@ -115,8 +109,17 @@ function resolveSave(skillLower: string, ds: DerivedStats): ResolvedRoll | null 
   }
 }
 
-function resolveAttack(_skillLower: string, ds: DerivedStats, req?: RollRequest): ResolvedRoll | null {
-  const mode = req?.attack_mode?.toLowerCase()
+function meleeAttack(ds: DerivedStats, label: string): ResolvedRoll {
+  return {
+    kind: 'd20',
+    modifier: ds.melee_attack,
+    label,
+    modifierLabel: `BAB ${formatMod(ds.bab)} + STR ${formatMod(ds.mods.strength)}`,
+  }
+}
+
+function resolveAttack(ds: DerivedStats, req: RollRequest): ResolvedRoll | null {
+  const mode = req.attack_mode?.toLowerCase()
 
   if (mode === 'ranged' || mode === 'ranged_touch') {
     return {
@@ -127,21 +130,7 @@ function resolveAttack(_skillLower: string, ds: DerivedStats, req?: RollRequest)
     }
   }
 
-  if (mode === 'melee' || mode === 'melee_touch') {
-    return {
-      kind: 'd20',
-      modifier: ds.melee_attack,
-      label: mode === 'melee_touch' ? 'Melee Touch Attack' : 'Melee Attack',
-      modifierLabel: `BAB ${formatMod(ds.bab)} + STR ${formatMod(ds.mods.strength)}`,
-    }
-  }
-
-  return {
-    kind: 'd20',
-    modifier: ds.melee_attack,
-    label: 'Melee Attack',
-    modifierLabel: `BAB ${formatMod(ds.bab)} + STR ${formatMod(ds.mods.strength)}`,
-  }
+  return meleeAttack(ds, mode === 'melee_touch' ? 'Melee Touch Attack' : 'Melee Attack')
 }
 
 function resolveAbilityCheck(skillLower: string, ds: DerivedStats): ResolvedRoll | null {

@@ -1,17 +1,6 @@
 # frozen_string_literal: true
 
-# Asynchronously ships a PlayLog record to Axiom.
-#
-# Large blob fields (request_body, raw_response, parsed_response) are uploaded
-# to S3 first; only the resulting URLs are included in the Axiom event, keeping
-# ingestion volume lean.
-#
-# Enqueued by Ai::Logging after both PlayLog.create! AND
-# attach_usage_record! have returned — ensuring AiUsageRecord is already
-# persisted before this job reads the record.
-#
-# Errors are not rescued: Sidekiq retries on failure and sentry-rails captures
-# persistent failures via its Sidekiq error handler.
+# Enqueued only once the usage record is attached, so the event can carry token costs.
 class ShipPlayLogJob < ApplicationJob
   queue_as :logging
 

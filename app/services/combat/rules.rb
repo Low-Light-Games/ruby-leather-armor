@@ -8,10 +8,6 @@ module Combat
 
     module_function
 
-    # @param attacker [Combat::Position]
-    # @param target [Combat::Position]
-    # @param allies [Array<Combat::Position>]
-    # @param reach_squares [Integer]
     def flanking?(attacker:, target:, allies:, reach_squares: DEFAULT_REACH_SQUARES)
       return false unless can_flank_from?(attacker, target, reach_squares)
 
@@ -19,11 +15,6 @@ module Combat
       Array(allies).any? { |ally| ally_at_mirror?(ally, attacker, target, mirror_x, mirror_y) }
     end
 
-    # @param mover [Combat::Position]
-    # @param mover_from [Combat::Position, nil]
-    # @param others [Array<Combat::Position>]
-    # @param default_reach_squares [Integer]
-    # @return [Array<Combat::Threat>]
     def aoo_threats_against(mover:, mover_from:, others:, default_reach_squares: DEFAULT_REACH_SQUARES)
       return [] unless mover_from
 
@@ -34,9 +25,6 @@ module Combat
       end
     end
 
-    # @param attacker [Combat::Position]
-    # @param target [Combat::Position]
-    # @param others [Array<Combat::Position>]
     def cover_between(attacker:, target:, others:)
       return 0 unless cover_eligible?(attacker, target)
 
@@ -59,7 +47,7 @@ module Combat
     def threatens?(attacker:, square:, reach_squares: DEFAULT_REACH_SQUARES)
       return false unless attacker&.coordinates_present? && square.is_a?(Hash)
 
-      [(attacker.x.to_i - square[:x].to_i).abs, (attacker.y.to_i - square[:y].to_i).abs].max <= reach_squares
+      chebyshev_distance(attacker.x, attacker.y, square[:x], square[:y]) <= reach_squares
     end
 
     def can_flank_from?(attacker, target, reach_squares)
@@ -85,8 +73,11 @@ module Combat
 
       return false if other.token_id == mover.token_id
 
-      chebyshev = [(other.x.to_i - mover_from.x.to_i).abs, (other.y.to_i - mover_from.y.to_i).abs].max
-      chebyshev <= reach_squares
+      chebyshev_distance(other.x, other.y, mover_from.x, mover_from.y) <= reach_squares
+    end
+
+    def chebyshev_distance(from_x, from_y, to_x, to_y)
+      [(from_x.to_i - to_x.to_i).abs, (from_y.to_i - to_y.to_i).abs].max
     end
 
     def line_between(attacker, target)

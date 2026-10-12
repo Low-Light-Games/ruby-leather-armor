@@ -2,6 +2,8 @@
 
 module Battlefield
   class ApplyPatches
+    ALLOWED_CELL_ATTRS = %w[terrain difficult cover light obstacle note labels].freeze
+
     class << self
       def call(adventure:, patches:, log: nil)
         return if patches.blank?
@@ -45,15 +47,13 @@ module Battlefield
         assert_matching_battlefield_version!(battlefield_reference, battlefield)
         patch_state = PatchState.from_battlefield(battlefield)
         mutable_patch_data = patch_state.to_h
-        Array(patches).each { |patch_operation| apply_op!(mutable_patch_data, patch_operation) }
+        Array(patches).each { |patch_operation| apply_patch_operation!(mutable_patch_data, patch_operation) }
 
-        apply_patch_state!(battlefield, patch_state)
+        save_patch_state!(battlefield, patch_state)
         adventure.update!(
           combat_context: CombatContextReferencePatch.attach(combat_context, battlefield: battlefield)
         )
       end
-
-      ALLOWED_CELL_ATTRS = %w[terrain difficult cover light obstacle note labels].freeze
 
       private
 
@@ -67,7 +67,7 @@ module Battlefield
               "battlefield version drift: combat_context has #{expected_version}, row has #{battlefield.version}"
       end
 
-      def apply_patch_state!(battlefield, patch_state)
+      def save_patch_state!(battlefield, patch_state)
         battlefield.assign_attributes(
           tokens: patch_state.tokens,
           viewport: patch_state.viewport,
@@ -77,7 +77,7 @@ module Battlefield
         battlefield.save!
       end
 
-      def apply_op!(patch_state_data, patch_operation)
+      def apply_patch_operation!(patch_state_data, patch_operation)
         operation = patch_operation.is_a?(Hash) ? patch_operation.deep_stringify_keys : {}
         name = (operation['op'] || operation['operation']).to_s
         case name

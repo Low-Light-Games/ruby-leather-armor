@@ -1,14 +1,5 @@
 # frozen_string_literal: true
 
-# Immutable value object wrapping the currency JSONB hash.
-#
-# The DB column is: { "gold" => N, "silver" => N, "copper" => N, "platinum" => N }
-# All four keys are optional; missing keys are treated as zero.
-#
-# Usage:
-#   c = Currency.new(sheet.currency)
-#   c.total_gp_value   # => 10.3
-#   c.add(Currency.new("gold" => 5)).to_h
 class Currency
   KEYS = %w[gold silver copper platinum].freeze
 
@@ -29,14 +20,10 @@ class Currency
     new({})
   end
 
-  # ── Accessors ─────────────────────────────────────────────────────
-
   def gold     = @data["gold"]
   def silver   = @data["silver"]
   def copper   = @data["copper"]
   def platinum = @data["platinum"]
-
-  # ── Aggregates ────────────────────────────────────────────────────
 
   def total_coins
     @data.values.sum
@@ -50,8 +37,6 @@ class Currency
     @data.values.all?(&:zero?)
   end
 
-  # ── Arithmetic ────────────────────────────────────────────────────
-
   def add(other)
     Currency.new(KEYS.each_with_object({}) { |k, h| h[k] = @data[k] + other.send(k) })
   end
@@ -59,8 +44,6 @@ class Currency
   def subtract(other)
     Currency.new(KEYS.each_with_object({}) { |k, h| h[k] = @data[k] - other.send(k) })
   end
-
-  # ── Serialization ─────────────────────────────────────────────────
 
   def to_h
     @data.dup

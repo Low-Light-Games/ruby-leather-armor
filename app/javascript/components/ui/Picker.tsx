@@ -1,41 +1,21 @@
 import React, { useId, useRef, useState } from 'react';
 
-/**
- * Generic search-and-select dropdown used by Feats, Spells, Equipment,
- * and the adventure Spellbook editor.
- *
- * The component owns the search input and the dropdown list.
- * The consumer controls the search string, provides the filtered items,
- * and renders each option via `renderOption`.
- *
- * CSS class names follow the existing `picker-*` convention already
- * styled in SkillsColumn.scss.
- */
+// Lets a click on an option land before the blurred input closes the list.
+const CLOSE_AFTER_BLUR_MS = 150;
 
+// The caller owns the search string and passes items already filtered by it.
 export interface PickerProps<T> {
-  /** Current search string (controlled). */
   search: string;
-  /** Called when the user types in the search box. */
   onSearchChange: (value: string) => void;
-  /** Placeholder text for the search input. */
   placeholder: string;
-  /** Pre-filtered list of items to show in the dropdown. */
   items: T[];
-  /** Unique key for each item. */
   itemKey: (item: T) => string;
-  /** Render the content of a single dropdown option. */
   renderOption: (item: T) => React.ReactNode;
-  /** Called when a non-disabled item is clicked. */
   onSelect: (item: T) => void;
-  /** Return true if the item should be locked (non-clickable). */
   isDisabled?: (item: T) => boolean;
-  /** Optional: extra content rendered above the search input (e.g. a type-filter row). */
   before?: React.ReactNode;
-  /** Optional: disable the search input itself. */
   inputDisabled?: boolean;
-  /** Shown in the list when `items` is empty (still lets the user type). */
   emptyMessage?: string;
-  /** Title shown in the modal header (e.g. "Feats", "Spells", "Equipment"). */
   modalTitle: string;
 }
 
@@ -105,7 +85,7 @@ export function Picker<T>({
                 onSearchChange(e.target.value);
               }}
               onFocus={() => setIsOpen(true)}
-              onBlur={() => setTimeout(() => setIsOpen(false), 150)}
+              onBlur={() => setTimeout(() => setIsOpen(false), CLOSE_AFTER_BLUR_MS)}
               onKeyDown={e => {
                 if (e.key === 'Escape') (e.target as HTMLElement).blur();
               }}

@@ -16,6 +16,68 @@ export { OPTIMISTIC_ID, THINKING_ID, ERROR_ID, isSentinel }
 
 const cable = createConsumer()
 
+type MessageBatch = { messages: AdventureMessage[] }
+type MessageHistory = MessageBatch & { pipeline_running: boolean }
+type ActionResponse = MessageBatch & { async?: boolean }
+type RollSubmission = { roll_value: number; roll_description: string; request_id?: string; resolution_method?: string }
+
+async function fetchMessageHistory(adventureId: number, failureMessage: string): Promise<MessageHistory> {
+  const res = await fetch(`/adventures/${adventureId}/messages`, {
+    headers: { Accept: 'application/json' },
+  })
+  if (!res.ok) throw new Error(failureMessage)
+  return res.json()
+}
+
+async function postAdventureAction(path: string, payload: object): Promise<ActionResponse> {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': csrfToken(),
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error || `HTTP ${res.status}`)
+  }
+
+  return res.json()
+}
+
+function findDmMessage(messages: AdventureMessage[], messageType: 'roll_request' | 'initiative_request') {
+  return messages.find(m => m.role === 'dm' && m.message_type === messageType)
+}
+
+function endsAdventure(messages: AdventureMessage[]) {
+  return messages.some(m => m.message_type === 'adventure_complete' || m.message_type === 'player_death')
+}
+
+function withoutSentinels(messages: AdventureMessage[]) {
+  return messages.filter(m => !isSentinel(m.id))
+}
+
+// The thinking indicator stays last until the final pipeline_result removes it.
+function insertBeforeThinking(messages: AdventureMessage[], incoming: AdventureMessage[]) {
+  const thinking = messages.find(m => m.id === THINKING_ID)
+  const rest = withoutSentinels(messages)
+  return thinking ? [...rest, ...incoming, thinking] : [...rest, ...incoming]
+}
+
+function thinkingMessage(): AdventureMessage {
+  return {
+    id: THINKING_ID,
+    role: 'dm',
+    content: '',
+    message_type: 'narrative',
+    metadata: {},
+    created_at: new Date().toISOString(),
+  }
+}
+
 function findLastIndex<T>(items: T[], predicate: (item: T) => boolean) {
   for (let i = items.length - 1; i >= 0; i -= 1) {
     if (predicate(items[i])) return i
@@ -70,17 +132,7 @@ function shouldShowThinking(messages: AdventureMessage[], pipelineRunning: boole
 function withThinkingSentinel(messages: AdventureMessage[], thinking: boolean): AdventureMessage[] {
   if (!thinking) return messages
 
-  return [
-    ...messages,
-    {
-      id: THINKING_ID,
-      role: 'dm',
-      content: '',
-      message_type: 'narrative',
-      metadata: {},
-      created_at: new Date().toISOString(),
-    },
-  ]
+  return [...messages, thinkingMessage()]
 }
 
 interface UseAdventureMessagesArgs {
@@ -102,7 +154,7 @@ export function useAdventureMessages({
 
   const lastSentRef = useRef<
     | { type: 'message'; text: string }
-    | { type: 'rolls'; rolls: Array<{ roll_value: number; roll_description: string; request_id?: string; resolution_method?: string }> }
+    | { type: 'rolls'; rolls: RollSubmission[] }
     | { type: 'initiative'; value: number }
     | null
   >(null)
@@ -119,47 +171,26 @@ export function useAdventureMessages({
     setMessages(prev => prev.map(m => m.id === THINKING_ID ? { ...m, content: message } : m))
   }, [])
 
-  const handleSyncResponse = useCallback((data: { messages: AdventureMessage[] }) => {
-    setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), ...data.messages])
+  const handleSyncResponse = useCallback((data: MessageBatch) => {
+    setMessages(prev => [...withoutSentinels(prev), ...data.messages])
     lastSentRef.current = null
     setSending(false)
 
-    const dmMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'roll_request')
-    if (dmMsg) activatePendingRolls(dmMsg)
-
-    const initMsg = data.messages.find(m => m.role === 'dm' && m.message_type === 'initiative_request')
-    if (initMsg) setPendingInitiative(true)
+    const rollRequest = findDmMessage(data.messages, 'roll_request')
+    if (rollRequest) activatePendingRolls(rollRequest)
+    if (findDmMessage(data.messages, 'initiative_request')) setPendingInitiative(true)
 
     if (onDmResponse) onDmResponse()
-    const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
-    const deathMsg = data.messages.find(m => m.message_type === 'player_death')
-    if ((completeMsg || deathMsg) && onAdventureComplete) onAdventureComplete()
+    if (endsAdventure(data.messages) && onAdventureComplete) onAdventureComplete()
   }, [activatePendingRolls, onDmResponse, onAdventureComplete])
 
-  const handleAsyncResponse = useCallback((data: { messages: AdventureMessage[] }) => {
-    setMessages(prev => {
-      const thinking = prev.find(m => m.id === THINKING_ID)
-      const rest = prev.filter(m => !isSentinel(m.id))
-      return thinking
-        ? [...rest, ...data.messages, thinking]
-        : [...rest, ...data.messages]
-    })
+  const handleAsyncResponse = useCallback((data: MessageBatch) => {
+    setMessages(prev => insertBeforeThinking(prev, data.messages))
   }, [])
 
-  // Progressive per-action narration: insert messages before the thinking sentinel
-  // so the player sees each action result as it arrives. The thinking indicator
-  // stays visible until the final empty pipeline_result "done" signal removes it.
-  const handleActionResult = useCallback((data: { messages: AdventureMessage[] }) => {
-    setMessages(prev => {
-      const thinking = prev.find(m => m.id === THINKING_ID)
-      const rest = prev.filter(m => !isSentinel(m.id))
-      return thinking
-        ? [...rest, ...data.messages, thinking]
-        : [...rest, ...data.messages]
-    })
-    const completeMsg = data.messages.find(m => m.message_type === 'adventure_complete')
-    const deathMsg = data.messages.find(m => m.message_type === 'player_death')
-    if ((completeMsg || deathMsg) && onAdventureComplete) onAdventureComplete()
+  const handleActionResult = useCallback((data: MessageBatch) => {
+    setMessages(prev => insertBeforeThinking(prev, data.messages))
+    if (endsAdventure(data.messages) && onAdventureComplete) onAdventureComplete()
   }, [onAdventureComplete])
 
   const handleError = useCallback((errorPrefix: string, err: any) => {
@@ -168,27 +199,18 @@ export function useAdventureMessages({
       id: ERROR_ID, role: 'system', content: `${errorPrefix}: ${err.message}`,
       message_type: 'narrative', metadata: {}, created_at: new Date().toISOString(),
     }
-    setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), errorMsg])
+    setMessages(prev => [...withoutSentinels(prev), errorMsg])
     setSending(false)
   }, [])
 
   const reloadAuthoritativeMessages = useCallback(async () => {
-    const res = await fetch(`/adventures/${adventureId}/messages`, {
-      headers: { Accept: 'application/json' },
-    })
-    if (!res.ok) throw new Error('Failed to reload messages')
-
-    const data: { messages: AdventureMessage[]; pipeline_running: boolean } = await res.json()
+    const data = await fetchMessageHistory(adventureId, 'Failed to reload messages')
     const thinking = shouldShowThinking(data.messages, data.pipeline_running)
     setMessages(withThinkingSentinel(data.messages, thinking))
     setSending(thinking)
   }, [adventureId])
 
-  // Stable ref that always holds the latest handler versions. The subscription
-  // effect closes over this ref (not the handlers directly) so it never needs
-  // to be recreated when callbacks or derivedStats change — which would briefly
-  // produce two simultaneous server-side subscriptions and deliver every
-  // broadcast event twice.
+  // Resubscribing would briefly deliver every broadcast twice, so the subscription reads handlers from here.
   const handlersRef = useRef({
     handleSyncResponse,
     handleActionResult,
@@ -199,8 +221,6 @@ export function useAdventureMessages({
     onAdventureComplete,
   })
 
-  // Keep the ref current on every render so the subscription always calls the
-  // latest versions without being recreated.
   useEffect(() => {
     handlersRef.current = {
       handleSyncResponse,
@@ -214,17 +234,26 @@ export function useAdventureMessages({
   })
 
   useEffect(() => {
-    const authoritativeMessages = messages.filter(m => !isSentinel(m.id))
+    const authoritativeMessages = withoutSentinels(messages)
     const nextState = derivePendingInteractionState(authoritativeMessages, derivedStats)
     setPendingRolls(nextState.pendingRolls)
     setPendingInitiative(nextState.pendingInitiative)
   }, [messages]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ActionCable subscription for async pipeline results.
-  // Depends ONLY on adventureId — never recreated due to callback churn,
-  // which would produce a brief window of two server-side subscriptions
-  // and deliver every broadcast event twice.
   useEffect(() => {
+    const adoptHistoryMissedWhileDisconnected = (history: MessageHistory) => {
+      const h = handlersRef.current
+      const rollRequest = findDmMessage(history.messages, 'roll_request')
+      if (rollRequest) h.activatePendingRolls(rollRequest)
+      if (findDmMessage(history.messages, 'initiative_request')) setPendingInitiative(true)
+
+      setMessages(history.messages)
+      setSending(false)
+      lastSentRef.current = null
+      if (h.onDmResponse) h.onDmResponse()
+      if (endsAdventure(history.messages) && h.onAdventureComplete) h.onAdventureComplete()
+    }
+
     const subscription = cable.subscriptions.create(
       { channel: 'AdventureChannel', adventure_id: adventureId },
       {
@@ -242,37 +271,15 @@ export function useAdventureMessages({
         },
 
         connected() {
-          // On reconnect while waiting for a response, re-fetch to recover
-          // any pipeline results that arrived during the disconnect window.
           if (!sendingRef.current) return
 
-          fetch(`/adventures/${adventureId}/messages`, { headers: { Accept: 'application/json' } })
-            .then(r => r.ok ? r.json() : null)
-            .then((data: { messages: AdventureMessage[]; pipeline_running: boolean } | null) => {
-              if (!data || !sendingRef.current) return
+          fetchMessageHistory(adventureId, 'Failed to reload messages')
+            .then(history => {
+              // A running pipeline still broadcasts its results; replacing the list
+              // now would duplicate the progressive messages already shown.
+              if (!sendingRef.current || history.pipeline_running) return
 
-              // Pipeline still running — WebSocket events will deliver results as
-              // they arrive. Do NOT call handleSyncResponse here: it would append
-              // already-present progressive messages and set sending=false early.
-              if (data.pipeline_running) return
-
-              // Pipeline finished during the disconnect window. Replace state with
-              // the server's authoritative list to avoid duplicating any messages
-              // that were already appended via pipeline_action_result events.
-              const msgs = data.messages
-              const h = handlersRef.current
-              const dmMsg = msgs.find(m => m.role === 'dm' && m.message_type === 'roll_request')
-              if (dmMsg) h.activatePendingRolls(dmMsg)
-              const initMsg = msgs.find(m => m.role === 'dm' && m.message_type === 'initiative_request')
-              if (initMsg) setPendingInitiative(true)
-
-              setMessages(msgs)
-              setSending(false)
-              lastSentRef.current = null
-              if (h.onDmResponse) h.onDmResponse()
-              const completeMsg = msgs.find(m => m.message_type === 'adventure_complete')
-              const deathMsg = msgs.find(m => m.message_type === 'player_death')
-              if ((completeMsg || deathMsg) && h.onAdventureComplete) h.onAdventureComplete()
+              adoptHistoryMissedWhileDisconnected(history)
             })
             .catch(() => {})
         },
@@ -282,20 +289,13 @@ export function useAdventureMessages({
     return () => { subscription.unsubscribe() }
   }, [adventureId]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load message history on mount
   useEffect(() => {
     const loadHistory = async () => {
       try {
-        const res = await fetch(`/adventures/${adventureId}/messages`, {
-          headers: { Accept: 'application/json' },
-        })
-        if (!res.ok) throw new Error('Failed to load messages')
-        const data: { messages: AdventureMessage[]; pipeline_running: boolean } = await res.json()
-        const msgs = data.messages
-        const thinking = shouldShowThinking(msgs, data.pipeline_running)
-        setMessages(withThinkingSentinel(msgs, thinking))
+        const data = await fetchMessageHistory(adventureId, 'Failed to load messages')
+        const thinking = shouldShowThinking(data.messages, data.pipeline_running)
+        setMessages(withThinkingSentinel(data.messages, thinking))
         setSending(thinking)
-
       } catch (err) {
         console.error('Error loading chat history:', err)
       } finally {
@@ -314,11 +314,7 @@ export function useAdventureMessages({
       id: OPTIMISTIC_ID, role: 'player', content: playerContent,
       message_type: messageType, metadata: metadata || {}, created_at: new Date().toISOString(),
     }
-    const thinking: AdventureMessage = {
-      id: THINKING_ID, role: 'dm', content: '',
-      message_type: 'narrative', metadata: {}, created_at: new Date().toISOString(),
-    }
-    setMessages(prev => [...prev.filter(m => !isSentinel(m.id)), optimistic, thinking])
+    setMessages(prev => [...withoutSentinels(prev), optimistic, thinkingMessage()])
   }, [])
 
   const sendMessage = async (text: string) => {
@@ -328,22 +324,7 @@ export function useAdventureMessages({
     addOptimisticMessages(text, 'narrative')
 
     try {
-      const res = await fetch(`/adventures/${adventureId}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken(),
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({ content: text }),
-      })
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || `HTTP ${res.status}`)
-      }
-
-      const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()
+      const data = await postAdventureAction(`/adventures/${adventureId}/messages`, { content: text })
       setPendingRolls(null)
       if (data.async) handleAsyncResponse(data)
       else handleSyncResponse(data)
@@ -352,7 +333,7 @@ export function useAdventureMessages({
     }
   }
 
-  const sendRolls = async (rolls: Array<{ roll_value: number; roll_description: string; request_id?: string; resolution_method?: string }>) => {
+  const sendRolls = async (rolls: RollSubmission[]) => {
     setSending(true)
     lastSentRef.current = { type: 'rolls', rolls }
 
@@ -365,22 +346,7 @@ export function useAdventureMessages({
     addOptimisticMessages(rollSummary, 'roll_result', { rolls })
 
     try {
-      const res = await fetch(`/adventures/${adventureId}/messages/roll`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken(),
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({ rolls }),
-      })
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || `HTTP ${res.status}`)
-      }
-
-      const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()
+      const data = await postAdventureAction(`/adventures/${adventureId}/messages/roll`, { rolls })
       if (data.async) handleAsyncResponse(data)
       else handleSyncResponse(data)
     } catch (err: any) {
@@ -396,22 +362,7 @@ export function useAdventureMessages({
     addOptimisticMessages(`Rolled ${value} for initiative`, 'initiative_result', { initiative: value })
 
     try {
-      const res = await fetch(`/adventures/${adventureId}/messages/initiative`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken(),
-          Accept: 'application/json',
-        },
-        body: JSON.stringify({ initiative: value }),
-      })
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.error || `HTTP ${res.status}`)
-      }
-
-      const data: { async?: boolean; messages: AdventureMessage[] } = await res.json()
+      const data = await postAdventureAction(`/adventures/${adventureId}/messages/initiative`, { initiative: value })
       if (data.async) handleAsyncResponse(data)
       else handleSyncResponse(data)
     } catch (err: any) {
