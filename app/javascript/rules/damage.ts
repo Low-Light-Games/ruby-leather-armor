@@ -1,20 +1,12 @@
-/**
- * Damage calculation for weapons and spells.
- * Accounts for ability modifiers, weapon properties, and feat effects.
- * Pure game mechanics — Open Game Content.
- */
-
 import type { DamageRollResult, ParsedDice } from './dice'
 import { parseDiceNotation, rollParsedDice } from './dice'
 import type { ItemDefinition } from './pathfinder_items_types'
 import type { SpellDefinition, SpellEffect } from './pathfinder_spells_types'
-import type { FeatDefinition } from './pathfinder_feats_types'
+import type { BonusTarget, FeatDefinition } from './pathfinder_feats_types'
 import type { AdventureSheet, DerivedStats } from '../types'
 import { getItemById } from './pathfinder_items'
 import { getFeatById } from './pathfinder_feats'
 import { getUnarmedDamageDice } from './pathfinder_unarmed'
-
-// ── Property helpers ─────────────────────────────────────────
 
 function prop(item: ItemDefinition, key: string): unknown {
   return item.properties?.[key]
@@ -32,8 +24,6 @@ export function isLight(item: ItemDefinition): boolean {
   return !!prop(item, 'light')
 }
 
-// ── Feat helpers ─────────────────────────────────────────────
-
 function loadFeats(sheet: AdventureSheet): FeatDefinition[] {
   const ids = sheet.details?.feats ?? []
   return ids.map(id => getFeatById(id)).filter((f): f is FeatDefinition => !!f)
@@ -44,8 +34,6 @@ function hasReplaceModifier(feats: FeatDefinition[]): boolean {
     f.effects.some(e => e.type === 'replace_modifier' && e.to === 'DEX')
   )
 }
-
-// ── Weapon attack modifier ───────────────────────────────────
 
 export function getWeaponAttackMod(
   item: ItemDefinition,
@@ -62,7 +50,79 @@ export function getWeaponAttackMod(
   return { total: ds.melee_attack, label: `BAB +${ds.bab} + STR ${formatMod(ds.mods.strength)}` }
 }
 
-// ── Weapon damage roll ───────────────────────────────────────
+const MINIMUM_DAMAGE = 1
+const TWO_HANDED_STRENGTH_MULTIPLIER = 1.5
+
+function sumOf(rolls: number[]): number {
+  return rolls.reduce((a, b) => a + b, 0)
+}
+
+// Conditional bonuses are only noted; the player applies them when the condition holds.
+function addFeatDamageBonuses(
+  feats: FeatDefinition[],
+  appliesTo: (target: BonusTarget) => boolean,
+  breakdown: string[],
+): number {
+  let bonus = 0
+  for (const feat of feats) {
+    for (const effect of feat.effects) {
+      if (effect.type !== 'bonus') continue
+      if (!appliesTo(effect.target)) continue
+
+      if (effect.condition) {
+        breakdown.push(`(${formatMod(effect.bonus)} ${feat.name} — ${effect.condition})`)
+      } else {
+        bonus += effect.bonus
+        breakdown.push(`${feat.name} ${formatMod(effect.bonus)}`)
+      }
+    }
+  }
+  return bonus
+}
+
+function addBuffDamage(ds: DerivedStats, breakdown: string[]): number {
+  const buffDamage = ds.damage_bonus ?? 0
+  if (buffDamage !== 0) breakdown.push(`Active buffs ${formatMod(buffDamage)}`)
+  return buffDamage
+}
+
+// Power Attack and Deadly Aim are opt-in, so they show as notes instead of adding to the total.
+function noteAttackDamageTrades(
+  feats: FeatDefinition[],
+  bab: number,
+  wieldedTwoHandedInMelee: boolean,
+  breakdown: string[],
+): void {
+  for (const feat of feats) {
+    for (const effect of feat.effects) {
+      if (effect.type !== 'attack_damage_trade') continue
+      const scaleFactor = Math.max(1, Math.floor(bab / effect.scalingPerBAB))
+      const damagePerStep = wieldedTwoHandedInMelee && effect.twoHandedDamageBonus
+        ? effect.twoHandedDamageBonus
+        : effect.damageBonus
+      breakdown.push(`(${formatMod(damagePerStep * scaleFactor)} if ${feat.name})`)
+    }
+  }
+}
+
+function noteExtraWeaponDice(feats: FeatDefinition[], damageDice: string, breakdown: string[]): void {
+  for (const feat of feats) {
+    for (const effect of feat.effects) {
+      if (effect.type !== 'extra_weapon_dice') continue
+      breakdown.push(`(+${effect.multiplier}x${damageDice} if ${feat.name})`)
+    }
+  }
+}
+
+function addMeleeStrengthDamage(item: ItemDefinition, strMod: number, breakdown: string[]): number {
+  if (isTwoHanded(item)) {
+    const bonus = Math.floor(strMod * TWO_HANDED_STRENGTH_MULTIPLIER)
+    if (bonus !== 0) breakdown.push(`STR ${formatMod(bonus)} (1.5x)`)
+    return bonus
+  }
+  if (strMod !== 0) breakdown.push(`STR ${formatMod(strMod)}`)
+  return strMod
+}
 
 export function rollWeaponDamage(
   itemId: string,
@@ -79,73 +139,25 @@ export function rollWeaponDamage(
   let flatBonus = parsed.flat
   const breakdown: string[] = []
 
-  // STR to damage for melee weapons
   if (item.weaponType === 'melee') {
-    const strMod = ds.mods.strength ?? 0
-    if (isTwoHanded(item)) {
-      const bonus = Math.floor(strMod * 1.5)
-      flatBonus += bonus
-      if (bonus !== 0) breakdown.push(`STR ${formatMod(bonus)} (1.5x)`)
-    } else {
-      flatBonus += strMod
-      if (strMod !== 0) breakdown.push(`STR ${formatMod(strMod)}`)
-    }
+    flatBonus += addMeleeStrengthDamage(item, ds.mods.strength ?? 0, breakdown)
   }
 
-  // Flat feat damage bonuses
-  for (const feat of feats) {
-    for (const effect of feat.effects) {
-      if (effect.type !== 'bonus') continue
-      const t = effect.target
-      const isRelevant =
-        t === 'damage' ||
-        (t === 'melee_damage' && item.weaponType === 'melee') ||
-        (t === 'ranged_damage' && item.weaponType === 'ranged')
-      if (!isRelevant) continue
+  flatBonus += addFeatDamageBonuses(
+    feats,
+    target =>
+      target === 'damage' ||
+      (target === 'melee_damage' && item.weaponType === 'melee') ||
+      (target === 'ranged_damage' && item.weaponType === 'ranged'),
+    breakdown,
+  )
+  flatBonus += addBuffDamage(ds, breakdown)
+  noteAttackDamageTrades(feats, ds.bab, item.weaponType === 'melee' && isTwoHanded(item), breakdown)
+  noteExtraWeaponDice(feats, item.damageDice, breakdown)
 
-      if (effect.condition) {
-        breakdown.push(`(${formatMod(effect.bonus)} ${feat.name} — ${effect.condition})`)
-      } else {
-        flatBonus += effect.bonus
-        breakdown.push(`${feat.name} ${formatMod(effect.bonus)}`)
-      }
-    }
-  }
-
-  const buffDmg = ds.damage_bonus ?? 0
-  if (buffDmg !== 0) {
-    flatBonus += buffDmg
-    breakdown.push(`Active buffs ${formatMod(buffDmg)}`)
-  }
-
-  // Power Attack / Deadly Aim (optional toggle — show as note)
-  for (const feat of feats) {
-    for (const effect of feat.effects) {
-      if (effect.type !== 'attack_damage_trade') continue
-      const scaleFactor = Math.max(1, Math.floor(ds.bab / effect.scalingPerBAB))
-      const dmgBonus = effect.damageBonus * scaleFactor
-      const twoHandBonus = (effect.twoHandedDamageBonus ?? dmgBonus) * scaleFactor
-      if (item.weaponType === 'melee' && isTwoHanded(item) && effect.twoHandedDamageBonus) {
-        breakdown.push(`(${formatMod(twoHandBonus)} if ${feat.name})`)
-      } else {
-        breakdown.push(`(${formatMod(dmgBonus)} if ${feat.name})`)
-      }
-    }
-  }
-
-  // Vital Strike (note)
-  for (const feat of feats) {
-    for (const effect of feat.effects) {
-      if (effect.type !== 'extra_weapon_dice') continue
-      const extraNotation = `+${effect.multiplier}x${item.damageDice}`
-      breakdown.push(`(${extraNotation} if ${feat.name})`)
-    }
-  }
-
-  const diceSum = rolls.reduce((a, b) => a + b, 0)
-  const total = Math.max(1, diceSum + flatBonus)
-  const isBash = item.itemType === 'shield'
-  const label = isBash ? `${item.name} (bash)` : `${item.name} Damage`
+  const total = Math.max(MINIMUM_DAMAGE, sumOf(rolls) + flatBonus)
+  const isShieldBash = item.itemType === 'shield'
+  const label = isShieldBash ? `${item.name} (bash)` : `${item.name} Damage`
 
   return {
     rolls,
@@ -157,8 +169,6 @@ export function rollWeaponDamage(
     label,
   }
 }
-
-// ── Unarmed damage roll ──────────────────────────────────────
 
 export function rollUnarmedDamage(
   sheet: AdventureSheet,
@@ -176,37 +186,15 @@ export function rollUnarmedDamage(
   if (strMod !== 0) breakdown.push(`STR ${formatMod(strMod)}`)
 
   const feats = loadFeats(sheet)
-  for (const feat of feats) {
-    for (const effect of feat.effects) {
-      if (effect.type !== 'bonus') continue
-      if (effect.target !== 'damage' && effect.target !== 'melee_damage') continue
-      if (effect.condition) {
-        breakdown.push(`(${formatMod(effect.bonus)} ${feat.name} — ${effect.condition})`)
-      } else {
-        flatBonus += effect.bonus
-        breakdown.push(`${feat.name} ${formatMod(effect.bonus)}`)
-      }
-    }
-  }
+  flatBonus += addFeatDamageBonuses(
+    feats,
+    target => target === 'damage' || target === 'melee_damage',
+    breakdown,
+  )
+  flatBonus += addBuffDamage(ds, breakdown)
+  noteAttackDamageTrades(feats, ds.bab, false, breakdown)
 
-  const buffDmgUnarmed = ds.damage_bonus ?? 0
-  if (buffDmgUnarmed !== 0) {
-    flatBonus += buffDmgUnarmed
-    breakdown.push(`Active buffs ${formatMod(buffDmgUnarmed)}`)
-  }
-
-  // Power Attack (optional toggle — show as note)
-  for (const feat of feats) {
-    for (const effect of feat.effects) {
-      if (effect.type !== 'attack_damage_trade') continue
-      const scaleFactor = Math.max(1, Math.floor(ds.bab / effect.scalingPerBAB))
-      const dmgBonus = effect.damageBonus * scaleFactor
-      breakdown.push(`(${formatMod(dmgBonus)} if ${feat.name})`)
-    }
-  }
-
-  const diceSum = rolls.reduce((a, b) => a + b, 0)
-  const total = Math.max(1, diceSum + flatBonus)
+  const total = Math.max(MINIMUM_DAMAGE, sumOf(rolls) + flatBonus)
 
   return {
     rolls,
@@ -218,8 +206,6 @@ export function rollUnarmedDamage(
     label: 'Unarmed Strike',
   }
 }
-
-// ── Spell damage roll ────────────────────────────────────────
 
 function getSpellDamageEffect(spell: SpellDefinition): (SpellEffect & { type: 'damage' }) | null {
   const effect = spell.effects.find(e => e.type === 'damage')
@@ -246,23 +232,20 @@ export function rollSpellDamage(
     breakdown.push(`${diceCount}d${baseParsed.sides} (CL ${characterLevel}, max ${effect.maxDice ?? '∞'})`)
   }
 
-  // Magic Missile style: multiple missiles each dealing separate damage
   if (effect.missileCount) {
-    const mc = effect.missileCount
-    const missiles = Math.min(mc.max, mc.base + Math.floor((characterLevel - 1) / mc.perLevels))
+    const { max, base, perLevels } = effect.missileCount
+    const missiles = Math.min(max, base + Math.floor((characterLevel - 1) / perLevels))
     const missileRolls: number[] = []
     for (let i = 0; i < missiles; i++) {
-      const r = rollParsedDice({ count: baseParsed.count, sides: baseParsed.sides, flat: 0 })
-      missileRolls.push(...r)
+      missileRolls.push(...rollParsedDice({ count: baseParsed.count, sides: baseParsed.sides, flat: 0 }))
     }
     const flatTotal = baseParsed.flat * missiles
-    const diceSum = missileRolls.reduce((a, b) => a + b, 0)
     return {
       rolls: missileRolls,
       diceNotation: `${missiles}x(${effect.dice})`,
       flatBonus: flatTotal,
       bonusBreakdown: [`${missiles} missiles at CL ${characterLevel}`],
-      total: Math.max(1, diceSum + flatTotal),
+      total: Math.max(MINIMUM_DAMAGE, sumOf(missileRolls) + flatTotal),
       damageType: effect.damageType,
       label: `${spell.name}`,
     }
@@ -270,8 +253,7 @@ export function rollSpellDamage(
 
   const parsed: ParsedDice = { count: diceCount, sides: baseParsed.sides, flat: baseParsed.flat }
   const rolls = rollParsedDice(parsed)
-  const diceSum = rolls.reduce((a, b) => a + b, 0)
-  const total = Math.max(1, diceSum + parsed.flat)
+  const total = Math.max(MINIMUM_DAMAGE, sumOf(rolls) + parsed.flat)
 
   return {
     rolls,
@@ -283,8 +265,6 @@ export function rollSpellDamage(
     label: `${spell.name}`,
   }
 }
-
-// ── Formatting ───────────────────────────────────────────────
 
 function formatMod(val: number): string {
   return val >= 0 ? `+${val}` : `${val}`
