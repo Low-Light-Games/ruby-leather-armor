@@ -99,7 +99,7 @@ class SheetPresenter
                           [expires_at.to_f - current_hours, 0.0].max
                         end
 
-      entry = { "source_type" => nil }.merge(entry).merge(
+      { "source_type" => nil }.merge(entry).merge(
         "remaining_hours" => remaining_hours,
         "duration_label" => duration_label_for(remaining_hours)
       )
@@ -130,7 +130,7 @@ class SheetPresenter
 
   def current_game_hours
     adventure = @sheet.try(:adventure)
-    return nil unless adventure&.respond_to?(:time_context)
+    return nil unless adventure.respond_to?(:time_context)
 
     Adventures::GameClock.absolute_hours(adventure.time_context)
   end
