@@ -1,9 +1,4 @@
-/**
- * Pathfinder 1e Item & Equipment Mechanics
- *
- * Carry capacity, encumbrance, equipment bonuses, starting gold.
- * All mechanical data is Open Game Content under the OGL 1.0a.
- */
+// All mechanical data is Open Game Content under the OGL 1.0a.
 
 import type {
   ItemDefinition,
@@ -19,8 +14,6 @@ import type {
 } from './pathfinder_items_types';
 import type { CreatureSize } from './pathfinder_combat';
 
-// ── Module-level item definitions cache (set by GameDataContext) ──
-
 let _itemDefinitions: ItemDefinition[] = [];
 
 export function setItemDefinitions(items: ItemDefinition[]): void {
@@ -34,8 +27,6 @@ export function getItemDefinitions(): ItemDefinition[] {
 export function getItemById(id: string): ItemDefinition | undefined {
   return _itemDefinitions.find(i => i.id === id);
 }
-
-// ── Equipment Slots ──────────────────────────────────────────────
 
 export const EQUIPMENT_SLOTS: { slot: EquipmentSlot; label: string; maxCount: number }[] = [
   { slot: 'armor',     label: 'Armor',     maxCount: 1 },
@@ -53,9 +44,6 @@ export const EQUIPMENT_SLOTS: { slot: EquipmentSlot; label: string; maxCount: nu
   { slot: 'ring',      label: 'Ring',      maxCount: 2 },
   { slot: 'feet',      label: 'Feet',      maxCount: 1 },
 ];
-
-// ── Starting Gold by Class (OGC) ────────────────────────────────
-// Average starting wealth for level 1 characters.
 
 export const STARTING_GOLD: Record<string, number> = {
   barbarian: 105,
@@ -76,16 +64,12 @@ export function getStartingGold(classId: string | null): number {
   return STARTING_GOLD[classId] ?? 0;
 }
 
-// ── Currency Helpers ─────────────────────────────────────────────
-
 export const EMPTY_CURRENCY: Currency = { gold: 0, silver: 0, copper: 0, platinum: 0 };
 
-/** Total number of all coins (for carry weight: 50 coins = 1 lb). */
 export function totalCoins(c: Currency): number {
   return (c.gold || 0) + (c.silver || 0) + (c.copper || 0) + (c.platinum || 0);
 }
 
-/** Total value expressed in gold pieces (for cost comparison). */
 export function totalGpValue(c: Currency): number {
   return (c.platinum || 0) * 10
        + (c.gold || 0)
@@ -93,12 +77,10 @@ export function totalGpValue(c: Currency): number {
        + (c.copper || 0) / 100;
 }
 
-/** Create a currency with only gold pieces set (e.g. from starting gold). */
 export function currencyFromGold(gp: number): Currency {
   return { gold: gp, silver: 0, copper: 0, platinum: 0 };
 }
 
-/** Format currency for display, omitting zero denominations. */
 export function formatCurrency(c: Currency): string {
   const parts: string[] = [];
   if (c.platinum > 0) parts.push(`${c.platinum} pp`);
@@ -108,10 +90,9 @@ export function formatCurrency(c: Currency): string {
   return parts.length > 0 ? parts.join(', ') : '0 gp';
 }
 
-// ── Carry Capacity Table (OGC) ──────────────────────────────────
-// Indexed by STR score. Each entry: [light, medium, heavy] max lbs.
+type LoadLimitsLbs = [light: number, medium: number, heavy: number];
 
-const CARRY_CAPACITY_TABLE: [number, number, number][] = [
+const CARRY_CAPACITY_BY_STRENGTH: LoadLimitsLbs[] = [
   [0, 0, 0],          // STR 0
   [3, 6, 10],         // STR 1
   [6, 13, 20],        // STR 2
@@ -144,55 +125,40 @@ const CARRY_CAPACITY_TABLE: [number, number, number][] = [
   [466, 933, 1400],   // STR 29
 ];
 
-/**
- * Get carry capacity thresholds for a given STR score and creature size.
- * Small creatures carry 3/4 of Medium capacity.
- */
+const SMALL_CREATURE_CARRY_FACTOR = 0.75;
+const COINS_PER_POUND = 50;
+
+// Past the table, every 10 points of STR above 20 quadruples the 20-29 row.
+function extrapolatedCarryCapacity(str: number): LoadLimitsLbs {
+  const tensAboveTwenty = Math.floor((str - 20) / 10);
+  const onesDigitRow = Math.min(20 + (str - 20) % 10, CARRY_CAPACITY_BY_STRENGTH.length - 1);
+  const [light, medium, heavy] = CARRY_CAPACITY_BY_STRENGTH[onesDigitRow];
+  const multiplier = Math.pow(4, tensAboveTwenty);
+  return [light * multiplier, medium * multiplier, heavy * multiplier];
+}
+
 export function getCarryCapacity(strScore: number, size: CreatureSize): CarryCapacity {
   const str = Math.max(strScore, 0);
+  const [light, medium, heavy] = str < CARRY_CAPACITY_BY_STRENGTH.length
+    ? CARRY_CAPACITY_BY_STRENGTH[str]
+    : extrapolatedCarryCapacity(str);
 
-  let caps: [number, number, number];
-  if (str < CARRY_CAPACITY_TABLE.length) {
-    caps = CARRY_CAPACITY_TABLE[str];
-  } else {
-    // For STR > 29: each +10 over 20 multiplies base values by 4
-    const base = CARRY_CAPACITY_TABLE[20];
-    const tens = Math.floor((str - 20) / 10);
-    const remainder = (str - 20) % 10;
-    const remIdx = Math.min(20 + remainder, CARRY_CAPACITY_TABLE.length - 1);
-    const remCaps = CARRY_CAPACITY_TABLE[remIdx];
-    const multiplier = Math.pow(4, tens);
-    caps = [
-      remCaps[0] * multiplier,
-      remCaps[1] * multiplier,
-      remCaps[2] * multiplier,
-    ];
-  }
-
-  // Small creatures: 3/4 of Medium capacity
   if (size === 'Small') {
     return {
-      light: Math.floor(caps[0] * 0.75),
-      medium: Math.floor(caps[1] * 0.75),
-      heavy: Math.floor(caps[2] * 0.75),
+      light: Math.floor(light * SMALL_CREATURE_CARRY_FACTOR),
+      medium: Math.floor(medium * SMALL_CREATURE_CARRY_FACTOR),
+      heavy: Math.floor(heavy * SMALL_CREATURE_CARRY_FACTOR),
     };
   }
 
-  return { light: caps[0], medium: caps[1], heavy: caps[2] };
+  return { light, medium, heavy };
 }
 
-// ── Weight Computation ───────────────────────────────────────────
-
-/** Coin weight: 50 coins = 1 lb (all coin types weigh the same). */
 export function coinWeight(coinCount: number): number {
-  return coinCount / 50;
+  return coinCount / COINS_PER_POUND;
 }
 
-/**
- * Compute total carry weight from all owned items + currency.
- * All items count toward weight, not just equipped ones.
- * All coin types weigh the same: 50 coins = 1 lb.
- */
+// Unequipped items count too: everything owned is carried.
 export function computeTotalWeight(
   ownedItems: OwnedItem[],
   currency: Currency,
@@ -207,10 +173,12 @@ export function computeTotalWeight(
 
   weight += coinWeight(totalCoins(currency));
 
-  return Math.round(weight * 100) / 100; // round to 2 decimal places
+  return roundToHundredths(weight);
 }
 
-// ── Encumbrance ──────────────────────────────────────────────────
+function roundToHundredths(value: number): number {
+  return Math.round(value * 100) / 100;
+}
 
 export function computeEncumbranceTier(
   totalWeight: number,
@@ -241,11 +209,6 @@ export function getEncumbranceLimits(tier: EncumbranceTier): EncumbranceLimits {
   }
 }
 
-// ── Equipment Bonus Aggregation ──────────────────────────────────
-
-/**
- * Aggregate bonuses from all equipped items (armor, shield, max DEX, ACP, ASF).
- */
 export function computeEquipmentBonuses(ownedItems: OwnedItem[]): EquipmentBonuses {
   const result: EquipmentBonuses = {
     armorBonus: 0,
@@ -268,7 +231,6 @@ export function computeEquipmentBonuses(ownedItems: OwnedItem[]): EquipmentBonus
     result.armorCheckPenalty += def.armorCheckPenalty;
     result.arcaneSpellFailure += def.arcaneSpellFailure;
 
-    // Max DEX: most restrictive wins (lowest non-null)
     if (def.maxDexBonus !== null) {
       result.maxDexBonus =
         result.maxDexBonus === null
@@ -276,7 +238,6 @@ export function computeEquipmentBonuses(ownedItems: OwnedItem[]): EquipmentBonus
           : Math.min(result.maxDexBonus, def.maxDexBonus);
     }
 
-    // Speed from armor
     if (def.itemType === 'armor') {
       if (def.speed30 !== null) result.speed30 = def.speed30;
       if (def.speed20 !== null) result.speed20 = def.speed20;
@@ -286,9 +247,6 @@ export function computeEquipmentBonuses(ownedItems: OwnedItem[]): EquipmentBonus
   return result;
 }
 
-/**
- * Compute stat bonuses from equipped item effects (same pattern as feat effects).
- */
 export function computeEquipmentStatBonuses(
   ownedItems: OwnedItem[],
   characterLevel: number,
@@ -350,9 +308,6 @@ export function computeEquipmentStatBonuses(
   return result;
 }
 
-/**
- * Compute skill bonuses from equipped item effects.
- */
 export function computeEquipmentSkillBonuses(ownedItems: OwnedItem[]): EquipmentSkillBonuses {
   const bonuses: EquipmentSkillBonuses = {};
 
@@ -372,12 +327,6 @@ export function computeEquipmentSkillBonuses(ownedItems: OwnedItem[]): Equipment
   return bonuses;
 }
 
-// ── Effective DEX Modifier ───────────────────────────────────────
-
-/**
- * Compute effective DEX modifier after armor and encumbrance caps.
- * Returns the capped DEX mod.
- */
 export function effectiveDexMod(
   rawDexMod: number,
   equipMaxDex: number | null,
@@ -393,35 +342,21 @@ export function effectiveDexMod(
   return Math.min(rawDexMod, lowestCap);
 }
 
-// ── Effective Speed ──────────────────────────────────────────────
-
-/**
- * Compute effective speed after armor and encumbrance penalties.
- */
 export function computeEffectiveSpeed(
   baseSpeed: number,
   equip: EquipmentBonuses,
   encumbrance: EncumbranceTier,
 ): number {
-  // Armor may set a specific speed
   const armorSpeed = baseSpeed >= 30 ? equip.speed30 : equip.speed20;
+  const slowedByLoad = encumbrance === 'medium' || encumbrance === 'heavy' || encumbrance === 'overloaded';
+  const encumberedSpeed = slowedByLoad ? (baseSpeed >= 30 ? 20 : 15) : baseSpeed;
 
-  // Encumbrance (medium/heavy/overloaded) reduces speed
-  const encSpeed =
-    encumbrance === 'medium' || encumbrance === 'heavy' || encumbrance === 'overloaded'
-      ? baseSpeed >= 30 ? 20 : 15
-      : baseSpeed;
-
-  const speeds = [armorSpeed, encSpeed].filter((v): v is number => v !== null);
+  const speeds = [armorSpeed, encumberedSpeed].filter((v): v is number => v !== null);
   return speeds.length > 0 ? Math.min(...speeds) : baseSpeed;
 }
 
-// ── Slot Validation ──────────────────────────────────────────────
+const MAX_EQUIPPED_RINGS = 2;
 
-/**
- * Validate that equipping an item doesn't conflict with existing equipped items.
- * Returns an error message or null if valid.
- */
 export function validateSlotEquip(
   ownedItems: OwnedItem[],
   itemToEquip: OwnedItem,
@@ -429,7 +364,19 @@ export function validateSlotEquip(
 ): string | null {
   const targetSlot: ResolvedSlot = itemToEquip.slotOverride ?? itemDef.slot;
 
-  if (targetSlot === 'none') return null; // no slot restriction
+  if (targetSlot === 'none') return null;
+
+  if (itemDef.slot === 'ring') {
+    const otherEquippedRings = ownedItems.filter(oi => {
+      if (!oi.equipped || oi === itemToEquip) return false;
+      const def = getItemById(oi.itemId);
+      return def?.slot === 'ring';
+    });
+    if (otherEquippedRings.length >= MAX_EQUIPPED_RINGS) {
+      return 'Both ring slots are occupied';
+    }
+    return null;
+  }
 
   const equippedInSlot = ownedItems.filter(oi => {
     if (!oi.equipped) return false;
@@ -442,19 +389,6 @@ export function validateSlotEquip(
     return oiSlot === targetSlot;
   });
 
-  // Rings: allow 2 via ring_1/ring_2
-  if (itemDef.slot === 'ring') {
-    const ringSlots = ownedItems.filter(oi => {
-      if (!oi.equipped || oi === itemToEquip) return false;
-      const def = getItemById(oi.itemId);
-      return def?.slot === 'ring';
-    });
-    if (ringSlots.length >= 2) {
-      return 'Both ring slots are occupied';
-    }
-    return null;
-  }
-
   if (equippedInSlot.length > 0) {
     return `Slot '${targetSlot}' is already occupied`;
   }
@@ -462,9 +396,6 @@ export function validateSlotEquip(
   return null;
 }
 
-/**
- * Compute total gold spent on owned items.
- */
 export function computeItemsCost(ownedItems: OwnedItem[]): number {
   let total = 0;
   for (const owned of ownedItems) {
@@ -472,5 +403,5 @@ export function computeItemsCost(ownedItems: OwnedItem[]): number {
     if (!def) continue;
     total += def.costGp * owned.quantity;
   }
-  return Math.round(total * 100) / 100;
+  return roundToHundredths(total);
 }
